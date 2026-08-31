@@ -73,20 +73,6 @@ public final class CareerProgression {
         if (tieredUp && worker instanceof VillagerEntityMCA) {
             SkillPoints.autoSpend(worker, affected);
         }
-        if (worker instanceof Player player) {
-            CareerProfile profile = CareerProfiles.of(player);
-            if (profile != null) {
-                for (ResourceLocation trackedId : profile.trackedCareers()) {
-                    ProfessionDef def = ProfessionDefs.byId(trackedId);
-                    if (def == null
-                            || profile.acquiredCareers().contains(trackedId)
-                            || !def.eligible(worker)) continue;
-                    player.displayClientMessage(Component.translatable(
-                            "townstead.career.tracked.ready", def.displayName()), false);
-                    PlayerCareers.mutate(player, stored -> stored.untrack(trackedId));
-                }
-            }
-        }
         return result;
     }
 

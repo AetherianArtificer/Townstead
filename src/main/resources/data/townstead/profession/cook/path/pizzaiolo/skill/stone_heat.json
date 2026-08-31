@@ -9,10 +9,6 @@
   },
   "cost": 1,
   "requires": ["stone_oven"],
-  "mods": [
-    "pizzadelight",
-    "farmersdelight"
-  ],
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 700,

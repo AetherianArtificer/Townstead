@@ -6,7 +6,6 @@ import com.aetherianartificer.townstead.client.gui.common.Palette;
 import com.aetherianartificer.townstead.client.gui.common.ParchmentButton;
 import com.aetherianartificer.townstead.profession.career.CareerChooseC2SPayload;
 import com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload;
-import com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -59,7 +58,6 @@ public final class CareerScreen extends Screen {
     private String activeRoot = "";
     private String selectedId = "";
     private String hoveredId = "";
-    private String scribeName = "";
     private String notice = "";
     private String payloadAuthority = "";
     private String payloadDate = "";
@@ -85,7 +83,6 @@ public final class CareerScreen extends Screen {
     private static long hintStart = -1L;
 
     private Button equipButton;
-    private Button trackButton;
     private Button resumeButton;
 
     private CareerScreen(CareerGraphS2CPayload payload) {
@@ -112,7 +109,6 @@ public final class CareerScreen extends Screen {
      */
     private void store(CareerGraphS2CPayload payload) {
         this.nodes = payload.nodes();
-        this.scribeName = payload.scribeName();
         this.notice = payload.notice();
         this.payloadAuthority = payload.authority();
         this.payloadDate = payload.dateLine();
@@ -240,11 +236,6 @@ public final class CareerScreen extends Screen {
         }
         int buttonX = pageX() + 14;
         int buttonW = PAGE_W - 28;
-        trackButton = addRenderableWidget(new ParchmentButton(buttonX,
-                height - MARGIN - FRAME_THICK - 85, buttonW, 18,
-                Component.translatable("townstead.career.screen.track"), button -> {
-            if (!selectedId.isEmpty()) sendTrack(new CareerTrackC2SPayload(selectedId));
-        }));
         resumeButton = addRenderableWidget(new ParchmentButton(buttonX,
                 height - MARGIN - FRAME_THICK - 64, buttonW, 18,
                 Component.translatable("townstead.career.screen.resume_work"), button -> {
@@ -289,16 +280,6 @@ public final class CareerScreen extends Screen {
                 && selected.stamp().present();
         resumeButton.visible = resume;
         resumeButton.active = resume;
-
-        boolean trackable = !inspect && selected != null
-                && selected.kind() == CareerGraphS2CPayload.KIND_ADVANCED
-                && selected.state() != CareerGraphS2CPayload.STATE_ACQUIRED;
-        trackButton.visible = trackable;
-        trackButton.active = trackable;
-        if (trackable) {
-            trackButton.setMessage(Component.translatable(selected.tracked()
-                    ? "townstead.career.screen.untrack" : "townstead.career.screen.track"));
-        }
         stackButtons();
     }
 
@@ -311,9 +292,7 @@ public final class CareerScreen extends Screen {
         }
         if (resumeButton.visible) {
             resumeButton.setY(slotY);
-            slotY -= 21;
         }
-        if (trackButton.visible) trackButton.setY(slotY);
     }
 
     private String rootLabel(String rootId) {
@@ -407,7 +386,7 @@ public final class CareerScreen extends Screen {
         drawFoot(g);
         CareerGraphS2CPayload.Node selected = nodeById(selectedId);
         recordLayout = page.draw(g, pageX(), PAGE_W, contentY(), pageViewBottom(),
-                selected, nodes, byId, activeRoot, layout, scribeName, inspect, stamp);
+                selected, nodes, byId, activeRoot, layout, inspect, stamp);
         drawStamp(g, selected, mouseX, mouseY);
 
         if (pickerOpen) {
@@ -451,7 +430,6 @@ public final class CareerScreen extends Screen {
         if (resumeButton != null && resumeButton.visible) {
             top = Math.min(top, resumeButton.getY());
         }
-        if (trackButton != null && trackButton.visible) top = Math.min(top, trackButton.getY());
         return top - 6 - StampTool.RAIL_H;
     }
 
@@ -626,9 +604,9 @@ public final class CareerScreen extends Screen {
         return true;
     }
 
-    /** The page extends down to the topmost visible button, minus the signature band. */
+    /** The page extends down to the topmost visible button. */
     private int pageViewBottom() {
-        return railY() - (scribeName.isEmpty() ? 6 : 16);
+        return railY() - 6;
     }
 
     // ── Input ──────────────────────────────────────────────────────────────
@@ -871,14 +849,6 @@ public final class CareerScreen extends Screen {
 
     private static void sendVocation(
             com.aetherianartificer.townstead.profession.career.CareerVocationC2SPayload payload) {
-        //? if neoforge {
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
-        //?} else {
-        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(payload);
-        *///?}
-    }
-
-    private static void sendTrack(CareerTrackC2SPayload payload) {
         //? if neoforge {
         net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
         //?} else {

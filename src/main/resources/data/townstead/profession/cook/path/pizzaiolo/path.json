@@ -1,5 +1,6 @@
 {
   "schema": "townstead:profession_path/v1",
+  "mods": ["pizzadelight", "farmersdelight"],
   "name": {
     "text": "Pizzaiolo"
   },

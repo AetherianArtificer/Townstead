@@ -28,7 +28,7 @@
           },
           "action": {
             "type": "pheno:damage",
-            "source": "minecraft:player_attack",
+            "source": "other",
             "amount": 4.0
           }
         },

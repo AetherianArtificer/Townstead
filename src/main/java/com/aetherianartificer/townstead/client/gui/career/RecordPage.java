@@ -102,7 +102,7 @@ final class RecordPage {
     Result draw(GuiGraphics g, int pageLeft, int pageWidth, int top, int bottom,
                 CareerGraphS2CPayload.Node selected, List<CareerGraphS2CPayload.Node> allNodes,
                 Map<String, CareerGraphS2CPayload.Node> byId, String activeRoot,
-                CareerLayout layout, String scribeName, boolean inspect, StampTool stamp) {
+                CareerLayout layout, boolean inspect, StampTool stamp) {
         int x = pageLeft + MARGIN_X;
         int inner = pageWidth - 2 * MARGIN_X;
 
@@ -154,12 +154,6 @@ final class RecordPage {
             g.fill(trackX, thumbY, trackX + 2, thumbY + thumbH, 0x736E5430);
         }
 
-        if (!scribeName.isEmpty()) {
-            String signature = Component.translatable(
-                    "townstead.career.screen.scribe_signature", scribeName).getString();
-            g.drawString(font, font.split(Component.literal(signature), pageWidth - 24).get(0),
-                    x, bottom + 4, RecordArt.INK_DIM, false);
-        }
         return new Result(head.stampX(), head.stampY(), head.stampW(), head.stampH(),
                 head.canStamp(), jumps);
     }

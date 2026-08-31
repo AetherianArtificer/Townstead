@@ -8,10 +8,6 @@
     "text": "Learn the foundations of dough, sauce, and heat that define a Pizzaiolo. Feed nearby allies to restore a little hunger when the kitchen turns dangerous."
   },
   "cost": 1,
-  "mods": [
-    "pizzadelight",
-    "farmersdelight"
-  ],
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 300,

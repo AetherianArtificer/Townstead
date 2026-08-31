@@ -2601,11 +2601,6 @@ public class Townstead {
                 this::handleCareerVocation
         );
         registrar.playToServer(
-                com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload.TYPE,
-                com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload.STREAM_CODEC,
-                this::handleCareerTrack
-        );
-        registrar.playToServer(
                 com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload.TYPE,
                 com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload.STREAM_CODEC,
                 this::handleCareerStamp
@@ -3503,17 +3498,6 @@ public class Townstead {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer sp) {
                 com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleVocation(
-                        sp, payload.careerId());
-            }
-        });
-    }
-
-    private void handleCareerTrack(
-            com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload payload,
-            IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player() instanceof ServerPlayer sp) {
-                com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleTrack(
                         sp, payload.careerId());
             }
         });

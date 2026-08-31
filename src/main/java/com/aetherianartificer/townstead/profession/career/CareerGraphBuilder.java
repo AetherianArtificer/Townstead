@@ -86,7 +86,7 @@ public final class CareerGraphBuilder {
                         // that actually gates it. Sending 0 parked every combo in rank I, however
                         // deep the work behind it was.
                         Math.max(0, combo.thresholds().getOrDefault(involved, 0)),
-                        0, 0, 0, 0, 0, false, false, false,
+                        0, 0, 0, 0, 0, false, false,
                         "", "", List.copyOf(evidence), List.of(),
                         "", 0, "", "", effectLines(combo.grants(), locale),
                         List.of(), CareerGraphS2CPayload.PathTag.NONE));
@@ -165,7 +165,7 @@ public final class CareerGraphBuilder {
                 masked || def.icon() == null ? "" : def.icon().toString(),
                 currentTier, maxTier, xp,
                 ProfessionProgress.getXpToNextTier(store, careerId), xpToday, dailyCap,
-                primary, false, profile.trackedCareers().contains(careerId),
+                primary, false,
                 routesLine, "", evidence, moments,
                 masked ? "" : def.levelName(currentTier).getString(),
                 SkillPoints.available(entity),
@@ -197,7 +197,7 @@ public final class CareerGraphBuilder {
                     localized(skill.displayName(), locale),
                     copy.about(),
                     skill.icon() == null ? "" : skill.icon().toString(),
-                    skill.tier(), 0, 0, 0, 0, 0, false, equipped, false,
+                    skill.tier(), 0, 0, 0, 0, 0, false, equipped,
                     "", equipped || (!learned && !learnable)
                             ? "" : replacedSkillName(entity, def, skill, locale),
                     List.of(), List.of(),

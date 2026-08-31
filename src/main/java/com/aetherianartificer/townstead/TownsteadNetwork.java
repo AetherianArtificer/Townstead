@@ -169,10 +169,6 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.profession.career.CareerVocationC2SPayload::read,
                 TownsteadNetwork::handleCareerVocation);
-        registerC2S(com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload.class,
-                (p, buf) -> p.write(buf),
-                com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload::read,
-                TownsteadNetwork::handleCareerTrack);
         registerC2S(com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload.class,
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload::read,
@@ -850,13 +846,6 @@ public final class TownsteadNetwork {
             com.aetherianartificer.townstead.profession.career.CareerVocationC2SPayload payload,
             ServerPlayer sp) {
         com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleVocation(
-                sp, payload.careerId());
-    }
-
-    private static void handleCareerTrack(
-            com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload payload,
-            ServerPlayer sp) {
-        com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleTrack(
                 sp, payload.careerId());
     }
 

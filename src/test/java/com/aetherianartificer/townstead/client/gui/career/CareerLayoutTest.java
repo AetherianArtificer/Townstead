@@ -46,7 +46,7 @@ class CareerLayoutTest {
                 CareerGraphS2CPayload.KIND_SKILL, CareerGraphS2CPayload.STATE_READY,
                 id, "", "minecraft:stick",
                 1, 0, 0, 0, 0, 0,
-                false, false, false, "", "", List.of(), List.of(),
+                false, false, "", "", List.of(), List.of(),
                 "Apprentice", 1, "", "", List.of(), List.of(), path);
     }
 }

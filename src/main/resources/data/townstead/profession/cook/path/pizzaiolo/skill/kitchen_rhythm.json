@@ -9,10 +9,6 @@
   },
   "cost": 1,
   "requires": ["pizza_craft"],
-  "mods": [
-    "pizzadelight",
-    "farmersdelight"
-  ],
   "grants": [
     {
       "capability": "townstead:cook_xp_flat",

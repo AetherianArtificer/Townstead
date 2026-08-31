@@ -491,12 +491,13 @@ final class StampTool {
         } else {
             return;
         }
-        String place = stamp.authority().isEmpty()
+        String authority = stamp.authority().isEmpty()
                 ? Component.translatable("townstead.career.screen.field_registry").getString()
-                : stamp.label().isEmpty() ? stamp.authority() : stamp.label();
-        String office = Component.translatable("townstead.career.screen.registered").getString();
-        drawImpression(g, stamp.textureId(), place,
-                stamp.date().isEmpty() ? office : office + "  " + stamp.date(),
+                : stamp.authority();
+        String seal = stamp.label().isEmpty()
+                ? Component.translatable("townstead.career.screen.registered").getString()
+                : stamp.label();
+        drawImpression(g, stamp.textureId(), authority, seal, stamp.date(),
                 panelLeft + stamp.x(), panelTop + stamp.y(), stamp.rotation(),
                 targetX, targetY, targetW, targetH);
     }
@@ -508,52 +509,51 @@ final class StampTool {
      */
     private void drawPendingMark(GuiGraphics g, int panelLeft, int panelTop,
                                  int targetX, int targetY, int targetW, int targetH) {
-        String place = selectedLabel.isEmpty()
-                ? Component.translatable("townstead.career.screen.field_registry").getString()
+        String authority = Component.translatable(
+                "townstead.career.screen.field_registry").getString();
+        String seal = selectedLabel.isEmpty()
+                ? Component.translatable("townstead.career.screen.registered").getString()
                 : selectedLabel;
-        drawImpression(g, selectedTextureId, place,
-                Component.translatable("townstead.career.screen.registered").getString(),
+        drawImpression(g, selectedTextureId, authority, seal, "",
                 panelLeft + pendingX, panelTop + pendingY, pendingRot,
                 targetX, targetY, targetW, targetH);
     }
 
     /** One mark, art or cartouche, clamped so it cannot hang out of the endorsement field. */
-    private void drawImpression(GuiGraphics g, String textureId, String place, String sub,
+    private void drawImpression(GuiGraphics g, String textureId, String authority,
+                                String seal, String date,
                                 int centreX, int centreY, float rotation,
                                 int targetX, int targetY, int targetW, int targetH) {
         if (!textureId.isEmpty() && StampCatalog.hasTexture(textureId)) {
-            int size = Math.min(28, Math.min(targetW, targetH));
-            //? if >=1.21 {
-            ResourceLocation texture = ResourceLocation.parse(textureId);
-            //?} else {
-            /*ResourceLocation texture = new ResourceLocation(textureId);
-            *///?}
-            g.pose().pushPose();
-            g.pose().translate(
-                    Mth.clamp(centreX, targetX + size / 2, targetX + targetW - size / 2),
-                    Mth.clamp(centreY, targetY + size / 2, targetY + targetH - size / 2), 220);
-            g.pose().mulPose(com.mojang.math.Axis.ZP.rotationDegrees(
-                    (float) Math.toDegrees(rotation)));
-            g.setColor(0.78f, 0.18f, 0.14f, 0.92f);
-            g.blit(texture, -size / 2, -size / 2, size, size, 0f, 0f, size, size, size, size);
-            g.setColor(1f, 1f, 1f, 1f);
-            g.pose().popPose();
+            drawArtImpression(g, textureId, date, centreX, centreY, rotation,
+                    targetX, targetY, targetW, targetH);
             return;
         }
-        String top1 = place.toUpperCase(Locale.ROOT);
-        // Drop the date before cutting into it. "ARCHIVES 14 SPRI…" reads as a rendering fault;
-        // the office on its own reads as a shorter stamp, which is a thing stamps are.
-        int room = targetW - 16;
-        if (font.width(sub) > room) {
-            sub = Component.translatable("townstead.career.screen.registered").getString();
+        String top1 = authority.toUpperCase(Locale.ROOT);
+        String sub = date.isEmpty() ? seal : seal + "  " + date;
+        int room = targetW - 12;
+
+        // The registration day is part of the archival mark, not expendable copy. If an unusually
+        // long guild name cannot share the second line even at the legibility floor, retain the
+        // date and let the chosen seal's face carry its identity.
+        if (!date.isEmpty() && font.width(sub) * 0.5f > room) {
+            sub = date;
         }
-        // Shrink the face before truncating the name. A name cut at full size is a name the
-        // stamp could have carried one step down, and the name is the part worth reading.
-        float face = faceScale(Math.max(font.width(top1), font.width(sub)), room);
-        if (scaled(font.width(top1), face) > room) top1 = truncate(top1, Math.round(room / face));
+        float topFace = faceScale(font.width(top1), room);
+        float subFace = compactFaceScale(font.width(sub), room);
+        if (scaled(font.width(top1), topFace) > room) {
+            top1 = truncate(top1, Math.round(room / topFace));
+        }
+        if (scaled(font.width(sub), subFace) > room) {
+            sub = date.isEmpty()
+                    ? truncate(sub, Math.round(room / subFace))
+                    : date;
+            subFace = compactFaceScale(font.width(sub), room);
+        }
         int w = Math.min(targetW,
-                Math.max(scaled(font.width(top1), face), scaled(font.width(sub), face)) + 16);
-        int h = 2 * font.lineHeight + 15;
+                Math.max(scaled(font.width(top1), topFace),
+                        scaled(font.width(sub), subFace)) + 12);
+        int h = Math.min(targetH, 2 * font.lineHeight + 11);
         g.pose().pushPose();
         g.pose().translate(Mth.clamp(centreX, targetX + w / 2, targetX + targetW - w / 2),
                 Mth.clamp(centreY, targetY + h / 2, targetY + targetH - h / 2), 220);
@@ -566,10 +566,44 @@ final class StampTool {
         g.fill(left + w - 2, top + 2, left + w, top + h - 2, INK);
         g.fill(left + 4, top + 3, left + w - 4, top + 4, INK_LIGHT);
         g.fill(left + 4, top + h - 4, left + w - 4, top + h - 3, INK_LIGHT);
-        drawFace(g, top1, left, w, top + 5, face);
-        int ruleY = top + 6 + font.lineHeight;
+        drawFace(g, top1, left, w, top + 3, topFace);
+        int ruleY = top + 4 + font.lineHeight;
         g.fill(left + 6, ruleY, left + w - 6, ruleY + 1, INK_LIGHT);
-        drawFace(g, sub, left, w, ruleY + 3, face);
+        drawFace(g, sub, left, w, ruleY + 2, subFace);
+        g.pose().popPose();
+    }
+
+    /** Resource-pack seal art keeps its authored face, with the archival date as part of the mark. */
+    private void drawArtImpression(GuiGraphics g, String textureId, String date,
+                                   int centreX, int centreY, float rotation,
+                                   int targetX, int targetY, int targetW, int targetH) {
+        int dateRoom = targetW - 4;
+        float dateFace = date.isEmpty() ? 1f : compactFaceScale(font.width(date), dateRoom);
+        int dateH = date.isEmpty() ? 0 : font.lineHeight;
+        int size = Math.min(24, Math.min(targetW, targetH - dateH - (date.isEmpty() ? 0 : 1)));
+        int w = Math.min(targetW, Math.max(size,
+                date.isEmpty() ? 0 : scaled(font.width(date), dateFace)) + 4);
+        int h = size + (date.isEmpty() ? 0 : dateH + 1);
+            //? if >=1.21 {
+            ResourceLocation texture = ResourceLocation.parse(textureId);
+            //?} else {
+            /*ResourceLocation texture = new ResourceLocation(textureId);
+            *///?}
+            g.pose().pushPose();
+            g.pose().translate(
+                Mth.clamp(centreX, targetX + w / 2, targetX + targetW - w / 2),
+                Mth.clamp(centreY, targetY + h / 2, targetY + targetH - h / 2), 220);
+            g.pose().mulPose(com.mojang.math.Axis.ZP.rotationDegrees(
+                    (float) Math.toDegrees(rotation)));
+            g.setColor(0.78f, 0.18f, 0.14f, 0.92f);
+        int artY = -h / 2;
+        g.blit(texture, -size / 2, artY, size, size, 0f, 0f, size, size, size, size);
+            g.setColor(1f, 1f, 1f, 1f);
+        if (!date.isEmpty()) {
+            int ruleY = artY + size;
+            g.fill(-w / 2 + 2, ruleY, w / 2 - 2, ruleY + 1, INK_LIGHT);
+            drawFace(g, date, -w / 2, w, ruleY + 1, dateFace);
+        }
         g.pose().popPose();
     }
 
@@ -583,6 +617,12 @@ final class StampTool {
             if (scaled(widest, step) <= room) return step;
         }
         return 0.75f;
+    }
+
+    /** The dated second line may use the compact 5px face rather than losing the date. */
+    private float compactFaceScale(int widest, int room) {
+        if (widest <= 0 || widest <= room) return 1f;
+        return Mth.clamp(room / (float) widest, 0.5f, 1f);
     }
 
     private int scaled(int width, float face) {

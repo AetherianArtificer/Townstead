@@ -184,22 +184,6 @@ public final class CareerTreeOpener {
         send(player);
     }
 
-    /** Toggle goal tracking for a specialization; tracked goals notify when within reach. */
-    public static void handleTrack(ServerPlayer player, String careerIdRaw) {
-        net.minecraft.resources.ResourceLocation careerId =
-                com.aetherianartificer.townstead.profession.def.ProfessionDefs.canonicalId(
-                        net.minecraft.resources.ResourceLocation.tryParse(careerIdRaw));
-        com.aetherianartificer.townstead.profession.def.ProfessionDef def =
-                com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(careerId);
-        if (def == null || def.isRoot()) return;
-        CareerProfile profile = CareerProfiles.of(player);
-        if (profile == null || profile.acquiredCareers().contains(careerId)) return;
-        PlayerCareers.mutate(player, stored -> {
-            if (!stored.untrack(careerId)) stored.track(careerId);
-        });
-        send(player);
-    }
-
     public static void send(ServerPlayer player) {
         send(player, player, false, "");
     }
@@ -242,7 +226,7 @@ public final class CareerTreeOpener {
                     java.util.Map<String, java.util.List<String>> moments =
                             momentsFor(server, actedBy(events, target.getUUID()));
                     CareerGraphS2CPayload payload = new CareerGraphS2CPayload(
-                            titleFor(viewer, target), scribeNameFor(viewer), inspect, notice,
+                            titleFor(viewer, target), inspect, notice,
                             authorityFor(viewer), todayFor(server, viewer),
                             CareerGraphBuilder.build(server, target, moments,
                                     //? if >=1.21 {
@@ -292,19 +276,6 @@ public final class CareerTreeOpener {
                 .format(server, viewer.serverLevel().getDayTime() / 24000L,
                         com.aetherianartificer.townstead.calendar.CalendarDateFormatter.Style.SHORT)
                 .getString();
-    }
-
-    /** The village Scribe's name for the page signature, empty when the office is unstaffed. */
-    private static String scribeNameFor(ServerPlayer viewer) {
-        java.util.Optional<net.conczin.mca.server.world.data.Village> village =
-                net.conczin.mca.server.world.data.Village.findNearest(viewer);
-        if (village.isEmpty() || !village.get().isWithinBorder(viewer)) return "";
-        for (VillagerEntityMCA resident : village.get().getResidents(viewer.serverLevel())) {
-            if (resident.isAlive() && isScribe(resident)) {
-                return resident.getName().getString();
-            }
-        }
-        return "";
     }
 
     /**

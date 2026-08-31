@@ -19,11 +19,11 @@ import java.util.List;
  * {@code inspect} marks a read-only view of somebody else's record.
  */
 //? if neoforge {
-public record CareerGraphS2CPayload(String title, String scribeName, boolean inspect,
+public record CareerGraphS2CPayload(String title, boolean inspect,
                                     String notice, String authority, String dateLine,
                                     List<Node> nodes) implements CustomPacketPayload {
 //?} else {
-/*public record CareerGraphS2CPayload(String title, String scribeName, boolean inspect,
+/*public record CareerGraphS2CPayload(String title, boolean inspect,
                                     String notice, String authority, String dateLine,
                                     List<Node> nodes) {
 *///?}
@@ -83,7 +83,7 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
     public record Node(String id, String rootId, String parentId, byte kind, byte state,
                        String name, String description, String icon,
                        int tier, int maxTier, int xp, int xpToNext, int xpToday, int dailyCap,
-                       boolean primary, boolean equipped, boolean tracked,
+                       boolean primary, boolean equipped,
                        String routesLine, String replaces,
                        List<Evidence> evidence, List<String> moments,
                        String rankName, int points,
@@ -94,14 +94,14 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
         public Node(String id, String rootId, String parentId, byte kind, byte state,
                     String name, String description, String icon,
                     int tier, int maxTier, int xp, int xpToNext, int xpToday, int dailyCap,
-                    boolean primary, boolean equipped, boolean tracked,
+                    boolean primary, boolean equipped,
                     String routesLine, String replaces,
                     List<Evidence> evidence, List<String> moments,
                     String rankName, int points,
                     String group, String nextRankName, List<String> effects,
                     List<String> requires, PathTag path, Stamp stamp) {
             this(id, rootId, parentId, kind, state, name, description, icon, tier, maxTier, xp,
-                    xpToNext, xpToday, dailyCap, primary, equipped, tracked, routesLine, replaces,
+                    xpToNext, xpToday, dailyCap, primary, equipped, routesLine, replaces,
                     evidence, moments, rankName, points, group, nextRankName, effects, requires,
                     path, stamp, Ability.NONE);
         }
@@ -110,14 +110,14 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
         public Node(String id, String rootId, String parentId, byte kind, byte state,
                     String name, String description, String icon,
                     int tier, int maxTier, int xp, int xpToNext, int xpToday, int dailyCap,
-                    boolean primary, boolean equipped, boolean tracked,
+                    boolean primary, boolean equipped,
                     String routesLine, String replaces,
                     List<Evidence> evidence, List<String> moments,
                     String rankName, int points,
                     String group, String nextRankName, List<String> effects,
                     List<String> requires, PathTag path) {
             this(id, rootId, parentId, kind, state, name, description, icon, tier, maxTier, xp,
-                    xpToNext, xpToday, dailyCap, primary, equipped, tracked, routesLine, replaces,
+                    xpToNext, xpToday, dailyCap, primary, equipped, routesLine, replaces,
                     evidence, moments, rankName, points, group, nextRankName, effects, requires,
                     path, Stamp.NONE, Ability.NONE);
         }
@@ -125,7 +125,6 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
 
     public void write(FriendlyByteBuf buf) {
         buf.writeUtf(title);
-        buf.writeUtf(scribeName);
         buf.writeBoolean(inspect);
         buf.writeUtf(notice);
         buf.writeUtf(authority);
@@ -148,7 +147,6 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
             buf.writeVarInt(node.dailyCap());
             buf.writeBoolean(node.primary());
             buf.writeBoolean(node.equipped());
-            buf.writeBoolean(node.tracked());
             buf.writeUtf(node.routesLine());
             buf.writeUtf(node.replaces());
             buf.writeVarInt(node.evidence().size());
@@ -202,7 +200,6 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
 
     public static CareerGraphS2CPayload read(FriendlyByteBuf buf) {
         String title = buf.readUtf();
-        String scribeName = buf.readUtf();
         boolean inspect = buf.readBoolean();
         String notice = buf.readUtf();
         String authority = buf.readUtf();
@@ -226,7 +223,6 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
             int dailyCap = buf.readVarInt();
             boolean primary = buf.readBoolean();
             boolean equipped = buf.readBoolean();
-            boolean tracked = buf.readBoolean();
             String routesLine = buf.readUtf();
             String replaces = buf.readUtf();
             int evidenceCount = buf.readVarInt();
@@ -267,12 +263,12 @@ public record CareerGraphS2CPayload(String title, String scribeName, boolean ins
                         buf.readUtf());
             }
             nodes.add(new Node(id, rootId, parentId, kind, state, name, description, icon,
-                    tier, maxTier, xp, xpToNext, xpToday, dailyCap, primary, equipped, tracked,
+                    tier, maxTier, xp, xpToNext, xpToday, dailyCap, primary, equipped,
                     routesLine, replaces, List.copyOf(evidence), List.copyOf(moments),
                     rankName, points, group, nextRankName, List.copyOf(effects),
                     List.copyOf(requires), path, stamp, ability));
         }
-        return new CareerGraphS2CPayload(title, scribeName, inspect, notice, authority, dateLine,
+        return new CareerGraphS2CPayload(title, inspect, notice, authority, dateLine,
                 List.copyOf(nodes));
     }
 

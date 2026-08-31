@@ -111,6 +111,14 @@ class PathAndTradeGateTest {
             JsonObject path = JsonParser.parseReader(new java.io.InputStreamReader(
                     in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
             String pathId = "pizzaiolo";
+            assertEquals(Boolean.TRUE,
+                    com.aetherianartificer.townstead.data.ModGate.evaluate(path.get("mods"),
+                            Set.of("pizzadelight", "farmersdelight")::contains),
+                    "the complete Pizzaiolo tree loads when both providers are present");
+            assertEquals(Boolean.FALSE,
+                    com.aetherianartificer.townstead.data.ModGate.evaluate(path.get("mods"),
+                            Set.of("farmersdelight")::contains),
+                    "the whole Pizzaiolo tree stays hidden when Pizza Delight is absent");
             int pathLevel = 0;
             List<String> previousLane = List.of();
             for (var authoredLevel : path.getAsJsonArray("skills")) {
@@ -125,6 +133,8 @@ class PathAndTradeGateTest {
                     String skillId = members.get(memberIndex).getAsString();
                     currentLane.add(skillId);
                     JsonObject skill = readSkill(pathId, skillId);
+                    assertFalse(skill.has("mods"),
+                            skillId + ": the Path owns its provider gate so members cannot split");
                     assertFalse(skill.getAsJsonObject("display_name").toString()
                                     .contains("PLACEHOLDER"),
                             skillId + ": must ship player-facing copy");
@@ -209,8 +219,27 @@ class PathAndTradeGateTest {
             abilities++;
             assertTrue(power.has("cooldown"), file.getName() + ": an active ability needs a cooldown");
             assertUnfilteredHarm(file.getName(), power.get("action"));
+            assertSupportedDamageSources(file.getName(), power.get("action"));
         }
         assertTrue(abilities > 0, "the scan must actually find the shipped abilities");
+    }
+
+    /** Keeps authored damage sources inside the vocabulary accepted by DamageActionType. */
+    private static void assertSupportedDamageSources(String file,
+                                                     com.google.gson.JsonElement element) {
+        if (element == null) return;
+        if (element.isJsonArray()) {
+            for (var child : element.getAsJsonArray()) assertSupportedDamageSources(file, child);
+            return;
+        }
+        if (!element.isJsonObject()) return;
+        JsonObject node = element.getAsJsonObject();
+        if ("pheno:damage".equals(node.has("type") ? node.get("type").getAsString() : "")) {
+            String source = node.has("source") ? node.get("source").getAsString() : "generic";
+            assertTrue(Set.of("generic", "other").contains(source),
+                    file + ": unsupported pheno:damage source '" + source + "'");
+        }
+        for (var entry : node.entrySet()) assertSupportedDamageSources(file, entry.getValue());
     }
 
     /** Walks an action tree, failing on any damaging area_of_effect with no bientity filter. */
