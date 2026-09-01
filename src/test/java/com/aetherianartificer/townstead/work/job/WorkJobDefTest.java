@@ -126,7 +126,8 @@ class WorkJobDefTest {
                     "interactions":[{
                       "item":"minecraft:shears",
                       "output":"minecraft:honeycomb",
-                      "expected_count":3
+                      "expected_count":3,
+                      "activity":"test:honeycomb_harvested"
                     }]
                   }
                 }
@@ -144,6 +145,8 @@ class WorkJobDefTest {
                 target.interactions().get(0).outputs().iterator().next());
         assertEquals(3, target.interactions().get(0).expectedCount());
         assertEquals(4, target.interactions().get(0).xp());
+        assertEquals(id("test:honeycomb_harvested"), target.interactions().get(0).activity());
+        assertEquals(List.of("test:honeycomb_harvested"), def.activityKeys());
         assertEquals("test:hive", def.activityKey(),
                 "the Job resource id is its automatic Chronicle activity");
     }

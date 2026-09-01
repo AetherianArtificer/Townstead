@@ -1,7 +1,7 @@
 package com.aetherianartificer.townstead.profession;
 
+import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
-import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
 
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.resources.ResourceLocation;
@@ -33,27 +33,41 @@ public final class ProfessionAutoAssign {
      */
     public static void tick(VillagerEntityMCA villager, ResourceLocation taskType,
                             boolean enabled, int interval) {
+        tick(villager, ProfessionSites.defForTask(taskType), enabled, interval);
+    }
+
+    /** One pass for a concrete data-defined career, without using a shared task id as identity. */
+    public static void tick(VillagerEntityMCA villager, ProfessionDef def,
+                            boolean enabled, int interval) {
         if (!enabled) return;
         if (interval > 0 && villager.tickCount % interval != 0) return;
         if (!(villager.level() instanceof ServerLevel level)) return;
         if (villager.isBaby() || !villager.isAlive() || villager.isSleeping()) return;
 
-        ProfessionDef def = ProfessionSites.defForTask(taskType);
         if (def == null) return;
-        VillagerProfession assignable = ProfessionSites.professionForTask(taskType);
+        VillagerProfession assignable = ProfessionSites.professionFor(def);
         VillagerProfession current = villager.getVillagerData().getProfession();
 
-        if (WorkTaskDeclarations.professionDeclares(current, taskType)) {
+        if (current == assignable) {
             // Already doing this work: keep it only while a seat is still theirs.
-            if (current == assignable
-                    && ProfessionSites.assignedSite(level, villager, def).isEmpty()) {
+            if (ProfessionSites.assignedSite(level, villager, def).isEmpty()) {
                 villager.setProfession(VillagerProfession.NONE);
+                Townstead.townstead$broadcastProfessionTier(villager);
             }
             return;
         }
         if (current != VillagerProfession.NONE) return;
         if (assignable == null) return;
+        if (!def.eligible(villager)) return;
         if (!ProfessionSites.hasFreeSite(level, villager, def)) return;
         villager.setProfession(assignable);
+        Townstead.townstead$broadcastProfessionTier(villager);
+    }
+
+    /** Practiced building careers are hired and fired by Townstead's seat resolver. */
+    public static boolean managesDefinition(ProfessionDef def) {
+        if (def == null || !def.isRoot()) return false;
+        return def.jobSites().stream().anyMatch(
+                com.aetherianartificer.townstead.profession.def.JobSiteProvider.Building.class::isInstance);
     }
 }

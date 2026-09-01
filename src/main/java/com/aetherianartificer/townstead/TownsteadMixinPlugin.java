@@ -2,6 +2,10 @@ package com.aetherianartificer.townstead;
 
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
 
 import java.util.List;
 import java.util.Set;
@@ -9,15 +13,15 @@ import java.util.Set;
 /**
  * Applies the building-icon-swap mixins that match the running MCA generation.
  *
- * <p>MCA moved icon drawing in stages. The 1.20.1 backport is a hybrid: it still
- * has {@code BlueprintScreen.drawBuildingIcon}, but that method already delegates
- * to {@code WidgetUtils}. The later floor-system build additionally introduces
- * {@code BlueprintMapRenderer}. Each choke point therefore needs its own marker.
+ * <p>MCA moved map rendering in stages. The 1.20.1 build draws footprints in
+ * {@code BlueprintScreen}; the later floor-system build introduces
+ * {@code BlueprintMapRenderer}. Townstead selects the integration that can see
+ * the building type directly, because its item icons are keyed by type rather
+ * than MCA atlas coordinates.
  *
  * <ul>
- *   <li>{@code WidgetUtils} present → {@code WidgetUtilsBuildingIconMixin}</li>
  *   <li>{@code BlueprintMapRenderer} present → {@code BlueprintMapRendererIconMixin}</li>
- *   <li>no {@code WidgetUtils} → {@code BlueprintScreenLegacyIconMixin}</li>
+ *   <li>otherwise → {@code BlueprintScreenLegacyIconMixin}</li>
  * </ul>
  *
  * <p>Detection uses classpath resource lookups so no MCA
@@ -32,12 +36,22 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
             "net/conczin/mca/mixin/client/MixinPlayerEntityRenderer.class";
     private static final String MCA_LEGACY_FORGE_PLAYER_MIXIN =
             "forge/net/mca/mixin/client/MixinPlayerEntityRenderer.class";
+    private static final String EMF_STATE_MARKER =
+            "traben/entity_model_features/models/animation/state/EMFState.class";
+    private static final String EMOTECRAFT_EMF_MIXIN_MARKER =
+            "io/github/kosmx/emotes/arch/mixin/emf/EMFAnimationEntityContextMixin.class";
+    private static final String EMF_CONTEXT =
+            "traben/entity_model_features/models/animation/EMFAnimationEntityContext";
+    private static final String EMF_STATE =
+            "traben/entity_model_features/models/animation/state/EMFState";
+    private static final String EMF_RENDER_STATE_DESC =
+            "Ltraben/entity_model_features/models/animation/state/EMFEntityRenderState;";
 
     private Boolean newApi;
     private Boolean widgetUtils;
     private Boolean floorV2;
-    private Boolean forgeLoader;
     private Boolean mcaForge;
+    private Boolean emfEmotecraftBridge;
 
     private boolean isNewApi() {
         if (newApi == null) {
@@ -60,13 +74,6 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
         return floorV2;
     }
 
-    private boolean isForgeLoader() {
-        if (forgeLoader == null) {
-            forgeLoader = TownsteadMixinPlugin.class.getClassLoader().getResource(FORGE_LOADER_MARKER) != null;
-        }
-        return forgeLoader;
-    }
-
     private boolean isMcaForge() {
         if (mcaForge == null) {
             ClassLoader loader = TownsteadMixinPlugin.class.getClassLoader();
@@ -77,16 +84,22 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
         return mcaForge;
     }
 
+    private boolean needsEmfEmotecraftBridge() {
+        if (emfEmotecraftBridge == null) {
+            ClassLoader loader = TownsteadMixinPlugin.class.getClassLoader();
+            emfEmotecraftBridge = loader.getResource(EMF_STATE_MARKER) != null
+                    && loader.getResource(EMOTECRAFT_EMF_MIXIN_MARKER) != null;
+        }
+        return emfEmotecraftBridge;
+    }
+
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         if (mixinClassName.endsWith("McaPlayerArmOverlayMixin")) {
             return isMcaForge();
         }
-        // MCA 1.20.1 uses vanilla ImageButton for catalog entries, whose fields
-        // are SRG-named at runtime. Keep this catalog-only enhancement off Forge;
-        // map icons are handled independently by WidgetUtilsBuildingIconMixin.
-        if (mixinClassName.endsWith("LegacyImageButtonMixin")) {
-            return !isForgeLoader();
+        if (mixinClassName.endsWith("EmfAnimationEntityContextCompatMixin")) {
+            return needsEmfEmotecraftBridge();
         }
         if (mixinClassName.endsWith("WidgetUtilsBuildingIconMixin")) {
             return hasWidgetUtils();
@@ -139,6 +152,32 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
     @Override
     public void preApply(String targetClassName, org.objectweb.asm.tree.ClassNode targetClass, String mixinClassName,
             IMixinInfo mixinInfo) {
+        if (mixinClassName.endsWith("EmfAnimationEntityContextCompatMixin")) {
+            addEmfStateBridge(targetClass);
+        }
+    }
+
+    /**
+     * EMF 3.3 moved its current render state to {@code EMFState.state()}, while Emotecraft's
+     * final 1.21.1 build still calls the former public accessor. Add that binary-compatible
+     * forwarding method only when it is absent. EMF 3.2 already owns the method and is unchanged.
+     */
+    static boolean addEmfStateBridge(org.objectweb.asm.tree.ClassNode targetClass) {
+        String descriptor = "()" + EMF_RENDER_STATE_DESC;
+        if (!EMF_CONTEXT.equals(targetClass.name)) return false;
+        if (targetClass.methods.stream().anyMatch(method ->
+                "getEmfState".equals(method.name) && descriptor.equals(method.desc))) {
+            return false;
+        }
+        MethodNode bridge = new MethodNode(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
+                "getEmfState", descriptor, null, null);
+        bridge.instructions.add(new MethodInsnNode(Opcodes.INVOKESTATIC, EMF_STATE,
+                "state", descriptor, false));
+        bridge.instructions.add(new InsnNode(Opcodes.ARETURN));
+        bridge.maxStack = 1;
+        bridge.maxLocals = 0;
+        targetClass.methods.add(bridge);
+        return true;
     }
 
     @Override

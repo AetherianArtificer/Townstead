@@ -5,22 +5,17 @@ import com.aetherianartificer.townstead.compat.BuildingIconResolver;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
-import net.conczin.mca.MCA;
 import net.conczin.mca.resources.data.BuildingType;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * New floor-system MCA choke point for footprint (structural) building icons.
+ * New floor-system MCA integration for footprint (structural) building icons.
  * These carry a per-layer scale and floating-point map coordinates, so they use
- * the scaled swap variant. Companion to {@link WidgetUtilsBuildingIconMixin},
- * which handles grouped POI icons.
+ * the scaled item renderer.
  *
  * <p>{@code BlueprintMapRenderer} is package-private (hence the string target)
  * and does not exist on legacy MCA, so this mixin is applied only when the
@@ -37,32 +32,13 @@ public class BlueprintMapRendererIconMixin {
     private static final float TOWNSTEAD$FOOTPRINT_ICON_AREA_REFERENCE = 6.0f;
 
     @Unique
-    private static final ResourceLocation townstead$buildingIcons = MCA.locate("textures/buildings.png");
-
-    @Unique
     private static final ThreadLocal<BuildingType> townstead$externalFootprintIcon = new ThreadLocal<>();
-
-    /** MCA's own screen-size-correct icon path used by ordinary room footprints. */
-    @Shadow(remap = false)
-    private static void drawScaledBuildingIcon(GuiGraphics context, ResourceLocation texture,
-            double x, double y, int u, int v, float scale) {
-        throw new AssertionError();
-    }
-
-    @Inject(method = "drawScaledBuildingIcon", remap = false, at = @At("HEAD"), cancellable = true)
-    private static void townstead$swapScaledBuildingIcon(GuiGraphics context, ResourceLocation texture,
-            double x, double y, int u, int v, float scale, CallbackInfo ci) {
-        if (BuildingIconSwap.renderScaled(context, x, y, u, v, scale)) {
-            ci.cancel();
-        }
-    }
 
     /**
      * MCA's floor-system renderer treats {@code BuildingType.icon} as an either/or switch for
      * external buildings: {@code true} draws a point icon and discards the footprint, while
-     * {@code false} draws the footprint and never considers {@code hasIcon()}. Rooms do not have
-     * that limitation. Remember footprint-mode external types that still advertise an icon so the
-     * following render hook can overlay it without changing their geometry mode.
+     * {@code false} draws the footprint. Townstead always keeps the footprint and supplies its
+     * item icon from the extended-building sidecar.
      */
     @WrapOperation(
             method = "render",
@@ -77,17 +53,14 @@ public class BlueprintMapRendererIconMixin {
             BuildingType type, Operation<Boolean> original) {
         boolean pointIcon = original.call(type);
         townstead$externalFootprintIcon.remove();
-        boolean townsteadItemIcon = type.visible() && type.hasIcon()
-                && BuildingIconResolver.nodeItemForIconUv(type.iconU(), type.iconV()).isPresent();
+        boolean townsteadItemIcon = type.visible()
+                && BuildingIconResolver.nodeItemForType(type.name()).isPresent();
         if (townsteadItemIcon) {
             // MCA draws point icons inside its world-space map transform. That makes a 16 px item
             // grow with the map zoom (often to 40-60 px). Townstead item icons belong on the
             // footprint path below, which cancels the world scale and remains screen-sized.
             townstead$externalFootprintIcon.set(type);
             return false;
-        }
-        if (!pointIcon && type.visible() && type.hasIcon()) {
-            townstead$externalFootprintIcon.set(type);
         }
         return pointIcon;
     }
@@ -135,7 +108,32 @@ public class BlueprintMapRendererIconMixin {
 
         double centerX = (minX + maxX + 1) * 0.5D;
         double centerZ = (minZ + maxZ + 1) * 0.5D;
-        drawScaledBuildingIcon(context, townstead$buildingIcons,
-                centerX, centerZ, type.iconU(), type.iconV(), footprintScale / worldScale);
+        BuildingIconSwap.renderScaled(context, centerX, centerZ, type.name(),
+                footprintScale / worldScale);
+    }
+
+    /** Room layers already keep their outlines; replace only their atlas picture. */
+    @WrapOperation(
+            method = "render",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/conczin/mca/client/gui/BlueprintMapRenderer;drawScaledBuildingIcon(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/resources/ResourceLocation;DDIIF)V"
+            ),
+            require = 1,
+            remap = false
+    )
+    private static void townstead$renderRoomItemIcon(
+            GuiGraphics context,
+            ResourceLocation texture,
+            double x,
+            double z,
+            int u,
+            int v,
+            float scale,
+            Operation<Void> original,
+            @Local BuildingType type) {
+        if (!BuildingIconSwap.renderScaled(context, x, z, type.name(), scale)) {
+            original.call(context, texture, x, z, u, v, scale);
+        }
     }
 }

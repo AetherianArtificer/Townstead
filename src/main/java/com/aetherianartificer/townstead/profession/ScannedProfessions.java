@@ -63,7 +63,7 @@ public final class ScannedProfessions {
 
     public record ScannedDef(ResourceLocation id, Set<ResourceLocation> jobBlocks,
                              @org.jetbrains.annotations.Nullable ResourceLocation workSound,
-                             Set<ResourceLocation> taskTypes,
+                             Set<ResourceLocation> taskTypes, boolean townsteadManaged,
                              Set<String> providerModIds) {
 
         /**
@@ -105,6 +105,15 @@ public final class ScannedProfessions {
             if (def.taskTypes().contains(taskType)) ids.add(def.id());
         }
         return Set.copyOf(ids);
+    }
+
+    /** Boot-safe ownership flag used before reload-time ProfessionDefs exist. */
+    public static boolean isTownsteadManaged(ResourceLocation professionId) {
+        if (professionId == null) return false;
+        for (ScannedDef def : defs()) {
+            if (professionId.equals(def.id())) return def.townsteadManaged();
+        }
+        return false;
     }
 
     //? if neoforge {
@@ -371,7 +380,7 @@ public final class ScannedProfessions {
             }
             if (eligible(profession)) {
                 out.putIfAbsent(id, new ScannedDef(id, jobBlocks(profession), workSound(profession),
-                        taskTypes(profession),
+                        taskTypes(profession), townsteadManaged(profession),
                         providerModIds));
             }
         } catch (Exception error) {
@@ -422,6 +431,18 @@ public final class ScannedProfessions {
             }
         }
         return out;
+    }
+
+    /** Building seats are Townstead-owned even when the same hybrid def also advertises a POI. */
+    static boolean townsteadManaged(JsonObject json) {
+        if (!json.has("poi") || !json.get("poi").isJsonArray()) return false;
+        for (JsonElement entry : json.getAsJsonArray("poi")) {
+            if (!entry.isJsonObject()) continue;
+            JsonObject provider = entry.getAsJsonObject();
+            if (provider.has("type")
+                    && "townstead:building".equals(provider.get("type").getAsString())) return true;
+        }
+        return false;
     }
 
     /** Whether a JSON file declares one of Townstead's Profession document schemas. */

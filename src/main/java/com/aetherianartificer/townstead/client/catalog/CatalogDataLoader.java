@@ -308,7 +308,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                 int iconU = GsonHelper.getAsInt(json, "iconU", 0);
                 int iconV = GsonHelper.getAsInt(json, "iconV", 0);
                 if (GsonHelper.getAsBoolean(json, "icon", false) || iconU != 0 || iconV != 0) {
-                    // MCA exposes atlas coordinates after applying these scale factors.
+                    // MCA 1.20 exposes these coordinates after applying its atlas scale factors.
                     BuildingIconResolver.registerBuildingTypeIcon(buildingType, iconU * 20, iconV * 60);
                 }
                 // Cache every type's blocks + priority so an extended_buildings enclosure block can

@@ -753,8 +753,9 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         ResourceLocation career = ProfessionDefs.canonicalId(BuiltInRegistries.VILLAGER_PROFESSION
                 .getKey(villager.getVillagerData().getProfession()));
         CareerProgression.completeWork(villager, career, Math.max(1, interaction.xp()), gameTime,
-                target.job().activityKey(), firstOutput, "item", Math.max(1, produced),
-                java.util.Map.of("job", target.job().id().toString()));
+                interaction.activityKey(target.job()), firstOutput, "item", Math.max(1, produced),
+                java.util.Map.of("job", target.job().id().toString(),
+                        "amount", Integer.toString(Math.max(1, produced))));
         return true;
     }
 

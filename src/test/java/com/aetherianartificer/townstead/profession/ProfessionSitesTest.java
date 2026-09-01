@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.profession;
 
 import com.aetherianartificer.townstead.profession.def.JobSiteProvider;
+import net.minecraft.core.BlockPos;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -67,5 +68,17 @@ class ProfessionSitesTest {
                 List.of("pizzaiolo"), List.of(new ProfessionSites.Site(null, null, 0)),
                 providers, 0),
                 "a Pizzaiolo falls back to an ordinary Kitchen when no Pizzeria seat exists");
+    }
+
+    @Test
+    void standaloneJobBlocksRespectSitesPerWorker() {
+        List<BlockPos> hives = List.of(
+                new BlockPos(0, 64, 0), new BlockPos(1, 64, 0),
+                new BlockPos(2, 64, 0), new BlockPos(3, 64, 0),
+                new BlockPos(4, 64, 0));
+
+        assertEquals(List.of(hives.get(0), hives.get(4)),
+                ProfessionCapacity.groupedAnchors(hives, 4),
+                "four hives form one Beekeeper seat and the fifth starts another");
     }
 }

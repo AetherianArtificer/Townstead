@@ -627,7 +627,7 @@ final class RecordPage {
             }
             if (evidence.target() > 0) {
                 RecordArt.meter(g, x + PAD, ey + font.lineHeight + ROW_GAP, inner - 2 * PAD,
-                        evidence.current() / (float) evidence.target(), done);
+                        evidence.current() / (float) evidence.target(), done, evidence.target());
             }
             ey += evidenceRowHeight(evidence);
         }

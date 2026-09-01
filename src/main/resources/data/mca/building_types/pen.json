@@ -2,7 +2,7 @@
   "color": "ff6a5028",
   "visible": true,
   "priority": 1,
-  "icon": true,
+  "icon": false,
   "iconU": 247,
   "iconV": 192,
   "blocks": {

@@ -71,6 +71,16 @@ public final class ProfessionSlotRules {
         return classify(profession) == SlotPolicy.POI_LIMITED;
     }
 
+    /**
+     * Whether Townstead, rather than vanilla/MCA POI tickets, owns this profession's seats.
+     * Hybrid careers may still advertise a real POI for a standalone fallback, but their
+     * primary building seats deliberately have no {@code JOB_SITE} memory. MCA must therefore
+     * retain them the same way it retains a completely POI-less building profession.
+     */
+    public static boolean isTownsteadManaged(VillagerProfession profession) {
+        return classify(profession) == SlotPolicy.CUSTOM_BUILDING_SLOTS;
+    }
+
     public static boolean isAlwaysVisible(VillagerProfession profession) {
         String professionId = professionKey(profession);
         return GUARD_ID.equals(professionId) || ARCHER_ID.equals(professionId);

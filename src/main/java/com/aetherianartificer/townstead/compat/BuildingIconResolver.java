@@ -19,17 +19,13 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Resolves the {@code townsteadNodeItem} for a building type, keyed either by
- * the building-type id or by the {@code (iconU, iconV)} sprite-sheet slot the
- * type advertises.
+ * Resolves the Townstead {@code catalog.node_item} for a building type.
  *
  * <p>Two lookup paths are used: first the datapack override map populated by
  * {@link CatalogDataLoader}, then a classpath scan of the compat or vanilla
  * building-type JSON. Results are cached for the lifetime of the session.
- *
- * <p>Used by mixins in both the rich Townstead catalog path
- * ({@code BlueprintScreenMixin}) and the vanilla MCA catalog path
- * ({@code LegacyImageButtonMixin}).
+ * Townstead item identity is keyed by building type. The UV lookup exists only as a bridge for
+ * legacy MCA render methods which expose the atlas coordinates but not the originating type.
  */
 public final class BuildingIconResolver {
     private static final ConcurrentHashMap<Long, Optional<ResourceLocation>> UV_CACHE = new ConcurrentHashMap<>();
@@ -39,12 +35,12 @@ public final class BuildingIconResolver {
     private BuildingIconResolver() {}
 
     public static Optional<ResourceLocation> nodeItemForIconUv(int u, int v) {
-        long key = (((long) u) << 32) ^ (v & 0xFFFFFFFFL);
+        long key = uvKey(u, v);
         return UV_CACHE.computeIfAbsent(key, ignored -> {
             ResourceLocation resolved = null;
             Set<String> typeNames = new LinkedHashSet<>(TYPES_BY_UV.getOrDefault(key, Set.of()));
-            for (BuildingType bt : BuildingTypes.getInstance()) {
-                if (bt.iconU() == u && bt.iconV() == v) typeNames.add(bt.name());
+            for (BuildingType type : BuildingTypes.getInstance()) {
+                if (type.iconU() == u && type.iconV() == v) typeNames.add(type.name());
             }
             for (String typeName : typeNames) {
                 Optional<ResourceLocation> candidate = nodeItemForType(typeName);
@@ -52,7 +48,6 @@ public final class BuildingIconResolver {
                 if (resolved == null) {
                     resolved = candidate.get();
                 } else if (!resolved.equals(candidate.get())) {
-                    // Ambiguous slot: bail rather than render one mod's icon for another.
                     return Optional.empty();
                 }
             }
@@ -60,18 +55,22 @@ public final class BuildingIconResolver {
         });
     }
 
-    /** Records the runtime UV advertised by one building definition during resource reload. */
+    /** Records MCA's legacy render address for a type; it does not define Townstead's item. */
     public static void registerBuildingTypeIcon(String buildingTypeName, int u, int v) {
         if (buildingTypeName == null || buildingTypeName.isBlank()) return;
-        long key = (((long) u) << 32) ^ (v & 0xFFFFFFFFL);
-        TYPES_BY_UV.computeIfAbsent(key, ignored -> ConcurrentHashMap.newKeySet()).add(buildingTypeName);
+        long key = uvKey(u, v);
+        TYPES_BY_UV.computeIfAbsent(key, ignored -> ConcurrentHashMap.newKeySet())
+                .add(buildingTypeName);
         UV_CACHE.remove(key);
     }
 
-    /** Starts a fresh building-type resource scan while preserving normal cache invalidation semantics. */
     public static void beginBuildingTypeReload() {
         TYPES_BY_UV.clear();
         invalidate();
+    }
+
+    private static long uvKey(int u, int v) {
+        return (((long) u) << 32) ^ (v & 0xFFFFFFFFL);
     }
 
     public static Optional<ResourceLocation> nodeItemForType(String buildingTypeName) {

@@ -14,6 +14,9 @@ import net.minecraft.client.gui.GuiGraphics;
 final class RecordArt {
     private RecordArt() {}
 
+    /** More divisions become visual noise rather than useful counting marks at this scale. */
+    static final int MAX_METER_SEGMENTS = 32;
+
     static final int PAGE = 0xFFEFE1BE;
     static final int PAGE_HI = 0xFFFCF4DE;
     static final int INK = 0xFF2A1C0C;
@@ -78,22 +81,32 @@ final class RecordArt {
         g.fill(x, y + h - 1, x + w, y + h, CARD_EDGE);
     }
 
-    /**
-     * A progress meter with quarter ticks and an end marker.
-     *
-     * <p>A bare fill cannot tell you whether you are near a threshold that matters, which is the
-     * only question anyone asks of a progress bar on this screen.</p>
-     */
+    /** A general progress meter with quarter divisions. */
     static void meter(GuiGraphics g, int x, int y, int w, float frac, boolean met) {
+        meter(g, x, y, w, frac, met, 4);
+    }
+
+    /**
+     * A counted progress meter. Up to the readability cap, one segment represents exactly one
+     * required deed; very large goals use the capped number of evenly spaced subdivisions while
+     * the adjacent numeric label retains the exact quantity.
+     */
+    static void meter(GuiGraphics g, int x, int y, int w, float frac, boolean met,
+                      int totalUnits) {
         g.fill(x, y, x + w, y + 4, BAR_BG);
         int fill = Math.round(w * Math.max(0f, Math.min(1f, frac)));
         if (fill > 0) g.fill(x, y, x + fill, y + 4, met ? GOOD : BAR);
         g.fill(x, y, x + w, y + 1, 0x59FFFFFF);
-        for (int t = 1; t < 4; t++) {
-            int tx = x + Math.round(w * t / 4f);
+        int segments = meterSegments(totalUnits, w);
+        for (int t = 1; t < segments; t++) {
+            int tx = x + Math.round(w * t / (float) segments);
             g.fill(tx, y, tx + 1, y + 4, 0x475A452A);
         }
         g.fill(x + w - 1, y - 2, x + w, y + 6, met ? GOOD : 0xFF8A7654);
+    }
+
+    static int meterSegments(int totalUnits, int width) {
+        return Math.max(1, Math.min(Math.min(totalUnits, MAX_METER_SEGMENTS), Math.max(1, width)));
     }
 
     /** One Insight. Solid when it can be spent, hollow when the choice is still out of reach. */

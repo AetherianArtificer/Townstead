@@ -72,6 +72,17 @@ class ProfessionPathDocumentTest {
     }
 
     @Test
+    void tierOffsetPlacesSpecializationAfterSharedTrunkSkills() {
+        JsonObject profession = object("{}");
+        ProfessionPathDocument.Applied applied = ProfessionPathDocument.apply(
+                profession, "hive_keeper",
+                object("{\"tier_offset\":2,\"skills\":[\"protective_clothing\",\"first_aid\"]}"));
+
+        assertEquals(3, applied.skillTiers().get("hive_keeper/protective_clothing"));
+        assertEquals(4, applied.skillTiers().get("hive_keeper/first_aid"));
+    }
+
+    @Test
     void pathWorkDefaultsToItsParentProfessionAndCanOptIntoPathAccess() {
         JsonObject profession = object("{}");
         ProfessionPathDocument.apply(profession, "pizzaiolo", object("""

@@ -119,6 +119,20 @@ class ScannedProfessionsTest {
     }
 
     @Test
+    void hybridBuildingProfessionIsMarkedTownsteadManagedDuringBootScan() {
+        JsonObject hybrid = obj("{ 'poi': ["
+                + "{ 'type': 'townstead:building', 'type_prefix': 'test:apiary' },"
+                + "{ 'type': 'townstead:job_block', 'block': 'minecraft:beehive' }] }");
+        JsonObject poiOnly = obj("{ 'poi': ["
+                + "{ 'type': 'townstead:job_block', 'block': 'minecraft:lectern' }] }");
+
+        assertTrue(ScannedProfessions.townsteadManaged(hybrid),
+                "a hybrid's building seat has no JOB_SITE and needs MCA retention");
+        assertFalse(ScannedProfessions.townsteadManaged(poiOnly),
+                "ordinary POI professions remain vanilla/MCA-owned");
+    }
+
+    @Test
     void scannedProfessionMatchesAnExistingPoiByItsAuthoredBlockId() {
         var beehive = net.minecraft.resources.ResourceLocation.tryParse("minecraft:beehive");
         var lectern = net.minecraft.resources.ResourceLocation.tryParse("minecraft:lectern");

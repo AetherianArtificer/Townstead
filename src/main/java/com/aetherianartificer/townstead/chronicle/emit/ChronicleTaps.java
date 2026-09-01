@@ -48,9 +48,10 @@ public final class ChronicleTaps {
         try {
             if (!(actor.level() instanceof ServerLevel level)) return;
             MinecraftServer server = level.getServer();
-            Chronicles.addCounter(server, actor.getUUID(), verb, 1);
+            int completed = counterAmount(semanticParams);
+            Chronicles.addCounter(server, actor.getUUID(), verb, completed);
             if (objectId != null) {
-                Chronicles.addCounter(server, actor.getUUID(), verb + ":" + objectId, 1);
+                Chronicles.addCounter(server, actor.getUUID(), verb + ":" + objectId, completed);
             }
             if (ChronicleTriggerIndex.isEmpty()) return;
             Map<String, String> params = new HashMap<>(semanticParams == null ? Map.of() : semanticParams);
@@ -60,6 +61,16 @@ public final class ChronicleTaps {
             ChronicleEmitter.emit(level, new TriggerKey("work", verb), actor, magnitude, params);
         } catch (Throwable t) {
             swallow(t);
+        }
+    }
+
+    /** A completion is one event, but batch-producing stations can finish several items at once. */
+    static int counterAmount(@Nullable Map<String, String> semanticParams) {
+        if (semanticParams == null) return 1;
+        try {
+            return Math.max(1, Integer.parseInt(semanticParams.getOrDefault("amount", "1")));
+        } catch (NumberFormatException ignored) {
+            return 1;
         }
     }
 

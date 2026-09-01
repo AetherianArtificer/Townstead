@@ -123,7 +123,12 @@ public final class ProfessionSites {
      */
     public static @Nullable net.minecraft.world.entity.npc.VillagerProfession professionForTask(
             net.minecraft.resources.ResourceLocation taskType) {
-        ProfessionDef def = defForTask(taskType);
+        return professionFor(defForTask(taskType));
+    }
+
+    /** The registered villager profession represented by this concrete definition. */
+    public static @Nullable net.minecraft.world.entity.npc.VillagerProfession professionFor(
+            @Nullable ProfessionDef def) {
         if (def == null) return null;
         if (!net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION.containsKey(def.id())) {
             return null;
@@ -453,17 +458,16 @@ public final class ProfessionSites {
 
         // Pass two: standalone posts. The indoor ones are already gone — the posts query drops
         // anything inside a building so the answer rides its cache (see the class note on why
-        // indoor stations are not sites at all).
+        // indoor stations are not sites at all). Hybrid definitions may use their own direct
+        // zero-ticket POI here: a Beekeeper prefers an Apiary but can fall back to grouped hives.
         //
         // Self-declared StationPost entries contribute nothing yet: there is no cheap indexed
         // way to find arbitrary blocks in a village, and a POI type's block set is fixed at
         // registry time so it cannot be driven from a datapack tag. The shape is parsed and
         // ordered here so the data is settled ahead of that mechanism.
-        int postProvider = firstPostProvider(def);
-        if (postProvider >= 0) {
-            for (BlockPos post : ProfessionCapacity.standalonePois(level, village, def)) {
-                sites.add(new Site(null, post.immutable(), postProvider));
-            }
+        for (ProfessionCapacity.StandaloneSite standalone
+                : ProfessionCapacity.standaloneSites(level, village, def)) {
+            sites.add(new Site(null, standalone.post(), standalone.providerIndex()));
         }
         return List.copyOf(sites);
     }
@@ -488,16 +492,6 @@ public final class ProfessionSites {
             ASSIGNMENTS.entrySet().removeIf(entry ->
                     entry.getValue().dimension().equals(dimension));
         }
-    }
-
-    /** The entry posts are attributed to: the first that can produce one, or -1 if none can. */
-    private static int firstPostProvider(ProfessionDef def) {
-        for (int i = 0; i < def.jobSites().size(); i++) {
-            JobSiteProvider provider = def.jobSites().get(i);
-            if (provider instanceof JobSiteProvider.JobBlock block && block.via() != null) return i;
-            if (provider instanceof JobSiteProvider.StationPost) return i;
-        }
-        return -1;
     }
 
     /**

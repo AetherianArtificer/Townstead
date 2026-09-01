@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.profession.career;
 
+import com.aetherianartificer.townstead.chronicle.Chronicles;
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
 import com.aetherianartificer.townstead.profession.def.SkillDef;
@@ -16,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.function.ToIntFunction;
 
 /**
  * Insight is one shared, derived budget. Advancing any registered career earns it; learning a
@@ -111,8 +113,26 @@ public final class SkillPoints {
         Set<ResourceLocation> learned = LearnedSkills.learned(entity);
         String relationshipBlocker = relationshipBlocker(learned, skill);
         if (relationshipBlocker != null) return relationshipBlocker;
+        if (!skill.evidence().isEmpty()) {
+            var server = entity.getServer();
+            if (server == null) return "evidence unavailable";
+            String evidenceBlocker = evidenceBlocker(skill,
+                    key -> Chronicles.count(server, entity.getUUID(), key));
+            if (evidenceBlocker != null) return evidenceBlocker;
+        }
         if (Math.max(0, skill.cost()) > available(entity)) {
             return "needs " + skill.cost() + " Insight";
+        }
+        return null;
+    }
+
+    @Nullable
+    static String evidenceBlocker(SkillDef skill, ToIntFunction<String> counts) {
+        for (var requirement : skill.evidence()) {
+            if (counts.applyAsInt(requirement.key()) < requirement.target()) {
+                return "needs " + requirement.target() + " recorded '"
+                        + requirement.key() + "'";
+            }
         }
         return null;
     }

@@ -58,6 +58,20 @@ public record WorkJobDef(
         return id.toString();
     }
 
+    /**
+     * Chronicle counters produced by this Job. A block interaction may give each authored route
+     * its own counter (bottling honey versus cutting comb); older definitions still collapse to
+     * the Job id, preserving the original one-counter contract.
+     */
+    public List<String> activityKeys() {
+        if (target == null || target.interactions().isEmpty()) return List.of(activityKey());
+        LinkedHashSet<String> keys = new LinkedHashSet<>();
+        for (Interaction interaction : target.interactions()) {
+            keys.add(interaction.activityKey(this));
+        }
+        return List.copyOf(keys);
+    }
+
     public record Placement(
             int x,
             int y,
@@ -168,7 +182,13 @@ public record WorkJobDef(
     public record Interaction(@Nullable String item, @Nullable ItemCondition itemCondition,
                               @Nullable BlockCondition condition,
                               BlockAction action, Set<ResourceLocation> outputs,
-                              int expectedCount, int xp) {
+                              int expectedCount, int xp,
+                              @Nullable ResourceLocation activity) {
+
+        /** The interaction's more precise counter, or the Job's stable id for v3 compatibility. */
+        public String activityKey(WorkJobDef job) {
+            return activity == null ? job.activityKey() : activity.toString();
+        }
 
         public boolean matches(ItemStack stack) {
             return item != null && matchesItem(item, stack);
@@ -392,10 +412,13 @@ public record WorkJobDef(
             }
             int xp = integer(json, "xp", defaultXp);
             int expectedCount = integer(json, "expected_count", 1);
+            ResourceLocation activity = json.has("activity")
+                    ? resource(json, "activity") : null;
             if (xp < 1 || expectedCount < 1 || (item == null && !explicitAction)
-                    || (!explicitAction && outputs.isEmpty())) return null;
+                    || (!explicitAction && outputs.isEmpty())
+                    || (json.has("activity") && activity == null)) return null;
             interactions.add(new Interaction(item, itemCondition, condition, action,
-                    Set.copyOf(outputs), expectedCount, xp));
+                    Set.copyOf(outputs), expectedCount, xp, activity));
         }
         return List.copyOf(interactions);
     }

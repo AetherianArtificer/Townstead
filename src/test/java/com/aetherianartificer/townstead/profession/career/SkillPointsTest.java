@@ -6,6 +6,7 @@ import com.aetherianartificer.townstead.profession.def.ProgressionTrack;
 import com.aetherianartificer.townstead.profession.def.RetrainingPolicy;
 import com.aetherianartificer.townstead.profession.def.SkillDef;
 import com.aetherianartificer.townstead.profession.def.SkillDefs;
+import com.aetherianartificer.townstead.profession.def.SkillEvidenceRequirement;
 import com.aetherianartificer.townstead.profession.def.UnlockModel;
 import com.aetherianartificer.townstead.villager.ProfessionXp;
 import com.aetherianartificer.townstead.villager.ProfessionXpStore;
@@ -89,6 +90,18 @@ class SkillPointsTest {
         assertNull(SkillPoints.relationshipBlocker(Set.of(COOK_SKILL),
                         SkillDefs.byId(COOK_CHILD)),
                 "the authored parent, not a fixed rank rule, opens the child");
+    }
+
+    @Test
+    void everyAuthoredEvidenceThresholdMustBeMet() {
+        SkillDef skill = new SkillDef(COOK_SKILL, null, null, COOK, 1,
+                List.of(), List.of(), 1, List.of(), null, null, null,
+                List.of(new SkillEvidenceRequirement("test:comb", 24),
+                        new SkillEvidenceRequirement("test:honey", 8)), null);
+
+        assertEquals("needs 24 recorded 'test:comb'",
+                SkillPoints.evidenceBlocker(skill, key -> key.endsWith("comb") ? 23 : 8));
+        assertNull(SkillPoints.evidenceBlocker(skill, key -> key.endsWith("comb") ? 24 : 8));
     }
 
     private static ProfessionDef root(ResourceLocation id, List<ResourceLocation> skills) {

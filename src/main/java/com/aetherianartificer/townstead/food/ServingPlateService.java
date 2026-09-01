@@ -62,8 +62,11 @@ public final class ServingPlateService {
         /*FoodProperties food = stack.getFoodProperties(null);
         *///?}
         if (food != null) return new Prepared(stack.copyWithCount(1), stack.copyWithCount(1), 1);
-        // The serving surface does not judge its contents. Worksite/output logic made that choice.
-        return new Prepared(stack.copyWithCount(1), stack.copyWithCount(1), 1);
+        // A serving plate is food storage, not a general display pedestal. Accepting arbitrary
+        // items here let tools and raw ingredients occupy a restaurant's only delivery surface
+        // forever: neither players nor hungry villagers could consume them, and the worker then
+        // had nowhere to put the next finished dish.
+        return null;
     }
 
     public static @Nullable BlockPos findEmpty(ServerLevel level, VillagerEntityMCA villager,

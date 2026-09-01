@@ -897,7 +897,49 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 animation,
                 skillGroup,
                 parsePower(obj, lang, diag),
+                parseSkillEvidence(obj, diag),
                 obj.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "icon", "")) : null);
+    }
+
+    /**
+     * Skill evidence is intentionally a small, explicit contract rather than an opaque condition:
+     * every authoritative gate can therefore be rendered with its live current/required counts.
+     */
+    private static List<SkillEvidenceRequirement> parseSkillEvidence(JsonObject obj,
+                                                                      Diagnostics diag) {
+        if (!obj.has("evidence")) return List.of();
+        JsonPath path = JsonPath.ROOT.field("evidence");
+        if (!obj.get("evidence").isJsonArray()) {
+            diag.error(path, "Skill 'evidence' must be an array.",
+                    "Use [{\"key\":\"namespace:counter\",\"at_least\":10}].");
+            return List.of();
+        }
+        List<SkillEvidenceRequirement> evidence = new ArrayList<>();
+        JsonArray entries = obj.getAsJsonArray("evidence");
+        for (int i = 0; i < entries.size(); i++) {
+            JsonPath entryPath = path.index(i);
+            if (!entries.get(i).isJsonObject()) {
+                diag.error(entryPath, "Skill evidence entry must be an object.",
+                        "Provide a Chronicle counter 'key' and positive 'at_least' count.");
+                continue;
+            }
+            JsonObject entry = entries.get(i).getAsJsonObject();
+            String key = GsonHelper.getAsString(entry, "key", "").trim();
+            int target = GsonHelper.getAsInt(entry, "at_least", 0);
+            if (key.isBlank()) {
+                diag.error(entryPath.field("key"), "Skill evidence key is missing.",
+                        "Set it to the Chronicle counter this deed records.");
+                continue;
+            }
+            if (target <= 0) {
+                diag.error(entryPath.field("at_least"),
+                        "Skill evidence 'at_least' must be positive.",
+                        "Set the number of recorded deeds required to learn the skill.");
+                continue;
+            }
+            evidence.add(new SkillEvidenceRequirement(key, target));
+        }
+        return List.copyOf(evidence);
     }
 
     /**

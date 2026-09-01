@@ -162,6 +162,33 @@ class ProfessionLoaderDiagnosticsTest {
     }
 
     @Test
+    void skillEvidenceParsesCountedDeedThresholds() {
+        Diagnostics diag = new Diagnostics();
+        SkillDef skill = ProfessionDataLoader.parseSkill(rl("t:s"),
+                obj("{ 'profession':'t:p', 'evidence':["
+                        + "{'key':'t:honeycomb_harvested','at_least':24},"
+                        + "{'key':'t:honey_bottled','at_least':8}] }"), Map.of(), diag);
+
+        assertNotNull(skill);
+        assertEquals(java.util.List.of(
+                new SkillEvidenceRequirement("t:honeycomb_harvested", 24),
+                new SkillEvidenceRequirement("t:honey_bottled", 8)), skill.evidence());
+        assertFalse(diag.hasErrors());
+    }
+
+    @Test
+    void invalidSkillEvidenceIsDiagnosedAndDropped() {
+        Diagnostics diag = new Diagnostics();
+        SkillDef skill = ProfessionDataLoader.parseSkill(rl("t:s"),
+                obj("{ 'profession':'t:p', 'evidence':[{'key':'','at_least':0}] }"),
+                Map.of(), diag);
+
+        assertNotNull(skill);
+        assertTrue(skill.evidence().isEmpty());
+        assertTrue(has(diag, "$.evidence[0].key", "key"));
+    }
+
+    @Test
     void pathSkillReferencesResolveBesideTheSkillFile() {
         Diagnostics diag = new Diagnostics();
         SkillDef skill = ProfessionDataLoader.parseSkill(

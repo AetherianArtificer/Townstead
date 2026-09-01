@@ -66,6 +66,17 @@ class ProfessionSlotRulesTest {
     }
 
     @Test
+    void buildingOwnsHybridProfessionSeatsEvenWhenItAlsoAdvertisesAJobBlock() {
+        registerDef("somepack:beekeeper", List.of(
+                new JobSiteProvider.Building(List.of("somepack:apiary")),
+                new JobSiteProvider.JobBlock(Set.of(
+                        ResourceLocation.tryParse("minecraft:beehive")), null, 4)));
+
+        assertEquals(ProfessionSlotRules.SlotPolicy.CUSTOM_BUILDING_SLOTS,
+                ProfessionSlotRules.classify("somepack:beekeeper", true));
+    }
+
+    @Test
     void defDeclaredAlwaysIsUnlimited() {
         registerDef("somepack:wanderer", List.of(new JobSiteProvider.Always()));
         assertEquals(ProfessionSlotRules.SlotPolicy.UNLIMITED,

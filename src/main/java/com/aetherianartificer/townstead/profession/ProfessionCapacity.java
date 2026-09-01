@@ -39,26 +39,31 @@ public final class ProfessionCapacity {
 
     private static final long POSTS_CACHE_TICKS = 100L;
     private record PostsCacheKey(String dimension, int villageId, ResourceLocation defId) {}
-    private record PostsCacheEntry(List<BlockPos> posts, long expiresAt) {}
+    /** One Townstead-managed standalone seat and the provider that authored it. */
+    public record StandaloneSite(BlockPos post, int providerIndex) {}
+
+    private record PostsCacheEntry(List<StandaloneSite> sites, long expiresAt) {}
     private static final java.util.concurrent.ConcurrentHashMap<PostsCacheKey, PostsCacheEntry> POSTS_CACHE =
             new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
-     * Declared {@code via} POIs standing OUTSIDE every building, in deterministic order — each
-     * is a post in its own right, the pot in the courtyard rather than the pot in the kitchen.
+     * Declared job-block POIs standing OUTSIDE every building, in deterministic order. Via
+     * surfaces use the named profession's POI; direct surfaces participate when the definition
+     * also has building seats, forming its fallback acquisition route.
      * Indoor ones are deliberately absent: a building's own entry already seats workers by tier,
      * so counting its furniture again would put two workers on one pot. Cached per village for a
      * few seconds; eligibility asks at 20Hz and the POI query is far too heavy for that.
      */
-    public static List<BlockPos> standalonePois(ServerLevel level, Village village, ProfessionDef def) {
+    public static List<StandaloneSite> standaloneSites(
+            ServerLevel level, Village village, ProfessionDef def) {
         PostsCacheKey key = new PostsCacheKey(
                 level.dimension().location().toString(), village.getId(), def.id());
         long now = level.getGameTime();
         PostsCacheEntry cached = POSTS_CACHE.get(key);
-        if (cached != null && now < cached.expiresAt()) return cached.posts();
-        List<BlockPos> posts = collectViaPois(level, village, def);
-        POSTS_CACHE.put(key, new PostsCacheEntry(List.copyOf(posts), now + POSTS_CACHE_TICKS));
-        return posts;
+        if (cached != null && now < cached.expiresAt()) return cached.sites();
+        List<StandaloneSite> sites = collectStandaloneSites(level, village, def);
+        POSTS_CACHE.put(key, new PostsCacheEntry(List.copyOf(sites), now + POSTS_CACHE_TICKS));
+        return sites;
     }
 
     /**
@@ -96,50 +101,74 @@ public final class ProfessionCapacity {
 
     /** The village's buildings whose type this def claims by prefix, in MCA iteration order. */
     public static List<Building> countedBuildings(Village village, ProfessionDef def) {
-        List<String> prefixes = new ArrayList<>();
+        List<JobSiteProvider.Building> providers = new ArrayList<>();
         for (JobSiteProvider provider : def.jobSites()) {
             if (provider instanceof JobSiteProvider.Building building) {
-                prefixes.addAll(building.typePrefixes());
+                providers.add(building);
             }
         }
-        if (prefixes.isEmpty()) return List.of();
+        if (providers.isEmpty()) return List.of();
         List<Building> counted = new ArrayList<>();
         java.util.Map<Integer, String> effectiveTypes = McaBuildingCompat.effectiveTypes(village);
         for (Building building : McaBuildings.all(village)) {
             String type = effectiveTypes.get(building.getId());
-            if (type != null && prefixes.stream().anyMatch(type::startsWith)) counted.add(building);
+            if (type != null && providers.stream().anyMatch(provider -> provider.matches(type))) {
+                counted.add(building);
+            }
         }
         return counted;
     }
 
-    private static List<BlockPos> collectViaPois(ServerLevel level, Village village, ProfessionDef def) {
-        List<BlockPos> posts = new ArrayList<>();
+    private static List<StandaloneSite> collectStandaloneSites(
+            ServerLevel level, Village village, ProfessionDef def) {
+        List<StandaloneSite> sites = new ArrayList<>();
         BlockPos center = new BlockPos(village.getCenter());
         PoiManager poiManager = level.getPoiManager();
-        // Two surfaces sharing a POI type must not double count the same block.
+        boolean hasBuildingProvider = def.jobSites().stream()
+                .anyMatch(JobSiteProvider.Building.class::isInstance);
+        // Two surfaces sharing a POI type must not double count the same physical block.
         Set<BlockPos> seen = new HashSet<>();
-        for (JobSiteProvider provider : def.jobSites()) {
-            if (!(provider instanceof JobSiteProvider.JobBlock block) || block.via() == null) continue;
-            VillagerProfession via = professionById(block.via());
-            if (via == null || via == VillagerProfession.NONE) continue;
-            for (BlockPos pos : poiManager.findAll(
-                    via.heldJobSite(),
+        for (int providerIndex = 0; providerIndex < def.jobSites().size(); providerIndex++) {
+            JobSiteProvider provider = def.jobSites().get(providerIndex);
+            if (!(provider instanceof JobSiteProvider.JobBlock block)) continue;
+
+            // A plain job-block-only profession remains vanilla/MCA-owned. A direct block in a
+            // building hierarchy is different: it is the standalone fallback after the building
+            // seats, including feature POIs such as beehives whose max ticket count is zero.
+            if (block.via() == null && !hasBuildingProvider) continue;
+            VillagerProfession surface = professionById(
+                    block.via() == null ? def.id() : block.via());
+            if (surface == null || surface == VillagerProfession.NONE) continue;
+
+            List<BlockPos> positions = poiManager.findAll(
+                    surface.heldJobSite(),
                     p -> village.isWithinBorder(p, Village.BORDER_MARGIN),
                     center,
-                    128,
-                    PoiManager.Occupancy.ANY).toList()) {
-                BlockPos immutable = pos.immutable();
-                if (!seen.add(immutable)) continue;
-                // Filtered here rather than at the call site so the answer rides the posts
-                // cache: containment is a walk of every building, and the sites list is
-                // rebuilt on ticks where a villager is only walking to work.
-                if (insideAnyBuilding(level, village, immutable)) continue;
-                posts.add(immutable);
+                    128, PoiManager.Occupancy.ANY)
+                    .map(BlockPos::immutable)
+                    .filter(pos -> block.blocks().contains(BuiltInRegistries.BLOCK.getKey(
+                            level.getBlockState(pos).getBlock())))
+                    .filter(pos -> !insideAnyBuilding(level, village, pos))
+                    .filter(seen::add)
+                    .sorted(java.util.Comparator.<BlockPos>comparingInt(BlockPos::getY)
+                            .thenComparingInt(BlockPos::getZ)
+                            .thenComparingInt(BlockPos::getX))
+                    .toList();
+
+            for (BlockPos post : groupedAnchors(positions, block.sitesPerWorker())) {
+                sites.add(new StandaloneSite(post.immutable(), providerIndex));
             }
         }
-        posts.sort(java.util.Comparator.<BlockPos>comparingInt(BlockPos::getY)
-                .thenComparingInt(BlockPos::getZ).thenComparingInt(BlockPos::getX));
-        return posts;
+        return sites;
+    }
+
+    /** First physical post in each authored sites-per-worker group becomes the seat anchor. */
+    static List<BlockPos> groupedAnchors(List<BlockPos> positions, int sitesPerWorker) {
+        if (positions == null || positions.isEmpty()) return List.of();
+        int groupSize = Math.max(1, sitesPerWorker);
+        List<BlockPos> anchors = new ArrayList<>((positions.size() + groupSize - 1) / groupSize);
+        for (int i = 0; i < positions.size(); i += groupSize) anchors.add(positions.get(i));
+        return List.copyOf(anchors);
     }
 
     /**

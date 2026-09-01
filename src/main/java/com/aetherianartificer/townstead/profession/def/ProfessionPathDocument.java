@@ -40,7 +40,13 @@ public final class ProfessionPathDocument {
             throw new IllegalArgumentException("'skills' must be an array");
         }
 
-        Map<String, Integer> tiers = parseSkills(pathId, document.getAsJsonArray("skills"));
+        int tierOffset = document.has("tier_offset")
+                ? document.get("tier_offset").getAsInt() : 0;
+        if (tierOffset < 0) {
+            throw new IllegalArgumentException("'tier_offset' must be zero or greater");
+        }
+        Map<String, Integer> tiers = parseSkills(
+                pathId, document.getAsJsonArray("skills"), tierOffset);
         if (tiers.isEmpty()) throw new IllegalArgumentException("A path needs at least one skill");
         rejectMembershipConflicts(profession, pathId, tiers.keySet());
 
@@ -131,15 +137,16 @@ public final class ProfessionPathDocument {
         profession.add("work_tasks", existing);
     }
 
-    private static Map<String, Integer> parseSkills(String pathId, JsonArray skills) {
+    private static Map<String, Integer> parseSkills(String pathId, JsonArray skills,
+                                                    int tierOffset) {
         Map<String, Integer> tiers = new LinkedHashMap<>();
         for (int i = 0; i < skills.size(); i++) {
             JsonElement level = skills.get(i);
             if (level.isJsonPrimitive() && level.getAsJsonPrimitive().isString()) {
-                addSkill(pathId, tiers, level, i + 1);
+                addSkill(pathId, tiers, level, tierOffset + i + 1);
             } else if (level.isJsonArray() && !level.getAsJsonArray().isEmpty()) {
                 for (JsonElement skill : level.getAsJsonArray()) {
-                    addSkill(pathId, tiers, skill, i + 1);
+                    addSkill(pathId, tiers, skill, tierOffset + i + 1);
                 }
             } else {
                 throw new IllegalArgumentException("Skill position " + (i + 1)

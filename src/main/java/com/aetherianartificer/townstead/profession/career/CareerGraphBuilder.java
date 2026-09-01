@@ -200,7 +200,7 @@ public final class CareerGraphBuilder {
                     skill.tier(), 0, 0, 0, 0, 0, false, equipped,
                     "", equipped || (!learned && !learnable)
                             ? "" : replacedSkillName(entity, def, skill, locale),
-                    List.of(), List.of(),
+                    skillEvidenceFor(server, entity, skill, locale), List.of(),
                     def.levelName(skill.tier()).getString(), Math.max(0, skill.cost()),
                     skill.skillGroup() == null ? "" : skill.skillGroup().toString(),
                     "", copy.effects(),
@@ -379,6 +379,19 @@ public final class CareerGraphBuilder {
             }
         }
         return evidence;
+    }
+
+    /** The skill's authored Chronicle gates, with both current and required quantities. */
+    private static List<CareerGraphS2CPayload.Evidence> skillEvidenceFor(
+            MinecraftServer server, LivingEntity entity, SkillDef skill, String locale) {
+        List<CareerGraphS2CPayload.Evidence> evidence = new ArrayList<>();
+        for (var requirement : skill.evidence()) {
+            int current = Chronicles.count(server, entity.getUUID(), requirement.key());
+            evidence.add(new CareerGraphS2CPayload.Evidence(
+                    counterLabel(requirement.key(), locale), current, requirement.target(),
+                    current >= requirement.target()));
+        }
+        return List.copyOf(evidence);
     }
 
     /** Engine activities use counter keys; data-driven Jobs use their resource translation key. */
