@@ -348,12 +348,14 @@ public final class NearbyItemSources {
      */
     public static boolean isProcessingContainer(BlockState state, BlockEntity be) {
         if (StorageRoles.denied(state)) return true;
+        // Explicit roles are authoritative. Some workstations intentionally expose a narrowly
+        // routed storage surface (for example, a cutting board holding a reusable knife).
+        if (StorageRoles.allowed(state)) return false;
         // A block a pack already calls a workstation is a machine; making packs say it twice
         // would just be a second place to forget.
         if (com.aetherianartificer.townstead.work.station.Workstations.byState(state) != null) {
             return true;
         }
-        if (StorageRoles.allowed(state)) return false;
 
         // ── Nothing stated: fall back to guessing, and prefer to skip ──
         if (be instanceof AbstractFurnaceBlockEntity) return true;

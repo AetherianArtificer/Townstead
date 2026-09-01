@@ -208,6 +208,17 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                 ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
                 if (def.containerSlots().contains(slot) && knownContainers.contains(item)) continue;
                 if (isFuelStock(level, anchor, slot, stack)) continue;
+                // A dual-purpose tool shelf is idle while it displays one of this station's
+                // declared reusable tools. The gather phase can then borrow it normally instead
+                // of classifying the board as foreign contents and tearing it down as cleanup.
+                if (com.aetherianartificer.townstead.storage.StorageRoles
+                        .semanticRoles(level.getBlockState(anchor))
+                        .contains(com.aetherianartificer.townstead.storage.StorageRoleDef.Role.TOOLS)
+                        && com.aetherianartificer.townstead.storage.StorageRoles.acceptsItem(
+                                level, anchor, stack,
+                                com.aetherianartificer.townstead.storage.StorageUse.TOOL_RETURN)) {
+                    continue;
+                }
                 if (!knownInputs.contains(item)) {
                     return StationAdapters.StationPhase.INVALID_CONTENTS;
                 }
