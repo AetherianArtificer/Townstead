@@ -8,6 +8,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -34,13 +35,23 @@ public final class BuildingServingMenus {
 
     public static boolean allowsAssigned(ServerLevel level, VillagerEntityMCA villager, ItemStack stack) {
         if (level == null || villager == null || stack == null || stack.isEmpty()) return false;
+        Set<ResourceLocation> menu = assignedMenu(level, villager);
+        if (menu == null) return true;
+        return menu.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()))
+                || menu.contains(OrderProducts.key(stack));
+    }
+
+    /** The menu authored for this worker's assigned building, or null when it has none. */
+    @Nullable
+    public static Set<ResourceLocation> assignedMenu(ServerLevel level, VillagerEntityMCA villager) {
+        if (level == null || villager == null) return null;
         ResourceLocation professionId = BuiltInRegistries.VILLAGER_PROFESSION
                 .getKey(villager.getVillagerData().getProfession());
         var profession = ProfessionDefs.byId(professionId);
-        if (profession == null) return true;
+        if (profession == null) return null;
         String buildingType = ProfessionSites.assignedSite(level, villager, profession)
                 .map(site -> site.building() == null ? null : site.building().getType())
                 .orElse(null);
-        return allows(buildingType, BuiltInRegistries.ITEM.getKey(stack.getItem()), OrderProducts.key(stack));
+        return buildingType == null ? null : PRODUCTS.get(buildingType);
     }
 }

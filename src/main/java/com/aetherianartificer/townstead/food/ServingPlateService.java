@@ -109,6 +109,17 @@ public final class ServingPlateService {
         return 0;
     }
 
+    /** Whether any serving surface inside these worksite cells is waiting for a dish. */
+    public static boolean hasEmptySurface(ServerLevel level, Set<Long> bounds) {
+        if (level == null || bounds == null || bounds.isEmpty()) return false;
+        for (long packed : bounds) {
+            BlockPos pos = BlockPos.of(packed);
+            if (!level.isLoaded(pos)) continue;
+            if (ServingSurfaces.contains(level.getBlockState(pos)) && isEmptySurface(level, pos)) return true;
+        }
+        return false;
+    }
+
     public static boolean isServingSurface(ServerLevel level, BlockPos pos) {
         return level != null && pos != null && level.isLoaded(pos)
                 && ServingSurfaces.contains(level.getBlockState(pos));

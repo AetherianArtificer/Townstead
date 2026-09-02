@@ -187,6 +187,11 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     }
 
     @Override
+    protected Set<Long> atEaseCells(ServerLevel level, VillagerEntityMCA villager) {
+        return activeWorksiteBounds(level, villager);
+    }
+
+    @Override
     protected @Nullable BlockPos resolveWorksiteTarget(ServerLevel level, VillagerEntityMCA villager, long gameTime, WorkSiteView site) {
         WorkBuildingNav.Snapshot worksiteSnapshotLocal = activeWorksiteSnapshot(level, villager);
         return currentOrNewWorksiteTarget(level, villager, gameTime, worksiteSnapshotLocal);
@@ -218,9 +223,13 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         Set<ResourceLocation> pathWorksites =
                 com.aetherianartificer.townstead.profession.career.PathAffinity
                         .preferredWorksites(villager);
+        // Computed once per pass: it walks the room for an empty plate, and the ranking below
+        // asks about every candidate recipe at every station.
+        Set<ResourceLocation> menuDemand = com.aetherianartificer.townstead.food.ServingDemand
+                .standing(level, villager, worksiteBoundsLocal);
         java.util.function.ToIntFunction<DiscoveredRecipe> orderPriority = recipe ->
                 com.aetherianartificer.townstead.work.order.WorksiteOrders.recipePriority(
-                        level, villager, activeWorksite(), recipe);
+                        level, villager, activeWorksite(), recipe, menuDemand);
         // Counted so the failure below can name its cause: a station this career does not work
         // is a different problem from a station with nothing to cook at it, and they are
         // indistinguishable from a villager standing still.
@@ -380,6 +389,21 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         if (stationAnchor == null || stationType == null) return null;
         if (!Stations.isStation(level, stationAnchor)) return null;
         Set<Long> worksiteBoundsLocal = activeWorksiteBounds(level, villager);
+        // An empty plate asks for a menu dish before the worker's own preference gets a say.
+        // Nothing viable on the menu at this station is not a failure: fall through to the
+        // ordinary pick, which is how the intermediate steps of a menu dish still get made.
+        Set<ResourceLocation> menuDemand = com.aetherianartificer.townstead.food.ServingDemand
+                .standing(level, villager, worksiteBoundsLocal);
+        if (!menuDemand.isEmpty()) {
+            DiscoveredRecipe dish = ProducerWorkSupport.pickRecipe(
+                    spec.role(), level, villager, stationType, stationAnchor, worksiteBoundsLocal,
+                    recipeCooldownUntil, output -> outputAllowed.test(output) && menuDemand.contains(output),
+                    taskTypes);
+            if (dish != null) {
+                debugChat(level, villager, "SELECT:menu " + dish.output() + " for an empty plate");
+                return dish;
+            }
+        }
         DiscoveredRecipe recipe = ProducerWorkSupport.pickRecipe(
                 spec.role(), level, villager, stationType, stationAnchor, worksiteBoundsLocal,
                 recipeCooldownUntil, outputAllowed, taskTypes);

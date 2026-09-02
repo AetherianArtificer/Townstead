@@ -324,4 +324,21 @@ public final class WorksiteOrders {
         if (orders.isEmpty()) return orders.listOnly() ? Integer.MAX_VALUE : 0;
         return orders.priority(recipe, contextFor(level, site, villager));
     }
+
+    /**
+     * Station priority with the serving menu folded in as standing demand. Explicit lines keep
+     * their positions; among what the list leaves to the worker's own judgement, a dish an empty
+     * plate is waiting for ranks ahead of everything else. Unviable dishes never reach this
+     * ranking, so a pizza nobody can make yet still lets the dough and raw pizza steps win.
+     */
+    public static int recipePriority(ServerLevel level, VillagerEntityMCA villager,
+                                     @Nullable Worksite site,
+                                     com.aetherianartificer.townstead.work.producer.ProducerRecipe recipe,
+                                     java.util.Set<ResourceLocation> menuDemand) {
+        int rank = recipePriority(level, villager, site, recipe);
+        if (menuDemand == null || menuDemand.isEmpty() || rank == Integer.MAX_VALUE) return rank;
+        int autonomous = site == null || site.orders().isEmpty() ? 0 : site.orders().size();
+        if (rank != autonomous) return rank;
+        return menuDemand.contains(recipe.output()) ? rank : rank + 1;
+    }
 }
