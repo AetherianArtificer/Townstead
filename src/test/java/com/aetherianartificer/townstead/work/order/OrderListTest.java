@@ -354,6 +354,26 @@ class OrderListTest {
     }
 
     @Test
+    void recipePriorityKeepsExactProductsDistinctAtStationSelection() {
+        ResourceLocation physical = id("pizzadelight:raw_pizza");
+        ResourceLocation prepared = OrderProducts.assembledPizzaKey();
+        ProducerRecipe blankRecipe = recipe(physical);
+        ProducerRecipe preparedRecipe = recipe(
+                id("townstead:protocol/townstead/pizza_station/0"), physical);
+
+        OrderList list = new OrderList();
+        list.setListOnly(true);
+        Order line = new Order(physical, Order.Mode.KEEP_STOCKED, 10);
+        line.setProduct(prepared, "Prepared Pizza");
+        list.add(line);
+
+        assertEquals(Integer.MAX_VALUE, list.priority(blankRecipe, new Ctx()),
+                "the blank base must not satisfy the prepared-pizza line");
+        assertEquals(0, list.priority(preparedRecipe, new Ctx()),
+                "the Pizza Station recipe must retain its exact product identity");
+    }
+
+    @Test
     void satisfiedAndPausedLinesStillGovernAutonomousOutput() {
         OrderList list = new OrderList();
         Order satisfied = new Order(BREAD, Order.Mode.MAKE, 2);
@@ -423,8 +443,12 @@ class OrderListTest {
     }
 
     private static ProducerRecipe recipe(ResourceLocation output) {
+        return recipe(output, output);
+    }
+
+    private static ProducerRecipe recipe(ResourceLocation recipeId, ResourceLocation output) {
         return new ProducerRecipe() {
-            @Override public ResourceLocation id() { return output; }
+            @Override public ResourceLocation id() { return recipeId; }
             @Override public ResourceLocation output() { return output; }
             @Override public int outputCount() { return 1; }
             @Override public int cookTimeTicks() { return 100; }

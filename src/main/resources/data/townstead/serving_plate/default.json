@@ -1,0 +1,6 @@
+{
+  "schema": "townstead:serving_plate/v1",
+  "blocks": [
+    "townstead:serving_plate"
+  ]
+}

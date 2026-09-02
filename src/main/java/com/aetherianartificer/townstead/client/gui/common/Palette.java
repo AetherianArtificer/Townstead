@@ -89,6 +89,22 @@ public final class Palette {
     public static final int COLD_DEEP = 0xFF3A322A;
     public static final int HOVER_OUTLINE = 0xB0523A18;
     public static final int SELECT_OUTLINE = 0xFF2E1F0C;
+    // ── Popover lists ──────────────────────────────────────────────────────
+    //
+    // A picker, a drawer, any panel that opens over the screen carrying rows. These were two
+    // private sets of browns living in two screens, which is the drift this class exists to stop:
+    // the career picker's ground and the seal drawer's ground were within a few percent of each
+    // other and neither was a token.
+
+    public static final int MENU_GROUND = 0xFF241708;
+    public static final int MENU_EDGE = 0xFF6A4E24;
+    public static final int MENU_SHADOW = 0x8C000000;
+    public static final int MENU_RULE = 0xFF4A3218;
+    public static final int MENU_ROW_ON = 0xFF3A2611;
+    public static final int MENU_ROW_HOVER = 0xFF2E1F0C;
+    public static final int MENU_HEADING = 0xFF8A7048;
+    public static final int MENU_TRACK = 0xFF120B04;
+
     public static final int WAX_SEAL = 0xFFA02020;
     public static final int WAX_RIM = 0xFF701010;
 

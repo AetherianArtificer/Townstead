@@ -19,9 +19,7 @@ import java.util.List;
 /**
  * Opening a worksite's orders, and taking an edit back.
  *
- * <p>The three doors in the design — asking a worker, an Order Board, an Order Sheet — all end
- * here, because they open the same list. What differs between them is only what you had to build
- * to get in.</p>
+ * <p>Order Sheet interactions end here so every sheet opens the same worksite list.</p>
  */
 public final class OrdersOpener {
 

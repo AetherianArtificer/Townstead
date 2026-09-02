@@ -61,7 +61,11 @@ public final class ClientProfessionClothing {
         Optional<String> selected = ProfessionClothing.firstAvailable(catalogue,
                 villager.getGenetics().getGender(), choices, current,
                 ClientProfessionClothing::textureAvailable);
-        selected.ifPresent(villager::setClothes);
+        // This runs from MCA's clothing render layer. Re-writing the synced clothing value every
+        // frame, even to the identical string, fights MCA's own client updates and presents as a
+        // rapid outfit flicker. Only perform the fallback mutation when the value really changes.
+        selected.filter(value -> !java.util.Objects.equals(value, current))
+                .ifPresent(villager::setClothes);
         return selected.isPresent();
     }
 

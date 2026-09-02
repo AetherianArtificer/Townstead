@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -44,12 +45,41 @@ class ExternalCareerPacksContractTest {
 
         Path professionWork = findBySuffix(packsRoot,
                 "townstead_beekeeping/profession/beekeeper/work.json");
+        Path profession = findBySuffix(packsRoot,
+                "townstead_beekeeping/profession/beekeeper/profession.json");
+        Path progression = findBySuffix(packsRoot,
+                "townstead_beekeeping/profession/beekeeper/progression.json");
+        Path combTasting = findBySuffix(packsRoot,
+                "townstead_beekeeping/profession/beekeeper/skill/comb_tasting.json");
         Path harvestJob = findBySuffix(packsRoot,
                 "townstead_beekeeping/work_job/beehive_harvest.json");
         Path apiary = findBySuffix(packsRoot,
                 "mca/building_types/townstead_beekeeping/apiary.json");
+        Path honeyHouse = findBySuffix(packsRoot,
+                "mca/building_types/townstead_beekeeping/honey_house.json");
+        Path apiarySidecar = findBySuffix(packsRoot,
+                "townstead_beekeeping/extended_buildings/townstead_beekeeping/apiary.json");
+        Path honeyHouseSidecar = findBySuffix(packsRoot,
+                "townstead_beekeeping/extended_buildings/townstead_beekeeping/honey_house.json");
 
         JsonObject work = object(professionWork);
+        assertEquals(List.of("smoker_use", "comb_tasting"),
+                object(profession).getAsJsonArray("skills").asList().stream()
+                        .map(JsonElement::getAsString).toList(),
+                "base skills must be attached to the Career, not merely present on disk");
+        assertEquals(List.of(0, 120, 320, 700),
+                object(progression).getAsJsonArray("ranks").asList().stream()
+                        .map(JsonElement::getAsInt).toList(),
+                "a few hive harvests must not consume most of the Novice rank");
+        JsonObject combSkill = object(combTasting);
+        assertEquals(Map.of("townstead_beekeeping:honeycomb_harvested", 24,
+                        "townstead_beekeeping:honey_bottled", 8),
+                combSkill.getAsJsonArray("evidence").asList().stream()
+                        .map(JsonElement::getAsJsonObject)
+                        .collect(java.util.stream.Collectors.toMap(
+                                entry -> entry.get("key").getAsString(),
+                                entry -> entry.get("at_least").getAsInt())),
+                "skill sheets must expose real deed targets, not bare career-history totals");
         assertTrue(work.getAsJsonArray("poi").asList().stream()
                 .map(JsonElement::getAsJsonObject)
                 .anyMatch(poi -> "townstead:building".equals(poi.get("type").getAsString())
@@ -63,9 +93,30 @@ class ExternalCareerPacksContractTest {
         assertTrue(work.getAsJsonArray("tasks").get(0).getAsJsonObject()
                 .getAsJsonArray("workstations").asList().stream()
                 .anyMatch(value -> "#minecraft:beehives".equals(value.getAsString())));
-        assertTrue("#minecraft:beehives".equals(
-                object(harvestJob).getAsJsonObject("target").get("block").getAsString()));
-        assertTrue(object(apiary).getAsJsonObject("blocks").has("#minecraft:beehives"));
+        JsonObject target = object(harvestJob).getAsJsonObject("target");
+        assertTrue("#minecraft:beehives".equals(target.get("block").getAsString()));
+        assertEquals(List.of("townstead_beekeeping:honeycomb_harvested",
+                        "townstead_beekeeping:honey_bottled"),
+                target.getAsJsonArray("interactions").asList().stream()
+                        .map(JsonElement::getAsJsonObject)
+                        .map(interaction -> interaction.get("activity").getAsString())
+                        .toList(),
+                "each physical harvest route owns the evidence players see");
+        JsonObject apiaryBuilding = object(apiary);
+        assertTrue(apiaryBuilding.getAsJsonObject("blocks").has("#minecraft:beehives"));
+        for (Path buildingFile : List.of(apiary, honeyHouse)) {
+            JsonObject building = object(buildingFile);
+            assertTrue(building.has("icon"),
+                    "Beekeeper buildings must advertise an icon to legacy MCA");
+            assertFalse(building.get("icon").getAsBoolean(),
+                    "Beekeeper buildings must retain their map outlines");
+            assertTrue(building.has("iconU") && building.has("iconV"),
+                    "Beekeeper buildings must retain MCA's compatibility icon slot");
+        }
+        assertEquals("minecraft:beehive", object(apiarySidecar)
+                .getAsJsonObject("catalog").get("node_item").getAsString());
+        assertEquals("minecraft:honey_bottle", object(honeyHouseSidecar)
+                .getAsJsonObject("catalog").get("node_item").getAsString());
     }
 
     @Test

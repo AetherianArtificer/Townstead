@@ -84,7 +84,7 @@ public interface JobSiteProvider {
         public boolean matches(@Nullable String buildingTypeId) {
             if (buildingTypeId == null) return false;
             for (String prefix : typePrefixes) {
-                if (buildingTypeId.startsWith(prefix)) return true;
+                if (matchesPrefix(buildingTypeId, prefix)) return true;
             }
             return false;
         }
@@ -98,9 +98,10 @@ public interface JobSiteProvider {
         public int slotsFor(@Nullable String buildingTypeId) {
             if (buildingTypeId == null) return 0;
             for (String prefix : typePrefixes) {
-                if (!buildingTypeId.startsWith(prefix)) continue;
+                String runtimePrefix = runtimePrefix(prefix);
+                if (!buildingTypeId.startsWith(runtimePrefix)) continue;
                 if (slotsPerTier.isEmpty()) return 1;
-                int tier = tierOf(buildingTypeId, prefix);
+                int tier = tierOf(buildingTypeId, runtimePrefix);
                 // An unnumbered or out-of-range building is still a workplace, just an untiered
                 // one: seating nobody would retire a whole building over a naming slip.
                 return tier >= 1 && tier <= slotsPerTier.size() ? slotsPerTier.get(tier - 1) : 1;
@@ -116,9 +117,25 @@ public interface JobSiteProvider {
         public int tierOf(@Nullable String buildingTypeId) {
             if (buildingTypeId == null) return 0;
             for (String prefix : typePrefixes) {
-                if (buildingTypeId.startsWith(prefix)) return tierOf(buildingTypeId, prefix);
+                String runtimePrefix = runtimePrefix(prefix);
+                if (buildingTypeId.startsWith(runtimePrefix)) {
+                    return tierOf(buildingTypeId, runtimePrefix);
+                }
             }
             return 0;
+        }
+
+        /** MCA flattens a namespaced building resource to {@code namespace/path} at runtime. */
+        private static boolean matchesPrefix(String buildingTypeId, String authoredPrefix) {
+            return buildingTypeId.startsWith(runtimePrefix(authoredPrefix));
+        }
+
+        private static String runtimePrefix(String authoredPrefix) {
+            if (authoredPrefix == null) return "";
+            int namespace = authoredPrefix.indexOf(':');
+            return namespace < 0 ? authoredPrefix
+                    : authoredPrefix.substring(0, namespace) + "/"
+                    + authoredPrefix.substring(namespace + 1);
         }
 
         private static int tierOf(String buildingTypeId, String prefix) {

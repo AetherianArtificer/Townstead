@@ -6,6 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -13,8 +14,8 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Specialization paths: a branch inside a profession opened by buying its gateway skill,
- * plus the trade gate that keeps a path's wares hidden until the merchant specs in.
+ * Specialization paths: groupings inside a profession whose hierarchy comes from authored
+ * parent relations, plus the trade gate that keeps a path's wares hidden until investment.
  */
 class PathAndTradeGateTest {
 
@@ -42,8 +43,8 @@ class PathAndTradeGateTest {
         assertNull(ProfessionPaths.pathOwning(COOK, id("townstead:cook/open_flame")),
                 "trunk skills belong to no path");
 
-        // Any option on the path commits you to it: your first pick IS the path choice, so
-        // there is no designated opening skill left for a member to be measured against.
+        // Any member marks the path as invested; a normal purchase still reaches later members
+        // through their authored parents, while this remains robust to imported/legacy saves.
         Set<ResourceLocation> viaMember = Set.of(
                 id("townstead:cook/pizzaiolo/kitchen_rhythm"));
         assertEquals(List.of(path), ProfessionPaths.speccedPaths(viaMember::contains));
@@ -110,7 +111,16 @@ class PathAndTradeGateTest {
             JsonObject path = JsonParser.parseReader(new java.io.InputStreamReader(
                     in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
             String pathId = "pizzaiolo";
+            assertEquals(Boolean.TRUE,
+                    com.aetherianartificer.townstead.data.ModGate.evaluate(path.get("mods"),
+                            Set.of("pizzadelight", "farmersdelight")::contains),
+                    "the complete Pizzaiolo tree loads when both providers are present");
+            assertEquals(Boolean.FALSE,
+                    com.aetherianartificer.townstead.data.ModGate.evaluate(path.get("mods"),
+                            Set.of("farmersdelight")::contains),
+                    "the whole Pizzaiolo tree stays hidden when Pizza Delight is absent");
             int pathLevel = 0;
+            List<String> previousLane = List.of();
             for (var authoredLevel : path.getAsJsonArray("skills")) {
                 pathLevel++;
                 var members = authoredLevel.isJsonArray()
@@ -118,15 +128,36 @@ class PathAndTradeGateTest {
                         : JsonParser.parseString("[" + authoredLevel + "]").getAsJsonArray();
                 assertTrue(members.size() >= 2, pathId + ": level " + pathLevel
                         + " must offer a real choice");
-                for (var member : members) {
-                    String skillId = member.getAsString();
+                List<String> currentLane = new ArrayList<>();
+                for (int memberIndex = 0; memberIndex < members.size(); memberIndex++) {
+                    String skillId = members.get(memberIndex).getAsString();
+                    currentLane.add(skillId);
                     JsonObject skill = readSkill(pathId, skillId);
-                    assertFalse(skill.has("requires"),
-                            pathId + ": " + skillId
-                                    + " must not declare prerequisites; its level is the gate");
+                    assertFalse(skill.has("mods"),
+                            skillId + ": the Path owns its provider gate so members cannot split");
+                    assertFalse(skill.getAsJsonObject("display_name").toString()
+                                    .contains("PLACEHOLDER"),
+                            skillId + ": must ship player-facing copy");
+                    assertNotEquals("minecraft:barrier", skill.get("icon").getAsString(),
+                            skillId + ": must ship a readable icon");
+                    assertFalse(skill.getAsJsonObject("description").toString()
+                                    .contains("PLACEHOLDER"),
+                            skillId + ": must ship a player-facing description");
+                    if (pathLevel == 1) {
+                        assertFalse(skill.has("requires"),
+                                skillId + ": a lane root must have no parent");
+                    } else {
+                        assertTrue(skill.has("requires"),
+                                skillId + ": hierarchy must be authored as a parent relation");
+                        assertEquals(List.of(previousLane.get(memberIndex)),
+                                skill.getAsJsonArray("requires").asList().stream()
+                                        .map(element -> element.getAsString()).toList(),
+                                skillId + ": must continue its authored lane");
+                    }
                     assertFalse(skill.has("tier"),
-                            skillId + ": path position, not the Skill file, owns its level");
+                            skillId + ": path position still owns its rank gate and board band");
                 }
+                previousLane = List.copyOf(currentLane);
             }
             JsonObject work;
             try (var workIn = PathAndTradeGateTest.class.getResourceAsStream(
@@ -188,8 +219,27 @@ class PathAndTradeGateTest {
             abilities++;
             assertTrue(power.has("cooldown"), file.getName() + ": an active ability needs a cooldown");
             assertUnfilteredHarm(file.getName(), power.get("action"));
+            assertSupportedDamageSources(file.getName(), power.get("action"));
         }
         assertTrue(abilities > 0, "the scan must actually find the shipped abilities");
+    }
+
+    /** Keeps authored damage sources inside the vocabulary accepted by DamageActionType. */
+    private static void assertSupportedDamageSources(String file,
+                                                     com.google.gson.JsonElement element) {
+        if (element == null) return;
+        if (element.isJsonArray()) {
+            for (var child : element.getAsJsonArray()) assertSupportedDamageSources(file, child);
+            return;
+        }
+        if (!element.isJsonObject()) return;
+        JsonObject node = element.getAsJsonObject();
+        if ("pheno:damage".equals(node.has("type") ? node.get("type").getAsString() : "")) {
+            String source = node.has("source") ? node.get("source").getAsString() : "generic";
+            assertTrue(Set.of("generic", "other").contains(source),
+                    file + ": unsupported pheno:damage source '" + source + "'");
+        }
+        for (var entry : node.entrySet()) assertSupportedDamageSources(file, entry.getValue());
     }
 
     /** Walks an action tree, failing on any damaging area_of_effect with no bientity filter. */

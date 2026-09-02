@@ -32,6 +32,7 @@ public record SkillDef(
         @Nullable ResourceLocation animation,
         @Nullable ResourceLocation skillGroup,
         @Nullable PowerComponent power,
+        List<SkillEvidenceRequirement> evidence,
         @Nullable ResourceLocation icon) {
 
     /** Compatibility constructor for v1 definitions and integrations. */
@@ -40,6 +41,6 @@ public record SkillDef(
                     List<ResourceLocation> exclusiveWith, int cost, List<SkillGrant> grants,
                     @Nullable ResourceLocation animation) {
         this(id, displayName, description, profession, tier, requires, exclusiveWith,
-                cost, grants, animation, null, null, null);
+                cost, grants, animation, null, null, List.of(), null);
     }
 }

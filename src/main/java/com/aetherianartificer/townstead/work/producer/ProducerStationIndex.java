@@ -47,6 +47,7 @@ public final class ProducerStationIndex {
             int usableCapacity,
             double distanceSq,
             @Nullable DiscoveredRecipe recipe,
+            int stationPreference,
             int orderRank,
             double recipeScore
     ) {}
@@ -132,7 +133,7 @@ public final class ProducerStationIndex {
                         com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CHOP};
         return chooseForRole(role, level, villager, snapshot, worksiteBounds,
                 abandonedUntilByStation, gameTime, recipeCooldownUntil, stationFilter,
-                output -> 0, taskTypes);
+                slot -> 0, output -> 0, taskTypes);
     }
 
     public static @Nullable Selection chooseForRole(
@@ -149,7 +150,7 @@ public final class ProducerStationIndex {
     ) {
         return chooseForRole(role, level, villager, snapshot, worksiteBounds,
                 abandonedUntilByStation, gameTime, recipeCooldownUntil, stationFilter,
-                output -> 0, taskTypes);
+                slot -> 0, output -> 0, taskTypes);
     }
 
     public static @Nullable Selection chooseForRole(
@@ -162,7 +163,26 @@ public final class ProducerStationIndex {
             long gameTime,
             Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil,
             @Nullable java.util.function.Predicate<StationSlot> stationFilter,
-            java.util.function.ToIntFunction<net.minecraft.resources.ResourceLocation> outputPriority,
+            java.util.function.ToIntFunction<DiscoveredRecipe> recipePriority,
+            net.minecraft.resources.ResourceLocation... taskTypes
+    ) {
+        return chooseForRole(role, level, villager, snapshot, worksiteBounds,
+                abandonedUntilByStation, gameTime, recipeCooldownUntil, stationFilter,
+                slot -> 0, recipePriority, taskTypes);
+    }
+
+    public static @Nullable Selection chooseForRole(
+            ProducerRole role,
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            WorkBuildingNav.Snapshot snapshot,
+            Set<Long> worksiteBounds,
+            Map<Long, Long> abandonedUntilByStation,
+            long gameTime,
+            Map<net.minecraft.resources.ResourceLocation, Long> recipeCooldownUntil,
+            @Nullable java.util.function.Predicate<StationSlot> stationFilter,
+            java.util.function.ToIntFunction<StationSlot> stationPreference,
+            java.util.function.ToIntFunction<DiscoveredRecipe> recipePriority,
             net.minecraft.resources.ResourceLocation... taskTypes
     ) {
         if (level == null || villager == null || snapshot == null || snapshot.stations().isEmpty()) return null;
@@ -182,8 +202,10 @@ public final class ProducerStationIndex {
                 continue;
             }
 
+            // Ranking is deliberately geometry-only. Pathfinding every station before knowing
+            // whether its recipes, claim, state, order, or capacity can win made acquisition scale
+            // as stations x path probes. Reachability is resolved lazily for the ranked winners.
             BlockPos stand = WorkBuildingNav.nearestStationStand(snapshot, villager, slot.pos());
-            if (stand == null) stand = Stations.findStandingPosition(level, villager, slot.pos());
             if (stand == null) {
                 logSkip(role, villager, slot, "no_stand");
                 continue;
@@ -193,6 +215,15 @@ public final class ProducerStationIndex {
             ProducerStationState state = ProductionStations.classify(level, villager, slot.pos(), slot.type(), null, session);
             int usableCapacity = stationUsableCapacity(level, slot);
             double distanceSq = villager.distanceToSqr(slot.pos().getX() + 0.5, slot.pos().getY() + 0.5, slot.pos().getZ() + 0.5);
+
+            // Output collection and an already-owned staged cycle do not need a speculative
+            // recipe at all. Building the complete scored recipe graph here used to make even
+            // "take the finished meal out" pay the most expensive part of station acquisition.
+            if (state == ProducerStationState.FINISHED_OUTPUT || state == ProducerStationState.OWNED_STAGED) {
+                candidates.add(new Candidate(slot, stand, state, usableCapacity, distanceSq,
+                        null, stationPreference.applyAsInt(slot), 0, Double.POSITIVE_INFINITY));
+                continue;
+            }
 
             List<ScoredRecipe> stationTypeCandidates = candidateRecipesByType.computeIfAbsent(slot.type(), type ->
                     RecipeSelector.candidateRecipes(
@@ -207,26 +238,21 @@ public final class ProducerStationIndex {
 
             if (state == ProducerStationState.BLOCKED) {
                 ScoredRecipe resumable = bestResumableRecipe(
-                        level, slot, stationTypeCandidates, outputPriority);
+                        level, slot, stationTypeCandidates, recipePriority);
                 if (resumable != null) {
-                    int orderRank = outputPriority.applyAsInt(resumable.recipe().output());
+                    int orderRank = recipePriority.applyAsInt(resumable.recipe());
                     candidates.add(new Candidate(slot, stand, ProducerStationState.COMPATIBLE_PARTIAL,
-                            usableCapacity, distanceSq, resumable.recipe(), orderRank, resumable.score()));
+                            usableCapacity, distanceSq, resumable.recipe(),
+                            stationPreference.applyAsInt(slot), orderRank, resumable.score()));
                     continue;
                 }
                 logSkip(role, villager, slot, "blocked");
                 continue;
             }
 
-            if (state == ProducerStationState.FINISHED_OUTPUT || state == ProducerStationState.OWNED_STAGED) {
-                candidates.add(new Candidate(slot, stand, state, usableCapacity, distanceSq,
-                        null, 0, Double.POSITIVE_INFINITY));
-                continue;
-            }
-
             List<ScoredRecipe> viable = new ArrayList<>();
             for (ScoredRecipe candidate : stationTypeCandidates) {
-                if (outputPriority.applyAsInt(candidate.recipe().output()) == Integer.MAX_VALUE) continue;
+                if (recipePriority.applyAsInt(candidate.recipe()) == Integer.MAX_VALUE) continue;
                 if (!ProductionStations.supportsRecipe(level, slot.pos(), candidate.recipe())) continue;
                 if (!WorkIngredients.canFulfill(
                         level,
@@ -240,53 +266,72 @@ public final class ProducerStationIndex {
             }
             if (viable.isEmpty()) {
                 logNoRecipe(level, villager, slot, worksiteBounds, stationTypeCandidates,
-                        outputPriority);
+                        recipePriority);
                 continue;
             }
 
             int bestOrderRank = Integer.MAX_VALUE;
             for (ScoredRecipe viableRecipe : viable) {
                 bestOrderRank = Math.min(bestOrderRank,
-                        outputPriority.applyAsInt(viableRecipe.recipe().output()));
+                        recipePriority.applyAsInt(viableRecipe.recipe()));
             }
             double bestScore = Double.NEGATIVE_INFINITY;
             for (ScoredRecipe viableRecipe : viable) {
-                if (outputPriority.applyAsInt(viableRecipe.recipe().output()) != bestOrderRank) continue;
+                if (recipePriority.applyAsInt(viableRecipe.recipe()) != bestOrderRank) continue;
                 bestScore = Math.max(bestScore, viableRecipe.score());
             }
             List<ScoredRecipe> bestRecipes = new ArrayList<>();
             for (ScoredRecipe viableRecipe : viable) {
-                if (outputPriority.applyAsInt(viableRecipe.recipe().output()) != bestOrderRank) continue;
+                if (recipePriority.applyAsInt(viableRecipe.recipe()) != bestOrderRank) continue;
                 if (viableRecipe.score() >= bestScore - 0.5d) {
                     bestRecipes.add(viableRecipe);
                 }
             }
             ScoredRecipe chosenRecipe = bestRecipes.get(ThreadLocalRandom.current().nextInt(bestRecipes.size()));
             candidates.add(new Candidate(slot, stand, state, usableCapacity, distanceSq,
-                    chosenRecipe.recipe(), bestOrderRank, chosenRecipe.score()));
+                    chosenRecipe.recipe(), stationPreference.applyAsInt(slot),
+                    bestOrderRank, chosenRecipe.score()));
         }
 
         if (candidates.isEmpty()) return null;
 
         candidates.sort(Comparator
-                .comparingInt((Candidate c) -> stateRank(c.state()))
+                .comparingInt(Candidate::stationPreference)
+                .thenComparingInt(c -> stateRank(c.state()))
                 .thenComparingInt(Candidate::orderRank)
                 .thenComparing(Comparator.comparingDouble((Candidate c) -> c.recipeScore()).reversed())
                 .thenComparing(Comparator.comparingInt((Candidate c) -> c.usableCapacity()).reversed())
                 .thenComparingDouble(Candidate::distanceSq));
 
-        Candidate head = candidates.get(0);
-        List<Candidate> best = new ArrayList<>();
-        for (Candidate candidate : candidates) {
-            if (stateRank(candidate.state()) != stateRank(head.state())) continue;
-            if (candidate.orderRank() != head.orderRank()) continue;
-            if (!(Double.compare(candidate.recipeScore(), head.recipeScore()) == 0
-                    || Math.abs(candidate.recipeScore() - head.recipeScore()) <= 0.5d)) continue;
-            if (candidate.usableCapacity() != head.usableCapacity()) continue;
-            best.add(candidate);
+        List<Candidate> remaining = new ArrayList<>(candidates);
+        while (!remaining.isEmpty()) {
+            Candidate head = remaining.get(0);
+            List<Candidate> best = new ArrayList<>();
+            for (Candidate candidate : remaining) {
+                if (stateRank(candidate.state()) != stateRank(head.state())) continue;
+                if (candidate.stationPreference() != head.stationPreference()) continue;
+                if (candidate.orderRank() != head.orderRank()) continue;
+                if (!(Double.compare(candidate.recipeScore(), head.recipeScore()) == 0
+                        || Math.abs(candidate.recipeScore() - head.recipeScore()) <= 0.5d)) continue;
+                if (candidate.usableCapacity() != head.usableCapacity()) continue;
+                best.add(candidate);
+            }
+
+            // Keep the old random choice among equivalent winners, but fall through when that
+            // whole preference group is unreachable instead of pathfinding every station up front.
+            int first = ThreadLocalRandom.current().nextInt(best.size());
+            for (int offset = 0; offset < best.size(); offset++) {
+                Candidate choice = best.get((first + offset) % best.size());
+                BlockPos reachableStand = WorkBuildingNav.nearestReachableStationStand(
+                        level, snapshot, villager, choice.station().pos());
+                if (reachableStand != null) {
+                    return new Selection(choice.station(), reachableStand, choice.state(),
+                            choice.usableCapacity(), choice.recipe());
+                }
+            }
+            remaining.removeAll(best);
         }
-        Candidate choice = best.get(ThreadLocalRandom.current().nextInt(best.size()));
-        return new Selection(choice.station(), choice.standPos(), choice.state(), choice.usableCapacity(), choice.recipe());
+        return null;
     }
 
     /**
@@ -295,11 +340,11 @@ public final class ProducerStationIndex {
      */
     private static @Nullable ScoredRecipe bestResumableRecipe(
             ServerLevel level, StationSlot slot, List<ScoredRecipe> candidates,
-            java.util.function.ToIntFunction<net.minecraft.resources.ResourceLocation> outputPriority) {
+            java.util.function.ToIntFunction<DiscoveredRecipe> recipePriority) {
         ScoredRecipe best = null;
         int bestOrder = Integer.MAX_VALUE;
         for (ScoredRecipe candidate : candidates) {
-            int order = outputPriority.applyAsInt(candidate.recipe().output());
+            int order = recipePriority.applyAsInt(candidate.recipe());
             if (!ProductionStations.supportsRecipe(level, slot.pos(), candidate.recipe())) continue;
             if (!StationProtocols.matchesPendingInputs(level, slot.pos(), candidate.recipe())) continue;
             if (best == null || order < bestOrder
@@ -353,7 +398,7 @@ public final class ProducerStationIndex {
             StationSlot slot,
             Set<Long> worksiteBounds,
             List<ScoredRecipe> candidates,
-            java.util.function.ToIntFunction<net.minecraft.resources.ResourceLocation> outputPriority
+            java.util.function.ToIntFunction<DiscoveredRecipe> recipePriority
     ) {
         if (!com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
         // Explain the highest-priority ordered recipe, not an arbitrary high-scoring recipe from
@@ -362,10 +407,10 @@ public final class ProducerStationIndex {
         String detail = "";
         int bestOrder = Integer.MAX_VALUE;
         for (ScoredRecipe candidate : candidates) {
-            bestOrder = Math.min(bestOrder, outputPriority.applyAsInt(candidate.recipe().output()));
+            bestOrder = Math.min(bestOrder, recipePriority.applyAsInt(candidate.recipe()));
         }
         for (ScoredRecipe candidate : candidates) {
-            if (outputPriority.applyAsInt(candidate.recipe().output()) != bestOrder) continue;
+            if (recipePriority.applyAsInt(candidate.recipe()) != bestOrder) continue;
             if (!ProductionStations.supportsRecipe(level, slot.pos(), candidate.recipe())) {
                 detail = " first-rejected=" + candidate.recipe().output() + " -> station does not support recipe";
                 break;

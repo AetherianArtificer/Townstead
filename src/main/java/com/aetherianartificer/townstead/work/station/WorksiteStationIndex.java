@@ -67,7 +67,7 @@ public final class WorksiteStationIndex {
             BlockPos pos = BlockPos.of(key);
             StationType type = Stations.stationType(level, pos);
             if (type == null) continue;
-            ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
+            ResourceLocation blockId = Stations.slotBlockId(level, pos, type);
             int capacity = stationCapacity(level, pos, type);
             if (capacity <= 0) continue;
             claimed.add(pos.asLong());
@@ -84,7 +84,7 @@ public final class WorksiteStationIndex {
             claimed.add(above.asLong());
             stations.add(new Stations.StationSlot(above.immutable(),
                     StationType.PLACE_SURFACE,
-                    BuiltInRegistries.BLOCK.getKey(level.getBlockState(surface).getBlock()), 1));
+                    Stations.slotBlockId(level, above, StationType.PLACE_SURFACE), 1));
         }
         return new Snapshot(List.copyOf(stations), gameTime + SNAPSHOT_TTL_TICKS);
     }
@@ -118,7 +118,7 @@ public final class WorksiteStationIndex {
         }
         StationType type = Stations.stationType(level, changedPos);
         if (type != null) {
-            ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(changedPos).getBlock());
+            ResourceLocation blockId = Stations.slotBlockId(level, changedPos, type);
             int capacity = stationCapacity(level, changedPos, type);
             if (capacity > 0) {
                 refreshed.add(new Stations.StationSlot(changedPos.immutable(), type, blockId, capacity));

@@ -345,12 +345,10 @@ public class OrdersScreen extends Screen {
     //? if >=1.21 {
     @Override
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partial) {
-        drawFurniture(g);
     }
     //?} else {
     /*@Override
     public void renderBackground(GuiGraphics g) {
-        drawFurniture(g);
     }
     *///?}
 
@@ -380,6 +378,10 @@ public class OrdersScreen extends Screen {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
         tooltip = null;
+        // Screen.render() owns background timing in 1.21 but not 1.20. Draw the Order Sheet's
+        // furniture explicitly on every version, while the empty overrides above suppress the
+        // vanilla background in versions that would otherwise add it automatically.
+        drawFurniture(g);
         super.render(g, mouseX, mouseY, partial);
 
         drawCatalogue(g, mouseX, mouseY);
@@ -684,7 +686,7 @@ public class OrdersScreen extends Screen {
                 continue;
             }
             int choice = (int) Math.floorMod(phase, need.items().size());
-            out.append(itemName(need.items().get(choice)));
+            out.append(displayedNeedName(need, need.items().get(choice)));
         }
         if (option.missing().size() > shown) {
             out.append(" +").append(option.missing().size() - shown).append(" more");
@@ -1063,6 +1065,16 @@ public class OrdersScreen extends Screen {
      * vanilla stack badge, which is where a player's eye already looks for a quantity.
      */
     private void drawStackRows(GuiGraphics g, List<ItemStack> stacks, Rect area) {
+        drawStackRows(g, stacks, List.of(), area);
+    }
+
+    /**
+     * Draws item-backed requirements while preserving an exact product's semantic name. Pizza
+     * Delight's blank base and assembled pizza deliberately share one item and one hover name;
+     * the server-supplied label is the only honest distinction in this view.
+     */
+    private void drawStackRows(GuiGraphics g, List<ItemStack> stacks, List<String> labels,
+                               Rect area) {
         int visible = Math.max(1, area.h() / SET_ROW_H);
         setScroll = Math.max(0, Math.min(setScroll, stacks.size() - visible));
         g.enableScissor(area.x(), area.y(), area.right(), area.bottom());
@@ -1071,7 +1083,8 @@ public class OrdersScreen extends Screen {
             ItemStack stack = stacks.get(i);
             g.renderItem(stack, area.x() + 4, y);
             g.renderItemDecorations(this.font, stack, area.x() + 4, y);
-            g.drawString(this.font, trim(stack.getHoverName().getString(), area.w() - 31),
+            String label = i < labels.size() ? labels.get(i) : "";
+            g.drawString(this.font, trim(stackRowName(stack, label), area.w() - 31),
                     area.x() + 24, y + 4, Palette.LABEL_MID, false);
             y += SET_ROW_H;
         }
@@ -1123,6 +1136,31 @@ public class OrdersScreen extends Screen {
         return out;
     }
 
+    /** Labels corresponding one-for-one with {@link #needStacks}; blank means use item hover. */
+    private static List<String> needLabels(List<OrdersSnapshotS2CPayload.Need> needs) {
+        List<String> out = new ArrayList<>(needs.size());
+        long phase = net.minecraft.Util.getMillis() / 1200L;
+        for (var need : needs) {
+            if (need.items().isEmpty()) continue;
+            int index = (int) Math.floorMod(phase, need.items().size());
+            ItemStack stack = displayStack(need.items().get(index));
+            if (stack.isEmpty()) continue;
+            out.add(need.label());
+        }
+        return out;
+    }
+
+    static String displayedNeedName(OrdersSnapshotS2CPayload.Need need,
+                                    ResourceLocation displayedItem) {
+        if (need != null && !need.label().isBlank()) return need.label();
+        return displayedItem == null ? "item" : itemName(displayedItem);
+    }
+
+    static String stackRowName(ItemStack stack, String semanticLabel) {
+        if (semanticLabel != null && !semanticLabel.isBlank()) return semanticLabel;
+        return stack == null || stack.isEmpty() ? "item" : stack.getHoverName().getString();
+    }
+
     /** Waiting orders foreground only what is absent; every other state shows the full recipe. */
     private static List<OrdersSnapshotS2CPayload.Need> shownNeeds(Row row, @Nullable Option option) {
         if (option == null) return List.of();
@@ -1171,7 +1209,7 @@ public class OrdersScreen extends Screen {
             g.drawString(this.font, "Nothing", x + 6, y + 15, Palette.LABEL_DIM, false);
             return;
         }
-        drawStackRows(g, needStacks(shown), detailListArea(row));
+        drawStackRows(g, needStacks(shown), needLabels(shown), detailListArea(row));
     }
 
     /**

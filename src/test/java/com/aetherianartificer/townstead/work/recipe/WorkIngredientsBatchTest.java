@@ -20,4 +20,5 @@ class WorkIngredientsBatchTest {
         assertEquals(8, WorkIngredients.requiredIngredientCount(dough, 0, 1, 8));
         assertEquals(1, WorkIngredients.requiredIngredientCount(igniter, 1, 1, 8));
     }
+
 }

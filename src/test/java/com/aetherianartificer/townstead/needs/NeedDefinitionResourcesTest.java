@@ -14,10 +14,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NeedDefinitionResourcesTest {
     private static JsonObject resource(String path) throws IOException {
-        try (InputStream stream = NeedDefinitionResourcesTest.class.getResourceAsStream("/" + path)) {
+        InputStream input = NeedDefinitionResourcesTest.class.getResourceAsStream("/" + path);
+        if (input == null) {
+            input = NeedDefinitionResourcesTest.class.getResourceAsStream("/" + legacyTagPath(path));
+        }
+        try (InputStream stream = input) {
             if (stream == null) throw new IOException("Missing classpath resource " + path);
             return JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject();
         }
+    }
+
+    private static String legacyTagPath(String path) {
+        return path.replace("/tags/block/", "/tags/blocks/")
+                .replace("/tags/item/", "/tags/items/");
     }
 
     @Test

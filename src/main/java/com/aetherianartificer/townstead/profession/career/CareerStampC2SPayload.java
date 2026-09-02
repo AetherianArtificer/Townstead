@@ -16,22 +16,31 @@ import net.minecraft.resources.ResourceLocation;
  * a badly placed mark on its own page, and a client that lies about anything else gets refused.</p>
  */
 //? if neoforge {
-public record CareerStampC2SPayload(String skillId, int x, int y,
-                                    float rotation) implements CustomPacketPayload {
+public record CareerStampC2SPayload(String skillId, int x, int y, float rotation,
+                                    String textureId, String sourcePack,
+                                    String label) implements CustomPacketPayload {
 //?} else {
-/*public record CareerStampC2SPayload(String skillId, int x, int y, float rotation) {
+/*public record CareerStampC2SPayload(String skillId, int x, int y, float rotation,
+                                    String textureId, String sourcePack, String label) {
 *///?}
+
+    public CareerStampC2SPayload(String skillId, int x, int y, float rotation) {
+        this(skillId, x, y, rotation, "", "", "");
+    }
 
     public void write(FriendlyByteBuf buf) {
         buf.writeUtf(skillId);
         buf.writeVarInt(x);
         buf.writeVarInt(y);
         buf.writeFloat(rotation);
+        buf.writeUtf(textureId, 256);
+        buf.writeUtf(sourcePack, 80);
+        buf.writeUtf(label, 48);
     }
 
     public static CareerStampC2SPayload read(FriendlyByteBuf buf) {
         return new CareerStampC2SPayload(buf.readUtf(), buf.readVarInt(), buf.readVarInt(),
-                buf.readFloat());
+                buf.readFloat(), buf.readUtf(256), buf.readUtf(80), buf.readUtf(48));
     }
 
     //? if neoforge {

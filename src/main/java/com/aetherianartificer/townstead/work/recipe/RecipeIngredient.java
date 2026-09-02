@@ -13,11 +13,17 @@ import java.util.List;
  * item behind them.
  */
 public record RecipeIngredient(List<ResourceLocation> itemIds, int count,
-                               @Nullable ResourceLocation sourceTag)
+                               @Nullable ResourceLocation sourceTag,
+                               @Nullable ResourceLocation exactProduct)
         implements ProducerRecipe.ResolvedIngredient {
 
     public RecipeIngredient(List<ResourceLocation> itemIds, int count) {
-        this(itemIds, count, null);
+        this(itemIds, count, null, null);
+    }
+
+    public RecipeIngredient(List<ResourceLocation> itemIds, int count,
+                            @Nullable ResourceLocation sourceTag) {
+        this(itemIds, count, sourceTag, null);
     }
 
     public ResourceLocation primaryId() { return itemIds.get(0); }
@@ -26,20 +32,36 @@ public record RecipeIngredient(List<ResourceLocation> itemIds, int count,
     public List<ResourceLocation> acceptableIds() { return itemIds; }
 
     /**
+     * Whether a real stack satisfies this input. Most ingredients are ordinary interchangeable
+     * item ids. An exact product additionally checks the stack's meaningful components (for
+     * example, a topped Pizza Delight raw pizza rather than its visually identical blank base).
+     */
+    public boolean matches(net.minecraft.world.item.ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        ResourceLocation item = net.minecraft.core.registries.BuiltInRegistries.ITEM
+                .getKey(stack.getItem());
+        if (!itemIds.contains(item)) return false;
+        return exactProduct == null
+                || com.aetherianartificer.townstead.work.order.OrderProducts
+                        .matches(exactProduct, stack);
+    }
+
+    /**
      * Groups with the same interchangeable set, summed. A shaped recipe lists eight ingots as
      * eight groups of one; anything that checks availability group by group would let one ingot
      * satisfy all eight, so counting always starts from the merged view.
      */
     public static List<RecipeIngredient> merge(List<RecipeIngredient> inputs) {
-        record Key(List<ResourceLocation> ids, @Nullable ResourceLocation tag) {}
+        record Key(List<ResourceLocation> ids, @Nullable ResourceLocation tag,
+                   @Nullable ResourceLocation product) {}
         java.util.Map<Key, Integer> counts = new java.util.LinkedHashMap<>();
         for (RecipeIngredient input : inputs) {
-            counts.merge(new Key(input.itemIds(), input.sourceTag()),
+            counts.merge(new Key(input.itemIds(), input.sourceTag(), input.exactProduct()),
                     Math.max(1, input.count()), Integer::sum);
         }
         List<RecipeIngredient> out = new java.util.ArrayList<>(counts.size());
         counts.forEach((key, count) -> out.add(
-                new RecipeIngredient(key.ids(), count, key.tag())));
+                new RecipeIngredient(key.ids(), count, key.tag(), key.product())));
         return out;
     }
 }

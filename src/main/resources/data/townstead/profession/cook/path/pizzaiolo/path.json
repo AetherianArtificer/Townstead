@@ -1,5 +1,6 @@
 {
   "schema": "townstead:profession_path/v1",
+  "mods": ["pizzadelight", "farmersdelight"],
   "name": {
     "text": "Pizzaiolo"
   },
@@ -7,6 +8,24 @@
     "text": "Pizzaiolo"
   },
   "color": "#C8873E",
+  "work": [
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "pizzadelight:basin",
+        "pizzadelight:pizza_station",
+        "pizzadelight:raw_pizza",
+        "pizzadelight:pizza"
+      ],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:chop",
+      "workstations": ["farmersdelight:cutting_board"],
+      "recipes": ["pizzadelight:raw_pizza"],
+      "weight": 10
+    }
+  ],
   "skills": [
     [
       "pizza_craft",

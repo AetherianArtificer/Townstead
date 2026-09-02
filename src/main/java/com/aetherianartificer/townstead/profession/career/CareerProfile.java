@@ -26,7 +26,6 @@ public final class CareerProfile {
     private final Set<ResourceLocation> discoveries = new LinkedHashSet<>();
     private final Map<Integer, ResourceLocation> activeLoadout = new LinkedHashMap<>();
     private final Map<String, ProfessionXp> progress = new LinkedHashMap<>();
-    private final Set<ResourceLocation> trackedCareers = new LinkedHashSet<>();
     private final Map<ResourceLocation, CareerStamp> stamps = new LinkedHashMap<>();
     private long lastVocationChangeDay = -1L;
 
@@ -68,12 +67,6 @@ public final class CareerProfile {
         stamps.put(skill, mark);
         return true;
     }
-
-    public Set<ResourceLocation> trackedCareers() { return Set.copyOf(trackedCareers); }
-
-    public boolean track(ResourceLocation id) { return id != null && trackedCareers.add(id); }
-
-    public boolean untrack(ResourceLocation id) { return id != null && trackedCareers.remove(id); }
 
     public long lastVocationChangeDay() { return lastVocationChangeDay; }
 
@@ -143,7 +136,6 @@ public final class CareerProfile {
         putIds(tag, "learned", learnedChoices);
         putIds(tag, "advanced", acquiredCareers);
         putIds(tag, "discoveries", discoveries);
-        putIds(tag, "trackedGoals", trackedCareers);
         CompoundTag loadout = new CompoundTag();
         for (Map.Entry<Integer, ResourceLocation> entry : activeLoadout.entrySet()) {
             loadout.putString(String.valueOf(entry.getKey()), entry.getValue().toString());
@@ -183,7 +175,6 @@ public final class CareerProfile {
         readSkillIds(tag, "learned", profile.learnedChoices);
         readIds(tag, "advanced", profile.acquiredCareers);
         readIds(tag, "discoveries", profile.discoveries);
-        readIds(tag, "trackedGoals", profile.trackedCareers);
         // Plain ids, NOT skill ids. The loadout holds whatever grants a power, and a Root gene's id
         // has no business being run through the skill registry's legacy remap on the way in.
         CompoundTag loadout = tag.getCompound("loadout");

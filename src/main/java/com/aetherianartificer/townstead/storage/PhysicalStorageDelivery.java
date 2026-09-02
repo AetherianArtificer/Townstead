@@ -76,7 +76,7 @@ public final class PhysicalStorageDelivery {
             if (excluded != null && excluded.contains(pos.asLong())) continue;
             StorageSearchContext.ObservedBlock observed = search.observe(pos);
             if (!StorageRoles.isStorageCandidate(level, pos, observed.blockEntity(), villager, use)) continue;
-            if (canAcceptAny(search, observed, inventory, carried)) return pos;
+            if (canAcceptAny(level, search, observed, inventory, carried, use)) return pos;
         }
         return null;
     }
@@ -108,6 +108,7 @@ public final class PhysicalStorageDelivery {
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);
             if (stack.isEmpty() || !carried.test(stack)) continue;
+            if (!StorageRoles.acceptsItem(level, destination, stack, use)) continue;
             int before = stack.getCount();
             insertAt(search, observed, stack, false);
             int inserted = before - stack.getCount();
@@ -154,13 +155,16 @@ public final class PhysicalStorageDelivery {
         return second.distanceSqr() < first.distanceSqr() ? second : first;
     }
 
-    private static boolean canAcceptAny(StorageSearchContext search,
+    private static boolean canAcceptAny(ServerLevel level,
+                                        StorageSearchContext search,
                                         StorageSearchContext.ObservedBlock observed,
                                         SimpleContainer inventory,
-                                        Predicate<ItemStack> carried) {
+                                        Predicate<ItemStack> carried,
+                                        StorageUse use) {
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);
             if (stack.isEmpty() || !carried.test(stack)) continue;
+            if (!StorageRoles.acceptsItem(level, observed.pos(), stack, use)) continue;
             ItemStack probe = stack.copy();
             insertAt(search, observed, probe, true);
             if (probe.getCount() < stack.getCount()) return true;

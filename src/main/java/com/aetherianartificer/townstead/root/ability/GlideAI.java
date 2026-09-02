@@ -481,10 +481,14 @@ public final class GlideAI {
                 villager.setDeltaMovement(motion.x * 0.85, motion.y, motion.z * 0.85);
             }
             // Over the spot with little height left: commit — cut flight and let
-            // featherfall set them down. Peak reset keeps the short drop from
-            // re-triggering a deploy mid-touchdown.
+            // featherfall set them down. Elytra physics may leave one block of fall
+            // distance banked, and the staggered passive ticker may not restore Slow
+            // Falling before touchdown; clear that bank here so the short handoff
+            // cannot become one point of fall damage. Peak reset keeps the short drop
+            // from re-triggering a deploy mid-touchdown.
             if (horiz < 2.5 && drop < DEPLOY_FALL_DISTANCE) {
                 ((FallFlightBridge) villager).townstead$setFallFlying(false);
+                villager.resetFallDistance();
                 FALL_PEAK.put(villager, villager.getY());
             }
             return;

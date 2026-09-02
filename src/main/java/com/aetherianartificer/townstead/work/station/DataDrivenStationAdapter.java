@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 /** Generic V2 execution: public inventory contracts plus real player-like block interaction. */
 public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
@@ -119,17 +120,42 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         }
         IItemHandler handler = BlockInventories.itemHandler(level, anchor, null);
         if (handler == null) return 1;
-        int free = 0;
+        List<ItemStack> insertionSlots = new ArrayList<>();
         if (def.hasExplicitIngredientSlots()) {
             for (int slot : concat(def.ingredientSlots(), def.catalystSlots())) {
-                if (slot < handler.getSlots() && handler.getStackInSlot(slot).isEmpty()) free++;
+                if (slot < handler.getSlots()) insertionSlots.add(handler.getStackInSlot(slot));
             }
         } else {
             for (int slot = 0; slot < handler.getSlots(); slot++) {
-                if (!def.reservedForInsertion(slot) && handler.getStackInSlot(slot).isEmpty()) free++;
+                if (!def.reservedForInsertion(slot)) insertionSlots.add(handler.getStackInSlot(slot));
             }
         }
-        return Math.max(0, free);
+        // A cutting board can double as the kitchen's tool shelf. Its single inventory slot is
+        // technically occupied while a knife is displayed, but gathering that reusable tool is
+        // the first step of using the board and immediately frees the slot for the ingredient.
+        // Counting only physically empty slots therefore makes the whole station disappear from
+        // the worksite index precisely when somebody provides the Cook with a knife.
+        return availableInsertionSlots(insertionSlots, ItemStack::isEmpty,
+                stack -> isReusableShelfTool(level, anchor, stack));
+    }
+
+    static <T> int availableInsertionSlots(List<T> slots, Predicate<T> empty,
+                                           Predicate<T> reusableShelfTool) {
+        int available = 0;
+        for (T stack : slots) {
+            if (empty.test(stack) || reusableShelfTool.test(stack)) available++;
+        }
+        return Math.max(0, available);
+    }
+
+    private static boolean isReusableShelfTool(ServerLevel level, BlockPos anchor, ItemStack stack) {
+        return !stack.isEmpty()
+                && com.aetherianartificer.townstead.storage.StorageRoles
+                .semanticRoles(level.getBlockState(anchor))
+                .contains(com.aetherianartificer.townstead.storage.StorageRoleDef.Role.TOOLS)
+                && com.aetherianartificer.townstead.storage.StorageRoles.acceptsItem(
+                        level, anchor, stack,
+                        com.aetherianartificer.townstead.storage.StorageUse.TOOL_RETURN);
     }
 
     @Override
@@ -208,6 +234,12 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                 ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
                 if (def.containerSlots().contains(slot) && knownContainers.contains(item)) continue;
                 if (isFuelStock(level, anchor, slot, stack)) continue;
+                // A dual-purpose tool shelf is idle while it displays one of this station's
+                // declared reusable tools. The gather phase can then borrow it normally instead
+                // of classifying the board as foreign contents and tearing it down as cleanup.
+                if (isReusableShelfTool(level, anchor, stack)) {
+                    continue;
+                }
                 if (!knownInputs.contains(item)) {
                     return StationAdapters.StationPhase.INVALID_CONTENTS;
                 }
@@ -716,11 +748,15 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                     return;
                 }
             }
+            // A non-sided item handler does not publish which of its permissive slots is fuel.
+            // If the block also exposes a sided-container fuel lane, use only those exact slot
+            // numbers through the sided capability. Treating the first slot that accepts coal as
+            // fuel feeds coal to cutting boards, trays and other ordinary item surfaces.
             for (Direction side : new Direction[]{Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST}) {
                 IItemHandler handler = BlockInventories.itemHandler(level, anchor, side);
                 if (handler == null) continue;
-                int target = firstAcceptingSlotOutsideContainers(handler, def, one);
-                if (target >= 0) {
+                for (int target : slots) {
+                    if (target >= handler.getSlots() || !handler.insertItem(target, one, true).isEmpty()) continue;
                     handler.insertItem(target, one, false);
                     source.shrink(1);
                     return;
@@ -731,33 +767,11 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
 
     /** Whether the block's public sided inventory exposes a slot that accepts ordinary fuel. */
     public static boolean acceptsFuel(ServerLevel level, BlockPos anchor) {
-        WorkstationV2Def def = v2(level, anchor);
         for (ItemStack probe : List.of(new ItemStack(net.minecraft.world.item.Items.COAL),
                 new ItemStack(net.minecraft.world.item.Items.OAK_PLANKS))) {
             if (fuelSlots(level, anchor, probe).length > 0) return true;
-            if (level.getBlockEntity(anchor) instanceof WorldlyContainer) continue;
-            for (Direction side : new Direction[]{Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST}) {
-                IItemHandler handler = BlockInventories.itemHandler(level, anchor, side);
-                if (handler == null) continue;
-                if (firstAcceptingSlotOutsideContainers(handler, def, probe) >= 0) return true;
-            }
         }
         return false;
-    }
-
-    /**
-     * Finds a public slot that accepts the probe without confusing a permissive vessel slot for
-     * a fuel slot. Some machines accept any item into their declared container position and
-     * enforce bowl/bottle correctness only when serving the result.
-     */
-    private static int firstAcceptingSlotOutsideContainers(IItemHandler handler,
-                                                           @Nullable WorkstationV2Def def,
-                                                           ItemStack probe) {
-        for (int slot = 0; slot < handler.getSlots(); slot++) {
-            if (def != null && def.containerSlots().contains(slot)) continue;
-            if (handler.insertItem(slot, probe, true).isEmpty()) return slot;
-        }
-        return -1;
     }
 
     public static boolean hasFuel(ServerLevel level, BlockPos anchor) {

@@ -5,7 +5,6 @@
   "blocks": [
     "farmersdelight:cooking_pot",
     "farmersdelight:skillet",
-    "farmersdelight:stove",
-    "farmersdelight:cutting_board"
+    "farmersdelight:stove"
   ]
 }

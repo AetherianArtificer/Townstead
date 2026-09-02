@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "[PLACEHOLDER] COOK SKILL 08"
+    "text": "Starter Culture"
   },
-  "icon": "minecraft:barrier",
+  "icon": "minecraft:wheat",
   "description": {
-    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/starter_culture."
+    "text": "A living starter rewards anyone willing to tend it instead of rushing it. Gain 1 additional Cook XP whenever work is completed."
   },
   "cost": 1,
   "grants": [

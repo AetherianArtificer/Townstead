@@ -2,7 +2,7 @@
   "color": "ffdc8f50",
   "visible": true,
   "priority": 4,
-  "icon": true,
+  "icon": false,
   "iconU": 242,
   "iconV": 204,
   "noBeds": true,

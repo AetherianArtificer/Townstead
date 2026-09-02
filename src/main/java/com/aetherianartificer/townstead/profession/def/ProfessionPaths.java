@@ -11,9 +11,9 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 /**
- * Specialization paths within a profession: a branch entered by taking any of its first-level
- * choices ("spec into pizzaiolo"). A path names its member skills, the worksites it favours, and
- * any Pheno components shared by every build on the path.
+ * Specialization paths within a profession. A path groups member skills, while each skill's
+ * authored prerequisites define the actual parent-child hierarchy. It also names the worksites
+ * it favours and any Pheno components shared by every build on the path.
  * Players enter by choice and are never steered; villagers enter through circumstance,
  * because their worksite contains the path's stations, and once specced they prefer those
  * stations and finish the build. The completed build usually carries a matching
@@ -22,8 +22,8 @@ import java.util.function.Predicate;
 public final class ProfessionPaths {
 
     /**
-     * One specialization branch. {@code gateway} is the first flattened option retained by the
-     * established runtime shape; commitment is still detected from any member. {@code skills}
+     * One specialization branch. {@code gateway} is the first flattened member retained by the
+     * established runtime shape; investment is still detected from any member. {@code skills}
      * contains the remaining options, and {@code members} is both. {@code powers} are expressed
      * once whenever any member is learned.
      *
@@ -65,7 +65,7 @@ public final class ProfessionPaths {
             return gateway.equals(skillId) || skills.contains(skillId);
         }
 
-        /** Every skill on the path: the opening option plus the rest, in authoring order. */
+        /** Every skill on the path: the first compatibility member plus the rest, in authoring order. */
         public List<ResourceLocation> members() {
             List<ResourceLocation> all = new ArrayList<>(skills.size() + 1);
             all.add(gateway);
@@ -108,11 +108,10 @@ public final class ProfessionPaths {
     }
 
     /**
-     * The one path this character committed to within a profession, or null while the choice is
-     * still open. Commitment is owning ANY option on the path, not a designated gateway: under
-     * the levels-and-options model your first pick is your path choice, so a separate opening
-     * skill would be a mechanic with nothing left to do. There is still no stored decision that
-     * can drift out of sync with the learned set.
+     * The first invested path in authoring order, retained for singular legacy callers. Returning
+     * one path here does not lock the others: characters may invest across paths, and
+     * {@link #speccedPaths(Predicate)} returns the complete set. There is no stored path decision
+     * that can drift out of sync with the learned skills.
      */
     @Nullable
     public static Path committedPath(ResourceLocation professionId,
@@ -143,10 +142,9 @@ public final class ProfessionPaths {
     }
 
     /**
-     * The options a path offers at one level: every member skill whose tier is that level. The
-     * board draws these as a row and exactly one of them may be owned, which is what makes five
-     * levels mean five choices. Authors do not list options per level anywhere; a skill's tier
-     * already says when it is offered, so there is only one place to change it.
+     * Every path member displayed in one rank band. This grouping controls placement and rank
+     * eligibility only; it does not make the members mutually exclusive or connect one band to
+     * the next. Parent-child order belongs exclusively to {@link SkillDef#requires()}.
      */
     public static List<ResourceLocation> optionsAt(Path path, int level) {
         List<ResourceLocation> out = new ArrayList<>();

@@ -30,10 +30,12 @@ import java.util.WeakHashMap;
  */
 public final class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
     private static final int SEARCH_RADIUS = 48;
+    private static final int SEARCH_INTERVAL_TICKS = 20;
     private static final Set<VillagerEntityMCA> REQUESTED =
             Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
 
     private BlockPos candidate;
+    private long nextSearchTick = Long.MIN_VALUE;
 
     public SeekBedWhenFatiguedTask() {
         super(ImmutableMap.of(
@@ -50,6 +52,14 @@ public final class SeekBedWhenFatiguedTask extends Behavior<VillagerEntityMCA> {
         // priority 65, so HOME is the handoff signal within the same brain tick.
         if (!REQUESTED.contains(villager)) return false;
         if (villager.getBrain().getMemory(MemoryModuleType.HOME).isPresent()) return false;
+
+        long gameTime = level.getGameTime();
+        if (nextSearchTick == Long.MIN_VALUE) {
+            nextSearchTick = gameTime + Math.floorMod(villager.getId(), SEARCH_INTERVAL_TICKS);
+        }
+        if (gameTime < nextSearchTick) return false;
+        nextSearchTick = gameTime + SEARCH_INTERVAL_TICKS;
+        candidate = null;
 
         TownsteadVillager.Needs needs = TownsteadVillagers.get(villager).needs();
         long dayTime = villager.level().getDayTime() % 24000L;

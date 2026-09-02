@@ -24,11 +24,7 @@
         "#minecraft:campfires",
         "kaleidoscope_cookery:pot",
         "kaleidoscope_cookery:stockpot",
-        "kaleidoscope_cookery:steamer",
-        "pizzadelight:basin",
-        "pizzadelight:pizza_station",
-        "pizzadelight:raw_pizza",
-        "pizzadelight:pizza"
+        "kaleidoscope_cookery:steamer"
       ],
       "weight": 10
     },
@@ -40,6 +36,7 @@
     {
       "type": "townstead_work:chop",
       "workstations": ["farmersdelight:cutting_board", "kaleidoscope_cookery:chopping_board"],
+      "deny_recipes": ["pizzadelight:raw_pizza"],
       "weight": 10
     },
     {

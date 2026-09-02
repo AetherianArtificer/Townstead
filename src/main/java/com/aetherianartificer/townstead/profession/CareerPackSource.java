@@ -75,29 +75,21 @@ public final class CareerPackSource {
         loadPacks(profileDataPackDirectory(), type, output, true, "profile");
         Path kubeJsData = com.aetherianartificer.townstead.data.KubeJsPackSource.dataDirectory();
         if (Files.isDirectory(kubeJsData)) {
-            // KubeJS already mounts ZIPs from its data folder as server data. Directory packs
-            // are a Townstead extension, and ZIPs are still mounted on the client so bundled
-            // assets/locales travel with their data.
-            boolean skipZip = type == PackType.SERVER_DATA
-                    && com.aetherianartificer.townstead.compat.ModCompat.isLoaded("kubejs");
-            loadPacks(kubeJsData, type, output, false, "kubejs", skipZip);
+            // KubeJS mounts its loose data/<namespace> tree, not complete Career-pack ZIPs
+            // dropped alongside those namespaces. Townstead must mount those ZIPs on BOTH sides:
+            // the early registry scan can see their profession.json, but without the server-data
+            // pack the later reload never sees the profession, work job, skills, or buildings.
+            loadPacks(kubeJsData, type, output, false, "kubejs");
         }
     }
 
     private static void loadPacks(Path directory, PackType type, Consumer<Pack> output,
                                   boolean requireCareerDocument, String source) {
-        loadPacks(directory, type, output, requireCareerDocument, source, false);
-    }
-
-    private static void loadPacks(Path directory, PackType type, Consumer<Pack> output,
-                                  boolean requireCareerDocument, String source,
-                                  boolean skipZip) {
         try {
             Files.createDirectories(directory);
             //? if >=1.21 {
             DirectoryValidator validator = new DirectoryValidator(path -> true);
             FolderRepositorySource.discoverPacks(directory, validator, (path, resources) -> {
-                if (skipZip && isZip(path)) return;
                 if (requireCareerDocument && !isCareerPack(path)) return;
                 String id = packId(path, type, source);
                 PackLocationInfo info = new PackLocationInfo(
@@ -114,7 +106,6 @@ public final class CareerPackSource {
             });
             //?} else {
             /*FolderRepositorySource.discoverPacks(directory, false, (path, resources) -> {
-                if (skipZip && isZip(path)) return;
                 if (requireCareerDocument && !isCareerPack(path)) return;
                 Pack pack = Pack.readMetaAndCreate(
                         packId(path, type, source),

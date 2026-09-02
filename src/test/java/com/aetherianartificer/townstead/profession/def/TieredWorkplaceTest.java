@@ -32,6 +32,16 @@ class TieredWorkplaceTest {
     }
 
     @Test
+    void namespacedPackPrefixMatchesMcaFlattenedBuildingId() {
+        JobSiteProvider.Building apiary = new JobSiteProvider.Building(
+                List.of("townstead_beekeeping:apiary"));
+
+        assertTrue(apiary.matches("townstead_beekeeping/apiary"));
+        assertEquals(1, apiary.slotsFor("townstead_beekeeping/apiary"));
+        assertFalse(apiary.matches("other_pack/apiary"));
+    }
+
+    @Test
     void tierParsingCoversHappyAndErrorPaths() {
         JobSiteProvider.Building kitchens = kitchens();
         assertEquals(1, kitchens.tierOf("compat/farmersdelight/kitchen_l1"));

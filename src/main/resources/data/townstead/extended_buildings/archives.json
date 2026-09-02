@@ -1,4 +1,7 @@
 {
   "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "mca:civil_registry"
+  },
   "storage_roles": ["townstead:documents"]
 }

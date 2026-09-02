@@ -33,20 +33,42 @@ import java.util.List;
  */
 public final class Stations {
 
-    /** Blocks a villager should not stand on to work, even when they are otherwise walkable. */
-    public static final TagKey<Block> AVOID_STANDING = TagKey.create(
-            Registries.BLOCK,
-            //? if >=1.21 {
-            ResourceLocation.fromNamespaceAndPath("townstead", "avoid_standing")
-            //?} else {
-            /*new ResourceLocation("townstead", "avoid_standing")
-            *///?}
-    );
+    private static final class Tags {
+        /** Blocks a villager should not stand on to work, even when they are otherwise walkable. */
+        private static final TagKey<Block> AVOID_STANDING = TagKey.create(
+                Registries.BLOCK,
+                //? if >=1.21 {
+                ResourceLocation.fromNamespaceAndPath("townstead", "avoid_standing")
+                //?} else {
+                /*new ResourceLocation("townstead", "avoid_standing")
+                *///?}
+        );
+    }
 
     private Stations() {}
 
     /** One station a villager could claim: where it is, what role it plays, how many jobs it holds. */
     public record StationSlot(BlockPos pos, StationType type, ResourceLocation blockId, int capacity) {}
+
+    /**
+     * Stable identity used by profession/worksite filters for a station slot.
+     *
+     * <p>A place-surface slot is an empty cell until work begins. Calling the empty cell
+     * {@code minecraft:air} makes every profession reject it before the protocol can place its
+     * work block. Such a slot therefore identifies as the block declared by {@code places}; all
+     * ordinary stations continue to identify as their block in the world.</p>
+     */
+    public static ResourceLocation slotBlockId(ServerLevel level, BlockPos anchor, StationType type) {
+        ResourceLocation actual = BuiltInRegistries.BLOCK.getKey(level.getBlockState(anchor).getBlock());
+        WorkstationDef def = type == StationType.PLACE_SURFACE
+                ? StationProtocols.defAt(level, anchor) : null;
+        return slotBlockId(actual, type, def == null ? null : def.places());
+    }
+
+    static ResourceLocation slotBlockId(ResourceLocation actual, StationType type,
+                                        @Nullable ResourceLocation placedBlock) {
+        return type == StationType.PLACE_SURFACE && placedBlock != null ? placedBlock : actual;
+    }
 
     // ── Recognition ──
 
@@ -167,7 +189,7 @@ public final class Stations {
      * from on top of it. Which blocks count is a tag so packs can add their own containers.
      */
     public static boolean avoidStandingSurface(BlockState surface) {
-        return isStation(surface) || surface.is(AVOID_STANDING);
+        return isStation(surface) || surface.is(Tags.AVOID_STANDING);
     }
 
     public static @Nullable BlockPos findStandingPosition(ServerLevel level, VillagerEntityMCA villager,

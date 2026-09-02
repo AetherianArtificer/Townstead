@@ -143,7 +143,8 @@ public final class CareerTreeOpener {
      * why a failed learn returns before the profile is touched.</p>
      */
     public static void handleStamp(ServerPlayer player, String skillIdRaw, int x, int y,
-                                   float rotation) {
+                                    float rotation, String textureId, String sourcePack,
+                                    String label) {
         net.minecraft.resources.ResourceLocation parsed =
                 net.minecraft.resources.ResourceLocation.tryParse(skillIdRaw);
         // The press is one gesture over two kinds of record. Which one it is comes from the
@@ -174,28 +175,12 @@ public final class CareerTreeOpener {
         }
         net.minecraft.server.MinecraftServer server = player.getServer();
         CareerStamp mark = CareerStamp.sanitized(x, y, rotation, authorityFor(player),
-                server == null ? "" : todayFor(server, player));
+                server == null ? "" : todayFor(server, player), textureId, sourcePack, label);
         PlayerCareers.mutate(player, stored -> stored.stamp(canonical, mark));
         player.playNotifySound(net.minecraft.sounds.SoundEvents.WOODEN_BUTTON_CLICK_ON,
                 net.minecraft.sounds.SoundSource.PLAYERS, 0.7f, 0.7f);
         player.playNotifySound(net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN,
                 net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 1.0f);
-        send(player);
-    }
-
-    /** Toggle goal tracking for a specialization; tracked goals notify when within reach. */
-    public static void handleTrack(ServerPlayer player, String careerIdRaw) {
-        net.minecraft.resources.ResourceLocation careerId =
-                com.aetherianartificer.townstead.profession.def.ProfessionDefs.canonicalId(
-                        net.minecraft.resources.ResourceLocation.tryParse(careerIdRaw));
-        com.aetherianartificer.townstead.profession.def.ProfessionDef def =
-                com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(careerId);
-        if (def == null || def.isRoot()) return;
-        CareerProfile profile = CareerProfiles.of(player);
-        if (profile == null || profile.acquiredCareers().contains(careerId)) return;
-        PlayerCareers.mutate(player, stored -> {
-            if (!stored.untrack(careerId)) stored.track(careerId);
-        });
         send(player);
     }
 
@@ -241,7 +226,7 @@ public final class CareerTreeOpener {
                     java.util.Map<String, java.util.List<String>> moments =
                             momentsFor(server, actedBy(events, target.getUUID()));
                     CareerGraphS2CPayload payload = new CareerGraphS2CPayload(
-                            titleFor(viewer, target), scribeNameFor(viewer), inspect, notice,
+                            titleFor(viewer, target), inspect, notice,
                             authorityFor(viewer), todayFor(server, viewer),
                             CareerGraphBuilder.build(server, target, moments,
                                     //? if >=1.21 {
@@ -291,19 +276,6 @@ public final class CareerTreeOpener {
                 .format(server, viewer.serverLevel().getDayTime() / 24000L,
                         com.aetherianartificer.townstead.calendar.CalendarDateFormatter.Style.SHORT)
                 .getString();
-    }
-
-    /** The village Scribe's name for the page signature, empty when the office is unstaffed. */
-    private static String scribeNameFor(ServerPlayer viewer) {
-        java.util.Optional<net.conczin.mca.server.world.data.Village> village =
-                net.conczin.mca.server.world.data.Village.findNearest(viewer);
-        if (village.isEmpty() || !village.get().isWithinBorder(viewer)) return "";
-        for (VillagerEntityMCA resident : village.get().getResidents(viewer.serverLevel())) {
-            if (resident.isAlive() && isScribe(resident)) {
-                return resident.getName().getString();
-            }
-        }
-        return "";
     }
 
     /**

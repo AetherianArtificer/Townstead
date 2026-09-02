@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.client.gui.career;
 
 import com.aetherianartificer.townstead.client.accessibility.Accessibility;
+import com.aetherianartificer.townstead.client.gui.common.MenuPanel;
 import com.aetherianartificer.townstead.client.gui.common.Palette;
 import com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload;
 import net.minecraft.Util;
@@ -35,6 +36,7 @@ final class CareerMasthead {
     private static final int ROW_2 = 17;
     private static final int BAR_H = 7;
     private static final int TOKEN_H = 18;
+    private static final int PICKER_W = 190;
     /** How long the one-time "this opens" nudge stays up, in milliseconds. */
     private static final long HINT_MS = 4200L;
 
@@ -102,38 +104,27 @@ final class CareerMasthead {
         g.drawString(font, name, textX, y + ROW_1, hot ? 0xFFFFF3D6 : Palette.LABEL_LIGHT, false);
         drawChevron(g, textX + nameWidth + 4, y + ROW_1 + 4, hot);
 
-        // Rank as pips rather than a number: marks you can count at a glance say more about where
-        // you are in a career than "3" does. The whole row is also the way back to the career's own
-        // record, which was previously reachable only by clicking the band's empty space.
+        // The numeric rank and its name are one label everywhere on the screen. This row is also
+        // the way back to the career's own record.
         if (career != null) {
-            int pips = Math.min(Math.max(1, career.maxTier()), 8);
             String rank = career.rankName();
+            String rankLabel = career.tier() + (rank.isEmpty() ? "" : " · " + rank);
             rankX = textX - 3;
             rankY = y + ROW_2 - 2;
-            rankW = pips * 7 + 5 + (rank.isEmpty() ? 0 : font.width(rank)) + 14;
+            rankW = font.width(rankLabel) + 18;
             boolean rankHot = overRankRow(mouseX, mouseY);
             if (rankHot) {
                 g.fill(rankX, rankY, rankX + rankW, rankY + rankH(), 0xFF2E1F0C);
                 Palette.drawOutline(g, rankX, rankY, rankX + rankW, rankY + rankH(),
                         Palette.BRASS_DEEP);
             }
-            int pipY = y + ROW_2 + (font.lineHeight - 3) / 2;
-            for (int i = 0; i < pips; i++) {
-                int px = textX + i * 7;
-                int fill = i < career.tier() ? Palette.BRASS : 0xFF4A3A20;
-                g.fill(px + 1, pipY, px + 3, pipY + 1, fill);
-                g.fill(px, pipY + 1, px + 4, pipY + 2, fill);
-                g.fill(px + 1, pipY + 2, px + 3, pipY + 3, fill);
-            }
-            if (!rank.isEmpty()) {
-                g.drawString(font, rank, textX + pips * 7 + 5, y + ROW_2,
-                        rankHot ? 0xFFF0DDB0 : 0xFFB79A6C, false);
-            }
+            g.drawString(font, rankLabel, textX, y + ROW_2,
+                    rankHot ? 0xFFF0DDB0 : 0xFFB79A6C, false);
             RecordArt.chevron(g, rankX + rankW - 8, y + ROW_2 + 2,
                     rankHot ? Palette.BRASS_HOT : 0xFF7A6238);
         }
 
-        int tokenW = 42;
+        int tokenW = 70;
         int tokenX = x + w - tokenW - unit;
         // The left block owns whatever the crest, the name and the rank line actually need, so the
         // track starts clear of the longest of the three instead of clear of the crest alone.
@@ -201,6 +192,9 @@ final class CareerMasthead {
         // clipped one.
         String heading = topped ? career.rankName() : next;
         String value = topped ? "" : career.xp() + " / " + total;
+        // Never reduce a rank to “J” just to preserve a redundant number. The bar already carries
+        // the amount; the destination is the information that cannot be inferred visually.
+        if (!topped && font.width(heading) + font.width(value) + 20 > w) value = "";
         int valueWidth = font.width(value);
         int headX = x;
         if (!topped) {
@@ -227,24 +221,23 @@ final class CareerMasthead {
     /** The evidence bar's top edge. The one line everything on the band's second row agrees on. */
     private int barY(int y) { return y + ROW_2 + (font.lineHeight - BAR_H) / 2; }
 
-    /** Unspent points */
+    /** Shared Insight remaining after choices across every career. */
     private void drawPointsToken(GuiGraphics g, CareerGraphS2CPayload.Node career, int x, int y,
                                  int w) {
         int points = career == null ? 0 : career.points();
-        boolean spendable = career != null
-                && career.state() == CareerGraphS2CPayload.STATE_ACQUIRED && points > 0;
+        boolean spendable = career != null && points > 0;
         g.fill(x, y, x + w, y + TOKEN_H, 0xFF2E1F0C);
         Palette.drawOutline(g, x, y, x + w, y + TOKEN_H, spendable ? 0xFF8A6A30 : 0xFF4A3218);
-        // Bead and numeral share one centre line, and the numeral is centred in the room LEFT OVER
-        // beside the bead rather than parked at a fixed offset from it, so a two-digit count stays
-        // inside the box and a one-digit count is not hard against the bead.
         int mid = y + TOKEN_H / 2;
-        NodeArt.drawBead(g, x + 9, mid, 6, spendable ? Palette.BRASS_DEEP : 0xFF3A3020);
-        NodeArt.drawBead(g, x + 9, mid, 5, spendable ? Palette.BRASS : 0xFF4A4030);
-        if (spendable) NodeArt.drawBead(g, x + 9, mid, 2, Palette.BRASS_HOT);
+        int gem = spendable ? Palette.BRASS_HOT : 0xFF6E5A38;
+        g.fill(x + 5, mid - 3, x + 8, mid + 4, gem);
+        g.fill(x + 3, mid - 1, x + 10, mid + 2, gem);
+        String label = Component.translatable("townstead.career.screen.insight").getString();
         String count = String.valueOf(points);
-        int room = x + w - 3 - (x + 17);
-        g.drawString(font, count, x + 17 + Math.max(0, (room - font.width(count)) / 2), mid - 4,
+        int countX = x + w - 5 - font.width(count);
+        g.drawString(font, RecordArt.abbreviate(font, label, countX - (x + 14) - 3),
+                x + 14, mid - 4, spendable ? Palette.BRASS : 0xFF6E5A38, false);
+        g.drawString(font, count, countX, mid - 4,
                 spendable ? Palette.BRASS_HOT : 0xFF6E5A38, false);
     }
 
@@ -281,13 +274,14 @@ final class CareerMasthead {
 
     // ── The picker ─────────────────────────────────────────────────────────
 
-    private static final int PICKER_HEAD_H = 13;
-    private static final int ROW_H = 13;
+    // Both come from the shared popover, so the picker and the seal case cannot drift apart.
+    private static final int PICKER_HEAD_H = MenuPanel.HEAD_H;
+    private static final int ROW_H = MenuPanel.ROW_H;
 
-    int pickerWidth() { return Math.max(120, crestW + 24); }
+    int pickerWidth() { return PICKER_W; }
 
     private int visiblePickerRows(int careers, int availableHeight) {
-        int fit = Math.max(1, (availableHeight - PICKER_HEAD_H) / ROW_H);
+        int fit = MenuPanel.fit(availableHeight, true);
         return Math.min(Math.max(0, careers), fit);
     }
 
@@ -337,13 +331,9 @@ final class CareerMasthead {
         int w = pickerWidth();
         int visible = visiblePickerRows(roots.size(), availableHeight);
         int first = clampPickerScroll(scroll, roots.size(), availableHeight);
-        int h = PICKER_HEAD_H + visible * ROW_H;
-        g.fill(x + 2, y + 2, x + w + 2, y + h + 2, 0x8C000000);
-        g.fill(x, y, x + w, y + h, 0xFF241708);
-        Palette.drawOutline(g, x, y, x + w, y + h, 0xFF6A4E24);
-        String heading = Component.translatable("townstead.career.screen.switch").getString();
-        g.drawString(font, heading, x + 5, y + 3, 0xFF8A7048, false);
-        g.fill(x + 4, y + 11, x + w - 4, y + 12, 0xFF4A3218);
+        int h = MenuPanel.height(visible, true);
+        MenuPanel.drawFrame(g, font, x, y, w, h,
+                Component.translatable("townstead.career.screen.switch").getString(), false);
 
         g.enableScissor(x + 1, y + PICKER_HEAD_H, x + w - 1, y + h - 1);
         for (int local = 0; local < visible; local++) {
@@ -354,34 +344,25 @@ final class CareerMasthead {
             boolean active = rootId.equals(activeRoot);
             boolean hover = mouseX >= x && mouseX < x + w
                     && mouseY >= rowY && mouseY < rowY + ROW_H;
-            if (active || hover) {
-                g.fill(x + 2, rowY, x + w - 2, rowY + ROW_H - 1, active ? 0xFF3A2611 : 0xFF2E1F0C);
-            }
-            if (active) g.fill(x + 2, rowY, x + 4, rowY + ROW_H - 1, Palette.BRASS);
+            MenuPanel.drawRow(g, x, rowY, w, active, hover);
             CareerGraphS2CPayload.Node root = byId.get(rootId);
-            NodeArt.drawIcon(g, root, x + 7 + 8 * 0.6f, rowY + 1 + 8 * 0.6f, 0.6f);
+            NodeArt.drawIcon(g, root, x + MenuPanel.ICON_X + MenuPanel.ICON_W / 2f,
+                    rowY + ROW_H / 2f, 0.6f);
             String label = root == null || root.name().isEmpty() ? rootId : root.name();
-            g.drawString(font, label, x + 19, rowY + 2,
-                    active ? 0xFFF0DDB0 : 0xFFC0AC85, false);
             String rank = root == null ? "" : root.rankName();
+            int rankW = rank.isEmpty() ? 0 : font.width(rank);
+            int rankX = x + w - 6 - rankW;
+            String shown = RecordArt.abbreviate(font, label,
+                    Math.max(8, rankX - (x + MenuPanel.LABEL_X) - (rank.isEmpty() ? 0 : 7)));
+            g.drawString(font, shown, x + MenuPanel.LABEL_X, rowY + MenuPanel.TEXT_Y,
+                    MenuPanel.labelColor(active), false);
             if (!rank.isEmpty()) {
-                int rankW = font.width(rank);
-                if (x + 19 + font.width(label) + 6 < x + w - 5 - rankW) {
-                    g.drawString(font, rank, x + w - 5 - rankW, rowY + 2, 0xFF8A7048, false);
-                }
+                g.drawString(font, rank, rankX, rowY + MenuPanel.TEXT_Y,
+                        MenuPanel.trailingColor(), false);
             }
         }
         g.disableScissor();
 
-        int maxScroll = Math.max(0, roots.size() - visible);
-        if (maxScroll > 0) {
-            int trackY = y + PICKER_HEAD_H + 1;
-            int trackH = Math.max(1, h - PICKER_HEAD_H - 2);
-            int thumbH = Math.max(8, trackH * visible / roots.size());
-            int thumbY = trackY + (trackH - thumbH) * first / maxScroll;
-            g.fill(x + w - 4, trackY, x + w - 2, trackY + trackH, 0xFF120B04);
-            g.fill(x + w - 4, thumbY, x + w - 2, thumbY + thumbH, Palette.BRASS_DEEP);
-            g.fill(x + w - 4, thumbY, x + w - 3, thumbY + thumbH, Palette.BRASS);
-        }
+        MenuPanel.drawScrollbar(g, x, y, w, h, true, first, visible, roots.size());
     }
 }

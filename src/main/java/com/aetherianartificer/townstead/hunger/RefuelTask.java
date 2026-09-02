@@ -314,10 +314,15 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
     /** Picks a source for whichever need is unsatisfied and lacks a ration. Food is prioritized. */
     private boolean beginAcquire(ServerLevel level, VillagerEntityMCA villager, TownsteadVillager.Needs needs) {
         if (wantsFood(needs) && !resting(villager) && bestFoodSlot(villager) < 0) {
-            if (acquireFood(level, villager)) { acquiring = Need.FOOD; setAcquireWalkTarget(villager); return true; }
+            if (acquireFood(level, villager) || acquireAmenity(level, villager, Need.FOOD)
+                    || acquireCrop(level, villager)) {
+                acquiring = Need.FOOD;
+                setAcquireWalkTarget(villager);
+                return true;
+            }
         }
         if (wantsDrink(needs) && bestDrinkSlot(villager.getInventory(), ThirstBridgeResolver.get()) < 0) {
-            if (acquireDrink(level, villager) || acquireAmenity(level, villager)) {
+            if (acquireDrink(level, villager) || acquireAmenity(level, villager, Need.DRINK)) {
                 acquiring = Need.DRINK;
                 setAcquireWalkTarget(villager);
                 return true;
@@ -350,9 +355,12 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
                 candidates.add(new ScoredCandidate(TargetType.CONTAINER, slot.score(), null, slot));
             });
         }
-        if (selectAndClaim(level, villager, candidates, claimUntil)) return true;
+        return selectAndClaim(level, villager, candidates, claimUntil);
+    }
 
-        // Last resort: harvest a mature crop off the stalk.
+    /** Last-resort food source, after carried, stored, dropped, and served meals. */
+    private boolean acquireCrop(ServerLevel level, VillagerEntityMCA villager) {
+        long claimUntil = level.getGameTime() + MAX_DURATION + 20L;
         if (TownsteadConfig.ENABLE_CROP_SOURCING.get()) {
             BlockPos cropPos = NearbyCropIndex.snapshot(level, villager.blockPosition(), SEARCH_RADIUS, VERTICAL_RADIUS).nearestTo(villager);
             if (cropPos != null) {
@@ -397,11 +405,11 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
         return selectAndClaim(level, villager, candidates, claimUntil);
     }
 
-    private boolean acquireAmenity(ServerLevel level, VillagerEntityMCA villager) {
+    private boolean acquireAmenity(ServerLevel level, VillagerEntityMCA villager, Need need) {
         long claimUntil = level.getGameTime() + MAX_DURATION + 20L;
         List<ReachableTargetSelector.Candidate<Amenities.Candidate>> reachable = new ArrayList<>();
         for (Amenities.Candidate candidate : Amenities.candidates(level, villager)) {
-            if (!candidate.definition().projection().hydrates()) continue;
+            if (need == Need.FOOD ? !candidate.feeds(level) : !candidate.hydrates(level)) continue;
             if (ConsumableTargetClaims.isClaimedByOtherPos(
                     level, villager.getUUID(), CLAIM_CATEGORY, candidate.pos())) continue;
             reachable.add(new ReachableTargetSelector.Candidate<>(candidate, candidate.pos()));

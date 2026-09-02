@@ -14,6 +14,8 @@ import java.util.Set;
 public final class ProfessionPathDocument {
 
     public static final String SCHEMA = "townstead:profession_path/v1";
+    static final String CONTRIBUTION_ORIGIN = "__townstead_path_contribution";
+    static final String REQUIRED_PATH = "required_path";
 
     private ProfessionPathDocument() {
     }
@@ -38,7 +40,13 @@ public final class ProfessionPathDocument {
             throw new IllegalArgumentException("'skills' must be an array");
         }
 
-        Map<String, Integer> tiers = parseSkills(pathId, document.getAsJsonArray("skills"));
+        int tierOffset = document.has("tier_offset")
+                ? document.get("tier_offset").getAsInt() : 0;
+        if (tierOffset < 0) {
+            throw new IllegalArgumentException("'tier_offset' must be zero or greater");
+        }
+        Map<String, Integer> tiers = parseSkills(
+                pathId, document.getAsJsonArray("skills"), tierOffset);
         if (tiers.isEmpty()) throw new IllegalArgumentException("A path needs at least one skill");
         rejectMembershipConflicts(profession, pathId, tiers.keySet());
 
@@ -73,18 +81,72 @@ public final class ProfessionPathDocument {
         profession.add("paths", paths);
         ProfessionPathsOverlay.deriveCompletionTitles(profession, paths);
         mergeProfessionSkills(profession, tiers.keySet());
+        applyWorkContributions(profession, pathId, document);
         return new Applied(tiers);
     }
 
-    private static Map<String, Integer> parseSkills(String pathId, JsonArray skills) {
+    /**
+     * Path locality is authorship, not an implicit career gate. Work placed beside a Path joins
+     * the parent profession unless the contribution explicitly says {@code "access":"path"}.
+     * This lets Pizzaiolo own the Pizza Delight integration without taking pizza away from an
+     * ordinary Cook, while a genuinely exclusive Dark Knight action can opt into exclusivity.
+     */
+    private static void applyWorkContributions(JsonObject profession, String pathId,
+                                               JsonObject document) {
+        JsonArray existing = profession.has("work_tasks")
+                && profession.get("work_tasks").isJsonArray()
+                ? profession.getAsJsonArray("work_tasks").deepCopy() : new JsonArray();
+        for (int i = existing.size() - 1; i >= 0; i--) {
+            JsonElement element = existing.get(i);
+            if (element.isJsonObject() && pathId.equals(
+                    string(element.getAsJsonObject(), CONTRIBUTION_ORIGIN))) {
+                existing.remove(i);
+            }
+        }
+        if (!document.has("work")) {
+            profession.add("work_tasks", existing);
+            return;
+        }
+        if (!document.get("work").isJsonArray()) {
+            throw new IllegalArgumentException("'work' must be an array of task contributions");
+        }
+        for (JsonElement element : document.getAsJsonArray("work")) {
+            if (!element.isJsonObject()) {
+                throw new IllegalArgumentException("Every Path work contribution must be an object");
+            }
+            JsonObject task = element.getAsJsonObject().deepCopy();
+            if (task.has(CONTRIBUTION_ORIGIN) || task.has(REQUIRED_PATH)) {
+                throw new IllegalArgumentException("Path work uses reserved internal fields");
+            }
+            if (task.has("access") && (!task.get("access").isJsonPrimitive()
+                    || !task.getAsJsonPrimitive("access").isString())) {
+                throw new IllegalArgumentException(
+                        "Path work 'access' must be 'profession' or 'path'");
+            }
+            String access = task.has("access")
+                    ? task.get("access").getAsString() : "profession";
+            if (!"profession".equals(access) && !"path".equals(access)) {
+                throw new IllegalArgumentException(
+                        "Path work 'access' must be 'profession' or 'path'");
+            }
+            task.remove("access");
+            task.addProperty(CONTRIBUTION_ORIGIN, pathId);
+            if ("path".equals(access)) task.addProperty(REQUIRED_PATH, pathId);
+            existing.add(task);
+        }
+        profession.add("work_tasks", existing);
+    }
+
+    private static Map<String, Integer> parseSkills(String pathId, JsonArray skills,
+                                                    int tierOffset) {
         Map<String, Integer> tiers = new LinkedHashMap<>();
         for (int i = 0; i < skills.size(); i++) {
             JsonElement level = skills.get(i);
             if (level.isJsonPrimitive() && level.getAsJsonPrimitive().isString()) {
-                addSkill(pathId, tiers, level, i + 1);
+                addSkill(pathId, tiers, level, tierOffset + i + 1);
             } else if (level.isJsonArray() && !level.getAsJsonArray().isEmpty()) {
                 for (JsonElement skill : level.getAsJsonArray()) {
-                    addSkill(pathId, tiers, skill, i + 1);
+                    addSkill(pathId, tiers, skill, tierOffset + i + 1);
                 }
             } else {
                 throw new IllegalArgumentException("Skill position " + (i + 1)

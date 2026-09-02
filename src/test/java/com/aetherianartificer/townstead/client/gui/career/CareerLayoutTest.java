@@ -30,6 +30,15 @@ class CareerLayoutTest {
         assertEquals(second[1], third[1]);
     }
 
+    @Test
+    void everySkillUsesTheSameAuthoredFrameSize() {
+        CareerGraphS2CPayload.PathTag path =
+                new CareerGraphS2CPayload.PathTag("chef", "Chef", false);
+        assertEquals(NodeArt.markSize(skill("townstead:cook/chef/first", path)),
+                NodeArt.markSize(skill("townstead:cook/chef/second", path)),
+                "selection and parent position must not resize one option in a peer row");
+    }
+
     private static CareerGraphS2CPayload.Node skill(
             String id, CareerGraphS2CPayload.PathTag path) {
         return new CareerGraphS2CPayload.Node(
@@ -37,7 +46,7 @@ class CareerLayoutTest {
                 CareerGraphS2CPayload.KIND_SKILL, CareerGraphS2CPayload.STATE_READY,
                 id, "", "minecraft:stick",
                 1, 0, 0, 0, 0, 0,
-                false, false, false, "", "", List.of(), List.of(),
+                false, false, "", "", List.of(), List.of(),
                 "Apprentice", 1, "", "", List.of(), List.of(), path);
     }
 }

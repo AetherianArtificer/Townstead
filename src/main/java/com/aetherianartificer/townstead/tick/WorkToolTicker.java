@@ -26,7 +26,7 @@ import java.util.function.Predicate;
  * inventory.
  */
 public final class WorkToolTicker {
-    private static final int CHECK_INTERVAL_TICKS = 10;
+    private static final int CHECK_INTERVAL_TICKS = 20;
     private WorkToolTicker() {}
 
     private static final Map<UUID, ItemStack> PREVIOUS_MAIN_HAND = new ConcurrentHashMap<>();
@@ -34,6 +34,14 @@ public final class WorkToolTicker {
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
         if ((villager.level().getGameTime() + villager.getId()) % CHECK_INTERVAL_TICKS != 0) return;
+
+        Brain<?> brain = villager.getBrain();
+        long dayTime = villager.level().getDayTime() % 24000L;
+        Activity current = brain.getSchedule().getActivityAt((int) dayTime);
+        if (current != Activity.WORK) {
+            restore(villager);
+            return;
+        }
 
         Set<net.minecraft.resources.ResourceLocation> actionableTasks = new HashSet<>();
         if (villager.level() instanceof ServerLevel level) {
@@ -47,14 +55,6 @@ public final class WorkToolTicker {
         }
         Predicate<ItemStack> matcher = stack ->
                 matchesDeclaredTool(villager, stack, actionableTasks);
-
-        Brain<?> brain = villager.getBrain();
-        long dayTime = villager.level().getDayTime() % 24000L;
-        Activity current = brain.getSchedule().getActivityAt((int) dayTime);
-        if (current != Activity.WORK) {
-            restore(villager);
-            return;
-        }
 
         ItemStack currentMain = villager.getMainHandItem();
         UUID id = villager.getUUID();

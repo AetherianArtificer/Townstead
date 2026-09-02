@@ -117,8 +117,13 @@ class BuildingEnclosurePoliciesTest {
 
     private static JsonObject resource(String path) throws Exception {
         var stream = BuildingEnclosurePoliciesTest.class.getResourceAsStream(path);
+        if (stream == null) {
+            stream = BuildingEnclosurePoliciesTest.class.getResourceAsStream(
+                    path.replace("/tags/block/", "/tags/blocks/")
+                            .replace("/tags/item/", "/tags/items/"));
+        }
         if (stream == null) throw new IllegalStateException("Missing test resource " + path);
-        try (stream; var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+        try (var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader).getAsJsonObject();
         }
     }

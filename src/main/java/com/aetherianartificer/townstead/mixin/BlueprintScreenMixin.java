@@ -684,11 +684,9 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
     }
 
-    // Building-icon replacement (swap MCA's atlas sprite for a townsteadNodeItem)
-    // is applied at MCA's icon-draw choke points, which differ by MCA version:
-    //   - new floor-system API: WidgetUtilsBuildingIconMixin + BlueprintMapRendererIconMixin
-    //   - legacy 7.7.x API:     BlueprintScreenLegacyIconMixin (drawBuildingIcon)
-    // TownsteadMixinPlugin applies the pair matching the runtime MCA.
+    // Map item icons are applied where the renderer still has the BuildingType:
+    // BlueprintMapRendererIconMixin on the floor-system API and
+    // BlueprintScreenLegacyIconMixin on 1.20.1. Neither path depends on MCA atlas UVs.
 
     //? if neoforge {
     @Override

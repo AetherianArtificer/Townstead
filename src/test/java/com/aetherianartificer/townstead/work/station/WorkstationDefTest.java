@@ -271,13 +271,22 @@ class WorkstationDefTest {
         assertEquals(StationType.PLACE_SURFACE, oven.role());
         assertEquals(id("pizzadelight:raw_pizza"), oven.places());
         assertEquals(id("pizzadelight:pizza"), oven.doneBlock());
+        assertEquals(id("townstead_work:cook"), oven.workTask(),
+                "the final bake must be exposed on the cook's order sheet");
+        assertTrue(oven.orderable().all(), "Pizza Delight's finished pizzas are orderable");
         assertTrue(oven.surfaceTags().contains(id("farmersdelight:heat_sources")),
                 "the bake anchors on Farmer's Delight heat sources");
+        assertTrue(oven.surfaceTags().contains(id("minecraft:campfires")),
+                "the Pizza Stand's campfire must be a direct placement surface");
+        assertTrue(oven.surfaceBlocks().contains(id("minecraft:campfire")),
+                "vanilla campfires remain usable even when another mod's nested tags change");
         assertTrue(oven.harvestTools().contains(id("pizzadelight:iron_pizza_peel")),
                 "harvest requires a peel, like a player");
         WorkstationDef.Produce pizza = oven.produces().get(0);
-        assertEquals(List.of("pizzadelight:raw_pizza"), pizza.inputs(),
-                "the oven bakes the component-bearing pizza assembled at the station");
+        assertEquals(List.of("product:townstead_product:pizza/assembled_raw"), pizza.inputs(),
+                "the oven requires the component-bearing pizza assembled at the station");
+        assertEquals(600, pizza.timeTicks(),
+                "Pizza Delight starts baking at 600 ticks before ingredient adjustments");
 
         WorkstationDef station = parseResource("/data/townstead/workstation/pizza_station.json");
         assertEquals(StationType.PASSIVE_STATION, station.role());
@@ -285,9 +294,29 @@ class WorkstationDefTest {
         assertEquals(id("townstead_work:cook"), station.workTask());
         assertTrue(station.orderable().all());
         WorkstationDef.Produce assembled = station.produces().get(0);
-        assertEquals(List.of("#townstead:pizza_bases", "#pizzadelight:sauce",
+        assertEquals(List.of("product:pizzadelight:raw_pizza", "#pizzadelight:sauce",
                 "#pizzadelight:ingredients"), assembled.inputs());
         assertEquals(id("pizzadelight:raw_pizza"), assembled.output());
+    }
+
+    @Test
+    void placeSurfaceHarvestToolIsAReusableRecipeRequirement() {
+        WorkstationDef def = parse("""
+                {
+                  "type": "place_surface",
+                  "blocks": ["minecraft:dirt", "minecraft:stone"],
+                  "surface": "minecraft:campfire",
+                  "places": "minecraft:dirt",
+                  "done": "minecraft:stone",
+                  "tool": "minecraft:iron_shovel",
+                  "produces": [{
+                    "inputs": ["minecraft:wheat"],
+                    "output": "minecraft:bread"
+                  }]
+                }""");
+        assertNotNull(def);
+        assertTrue(ProtocolRecipes.requiresReusableTool(def),
+                "a harvest utensil must block planning before work starts, not only collection");
     }
 
     @Test

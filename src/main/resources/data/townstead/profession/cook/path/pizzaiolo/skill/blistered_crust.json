@@ -1,13 +1,14 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "[PLACEHOLDER] COOK SKILL 01"
+    "text": "Blistered Crust"
   },
-  "icon": "minecraft:barrier",
+  "icon": "minecraft:baked_potato",
   "description": {
-    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/blistered_crust."
+    "text": "The best crust carries the small scars of fierce heat and careful timing. Gain 2 additional Cook XP for each Cook rank you hold."
   },
   "cost": 1,
+  "requires": ["peel_vault"],
   "grants": [
     {
       "capability": "townstead:cook_xp_per_tier",

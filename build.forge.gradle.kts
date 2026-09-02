@@ -3,34 +3,25 @@ plugins {
     id("net.minecraftforge.gradle") version "[6.0,6.2)"
 }
 
-val legacyMcaNamespace = project.name.endsWith("-legacy")
-val mcaNamespace = if (legacyMcaNamespace) "forge.net.mca" else "forge.net.conczin.mca"
+val mcaNamespace = "forge.net.conczin.mca"
+val mcaArtifact = "minecraft-comes-alive"
+val mcaVersion = "7.7.1-alpha.3+1.20.1-universal"
 
 stonecutter {
     const("neoforge", false)
     const("forge", true)
     replacements {
-        // Both 1.20.1 lines ship Architectury-relocated jars, so MCA lives under a
-        // forge.* prefix at runtime. The released Forge line also predates the
-        // net.mca -> net.conczin.mca move, while the backport-improvements line
-        // carries it. Compile a distinct artifact for each namespace.
-        if (legacyMcaNamespace) {
-            string(true) { replace("net.conczin.mca.registry", "forge.net.mca") }
-            string(true) { replace("net.conczin.mca", "forge.net.mca") }
-            string(true) { replace("net/conczin/mca", "forge/net/mca") }
-        } else {
-            // No .registry rule here: the three affected imports already pick the
-            // flat 1.20.1 form via version directives, and a second rule producing
-            // this same target would prefix those references twice.
-            string(true) { replace("net.conczin.mca", "forge.net.conczin.mca") }
-            string(true) { replace("net/conczin/mca", "forge/net/conczin/mca") }
-        }
+        // MCA's current 1.20.1 universal Forge jar is Architectury-relocated at runtime.
+        // Source stays on MCA's current net.conczin namespace and Stonecutter applies the
+        // relocation required by that production artifact.
+        string(true) { replace("net.conczin.mca", "forge.net.conczin.mca") }
+        string(true) { replace("net/conczin/mca", "forge/net/conczin/mca") }
     }
 }
 
 version = "${property("mod_version")}+${stonecutter.current.version}"
 group = property("mod_group") as String
-base.archivesName.set(if (legacyMcaNamespace) "townstead-mca-legacy" else "townstead-mca-modern")
+base.archivesName.set("townstead")
 
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(17))
 
@@ -62,6 +53,7 @@ minecraft {
 }
 
 repositories {
+    flatDir { dirs(rootProject.file("libs")) }
     maven("https://maven.architectury.dev/")
     maven("https://maven.blamejared.com")
     mavenCentral()
@@ -73,13 +65,9 @@ dependencies {
     "minecraft"("net.minecraftforge:forge:1.20.1-47.3.0")
     // Both must be relocated (universal) jars: the sources compile against the
     // forge.* namespace the shipped jars actually carry at runtime.
-    compileOnly(files(
-        if (legacyMcaNamespace) {
-            "${rootProject.projectDir}/libs/mca-forge-legacy-7.7.0-beta.2+1.20.1-universal.jar"
-        } else {
-            "${rootProject.projectDir}/libs/mca-forge-7.7.1-alpha.1+1.20.1-universal.jar"
-        }
-    ))
+    // Resolve through flatDir so ForgeGradle can remap the universal production jar for the
+    // named development/test runtime. A files(...) dependency cannot be deobfuscated.
+    compileOnly(fg.deobf("townstead.libs:$mcaArtifact:$mcaVersion"))
     compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:${property("mixin_extras_version")}")!!)
     implementation(jarJar("io.github.llamalad7:mixinextras-forge:${property("mixin_extras_version")}")) {
         jarJar.ranged(this, "[0.5.4,0.6)")
@@ -127,8 +115,7 @@ if (stonecutter.current.isActive) {
 }
 
 layout.buildDirectory.set(file(
-    "${rootProject.projectDir}/.cache/townstead-build-1.20.1-forge" +
-        if (legacyMcaNamespace) "-legacy" else "-modern"
+    "${rootProject.projectDir}/.cache/townstead-build-1.20.1-forge"
 ))
 
 tasks.withType<ProcessResources> {

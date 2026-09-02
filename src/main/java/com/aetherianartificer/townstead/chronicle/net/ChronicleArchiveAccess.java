@@ -1,14 +1,8 @@
 package com.aetherianartificer.townstead.chronicle.net;
 
-import com.aetherianartificer.townstead.Townstead;
 import net.conczin.mca.server.world.data.Village;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.TagKey;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 
 import java.util.Map;
 import java.util.Optional;
@@ -16,15 +10,11 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Server-owned, short-lived authorization created by consulting a physical archive: using
- * an archive item (the MCA Civil Registry) in a village, or reading the shelves of the
- * village's Archives building. Query packets carry no trusted village identity.
+ * Server-owned, short-lived authorization created by reading the shelves of a village's
+ * Archives building. Query packets carry no trusted village identity.
  */
 public final class ChronicleArchiveAccess {
     private static final long LEASE_TICKS = 20L * 30L;
-    private static final ResourceLocation MCA_CIVIL_REGISTRY = parse("mca:civil_registry");
-    private static final TagKey<Item> ARCHIVE_SOURCES = TagKey.create(Registries.ITEM,
-            id("chronicle_archive_sources"));
     private static final Map<UUID, Lease> LEASES = new ConcurrentHashMap<>();
 
     public record Lease(ResourceLocation dimension, int villageId, String villageName,
@@ -32,17 +22,9 @@ public final class ChronicleArchiveAccess {
 
     private ChronicleArchiveAccess() {}
 
-    public static boolean tryOpen(ServerPlayer player, ItemStack stack) {
-        if (!isArchiveSource(stack)) return false;
-        Optional<Village> nearest = Village.findNearest(player);
-        if (nearest.isEmpty() || !nearest.get().isWithinBorder(player)) return false;
-        grantLease(player, nearest.get());
-        return true;
-    }
-
     /**
      * Reading the shelves: an empty-hand click on a bookshelf that belongs to the village's
-     * Archives building opens that village's history, same lease as the registry item.
+     * Archives building opens that village's history.
      */
     public static boolean tryOpenBuilding(ServerPlayer player, net.minecraft.core.BlockPos pos) {
         if (!player.serverLevel().getBlockState(pos)
@@ -82,12 +64,6 @@ public final class ChronicleArchiveAccess {
         return Optional.of(renewed);
     }
 
-    public static boolean isArchiveSource(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) return false;
-        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        return MCA_CIVIL_REGISTRY.equals(itemId) || stack.is(ARCHIVE_SOURCES);
-    }
-
     public static void clear(UUID player) { LEASES.remove(player); }
     public static void clearAll() { LEASES.clear(); }
 
@@ -99,19 +75,4 @@ public final class ChronicleArchiveAccess {
         *///?}
     }
 
-    private static ResourceLocation id(String path) {
-        //? if >=1.21 {
-        return ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, path);
-        //?} else {
-        /*return new ResourceLocation(Townstead.MOD_ID, path);
-        *///?}
-    }
-
-    private static ResourceLocation parse(String value) {
-        //? if >=1.21 {
-        return ResourceLocation.parse(value);
-        //?} else {
-        /*return new ResourceLocation(value);
-        *///?}
-    }
 }

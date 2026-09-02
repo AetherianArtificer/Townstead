@@ -77,6 +77,20 @@ class StorageResourceContractTest {
     }
 
     @Test
+    void cuttingBoardIsAToolShelfButNotGeneralStorage() {
+        JsonObject machines = resource(
+                "/data/townstead/storage_role/compat_farmersdelight.json");
+        assertFalse(machines.getAsJsonArray("blocks").asList().stream()
+                .anyMatch(value -> "farmersdelight:cutting_board".equals(value.getAsString())));
+
+        JsonObject tools = resource(
+                "/data/townstead/storage_role/compat_farmersdelight_tools.json");
+        assertTrue("tools".equals(tools.get("role").getAsString()));
+        assertTrue(tools.getAsJsonArray("blocks").asList().stream()
+                .anyMatch(value -> "farmersdelight:cutting_board".equals(value.getAsString())));
+    }
+
+    @Test
     void professionsPreferRolesNotContainerBlocks() {
         for (String profession : new String[]{
                 "armorer", "cleric", "weaponsmith", "cartographer", "toolsmith", "fletcher", "mason"}) {
@@ -103,6 +117,11 @@ class StorageResourceContractTest {
 
     private static JsonObject resource(String path) {
         var stream = StorageResourceContractTest.class.getResourceAsStream(path);
+        if (stream == null) {
+            stream = StorageResourceContractTest.class.getResourceAsStream(
+                    path.replace("/tags/block/", "/tags/blocks/")
+                            .replace("/tags/item/", "/tags/items/"));
+        }
         if (stream == null) throw new AssertionError("Missing test resource " + path);
         try (var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader).getAsJsonObject();

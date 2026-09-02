@@ -53,6 +53,12 @@ class StorageRoleDefTest {
                 java.util.Set.of(StorageRoleDef.Role.OUTPUTS), StorageUse.INGREDIENT));
         assertEquals(0, StorageRoles.useRank(java.util.Set.of(StorageRoleDef.Role.TOOLS),
                 StorageUse.TOOL));
+        assertEquals(0, StorageRoles.useRank(java.util.Set.of(StorageRoleDef.Role.TOOLS),
+                StorageUse.TOOL_RETURN));
+        assertEquals(Integer.MAX_VALUE, StorageRoles.useRank(
+                java.util.Set.of(StorageRoleDef.Role.TOOLS), StorageUse.OUTPUT));
+        assertEquals(Integer.MAX_VALUE, StorageRoles.useRank(
+                java.util.Set.of(StorageRoleDef.Role.TOOLS), StorageUse.INGREDIENT));
         assertEquals(2, StorageRoles.useRank(java.util.Set.of(StorageRoleDef.Role.RESERVES),
                 StorageUse.INGREDIENT));
         assertEquals(Integer.MAX_VALUE, StorageRoles.useRank(

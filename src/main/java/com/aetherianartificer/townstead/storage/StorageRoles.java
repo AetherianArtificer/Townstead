@@ -12,6 +12,7 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,9 +37,10 @@ import java.util.Set;
  * <ol>
  *   <li>the player's protected-storage config, because it is their world;</li>
  *   <li>a {@code not_storage} declaration;</li>
- *   <li>a declared workstation, since a block a pack already calls a station is a machine and
- *       saying so twice would be a second place to forget;</li>
- *   <li>a {@code storage} declaration;</li>
+ *   <li>an explicit storage-role declaration, including narrowly routed roles such as
+ *       {@code tools};</li>
+ *   <li>a declared workstation, since an otherwise-unlabelled station is a machine rather than
+ *       a shelf;</li>
  *   <li>failing all of that, the guesses in {@code NearbyItemSources} (a furnace-like block
  *       entity, a name that reads like machinery). They are last, so data always overrules one.</li>
  * </ol>
@@ -55,6 +57,8 @@ public final class StorageRoles {
     public static final String SCHEMA = "townstead:storage_role/v1";
 
     private static volatile List<StorageRoleDef> DEFS = List.of();
+    private static int toolShelfCacheGeneration = Integer.MIN_VALUE;
+    private static final Map<ToolShelfKey, Boolean> TOOL_SHELF_MATCHES = new java.util.HashMap<>();
 
     private StorageRoles() {}
 
@@ -81,9 +85,12 @@ public final class StorageRoles {
         BlockState state = level.getBlockState(pos);
         if (com.aetherianartificer.townstead.TownsteadConfig.isProtectedStorage(state)) return false;
         if (denied(state)) return false;
+        // A station can also expose a deliberately routed shelf. Cutting boards are the canonical
+        // example: a knife displayed on one is a tool source, and an empty board may receive that
+        // borrowed knife back, but its TOOLS role keeps ingredients and finished goods out.
+        if (allowed(state)) return true;
         if (com.aetherianartificer.townstead.hunger.NearbyItemSources
                 .isProcessingContainer(level, pos, be)) return false;
-        if (allowed(state)) return true;
         if (be instanceof net.minecraft.world.Container container) {
             return container.getContainerSize() > 0;
         }
@@ -147,6 +154,65 @@ public final class StorageRoles {
         }
         return best;
     }
+
+    /**
+     * Item-level refinement for a destination. Ordinary role-labelled containers accept whatever
+     * their inventory contract accepts. A workstation that doubles as a tool shelf is narrower:
+     * only one of the tools declared by its attached recipes belongs on that surface.
+     */
+    public static boolean acceptsItem(net.minecraft.server.level.ServerLevel level,
+                                      net.minecraft.core.BlockPos pos,
+                                      ItemStack stack,
+                                      StorageUse use) {
+        if (level == null || pos == null || stack == null || stack.isEmpty()) return false;
+        if (use != StorageUse.TOOL_RETURN) return true;
+        BlockState state = level.getBlockState(pos);
+        if (!semanticRoles(state).contains(StorageRoleDef.Role.TOOLS)
+                || com.aetherianartificer.townstead.work.station.Workstations.byState(state) == null) {
+            return true;
+        }
+        ResourceLocation block = net.minecraft.core.registries.BuiltInRegistries.BLOCK
+                .getKey(state.getBlock());
+        if (block == null) return false;
+        Set<ResourceLocation> recipeTypes =
+                com.aetherianartificer.townstead.work.station.WorkstationRecipeTypes.forBlock(block);
+        if (recipeTypes.isEmpty()) return false;
+        ResourceLocation item = net.minecraft.core.registries.BuiltInRegistries.ITEM
+                .getKey(stack.getItem());
+        if (item == null) return false;
+        return matchesStationTool(level, block, item, stack, recipeTypes);
+    }
+
+    private static synchronized boolean matchesStationTool(
+            net.minecraft.server.level.ServerLevel level,
+            ResourceLocation block,
+            ResourceLocation item,
+            ItemStack stack,
+            Set<ResourceLocation> recipeTypes) {
+        int generation = com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry.generation();
+        if (toolShelfCacheGeneration != generation) {
+            TOOL_SHELF_MATCHES.clear();
+            toolShelfCacheGeneration = generation;
+        }
+        ToolShelfKey key = new ToolShelfKey(block, item);
+        Boolean cached = TOOL_SHELF_MATCHES.get(key);
+        if (cached != null) return cached;
+        for (com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe recipe
+                : com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry.getRecipes(level)) {
+            ResourceLocation recipeType =
+                    com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry.recipeTypeId(recipe);
+            if (!recipe.requiresTool() || recipeType == null || !recipeTypes.contains(recipeType)) continue;
+            if (com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry
+                    .recipeToolMatches(recipe, stack)) {
+                TOOL_SHELF_MATCHES.put(key, true);
+                return true;
+            }
+        }
+        TOOL_SHELF_MATCHES.put(key, false);
+        return false;
+    }
+
+    private record ToolShelfKey(ResourceLocation block, ResourceLocation item) {}
 
     public static Set<StorageRoleDef.Role> semanticRoles(BlockState state) {
         if (state == null) return Set.of();

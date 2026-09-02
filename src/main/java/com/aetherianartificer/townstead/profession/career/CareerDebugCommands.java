@@ -120,7 +120,10 @@ public final class CareerDebugCommands {
             return 0;
         }
         source.sendSuccess(() -> Component.literal(
-                "=== Skill points: " + entity.getName().getString() + " ===")
+                "=== Insight: " + entity.getName().getString() + " ("
+                        + SkillPoints.available(entity) + " available, "
+                        + SkillPoints.earned(entity) + " earned, "
+                        + SkillPoints.spent(entity) + " spent) ===")
                 .withStyle(ChatFormatting.GOLD), false);
         for (ProfessionDef def : careers) {
             source.sendSuccess(() -> Component.literal(line(entity, def)), false);
@@ -132,13 +135,12 @@ public final class CareerDebugCommands {
         ProfessionXpStore store = CareerTreeRows.storeOf(entity);
         int level = store == null ? 1 : ProfessionProgress.getTier(store, def.id());
         int earned = SkillPoints.earned(entity, def);
-        int spent = SkillPoints.spent(entity, def);
         StringBuilder text = new StringBuilder(String.format(
-                "%s: level %d/%d, %d xp, %d point%s available (%d earned, %d spent)",
+                "%s: level %d/%d, %d xp, contributes %d Insight, spends %d here",
                 def.displayName().getString(), level,
                 ProfessionProgressions.spec(def.id()).maxTier(),
                 store == null ? 0 : ProfessionProgress.getXp(store, def.id()),
-                earned - spent, earned - spent == 1 ? "" : "s", earned, spent));
+                earned, SkillPoints.spent(entity, def)));
         ProfessionPaths.Path committed = ProfessionPaths.committedPath(
                 def.id(), LearnedSkills.learned(entity)::contains);
         text.append(committed == null ? ", no path chosen"
@@ -172,27 +174,28 @@ public final class CareerDebugCommands {
                 wanted++;
             }
         } else {
-            int spent = SkillPoints.spent(entity, def);
-            int available = earnedBefore - spent;
+            int spent = SkillPoints.spent(entity);
+            int available = SkillPoints.available(entity);
             if (count > available) {
                 source.sendFailure(Component.literal("Only " + Math.max(0, available)
-                        + " unspent point(s) to revoke; the rest are spent. Respec first."));
+                        + " unspent Insight to revoke; the rest is spent. Respec first."));
                 return 0;
             }
+            int earnedOutsideCareer = SkillPoints.earned(entity) - earnedBefore;
             wanted = before;
             // Step down to the highest level that still pays for everything already bought, so a
             // revoke can never strand the target with more spent than earned.
             while (wanted > 1 && def.skillPointsThrough(wanted) > earnedBefore - count
-                    && def.skillPointsThrough(wanted - 1) >= spent) {
+                    && earnedOutsideCareer + def.skillPointsThrough(wanted - 1) >= spent) {
                 wanted--;
             }
         }
         int reached = ProfessionProgress.setLevel(store, def.id(), wanted);
         int delta = def.skillPointsThrough(reached) - earnedBefore;
         source.sendSuccess(() -> Component.literal(String.format(
-                "%s: level %d -> %d, %+d skill point%s.",
-                def.displayName().getString(), before, reached, delta,
-                Math.abs(delta) == 1 ? "" : "s")).withStyle(ChatFormatting.GREEN), true);
+                "%s: level %d -> %d, %+d Insight.",
+                def.displayName().getString(), before, reached, delta))
+                .withStyle(ChatFormatting.GREEN), true);
         if (Math.abs(delta) < count) {
             source.sendSuccess(() -> Component.literal("  The level track ran out at "
                     + (grant ? "level " + reached + " (the top)" : "level " + reached)

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:serving_menu/v1",
+  "buildings": [
+    "bakery",
+    "compat/bakery/bread_stand_l1",
+    "compat/bakery/bake_sale_l2",
+    "compat/bakery/bakery_l3"
+  ],
+  "products": [
+    "minecraft:bread",
+    "minecraft:cookie",
+    "minecraft:pumpkin_pie"
+  ]
+}

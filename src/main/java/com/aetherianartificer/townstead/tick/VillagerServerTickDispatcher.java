@@ -19,6 +19,8 @@ public final class VillagerServerTickDispatcher {
             FatigueVillagerTicker.forget(villager);
             WorkToolTicker.forget(villager);
             EmptyContainerDropoff.forget(villager);
+            com.aetherianartificer.townstead.profession.ProfessionSites.forget(villager);
+            com.aetherianartificer.townstead.work.WorkActivities.forget(villager);
             return;
         }
 

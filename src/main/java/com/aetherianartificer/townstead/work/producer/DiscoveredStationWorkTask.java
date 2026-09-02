@@ -97,11 +97,21 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     private static final int REQUEST_RANGE = 24;
     private static final int REQUEST_INITIAL_DELAY_TICKS = 1200;
     private static final long ROOM_BOUNDS_CACHE_TICKS = 80L;
+    private static final long SERVICE_SITE_CACHE_TICKS = 20L;
 
     // Subclass-only state
     private @Nullable StationType stationType;
     private ItemStack heldCuttingInput = ItemStack.EMPTY;
     private boolean cuttingBoardItemPlaced;
+    /** A tool interaction processes one staged input; repeating it can place the tool on an empty board. */
+    private boolean toolWorkActionPerformed;
+    /** Strokes still owed before the tool interaction fires; a cut is a motion, not a teleport. */
+    private int toolWorkSwingsRemaining;
+    /** Tool interactions that reported nothing observable; bounded so a wrong board never stalls a shift. */
+    private int toolWorkAttempts;
+    private static final int TOOL_WORK_SWINGS = 3;
+    private static final int TOOL_SWING_INTERVAL_TICKS = 6;
+    private static final int MAX_TOOL_WORK_ATTEMPTS = 3;
     private ItemStack previousBoardMainHand = ItemStack.EMPTY;
     private ItemStack previousBoardOffHand = ItemStack.EMPTY;
     private boolean boardHandsVisible;
@@ -115,8 +125,13 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
      * physical entity is gone.
      */
     private boolean sweptProducedOutput;
+    /** Output already carried after this cycle committed its inputs. A direct interaction return
+     * must exceed this baseline before it can prove that the current operation completed. */
+    private int carriedOutputBaseline;
     /** The station consumed/ejected its inputs without exposing the selected recipe's output. */
     private boolean interruptedProduction;
+    /** A finished station recovered after reload may need to fetch its collection tool first. */
+    private @Nullable WorkIngredients.PhysicalPull harvestToolPull;
     /** Entity-powered stations share this lifecycle; their mod contributes only the JSON tag. */
     private final com.aetherianartificer.townstead.work.station.StationDriverCoordinator drivers =
             new com.aetherianartificer.townstead.work.station.StationDriverCoordinator();
@@ -127,7 +142,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     private long cachedWorksiteWorkUntil = 0L;
     private WorkBuildingNav.Snapshot cachedWorksiteSnapshotNav = WorkBuildingNav.Snapshot.EMPTY;
     private @Nullable com.aetherianartificer.townstead.profession.ProfessionSites.Site cachedServiceSite;
-    private long serviceSiteDecisionTick = Long.MIN_VALUE;
+    private long cachedServiceSiteUntil = Long.MIN_VALUE;
     /** Wider-scope station searches, kept apart from the worksite snapshot and on the same TTL. */
     private final java.util.EnumMap<com.aetherianartificer.townstead.profession.def.WorkTaskDef.Scope, ScopedSnapshot>
             scopedSnapshots = new java.util.EnumMap<>(com.aetherianartificer.townstead.profession.def.WorkTaskDef.Scope.class);
@@ -148,7 +163,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                 villager, taskTypes)) return false;
         if (com.aetherianartificer.townstead.work.WorkActivities.hasHigherPriorityWork(
                 level, villager, spec.taskType())) return false;
-        return com.aetherianartificer.townstead.profession.ProfessionSites.serviceSite(level, villager, com.aetherianartificer.townstead.profession.ProfessionSites.defForTask(spec.taskType())).isPresent();
+        return resolveAssignedSite(level, villager) != null;
     }
 
     // ── Worksite ──
@@ -172,9 +187,14 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     }
 
     @Override
+    protected Set<Long> atEaseCells(ServerLevel level, VillagerEntityMCA villager) {
+        return activeWorksiteBounds(level, villager);
+    }
+
+    @Override
     protected @Nullable BlockPos resolveWorksiteTarget(ServerLevel level, VillagerEntityMCA villager, long gameTime, WorkSiteView site) {
         WorkBuildingNav.Snapshot worksiteSnapshotLocal = activeWorksiteSnapshot(level, villager);
-        return currentOrNewWorksiteTarget(villager, gameTime, worksiteSnapshotLocal);
+        return currentOrNewWorksiteTarget(level, villager, gameTime, worksiteSnapshotLocal);
     }
 
     @Override
@@ -185,9 +205,8 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     @Override
     protected @Nullable BlockPos refreshStandPosition(ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos stationAnchor) {
         if (stationAnchor == null) return null;
-        BlockPos refreshed = WorkBuildingNav.nearestStationStand(activeWorksiteSnapshot(level, villager), villager, stationAnchor);
-        if (refreshed == null) refreshed = Stations.findStandingPosition(level, villager, stationAnchor);
-        return refreshed;
+        return WorkBuildingNav.nearestReachableStationStand(
+                level, activeWorksiteSnapshot(level, villager), villager, stationAnchor);
     }
 
     // ── Station acquisition ──
@@ -204,9 +223,13 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         Set<ResourceLocation> pathWorksites =
                 com.aetherianartificer.townstead.profession.career.PathAffinity
                         .preferredWorksites(villager);
-        java.util.function.ToIntFunction<ResourceLocation> orderPriority = output ->
-                com.aetherianartificer.townstead.work.order.WorksiteOrders.outputPriority(
-                        level, villager, activeWorksite(), output);
+        // Computed once per pass: it walks the room for an empty plate, and the ranking below
+        // asks about every candidate recipe at every station.
+        Set<ResourceLocation> menuDemand = com.aetherianartificer.townstead.food.ServingDemand
+                .standing(level, villager, worksiteBoundsLocal);
+        java.util.function.ToIntFunction<DiscoveredRecipe> orderPriority = recipe ->
+                com.aetherianartificer.townstead.work.order.WorksiteOrders.recipePriority(
+                        level, villager, activeWorksite(), recipe, menuDemand);
         // Counted so the failure below can name its cause: a station this career does not work
         // is a different problem from a station with nothing to cook at it, and they are
         // indistinguishable from a villager standing still.
@@ -230,17 +253,11 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
             }
             // Ingredients still come from the villager's own kitchen: a wider scope lets a cook
             // walk to a shared station, not raid the whole village's pantries.
-            if (!pathWorksites.isEmpty()) {
-                best = ProducerStationIndex.chooseForRole(
-                        spec.role(), level, villager, snapshot, worksiteBoundsLocal, abandonedUntilByStation,
-                        gameTime, recipeCooldownUntil,
-                        filter.and(slot -> pathWorksites.contains(slot.blockId())),
-                        orderPriority, taskTypes);
-                if (best != null) break;
-            }
             best = ProducerStationIndex.chooseForRole(
                     spec.role(), level, villager, snapshot, worksiteBoundsLocal, abandonedUntilByStation,
-                    gameTime, recipeCooldownUntil, filter, orderPriority, taskTypes);
+                    gameTime, recipeCooldownUntil, filter,
+                    slot -> pathWorksites.isEmpty() || pathWorksites.contains(slot.blockId()) ? 0 : 1,
+                    orderPriority, taskTypes);
             if (best != null) break;
         }
         if (!sawAnyStation) {
@@ -294,6 +311,24 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         if (activeRecipe == null && session != null) {
             activeRecipe = ProducerWorkSupport.findSessionRecipe(spec.role(), level, session, stationType);
         }
+        if (activeRecipe == null) {
+            var def = com.aetherianartificer.townstead.work.station.StationProtocols
+                    .defAt(level, stationAnchor);
+            if (def != null && def.role() == StationType.PLACE_SURFACE) {
+                ResourceLocation standing = BuiltInRegistries.BLOCK.getKey(
+                        level.getBlockState(stationAnchor).getBlock());
+                if (standing != null && standing.equals(def.doneBlock())) {
+                    activeRecipe = com.aetherianartificer.townstead.work.station.ProtocolRecipes
+                            .discover(level, def).stream()
+                            .filter(candidate -> candidate.output().equals(def.doneBlock()))
+                            .findFirst().orElse(null);
+                    if (activeRecipe != null) {
+                        debugChat(level, villager, "RECONCILE:recovered finished recipe "
+                                + activeRecipe.output());
+                    }
+                }
+            }
+        }
         return ProductionStations.classify(level, villager, stationAnchor, stationType, fdRecipe(), session);
     }
 
@@ -330,12 +365,45 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     }
 
     @Override
+    protected @Nullable String noRecipeMissingRequirement(
+            ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (stationAnchor == null) return null;
+        var def = com.aetherianartificer.townstead.work.station.StationProtocols
+                .defAt(level, stationAnchor);
+        if (def == null || def.harvestTools().isEmpty()
+                || com.aetherianartificer.townstead.work.station.StationProtocols
+                .hasHarvestTool(villager, def)) return null;
+        Predicate<ItemStack> matcher = stack -> !stack.isEmpty()
+                && def.harvestTools().contains(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+        String label = WorkRecipeRegistry.harvestToolRequirementName(def);
+        // A tool in affiliated worksite storage is actionable and will be acquired normally.
+        // Only report the prerequisite when neither the worker nor that storage can supply it.
+        return WorkIngredients.nextPhysicalPull(level, villager, matcher, 1, true, label,
+                activeWorksiteBounds(level, villager)) == null ? label : null;
+    }
+
+    @Override
     protected @Nullable ProducerRecipe pickRecipe(ServerLevel level, VillagerEntityMCA villager,
                                                   long gameTime,
                                                   java.util.function.Predicate<ResourceLocation> outputAllowed) {
         if (stationAnchor == null || stationType == null) return null;
         if (!Stations.isStation(level, stationAnchor)) return null;
         Set<Long> worksiteBoundsLocal = activeWorksiteBounds(level, villager);
+        // An empty plate asks for a menu dish before the worker's own preference gets a say.
+        // Nothing viable on the menu at this station is not a failure: fall through to the
+        // ordinary pick, which is how the intermediate steps of a menu dish still get made.
+        Set<ResourceLocation> menuDemand = com.aetherianartificer.townstead.food.ServingDemand
+                .standing(level, villager, worksiteBoundsLocal);
+        if (!menuDemand.isEmpty()) {
+            DiscoveredRecipe dish = ProducerWorkSupport.pickRecipe(
+                    spec.role(), level, villager, stationType, stationAnchor, worksiteBoundsLocal,
+                    recipeCooldownUntil, output -> outputAllowed.test(output) && menuDemand.contains(output),
+                    taskTypes);
+            if (dish != null) {
+                debugChat(level, villager, "SELECT:menu " + dish.output() + " for an empty plate");
+                return dish;
+            }
+        }
         DiscoveredRecipe recipe = ProducerWorkSupport.pickRecipe(
                 spec.role(), level, villager, stationType, stationAnchor, worksiteBoundsLocal,
                 recipeCooldownUntil, outputAllowed, taskTypes);
@@ -392,8 +460,8 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     @Override
     protected boolean isCycleOutput(ServerLevel level, ItemStack stack) {
         if (stack == null || stack.isEmpty()) return false;
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        return id != null && WorkRecipeRegistry.allOutputIds(level).contains(id);
+        return CycleOutputMatcher.matches(fdRecipe(), BuiltInRegistries.ITEM.getKey(stack.getItem()),
+                com.aetherianartificer.townstead.work.order.OrderProducts.key(stack));
     }
 
     @Override
@@ -434,6 +502,9 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         if (activeRecipe == null) return false;
         sweptProducedOutput = false;
         interruptedProduction = false;
+        toolWorkActionPerformed = false;
+        toolWorkAttempts = 0;
+        toolWorkSwingsRemaining = TOOL_WORK_SWINGS;
         DiscoveredRecipe recipe = fdRecipe();
         if (com.aetherianartificer.townstead.work.station.StationProtocols.handles(level, stationAnchor)) {
             // The physical hand-off: place the work block and/or push the gathered items from
@@ -445,6 +516,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                 return false;
             }
         }
+        carriedOutputBaseline = countInventoryItem(villager.getInventory(), recipe.output());
         var v2 = stationAnchor == null ? null
                 : com.aetherianartificer.townstead.work.station.Workstations
                         .v2ByState(level.getBlockState(stationAnchor));
@@ -465,12 +537,46 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                 && com.aetherianartificer.townstead.work.station.StationProtocols.handles(level, stationAnchor)) {
             var v2 = com.aetherianartificer.townstead.work.station.Workstations
                     .v2ByState(level.getBlockState(stationAnchor));
-            if (v2 != null && v2.behaviorUses("tool")) {
-                com.aetherianartificer.townstead.work.station.StationProtocols.work(
-                        level, villager, stationAnchor, recipe);
-            }
-            boolean ready = com.aetherianartificer.townstead.work.station.StationProtocols.isReady(
+            boolean readyBeforeWork = com.aetherianartificer.townstead.work.station.StationProtocols.isReady(
                     level, villager, stationAnchor, recipe);
+            if (ToolWorkActionGate.shouldPerform(v2 != null && v2.behaviorUses("tool"),
+                    readyBeforeWork, toolWorkActionPerformed)) {
+                if (toolWorkSwingsRemaining > 0) {
+                    toolWorkSwingsRemaining--;
+                    villager.swing(villager.getDominantHand());
+                    produceDoneTick = gameTime + TOOL_SWING_INTERVAL_TICKS;
+                    return false;
+                }
+                villager.swing(villager.getDominantHand());
+                boolean acted = com.aetherianartificer.townstead.work.station.StationProtocols.work(
+                        level, villager, stationAnchor, recipe);
+                // A board hands its product straight to the worker and is empty afterwards, so
+                // polling the block would wait for a result that is already in the apron pocket.
+                if (carriedOutputComplete(villager, recipe)) {
+                    toolWorkActionPerformed = true;
+                    return true;
+                }
+                boolean idleAfterWork = com.aetherianartificer.townstead.work.station.StationProtocols
+                        .isIdle(level, stationAnchor, recipe);
+                if (!acted || idleAfterWork) {
+                    // The block may report a consumed interaction while processing nothing (a
+                    // board displaying a knife, a knife nobody carries). Repeating that every tick
+                    // until the lease ends was the stall; give it a few honest tries, then move on.
+                    toolWorkAttempts++;
+                    if (toolWorkAttempts >= MAX_TOOL_WORK_ATTEMPTS) {
+                        debugChat(level, villager, "COOK:tool action produced nothing at "
+                                + stationAnchor.toShortString() + "; rotating station");
+                        failCuttingBoard(level, villager, gameTime, recipe.output());
+                        return false;
+                    }
+                    produceDoneTick = gameTime + TOOL_SWING_INTERVAL_TICKS;
+                    return false;
+                }
+                toolWorkActionPerformed = true;
+            }
+            boolean ready = readyBeforeWork
+                    || com.aetherianartificer.townstead.work.station.StationProtocols.isReady(
+                            level, villager, stationAnchor, recipe);
             if (activeBatchOperations() > 1) {
                 if (com.aetherianartificer.townstead.work.station.StationProtocols.hasPendingInputs(
                         level, stationAnchor, recipe)) return false;
@@ -541,20 +647,87 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
 
     @Override
     protected CollectResult collectFromStation(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        // Reconciliation may discover a finished station after the task which started it was
+        // stopped (schedule change, unload, reassignment). In that recovery path there is no
+        // active recipe, but the station adapter can still collect its available output. Keep
+        // the nullable recipe in one local: dereferencing fdRecipe() here crashed the server
+        // while an unrelated cook recovered an already-finished station.
+        DiscoveredRecipe recipe = fdRecipe();
         Set<Long> worksiteBoundsLocal = activeWorksiteBounds(level, villager);
         Set<ResourceLocation> outputIds = WorkRecipeRegistry.allOutputIds(level);
+        var def = stationAnchor == null ? null
+                : com.aetherianartificer.townstead.work.station.StationProtocols
+                        .defAt(level, stationAnchor);
+        if (def != null && !def.harvestTools().isEmpty()
+                && !com.aetherianartificer.townstead.work.station.StationProtocols
+                        .hasHarvestTool(villager, def)) {
+            String label = WorkRecipeRegistry.harvestToolRequirementName(def);
+            Predicate<ItemStack> matcher = stack -> !stack.isEmpty()
+                    && def.harvestTools().contains(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+            if (harvestToolPull == null) {
+                harvestToolPull = WorkIngredients.nextPhysicalPull(
+                        level, villager, matcher, 1, true, label, worksiteBoundsLocal);
+            }
+            if (harvestToolPull == null) {
+                setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_INGREDIENTS, label);
+                return CollectResult.waiting(false);
+            }
+            BlockPos source = harvestToolPull.source();
+            net.minecraft.world.entity.ai.behavior.BehaviorUtils.setWalkAndLookTargetMemories(
+                    villager, source, WALK_SPEED, 1);
+            villager.getBrain().setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.LOOK_TARGET,
+                    new net.minecraft.world.entity.ai.behavior.BlockPosTracker(source));
+            if (villager.distanceToSqr(source.getX() + 0.5, source.getY() + 0.5,
+                    source.getZ() + 0.5) > 5.0d) {
+                return CollectResult.waiting(false);
+            }
+            WorkIngredients.PhysicalPullResult pulled = WorkIngredients.executePhysicalPull(
+                    level, villager, harvestToolPull);
+            harvestToolPull = null;
+            if (pulled.count() <= 0) return CollectResult.waiting(false);
+            rememberBorrowedTools(pulled.itemIds());
+            villager.swing(villager.getDominantHand());
+            debugChat(level, villager, "COLLECT:acquired " + label + " from "
+                    + source.toShortString());
+            return CollectResult.waiting(false);
+        }
+        harvestToolPull = null;
+        // Tool recovery may have walked away from the station. Return before invoking the
+        // adapter; harvesting across the room would satisfy the code but not the physical story.
+        if (def != null && !def.harvestTools().isEmpty() && standPos != null
+                && villager.distanceToSqr(standPos.getX() + 0.5, standPos.getY() + 0.5,
+                        standPos.getZ() + 0.5) > NEAR_STATION_DISTANCE_SQ) {
+            net.minecraft.world.entity.ai.behavior.BehaviorUtils.setWalkAndLookTargetMemories(
+                    villager, standPos, WALK_SPEED, CLOSE_ENOUGH);
+            return CollectResult.waiting(false);
+        }
+        int producedInHand = recipe == null ? 0
+                : countInventoryItem(villager.getInventory(), recipe.output()) - carriedOutputBaseline;
+        if (recipe != null && producedInHand
+                >= Math.max(1, recipe.outputCount()) * activeBatchOperations()) {
+            // A real player interaction may return its product directly to the actor instead of
+            // leaving it resident in the block (or as a world drop). The station is already
+            // drained in that case; the new carried stack is the physical completion evidence.
+            rememberAppraisal(villager);
+            return CollectResult.ofCollected();
+        }
         boolean collected = ProducerOutputHelper.collectSurfaceDrops(level, villager, stationAnchor, worksiteBoundsLocal, outputIds);
 
         if (com.aetherianartificer.townstead.work.station.StationProtocols.handles(level, stationAnchor)) {
             boolean sweptAndDrained = sweptProducedOutput
                     && com.aetherianartificer.townstead.work.station.StationProtocols.isIdle(
-                            level, stationAnchor, fdRecipe());
+                            level, stationAnchor, recipe);
             boolean harvested = com.aetherianartificer.townstead.work.station.StationProtocols.collect(
-                    level, villager, stationAnchor, fdRecipe(), worksiteBoundsLocal);
+                    level, villager, stationAnchor, recipe, worksiteBoundsLocal);
             // Harvest throws the product into the world (the peel lift); sweep it up.
             collected |= ProducerOutputHelper.collectSurfaceDrops(level, villager, stationAnchor, worksiteBoundsLocal, outputIds);
-            boolean carriedOutput = countInventoryItem(villager.getInventory(), fdRecipe().output())
-                    >= Math.max(1, fdRecipe().outputCount());
+            // collectAvailable() is the recipe-less recovery operation. A successful adapter
+            // call has already moved its output into the villager's inventory, so it is the
+            // evidence itself; with a known recipe retain the stricter expected-count check.
+            boolean carriedOutput = recipe == null
+                    ? harvested
+                    : countInventoryItem(villager.getInventory(), recipe.output())
+                            >= Math.max(1, recipe.outputCount());
             if (harvested || collected || sweptAndDrained) {
                 if (!collected && !carriedOutput && !sweptAndDrained) {
                     return CollectResult.waiting(false);
@@ -702,8 +875,13 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         var v2 = stationAnchor == null ? null
                 : com.aetherianartificer.townstead.work.station.Workstations
                         .v2ByState(level.getBlockState(stationAnchor));
+        var legacy = stationAnchor == null ? null
+                : com.aetherianartificer.townstead.work.station.StationProtocols
+                        .defAt(level, stationAnchor);
         return stationType == StationType.HOT_STATION || stationType == StationType.CUTTING_BOARD
-                || (v2 != null && v2.collect() != null);
+                || (v2 != null && v2.collect() != null)
+                || (legacy != null && legacy.role() == StationType.PLACE_SURFACE
+                        && !legacy.harvestTools().isEmpty());
     }
 
     @Override
@@ -740,6 +918,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     @Override
     protected void onStationAbandoned(ServerLevel level, VillagerEntityMCA villager,
                                       @Nullable BlockPos pos, long gameTime) {
+        harvestToolPull = null;
         releaseStationDriver(level, villager, pos);
     }
 
@@ -836,13 +1015,15 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         stationType = null;
         lastAppraisal = null;
         sweptProducedOutput = false;
+        carriedOutputBaseline = 0;
         interruptedProduction = false;
+        harvestToolPull = null;
         cachedWorksiteWorkArea = Set.of();
         cachedWorksiteWorkAnchor = null;
         cachedWorksiteWorkUntil = 0L;
         cachedWorksiteSnapshotNav = WorkBuildingNav.Snapshot.EMPTY;
         cachedServiceSite = null;
-        serviceSiteDecisionTick = Long.MIN_VALUE;
+        cachedServiceSiteUntil = Long.MIN_VALUE;
         scopedSnapshots.clear();
     }
 
@@ -853,13 +1034,15 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         stationType = null;
         lastAppraisal = null;
         sweptProducedOutput = false;
+        carriedOutputBaseline = 0;
         interruptedProduction = false;
+        harvestToolPull = null;
         cachedWorksiteWorkArea = Set.of();
         cachedWorksiteWorkAnchor = null;
         cachedWorksiteWorkUntil = 0L;
         cachedWorksiteSnapshotNav = WorkBuildingNav.Snapshot.EMPTY;
         cachedServiceSite = null;
-        serviceSiteDecisionTick = Long.MIN_VALUE;
+        cachedServiceSiteUntil = Long.MIN_VALUE;
         scopedSnapshots.clear();
     }
 
@@ -943,6 +1126,10 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         if (cookId.length() > 8) cookId = cookId.substring(0, 8);
         String recipe = activeRecipe == null ? "none" : activeRecipe.output().toString();
         String anchor = stationAnchor == null ? "none" : stationAnchor.getX() + "," + stationAnchor.getY() + "," + stationAnchor.getZ();
+        String here = villager.blockPosition().toShortString();
+        String stand = standPos == null ? "none" : standPos.toShortString();
+        String interaction = stationAnchor == null ? "n/a"
+                : Boolean.toString(canInteractWithStation(level, villager, stationAnchor));
         String station = stationType == null ? "none" : stationType.name().toLowerCase();
         String idleInfo = gameTime < idleUntilTick ? " idle=" + (idleUntilTick - gameTime) : "";
         StorageSearchContext.Snapshot storageSnapshot = StorageSearchContext.Profiler.snapshot();
@@ -957,7 +1144,8 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                 .orElse("none");
         String navMode = townstead$navigationMode();
         player.sendSystemMessage(Component.literal("[" + spec.label() + "DBG:" + cookName + "#" + cookId + "] state=" + state.name()
-                + " station=" + station + " anchor=" + anchor + " recipe=" + recipe
+                + " station=" + station + " anchor=" + anchor + " here=" + here
+                + " stand=" + stand + " interact=" + interaction + " recipe=" + recipe
                 + " doneAt=" + produceDoneTick + " blocked=" + blocked.name()
                 + " mode=" + navMode + " site=" + assignedSiteDesc + " stations=" + worksiteSnapshotLocal.stations().size()
                 + " storage=" + storageSnapshot.observedBlocks()
@@ -980,6 +1168,13 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         return (DiscoveredRecipe) activeRecipe;
     }
 
+    /** Whether this cycle's expected product has arrived in the worker's own inventory. */
+    private boolean carriedOutputComplete(VillagerEntityMCA villager, DiscoveredRecipe recipe) {
+        int expected = Math.max(1, recipe.outputCount()) * activeBatchOperations();
+        return countInventoryItem(villager.getInventory(), recipe.output()) - carriedOutputBaseline
+                >= expected;
+    }
+
     private static int countInventoryItem(SimpleContainer inventory, ResourceLocation itemId) {
         int count = 0;
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
@@ -993,22 +1188,20 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     }
 
     /**
-     * The cook's assigned site, resolved once. Every step below used to ask for this twice — once
-     * to find the reference block and again to find the bounds — and each ask rebuilds the village's
-     * whole cook-site list and re-sorts its residents. Threading one resolution through halves that
-     * with no caching involved.
+     * The cook's active service site, kept briefly across eligibility and worksite probes. Secondary
+     * order sheets can still redirect the worker within one second, while a waiting producer no
+     * longer re-resolves every compatible building and its effective MCA type every brain tick.
      */
     private @Nullable com.aetherianartificer.townstead.profession.ProfessionSites.Site resolveAssignedSite(
             ServerLevel level, VillagerEntityMCA villager) {
         long now = level.getGameTime();
-        boolean deciding = state == ProducerState.PATH_TO_WORKSITE && stationAnchor == null;
-        if (cachedServiceSite == null || (deciding && serviceSiteDecisionTick != now)) {
+        if (now > cachedServiceSiteUntil) {
             cachedServiceSite = com.aetherianartificer.townstead.profession.ProfessionSites
                     .serviceSite(level, villager,
                             com.aetherianartificer.townstead.profession.ProfessionSites
                                     .defForTask(spec.taskType()))
                     .orElse(null);
-            serviceSiteDecisionTick = now;
+            cachedServiceSiteUntil = now + SERVICE_SITE_CACHE_TICKS;
         }
         return cachedServiceSite;
     }
@@ -1204,7 +1397,8 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
 
     /** Re-use the existing worksite target if still valid, otherwise pick a nearest non-blacklisted stand/approach. */
     private @Nullable BlockPos currentOrNewWorksiteTarget(
-            VillagerEntityMCA villager, long gameTime, WorkBuildingNav.Snapshot worksiteSnapshotLocal) {
+            ServerLevel level, VillagerEntityMCA villager, long gameTime,
+            WorkBuildingNav.Snapshot worksiteSnapshotLocal) {
         if (currentWorksiteTarget != null
                 && !worksiteTargetFailures.isBlacklisted(currentWorksiteTarget, gameTime)) {
             return currentWorksiteTarget;
@@ -1217,9 +1411,11 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                 .sorted(Comparator.comparingDouble(pos ->
                         villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)))
                 .toList();
-        if (!standCandidates.isEmpty()) {
+        BlockPos reachableStand = WorkBuildingNav.chooseReachableTarget(
+                level, villager, standCandidates, CLOSE_ENOUGH, false);
+        if (reachableStand != null) {
             currentWorksiteTargetKind = "stand";
-            currentWorksiteTarget = standCandidates.get(0);
+            currentWorksiteTarget = reachableStand;
             return currentWorksiteTarget;
         }
 
@@ -1228,12 +1424,22 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                 .sorted(Comparator.comparingDouble(pos ->
                         villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)))
                 .toList();
-        if (fallbackCandidates.isEmpty()) {
+        BlockPos reachableFallback = WorkBuildingNav.chooseReachableTarget(
+                level, villager, fallbackCandidates, CLOSE_ENOUGH, false);
+        if (reachableFallback == null) {
+            List<BlockPos> intermediateCandidates = WorkBuildingNav
+                    .intermediateApproachTargets(level, villager, worksiteSnapshotLocal).stream()
+                    .filter(pos -> !worksiteTargetFailures.isBlacklisted(pos, gameTime))
+                    .toList();
+            reachableFallback = WorkBuildingNav.chooseReachableTarget(
+                    level, villager, intermediateCandidates, CLOSE_ENOUGH, false);
+        }
+        if (reachableFallback == null) {
             currentWorksiteTarget = null;
             return null;
         }
         currentWorksiteTargetKind = "fallback";
-        currentWorksiteTarget = fallbackCandidates.get(0);
+        currentWorksiteTarget = reachableFallback;
         return currentWorksiteTarget;
     }
 
@@ -1330,6 +1536,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     private void resetBoardSession(VillagerEntityMCA villager) {
         heldCuttingInput = ItemStack.EMPTY;
         cuttingBoardItemPlaced = false;
+        toolWorkActionPerformed = false;
         clearStickyBoardVisuals();
         clearBoardHands(villager);
     }

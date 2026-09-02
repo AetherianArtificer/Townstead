@@ -6,7 +6,6 @@ import com.aetherianartificer.townstead.client.gui.common.Palette;
 import com.aetherianartificer.townstead.client.gui.common.ParchmentButton;
 import com.aetherianartificer.townstead.profession.career.CareerChooseC2SPayload;
 import com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload;
-import com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -51,7 +50,7 @@ public final class CareerScreen extends Screen {
     private static final int UNIT = 4;
 
     /** The rank rail down the left of the board, which the content never scrolls under. */
-    private static final int GUTTER_W = 16;
+    private static final int GUTTER_W = 52;
 
     private List<CareerGraphS2CPayload.Node> nodes = List.of();
     private final Map<String, List<CareerGraphS2CPayload.Node>> byRoot = new LinkedHashMap<>();
@@ -59,7 +58,6 @@ public final class CareerScreen extends Screen {
     private String activeRoot = "";
     private String selectedId = "";
     private String hoveredId = "";
-    private String scribeName = "";
     private String notice = "";
     private String payloadAuthority = "";
     private String payloadDate = "";
@@ -85,7 +83,6 @@ public final class CareerScreen extends Screen {
     private static long hintStart = -1L;
 
     private Button equipButton;
-    private Button trackButton;
     private Button resumeButton;
 
     private CareerScreen(CareerGraphS2CPayload payload) {
@@ -112,7 +109,6 @@ public final class CareerScreen extends Screen {
      */
     private void store(CareerGraphS2CPayload payload) {
         this.nodes = payload.nodes();
-        this.scribeName = payload.scribeName();
         this.notice = payload.notice();
         this.payloadAuthority = payload.authority();
         this.payloadDate = payload.dateLine();
@@ -240,11 +236,6 @@ public final class CareerScreen extends Screen {
         }
         int buttonX = pageX() + 14;
         int buttonW = PAGE_W - 28;
-        trackButton = addRenderableWidget(new ParchmentButton(buttonX,
-                height - MARGIN - FRAME_THICK - 85, buttonW, 18,
-                Component.translatable("townstead.career.screen.track"), button -> {
-            if (!selectedId.isEmpty()) sendTrack(new CareerTrackC2SPayload(selectedId));
-        }));
         resumeButton = addRenderableWidget(new ParchmentButton(buttonX,
                 height - MARGIN - FRAME_THICK - 64, buttonW, 18,
                 Component.translatable("townstead.career.screen.resume_work"), button -> {
@@ -289,16 +280,6 @@ public final class CareerScreen extends Screen {
                 && selected.stamp().present();
         resumeButton.visible = resume;
         resumeButton.active = resume;
-
-        boolean trackable = !inspect && selected != null
-                && selected.kind() == CareerGraphS2CPayload.KIND_ADVANCED
-                && selected.state() != CareerGraphS2CPayload.STATE_ACQUIRED;
-        trackButton.visible = trackable;
-        trackButton.active = trackable;
-        if (trackable) {
-            trackButton.setMessage(Component.translatable(selected.tracked()
-                    ? "townstead.career.screen.untrack" : "townstead.career.screen.track"));
-        }
         stackButtons();
     }
 
@@ -311,9 +292,7 @@ public final class CareerScreen extends Screen {
         }
         if (resumeButton.visible) {
             resumeButton.setY(slotY);
-            slotY -= 21;
         }
-        if (trackButton.visible) trackButton.setY(slotY);
     }
 
     private String rootLabel(String rootId) {
@@ -347,26 +326,20 @@ public final class CareerScreen extends Screen {
     private void drawBackdrop(GuiGraphics g) {
         g.fill(0, 0, width, height, 0x88070402);
         FrameRenderer.drawWoodenFrame(g, contentX(), contentY(), contentW(), contentH(), FRAME_THICK);
-        // One open journal rather than a black board with a second UI bolted beside it. The map
-        // texture supplies paper grain across the whole surface; restrained washes establish the
-        // map and the record as regions without changing material halfway across the screen.
-        FrameRenderer.drawMapParchment(g, contentX(), contentY(), contentW(), contentH());
-        g.fill(boardX(), contentY(), boardX() + boardW(), contentY() + contentH(), 0x18FFF2D2);
-        g.fill(pageX(), contentY(), pageX() + PAGE_W, contentY() + contentH(), 0x38FFF8E5);
+        // Two surfaces inside one frame, exactly as in the prototype: a dark career board and one
+        // flat record sheet. A 9-sliced map texture here contributed its own ragged inner frame,
+        // leaving what looked like a second piece of paper behind BOTH halves.
+        g.fill(contentX(), contentY(), contentX() + contentW(), contentY() + contentH(),
+                Palette.DESK_DEEP);
+        g.fill(pageX(), contentY(), pageX() + PAGE_W, contentY() + contentH(), RecordArt.PAGE);
 
         // Navigation and career identity share one dark masthead, leaving the map bright enough to
         // scan.
         g.fill(boardX(), contentY(), boardX() + boardW(), boardY(), 0xFF302113);
         g.fillGradient(boardX(), contentY(), boardX() + boardW(), boardY(), 0xFF3D2A17, 0xFF24170D);
 
-        // The seam. It was two translucent washes over parchment, which is why it read as a strip of
-        // nothing in particular sitting between two things that were each clearly something. It is
-        // now what it is meant to depict: the record is a sheet lying on the desk, so its left edge
-        // casts a shadow onto the board and catches the light along its own fold.
-        int seam = pageX() - FRAME_THICK;
-        g.fill(seam, contentY(), pageX(), contentY() + contentH(), 0x73120C06);
-        g.fill(seam, contentY(), seam + 1, contentY() + contentH(), 0x99000000);
-        g.fill(pageX() - 1, contentY(), pageX(), contentY() + contentH(), 0xFF8A6A3C);
+        // A divider, not a cast paper shadow.
+        g.fill(pageX() - 2, contentY(), pageX(), contentY() + contentH(), Palette.DESK_EDGE);
     }
 
     @Override
@@ -413,7 +386,7 @@ public final class CareerScreen extends Screen {
         drawFoot(g);
         CareerGraphS2CPayload.Node selected = nodeById(selectedId);
         recordLayout = page.draw(g, pageX(), PAGE_W, contentY(), pageViewBottom(),
-                selected, nodes, byId, activeRoot, layout, scribeName, inspect, stamp);
+                selected, nodes, byId, activeRoot, layout, inspect, stamp);
         drawStamp(g, selected, mouseX, mouseY);
 
         if (pickerOpen) {
@@ -440,43 +413,82 @@ public final class CareerScreen extends Screen {
     private int panelLeft() { return pageX(); }
     private int panelTop() { return contentY(); }
 
-    /**
-     * Where a stamp may land: the whole sheet.
-     *
-     * <p>This used to stop at {@code pageViewBottom()}, which is where the SCROLLING BODY ends, not
-     * where the page does. Dropping low on the sheet, which is exactly where somebody would press a
-     * registration mark, fell outside and the tool flew silently back to its well.</p>
-     */
-    private boolean overPanel(double mouseX, double mouseY) {
-        return mouseX >= pageX() + 4 && mouseX < pageX() + PAGE_W - 4
-                && mouseY >= contentY() + 4 && mouseY < contentY() + contentH() - 4;
+    /** The endorsement field in the pinned record head is the stamp's impression area. */
+    private boolean overStampTarget(double mouseX, double mouseY) {
+        return recordLayout != null
+                && recordLayout.stampW() > 0
+                && mouseX >= recordLayout.stampX()
+                && mouseX < recordLayout.stampX() + recordLayout.stampW()
+                && mouseY >= recordLayout.stampY()
+                && mouseY < recordLayout.stampY() + recordLayout.stampH();
+    }
+
+    /** The desk band under the record sheet, above the button stack. */
+    private int railY() {
+        int top = height - MARGIN - FRAME_THICK - 22;
+        if (equipButton != null && equipButton.visible) top = Math.min(top, equipButton.getY());
+        if (resumeButton != null && resumeButton.visible) {
+            top = Math.min(top, resumeButton.getY());
+        }
+        return top - 6 - StampTool.RAIL_H;
+    }
+
+    /** What the rail says about this record when the die is not in hand. */
+    private Component railStatus(CareerGraphS2CPayload.Node selected) {
+        if (selected == null) return Component.empty();
+        if (StampTool.available(selected, inspect)) {
+            if (!stampReady(selected)) {
+                return Component.translatable("townstead.career.screen.rail_short",
+                        selected.points() - availablePoints());
+            }
+            return selected.kind() == CareerGraphS2CPayload.KIND_SKILL && selected.points() > 0
+                    ? Component.translatable("townstead.career.screen.rail_cost", selected.points())
+                    : Component.translatable("townstead.career.screen.rail_take_up");
+        }
+        if (selected.stamp().present()) {
+            return Component.translatable("townstead.career.screen.rail_registered");
+        }
+        return Component.translatable("townstead.career.screen.rail_locked");
     }
 
     /**
      * The stamp: the mark already pressed on this record, the well it lives in, and the tool while
      * it is in hand.
      *
-     * <p>Drawn after the page so a mark sits ON the writing. Free placement is the point: the record
-     * reserves no corner for it, because the player chose where it went.</p>
+     * <p>Drawn after the page, inside the registry field reserved for the impression. The player
+     * still lifts, moves, rotates and presses the real tool; the rest of the record stays readable.</p>
      */
     private void drawStamp(GuiGraphics g, CareerGraphS2CPayload.Node selected, int mouseX, int mouseY) {
         if (selected == null || recordLayout == null) return;
         g.flush();
-        stamp.drawMark(g, panelLeft(), panelTop(), selected.stamp(), PAGE_W - 28);
+        // Scissored to the field. Clamping the mark's CENTRE is not enough: a tilted cartouche
+        // throws its corners well outside, and they were landing on the kicker and past the panel
+        // edge. The field is the impression area, so the field is where the ink stops.
+        if (recordLayout.stampW() > 0) {
+            g.enableScissor(recordLayout.stampX(), recordLayout.stampY(),
+                    recordLayout.stampX() + recordLayout.stampW(),
+                    recordLayout.stampY() + recordLayout.stampH());
+            stamp.drawMark(g, panelLeft(), panelTop(), selected.id(), selected.stamp(),
+                    recordLayout.stampX(), recordLayout.stampY(),
+                    recordLayout.stampW(), recordLayout.stampH());
+            g.disableScissor();
+        }
         // Unconditional: the animation is local feedback for YOUR press, and it self-expires. It
         // used to be gated on the server having echoed the mark back, so the tool vanished on
         // release and nothing moved until the round trip landed.
         stamp.drawPressAnimation(g);
-        if (!recordLayout.wellShown()) return;
-        // The well's position comes from the record's pinned head rather than being computed here,
-        // so the tool and its slot can never drift apart when the head's height changes.
-        // Keep drawing the empty well while the stamp is held. Besides preserving the furniture,
-        // this makes returning the tool to cancel a visible action instead of a hidden gesture.
-        stamp.drawWell(g, recordLayout.wellX(), recordLayout.wellY(), stampReady(selected));
-        if (stamp.held()) stamp.drawHeld(g, overPanel(mouseX, mouseY));
+        // The rail draws on every record. Its whole point is that a refusal has somewhere to be
+        // said, which a tool that simply is not there cannot do. It also has to come before the
+        // case, which anchors itself to the rail's geometry.
+        boolean afford = recordLayout.canStamp() && stampReady(selected);
+        stamp.drawRail(g, pageX(), railY(), PAGE_W, afford,
+                railStatus(selected).getString(), afford ? Palette.BRASS : Palette.LABEL_DIM);
+        CareerGraphS2CPayload.Node career = nodeById(activeRoot);
+        stamp.drawCase(g, career == null ? "" : career.name(), mouseX, mouseY);
+        if (stamp.held()) stamp.drawHeld(g, overStampTarget(mouseX, mouseY));
     }
 
-    /** Unspent points on the career this record belongs to. */
+    /** Shared Insight, mirrored on every career payload node. */
     private int availablePoints() {
         CareerGraphS2CPayload.Node career = nodeById(activeRoot);
         return career == null ? 0 : career.points();
@@ -509,17 +521,21 @@ public final class CareerScreen extends Screen {
         // permanent hint look like a region of the screen.
         g.fill(boardX(), y, boardX() + boardW(), y + h, Palette.DESK_EDGE);
         if (!notice.isEmpty()) {
-            // A refusal stays full size and grows UPWARD out of the band, over a board that is not
-            // being read at the moment anyway. Shrinking the band to fit the hint must not shrink
-            // the one message on this screen a player has to be able to read.
-            int textWidth = font.width(notice);
-            int centerX = boardX() + boardW() / 2;
-            int boxH = font.lineHeight + 6;
-            int top = y + h - boxH;
-            g.fill(centerX - textWidth / 2 - 6, top, centerX + textWidth / 2 + 6, y + h, 0xE0140F08);
-            g.fill(centerX - textWidth / 2 - 6, top, centerX + textWidth / 2 + 6, top + 1,
-                    0xFFC46A4A);
-            g.drawString(font, notice, centerX - textWidth / 2, top + 3, 0xFFE8C7A0, false);
+            // A refusal is a toast IN the reserved strip, not a banner laid over the last row of
+            // the tree. Keep it readable by giving it the whole strip and ellipsising the tail.
+            String shown = notice;
+            int room = Math.max(20, Math.round((boardW() - 2 * UNIT) / FOOT_SCALE));
+            while (shown.length() > 1 && font.width(shown + "…") > room) {
+                shown = shown.substring(0, shown.length() - 1);
+            }
+            if (!shown.equals(notice)) shown += "…";
+            g.fill(boardX(), y, boardX() + boardW(), y + h, 0xE0140F08);
+            g.fill(boardX(), y, boardX() + boardW(), y + 1, 0xFFC46A4A);
+            g.pose().pushPose();
+            g.pose().translate(boardX() + UNIT, y + 2, 0);
+            g.pose().scale(FOOT_SCALE, FOOT_SCALE, 1f);
+            g.drawString(font, shown, 0, 0, 0xFFE8C7A0, false);
+            g.pose().popPose();
             return;
         }
         String help = Component.translatable("townstead.career.screen.controls").getString();
@@ -550,10 +566,12 @@ public final class CareerScreen extends Screen {
             Component status = node.equipped()
                     ? Component.translatable("townstead.career.screen.state.equipped")
                     : node.state() == CareerGraphS2CPayload.STATE_ACQUIRED
-                            ? Component.translatable("townstead.career.screen.state.acquired")
-                    : node.points() > 0
+                            ? Component.translatable("townstead.career.screen.state.learned")
+                    : node.state() == CareerGraphS2CPayload.STATE_READY && node.points() > 0
                             ? Component.translatable("townstead.career.screen.cost", node.points())
-                            : Component.translatable("townstead.career.screen.state.ready");
+                    : node.state() == CareerGraphS2CPayload.STATE_READY
+                            ? Component.translatable("townstead.career.screen.state.available")
+                            : Component.translatable("townstead.career.screen.state.locked");
             lines.addAll(font.split(status.copy()
                     .withStyle(net.minecraft.ChatFormatting.GOLD), 140));
         } else {
@@ -586,15 +604,9 @@ public final class CareerScreen extends Screen {
         return true;
     }
 
-    /** The page extends down to the topmost visible button, minus the signature band. */
+    /** The page extends down to the topmost visible button. */
     private int pageViewBottom() {
-        int top = height - MARGIN - FRAME_THICK - 22;
-        if (equipButton != null && equipButton.visible) top = Math.min(top, equipButton.getY());
-        if (resumeButton != null && resumeButton.visible) {
-            top = Math.min(top, resumeButton.getY());
-        }
-        if (trackButton != null && trackButton.visible) top = Math.min(top, trackButton.getY());
-        return top - (scribeName.isEmpty() ? 6 : 16);
+        return railY() - 6;
     }
 
     // ── Input ──────────────────────────────────────────────────────────────
@@ -607,9 +619,31 @@ public final class CareerScreen extends Screen {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button == 0 && layout != null && recordLayout != null) {
             CareerGraphS2CPayload.Node selected = nodeById(selectedId);
-            if (recordLayout.wellShown() && !stamp.held()
-                    && stampReady(selected)
-                    && stamp.overWell(mouseX, mouseY)) {
+            if (stamp.overCaseBox(mouseX, mouseY)) {
+                stamp.toggleCase();
+                return true;
+            }
+            if (stamp.caseOpen()) {
+                if (stamp.chooseFromCase(mouseX, mouseY)) return true;
+                if (stamp.overCase(mouseX, mouseY)) return true;
+                stamp.closeCase();
+            }
+            // Lifting and pressing are both clicks now, and the tool stays in hand between them.
+            // The board is not a stampable surface, so selecting the next mark while holding the
+            // stamp is unambiguous and the ceremony is paid once rather than once per skill.
+            if (stamp.held()) {
+                if (stamp.overRail(mouseX, mouseY)) {
+                    stamp.reset();
+                    return true;
+                }
+                if (overStampTarget(mouseX, mouseY)) {
+                    if (StampTool.available(selected, inspect) && stampReady(selected)) {
+                        pressStamp(selected);
+                    }
+                    return true;
+                }
+            } else if (recordLayout.canStamp() && stampReady(selected)
+                    && stamp.overPad(mouseX, mouseY)) {
                 stamp.pickUp(mouseX, mouseY);
                 return true;
             }
@@ -632,6 +666,8 @@ public final class CareerScreen extends Screen {
             if (picked != null && !picked.equals(activeRoot)) {
                 activeRoot = picked;
                 selectedId = "";
+                stamp.closeCase();
+                stamp.reset();
                 pickerScroll = 0;
                 board.setUserFramed(false);
                 page.resetScroll();
@@ -689,6 +725,8 @@ public final class CareerScreen extends Screen {
     public boolean mouseDragged(double mouseX, double mouseY, int button,
                                 double dragX, double dragY) {
         if (layout != null && stamp.held() && button == 0) {
+            // Still tracked while a button is down: a drag that starts on the page must not leave
+            // the tool stranded where the pointer used to be.
             stamp.moveTo(mouseX, mouseY);
             return true;
         }
@@ -699,28 +737,40 @@ public final class CareerScreen extends Screen {
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
     }
 
+    /**
+     * Presses the mark, and draws it locally without waiting for the server.
+     *
+     * <p>Position is stored relative to the panel, not the screen, so the mark survives a resize or
+     * a change of GUI scale. The server re-validates the press itself.</p>
+     */
+    private void pressStamp(CareerGraphS2CPayload.Node selected) {
+        sendStamp(new com.aetherianartificer.townstead.profession.career
+                .CareerStampC2SPayload(selected.id(),
+                stamp.centreX() - panelLeft(), stamp.centreY() - panelTop(),
+                stamp.rotation(), stamp.selectedTextureId(),
+                stamp.selectedSourcePack(), stamp.selectedLabel()));
+        stamp.press(selected.id(), stamp.centreX(), stamp.centreY(), panelLeft(), panelTop());
+    }
+
+    @Override
+    public void mouseMoved(double mouseX, double mouseY) {
+        // The stamp is carried, not dragged, so it follows the pointer with no button down.
+        if (stamp != null && stamp.held()) stamp.moveTo(mouseX, mouseY);
+        super.mouseMoved(mouseX, mouseY);
+    }
+
+    @Override
+    public boolean keyPressed(int key, int scan, int modifiers) {
+        if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE && stamp != null && stamp.held()) {
+            stamp.reset();
+            return true;
+        }
+        return super.keyPressed(key, scan, modifiers);
+    }
+
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (board != null) board.setDragging(false);
-        if (layout != null && stamp.held() && button == 0) {
-            CareerGraphS2CPayload.Node selected = nodeById(selectedId);
-            // The well is part of the page, so it must win this test. Otherwise returning the stamp
-            // to its obvious home registered a mark exactly where the player meant to cancel one.
-            if (stamp.overWell(mouseX, mouseY)) {
-                stamp.reset();
-            } else if (overPanel(mouseX, mouseY) && StampTool.available(selected, inspect)) {
-                // Position is stored relative to the panel, not the screen, so the mark survives a
-                // resize or a change of GUI scale. The server re-validates the press itself.
-                sendStamp(new com.aetherianartificer.townstead.profession.career
-                        .CareerStampC2SPayload(selected.id(),
-                        stamp.centreX() - panelLeft(), stamp.centreY() - panelTop(),
-                        stamp.rotation()));
-                stamp.press(stamp.centreX(), stamp.centreY());
-            } else {
-                stamp.reset();
-            }
-            return true;
-        }
         return super.mouseReleased(mouseX, mouseY, button);
     }
 
@@ -764,8 +814,13 @@ public final class CareerScreen extends Screen {
         }
         if (mouseX >= pageX()) {
             // Only the body scrolls; the pinned head is not part of the viewport it moves within.
-            int bodyTop = contentY() + page.headHeight(nodeById(selectedId), inspect);
-            page.scrollBy(delta, pageViewBottom() - bodyTop);
+            CareerGraphS2CPayload.Node selected = nodeById(selectedId);
+            page.scrollBy(delta, page.scrollViewHeight(selected, inspect,
+                    contentY(), pageViewBottom()));
+            return;
+        }
+        if (stamp.caseOpen() && stamp.overCase(mouseX, mouseY)) {
+            stamp.scrollCase(delta);
             return;
         }
         syncViewport();
@@ -794,14 +849,6 @@ public final class CareerScreen extends Screen {
 
     private static void sendVocation(
             com.aetherianartificer.townstead.profession.career.CareerVocationC2SPayload payload) {
-        //? if neoforge {
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
-        //?} else {
-        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(payload);
-        *///?}
-    }
-
-    private static void sendTrack(CareerTrackC2SPayload payload) {
         //? if neoforge {
         net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
         //?} else {

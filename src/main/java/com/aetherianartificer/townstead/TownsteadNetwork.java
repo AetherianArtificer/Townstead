@@ -145,14 +145,6 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.work.order.net.OrderEditC2SPayload::read,
                 TownsteadNetwork::handleOrderEdit);
-        registerS2C(com.aetherianartificer.townstead.work.order.net.OrdersOfferS2CPayload.class,
-                (p, buf) -> p.write(buf),
-                com.aetherianartificer.townstead.work.order.net.OrdersOfferS2CPayload::read,
-                TownsteadNetwork::handleOrdersOffer);
-        registerC2S(com.aetherianartificer.townstead.work.order.net.OrdersAskC2SPayload.class,
-                (p, buf) -> p.write(buf),
-                com.aetherianartificer.townstead.work.order.net.OrdersAskC2SPayload::read,
-                TownsteadNetwork::handleOrdersAsk);
         registerS2C(com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload.class,
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload::read,
@@ -169,10 +161,6 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.profession.career.CareerVocationC2SPayload::read,
                 TownsteadNetwork::handleCareerVocation);
-        registerC2S(com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload.class,
-                (p, buf) -> p.write(buf),
-                com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload::read,
-                TownsteadNetwork::handleCareerTrack);
         registerC2S(com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload.class,
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload::read,
@@ -805,23 +793,6 @@ public final class TownsteadNetwork {
         com.aetherianartificer.townstead.work.order.OrdersOpener.edit(sp, payload);
     }
 
-    private static void handleOrdersOffer(
-            com.aetherianartificer.townstead.work.order.net.OrdersOfferS2CPayload payload) {
-        com.aetherianartificer.townstead.client.gui.dialogue.RpgDialogueScreen.onOrdersOffer(
-                payload.villagerId(), payload.available());
-    }
-
-    private static void handleOrdersAsk(
-            com.aetherianartificer.townstead.work.order.net.OrdersAskC2SPayload payload,
-            ServerPlayer sp) {
-        switch (payload.ask()) {
-            case OFFER -> com.aetherianartificer.townstead.work.order.OrdersConversation.offer(
-                    sp, payload.villagerId());
-            case OPEN -> com.aetherianartificer.townstead.work.order.OrdersConversation.open(
-                    sp, payload.villagerId());
-        }
-    }
-
     private static void handleChronicleOpen(
             com.aetherianartificer.townstead.chronicle.net.ChronicleOpenS2CPayload payload) {
         com.aetherianartificer.townstead.client.gui.chronicle.ChronicleScreen.openArchive(payload.villageName());
@@ -853,18 +824,12 @@ public final class TownsteadNetwork {
                 sp, payload.careerId());
     }
 
-    private static void handleCareerTrack(
-            com.aetherianartificer.townstead.profession.career.CareerTrackC2SPayload payload,
-            ServerPlayer sp) {
-        com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleTrack(
-                sp, payload.careerId());
-    }
-
     private static void handleCareerStamp(
             com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload payload,
             ServerPlayer sp) {
         com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleStamp(
-                sp, payload.skillId(), payload.x(), payload.y(), payload.rotation());
+                sp, payload.skillId(), payload.x(), payload.y(), payload.rotation(),
+                payload.textureId(), payload.sourcePack(), payload.label());
     }
 
     private static void handleFishermanHookLink(FishermanHookLinkPayload payload) {

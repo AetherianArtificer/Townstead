@@ -18,7 +18,7 @@ public abstract class BuildingPolymorphScreenMixin {
     @ModifyArg(method = "<init>", at = @At(value = "INVOKE",
             target = "Ljava/util/List;copyOf(Ljava/util/Collection;)Ljava/util/List;"),
             index = 0, remap = false, require = 0)
-    private static Collection<String> townstead$hideSupersededBuildingTypes(Collection<String> matchingTypes) {
+    private Collection<String> townstead$hideSupersededBuildingTypes(Collection<String> matchingTypes) {
         return CatalogDataLoader.withoutActiveSupersededBuildingTypes(matchingTypes);
     }
 }

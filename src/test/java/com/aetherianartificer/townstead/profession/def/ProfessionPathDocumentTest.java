@@ -5,6 +5,8 @@ import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ProfessionPathDocumentTest {
@@ -67,6 +69,53 @@ class ProfessionPathDocumentTest {
         assertThrows(IllegalArgumentException.class, () -> ProfessionPathDocument.apply(
                 object("{}"), "hive_keeper",
                 object("{\"levels\":[{\"skills\":[\"smoker_use\"]}]}")));
+    }
+
+    @Test
+    void tierOffsetPlacesSpecializationAfterSharedTrunkSkills() {
+        JsonObject profession = object("{}");
+        ProfessionPathDocument.Applied applied = ProfessionPathDocument.apply(
+                profession, "hive_keeper",
+                object("{\"tier_offset\":2,\"skills\":[\"protective_clothing\",\"first_aid\"]}"));
+
+        assertEquals(3, applied.skillTiers().get("hive_keeper/protective_clothing"));
+        assertEquals(4, applied.skillTiers().get("hive_keeper/first_aid"));
+    }
+
+    @Test
+    void pathWorkDefaultsToItsParentProfessionAndCanOptIntoPathAccess() {
+        JsonObject profession = object("{}");
+        ProfessionPathDocument.apply(profession, "pizzaiolo", object("""
+                {"skills":["pizza_craft"],
+                 "work":[
+                   {"type":"townstead_work:chop","recipes":["pizzadelight:raw_pizza"]},
+                   {"type":"townstead_work:cast","access":"path"}
+                 ]}
+                """));
+
+        var tasks = profession.getAsJsonArray("work_tasks");
+        assertEquals(2, tasks.size());
+        JsonObject shared = tasks.get(0).getAsJsonObject();
+        JsonObject exclusive = tasks.get(1).getAsJsonObject();
+        assertFalse(shared.has(ProfessionPathDocument.REQUIRED_PATH));
+        assertEquals("pizzaiolo",
+                shared.get(ProfessionPathDocument.CONTRIBUTION_ORIGIN).getAsString());
+        assertEquals("pizzaiolo",
+                exclusive.get(ProfessionPathDocument.REQUIRED_PATH).getAsString());
+        assertFalse(shared.has("access"));
+        assertFalse(exclusive.has("access"));
+
+        assertNull(WorkTaskDef.parse(shared).requiredPath());
+        assertEquals("pizzaiolo", WorkTaskDef.parse(exclusive).requiredPath());
+    }
+
+    @Test
+    void pathWorkRejectsUnknownAccessInsteadOfSilentlyChangingItsAudience() {
+        assertThrows(IllegalArgumentException.class, () -> ProfessionPathDocument.apply(
+                object("{}"), "pizzaiolo", object("""
+                        {"skills":["pizza_craft"],
+                         "work":[{"type":"townstead_work:chop","access":"career-ish"}]}
+                        """)));
     }
 
     private static JsonObject object(String json) {

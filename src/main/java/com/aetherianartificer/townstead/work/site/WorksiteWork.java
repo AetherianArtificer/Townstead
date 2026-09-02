@@ -106,9 +106,7 @@ public final class WorksiteWork {
         if (buildingType == null) return false;
         for (JobSiteProvider provider : def.jobSites()) {
             if (!(provider instanceof JobSiteProvider.Building building)) continue;
-            for (String prefix : building.typePrefixes()) {
-                if (!prefix.isEmpty() && buildingType.startsWith(prefix)) return true;
-            }
+            if (building.matches(buildingType)) return true;
         }
         return false;
     }

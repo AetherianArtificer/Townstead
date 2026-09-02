@@ -85,7 +85,7 @@ public final class EmptyContainerDropoff {
      */
     public static void tick(VillagerEntityMCA villager) {
         if (!(villager.level() instanceof ServerLevel level)) return;
-        if (villager.tickCount % CADENCE_TICKS != 0) return;
+        if (Math.floorMod(level.getGameTime() + villager.getId(), CADENCE_TICKS) != 0) return;
         if (!TownsteadConfig.isEmptyContainerDropoffEnabled()) return;
         long dayTime = level.getDayTime() % 24000L;
         if (villager.getBrain().getSchedule().getActivityAt((int) dayTime) == Activity.WORK) return;
@@ -191,21 +191,14 @@ public final class EmptyContainerDropoff {
         return free;
     }
 
-    /**
-     * Deposits the villager's empty containers (whole stacks) into nearby storage. One
-     * {@link StorageSearchContext} is shared across every container this pass, so only the first
-     * deposit pays for the neighborhood scan and the rest hit warm caches. (The non-FD fallback,
-     * {@code NearbyItemSources}, still builds its own context internally.)
-     */
+    /** Deposits the villager's empty-container stacks into indexed nearby storage. */
     private static void dropOff(ServerLevel level, VillagerEntityMCA villager) {
         SimpleContainer inventory = villager.getInventory();
-        StorageSearchContext context = null;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             if (!isEmptyContainer(inventory.getItem(i))) continue;
-            if (context == null) context = new StorageSearchContext(level);
             ItemStack taken = inventory.removeItemNoUpdate(i);
             int before = taken.getCount();
-            if (!store(level, villager, taken, context)) {
+            if (!store(level, villager, taken)) {
                 inventory.setItem(i, taken);
                 // Nothing fit anywhere; storage is full, so later slots won't fit either.
                 if (taken.getCount() == before) break;
@@ -213,10 +206,10 @@ public final class EmptyContainerDropoff {
         }
     }
 
-    private static boolean store(ServerLevel level, VillagerEntityMCA villager, ItemStack stack, StorageSearchContext context) {
+    private static boolean store(ServerLevel level, VillagerEntityMCA villager, ItemStack stack) {
         if (stack.isEmpty()) return true;
         if (ModCompat.isLoaded("farmersdelight")) {
-            insertIntoTaggedStorage(villager, stack, context);
+            insertIntoTaggedStorage(level, villager, stack);
             if (stack.isEmpty()) return true;
         }
         return NearbyItemSources.insertIntoNearbyStorage(level, villager, stack, 16, 4);
@@ -236,7 +229,7 @@ public final class EmptyContainerDropoff {
             insertIntoBlock(context, source, stack);
             if (stack.isEmpty()) return true;
         }
-        return store(level, villager, stack, context);
+        return store(level, villager, stack);
     }
 
     /** Inserts as much of {@code stack} as fits into the single container at {@code pos}, in place. */
@@ -260,34 +253,13 @@ public final class EmptyContainerDropoff {
     }
 
     /** Inserts as much of {@code stack} as fits into nearby FD kitchen storage, shrinking it in place. */
-    private static void insertIntoTaggedStorage(VillagerEntityMCA villager, ItemStack stack, StorageSearchContext context) {
-        BlockPos center = villager.blockPosition();
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-16, -4, -16),
-                center.offset(16, 4, 16))) {
-            if (stack.isEmpty()) return;
-            StorageSearchContext.ObservedBlock observed = context.observe(pos);
-            if (observed.protectedStorage()) continue;
-            BlockState state = observed.state();
-            if (!(state.is(KITCHEN_STORAGE_TAG) || state.is(KITCHEN_STORAGE_UPGRADED_TAG) || state.is(KITCHEN_STORAGE_NETHER_TAG))) {
-                continue;
-            }
-            BlockEntity be = observed.blockEntity();
-            if (be instanceof Container container) {
-                insertIntoContainer(container, stack);
-                if (stack.isEmpty()) return;
-            }
-            if (be != null) {
-                IItemHandler handler = context.getItemHandler(observed.pos(), null);
-                if (handler != null) {
-                    for (int slot = 0; slot < handler.getSlots() && !stack.isEmpty(); slot++) {
-                        int slotBefore = stack.getCount();
-                        ItemStack remainder = handler.insertItem(slot, stack, false);
-                        stack.shrink(slotBefore - remainder.getCount());
-                    }
-                }
-            }
-        }
+    private static void insertIntoTaggedStorage(
+            ServerLevel level, VillagerEntityMCA villager, ItemStack stack) {
+        NearbyItemSources.insertIntoNearbyStorage(
+                level, villager, stack, 16, 4, villager.blockPosition(), StorageUse.OUTPUT,
+                state -> state.is(KITCHEN_STORAGE_TAG)
+                        || state.is(KITCHEN_STORAGE_UPGRADED_TAG)
+                        || state.is(KITCHEN_STORAGE_NETHER_TAG));
     }
 
     private static void insertIntoContainer(Container container, ItemStack stack) {

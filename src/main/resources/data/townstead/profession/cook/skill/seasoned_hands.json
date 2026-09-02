@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "[PLACEHOLDER] COOK SKILL 07"
+    "text": "Seasoned Hands"
   },
-  "icon": "minecraft:barrier",
+  "icon": "minecraft:bowl",
   "description": {
-    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for cook/seasoned_hands."
+    "text": "Routine kitchen work has taught you how to waste less and recover faster. Gain 1 additional Cook XP whenever work is completed."
   },
   "tier": 1,
   "cost": 1,

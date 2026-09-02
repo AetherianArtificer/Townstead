@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.work.producer;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.work.WorkMovement;
+import com.aetherianartificer.townstead.work.WorkBuildingNav;
 import com.aetherianartificer.townstead.work.WorkNavigationResult;
 import com.aetherianartificer.townstead.work.WorkSiteView;
 import com.aetherianartificer.townstead.work.order.Order;
@@ -48,6 +49,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     protected static final int CLOSE_ENOUGH = 0;
     protected static final int BUILDING_CLOSE_ENOUGH = 2;
     protected static final double ARRIVAL_DISTANCE_SQ = 0.36d;
+    protected static final double STATION_INTERACTION_REACH_SQ = 9.0d;
     protected static final double NEAR_STATION_DISTANCE_SQ = 9.0d;
     protected static final float WALK_SPEED = 0.52f;
     protected static final int IDLE_BACKOFF = 80;
@@ -72,7 +74,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     public enum ProducerState {
         PATH_TO_WORKSITE, PATH_TO_STATION, RECONCILE_STATION,
         SELECT_RECIPE, ACQUIRE_SUPPLIES, GATHER, PRODUCE, COLLECT, COLLECT_WAIT,
-        DELIVER
+        DELIVER, RESTOCK_PLATES
     }
 
     public record GatherResult(boolean success, @Nullable String detail) {
@@ -128,6 +130,15 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     private final Set<Long> rejectedDeliveryStorage = new HashSet<>();
     private @Nullable BlockPos deliveryTarget;
     private boolean deliveryFinalized;
+    /** Menu dishes being carried from the pantry to an empty plate; empty outside that errand. */
+    private Set<ResourceLocation> restockDemand = Set.of();
+    /** Where an at-ease worker is drifting to inside the worksite while nothing can be done. */
+    private @Nullable BlockPos easeTarget;
+    private long nextEaseStepTick;
+    private static final float EASE_SPEED = 0.35f;
+    private static final int EASE_STEP_MIN_TICKS = 60;
+    private static final int EASE_STEP_JITTER_TICKS = 80;
+    private static final int EASE_STEP_RADIUS = 4;
 
     protected final Map<ResourceLocation, Integer> stagedInputs = new HashMap<>();
     protected final Map<ResourceLocation, Long> recipeCooldownUntil = new HashMap<>();
@@ -211,11 +222,30 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         return Set.of();
     }
 
+    /** Records a reusable item acquired outside the ordinary pre-production supply phase. */
+    protected final void rememberBorrowedTools(Set<ResourceLocation> itemIds) {
+        if (itemIds != null) borrowedToolIds.addAll(itemIds);
+    }
+
     /** Whether this carried stack is finished work belonging to the active cycle. */
     protected boolean isCycleOutput(ServerLevel level, ItemStack stack) {
         if (stack == null || stack.isEmpty() || activeRecipe == null) return false;
         return activeRecipe.output().equals(
                 net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()));
+    }
+
+    /**
+     * Whether this carried stack is on its way somewhere: this cycle's product, or a menu dish
+     * fetched for an empty plate. Engines override the product test above; this is the one the
+     * delivery state reads, so a pantry dish is carried by every engine the same way.
+     */
+    protected final boolean isDeliverable(ServerLevel level, ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        if (!restockDemand.isEmpty()
+                && com.aetherianartificer.townstead.food.ServingDemand.matches(restockDemand, stack)) {
+            return true;
+        }
+        return isCycleOutput(level, stack);
     }
 
     // ── XP ──
@@ -275,6 +305,12 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     /** No actionable station/recipe remains at this worksite. */
     protected void onNoWork(ServerLevel level, VillagerEntityMCA villager, long gameTime) {}
+
+    /** Specific missing prerequisite when recipe selection otherwise has nothing to say. */
+    protected @Nullable String noRecipeMissingRequirement(
+            ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        return null;
+    }
 
     /**
      * A physical station cycle was abandoned before delivery.  This is distinct from releasing
@@ -352,7 +388,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     protected int stateTimeoutTicks(ProducerState state) {
         return switch (state) {
             case ACQUIRE_SUPPLIES -> MAX_DURATION;
-            case GATHER -> GATHER_STATE_TIMEOUT_TICKS;
+            case GATHER, RESTOCK_PLATES -> GATHER_STATE_TIMEOUT_TICKS;
             case PRODUCE -> PRODUCE_STATE_TIMEOUT_TICKS;
             case COLLECT, COLLECT_WAIT -> COLLECT_STATE_TIMEOUT_TICKS;
             case DELIVER -> MAX_DURATION;
@@ -461,7 +497,11 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
             clearAll(level, villager, gameTime);
             return;
         }
-        if (gameTime < idleUntilTick) return;
+        if (gameTime < idleUntilTick) {
+            restInsideWorksite(level, villager, gameTime);
+            return;
+        }
+        easeTarget = null;
 
         if (isVillagerAtWorksite(level, villager)
                 && com.aetherianartificer.townstead.profession.PoilessTradingProfessions
@@ -482,6 +522,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
                 && state != ProducerState.COLLECT_WAIT
                 && state != ProducerState.DELIVER) {
             debugChat(level, villager, "STATE:timeout in " + state.name() + ", resetting");
+            if (state != ProducerState.RESTOCK_PLATES) restockDemand = Set.of();
             transitionToNavigationState(level, villager, gameTime);
             onStationAbandoned(level, villager, stationAnchor, gameTime);
             releaseStationClaim(level, villager, stationAnchor);
@@ -509,6 +550,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
             case COLLECT -> tickCollect(level, villager, gameTime);
             case COLLECT_WAIT -> tickCollectWait(level, villager, gameTime);
             case DELIVER -> tickDeliver(level, villager, gameTime);
+            case RESTOCK_PLATES -> tickRestockPlates(level, villager, gameTime);
         }
     }
 
@@ -549,7 +591,10 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         currentWorksiteTarget = target;
 
         WorkNavigationResult move = WorkMovement.tickMoveToTarget(
-                villager, target, WALK_SPEED, BUILDING_CLOSE_ENOUGH, ARRIVAL_DISTANCE_SQ,
+                // The target is a real walkable stand, not merely the outside of a building.
+                // Stopping within two blocks leaves an outdoor worker staring across a counter
+                // while isVillagerAtWorksite correctly waits for the actual stand forever.
+                villager, target, WALK_SPEED, CLOSE_ENOUGH, ARRIVAL_DISTANCE_SQ,
                 worksiteTargetProgress, worksiteTargetFailures,
                 gameTime, stateTimeoutTicks(state),
                 WORKSITE_MAX_RETRIES, (int) WORKSITE_TARGET_RETRY_COOLDOWN_TICKS);
@@ -577,6 +622,9 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
             transition(ProducerState.PATH_TO_WORKSITE, gameTime);
             return;
         }
+
+        // A dish already on the shelf fills an empty plate faster than cooking another one.
+        if (tryBeginPlateRestock(level, villager, gameTime)) return;
 
         ProducerStationSelection selection = selectStation(level, villager, gameTime);
         if (selection == null) {
@@ -811,8 +859,13 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
                 abandonCurrentStation(level, villager, gameTime, false);
                 return;
             }
-            debugChat(level, villager, "SELECT:no recipe, rotating");
-            setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_RECIPE, null);
+            String missing = noRecipeMissingRequirement(level, villager, gameTime);
+            debugChat(level, villager, "SELECT:no recipe, rotating"
+                    + (missing == null ? "" : " (missing " + missing + ")"));
+            setBlocked(level, villager, gameTime,
+                    missing == null ? ProducerBlockedReason.NO_RECIPE
+                            : ProducerBlockedReason.NO_INGREDIENTS,
+                    missing);
             abandonCurrentStation(level, villager, gameTime, true);
             return;
         }
@@ -1028,12 +1081,133 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         finishDelivery(level, villager, gameTime);
     }
 
+    // ── State: RESTOCK_PLATES ──
+
+    /**
+     * Starts the pantry-to-plate errand when a plate is empty, the menu names a dish, and that
+     * dish is already sitting in the worksite's finished-goods storage. Cooking would satisfy
+     * the same plate a great deal later.
+     */
+    private boolean tryBeginPlateRestock(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        Set<Long> bounds = transferWorksiteBounds(level, villager);
+        Set<ResourceLocation> demand = com.aetherianartificer.townstead.food.ServingDemand
+                .standing(level, villager, bounds);
+        if (demand.isEmpty()) return false;
+        Predicate<ItemStack> matcher = stack ->
+                com.aetherianartificer.townstead.food.ServingDemand.matches(demand, stack);
+        // A dish already in the apron pocket (an interrupted errand, a leftover from a cycle)
+        // goes to the plate before anyone walks to a shelf for another one.
+        if (hasMatching(villager, matcher)) {
+            restockDemand = demand;
+            debugChat(level, villager, "PLATES:carrying a menu dish, plating it");
+            beginDelivery(gameTime);
+            return true;
+        }
+        WorkIngredients.PhysicalPull pull = WorkIngredients.nextPhysicalPull(
+                level, villager, matcher, 1, false, "menu dish", bounds, StorageUse.OUTPUT);
+        if (pull == null) return false;
+        restockDemand = demand;
+        physicalPull = pull;
+        debugChat(level, villager, "PLATES:fetching a menu dish from " + pull.source().toShortString());
+        transition(ProducerState.RESTOCK_PLATES, gameTime);
+        return true;
+    }
+
+    private void tickRestockPlates(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (physicalPull == null || physicalPull.source() == null) {
+            if (hasCarriedCycleOutput(level, villager)) {
+                beginDelivery(gameTime);
+            } else {
+                restockDemand = Set.of();
+                transitionToNavigationState(level, villager, gameTime);
+            }
+            return;
+        }
+        BlockPos source = physicalPull.source();
+        BehaviorUtils.setWalkAndLookTargetMemories(villager, source, WALK_SPEED, 1);
+        villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new BlockPosTracker(source));
+        if (villager.distanceToSqr(
+                source.getX() + 0.5, source.getY() + 0.5, source.getZ() + 0.5) > 5.0d) {
+            return;
+        }
+        WorkIngredients.PhysicalPullResult pulled = WorkIngredients.executePhysicalPull(
+                level, villager, physicalPull);
+        physicalPull = null;
+        if (pulled.count() <= 0) {
+            debugChat(level, villager, "PLATES:shelf changed, nothing to carry");
+            restockDemand = Set.of();
+            transitionToNavigationState(level, villager, gameTime);
+            return;
+        }
+        villager.swing(villager.getDominantHand());
+        beginDelivery(gameTime);
+    }
+
+    private void beginDelivery(long gameTime) {
+        rejectedDeliveryStorage.clear();
+        deliveryTarget = null;
+        deliveryFinalized = false;
+        transition(ProducerState.DELIVER, gameTime);
+    }
+
+    // ── At ease ──
+
+    /** Cells a worker may drift between while nothing can be done; empty disables drifting. */
+    protected Set<Long> atEaseCells(ServerLevel level, VillagerEntityMCA villager) {
+        return Set.of();
+    }
+
+    /**
+     * Keeps a blocked worker inside the shop instead of letting the village stroll carry them
+     * off. The brain's strolls only fire while no walk target is set, so an at-ease worker holds
+     * a slow drift between nearby cells of their own worksite: on their feet, in the room, and
+     * visibly not working.
+     */
+    private void restInsideWorksite(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (lastWorksite == null || blocked == ProducerBlockedReason.NO_WORKSITE) return;
+        Set<Long> cells = atEaseCells(level, villager);
+        if (cells.isEmpty()) return;
+        boolean arrived = easeTarget != null && villager.distanceToSqr(
+                easeTarget.getX() + 0.5, easeTarget.getY(), easeTarget.getZ() + 0.5) < 1.5d;
+        if (easeTarget == null || (arrived && gameTime >= nextEaseStepTick)) {
+            easeTarget = pickEaseCell(level, villager, cells);
+            nextEaseStepTick = gameTime + EASE_STEP_MIN_TICKS
+                    + villager.getRandom().nextInt(EASE_STEP_JITTER_TICKS);
+            if (easeTarget == null) return;
+        }
+        BehaviorUtils.setWalkAndLookTargetMemories(villager, easeTarget, EASE_SPEED, 1);
+    }
+
+    /** A standable cell near the worker inside the worksite; the nearest one when they are outside. */
+    private @Nullable BlockPos pickEaseCell(ServerLevel level, VillagerEntityMCA villager, Set<Long> cells) {
+        BlockPos here = villager.blockPosition();
+        List<BlockPos> near = new java.util.ArrayList<>();
+        BlockPos nearest = null;
+        double nearestDistance = Double.MAX_VALUE;
+        for (long packed : cells) {
+            BlockPos cell = BlockPos.of(packed);
+            if (!level.getBlockState(cell).getCollisionShape(level, cell).isEmpty()) continue;
+            if (level.getBlockState(cell.below()).getCollisionShape(level, cell.below()).isEmpty()) continue;
+            double dx = cell.getX() - here.getX();
+            double dy = cell.getY() - here.getY();
+            double dz = cell.getZ() - here.getZ();
+            double distance = dx * dx + dy * dy + dz * dz;
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearest = cell;
+            }
+            if (distance <= EASE_STEP_RADIUS * EASE_STEP_RADIUS && distance >= 1.0d) near.add(cell);
+        }
+        if (!isVillagerAtWorksite(level, villager) || near.isEmpty()) return nearest;
+        return near.get(villager.getRandom().nextInt(near.size()));
+    }
+
     // ── State: DELIVER ──
 
     private void tickDeliver(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         boolean deliveringOutput = hasCarriedCycleOutput(level, villager);
         Predicate<ItemStack> matcher = deliveringOutput
-                ? stack -> isCycleOutput(level, stack)
+                ? stack -> isDeliverable(level, stack)
                 : this::isBorrowedTool;
         StorageUse storageUse = deliveringOutput ? StorageUse.OUTPUT : StorageUse.TOOL_RETURN;
         if (!hasMatching(villager, matcher)) {
@@ -1043,8 +1217,17 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
         Set<Long> bounds = transferWorksiteBounds(level, villager);
         if (deliveryTarget == null) {
-            deliveryTarget = PhysicalStorageDelivery.findDestination(
-                    level, villager, bounds, matcher, rejectedDeliveryStorage, storageUse);
+            // A prepared dish is useful in the room before it is useful on a shelf. Each plate
+            // accepts only one dish, so surplus from the same batch naturally continues to
+            // finished-goods storage on the next pass.
+            if (deliveringOutput) {
+                deliveryTarget = com.aetherianartificer.townstead.food.ServingPlateService.findEmpty(
+                        level, villager, bounds, matcher, rejectedDeliveryStorage);
+            }
+            if (deliveryTarget == null) {
+                deliveryTarget = PhysicalStorageDelivery.findDestination(
+                        level, villager, bounds, matcher, rejectedDeliveryStorage, storageUse);
+            }
             if (deliveryTarget == null) {
                 setBlocked(level, villager, gameTime, ProducerBlockedReason.NO_STORAGE,
                         hasCarriedCycleOutput(level, villager) ? "finished goods" : "borrowed tools");
@@ -1059,9 +1242,18 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         if (villager.distanceToSqr(deliveryTarget.getX() + 0.5,
                 deliveryTarget.getY() + 0.5, deliveryTarget.getZ() + 0.5) > 5.0d) return;
 
-        int moved = PhysicalStorageDelivery.depositMatchingAt(
-                level, villager, deliveryTarget, matcher, storageUse);
+        int moved = com.aetherianartificer.townstead.food.ServingPlateService
+                .isServingSurface(level, deliveryTarget)
+                ? com.aetherianartificer.townstead.food.ServingPlateService.depositMatchingAt(
+                        level, villager, deliveryTarget, matcher)
+                : PhysicalStorageDelivery.depositMatchingAt(
+                        level, villager, deliveryTarget, matcher, storageUse);
         villager.swing(villager.getDominantHand());
+        boolean plate = com.aetherianartificer.townstead.food.ServingPlateService
+                .isServingSurface(level, deliveryTarget);
+        debugChat(level, villager, (moved > 0 ? "DELIVER:" : "DELIVER:refused ")
+                + (plate ? "plate" : "storage") + " at " + deliveryTarget.toShortString()
+                + (moved > 0 ? " took " + moved : ""));
         if (moved <= 0) rejectedDeliveryStorage.add(deliveryTarget.asLong());
         deliveryTarget = null;
         stateEnteredTick = gameTime;
@@ -1072,12 +1264,16 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     private void finishDelivery(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (deliveryFinalized) return;
         deliveryFinalized = true;
+        boolean restocked = !restockDemand.isEmpty();
         boolean completedOrder = creditOrderClaim(level, villager, activeRecipe == null ? 1
                 : Math.max(1, activeRecipe.outputCount()) * activeBatchOperations());
         pendingOutput = ItemStack.EMPTY;
-        awardProductionXp(level, villager, gameTime);
+        // Carrying a dish from the shelf to a plate is service, not production.
+        if (!restocked) awardProductionXp(level, villager, gameTime);
 
-        debugChat(level, villager, "COLLECT:done " + (activeRecipe != null ? activeRecipe.output() : "null"));
+        debugChat(level, villager, restocked ? "PLATES:served from the pantry"
+                : "COLLECT:done " + (activeRecipe != null ? activeRecipe.output() : "null"));
+        restockDemand = Set.of();
         activeRecipe = null;
         stagedInputs.clear();
         physicalPull = null;
@@ -1114,7 +1310,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     }
 
     private boolean hasCarriedCycleOutput(@Nullable ServerLevel level, VillagerEntityMCA villager) {
-        return hasMatching(villager, stack -> isCycleOutput(level, stack));
+        return hasMatching(villager, stack -> isDeliverable(level, stack));
     }
 
     private boolean isBorrowedTool(ItemStack stack) {
@@ -1150,7 +1346,8 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         double distSq = villager.distanceToSqr(standPos.getX() + 0.5, standPos.getY() + 0.5, standPos.getZ() + 0.5);
         // Being close to the station block is not enough: a wall can be between the two.
         // The selected stand is the navigable side of the station, so work starts only there.
-        if (!isAtStationStand(distSq)) {
+        if (!isAtStationStand(distSq)
+                && !canInteractWithStation(level, villager, stationAnchor)) {
             if (gameTime >= nextStandReacquireTick) {
                 nextStandReacquireTick = gameTime + STAND_REACQUIRE_INTERVAL_TICKS;
                 BlockPos refreshed = refreshStandPosition(level, villager, stationAnchor);
@@ -1164,6 +1361,21 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     static boolean isAtStationStand(double distanceSq) {
         return distanceSq <= ARRIVAL_DISTANCE_SQ;
+    }
+
+    static boolean isWithinStationInteractionReach(double distanceSq) {
+        return distanceSq <= STATION_INTERACTION_REACH_SQ;
+    }
+
+    /**
+     * Minecraft pathing does not promise to place a mob at the exact centre requested by a
+     * {@link net.minecraft.world.entity.ai.memory.WalkTarget}. Interaction needs a much simpler
+     * truth: the station is within ordinary working reach and no wall stands between it and the
+     * worker. This keeps counters usable without restoring the old work-through-walls bug.
+     */
+    protected final boolean canInteractWithStation(
+            ServerLevel level, VillagerEntityMCA villager, @Nullable BlockPos anchor) {
+        return WorkBuildingNav.canInteractWithStation(level, villager, anchor);
     }
 
     /**
@@ -1237,6 +1449,8 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         abandonedUntilByStation.clear();
         recipeAttempts = 0;
         idleUntilTick = 0L;
+        restockDemand = Set.of();
+        easeTarget = null;
         resetWorksiteTargeting();
     }
 
