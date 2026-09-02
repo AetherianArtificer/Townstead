@@ -19,6 +19,7 @@
     "compat.farmersdelight.StoveVillagerDamageMixin",
     "compat.mca.FamilyTreeNodeGenderGuardMixin",
     "compat.mca.GetVillagerRequestEditorGuardMixin",
+    "compat.mca.LazyFindPointOfInterestTaskCarrierMixin",
     "compat.mca.PlayerSaveDataEditorGuardMixin",
     "compat.mca.PlayerSaveDataWelcomeMixin",
     "compat.timekeeper.TimekeeperQueryProcMixin",

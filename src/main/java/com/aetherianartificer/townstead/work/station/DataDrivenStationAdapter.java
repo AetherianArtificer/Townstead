@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 /** Generic V2 execution: public inventory contracts plus real player-like block interaction. */
 public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
@@ -119,17 +120,42 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         }
         IItemHandler handler = BlockInventories.itemHandler(level, anchor, null);
         if (handler == null) return 1;
-        int free = 0;
+        List<ItemStack> insertionSlots = new ArrayList<>();
         if (def.hasExplicitIngredientSlots()) {
             for (int slot : concat(def.ingredientSlots(), def.catalystSlots())) {
-                if (slot < handler.getSlots() && handler.getStackInSlot(slot).isEmpty()) free++;
+                if (slot < handler.getSlots()) insertionSlots.add(handler.getStackInSlot(slot));
             }
         } else {
             for (int slot = 0; slot < handler.getSlots(); slot++) {
-                if (!def.reservedForInsertion(slot) && handler.getStackInSlot(slot).isEmpty()) free++;
+                if (!def.reservedForInsertion(slot)) insertionSlots.add(handler.getStackInSlot(slot));
             }
         }
-        return Math.max(0, free);
+        // A cutting board can double as the kitchen's tool shelf. Its single inventory slot is
+        // technically occupied while a knife is displayed, but gathering that reusable tool is
+        // the first step of using the board and immediately frees the slot for the ingredient.
+        // Counting only physically empty slots therefore makes the whole station disappear from
+        // the worksite index precisely when somebody provides the Cook with a knife.
+        return availableInsertionSlots(insertionSlots, ItemStack::isEmpty,
+                stack -> isReusableShelfTool(level, anchor, stack));
+    }
+
+    static <T> int availableInsertionSlots(List<T> slots, Predicate<T> empty,
+                                           Predicate<T> reusableShelfTool) {
+        int available = 0;
+        for (T stack : slots) {
+            if (empty.test(stack) || reusableShelfTool.test(stack)) available++;
+        }
+        return Math.max(0, available);
+    }
+
+    private static boolean isReusableShelfTool(ServerLevel level, BlockPos anchor, ItemStack stack) {
+        return !stack.isEmpty()
+                && com.aetherianartificer.townstead.storage.StorageRoles
+                .semanticRoles(level.getBlockState(anchor))
+                .contains(com.aetherianartificer.townstead.storage.StorageRoleDef.Role.TOOLS)
+                && com.aetherianartificer.townstead.storage.StorageRoles.acceptsItem(
+                        level, anchor, stack,
+                        com.aetherianartificer.townstead.storage.StorageUse.TOOL_RETURN);
     }
 
     @Override
@@ -211,12 +237,7 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                 // A dual-purpose tool shelf is idle while it displays one of this station's
                 // declared reusable tools. The gather phase can then borrow it normally instead
                 // of classifying the board as foreign contents and tearing it down as cleanup.
-                if (com.aetherianartificer.townstead.storage.StorageRoles
-                        .semanticRoles(level.getBlockState(anchor))
-                        .contains(com.aetherianartificer.townstead.storage.StorageRoleDef.Role.TOOLS)
-                        && com.aetherianartificer.townstead.storage.StorageRoles.acceptsItem(
-                                level, anchor, stack,
-                                com.aetherianartificer.townstead.storage.StorageUse.TOOL_RETURN)) {
+                if (isReusableShelfTool(level, anchor, stack)) {
                     continue;
                 }
                 if (!knownInputs.contains(item)) {

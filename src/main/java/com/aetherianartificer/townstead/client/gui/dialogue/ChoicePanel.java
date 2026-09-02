@@ -273,42 +273,17 @@ public class ChoicePanel {
      */
     public static final String CAREERS_ANSWER = "townstead:career_tree";
 
-    /**
-     * Asking a worker about their worksite's orders, shown on the main hub while they are at work
-     * somewhere with a list. Like the Scribe's option this id never reaches MCA's dialogue system;
-     * unlike it, the server has to confirm the worksite first, so the entry arrives a moment late.
-     */
-    public static final String ORDERS_ANSWER = "townstead:orders";
-
     private boolean showCareersEntry;
-    private boolean showOrdersEntry;
 
     public void setShowCareersEntry(boolean show) {
         this.showCareersEntry = show;
     }
 
-    public void setShowOrdersEntry(boolean show) {
-        this.showOrdersEntry = show;
-    }
-
-    /** Rebuilds the top-level hub in place, for an entry that was confirmed after it was drawn. */
-    public void refreshHub(Font font) {
-        if (!hubMode || currentSubMenu != null) return;
-        this.hubEntries = townstead$withCareersEntry(DialogueMenuOrganizer.buildTopLevel(rawAnswers));
-        buildDisplayFromHub(font);
-        recomputeBounds();
-    }
-
     private java.util.List<DialogueMenuOrganizer.HubEntry> townstead$withCareersEntry(
             java.util.List<DialogueMenuOrganizer.HubEntry> entries) {
-        if (!showCareersEntry && !showOrdersEntry) return entries;
-        java.util.List<DialogueMenuOrganizer.HubEntry> out = new java.util.ArrayList<>(entries.size() + 2);
-        if (showCareersEntry) {
-            out.add(new DialogueMenuOrganizer.HubEntry("townstead.dialogue.main.careers", CAREERS_ANSWER, null));
-        }
-        if (showOrdersEntry) {
-            out.add(new DialogueMenuOrganizer.HubEntry("townstead.dialogue.main.orders", ORDERS_ANSWER, null));
-        }
+        if (!showCareersEntry) return entries;
+        java.util.List<DialogueMenuOrganizer.HubEntry> out = new java.util.ArrayList<>(entries.size() + 1);
+        out.add(new DialogueMenuOrganizer.HubEntry("townstead.dialogue.main.careers", CAREERS_ANSWER, null));
         out.addAll(entries);
         return out;
     }

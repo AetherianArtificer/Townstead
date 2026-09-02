@@ -87,6 +87,14 @@ class WorkstationV2DefTest {
                 id("minecraft:milk_bucket"), 1,
                 id("farm_and_charm:oat"), 1), oatmeal));
     }
+
+    @Test
+    void displayedReusableToolStillLeavesAStationCapacitySlot() {
+        assertEquals(2, DataDrivenStationAdapter.availableInsertionSlots(
+                List.of("", "knife", "mushroom"), String::isEmpty, "knife"::equals));
+        assertEquals(0, DataDrivenStationAdapter.availableInsertionSlots(
+                List.of("mushroom"), String::isEmpty, stack -> false));
+    }
     private static ResourceLocation id(String value) { return ResourceLocation.tryParse(value); }
 
     private static WorkstationV2Def parse(String json) {

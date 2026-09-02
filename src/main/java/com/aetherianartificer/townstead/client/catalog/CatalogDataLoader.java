@@ -143,6 +143,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         Map<String, List<ResourceLocation>> workersByType = new HashMap<>();
         Map<String, Set<ResourceLocation>> storageRolesByType = new HashMap<>();
         Map<String, Set<String>> recipeNamespacesByType = new HashMap<>();
+        Map<String, Set<ResourceLocation>> servingProductsByType = new HashMap<>();
         Map<String, BuildingEnclosurePolicies.Mode> enclosurePolicies = new HashMap<>();
         Map<String, Set<String>> dialogueTopicsByType = new HashMap<>();
         scanLegacyBuildingTypes(resourceManager, blocksByType, priorityByType);
@@ -150,11 +151,13 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         scanLegacyBuildingSpawn(resourceManager, spawnPolicies);
         scanExtendedBuildings(resourceManager, blocksByType, priorityByType, spawnPolicies, workersByType,
                 storageRolesByType, recipeNamespacesByType, enclosurePolicies, dialogueTopicsByType);
+        scanServingMenus(resourceManager, servingProductsByType);
         BuildingSpawnPolicies.replaceAll(spawnPolicies);
         com.aetherianartificer.townstead.work.site.BuildingWorkforceIndex.replaceAll(workersByType);
         com.aetherianartificer.townstead.storage.BuildingStorageRoles.replaceAll(storageRolesByType);
         com.aetherianartificer.townstead.work.order.BuildingRecipeScopes
                 .replaceAll(recipeNamespacesByType);
+        com.aetherianartificer.townstead.food.BuildingServingMenus.replaceAll(servingProductsByType);
         BuildingEnclosurePolicies.replaceAll(enclosurePolicies);
         com.aetherianartificer.townstead.work.feedback.BuildingDialogueTopics
                 .replaceAll(dialogueTopicsByType);
@@ -546,6 +549,40 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         }
     }
 
+    /**
+     * Additive serving menus live outside building definitions so independent datapacks can
+     * contribute foods to the same venue without replacing its workforce or catalog sidecar.
+     */
+    private static void scanServingMenus(ResourceManager resourceManager,
+            Map<String, Set<ResourceLocation>> productsByBuilding) {
+        Map<ResourceLocation, Resource> resources = resourceManager.listResources("serving_menu",
+                id -> id.getPath().endsWith(".json"));
+        for (Map.Entry<ResourceLocation, Resource> entry : resources.entrySet()) {
+            ResourceLocation location = entry.getKey();
+            try (InputStream in = entry.getValue().open();
+                    InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+                JsonObject json = GSON.fromJson(reader, JsonObject.class);
+                if (json == null) continue;
+                TownsteadSchema.validate(json, "townstead:serving_menu/v1");
+                Set<String> buildings = readStringSet(json, "buildings", "non-empty strings",
+                        CatalogDataLoader::requireNonBlankBuildingType);
+                Set<ResourceLocation> products = readStringSet(json, "products", "resource ids",
+                        CatalogDataLoader::parseServingProduct);
+                mergeServingMenu(productsByBuilding, buildings, products);
+            } catch (Exception ex) {
+                LOGGER.warn("Rejected serving_menu entry '{}': {}", location, ex.getMessage());
+            }
+        }
+    }
+
+    static void mergeServingMenu(Map<String, Set<ResourceLocation>> productsByBuilding,
+            Set<String> buildings, Set<ResourceLocation> products) {
+        for (String building : buildings) {
+            productsByBuilding.computeIfAbsent(building, ignored -> new LinkedHashSet<>())
+                    .addAll(products);
+        }
+    }
+
     private static JsonObject requireObject(JsonObject parent, String key) {
         JsonElement value = parent.get(key);
         if (!value.isJsonObject()) {
@@ -560,6 +597,22 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
             throw new IllegalArgumentException("Invalid storage role '" + value + "'");
         }
         return role;
+    }
+
+    private static ResourceLocation parseServingProduct(String value) {
+        ResourceLocation product = ResourceLocation.tryParse(value);
+        if (product == null) {
+            throw new IllegalArgumentException("Invalid serving product '" + value + "'");
+        }
+        return product;
+    }
+
+    private static String requireNonBlankBuildingType(String value) {
+        String buildingType = value.trim();
+        if (buildingType.isEmpty()) {
+            throw new IllegalArgumentException("'buildings' entries must be non-empty strings");
+        }
+        return buildingType;
     }
 
     private static String parseRecipeNamespace(String value) {

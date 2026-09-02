@@ -44,9 +44,9 @@ public final class ServingPlateService {
 
     public static boolean canServe(ItemStack stack) { return prepare(stack) != null; }
 
-    /** Automation is deliberately narrower than what a player may display by hand. */
-    public static boolean canAutoServe(ItemStack stack) {
-        return canServe(stack);
+    /** Worker automation honors the menu authored by its assigned building. */
+    public static boolean canAutoServe(ServerLevel level, VillagerEntityMCA villager, ItemStack stack) {
+        return canServe(stack) && BuildingServingMenus.allowsAssigned(level, villager, stack);
     }
 
     public static @Nullable Prepared prepare(ItemStack stack) {
@@ -78,16 +78,17 @@ public final class ServingPlateService {
                 .filter(level::isLoaded)
                 .filter(pos -> ServingSurfaces.contains(level.getBlockState(pos)))
                 .filter(pos -> isEmptySurface(level, pos))
-                .filter(pos -> hasServable(villager, matcher))
+                .filter(pos -> hasServable(level, villager, matcher))
                 .min(Comparator.comparingDouble(pos -> villager.distanceToSqr(
                         pos.getX() + 0.5, pos.getY() + 0.2, pos.getZ() + 0.5)))
                 .orElse(null);
     }
 
-    private static boolean hasServable(VillagerEntityMCA villager, Predicate<ItemStack> matcher) {
+    private static boolean hasServable(ServerLevel level, VillagerEntityMCA villager,
+                                       Predicate<ItemStack> matcher) {
         for (int i = 0; i < villager.getInventory().getContainerSize(); i++) {
             ItemStack stack = villager.getInventory().getItem(i);
-            if (!stack.isEmpty() && matcher.test(stack) && canAutoServe(stack)) return true;
+            if (!stack.isEmpty() && matcher.test(stack) && canAutoServe(level, villager, stack)) return true;
         }
         return false;
     }
@@ -98,7 +99,7 @@ public final class ServingPlateService {
         if (!ServingSurfaces.contains(level.getBlockState(pos)) || !isEmptySurface(level, pos)) return 0;
         for (int i = 0; i < villager.getInventory().getContainerSize(); i++) {
             ItemStack stack = villager.getInventory().getItem(i);
-            if (stack.isEmpty() || !matcher.test(stack) || !canAutoServe(stack)) continue;
+            if (stack.isEmpty() || !matcher.test(stack) || !canAutoServe(level, villager, stack)) continue;
             if (!putOnSurface(level, pos, stack.copyWithCount(1))) return 0;
             stack.shrink(1);
             villager.getInventory().setChanged();

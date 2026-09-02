@@ -1,6 +1,5 @@
 package com.aetherianartificer.townstead.tick;
 
-import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.profession.ProfessionAutoAssign;
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
@@ -25,8 +24,7 @@ public final class ProfessionAutoAssignTicker {
                 .sorted(Comparator.comparingInt(ProfessionAutoAssignTicker::priority)
                         .thenComparing(ProfessionDef::id))
                 .toList()) {
-            boolean enabled = !COOK.equals(def.id()) || TownsteadConfig.isTownsteadCookEnabled();
-            ProfessionAutoAssign.tick(villager, def, enabled, 0);
+            ProfessionAutoAssign.tick(villager, def, ProfessionAutoAssign.enabled(def), 0);
         }
     }
 

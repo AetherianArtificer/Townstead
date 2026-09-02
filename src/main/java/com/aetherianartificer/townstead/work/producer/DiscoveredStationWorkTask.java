@@ -103,6 +103,15 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     private @Nullable StationType stationType;
     private ItemStack heldCuttingInput = ItemStack.EMPTY;
     private boolean cuttingBoardItemPlaced;
+    /** A tool interaction processes one staged input; repeating it can place the tool on an empty board. */
+    private boolean toolWorkActionPerformed;
+    /** Strokes still owed before the tool interaction fires; a cut is a motion, not a teleport. */
+    private int toolWorkSwingsRemaining;
+    /** Tool interactions that reported nothing observable; bounded so a wrong board never stalls a shift. */
+    private int toolWorkAttempts;
+    private static final int TOOL_WORK_SWINGS = 3;
+    private static final int TOOL_SWING_INTERVAL_TICKS = 6;
+    private static final int MAX_TOOL_WORK_ATTEMPTS = 3;
     private ItemStack previousBoardMainHand = ItemStack.EMPTY;
     private ItemStack previousBoardOffHand = ItemStack.EMPTY;
     private boolean boardHandsVisible;
@@ -427,8 +436,8 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     @Override
     protected boolean isCycleOutput(ServerLevel level, ItemStack stack) {
         if (stack == null || stack.isEmpty()) return false;
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        return id != null && WorkRecipeRegistry.allOutputIds(level).contains(id);
+        return CycleOutputMatcher.matches(fdRecipe(), BuiltInRegistries.ITEM.getKey(stack.getItem()),
+                com.aetherianartificer.townstead.work.order.OrderProducts.key(stack));
     }
 
     @Override
@@ -469,6 +478,9 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         if (activeRecipe == null) return false;
         sweptProducedOutput = false;
         interruptedProduction = false;
+        toolWorkActionPerformed = false;
+        toolWorkAttempts = 0;
+        toolWorkSwingsRemaining = TOOL_WORK_SWINGS;
         DiscoveredRecipe recipe = fdRecipe();
         if (com.aetherianartificer.townstead.work.station.StationProtocols.handles(level, stationAnchor)) {
             // The physical hand-off: place the work block and/or push the gathered items from
@@ -501,12 +513,46 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                 && com.aetherianartificer.townstead.work.station.StationProtocols.handles(level, stationAnchor)) {
             var v2 = com.aetherianartificer.townstead.work.station.Workstations
                     .v2ByState(level.getBlockState(stationAnchor));
-            if (v2 != null && v2.behaviorUses("tool")) {
-                com.aetherianartificer.townstead.work.station.StationProtocols.work(
-                        level, villager, stationAnchor, recipe);
-            }
-            boolean ready = com.aetherianartificer.townstead.work.station.StationProtocols.isReady(
+            boolean readyBeforeWork = com.aetherianartificer.townstead.work.station.StationProtocols.isReady(
                     level, villager, stationAnchor, recipe);
+            if (ToolWorkActionGate.shouldPerform(v2 != null && v2.behaviorUses("tool"),
+                    readyBeforeWork, toolWorkActionPerformed)) {
+                if (toolWorkSwingsRemaining > 0) {
+                    toolWorkSwingsRemaining--;
+                    villager.swing(villager.getDominantHand());
+                    produceDoneTick = gameTime + TOOL_SWING_INTERVAL_TICKS;
+                    return false;
+                }
+                villager.swing(villager.getDominantHand());
+                boolean acted = com.aetherianartificer.townstead.work.station.StationProtocols.work(
+                        level, villager, stationAnchor, recipe);
+                // A board hands its product straight to the worker and is empty afterwards, so
+                // polling the block would wait for a result that is already in the apron pocket.
+                if (carriedOutputComplete(villager, recipe)) {
+                    toolWorkActionPerformed = true;
+                    return true;
+                }
+                boolean idleAfterWork = com.aetherianartificer.townstead.work.station.StationProtocols
+                        .isIdle(level, stationAnchor, recipe);
+                if (!acted || idleAfterWork) {
+                    // The block may report a consumed interaction while processing nothing (a
+                    // board displaying a knife, a knife nobody carries). Repeating that every tick
+                    // until the lease ends was the stall; give it a few honest tries, then move on.
+                    toolWorkAttempts++;
+                    if (toolWorkAttempts >= MAX_TOOL_WORK_ATTEMPTS) {
+                        debugChat(level, villager, "COOK:tool action produced nothing at "
+                                + stationAnchor.toShortString() + "; rotating station");
+                        failCuttingBoard(level, villager, gameTime, recipe.output());
+                        return false;
+                    }
+                    produceDoneTick = gameTime + TOOL_SWING_INTERVAL_TICKS;
+                    return false;
+                }
+                toolWorkActionPerformed = true;
+            }
+            boolean ready = readyBeforeWork
+                    || com.aetherianartificer.townstead.work.station.StationProtocols.isReady(
+                            level, villager, stationAnchor, recipe);
             if (activeBatchOperations() > 1) {
                 if (com.aetherianartificer.townstead.work.station.StationProtocols.hasPendingInputs(
                         level, stationAnchor, recipe)) return false;
@@ -1098,6 +1144,13 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         return (DiscoveredRecipe) activeRecipe;
     }
 
+    /** Whether this cycle's expected product has arrived in the worker's own inventory. */
+    private boolean carriedOutputComplete(VillagerEntityMCA villager, DiscoveredRecipe recipe) {
+        int expected = Math.max(1, recipe.outputCount()) * activeBatchOperations();
+        return countInventoryItem(villager.getInventory(), recipe.output()) - carriedOutputBaseline
+                >= expected;
+    }
+
     private static int countInventoryItem(SimpleContainer inventory, ResourceLocation itemId) {
         int count = 0;
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
@@ -1459,6 +1512,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     private void resetBoardSession(VillagerEntityMCA villager) {
         heldCuttingInput = ItemStack.EMPTY;
         cuttingBoardItemPlaced = false;
+        toolWorkActionPerformed = false;
         clearStickyBoardVisuals();
         clearBoardHands(villager);
     }

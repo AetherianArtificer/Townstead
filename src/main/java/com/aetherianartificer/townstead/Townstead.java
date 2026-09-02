@@ -2586,16 +2586,6 @@ public class Townstead {
                 this::handleOrderEdit
         );
         registrar.playToClient(
-                com.aetherianartificer.townstead.work.order.net.OrdersOfferS2CPayload.TYPE,
-                com.aetherianartificer.townstead.work.order.net.OrdersOfferS2CPayload.STREAM_CODEC,
-                this::handleOrdersOffer
-        );
-        registrar.playToServer(
-                com.aetherianartificer.townstead.work.order.net.OrdersAskC2SPayload.TYPE,
-                com.aetherianartificer.townstead.work.order.net.OrdersAskC2SPayload.STREAM_CODEC,
-                this::handleOrdersAsk
-        );
-        registrar.playToClient(
                 com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload.TYPE,
                 com.aetherianartificer.townstead.profession.career.CareerGraphS2CPayload.STREAM_CODEC,
                 this::handleCareerTree
@@ -3450,26 +3440,6 @@ public class Townstead {
         context.enqueueWork(() -> {
             if (context.player() instanceof net.minecraft.server.level.ServerPlayer player) {
                 com.aetherianartificer.townstead.work.order.OrdersOpener.edit(player, payload);
-            }
-        });
-    }
-
-    private void handleOrdersOffer(com.aetherianartificer.townstead.work.order.net.OrdersOfferS2CPayload payload,
-                                   IPayloadContext context) {
-        context.enqueueWork(() ->
-                com.aetherianartificer.townstead.client.gui.dialogue.RpgDialogueScreen.onOrdersOffer(
-                        payload.villagerId(), payload.available()));
-    }
-
-    private void handleOrdersAsk(com.aetherianartificer.townstead.work.order.net.OrdersAskC2SPayload payload,
-                                 IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (!(context.player() instanceof net.minecraft.server.level.ServerPlayer player)) return;
-            switch (payload.ask()) {
-                case OFFER -> com.aetherianartificer.townstead.work.order.OrdersConversation.offer(
-                        player, payload.villagerId());
-                case OPEN -> com.aetherianartificer.townstead.work.order.OrdersConversation.open(
-                        player, payload.villagerId());
             }
         });
     }
