@@ -204,8 +204,7 @@ public final class ChronicleCommand {
     private static int withFocus(CommandSourceStack source, FocusAction action) {
         LivingEntity target = focusVillager(source);
         if (target == null) {
-            source.sendFailure(Component.literal(
-                    "no villager in focus - look at one (or stand near one), or pass a target"));
+            source.sendFailure(Component.translatable("command.townstead.chronicle.focus.none"));
             return 0;
         }
         return action.run(target);
@@ -214,13 +213,14 @@ public final class ChronicleCommand {
     // ---- event listings ----
 
     private static int subject(CommandSourceStack source, Entity target, long before) {
-        sendEvents(source, "Events for " + target.getName().getString(),
+        sendEvents(source, Component.translatable("command.townstead.chronicle.events.subject",
+                        target.getName()),
                 Chronicles.bySubject(target.getUUID(), before, PAGE_SIZE));
         return 1;
     }
 
     private static int village(CommandSourceStack source, int villageId, long before) {
-        sendEvents(source, "Events for village " + villageId,
+        sendEvents(source, Component.translatable("command.townstead.chronicle.events.village", villageId),
                 Chronicles.byVillage(source.getLevel().dimension().location(), villageId, before, PAGE_SIZE));
         return 1;
     }
@@ -228,50 +228,55 @@ public final class ChronicleCommand {
     private static int villageNearest(CommandSourceStack source, long before) {
         ServerPlayer player = source.getPlayer();
         if (player == null) {
-            source.sendFailure(Component.literal("village nearest needs a player context"));
+            source.sendFailure(Component.translatable("command.townstead.chronicle.village_nearest.player_required"));
             return 0;
         }
         Optional<Village> village = Village.findNearest(player);
         if (village.isEmpty()) {
-            source.sendFailure(Component.literal("no village nearby"));
+            source.sendFailure(Component.translatable("command.townstead.chronicle.village.none_nearby"));
             return 0;
         }
         int id = village.get().getId();
-        sendEvents(source, "Events for village " + id + " (" + village.get().getName() + ")",
+        sendEvents(source, Component.translatable("command.townstead.chronicle.events.named_village",
+                        id, Component.literal(village.get().getName())),
                 Chronicles.byVillage(player.level().dimension().location(), id, before, PAGE_SIZE));
         return 1;
     }
 
     private static int day(CommandSourceStack source, long worldDay) {
-        sendEvents(source, "Events on day " + worldDay, Chronicles.byDay(worldDay, PAGE_SIZE));
+        sendEvents(source, Component.translatable("command.townstead.chronicle.events.day", worldDay),
+                Chronicles.byDay(worldDay, PAGE_SIZE));
         return 1;
     }
 
     private static int arc(CommandSourceStack source, long arcId) {
-        sendEvents(source, "Arc #" + arcId, Chronicles.byArc(arcId, 32));
+        sendEvents(source, Component.translatable("command.townstead.chronicle.events.arc", arcId),
+                Chronicles.byArc(arcId, 32));
         return 1;
     }
 
-    private static void sendEvents(CommandSourceStack source, String title,
+    private static void sendEvents(CommandSourceStack source, Component title,
                                    CompletableFuture<List<ChronicleEvent>> future) {
         MinecraftServer server = source.getServer();
         future.thenAccept(events -> server.execute(() -> {
-            source.sendSuccess(() -> Component.literal("=== " + title + " ==="), false);
+            source.sendSuccess(() -> Component.translatable(
+                    "command.townstead.chronicle.events.header", title), false);
             if (events.isEmpty()) {
-                source.sendSuccess(() -> Component.literal("(no events)"), false);
+                source.sendSuccess(() -> Component.translatable(
+                        "command.townstead.chronicle.events.empty"), false);
                 return;
             }
             for (ChronicleEvent event : events) {
-                Component line = Component.literal("#" + event.eventId() + " [")
-                        .append(CalendarDateFormatter.format(server, event.worldDay(),
-                                CalendarDateFormatter.Style.LONG))
-                        .append(Component.literal("] "))
-                        .append(renderHeadline(event, event.params()));
+                Component line = Component.translatable("command.townstead.chronicle.events.line",
+                        event.eventId(),
+                        CalendarDateFormatter.format(server, event.worldDay(),
+                                CalendarDateFormatter.Style.LONG),
+                        renderHeadline(event, event.params()));
                 source.sendSuccess(() -> line, false);
             }
             ChronicleEvent last = events.get(events.size() - 1);
-            source.sendSuccess(() -> Component.literal(
-                    "(older: append " + last.eventId() + " as the cursor)"), false);
+            source.sendSuccess(() -> Component.translatable(
+                    "command.townstead.chronicle.events.older", last.eventId()), false);
         }));
     }
 
@@ -292,27 +297,29 @@ public final class ChronicleCommand {
     private static int knows(CommandSourceStack source, Entity target) {
         MinecraftServer server = source.getServer();
         Chronicles.accountsByKnower(target.getUUID(), 20).thenAccept(accounts -> server.execute(() -> {
-            source.sendSuccess(() -> Component.literal(
-                    "=== " + target.getName().getString() + " knows (" + accounts.size() + ") ==="), false);
+            source.sendSuccess(() -> Component.translatable("command.townstead.chronicle.knows.header",
+                    target.getName(), accounts.size()), false);
             for (Account account : accounts) {
-                StringBuilder line = new StringBuilder();
-                line.append("#").append(account.storyEventId())
-                        .append(" via ").append(account.channel())
-                        .append(String.format(" (fidelity %.2f", account.fidelity()));
-                if (account.sourceAccountId() > 0) {
-                    line.append(", heard-from account #").append(account.sourceAccountId());
-                }
-                line.append(")");
+                Component line = account.sourceAccountId() > 0
+                        ? Component.translatable("command.townstead.chronicle.knows.account.heard",
+                                account.storyEventId(), Component.literal(account.channel()),
+                                String.format("%.2f", account.fidelity()), account.sourceAccountId())
+                        : Component.translatable("command.townstead.chronicle.knows.account",
+                                account.storyEventId(), Component.literal(account.channel()),
+                                String.format("%.2f", account.fidelity()));
                 DistortionOverlay overlay = DistortionOverlay.fromJson(account.overlayJson());
                 if (!overlay.isNone()) {
-                    line.append(" DISTORTED");
+                    line = line.copy().append(Component.translatable(
+                            "command.townstead.chronicle.knows.distorted"));
                     if (overlay.hasSubstitution()) {
-                        line.append(" [believes ").append(overlay.substitutedRole())
-                                .append(" was ").append(overlay.substituteName()).append("]");
+                        line = line.copy().append(Component.translatable(
+                                "command.townstead.chronicle.knows.belief",
+                                Component.literal(overlay.substitutedRole()),
+                                Component.literal(overlay.substituteName())));
                     }
                 }
-                String text = line.toString();
-                source.sendSuccess(() -> Component.literal(text), false);
+                Component text = line;
+                source.sendSuccess(() -> text, false);
             }
         }));
         return 1;
@@ -322,13 +329,16 @@ public final class ChronicleCommand {
         MinecraftServer server = source.getServer();
         Chronicles.byId(eventId).thenAccept(found -> server.execute(() -> {
             if (found.isEmpty()) {
-                source.sendFailure(Component.literal("no event #" + eventId));
+                source.sendFailure(Component.translatable(
+                        "command.townstead.chronicle.score.event_missing", eventId));
                 return;
             }
             ChronicleEvent event = found.get();
             ChronicleEventTemplate template = ChronicleEventRegistry.byId(event.templateId());
             if (template == null) {
-                source.sendFailure(Component.literal("template gone: " + event.templateId()));
+                source.sendFailure(Component.translatable(
+                        "command.townstead.chronicle.score.template_missing",
+                        Component.literal(event.templateId().toString())));
                 return;
             }
             long today = TownsteadCalendar.worldDay(server);
@@ -336,13 +346,14 @@ public final class ChronicleCommand {
                     event.villageId(), today, event.villageId());
             float foreign = NewsScore.score(template, event.magnitude(), event.worldDay(),
                     event.villageId(), today, event.villageId() + 1);
-            source.sendSuccess(() -> Component.literal(String.format(
-                    "#%d %s: news %.1f × magnitude %.1f, age %dd → score %.2f local / %.2f foreign"
-                            + " | significance %.1f",
-                    eventId, event.templateId(), template.newsValue(), event.magnitude(),
-                    today - event.worldDay(), local, foreign,
-                    com.aetherianartificer.townstead.chronicle.scope.ScopeRelevance.significance(
-                            template, event.magnitude()))), false);
+            source.sendSuccess(() -> Component.translatable("command.townstead.chronicle.score.result",
+                    eventId, Component.literal(event.templateId().toString()),
+                    String.format("%.1f", template.newsValue()),
+                    String.format("%.1f", event.magnitude()), today - event.worldDay(),
+                    String.format("%.2f", local), String.format("%.2f", foreign),
+                    String.format("%.1f",
+                            com.aetherianartificer.townstead.chronicle.scope.ScopeRelevance.significance(
+                                    template, event.magnitude()))), false);
         }));
         return 1;
     }
@@ -350,31 +361,31 @@ public final class ChronicleCommand {
     private static int points(CommandSourceStack source, ServerPlayer player) {
         ServerPlayer subject = player != null ? player : source.getPlayer();
         if (subject == null) {
-            source.sendFailure(Component.literal("points needs a player"));
+            source.sendFailure(Component.translatable("command.townstead.chronicle.points.player_required"));
             return 0;
         }
         int points = ChronicleSavedData.get(source.getServer()).newsPoints(subject.getUUID());
-        source.sendSuccess(() -> Component.literal(
-                subject.getGameProfile().getName() + " has " + points + " news points"), false);
+        source.sendSuccess(() -> Component.translatable("command.townstead.chronicle.points.result",
+                Component.literal(subject.getGameProfile().getName()), points), false);
         return 1;
     }
 
     private static int count(CommandSourceStack source, Entity target, String key) {
         int value = Chronicles.count(source.getServer(), target.getUUID(), key);
-        source.sendSuccess(() -> Component.literal(
-                target.getName().getString() + " " + key + " = " + value), false);
+        source.sendSuccess(() -> Component.translatable("command.townstead.chronicle.count.result",
+                target.getName(), Component.literal(key), value), false);
         return 1;
     }
 
     private static int memories(CommandSourceStack source, Entity target) {
         List<VillagerMemory> memories = Chronicles.memories(source.getServer(), target.getUUID());
-        source.sendSuccess(() -> Component.literal(
-                "=== Memories of " + target.getName().getString() + " (" + memories.size() + ") ==="), false);
+        source.sendSuccess(() -> Component.translatable("command.townstead.chronicle.memories.header",
+                target.getName(), memories.size()), false);
         for (VillagerMemory memory : memories) {
-            source.sendSuccess(() -> Component.literal(String.format(
-                    "%s ×%d strength %.2f valence %+.2f (day %d..%d)",
-                    memory.memoryKey(), memory.count(), memory.strength(), memory.valence(),
-                    memory.firstDay(), memory.lastDay())), false);
+            source.sendSuccess(() -> Component.translatable("command.townstead.chronicle.memories.entry",
+                    Component.literal(memory.memoryKey()), memory.count(),
+                    String.format("%.2f", memory.strength()), String.format("%+.2f", memory.valence()),
+                    memory.firstDay(), memory.lastDay()), false);
         }
         return 1;
     }
@@ -383,36 +394,35 @@ public final class ChronicleCommand {
         SentimentEntry entry = ChronicleSavedData.get(source.getServer())
                 .sentimentEntry(from.getUUID(), toward.getUUID());
         if (entry == null) {
-            source.sendSuccess(() -> Component.literal(
-                    from.getName().getString() + " has no sentiment toward " + toward.getName().getString()), false);
+            source.sendSuccess(() -> Component.translatable("command.townstead.chronicle.sentiment.none",
+                    from.getName(), toward.getName()), false);
             return 1;
         }
-        source.sendSuccess(() -> Component.literal(String.format(
-                "%s feels %+.2f toward %s (last moved day %d by account #%d)",
-                from.getName().getString(), entry.value(), toward.getName().getString(),
-                entry.lastDay(), entry.sourceAccountId())), false);
+        source.sendSuccess(() -> Component.translatable("command.townstead.chronicle.sentiment.result",
+                from.getName(), String.format("%+.2f", entry.value()), toward.getName(),
+                entry.lastDay(), entry.sourceAccountId()), false);
         return 1;
     }
 
     private static int concepts(CommandSourceStack source) {
         ServerPlayer player = source.getPlayer();
         if (player == null) {
-            source.sendFailure(Component.literal("concepts needs a player context"));
+            source.sendFailure(Component.translatable("command.townstead.chronicle.concepts.player_required"));
             return 0;
         }
         Optional<Village> village = Village.findNearest(player);
         if (village.isEmpty()) {
-            source.sendFailure(Component.literal("no village nearby"));
+            source.sendFailure(Component.translatable("command.townstead.chronicle.village.none_nearby"));
             return 0;
         }
         VillageKey key = new VillageKey(player.level().dimension().location(), village.get().getId());
         List<ConceptLedger.ConceptEntry> entries = ConceptLedger.get(source.getServer()).byVillage(key);
-        source.sendSuccess(() -> Component.literal(
-                "=== Concepts of village " + key.villageId() + " (" + entries.size() + ") ==="), false);
+        source.sendSuccess(() -> Component.translatable("command.townstead.chronicle.concepts.header",
+                key.villageId(), entries.size()), false);
         for (ConceptLedger.ConceptEntry entry : entries) {
-            source.sendSuccess(() -> Component.literal(
-                    entry.id() + " — " + entry.displayNameLiteral()
-                            + " (since day " + entry.foundingDay() + ")"), false);
+            source.sendSuccess(() -> Component.translatable("command.townstead.chronicle.concepts.entry",
+                    Component.literal(entry.id()), Component.literal(entry.displayNameLiteral()),
+                    entry.foundingDay()), false);
         }
         return 1;
     }
@@ -420,26 +430,28 @@ public final class ChronicleCommand {
     private static int pregenReroll(CommandSourceStack source) {
         ServerPlayer player = source.getPlayer();
         if (player == null) {
-            source.sendFailure(Component.literal("pregen reroll needs a player context"));
+            source.sendFailure(Component.translatable(
+                    "command.townstead.chronicle.pregen.reroll.player_required"));
             return 0;
         }
         Optional<Village> village = Village.findNearest(player);
         if (village.isEmpty()) {
-            source.sendFailure(Component.literal("no village nearby"));
+            source.sendFailure(Component.translatable("command.townstead.chronicle.village.none_nearby"));
             return 0;
         }
         MinecraftServer server = source.getServer();
         VillageKey key = new VillageKey(player.level().dimension().location(), village.get().getId());
         WorldCalendarSavedData.VillageBirth birth = WorldCalendarSavedData.get(server).getVillageBirth(key);
         if (birth == null) {
-            source.sendFailure(Component.literal("village has no establishment record yet"));
+            source.sendFailure(Component.translatable(
+                    "command.townstead.chronicle.pregen.reroll.establishment_missing"));
             return 0;
         }
         ChronicleSavedData.get(server).clearHistory(key);
         PregenScheduler.forget(key);
         PregenScheduler.schedule(key, birth.worldDay(), birth.playerFounded(), player.blockPosition());
-        source.sendSuccess(() -> Component.literal(
-                "Rerolling pre-history for village " + key.villageId()), false);
+        source.sendSuccess(() -> Component.translatable(
+                "command.townstead.chronicle.pregen.reroll.success", key.villageId()), false);
         return 1;
     }
 
@@ -451,13 +463,15 @@ public final class ChronicleCommand {
      */
     private static int pregenLife(CommandSourceStack source, Entity target) {
         if (!(target instanceof VillagerEntityMCA villager)) {
-            source.sendFailure(Component.literal("pregen life needs a villager"));
+            source.sendFailure(Component.translatable(
+                    "command.townstead.chronicle.pregen.life.villager_required"));
             return 0;
         }
         MinecraftServer server = source.getServer();
         var life = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).life();
         if (!life.hasBirth()) {
-            source.sendFailure(Component.literal("villager has no birth stamp yet"));
+            source.sendFailure(Component.translatable(
+                    "command.townstead.chronicle.pregen.life.birth_missing"));
             return 0;
         }
         // Births are stamped on the biological clock; generation runs on the world clock.
@@ -471,17 +485,20 @@ public final class ChronicleCommand {
         List<ChroniclePersonalPregen.Beat> beats = ChroniclePersonalPregen.generate(
                 server, villager, birthDay, key, neighbours);
 
-        source.sendSuccess(() -> Component.literal(
-                "=== " + villager.getName().getString() + ": " + beats.size() + " beats ==="), false);
+        source.sendSuccess(() -> Component.translatable("command.townstead.chronicle.pregen.life.header",
+                villager.getName(), beats.size()), false);
         if (beats.isEmpty()) {
-            source.sendSuccess(() -> Component.literal(
-                    "(no candidate templates fit this subject)"), false);
+            source.sendSuccess(() -> Component.translatable(
+                    "command.townstead.chronicle.pregen.life.empty"), false);
             return 1;
         }
         for (ChroniclePersonalPregen.Beat beat : beats) {
-            source.sendSuccess(() -> Component.literal(String.format(
-                            "age %d: %s (rel %.1f) %s", beat.ageYears(), beat.headline(),
-                            beat.relevance(), beat.retained() ? "kept" : "forgotten"))
+            source.sendSuccess(() -> Component.translatable("command.townstead.chronicle.pregen.life.beat",
+                            beat.ageYears(), Component.literal(beat.headline()),
+                            String.format("%.1f", beat.relevance()),
+                            Component.translatable(beat.retained()
+                                    ? "command.townstead.chronicle.pregen.life.kept"
+                                    : "command.townstead.chronicle.pregen.life.forgotten"))
                     .withStyle(beat.retained() ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY), false);
         }
         return 1;
@@ -493,16 +510,16 @@ public final class ChronicleCommand {
         MinecraftServer server = source.getServer();
         ChronicleStore.Stats stats = Chronicles.storeStats();
         ChronicleSavedData data = ChronicleSavedData.get(server);
-        source.sendSuccess(() -> Component.literal(String.format(
-                "Chronicle archive: %s | queued %d | written %d | dropped %d | %.1f MiB",
-                stats.available() ? "available" : "UNAVAILABLE",
+        source.sendSuccess(() -> Component.translatable("command.townstead.chronicle.stats.archive",
+                Component.translatable(stats.available()
+                        ? "command.townstead.chronicle.stats.available"
+                        : "command.townstead.chronicle.stats.unavailable"),
                 stats.queued(), stats.written(), stats.dropped(),
-                stats.dbFileBytes() / (1024.0 * 1024.0))), false);
-        source.sendSuccess(() -> Component.literal(String.format(
-                "Hot tier: %d counter subjects | %d memory holders | %d village digests | %d sentiment holders | buffer %d | open arcs %d | pregen queued %d",
+                String.format("%.1f", stats.dbFileBytes() / (1024.0 * 1024.0))), false);
+        source.sendSuccess(() -> Component.translatable("command.townstead.chronicle.stats.hot_tier",
                 data.counterSubjects(), data.memoryHolders(), data.historyVillages(),
                 data.sentimentHolders(), Chronicles.buffer().size(), ArcManager.openCount(),
-                PregenScheduler.queued())), false);
+                PregenScheduler.queued()), false);
         return 1;
     }
 
@@ -510,7 +527,7 @@ public final class ChronicleCommand {
         MinecraftServer server = source.getServer();
         ServerPlayer player = source.getPlayer();
         if (player == null) {
-            source.sendFailure(Component.literal("chronicle dump needs a player context"));
+            source.sendFailure(Component.translatable("command.townstead.chronicle.dump.player_required"));
             return 0;
         }
         ChronicleEvent draft = new ChronicleEvent(
@@ -531,34 +548,38 @@ public final class ChronicleCommand {
                         ChronicleRef.player(player.getUUID(), player.getGameProfile().getName()))),
                 Map.of("note", "manual dump"));
         long id = Chronicles.record(server, draft);
-        source.sendSuccess(() -> Component.literal("Recorded debug event #" + id), false);
+        source.sendSuccess(() -> Component.translatable(
+                "command.townstead.chronicle.dump.success", id), false);
         return 1;
     }
 
     private static int emit(CommandSourceStack source, String templateId, Entity target) {
         if (!(target instanceof LivingEntity living)) {
-            source.sendFailure(Component.literal("target must be a living entity"));
+            source.sendFailure(Component.translatable("command.townstead.chronicle.emit.living_required"));
             return 0;
         }
         ResourceLocation id;
         try {
             id = rlParse(templateId);
         } catch (Exception e) {
-            source.sendFailure(Component.literal("bad template id: " + templateId));
+            source.sendFailure(Component.translatable("command.townstead.chronicle.emit.bad_template_id",
+                    Component.literal(templateId)));
             return 0;
         }
         ChronicleEventTemplate template = ChronicleEventRegistry.byId(id);
         if (template == null) {
-            source.sendFailure(Component.literal("unknown chronicle_event: " + id));
+            source.sendFailure(Component.translatable("command.townstead.chronicle.emit.unknown_template",
+                    Component.literal(id.toString())));
             return 0;
         }
         var eventId = ChronicleEmitter.emitTemplate(
                 (net.minecraft.server.level.ServerLevel) living.level(), template, living, 1.0f, Map.of());
         if (eventId.isEmpty()) {
-            source.sendFailure(Component.literal("emission produced no event"));
+            source.sendFailure(Component.translatable("command.townstead.chronicle.emit.empty"));
             return 0;
         }
-        source.sendSuccess(() -> Component.literal("Emitted " + id + " as event #" + eventId.getAsLong()), false);
+        source.sendSuccess(() -> Component.translatable("command.townstead.chronicle.emit.success",
+                Component.literal(id.toString()), eventId.getAsLong()), false);
         return 1;
     }
 

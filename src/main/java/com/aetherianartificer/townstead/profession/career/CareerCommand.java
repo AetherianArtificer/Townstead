@@ -59,7 +59,7 @@ public final class CareerCommand {
     private static int screen(CommandSourceStack source, LivingEntity target) {
         ServerPlayer player = source.getPlayer();
         if (player == null) {
-            source.sendFailure(Component.literal("The Career screen needs a player."));
+            source.sendFailure(Component.translatable("townstead.command.career.screen.player_only"));
             return 0;
         }
         if (target == null || target == player) {
@@ -72,10 +72,11 @@ public final class CareerCommand {
 
     private static int inspect(CommandSourceStack source, LivingEntity entity) {
         if (entity == null || CareerProfiles.of(entity) == null || xpStore(entity) == null) {
-            source.sendFailure(Component.literal("No character with a Career found."));
+            source.sendFailure(Component.translatable("townstead.command.career.none_found"));
             return 0;
         }
-        source.sendSuccess(() -> Component.literal("=== Career: " + entity.getName().getString() + " ==="), false);
+        source.sendSuccess(() -> Component.translatable(
+                "townstead.command.career.heading", entity.getName()), false);
         for (CareerTreeRows.Row row : CareerTreeRows.build(source.getServer(), entity)) {
             String indent = "  ".repeat(row.depth());
             String suffix = row.skillId().isEmpty()
@@ -87,17 +88,18 @@ public final class CareerCommand {
 
     private static int choose(CommandSourceStack source, LivingEntity entity, ResourceLocation skillId) {
         if (entity == null || skillId == null) {
-            source.sendFailure(Component.literal("No character or valid skill selected."));
+            source.sendFailure(Component.translatable("townstead.command.career.choose.invalid"));
             return 0;
         }
         LearnedSkills.Result result = CareerChoices.chooseFromAcquired(entity, skillId);
         if (!result.ok()) {
-            source.sendFailure(Component.literal("Cannot equip " + skillId + ": " + result.error()));
+            source.sendFailure(Component.translatable("townstead.command.career.choose.failed",
+                    skillId.toString(), result.error()));
             return 0;
         }
         SkillDef skill = SkillDefs.byId(skillId);
-        source.sendSuccess(() -> Component.literal("Equipped " +
-                (skill == null ? skillId : skill.displayName().getString()) + " for " + entity.getName().getString()), false);
+        source.sendSuccess(() -> Component.translatable("townstead.command.career.choose.success",
+                skill == null ? skillId.toString() : skill.displayName(), entity.getName()), false);
         return inspect(source, entity);
     }
 

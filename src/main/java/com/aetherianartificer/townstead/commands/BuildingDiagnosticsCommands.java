@@ -14,6 +14,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -35,7 +36,7 @@ public final class BuildingDiagnosticsCommands {
         try {
             player = source.getPlayerOrException();
         } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
-            source.sendFailure(Component.literal("This command must be run by a player."));
+            source.sendFailure(Component.translatable("townstead.command.building.player_only"));
             return 0;
         }
         ServerLevel level = player.serverLevel();
@@ -43,45 +44,47 @@ public final class BuildingDiagnosticsCommands {
         VillageManager manager = VillageManager.get(level);
         Village village = manager.findNearestVillage(pos, Village.MERGE_MARGIN).orElse(null);
         if (village == null) {
-            source.sendSuccess(() -> Component.literal("Building diagnose at " + pos
-                    + ": no MCA village in merge range; "
-                    + McaBuildingDiscovery.pendingDescription(level, pos)), false);
+            source.sendSuccess(() -> Component.translatable("townstead.command.building.no_village",
+                    pos.toString(), McaBuildingDiscovery.pendingDescription(level, pos)), false);
             return 0;
         }
 
         Building room = McaBuildingCompat.functionalRoomAt(level, village, pos);
-        StringBuilder report = new StringBuilder("Building diagnose at ").append(pos)
-                .append("\nVillage: ").append(village.getId())
-                .append(" (autoScan=").append(village.isAutoScan()).append(')')
-                .append("\nDiscovery: ").append(McaBuildingDiscovery.pendingDescription(level, pos));
+        MutableComponent report = Component.translatable("townstead.command.building.header", pos.toString())
+                .append("\n").append(Component.translatable("townstead.command.building.village",
+                        village.getId(), village.isAutoScan()))
+                .append("\n").append(Component.translatable("townstead.command.building.discovery",
+                        McaBuildingDiscovery.pendingDescription(level, pos)));
         if (room == null) {
-            report.append("\nRoom: none (MCA exact lookup)");
+            report.append("\n").append(Component.translatable("townstead.command.building.room.none"));
             //? if >=1.21 {
             var scan = manager.analyzeRoom(pos);
-            report.append("\nMCA add-room analysis: ").append(scan.result())
-                    .append(" candidates=").append(scan.matchingTypes());
+            report.append("\n").append(Component.translatable(
+                    "townstead.command.building.add_room_analysis", scan.result().toString(),
+                    scan.matchingTypes().toString()));
             //?}
-            source.sendSuccess(() -> Component.literal(report.toString()), false);
+            source.sendSuccess(() -> report, false);
             return 0;
         }
 
         List<String> candidates = McaBuildingCompat.matchingTypeNames(village, room);
-        report.append("\nRoom: id=").append(room.getId())
-                .append(" direct=").append(room.getType())
-                .append(" effective=").append(McaBuildingCompat.effectiveType(village, room))
-                .append(" forced=").append(room.isTypeForced())
-                .append("\nSource: ").append(McaBuildingCompat.reference(room))
-                .append("\nNormalized MCA candidates: ").append(candidates);
+        report.append("\n").append(Component.translatable("townstead.command.building.room",
+                        room.getId(), room.getType(), McaBuildingCompat.effectiveType(village, room),
+                        room.isTypeForced()))
+                .append("\n").append(Component.translatable("townstead.command.building.source",
+                        McaBuildingCompat.reference(room)))
+                .append("\n").append(Component.translatable("townstead.command.building.candidates",
+                        candidates.toString()));
         //? if >=1.21 {
-        report.append("\nStructure/floor: ").append(room.getStructureId()).append('/')
-                .append(room.getFloorId()).append(" regions=").append(room.getFloorRegions().size())
-                .append(" cells=").append(room.getFloorFootprintArea());
+        report.append("\n").append(Component.translatable("townstead.command.building.structure_floor",
+                room.getStructureId(), room.getFloorId(), room.getFloorRegions().size(),
+                room.getFloorFootprintArea()));
         RegisteredRoomUpdate update = manager.analyzeRegisteredRoomUpdate(
                 village, room.getId(), pos);
-        report.append("\nMCA update analysis: ").append(update.result())
-                .append(" candidates=").append(update.playerMatchingTypes());
+        report.append("\n").append(Component.translatable("townstead.command.building.update_analysis",
+                update.result().toString(), update.playerMatchingTypes().toString()));
         //?}
-        source.sendSuccess(() -> Component.literal(report.toString()), false);
+        source.sendSuccess(() -> report, false);
         return 1;
     }
 }

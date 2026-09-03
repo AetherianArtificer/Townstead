@@ -142,7 +142,7 @@ public final class CalendarDateFormatter {
         if (monthIndex >= 1 && monthIndex <= ms.size()) {
             return ms.get(monthIndex - 1).commonName();
         }
-        return Component.literal("Month " + monthIndex);
+        return Component.translatable("townstead.calendar.month.fallback", monthIndex);
     }
 
     @Nullable
@@ -157,7 +157,7 @@ public final class CalendarDateFormatter {
         if (monthIndex >= 1 && monthIndex <= ms.size()) {
             return ms.get(monthIndex - 1).commonName();
         }
-        return Component.literal("Month " + monthIndex);
+        return Component.translatable("townstead.calendar.month.fallback", monthIndex);
     }
 
     private static Component clientWeekdayLong(CalendarClientStore.Snapshot snap, int dayOfWeek) {

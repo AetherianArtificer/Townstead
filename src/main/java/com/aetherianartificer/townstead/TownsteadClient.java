@@ -296,7 +296,7 @@ public final class TownsteadClient {
         private final Screen parent;
 
         ConfigInfoScreen(Screen parent) {
-            super(Component.literal("Townstead Configuration"));
+            super(Component.translatable("townstead.configuration.title", "Townstead"));
             this.parent = parent;
         }
 

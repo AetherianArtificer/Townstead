@@ -46,7 +46,7 @@ public final class DynamicFlowerPotTagPack {
     public static Pack create() {
         PackLocationInfo info = new PackLocationInfo(
                 Townstead.MOD_ID + "_dynamic_tags",
-                net.minecraft.network.chat.Component.literal("Townstead Dynamic Tags"),
+                net.minecraft.network.chat.Component.translatable("townstead.pack.dynamic_tags.name"),
                 PackSource.BUILT_IN,
                 Optional.empty()
         );
@@ -71,7 +71,7 @@ public final class DynamicFlowerPotTagPack {
     /*public static Pack create() {
         return Pack.readMetaAndCreate(
                 Townstead.MOD_ID + "_dynamic_tags",
-                net.minecraft.network.chat.Component.literal("Townstead Dynamic Tags"),
+                net.minecraft.network.chat.Component.translatable("townstead.pack.dynamic_tags.name"),
                 true,
                 id -> new FlowerPotTagPackResources(id),
                 PackType.SERVER_DATA,
@@ -124,9 +124,9 @@ public final class DynamicFlowerPotTagPack {
         public IoSupplier<InputStream> getRootResource(String... path) {
             if (path.length == 1 && "pack.mcmeta".equals(path[0])) {
                 //? if >=1.21 {
-                String meta = "{\"pack\":{\"pack_format\":48,\"description\":\"Townstead dynamic tags\"}}";
+                String meta = "{\"pack\":{\"pack_format\":48,\"description\":{\"translate\":\"townstead.pack.dynamic_tags.description\"}}}";
                 //?} else {
-                /*String meta = "{\"pack\":{\"pack_format\":15,\"description\":\"Townstead dynamic tags\"}}";
+                /*String meta = "{\"pack\":{\"pack_format\":15,\"description\":{\"translate\":\"townstead.pack.dynamic_tags.description\"}}}";
                 *///?}
                 byte[] bytes = meta.getBytes(StandardCharsets.UTF_8);
                 return () -> new ByteArrayInputStream(bytes);
@@ -160,14 +160,14 @@ public final class DynamicFlowerPotTagPack {
             //? if >=1.21 {
             if (serializer == PackMetadataSection.TYPE) {
                 return (T) new PackMetadataSection(
-                        net.minecraft.network.chat.Component.literal("Townstead dynamic tags"),
+                        net.minecraft.network.chat.Component.translatable("townstead.pack.dynamic_tags.description"),
                         48
                 );
             }
             //?} else {
             /*if (serializer == PackMetadataSection.TYPE) {
                 return (T) new PackMetadataSection(
-                        net.minecraft.network.chat.Component.literal("Townstead dynamic tags"),
+                        net.minecraft.network.chat.Component.translatable("townstead.pack.dynamic_tags.description"),
                         15
                 );
             }

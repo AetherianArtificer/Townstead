@@ -67,7 +67,7 @@ public class RpgDialogueScreen extends Screen {
     private static final int LATE_CONTENT_TIMEOUT_TICKS = 40;
 
     public RpgDialogueScreen(VillagerLike<?> villager) {
-        super(Component.literal("Dialogue"));
+        super(Component.translatable("townstead.dialogue.title"));
         this.villager = villager;
         this.villagerUUID = villager.asEntity().getUUID();
         if (villager.asEntity() instanceof VillagerEntityMCA mca

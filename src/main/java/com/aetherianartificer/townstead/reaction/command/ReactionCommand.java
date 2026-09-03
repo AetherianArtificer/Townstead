@@ -27,7 +27,7 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -69,19 +69,21 @@ public final class ReactionCommand {
     private static int list(CommandSourceStack source) {
         Collection<Reaction> all = ReactionRegistry.all();
         if (all.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("No reactions loaded."), false);
+            source.sendSuccess(() -> Component.translatable("command.townstead.reaction.none"), false);
             return 0;
         }
-        List<String> sorted = new ArrayList<>(all.size());
-        for (Reaction r : all) {
-            String label = r.displayName().orElse(r.id().toString());
-            sorted.add(r.id() + (r.displayName().isPresent() ? " (" + label + ")" : "")
-                    + " [" + r.bindings().size() + " binding(s), " + r.rawTriggers().size() + " trigger(s)]");
-        }
-        Collections.sort(sorted);
-        source.sendSuccess(() -> Component.literal("Loaded reactions (" + sorted.size() + "):"), false);
-        for (String line : sorted) {
-            source.sendSuccess(() -> Component.literal("  " + line), false);
+        List<Reaction> sorted = new ArrayList<>(all);
+        sorted.sort(Comparator.comparing(r -> r.id().toString()));
+        source.sendSuccess(() -> Component.translatable(
+                "command.townstead.reaction.list.heading", sorted.size()), false);
+        for (Reaction reaction : sorted) {
+            Component line = reaction.displayName()
+                    .map(key -> Component.translatable("command.townstead.reaction.list.entry",
+                            reaction.id(), Component.translatableWithFallback(key, key),
+                            reaction.bindings().size(), reaction.rawTriggers().size()))
+                    .orElseGet(() -> Component.translatable("command.townstead.reaction.list.entry.unnamed",
+                            reaction.id(), reaction.bindings().size(), reaction.rawTriggers().size()));
+            source.sendSuccess(() -> line, false);
         }
         return sorted.size();
     }
@@ -89,13 +91,13 @@ public final class ReactionCommand {
     private static int playAuto(CommandSourceStack source, String idRaw) {
         ServerPlayer player = source.getPlayer();
         if (player == null) {
-            source.sendFailure(Component.literal("This form must be run by a player. Supply <target> instead."));
+            source.sendFailure(Component.translatable("command.townstead.reaction.player_required"));
             return 0;
         }
         VillagerEntityMCA villager = pickLookedAtOrNearest(player);
         if (villager == null) {
-            source.sendFailure(Component.literal("No MCA villager near your crosshair (within "
-                    + (int) LOOK_RANGE + " blocks)."));
+            source.sendFailure(Component.translatable(
+                    "command.townstead.reaction.no_nearby_villager", (int) LOOK_RANGE));
             return 0;
         }
         return play(source, villager, idRaw);
@@ -103,7 +105,7 @@ public final class ReactionCommand {
 
     private static int playExplicit(CommandSourceStack source, String idRaw, Entity target) {
         if (!(target instanceof VillagerEntityMCA villager)) {
-            source.sendFailure(Component.literal("Target must be an MCA villager."));
+            source.sendFailure(Component.translatable("command.townstead.reaction.invalid_target"));
             return 0;
         }
         return play(source, villager, idRaw);
@@ -113,20 +115,19 @@ public final class ReactionCommand {
         ResourceLocation id = parseId(source, idRaw);
         if (id == null) return 0;
         if (ReactionRegistry.get(id).isEmpty()) {
-            source.sendFailure(Component.literal("Unknown reaction: " + id));
+            source.sendFailure(Component.translatable("command.townstead.reaction.unknown", id));
             return 0;
         }
         ServerLevel level = (ServerLevel) villager.level();
         boolean played = ReactionDispatcher.fire(level, (LivingEntity) villager, id,
                 ReactionContext.command(villager.blockPosition()));
         if (played) {
-            source.sendSuccess(() -> Component.literal("Playing reaction " + id + " on "
-                            + villager.getName().getString() + "."),
+            source.sendSuccess(() -> Component.translatable(
+                            "command.townstead.reaction.playing", id, villager.getDisplayName()),
                     false);
             return 1;
         }
-        source.sendFailure(Component.literal("Reaction " + id
-                + " did not play (cooldown, chance, or no candidate)."));
+        source.sendFailure(Component.translatable("command.townstead.reaction.not_played", id));
         return 0;
     }
 
@@ -177,7 +178,7 @@ public final class ReactionCommand {
             /*return new ResourceLocation(raw);
             *///?}
         } catch (Exception e) {
-            source.sendFailure(Component.literal("Invalid reaction id: " + raw));
+            source.sendFailure(Component.translatable("command.townstead.reaction.invalid_id", raw));
             Townstead.LOGGER.debug("Invalid reaction id from command: {}", raw);
             return null;
         }

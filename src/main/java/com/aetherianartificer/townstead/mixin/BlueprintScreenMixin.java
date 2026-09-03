@@ -477,7 +477,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         context.fill(detailsX, detailsBottom - 1, detailsRight, detailsBottom, theme.borderColor());
         context.fill(detailsX, detailsY, detailsX + 1, detailsBottom, theme.borderColor());
         context.fill(detailsRight - 1, detailsY, detailsRight, detailsBottom, theme.borderColor());
-        context.drawCenteredString(this.font, Component.literal("Catalog"), windowX + (ADV_WINDOW_W / 2), windowY + 6,
+        context.drawCenteredString(this.font, Component.translatable("townstead.configuration.catalog"), windowX + (ADV_WINDOW_W / 2), windowY + 6,
                 0xFFFFFF);
 
         BuildingType selected = townstead$getSelectedCatalogEntry();
@@ -588,7 +588,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         townstead$drawCatalogPinControl(context, selected, detailsRight, detailsMidY, mouseX, mouseY);
 
         int needsHeaderY = detailsMidY + 6;
-        context.drawString(this.font, Component.literal("Needs"), detailsTextX, needsHeaderY, 0xD0D0D0);
+        context.drawString(this.font, Component.translatable("townstead.configuration.needs"), detailsTextX, needsHeaderY, 0xD0D0D0);
         int needsListTop = needsHeaderY + this.font.lineHeight + 4;
         int needsListBottom = detailsBottom - 4;
         List<RequirementRow> allRequirements = detail.requirements();
@@ -1478,7 +1478,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         String descKey = "buildingType." + buildingType + ".description";
         String desc = Component.translatable(descKey).getString();
         if (desc.equals(descKey))
-            desc = "No description.";
+            desc = Component.translatable("townstead.catalog.no_description").getString();
 
         java.util.Map<String, Integer> spiritPts =
                 com.aetherianartificer.townstead.spirit.BuildingSpiritIndex.contributionsFor(buildingType);
@@ -1510,7 +1510,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         Optional<com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.GroupDef> match =
                 com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.matchGroup(name);
         if (match.isPresent())
-            return match.get().label();
+            return townstead$localizedCatalogLabel(match.get().label());
         // Auto-label derived from the tier family prefix, so any `<family>_lN`
         // building types cluster under a "<Family>" heading even if no catalog
         // group JSON is loaded. Prettier variants ("Docks" vs. "Dock", etc.)
@@ -1525,12 +1525,17 @@ public abstract class BlueprintScreenMixin extends Screen {
             }
         }
         if (!name.startsWith("compat/"))
-            return "Core";
+            return Component.translatable("townstead.catalog.group.core").getString();
         String[] parts = name.split("/");
         if (parts.length < 2)
-            return "Compat";
+            return Component.translatable("townstead.catalog.group.compat").getString();
         String mod = parts[1];
         return mod.substring(0, 1).toUpperCase(Locale.ROOT) + mod.substring(1);
+    }
+
+    @Unique
+    private static String townstead$localizedCatalogLabel(String label) {
+        return Component.translatableWithFallback(label, label).getString();
     }
 
     /**
@@ -1593,7 +1598,7 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private String townstead$modLine(String buildingTypeId) {
         String group = com.aetherianartificer.townstead.client.catalog.CatalogDataLoader
-                .matchGroup(buildingTypeId).map(g -> g.label()).orElse(null);
+                .matchGroup(buildingTypeId).map(g -> townstead$localizedCatalogLabel(g.label())).orElse(null);
         String mod = buildingTypeId.startsWith("compat/")
                 ? townstead$resolveModDisplayName(buildingTypeId)
                 : null;
@@ -1618,7 +1623,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         int tier = townstead$tierNumber(buildingTypeId, null);
         if (tier <= 0)
             return null;
-        return "Tier " + townstead$roman(tier);
+        return Component.translatable("townstead.catalog.tier", townstead$roman(tier)).getString();
     }
 
     @Unique

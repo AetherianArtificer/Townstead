@@ -75,7 +75,7 @@ public final class KubeJsPackSource {
         //? if >=1.21 {
         PackLocationInfo info = new PackLocationInfo(
                 PACK_ID,
-                Component.literal("KubeJS Resources (Townstead compatibility)"),
+                Component.translatable("townstead.pack.kubejs_compat.name"),
                 PackSource.BUILT_IN,
                 Optional.empty());
         return Pack.readMetaAndCreate(
@@ -96,7 +96,7 @@ public final class KubeJsPackSource {
         //?} else {
         /*return Pack.readMetaAndCreate(
                 PACK_ID,
-                Component.literal("KubeJS Resources (Townstead compatibility)"),
+                Component.translatable("townstead.pack.kubejs_compat.name"),
                 true,
                 id -> new LoosePackResources(kubeJsRoot, id),
                 type,
@@ -191,10 +191,10 @@ public final class KubeJsPackSource {
             if (serializer != PackMetadataSection.TYPE) return null;
             //? if >=1.21 {
             return (T) new PackMetadataSection(
-                    Component.literal("KubeJS resources loaded by Townstead"), 48);
+                    Component.translatable("townstead.pack.kubejs_compat.description"), 48);
             //?} else {
             /*return (T) new PackMetadataSection(
-                    Component.literal("KubeJS resources loaded by Townstead"), 15);
+                    Component.translatable("townstead.pack.kubejs_compat.description"), 15);
             *///?}
         }
 
@@ -246,9 +246,9 @@ public final class KubeJsPackSource {
 
         private static String metadataJson() {
             //? if >=1.21 {
-            return "{\"pack\":{\"pack_format\":48,\"description\":\"KubeJS resources loaded by Townstead\"}}";
+            return "{\"pack\":{\"pack_format\":48,\"description\":{\"translate\":\"townstead.pack.kubejs_compat.description\"}}}";
             //?} else {
-            /*return "{\"pack\":{\"pack_format\":15,\"description\":\"KubeJS resources loaded by Townstead\"}}";
+            /*return "{\"pack\":{\"pack_format\":15,\"description\":{\"translate\":\"townstead.pack.kubejs_compat.description\"}}}";
             *///?}
         }
     }

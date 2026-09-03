@@ -121,7 +121,7 @@ public final class TownsteadQueryCommands {
 
     private static int query(CommandSourceStack source, Object snapshot, String path) {
         if (snapshot == null) {
-            source.sendFailure(Component.literal("Townstead query: no snapshot available."));
+            source.sendFailure(Component.translatable("command.townstead.query.no_snapshot"));
             return 0;
         }
         Object value = TownsteadQuery.resolve(snapshot, path);

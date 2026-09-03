@@ -564,6 +564,9 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                 JsonObject json = GSON.fromJson(reader, JsonObject.class);
                 if (json == null) continue;
                 TownsteadSchema.validate(json, "townstead:serving_menu/v1");
+                if (json.has("mods") && !Boolean.TRUE.equals(ModGate.evaluate(json.get("mods")))) {
+                    continue;
+                }
                 Set<String> buildings = readStringSet(json, "buildings", "non-empty strings",
                         CatalogDataLoader::requireNonBlankBuildingType);
                 Set<ResourceLocation> products = readStringSet(json, "products", "resource ids",

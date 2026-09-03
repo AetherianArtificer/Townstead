@@ -102,31 +102,34 @@ public final class PhenoCommand {
 
     private static int skills(CommandSourceStack source, Entity target) {
         if (!(target instanceof LivingEntity living)) {
-            source.sendFailure(Component.literal("Pheno skills: target is not a living entity."));
+            source.sendFailure(Component.translatable("command.pheno.skills.invalid_target"));
             return 0;
         }
         Set<ResourceLocation> learned = LearnedSkills.learned(living);
         if (learned.isEmpty()) {
-            source.sendSuccess(() -> Component.literal(target.getName().getString() + " has learned no skills.")
+            source.sendSuccess(() -> Component.translatable(
+                    "command.pheno.skills.none", target.getDisplayName())
                     .withStyle(ChatFormatting.GRAY), false);
             return 1;
         }
-        source.sendSuccess(() -> Component.literal("Learned skills of " + target.getName().getString() + ":")
+        source.sendSuccess(() -> Component.translatable(
+                "command.pheno.skills.heading", target.getDisplayName())
                 .withStyle(ChatFormatting.GOLD), false);
         for (ResourceLocation id : learned) {
-            source.sendSuccess(() -> Component.literal("  " + id).withStyle(ChatFormatting.AQUA), false);
+            source.sendSuccess(() -> Component.translatable("command.pheno.skills.entry", id)
+                    .withStyle(ChatFormatting.AQUA), false);
         }
         return 1;
     }
 
     private static int learn(CommandSourceStack source, Entity target, String skill, boolean force) {
         if (!(target instanceof LivingEntity living)) {
-            source.sendFailure(Component.literal("Pheno learn: target is not a living entity."));
+            source.sendFailure(Component.translatable("command.pheno.learn.invalid_target"));
             return 0;
         }
         ResourceLocation id = ResourceLocation.tryParse(skill);
         if (id == null) {
-            source.sendFailure(Component.literal("Pheno learn: '" + skill + "' is not a valid id."));
+            source.sendFailure(Component.translatable("command.pheno.learn.invalid_id", skill));
             return 0;
         }
         LearnedSkills.Result result = force ? LearnedSkills.forceLearn(living, id) : LearnedSkills.learn(living, id);
@@ -138,32 +141,34 @@ public final class PhenoCommand {
                 com.aetherianartificer.townstead.profession.career.CareerChoices.activate(
                         living, def.skillGroup(), id);
             }
-            source.sendSuccess(() -> Component.literal(target.getName().getString()
-                    + (force ? " force-learned " : " learned ") + id).withStyle(ChatFormatting.GREEN), false);
+            source.sendSuccess(() -> Component.translatable(force
+                            ? "command.pheno.learn.success.forced" : "command.pheno.learn.success",
+                    target.getDisplayName(), id).withStyle(ChatFormatting.GREEN), false);
             return 1;
         }
-        source.sendFailure(Component.literal("Cannot learn " + id + ": " + result.error()));
+        source.sendFailure(Component.translatable("command.pheno.learn.failed", id, result.error()));
         return 0;
     }
 
     private static int forget(CommandSourceStack source, Entity target, String skill, boolean force) {
         if (!(target instanceof LivingEntity living)) {
-            source.sendFailure(Component.literal("Pheno forget: target is not a living entity."));
+            source.sendFailure(Component.translatable("command.pheno.forget.invalid_target"));
             return 0;
         }
         ResourceLocation id = ResourceLocation.tryParse(skill);
         if (id == null) {
-            source.sendFailure(Component.literal("Pheno forget: '" + skill + "' is not a valid id."));
+            source.sendFailure(Component.translatable("command.pheno.forget.invalid_id", skill));
             return 0;
         }
         LearnedSkills.ForgetResult result = force ? LearnedSkills.forceForget(living, id) : LearnedSkills.forget(living, id);
         if (!result.ok()) {
-            source.sendFailure(Component.literal("Cannot forget " + id + ": " + result.error()));
+            source.sendFailure(Component.translatable("command.pheno.forget.failed", id, result.error()));
             return 0;
         }
-        String dependents = result.removed().size() > 1
-                ? " (cascaded: " + result.removed() + ")" : "";
-        source.sendSuccess(() -> Component.literal(target.getName().getString() + " forgot " + id + dependents)
+        source.sendSuccess(() -> (result.removed().size() > 1
+                ? Component.translatable("command.pheno.forget.success.cascade",
+                        target.getDisplayName(), id, result.removed())
+                : Component.translatable("command.pheno.forget.success", target.getDisplayName(), id))
                 .withStyle(ChatFormatting.GREEN), false);
         return 1;
     }
@@ -176,7 +181,7 @@ public final class PhenoCommand {
      */
     private static int parity(CommandSourceStack source, Entity target) {
         if (!(target instanceof LivingEntity living)) {
-            source.sendFailure(Component.literal("Pheno parity: target is not a living entity."));
+            source.sendFailure(Component.translatable("command.pheno.parity.invalid_target"));
             return 0;
         }
         ConditionContext ctx = new ConditionContext(living);
@@ -211,11 +216,12 @@ public final class PhenoCommand {
             final double cap = Capabilities.applyToBase(living, 1.0, entry.getKey());
             final String path = entry.getKey().id().getPath();
             if (Math.abs(seq - cap) < 1.0e-4) {
-                source.sendSuccess(() -> Component.literal("  modifier OK " + path + " = " + cap)
+                source.sendSuccess(() -> Component.translatable(
+                        "command.pheno.parity.modifier.ok", path, cap)
                         .withStyle(ChatFormatting.GREEN), false);
             } else {
-                source.sendSuccess(() -> Component.literal("  modifier ORDER-DELTA " + path
-                        + ": sequential=" + seq + " capability=" + cap)
+                source.sendSuccess(() -> Component.translatable(
+                        "command.pheno.parity.modifier.order_delta", path, seq, cap)
                         .withStyle(ChatFormatting.YELLOW), false);
             }
         }
@@ -237,21 +243,24 @@ public final class PhenoCommand {
             }
         }
         if (legacy.equals(capability)) {
-            source.sendSuccess(() -> Component.literal("Pheno parity OK: " + legacy.size()
-                    + " ability flag(s) match the legacy gene scan.").withStyle(ChatFormatting.GREEN), false);
+            source.sendSuccess(() -> Component.translatable(
+                    "command.pheno.parity.ok", legacy.size()).withStyle(ChatFormatting.GREEN), false);
             return 1;
         }
         Set<String> onlyLegacy = new TreeSet<>(legacy);
         onlyLegacy.removeAll(capability);
         Set<String> onlyCapability = new TreeSet<>(capability);
         onlyCapability.removeAll(legacy);
-        source.sendSuccess(() -> Component.literal("Pheno parity MISMATCH:").withStyle(ChatFormatting.RED), false);
+        source.sendSuccess(() -> Component.translatable("command.pheno.parity.mismatch")
+                .withStyle(ChatFormatting.RED), false);
         if (!onlyLegacy.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("  only in genes: " + onlyLegacy)
+            source.sendSuccess(() -> Component.translatable(
+                    "command.pheno.parity.only_genes", onlyLegacy)
                     .withStyle(ChatFormatting.YELLOW), false);
         }
         if (!onlyCapability.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("  only in capabilities: " + onlyCapability)
+            source.sendSuccess(() -> Component.translatable(
+                    "command.pheno.parity.only_capabilities", onlyCapability)
                     .withStyle(ChatFormatting.YELLOW), false);
         }
         return 0;
@@ -266,11 +275,11 @@ public final class PhenoCommand {
             Files.writeString(dir.resolve("reference.md"), SchemaGen.markdown(), StandardCharsets.UTF_8);
             Files.writeString(dir.resolve("gene.schema.json"),
                     PRETTY.toJson(SchemaGen.jsonSchema()), StandardCharsets.UTF_8);
-            source.sendSuccess(() -> Component.literal("Pheno: wrote types-manifest.json, reference.md, "
-                    + "gene.schema.json to " + dir).withStyle(ChatFormatting.GREEN), false);
+            source.sendSuccess(() -> Component.translatable("command.pheno.dump.success", dir)
+                    .withStyle(ChatFormatting.GREEN), false);
             return 1;
         } catch (Exception ex) {
-            source.sendFailure(Component.literal("Pheno dump failed: " + ex.getMessage()));
+            source.sendFailure(Component.translatable("command.pheno.dump.failed", ex.getMessage()));
             return 0;
         }
     }
@@ -290,26 +299,26 @@ public final class PhenoCommand {
     private static int expand(CommandSourceStack source, String geneId) {
         ResourceLocation id = ResourceLocation.tryParse(geneId);
         if (id == null) {
-            source.sendFailure(Component.literal("Pheno expand: '" + geneId + "' is not a valid id."));
+            source.sendFailure(Component.translatable("command.pheno.expand.invalid_id", geneId));
             return 0;
         }
         ResourceLocation file = ResourceLocation.tryParse(id.getNamespace() + ":gene/" + id.getPath() + ".json");
         Optional<Resource> resource = file == null ? Optional.empty()
                 : source.getServer().getResourceManager().getResource(file);
         if (resource.isEmpty()) {
-            source.sendFailure(Component.literal("Pheno expand: gene resource not found: " + geneId));
+            source.sendFailure(Component.translatable("command.pheno.expand.not_found", geneId));
             return 0;
         }
         try (Reader reader = new InputStreamReader(resource.get().open(), StandardCharsets.UTF_8)) {
             JsonObject raw = JsonParser.parseReader(reader).getAsJsonObject();
             JsonObject canonical = PhenoNormalizer.normalize(raw);
-            source.sendSuccess(() -> Component.literal("Canonical form of " + geneId + ":")
+            source.sendSuccess(() -> Component.translatable("command.pheno.expand.heading", geneId)
                     .withStyle(ChatFormatting.GOLD), false);
             String[] lines = PRETTY.toJson(canonical).split("\n");
             int shown = 0;
             for (String l : lines) {
                 if (shown++ >= MAX_LINES) {
-                    source.sendSuccess(() -> Component.literal("... (truncated; full output in latest.log)")
+                    source.sendSuccess(() -> Component.translatable("command.pheno.expand.truncated")
                             .withStyle(ChatFormatting.GRAY), false);
                     break;
                 }
@@ -318,38 +327,48 @@ public final class PhenoCommand {
             }
             return 1;
         } catch (Exception ex) {
-            source.sendFailure(Component.literal("Pheno expand: failed to read " + geneId + ": " + ex.getMessage()));
+            source.sendFailure(Component.translatable(
+                    "command.pheno.expand.read_failed", geneId, ex.getMessage()));
             return 0;
         }
     }
 
     private static int explain(CommandSourceStack source, Entity target) throws CommandSyntaxException {
         if (!(target instanceof LivingEntity living)) {
-            source.sendFailure(Component.literal("Pheno explain: target is not a living entity."));
+            source.sendFailure(Component.translatable("command.pheno.explain.invalid_target"));
             return 0;
         }
         CapabilityView view = Capabilities.resolve(living);
         if (view.map().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("Pheno: " + target.getName().getString()
-                    + " contributes no capabilities.").withStyle(ChatFormatting.GRAY), false);
+            source.sendSuccess(() -> Component.translatable(
+                    "command.pheno.explain.none", target.getDisplayName())
+                    .withStyle(ChatFormatting.GRAY), false);
             return 1;
         }
-        source.sendSuccess(() -> Component.literal("Capabilities of " + target.getName().getString() + ":")
+        source.sendSuccess(() -> Component.translatable(
+                "command.pheno.explain.heading", target.getDisplayName())
                 .withStyle(ChatFormatting.GOLD), false);
         for (Resolved r : view.map().values()) {
-            String value = r.key().kind() == ValueKind.FLAG
-                    ? (r.flag() ? "on" : "off")
-                    : String.format(Locale.ROOT, "%.3f", r.number());
-            source.sendSuccess(() -> Component.literal("  " + r.key().id() + " = ")
-                    .withStyle(ChatFormatting.AQUA)
-                    .append(Component.literal(value).withStyle(ChatFormatting.WHITE)), false);
+            Component value = r.key().kind() == ValueKind.FLAG
+                    ? Component.translatable(r.flag()
+                            ? "command.pheno.explain.value.on" : "command.pheno.explain.value.off")
+                            .withStyle(ChatFormatting.WHITE)
+                    : Component.literal(String.format(Locale.ROOT, "%.3f", r.number()))
+                            .withStyle(ChatFormatting.WHITE);
+            source.sendSuccess(() -> Component.translatable(
+                    "command.pheno.explain.capability", r.key().id(), value)
+                    .withStyle(ChatFormatting.AQUA), false);
             for (CapabilityContribution c : r.applied()) {
-                source.sendSuccess(() -> Component.literal("      + " + contribution(c))
+                source.sendSuccess(() -> Component.translatable(
+                        "command.pheno.explain.contribution.applied", contribution(c))
                         .withStyle(ChatFormatting.GREEN), false);
             }
             for (CapabilityContribution c : r.ignored()) {
-                String why = c.active() ? "overridden" : "inactive";
-                source.sendSuccess(() -> Component.literal("      - " + contribution(c) + " (" + why + ")")
+                Component why = Component.translatable(c.active()
+                        ? "command.pheno.explain.reason.overridden"
+                        : "command.pheno.explain.reason.inactive");
+                source.sendSuccess(() -> Component.translatable(
+                        "command.pheno.explain.contribution.ignored", contribution(c), why)
                         .withStyle(ChatFormatting.DARK_GRAY), false);
             }
         }
@@ -365,22 +384,26 @@ public final class PhenoCommand {
     private static int validate(CommandSourceStack source) {
         List<Diagnostic> all = PhenoDiagnostics.all();
         if (all.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("Pheno: no diagnostics, all loaded resources compiled clean.")
+            source.sendSuccess(() -> Component.translatable("command.pheno.validate.clean")
                     .withStyle(ChatFormatting.GREEN), false);
             return 1;
         }
         int errors = PhenoDiagnostics.count(Severity.ERROR);
         int warnings = PhenoDiagnostics.count(Severity.WARNING);
-        source.sendSuccess(() -> Component.literal("Pheno diagnostics: ")
-                .append(Component.literal(errors + " error" + (errors == 1 ? "" : "s")).withStyle(ChatFormatting.RED))
-                .append(Component.literal(", "))
-                .append(Component.literal(warnings + " warning" + (warnings == 1 ? "" : "s"))
-                        .withStyle(ChatFormatting.YELLOW)), false);
+        Component errorCount = Component.translatable(errors == 1
+                ? "command.pheno.validate.error.one" : "command.pheno.validate.error.many", errors)
+                .withStyle(ChatFormatting.RED);
+        Component warningCount = Component.translatable(warnings == 1
+                ? "command.pheno.validate.warning.one" : "command.pheno.validate.warning.many", warnings)
+                .withStyle(ChatFormatting.YELLOW);
+        source.sendSuccess(() -> Component.translatable(
+                "command.pheno.validate.summary", errorCount, warningCount), false);
         int shown = 0;
         for (Diagnostic d : all) {
             if (shown++ >= MAX_LINES) {
                 int remaining = all.size() - MAX_LINES;
-                source.sendSuccess(() -> Component.literal("... " + remaining + " more (see latest.log)")
+                source.sendSuccess(() -> Component.translatable(
+                        "command.pheno.validate.truncated", remaining)
                         .withStyle(ChatFormatting.GRAY), false);
                 break;
             }
