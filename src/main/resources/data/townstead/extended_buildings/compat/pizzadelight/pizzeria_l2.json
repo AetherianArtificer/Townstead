@@ -3,5 +3,5 @@
   "workers": ["townstead:cook"],
   "orders": { "recipe_namespaces": ["pizzadelight"] },
   "catalog": { "node_item": "pizzadelight:basin" },
-  "spirit": { "commercial": 12, "pastoral": 5 }
+  "spirit": { "commercial": 12, "tourism": 5 }
 }

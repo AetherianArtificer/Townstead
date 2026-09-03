@@ -4,5 +4,5 @@
   "workers": ["townstead:beverage_artisan"],
   "orders": { "recipe_namespaces": ["brewinandchewin", "brewincompatdelight", "cocktailsdelight"] },
   "catalog": { "node_item": "brewinandchewin:keg" },
-  "spirit": { "commercial": 4, "pastoral": 3 }
+  "spirit": { "industrious": 4, "pastoral": 3 }
 }

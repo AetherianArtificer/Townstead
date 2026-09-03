@@ -9,8 +9,7 @@
     "topics": ["cask_cellar", "brewing", "vintage"]
   },
   "spirit": {
-    "pastoral": 5,
-    "industrious": 4,
-    "commercial": 3
+    "industrious": 7,
+    "pastoral": 5
   }
 }

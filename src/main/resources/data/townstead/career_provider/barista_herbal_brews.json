@@ -26,12 +26,14 @@
         },
         {
           "type": "townstead:building",
-          "type_prefixes": [
-            "compat/herbalbrews/herbal_cafe_l",
-            "compat/herbalbrews/tea_house_l",
-            "compat/herbalbrews/tea_drying_house_l"
-          ],
-          "slots_per_tier": [1, 2, 3],
+          "type_prefixes": ["compat/herbalbrews/tea_house_l"],
+          "slots_per_tier": [1, 1, 3],
+          "path_affinity": ["barista"]
+        },
+        {
+          "type": "townstead:building",
+          "type_prefixes": ["compat/herbalbrews/herbal_dryhouse_l"],
+          "slots_per_tier": [2],
           "path_affinity": ["barista"]
         }
       ]

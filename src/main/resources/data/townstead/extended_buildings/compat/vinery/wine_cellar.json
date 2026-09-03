@@ -9,8 +9,7 @@
     "topics": ["wine_cellar", "vintage", "winemaking"]
   },
   "spirit": {
-    "pastoral": 6,
-    "commercial": 4,
-    "industrious": 2
+    "industrious": 7,
+    "pastoral": 5
   }
 }

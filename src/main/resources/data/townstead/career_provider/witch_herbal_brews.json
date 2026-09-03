@@ -16,7 +16,7 @@
         {
           "type": "townstead:building",
           "type_prefixes": ["compat/herbalbrews/witch_hut_l"],
-          "slots_per_tier": [1, 1]
+          "slots_per_tier": [1, 3]
         }
       ]
     }

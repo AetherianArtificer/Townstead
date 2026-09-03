@@ -6,8 +6,9 @@
     "compat/herbalbrews/tea_house_l2",
     "compat/herbalbrews/tea_house_l3"
   ],
-  "capacity": 5,
+  "capacity": 6,
   "activities": [
+    "townstead:herbal_brews_coffee_break",
     "townstead:herbal_brews_quiet_tea",
     "townstead:herbal_brews_tasting",
     "townstead:herbal_brews_cafe_conversation"

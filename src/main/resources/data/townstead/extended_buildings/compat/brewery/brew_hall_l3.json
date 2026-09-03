@@ -1,1 +1,1 @@
-{"schema":"townstead:extended_building/v1","mods":"brewery","workers":["townstead:beverage_artisan"],"catalog":{"node_item":"brewery:barrel_main"},"dialogue":{"topics":["brew_hall","hospitality","local_tales"]},"spirit":{"commercial":12,"pastoral":7}}
+{"schema":"townstead:extended_building/v1","mods":"brewery","workers":["townstead:beverage_artisan"],"catalog":{"node_item":"brewery:barrel_main"},"dialogue":{"topics":["brew_hall","hospitality","local_tales"]},"spirit":{"commercial":11,"tourism":8}}

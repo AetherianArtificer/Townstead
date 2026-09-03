@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 /**
  * Immutable registry of the named Spirits that can be expressed by a village.
@@ -15,31 +16,41 @@ import java.util.Optional;
  * spirits during classification, and the canonical pair ordering used when
  * looking up blend readout keys.
  *
- * Seven spirits for the MVP. Each Spirit carries the translation key for its
- * display name ("Nautical") and an ARGB color used to tint bars and
+ * Twelve spirits define the complete Community Spirit vocabulary. Each
+ * Spirit carries the translation key for its display name ("Nautical") and
+ * an ARGB color used to tint bars and
  * recognition particles. The former "adjective" form used in "Fishing Town"
  * style readouts has been replaced by per-tier descriptive names (see
  * {@link SpiritReadout#asComponent()}), so spirits no longer carry an
  * adjective key.
  */
 public final class SpiritRegistry {
-    public record Spirit(String id, String displayKey, int color, Item icon) {}
+    /**
+     * The icon is supplied lazily so reading the pure spirit registry does not
+     * force Minecraft's item and block registries to initialize. Runtime UI
+     * callers retain the same {@link #icon()} API.
+     */
+    public record Spirit(String id, String displayKey, int color, Supplier<Item> iconSupplier) {
+        public Item icon() {
+            return iconSupplier.get();
+        }
+    }
 
     private static final LinkedHashMap<String, Spirit> SPIRITS = new LinkedHashMap<>();
 
     static {
-        register(new Spirit("nautical",    "townstead.spirit.nautical",    0xFF4A90B8, Items.FISHING_ROD));
-        register(new Spirit("pastoral",    "townstead.spirit.pastoral",    0xFF8FBF6E, Items.WHEAT));
-        register(new Spirit("martial",     "townstead.spirit.martial",     0xFFBF4A4A, Items.IRON_SWORD));
-        register(new Spirit("scholar",     "townstead.spirit.scholar",     0xFF8A5EBF, Items.BOOK));
-        register(new Spirit("industrious", "townstead.spirit.industrious", 0xFFBF8A3A, Items.ANVIL));
-        register(new Spirit("commercial",  "townstead.spirit.commercial",  0xFFD9A14A, Items.EMERALD));
-        register(new Spirit("tourism",     "townstead.spirit.tourism",     0xFFE85B8A, Items.COMPASS));
-        register(new Spirit("magical",     "townstead.spirit.magical",     0xFFC04AC0, Items.ENCHANTED_BOOK));
-        register(new Spirit("spiritual",   "townstead.spirit.spiritual",   0xFFE8E2C8, Items.TOTEM_OF_UNDYING));
-        register(new Spirit("haunted",     "townstead.spirit.haunted",     0xFF7A4A8A, Items.SKELETON_SKULL));
-        register(new Spirit("mining",      "townstead.spirit.mining",      0xFF8A8A9A, Items.RAW_IRON));
-        register(new Spirit("natural",     "townstead.spirit.natural",     0xFF3E7A4E, Items.OAK_SAPLING));
+        register(new Spirit("nautical",    "townstead.spirit.nautical",    0xFF4A90B8, () -> Items.FISHING_ROD));
+        register(new Spirit("pastoral",    "townstead.spirit.pastoral",    0xFF8FBF6E, () -> Items.WHEAT));
+        register(new Spirit("martial",     "townstead.spirit.martial",     0xFFBF4A4A, () -> Items.IRON_SWORD));
+        register(new Spirit("scholar",     "townstead.spirit.scholar",     0xFF8A5EBF, () -> Items.BOOK));
+        register(new Spirit("industrious", "townstead.spirit.industrious", 0xFFBF8A3A, () -> Items.ANVIL));
+        register(new Spirit("commercial",  "townstead.spirit.commercial",  0xFFD9A14A, () -> Items.EMERALD));
+        register(new Spirit("tourism",     "townstead.spirit.tourism",     0xFFE85B8A, () -> Items.COMPASS));
+        register(new Spirit("magical",     "townstead.spirit.magical",     0xFFC04AC0, () -> Items.ENCHANTED_BOOK));
+        register(new Spirit("spiritual",   "townstead.spirit.spiritual",   0xFFE8E2C8, () -> Items.TOTEM_OF_UNDYING));
+        register(new Spirit("haunted",     "townstead.spirit.haunted",     0xFF7A4A8A, () -> Items.SKELETON_SKULL));
+        register(new Spirit("mining",      "townstead.spirit.mining",      0xFF8A8A9A, () -> Items.RAW_IRON));
+        register(new Spirit("natural",     "townstead.spirit.natural",     0xFF3E7A4E, () -> Items.OAK_SAPLING));
     }
 
     private static void register(Spirit s) {

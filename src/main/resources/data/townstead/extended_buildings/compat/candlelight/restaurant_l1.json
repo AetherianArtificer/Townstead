@@ -1,1 +1,1 @@
-{"schema":"townstead:extended_building/v1","mods":["candlelight","farm_and_charm"],"workers":["townstead:cook","townstead:beverage_artisan"],"catalog":{"node_item":"candlelight:cooking_pot"},"spirit":{"commercial":5,"pastoral":2}}
+{"schema":"townstead:extended_building/v1","mods":["candlelight","farm_and_charm"],"workers":["townstead:cook","townstead:beverage_artisan"],"catalog":{"node_item":"candlelight:cooking_pot"},"spirit":{"commercial":5,"tourism":2}}

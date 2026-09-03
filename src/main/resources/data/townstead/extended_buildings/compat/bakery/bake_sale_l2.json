@@ -7,7 +7,8 @@
     "node_item": "bakery:breadbox"
   },
   "spirit": {
-    "pastoral": 7,
-    "commercial": 7
+    "commercial": 7,
+    "tourism": 5,
+    "pastoral": 2
   }
 }

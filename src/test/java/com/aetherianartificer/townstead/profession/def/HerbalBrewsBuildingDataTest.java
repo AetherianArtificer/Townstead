@@ -17,9 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class HerbalBrewsBuildingDataTest {
 
     private static final List<String> BUILDINGS = List.of(
-            "herbal_cafe_l1", "herbal_cafe_l2", "herbal_cafe_l3",
             "tea_house_l1", "tea_house_l2", "tea_house_l3",
-            "tea_drying_house_l1", "tea_drying_house_l2",
+            "herbal_dryhouse_l1",
             "herb_garden_l1", "herb_garden_l2");
     private static final Set<String> AUDITED_BLOCKS = Set.of(
             "herbalbrews:tea_kettle", "herbalbrews:copper_tea_kettle", "herbalbrews:stove",

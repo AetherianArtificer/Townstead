@@ -3,5 +3,8 @@
   "catalog": {
     "node_item": "mca:civil_registry"
   },
-  "storage_roles": ["townstead:documents"]
+  "storage_roles": ["townstead:documents"],
+  "spirit": {
+    "scholar": 5
+  }
 }

@@ -43,6 +43,8 @@ class HerbalBrewsWitchTrackDataTest {
                 strings(poi.get(0).getAsJsonObject().getAsJsonArray("blocks")));
         assertEquals("compat/herbalbrews/witch_hut_l",
                 poi.get(1).getAsJsonObject().getAsJsonArray("type_prefixes").get(0).getAsString());
+        assertEquals(List.of(1, 3), poi.get(1).getAsJsonObject().getAsJsonArray("slots_per_tier")
+                .asList().stream().map(element -> element.getAsInt()).toList());
 
         JsonObject barista = resource("/data/townstead/career_provider/barista_herbal_brews.json");
         String baristaJson = barista.toString();
@@ -62,6 +64,10 @@ class HerbalBrewsWitchTrackDataTest {
             assertEquals("townstead:extended_building/v1", extended.get("schema").getAsString());
             assertEquals("herbalbrews", extended.get("mods").getAsString());
             assertEquals(List.of("townstead:witch"), strings(extended.getAsJsonArray("workers")));
+            JsonObject spirit = extended.getAsJsonObject("spirit");
+            assertTrue(spirit.get("haunted").getAsInt() > 0);
+            assertEquals(spirit.get("magical").getAsInt(), spirit.get("haunted").getAsInt());
+            assertFalse(spirit.has("scholar"));
             for (String block : mca.getAsJsonObject("blocks").keySet()) {
                 if (block.startsWith("herbalbrews:")) {
                     assertTrue(AUDITED_HERBAL_IDS.contains(block), tier + " guessed block id " + block);

@@ -4,6 +4,7 @@
     "node_item": "minecraft:oak_boat"
   },
   "spirit": {
-    "nautical": 5
+    "nautical": 4,
+    "industrious": 1
   }
 }

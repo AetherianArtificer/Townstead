@@ -3,5 +3,5 @@
   "enclosure": "optional",
   "workers": ["townstead:cook", "townstead:beverage_artisan"],
   "catalog": { "node_item": "cozycafe:cafe_manager" },
-  "spirit": { "commercial": 6, "pastoral": 2 }
+  "spirit": { "commercial": 6, "tourism": 2 }
 }

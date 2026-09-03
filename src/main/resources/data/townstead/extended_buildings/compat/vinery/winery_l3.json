@@ -1,1 +1,1 @@
-{"schema":"townstead:extended_building/v1","mods":"vinery","workers":["vinery:winemaker"],"catalog":{"node_item":["vinery:fermentation_barrel","vinery:apple_press"]},"dialogue":{"topics":["winery","winemaking","vintage"]},"spirit":{"pastoral":12,"industrious":8,"commercial":7}}
+{"schema":"townstead:extended_building/v1","mods":"vinery","workers":["vinery:winemaker"],"catalog":{"node_item":["vinery:fermentation_barrel","vinery:apple_press"]},"dialogue":{"topics":["winery","winemaking","vintage"]},"spirit":{"pastoral":12,"tourism":8,"industrious":7}}

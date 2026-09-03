@@ -6,7 +6,7 @@
     "node_item": "herbalbrews:cauldron"
   },
   "spirit": {
-    "scholarly": 5,
-    "pastoral": 2
+    "magical": 5,
+    "haunted": 5
   }
 }

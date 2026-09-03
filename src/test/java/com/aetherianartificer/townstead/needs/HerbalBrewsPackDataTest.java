@@ -106,23 +106,15 @@ class HerbalBrewsPackDataTest {
     }
 
     @Test
-    void menusAndVenuesStayInsideCafeAndTeaHouseScope() {
-        JsonObject cafeMenu = data("serving_menu/herbal_brews_cafe.json");
+    void consolidatedTeaHouseMenuAndVenueCoverAllHerbalBrewsDrinks() {
         JsonObject teaMenu = data("serving_menu/herbal_brews_tea_house.json");
-        assertEquals(DRINKS, strings(cafeMenu.getAsJsonArray("products")));
-        assertEquals(7, teaMenu.getAsJsonArray("products").size());
-        assertFalse(teaMenu.toString().contains("coffee"));
-        for (JsonObject menu : List.of(cafeMenu, teaMenu)) {
-            String text = menu.toString().toLowerCase();
-            assertFalse(text.contains("jug"));
-            assertFalse(text.contains("flask"));
-            assertFalse(text.contains("cauldron"));
-        }
+        assertEquals(DRINKS, strings(teaMenu.getAsJsonArray("products")));
+        String menuText = teaMenu.toString().toLowerCase();
+        assertFalse(menuText.contains("jug"));
+        assertFalse(menuText.contains("flask"));
+        assertFalse(menuText.contains("cauldron"));
 
-        JsonObject cafeVenue = data("hangout_venue/herbal_brews_cafe.json");
         JsonObject teaVenue = data("hangout_venue/herbal_brews_tea_house.json");
-        assertEquals(strings(cafeMenu.getAsJsonArray("buildings")),
-                strings(cafeVenue.getAsJsonArray("buildings")));
         assertEquals(strings(teaMenu.getAsJsonArray("buildings")),
                 strings(teaVenue.getAsJsonArray("buildings")));
         for (String activity : List.of("herbal_brews_coffee_break", "herbal_brews_quiet_tea",

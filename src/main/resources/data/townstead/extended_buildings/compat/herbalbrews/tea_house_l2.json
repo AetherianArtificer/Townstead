@@ -1,1 +1,1 @@
-{"schema":"townstead:extended_building/v1","catalog":{"node_item":"herbalbrews:black_tea"},"spirit":{"pastoral":10,"commercial":5}}
+{"schema":"townstead:extended_building/v1","catalog":{"node_item":"herbalbrews:black_tea"},"spirit":{"commercial":6,"tourism":5,"natural":2}}
