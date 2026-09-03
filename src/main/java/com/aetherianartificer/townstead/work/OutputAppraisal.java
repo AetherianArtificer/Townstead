@@ -17,7 +17,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public final class OutputAppraisal {
 
     /** {@code quality} scales XP (1 = baseline); {@code label} is a stable lowercase token for counters. */
-    public record Appraisal(int quality, String label) {}
+    public record Appraisal(int quality, String label, boolean orderWorthy,
+                            @Nullable net.minecraft.resources.ResourceLocation source) {
+        public Appraisal(int quality, String label) { this(quality, label, true, null); }
+    }
 
     public interface Appraiser {
         @Nullable Appraisal appraise(ItemStack stack);
@@ -34,6 +37,8 @@ public final class OutputAppraisal {
     @Nullable
     public static Appraisal appraise(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return null;
+        Appraisal authored = OutputAppraisals.appraise(stack);
+        if (authored != null) return authored;
         for (Appraiser appraiser : APPRAISERS) {
             Appraisal appraisal = appraiser.appraise(stack);
             if (appraisal != null) return appraisal;

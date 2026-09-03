@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:hangout_activity/v1",
+  "kind": "mixed",
+  "minimum_participants": 2,
+  "maximum_participants": 4,
+  "duration_ticks": 300,
+  "roles": {
+    "initiator": 1,
+    "companion": 3
+  },
+  "postures": ["townstead:sit"],
+  "performance": {
+    "id": "townstead:tavern_conversation",
+    "channel": "social",
+    "duration_ticks": 300,
+    "priority": 10,
+    "fallback": "vanilla_gesture"
+  }
+}

@@ -59,6 +59,7 @@ public final class ProfessionPathDocument {
         copy(document, normalized, "worksites");
         copy(document, normalized, "powers");
         copy(document, normalized, "clothing");
+        copy(document, normalized, "storage");
 
         String gateway = tiers.keySet().iterator().next();
         normalized.addProperty("gateway", gateway);

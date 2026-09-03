@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "providers_required": true,
+  "name": { "translate": "career.townstead.beverage_artisan.path.brewer" },
+  "title": { "translate": "career.townstead.beverage_artisan.title.brewer" },
+  "color": "#B87531",
+  "clothing": ["minecraft:brewer"],
+  "storage": {
+    "preferred_roles": ["townstead:brewed_drinks"]
+  },
+  "worksites": [],
+  "skills": ["patient_fermentation"]
+}

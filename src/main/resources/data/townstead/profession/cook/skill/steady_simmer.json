@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Steady Simmer"
+    "translate": "skill.townstead.cook.steady_simmer"
   },
   "icon": "minecraft:campfire",
   "description": {
-    "text": "Patience keeps the pot from boiling over and the cook from burning out. Gain 1 additional Cook XP for each Cook rank you hold."
+    "translate": "skill.townstead.cook.steady_simmer.description"
   },
   "tier": 2,
   "cost": 1,

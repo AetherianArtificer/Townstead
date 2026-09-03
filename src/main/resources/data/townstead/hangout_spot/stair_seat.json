@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:hangout_spot/v1",
+  "blocks": ["#townstead:hangout_seats"],
+  "posture": "townstead:sit",
+  "capacity": 1,
+  "canonical_offset": [0, 1, 0],
+  "linked_offsets": [[0, -1, 0]]
+}

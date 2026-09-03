@@ -1,0 +1,8 @@
+{
+  "schema":"townstead:consumable/v2","mods":"beachparty",
+  "items":["beachparty:coconut_cocktail","beachparty:sweetberries_cocktail","beachparty:cocoa_cocktail","beachparty:pumpkin_cocktail","beachparty:honey_cocktail","beachparty:melon_cocktail"],
+  "transaction":{
+    "mode":"observe_native","accounting":"consume_one","consumers":["player","villager"],"servings":1,
+    "remainder":{"mode":"none","destination":"holder"}
+  }
+}

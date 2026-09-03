@@ -1,0 +1,17 @@
+{
+  "schema": "pheno:state_backing/v1",
+  "mods": "brewery",
+  "state": "townstead_state:drunk",
+  "applies_to": { "type": "pheno:entity_type", "entity_type": "minecraft:player" },
+  "source": {
+    "type": "pheno:status_effect",
+    "effect": "brewery:drunk",
+    "amplifier": {
+      "0": "tipsy",
+      "2": "drunk",
+      "4": "wasted"
+    }
+  },
+  "read_priority": 100,
+  "writable": false
+}

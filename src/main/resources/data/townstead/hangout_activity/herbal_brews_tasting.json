@@ -1,0 +1,25 @@
+{
+  "schema": "townstead:hangout_activity/v1",
+  "mods": "herbalbrews",
+  "kind": "drink",
+  "minimum_participants": 2,
+  "maximum_participants": 5,
+  "duration_ticks": 480,
+  "roles": { "host": 1, "taster": 4 },
+  "postures": ["townstead:sit"],
+  "on_service_accepted": {
+    "type": "pheno:performance",
+    "performance": "townstead:tea_pour",
+    "channel": "hospitality",
+    "duration_ticks": 70,
+    "priority": 20,
+    "fallback": "vanilla_gesture"
+  },
+  "performance": {
+    "id": "townstead:tasting_notes",
+    "channel": "hospitality",
+    "duration_ticks": 480,
+    "priority": 25,
+    "fallback": "vanilla_gesture"
+  }
+}

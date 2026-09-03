@@ -406,6 +406,60 @@ class WorkstationV2DefTest {
     }
 
     @Test
+    void parsesPreciseBoundedNativeInteraction() {
+        WorkstationV2Def def = parse("""
+                {"blocks":["example:press"],
+                 "behavior":{"type":"pheno:repeat","times":3,"block_action":{
+                   "type":"pheno:use_block","item":"tool","tool":"#example:press_tools",
+                   "face":"north","hit":[0.5,0.75,0.0],
+                   "actor_offset":[0.0,0.0,1.5],"actor_facing":"north"}}}
+                """);
+        assertNotNull(def);
+        assertTrue(def.behaviorUses("tool"));
+        assertNull(parse("""
+                {"blocks":["example:press"],"behavior":{"type":"pheno:repeat","times":65,
+                 "block_action":{"type":"pheno:use_block"}}}
+                """));
+        assertNull(parse("""
+                {"blocks":["example:press"],"behavior":{"type":"pheno:use_block",
+                 "face":"north","hit":[0.5,1.2,0.0]}}
+                """));
+    }
+
+    @Test
+    void parsesAttendedProcessWithBoundedRecoveryActions() {
+        WorkstationV2Def def = parse("""
+                {"blocks":["example:kettle"],
+                 "attendance":{"poll_interval":10,"timeout":1200,"incidents":[
+                   {"id":"overflow","when":{"type":"pheno:block_state",
+                     "property":"liquid","value":"overflowing"},"max_attempts":3,
+                    "response":{"type":"pheno:use_block","item":"supply",
+                     "supply":"minecraft:bucket","face":"up","hit":[0.5,1.0,0.5]}}
+                 ],
+                 "safe_stop":{"type":"pheno:use_block","item":"empty"},
+                 "cleanup":{"type":"pheno:use_block","item":"empty"}}}
+                """);
+        assertNotNull(def);
+        assertNotNull(def.attendance());
+        assertEquals(10, def.attendance().pollInterval());
+        assertEquals("overflow", def.attendance().incidents().get(0).id());
+        assertTrue(def.supplySelectors().contains("minecraft:bucket"),
+                "incident response supplies participate in normal producer gathering");
+        assertNull(parse("""
+                {"blocks":["example:kettle"],"attendance":{"poll_interval":0,"timeout":10,
+                 "incidents":[{"id":"event","when":{"type":"pheno:block_state",
+                  "property":"busy","value":"true"},"response":{"type":"pheno:use_block"}}]}}
+                """));
+    }
+
+    @Test
+    void attendanceAttemptsAreStrictlyCapped() {
+        assertTrue(AttendedStationProtocols.mayAttempt(0, 3));
+        assertTrue(AttendedStationProtocols.mayAttempt(2, 3));
+        assertFalse(AttendedStationProtocols.mayAttempt(3, 3));
+    }
+
+    @Test
     void nestedOffsetInteractionIsADataDrivenPreparationAction() {
         WorkstationV2Def def = parse("""
                 {"blocks":["example:pot"],

@@ -75,10 +75,30 @@ public final class ProfessionSites {
      * is set. {@code providerIndex} records which {@code poi} entry granted it, which assignment
      * needs (to know what kind of place a worker was sent to) and counting does not.
      */
-    public record Site(@Nullable Building building, @Nullable BlockPos post, int providerIndex) {
+    public record Site(@Nullable Building building, @Nullable BlockPos post, int providerIndex,
+                       Set<net.minecraft.resources.ResourceLocation> requiredProfessions) {
+
+        public Site {
+            requiredProfessions = requiredProfessions == null
+                    ? Set.of() : Set.copyOf(requiredProfessions);
+        }
+
+        public Site(@Nullable Building building, @Nullable BlockPos post, int providerIndex) {
+            this(building, post, providerIndex, Set.of());
+        }
 
         public boolean isBuilding() {
             return building != null;
+        }
+
+        /** Empty means an ordinary Career seat; otherwise the worker must retain one listed id. */
+        public boolean accepts(@Nullable net.minecraft.resources.ResourceLocation rawProfession) {
+            return requiredProfessions.isEmpty()
+                    || rawProfession != null && requiredProfessions.contains(rawProfession);
+        }
+
+        public boolean isProprietorSeat() {
+            return !requiredProfessions.isEmpty();
         }
     }
 
@@ -177,18 +197,22 @@ public final class ProfessionSites {
         List<VillagerEntityMCA> workers = workers(level, village, def, villager);
         int workerIndex = -1;
         List<String> paths = new ArrayList<>(workers.size());
+        List<net.minecraft.resources.ResourceLocation> rawProfessions =
+                new ArrayList<>(workers.size());
         for (int i = 0; i < workers.size(); i++) {
             VillagerEntityMCA worker = workers.get(i);
             if (worker.getUUID().equals(villager.getUUID())) workerIndex = i;
             com.aetherianartificer.townstead.profession.def.ProfessionPaths.Path path =
                     ProfessionIdentity.path(worker, def.id());
             paths.add(path == null ? null : path.id());
+            rawProfessions.add(rawProfession(worker));
         }
         if (workerIndex < 0) {
             return cacheAssignment(villager, dimension, def.id(), village.getId(), gameTime,
                     Optional.empty());
         }
-        int siteIndex = assignedSiteIndex(paths, sites, def.jobSites(), workerIndex);
+        int siteIndex = assignedSiteIndex(
+                paths, rawProfessions, sites, def.jobSites(), workerIndex);
         Optional<Site> result = siteIndex < 0 ? Optional.empty() : Optional.of(sites.get(siteIndex));
         return cacheAssignment(villager, dimension, def.id(), village.getId(), gameTime, result);
     }
@@ -300,8 +324,79 @@ public final class ProfessionSites {
         if (villageOpt.isEmpty()) return false;
         Village village = villageOpt.get();
         if (!isMember(village, villager)) return false;
-        int sites = sites(level, village, def).size();
-        return sites > 0 && ProfessionCapacity.employed(level, village, def) < sites;
+        List<Site> sites = sites(level, village, def);
+        if (sites.isEmpty()) return false;
+
+        return hypotheticalSiteIndex(level, village, villager, def, sites, def.id()) >= 0;
+    }
+
+    /**
+     * The raw profession an idle villager should receive for the next available seat. Reserved
+     * proprietor vacancies are filled first with their declared foreign profession, which keeps
+     * that mod's trades and presentation. Ordinary vacancies fall back to the Career's own
+     * registered profession.
+     */
+    public static @Nullable net.minecraft.world.entity.npc.VillagerProfession
+    professionForAvailableSite(ServerLevel level, VillagerEntityMCA villager,
+                               @Nullable ProfessionDef def) {
+        if (def == null) return null;
+        Optional<Village> villageOpt = ProfessionCapacity.resolveVillage(villager);
+        if (villageOpt.isEmpty() || !isMember(villageOpt.get(), villager)) return null;
+        Village village = villageOpt.get();
+        List<Site> sites = sites(level, village, def);
+        if (sites.isEmpty()) return null;
+
+        List<net.minecraft.resources.ResourceLocation> proprietorIds = sites.stream()
+                .flatMap(site -> site.requiredProfessions().stream())
+                .distinct()
+                .sorted(Comparator.comparing(net.minecraft.resources.ResourceLocation::toString))
+                .toList();
+        for (net.minecraft.resources.ResourceLocation id : proprietorIds) {
+            if (!def.id().equals(com.aetherianartificer.townstead.profession.def.ProfessionDefs
+                    .canonicalId(id))) continue;
+            net.minecraft.world.entity.npc.VillagerProfession profession =
+                    net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION
+                            .getOptional(id).orElse(null);
+            if (profession == null
+                    || profession == net.minecraft.world.entity.npc.VillagerProfession.NONE) continue;
+            int index = hypotheticalSiteIndex(level, village, villager, def, sites, id);
+            if (index >= 0 && sites.get(index).isProprietorSeat()) return profession;
+        }
+
+        net.minecraft.world.entity.npc.VillagerProfession career = professionFor(def);
+        if (career == null) return null;
+        return hypotheticalSiteIndex(level, village, villager, def, sites, def.id()) >= 0
+                ? career : null;
+    }
+
+    private static int hypotheticalSiteIndex(
+            ServerLevel level, Village village, VillagerEntityMCA villager, ProfessionDef def,
+            List<Site> sites, net.minecraft.resources.ResourceLocation hypotheticalProfession) {
+
+        List<VillagerEntityMCA> workers = new ArrayList<>(workers(level, village, def, villager));
+        if (workers.stream().noneMatch(worker -> worker.getUUID().equals(villager.getUUID()))) {
+            workers.add(villager);
+            workers.sort(Comparator.comparing(worker -> worker.getUUID().toString()));
+        }
+        List<String> paths = new ArrayList<>(workers.size());
+        List<net.minecraft.resources.ResourceLocation> rawProfessions =
+                new ArrayList<>(workers.size());
+        int askingWorkerIndex = -1;
+        for (int i = 0; i < workers.size(); i++) {
+            VillagerEntityMCA worker = workers.get(i);
+            boolean asking = worker.getUUID().equals(villager.getUUID());
+            if (asking) askingWorkerIndex = i;
+            com.aetherianartificer.townstead.profession.def.ProfessionPaths.Path path =
+                    ProfessionIdentity.path(worker, def.id());
+            paths.add(asking && worker.getVillagerData().getProfession()
+                    == net.minecraft.world.entity.npc.VillagerProfession.NONE
+                    ? com.aetherianartificer.townstead.profession.def.ProfessionDefs
+                            .pathId(hypotheticalProfession)
+                    : path == null ? null : path.id());
+            rawProfessions.add(asking ? hypotheticalProfession : rawProfession(worker));
+        }
+        return assignedSiteIndex(
+                paths, rawProfessions, sites, def.jobSites(), askingWorkerIndex);
     }
 
     /**
@@ -336,7 +431,22 @@ public final class ProfessionSites {
      */
     static int assignedSiteIndex(List<@Nullable String> workerPaths, List<Site> sites,
                                  List<JobSiteProvider> providers, int askingWorkerIndex) {
+        return assignedSiteIndex(workerPaths,
+                java.util.Collections.nCopies(workerPaths.size(), null),
+                sites, providers, askingWorkerIndex);
+    }
+
+    /**
+     * Stable seat matching with raw-profession proprietor reservations before Path preferences.
+     * A proprietor may fall through into an ordinary Career seat, but ordinary staff can never
+     * consume the reserved seat and erase the native trade-bearing identity from the venue.
+     */
+    static int assignedSiteIndex(
+            List<@Nullable String> workerPaths,
+            List<net.minecraft.resources.ResourceLocation> workerProfessions,
+            List<Site> sites, List<JobSiteProvider> providers, int askingWorkerIndex) {
         if (askingWorkerIndex < 0 || askingWorkerIndex >= workerPaths.size()) return -1;
+        if (workerProfessions.size() != workerPaths.size()) return -1;
         boolean[] claimed = new boolean[sites.size()];
         int[] assignment = new int[workerPaths.size()];
         java.util.Arrays.fill(assignment, -1);
@@ -344,19 +454,33 @@ public final class ProfessionSites {
         List<Integer> workerOrder = new ArrayList<>(workerPaths.size());
         for (int i = 0; i < workerPaths.size(); i++) workerOrder.add(i);
         workerOrder.sort(Comparator
-                .comparingInt((Integer i) -> hasDeclaredAffinity(
-                        workerPaths.get(i), providers) ? 0 : 1)
+                .comparingInt((Integer i) -> workerPriority(
+                        workerPaths.get(i), workerProfessions.get(i), sites, providers))
                 .thenComparingInt(Integer::intValue));
 
         for (int worker : workerOrder) {
             String path = workerPaths.get(worker);
-            int chosen = firstAvailableAffinity(path, sites, providers, claimed);
-            if (chosen < 0) chosen = firstAvailable(claimed);
+            net.minecraft.resources.ResourceLocation profession = workerProfessions.get(worker);
+            int chosen = firstAvailableProprietor(profession, sites, claimed);
+            if (chosen < 0) {
+                chosen = firstAvailableAffinity(path, profession, sites, providers, claimed);
+            }
+            if (chosen < 0) chosen = firstAvailable(profession, sites, claimed);
             if (chosen < 0) continue;
             claimed[chosen] = true;
             assignment[worker] = chosen;
         }
         return assignment[askingWorkerIndex];
+    }
+
+    private static int workerPriority(
+            @Nullable String path,
+            @Nullable net.minecraft.resources.ResourceLocation profession,
+            List<Site> sites, List<JobSiteProvider> providers) {
+        if (sites.stream().anyMatch(site -> site.isProprietorSeat() && site.accepts(profession))) {
+            return 0;
+        }
+        return hasDeclaredAffinity(path, providers) ? 1 : 2;
     }
 
     private static boolean hasDeclaredAffinity(@Nullable String path,
@@ -369,12 +493,27 @@ public final class ProfessionSites {
         return false;
     }
 
-    private static int firstAvailableAffinity(@Nullable String path, List<Site> sites,
+    private static int firstAvailableProprietor(
+            @Nullable net.minecraft.resources.ResourceLocation profession,
+            List<Site> sites, boolean[] claimed) {
+        if (profession == null) return -1;
+        for (int i = 0; i < sites.size(); i++) {
+            if (!claimed[i] && sites.get(i).isProprietorSeat()
+                    && sites.get(i).accepts(profession)) return i;
+        }
+        return -1;
+    }
+
+    private static int firstAvailableAffinity(
+                                              @Nullable String path,
+                                              @Nullable net.minecraft.resources.ResourceLocation profession,
+                                              List<Site> sites,
                                               List<JobSiteProvider> providers,
                                               boolean[] claimed) {
         if (path == null) return -1;
         for (int i = 0; i < sites.size(); i++) {
             if (claimed[i]) continue;
+            if (!sites.get(i).accepts(profession)) continue;
             int providerIndex = sites.get(i).providerIndex();
             if (providerIndex < 0 || providerIndex >= providers.size()) continue;
             JobSiteProvider provider = providers.get(providerIndex);
@@ -384,9 +523,19 @@ public final class ProfessionSites {
         return -1;
     }
 
-    private static int firstAvailable(boolean[] claimed) {
-        for (int i = 0; i < claimed.length; i++) if (!claimed[i]) return i;
+    private static int firstAvailable(
+            @Nullable net.minecraft.resources.ResourceLocation profession,
+            List<Site> sites, boolean[] claimed) {
+        for (int i = 0; i < claimed.length; i++) {
+            if (!claimed[i] && sites.get(i).accepts(profession)) return i;
+        }
         return -1;
+    }
+
+    private static @Nullable net.minecraft.resources.ResourceLocation rawProfession(
+            VillagerEntityMCA villager) {
+        return net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION.getKey(
+                villager.getVillagerData().getProfession());
     }
 
     private static boolean declares(VillagerEntityMCA villager,
@@ -450,8 +599,11 @@ public final class ProfessionSites {
                 claimed.add(building);
                 int seats = seatsForBuilding(provider, building.getType(),
                         effectiveTypes.get(building.getId()));
+                String seatType = provider.matches(effectiveTypes.get(building.getId()))
+                        ? effectiveTypes.get(building.getId()) : building.getType();
                 for (int seat = 0; seat < seats; seat++) {
-                    sites.add(new Site(building, null, i));
+                    sites.add(new Site(building, null, i,
+                            provider.requiredProfessionsForSeat(seatType, seat)));
                 }
             }
         }

@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.jam_maker.clean_jar"
+  },
+  "icon": "minecraft:barrier",
+  "description": {
+    "translate": "skill.townstead.baker.jam_maker.clean_jar.description"
+  },
+  "cost": 1,
+  "requires": ["setting_point"],
+  "grants": [
+    {
+      "capability": "townstead:baker_xp_flat",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

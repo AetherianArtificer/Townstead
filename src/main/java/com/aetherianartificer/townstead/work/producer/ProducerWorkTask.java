@@ -132,6 +132,9 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     private boolean deliveryFinalized;
     /** Menu dishes being carried from the pantry to an empty plate; empty outside that errand. */
     private Set<ResourceLocation> restockDemand = Set.of();
+    /** Exact provider-prepared wrappers remain deliverable even though their item id changed. */
+    private final List<com.aetherianartificer.townstead.hospitality.service.ExactServiceProduct>
+            preparedServiceOutputs = new java.util.ArrayList<>();
     /** Where an at-ease worker is drifting to inside the worksite while nothing can be done. */
     private @Nullable BlockPos easeTarget;
     private long nextEaseStepTick;
@@ -241,6 +244,10 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
      */
     protected final boolean isDeliverable(ServerLevel level, ItemStack stack) {
         if (stack == null || stack.isEmpty()) return false;
+        for (com.aetherianartificer.townstead.hospitality.service.ExactServiceProduct prepared
+                : preparedServiceOutputs) {
+            if (prepared.matches(stack)) return true;
+        }
         if (!restockDemand.isEmpty()
                 && com.aetherianartificer.townstead.food.ServingDemand.matches(restockDemand, stack)) {
             return true;
@@ -776,6 +783,18 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     }
 
     /**
+     * An upstream recipe needed by an active final-product order.
+     *
+     * <p>The intermediate is deliberately not claimed against the line: only the recipe which
+     * actually yields the ordered product may reserve or credit its quantity.</p>
+     */
+    protected @Nullable ProducerRecipe orderedIntermediate(
+            ServerLevel level, VillagerEntityMCA villager, long gameTime,
+            OrderList orders, OrderContext context) {
+        return null;
+    }
+
+    /**
      * How an order's questions about the world get answered.
      *
      * <p>Concrete, and the same for every producing trade — this used to be a null default that
@@ -823,6 +842,13 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
                     debugChat(level, villager, "SELECT:ordered " + ordered.recipe().output()
                             + " x" + claimedLineAmount);
                     return ordered.recipe();
+                }
+                ProducerRecipe intermediate = orderedIntermediate(
+                        level, villager, gameTime, orders, context);
+                if (intermediate != null) {
+                    debugChat(level, villager, "SELECT:ordered intermediate "
+                            + intermediate.output());
+                    return intermediate;
                 }
             }
         }
@@ -1221,6 +1247,16 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
             // accepts only one dish, so surplus from the same batch naturally continues to
             // finished-goods storage on the next pass.
             if (deliveringOutput) {
+                deliveryTarget = com.aetherianartificer.townstead.hospitality.service
+                        .HospitalityServiceDelivery.findPreparationTarget(
+                                level, villager, bounds, matcher, rejectedDeliveryStorage);
+            }
+            if (deliveringOutput && deliveryTarget == null) {
+                deliveryTarget = com.aetherianartificer.townstead.hospitality.service
+                        .HospitalityServiceDelivery.findTarget(
+                                level, villager, bounds, matcher, rejectedDeliveryStorage);
+            }
+            if (deliveringOutput && deliveryTarget == null) {
                 deliveryTarget = com.aetherianartificer.townstead.food.ServingPlateService.findEmpty(
                         level, villager, bounds, matcher, rejectedDeliveryStorage);
             }
@@ -1242,17 +1278,40 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         if (villager.distanceToSqr(deliveryTarget.getX() + 0.5,
                 deliveryTarget.getY() + 0.5, deliveryTarget.getZ() + 0.5) > 5.0d) return;
 
-        int moved = com.aetherianartificer.townstead.food.ServingPlateService
-                .isServingSurface(level, deliveryTarget)
-                ? com.aetherianartificer.townstead.food.ServingPlateService.depositMatchingAt(
-                        level, villager, deliveryTarget, matcher)
-                : PhysicalStorageDelivery.depositMatchingAt(
-                        level, villager, deliveryTarget, matcher, storageUse);
+        boolean preparation = com.aetherianartificer.townstead.hospitality.service
+                .HospitalityServiceDelivery.isPreparationTarget(
+                        level, villager, bounds, deliveryTarget, matcher);
+        boolean service = !preparation && com.aetherianartificer.townstead.hospitality.service
+                .HospitalityServiceDelivery.isTarget(level, villager, bounds, deliveryTarget);
+        com.aetherianartificer.townstead.hospitality.service.ServicePreparationResult
+                preparationResult = preparation
+                ? com.aetherianartificer.townstead.hospitality.service.HospitalityServiceDelivery
+                        .prepareMatchingAt(level, villager, bounds, deliveryTarget, matcher)
+                : null;
+        int moved = preparation
+                ? preparationResult.status() == com.aetherianartificer.townstead.hospitality.service
+                        .ServicePreparationResult.Status.SUCCESS
+                        ? preparationResult.accepted() : 0
+                : service
+                ? com.aetherianartificer.townstead.hospitality.service.HospitalityServiceDelivery
+                        .deliverMatchingAt(level, villager, bounds, deliveryTarget, matcher)
+                : com.aetherianartificer.townstead.food.ServingPlateService
+                        .isServingSurface(level, deliveryTarget)
+                        ? com.aetherianartificer.townstead.food.ServingPlateService.depositMatchingAt(
+                                level, villager, deliveryTarget, matcher)
+                        : PhysicalStorageDelivery.depositMatchingAt(
+                                level, villager, deliveryTarget, matcher, storageUse);
+        if (preparation && moved > 0) {
+            preparedServiceOutputs.add(com.aetherianartificer.townstead.hospitality.service
+                    .ExactServiceProduct.item(preparationResult.output()));
+        }
         villager.swing(villager.getDominantHand());
-        boolean plate = com.aetherianartificer.townstead.food.ServingPlateService
+        boolean plate = !preparation && !service
+                && com.aetherianartificer.townstead.food.ServingPlateService
                 .isServingSurface(level, deliveryTarget);
         debugChat(level, villager, (moved > 0 ? "DELIVER:" : "DELIVER:refused ")
-                + (plate ? "plate" : "storage") + " at " + deliveryTarget.toShortString()
+                + (preparation ? "preparation" : service ? "service" : plate ? "plate" : "storage")
+                + " at " + deliveryTarget.toShortString()
                 + (moved > 0 ? " took " + moved : ""));
         if (moved <= 0) rejectedDeliveryStorage.add(deliveryTarget.asLong());
         deliveryTarget = null;
@@ -1274,6 +1333,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         debugChat(level, villager, restocked ? "PLATES:served from the pantry"
                 : "COLLECT:done " + (activeRecipe != null ? activeRecipe.output() : "null"));
         restockDemand = Set.of();
+        preparedServiceOutputs.clear();
         activeRecipe = null;
         stagedInputs.clear();
         physicalPull = null;
@@ -1450,6 +1510,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         recipeAttempts = 0;
         idleUntilTick = 0L;
         restockDemand = Set.of();
+        preparedServiceOutputs.clear();
         easeTarget = null;
         resetWorksiteTargeting();
     }

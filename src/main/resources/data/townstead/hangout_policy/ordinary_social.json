@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:hangout_policy/v1",
+  "minimum_group": 2,
+  "maximum_group": 4,
+  "solo_fallback": false,
+  "invite_radius": 24,
+  "venue_radius": 64,
+  "cooldown_ticks": 1200,
+  "arrival_timeout_ticks": 240,
+  "lease_ticks": 900,
+  "bond_weights": {
+    "townstead:marriage": 100,
+    "mca:marriage": 100,
+    "townstead:friendship": 25
+  }
+}

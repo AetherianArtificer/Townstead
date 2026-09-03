@@ -2,10 +2,10 @@
   "schema": "townstead:profession_path/v1",
   "mods": ["pizzadelight", "farmersdelight"],
   "name": {
-    "text": "Pizzaiolo"
+    "translate": "career.townstead.cook.path.pizzaiolo"
   },
   "title": {
-    "text": "Pizzaiolo"
+    "translate": "career.townstead.cook.title.pizzaiolo"
   },
   "color": "#C8873E",
   "work": [

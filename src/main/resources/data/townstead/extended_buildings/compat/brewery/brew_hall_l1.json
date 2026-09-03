@@ -1,0 +1,1 @@
+{"schema":"townstead:extended_building/v1","mods":"brewery","workers":["townstead:beverage_artisan"],"catalog":{"node_item":"brewery:bar_counter"},"dialogue":{"topics":["brew_hall","hospitality"]},"spirit":{"commercial":5,"pastoral":3}}

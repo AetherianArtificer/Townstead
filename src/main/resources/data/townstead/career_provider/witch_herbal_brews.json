@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:witch",
+  "path": "",
+  "mods": "herbalbrews",
+  "priority": 30,
+  "contributes": {
+    "profession": {
+      "clothing": ["herbalbrews:witch_hat"],
+      "poi": [
+        {
+          "type": "townstead:station_post",
+          "blocks": ["herbalbrews:cauldron"],
+          "slots": 1
+        },
+        {
+          "type": "townstead:building",
+          "type_prefixes": ["compat/herbalbrews/witch_hut_l"],
+          "slots_per_tier": [1, 1]
+        }
+      ]
+    }
+  }
+}

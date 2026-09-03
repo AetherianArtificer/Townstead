@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.jam_maker.slow_boil"
+  },
+  "icon": "minecraft:barrier",
+  "description": {
+    "translate": "skill.townstead.baker.jam_maker.slow_boil.description"
+  },
+  "cost": 1,
+  "requires": ["clean_jar"],
+  "grants": [
+    {
+      "capability": "townstead:baker_xp_flat",
+      "op": "add",
+      "value": 2
+    }
+  ]
+}

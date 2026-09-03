@@ -153,5 +153,18 @@
   "witty.dialogue.chat.leatherworker_request.no_salt/1": "<happy>Hide without salt is hide with ambition. Sadly, ambition isn't leather.</happy>",
   "witty.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<happy>I'd squeeze water from a stone, but a wet sponge would be considerably easier.</happy>",
   "witty.dialogue.chat.leatherworker_request.no_storage/1": "<happy>I am, technically, a walking chest of leather. Untechnically, I am tired.</happy>",
-  "witty.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Leather. Took its time. Most good things do.</happy>"
+  "witty.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Leather. Took its time. Most good things do.</happy>",
+  "witty.dialogue.chat.townstead_drunk.tipsy_arrival/1": "A measured pour. The measure was optimistic, but the pour was sound.",
+  "witty.dialogue.chat.townstead_drunk.tipsy_ambient/1": "I am pacing myself. Admittedly, the pace has lost its map.",
+  "witty.dialogue.chat.townstead_drunk.drunk_arrival/1": "I arrived upright, which is the important half of the journey.",
+  "witty.dialogue.chat.townstead_drunk.drunk_ambient/1": "My argument remains flawless. Its route to the point is merely scenic.",
+  "witty.dialogue.chat.townstead_drunk.wasted_arrival/1": "Water, a chair, and fewer opinions from the floor, please.",
+  "witty.dialogue.chat.townstead_drunk.wasted_ambient/1": "I have reached an understanding with gravity. It gets its way.",
+  "witty.dialogue.chat.townstead_drunk.service_refused/1": "Let water have the floor. My cup has made enough motions.",
+  "witty.dialogue.chat.townstead_drunk.recovered/1": "Clarity returns, bearing a detailed invoice.",
+  "witty.dialogue.chat.beverage_artisan_request.no_worksite/1": "A beverage artisan without a station is mostly an artisan of waiting.",
+  "witty.dialogue.chat.beverage_artisan_request.no_ingredients/1": "The shelves have achieved a remarkable purity: not an ingredient in sight.",
+  "witty.dialogue.chat.beverage_artisan_request.no_storage/1": "The drinks are finished. The storage, unfortunately, is also finished.",
+  "witty.dialogue.chat.beverage_artisan_request.unreachable/1": "My station is accessible in theory, which is not terribly useful.",
+  "witty.dialogue.chat.beverage_artisan_request.no_ingredients_item": "%2$s requires ingredients, despite my strongest objections."
 }

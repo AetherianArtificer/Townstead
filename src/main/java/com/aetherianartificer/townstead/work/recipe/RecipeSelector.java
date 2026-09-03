@@ -35,7 +35,109 @@ public final class RecipeSelector {
 
     public record ScoredRecipe(DiscoveredRecipe recipe, double score) {}
 
+    public enum DemandStatus {
+        READY, NEXT_STATION, SATISFIED, UNREACHABLE, EXACT_PRODUCT_UNSUPPORTED
+    }
+
+    /** One demanded final product and the first unfinished step of its bounded plan. */
+    public record DemandSelection(DemandStatus status, ResourceLocation demanded,
+                                  @Nullable DiscoveredRecipe recipe,
+                                  @Nullable RecursiveDemandPlanner.Plan plan, String detail) {}
+
     private RecipeSelector() {}
+
+    /**
+     * Resolves final-product demand into work at the station this worker currently owns.
+     *
+     * <p>The selected recipe is always the first unfinished dependency step. Returning
+     * {@link DemandStatus#NEXT_STATION} is intentional: a later step at this station must not run
+     * before its upstream output exists, and the caller should release this station so another
+     * station role can claim the plan.</p>
+     */
+    public static DemandSelection planDemandedStep(
+            ServerLevel level, VillagerEntityMCA villager,
+            StationType currentStationType, @Nullable BlockPos currentStation,
+            Set<Long> worksiteBounds, Map<ResourceLocation, Long> recipeCooldownUntil,
+            boolean excludeBeverages, boolean beveragesOnly,
+            Collection<ResourceLocation> demanded, ResourceLocation... taskTypes) {
+        if (demanded == null || demanded.isEmpty()) {
+            return new DemandSelection(DemandStatus.UNREACHABLE,
+                    ResourceLocation.tryParse("townstead:none"), null, null, "no demanded product");
+        }
+        PlanningData planning = planningData(level, excludeBeverages, beveragesOnly);
+        WorksiteStorageIndex.Snapshot snapshot = WorksiteStorageIndex.snapshot(level, villager, worksiteBounds);
+        LinkedHashSet<ResourceLocation> tracked = new LinkedHashSet<>(planning.trackedIds());
+        tracked.addAll(demanded);
+        Map<ResourceLocation, Integer> stock = WorkIngredients.buildSupplySnapshot(
+                level, villager, tracked, worksiteBounds, snapshot);
+        long now = level.getGameTime();
+        Map<ResourceLocation, Boolean> toolAvailability = new HashMap<>();
+        List<DiscoveredRecipe> allowed = planning.recipes().stream().filter(recipe ->
+                        com.aetherianartificer.townstead.work.producer.ProducerTaskDeclarations
+                                .allowsRecipe(villager, recipe.stationType(), recipe, taskTypes)
+                                && com.aetherianartificer.townstead.work.order.BuildingRecipeScopes
+                                .allowsAssigned(level, villager, recipe.id()))
+                .toList();
+
+        DemandSelection bestFailure = null;
+        List<ResourceLocation> orderedDemand = demanded.stream().filter(Objects::nonNull)
+                .sorted(Comparator.comparing(ResourceLocation::toString)).toList();
+        for (ResourceLocation target : orderedDemand) {
+            if (!BuiltInRegistries.ITEM.containsKey(target)) {
+                bestFailure = new DemandSelection(DemandStatus.EXACT_PRODUCT_UNSUPPORTED,
+                        target, null, null,
+                        "component-sensitive or tag demand requires an exact-product stock view");
+                continue;
+            }
+            RecursiveDemandPlanner.Plan plan = RecursiveDemandPlanner.plan(
+                    allowed, stock, target, 1,
+                    recipe -> {
+                        Long cooldown = recipeCooldownUntil.get(recipe.output());
+                        if (cooldown != null && cooldown > now) return false;
+                        if (!RecipeProjections.ready(recipe)) return false;
+                        return !recipe.requiresTool() || toolAvailable(
+                                villager, recipe, snapshot, toolAvailability);
+                    }, RecursiveDemandPlanner.Limits.defaults());
+            if (!plan.succeeded()) {
+                bestFailure = new DemandSelection(DemandStatus.UNREACHABLE, target, null, plan,
+                        explain(plan.failure()));
+                continue;
+            }
+            if (plan.steps().isEmpty()) {
+                return new DemandSelection(DemandStatus.SATISFIED, target, null, plan,
+                        "demand is already present in worksite stock");
+            }
+            DiscoveredRecipe next = plan.steps().get(0).recipe();
+            if (next.stationType() != currentStationType) {
+                return new DemandSelection(DemandStatus.NEXT_STATION, target, null, plan,
+                        "next step " + next.id() + " requires " + next.stationType().name());
+            }
+            if (currentStation != null
+                    && !com.aetherianartificer.townstead.work.producer.ProductionStations
+                    .supportsRecipe(level, currentStation, next)) {
+                return new DemandSelection(DemandStatus.NEXT_STATION, target, null, plan,
+                        "current station does not support next step " + next.id());
+            }
+            if (!WorkIngredients.canFulfill(level, villager, next, currentStation,
+                    worksiteBounds, snapshot)) {
+                return new DemandSelection(DemandStatus.UNREACHABLE, target, null, plan,
+                        "planned next step is not physically fulfillable at the current station");
+            }
+            return new DemandSelection(DemandStatus.READY, target, next, plan,
+                    "next of " + plan.steps().size() + " planned recipe steps");
+        }
+        return bestFailure == null
+                ? new DemandSelection(DemandStatus.UNREACHABLE, orderedDemand.get(0), null, null,
+                "no demanded product could be planned")
+                : bestFailure;
+    }
+
+    private static String explain(@Nullable RecursiveDemandPlanner.Failure failure) {
+        if (failure == null) return "demand plan failed without a reason";
+        String path = failure.path().stream().map(ResourceLocation::toString)
+                .reduce((left, right) -> left + " -> " + right).orElse("");
+        return failure.kind() + ": " + failure.detail() + (path.isBlank() ? "" : " (" + path + ")");
+    }
 
     public static @Nullable DiscoveredRecipe pickRecipe(
             ServerLevel level,

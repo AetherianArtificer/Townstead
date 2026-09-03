@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:hangout_spot/v1",
+  "mods": "beachparty",
+  "blocks": ["beachparty:beach_chair"],
+  "posture": "townstead:sit",
+  "adapter": "beachparty:native_chair",
+  "capacity": 1
+}

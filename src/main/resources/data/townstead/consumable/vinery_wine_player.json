@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": ["vinery"],
+  "items": ["#vinery:red_wine", "#vinery:white_wine"],
+  "transaction": {
+    "mode": "observe_native",
+    "accounting": "native_result",
+    "consumers": ["player"],
+    "servings": 1,
+    "remainder": {
+      "mode": "native",
+      "destination": "holder"
+    }
+  }
+}

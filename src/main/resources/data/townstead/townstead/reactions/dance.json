@@ -1,6 +1,6 @@
 {
     "schema": "townstead:reaction/v2",
-    "display_name": "Dance",
+    "display_name": "reaction.townstead.dance",
     "tags": ["social", "celebration", "dancing"],
     "cooldown": "30s",
     "chance": "60%",

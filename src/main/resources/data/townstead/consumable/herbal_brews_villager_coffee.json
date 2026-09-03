@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": "herbalbrews",
+  "items": ["herbalbrews:coffee", "herbalbrews:milk_coffee"],
+  "effects": [
+    { "type": "pheno:hydrate", "immediate": 2, "lasting": 1 },
+    { "type": "pheno:energize", "amount": 5 }
+  ],
+  "transaction": {
+    "mode": "replace_with_pheno",
+    "accounting": "consume_one",
+    "consumers": ["villager"],
+    "servings": 1,
+    "remainder": { "mode": "none", "destination": "source" },
+    "effect_admission": { "default": "deny" }
+  }
+}

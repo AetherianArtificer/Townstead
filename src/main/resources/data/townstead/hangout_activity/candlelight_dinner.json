@@ -1,0 +1,6 @@
+{
+  "schema":"townstead:hangout_activity/v1","mods":["candlelight","farm_and_charm"],"kind":"mixed",
+  "minimum_participants":2,"maximum_participants":6,"duration_ticks":720,
+  "roles":{"host":1,"guest":5},"postures":["townstead:sit"],
+  "performance":{"id":"townstead:formal_dinner","channel":"hospitality","duration_ticks":720,"priority":20,"fallback":"vanilla_gesture"}
+}

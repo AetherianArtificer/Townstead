@@ -1,0 +1,27 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "vinery:winemaker",
+  "mods": "vinery",
+  "priority": 20,
+  "contributes": {
+    "profession": {
+      "poi": [
+        {
+          "type": "townstead:job_block",
+          "blocks": ["vinery:fermentation_barrel"],
+          "via": "vinery:winemaker"
+        },
+        {
+          "type": "townstead:station_post",
+          "blocks": ["vinery:grapevine_pot", "vinery:apple_press"],
+          "slots": 1
+        },
+        {
+          "type": "townstead:building",
+          "type_prefix": "compat/vinery/winery_l",
+          "slots_per_tier": [1, 2, 3]
+        }
+      ]
+    }
+  }
+}

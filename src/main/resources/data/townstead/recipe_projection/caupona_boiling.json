@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:recipe_projection/v1",
+  "mods": "caupona",
+  "recipe_types": ["caupona:boiling"],
+  "domain": "cooking.fluid_conversion",
+  "fields": {
+    "before": {"aliases": ["getBefore", "before"], "operation": "raw", "required": true},
+    "after": {"aliases": ["getAfter", "after"], "operation": "fluid_id", "required": true},
+    "time": {"aliases": ["getTime", "time"], "operation": "integer", "default": 200},
+    "readiness": {"default": true, "operation": "boolean"}
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "mods": "beachparty",
+  "enclosure": "optional",
+  "workers": ["townstead:beverage_artisan"],
+  "catalog": {"node_item": "beachparty:coconut_cocktail"},
+  "spirit": {
+    "commercial": 8,
+    "tourism": 6,
+    "nautical": 3
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.pastry_chef.sugar_work"
+  },
+  "icon": "minecraft:barrier",
+  "description": {
+    "translate": "skill.townstead.baker.pastry_chef.sugar_work.description"
+  },
+  "cost": 1,
+  "requires": ["piping_hand"],
+  "grants": [
+    {
+      "capability": "townstead:baker_xp_flat",
+      "op": "add",
+      "value": 2
+    }
+  ]
+}

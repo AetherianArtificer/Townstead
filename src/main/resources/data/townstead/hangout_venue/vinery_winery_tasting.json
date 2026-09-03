@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:hangout_venue/v1",
+  "mods": ["vinery"],
+  "buildings": [
+    "compat/vinery/winery_l2",
+    "compat/vinery/winery_l3"
+  ],
+  "capacity": 6,
+  "activities": [
+    "townstead:tavern_round",
+    "townstead:tavern_conversation"
+  ],
+  "amenities": ["drink", "conversation"]
+}

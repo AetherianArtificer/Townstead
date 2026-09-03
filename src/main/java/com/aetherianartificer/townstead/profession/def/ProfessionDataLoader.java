@@ -59,6 +59,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
 
     public record Prepared(Map<ResourceLocation, JsonObject> professions,
                            Map<ResourceLocation, JsonObject> skills,
+                           Map<ResourceLocation, JsonObject> careerProviders,
                            Map<ResourceLocation, JsonObject> levelOverlays,
                            Map<ResourceLocation, JsonObject> progressionOverlays,
                            Map<ResourceLocation, JsonObject> pathOverlays,
@@ -70,6 +71,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
     @Override
     protected Prepared prepare(ResourceManager resourceManager, ProfilerFiller profiler) {
         Map<ResourceLocation, JsonObject> skills = read(resourceManager, "skill");
+        Map<ResourceLocation, JsonObject> careerProviders = read(resourceManager, "career_provider");
         Map<ResourceLocation, JsonObject> professions = new LinkedHashMap<>();
         Map<ResourceLocation, JsonObject> levelOverlays = new LinkedHashMap<>();
         Map<ResourceLocation, JsonObject> progressionOverlays = new LinkedHashMap<>();
@@ -97,10 +99,14 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             int tradeDir = subpath.lastIndexOf("/trade/");
             if (pathDir > 0 && pathSkillDir > pathDir) {
                 String professionPath = subpath.substring(0, pathDir);
-                String pathId = subpath.substring(pathDir + "/path/".length(), pathSkillDir);
+                ResourceLocation professionId = ResourceLocation.tryParse(
+                        file.getNamespace() + ":" + professionPath);
+                String pathId = CareerIdAliases.canonicalPath(professionId,
+                        subpath.substring(pathDir + "/path/".length(), pathSkillDir));
                 String skillName = subpath.substring(pathSkillDir + "/skill/".length());
-                ResourceLocation skillId = ResourceLocation.tryParse(file.getNamespace() + ":"
-                        + professionPath + "/" + pathId + "/" + skillName);
+                ResourceLocation skillId = CareerIdAliases.canonicalSkill(ResourceLocation.tryParse(
+                        file.getNamespace() + ":" + professionPath + "/" + pathId + "/"
+                                + skillName));
                 if (skillId == null || pathId.isBlank() || pathId.contains("/")
                         || skillName.isBlank()) continue;
                 if (!json.has("profession")) {
@@ -110,10 +116,11 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 skills.put(skillId, json);
             } else if (pathDir > 0 && pathTradeDir > pathDir) {
                 String professionPath = subpath.substring(0, pathDir);
-                String pathId = subpath.substring(pathDir + "/path/".length(), pathTradeDir);
-                String contributionName = subpath.substring(pathTradeDir + "/trade/".length());
                 ResourceLocation professionId = ResourceLocation.tryParse(
                         file.getNamespace() + ":" + professionPath);
+                String pathId = CareerIdAliases.canonicalPath(professionId,
+                        subpath.substring(pathDir + "/path/".length(), pathTradeDir));
+                String contributionName = subpath.substring(pathTradeDir + "/trade/".length());
                 if (professionId == null || pathId.isBlank() || pathId.contains("/")
                         || contributionName.isBlank()) continue;
                 tradeDocuments.computeIfAbsent(professionId,
@@ -131,10 +138,11 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 skills.put(skillId, json);
             } else if (pathDir > 0 && subpath.endsWith("/path")) {
                 String professionPath = subpath.substring(0, pathDir);
-                String pathId = subpath.substring(pathDir + "/path/".length(),
-                        subpath.length() - "/path".length());
                 ResourceLocation professionId = ResourceLocation.tryParse(
                         file.getNamespace() + ":" + professionPath);
+                String pathId = CareerIdAliases.canonicalPath(professionId,
+                        subpath.substring(pathDir + "/path/".length(),
+                                subpath.length() - "/path".length()));
                 if (professionId != null && !pathId.isBlank() && !pathId.contains("/")) {
                     pathDocuments.computeIfAbsent(professionId, ignored -> new LinkedHashMap<>())
                             .put(pathId, json);
@@ -197,7 +205,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 if (id != null) professions.put(id, json);
             }
         }
-        return new Prepared(professions, skills, levelOverlays, progressionOverlays,
+        return new Prepared(professions, skills, careerProviders, levelOverlays, progressionOverlays,
                 pathOverlays, pathDocuments, compatibilityDocuments, workOverlays, tradeDocuments);
     }
 
@@ -235,6 +243,17 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 }
             }
             activeDefs.put(e.getKey(), obj);
+        }
+
+        Map<ResourceLocation, String> providerErrors = new LinkedHashMap<>();
+        CareerProviderContributions.Plan providerPlan = CareerProviderContributions.plan(
+                prepared.careerProviders(), activeDefs, providerErrors);
+        for (Map.Entry<ResourceLocation, String> error : providerErrors.entrySet()) {
+            diagnostics.forResource(error.getKey());
+            diagnostics.error(JsonPath.ROOT,
+                    "Invalid Career provider: " + error.getValue(),
+                    "Use schema '" + CareerProviderContributions.SCHEMA
+                            + "' and target an active Profession or Path.");
         }
 
         for (Map.Entry<ResourceLocation, JsonObject> e : prepared.levelOverlays().entrySet()) {
@@ -302,6 +321,13 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             }
             for (Map.Entry<String, JsonObject> path : owner.getValue().entrySet()) {
                 JsonObject document = path.getValue();
+                if (document.has("providers_required")
+                        && document.get("providers_required").getAsBoolean()
+                        && !providerPlan.hasProvider(owner.getKey(), path.getKey())) {
+                    LOGGER.debug("Path {}/{} skipped: no active Career provider",
+                            owner.getKey(), path.getKey());
+                    continue;
+                }
                 if (document.has("mods")) {
                     Boolean met = com.aetherianartificer.townstead.data.ModGate.evaluate(
                             document.get("mods"));
@@ -318,6 +344,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                     }
                 }
                 try {
+                    providerPlan.applyPath(owner.getKey(), path.getKey(), document);
                     ProfessionPathDocument.Applied applied = ProfessionPathDocument.apply(
                             def, path.getKey(), document);
                     for (Map.Entry<String, Integer> skillTier : applied.skillTiers().entrySet()) {
@@ -353,6 +380,10 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                                 + "' and refer only to declared path ids.");
             }
         }
+
+        // Work sidecars establish the base. Providers then append independently gated work and
+        // presentation without growing a central union every time another mod participates.
+        providerPlan.applyProfessions(activeDefs);
 
         for (Map.Entry<ResourceLocation, Map<ResourceLocation, TradeDocument>> owner
                 : prepared.tradeDocuments().entrySet()) {
@@ -438,7 +469,13 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         validateAliases(professions, diagnostics);
         Map<ResourceLocation, ProfessionDefs.Resolution> compatibility = parseCompatibility(
                 prepared.compatibilityDocuments(), activeDefs, professions.keySet(), diagnostics);
-        ProfessionDefs.replaceAll(professions, compatibility);
+        Map<ResourceLocation, ProfessionDefs.Resolution> providerAliases = providerPlan.aliases(
+                professions.keySet(), activeDefs);
+        Map<ResourceLocation, ProfessionDefs.Resolution> mergedCompatibility =
+                new LinkedHashMap<>(compatibility);
+        providerAliases.forEach(mergedCompatibility::putIfAbsent);
+        ProfessionDefs.replaceAll(professions, mergedCompatibility);
+        CareerProviders.replaceAll(providerPlan.provenance());
         SkillDefs.replaceAll(skills);
         ProfessionTitles.replaceAll(parseAllTitles(activeDefs, professions.keySet(), lang, diagnostics));
         ProfessionPaths.replaceAll(parseAllPaths(activeDefs, professions.keySet(), lang, diagnostics));
@@ -1054,9 +1091,22 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                     var power = parsePower(holder, lang, diagnostics);
                     if (power != null) powers.add(power);
                 }
+                com.aetherianartificer.townstead.storage.StoragePreference pathStorage =
+                        com.aetherianartificer.townstead.storage.StoragePreference.NONE;
+                if (p.has("storage")) {
+                    try {
+                        pathStorage = com.aetherianartificer.townstead.storage.StoragePreference
+                                .parse(p.get("storage"));
+                    } catch (IllegalArgumentException error) {
+                        diagnostics.warning(JsonPath.ROOT.field("paths").index(i).field("storage"),
+                                "Invalid Path storage preference: " + error.getMessage(),
+                                "Use {\"preferred_roles\":[\"townstead:brewed_drinks\"]}, "
+                                        + "or omit storage to inherit the Profession preference.");
+                    }
+                }
                 paths.add(new ProfessionPaths.Path(e.getKey(), pathId, name, gateway,
                         skillIds, worksites, color, backdrop, powers,
-                        parseClothing(p, diagnostics)));
+                        parseClothing(p, diagnostics), pathStorage));
             }
             if (!paths.isEmpty()) out.put(e.getKey(), List.copyOf(paths));
         }
@@ -1160,10 +1210,10 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
     private static ResourceLocation resolveSkillRef(ResourceLocation owner,
                                                     @Nullable String scope, String raw) {
         if (raw == null || raw.isBlank()) return null;
-        return raw.contains(":")
+        return CareerIdAliases.canonicalSkill(raw.contains(":")
                 ? ResourceLocation.tryParse(raw)
                 : ResourceLocation.tryParse(owner.getNamespace() + ":" + owner.getPath() + "/"
-                        + (scope == null || scope.isBlank() ? "" : scope + "/") + raw);
+                        + (scope == null || scope.isBlank() ? "" : scope + "/") + raw));
     }
 
     /** Directory portion between the owning Profession and this Skill's filename. */

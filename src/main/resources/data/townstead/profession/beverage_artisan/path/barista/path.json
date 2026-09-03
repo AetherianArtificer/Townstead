@@ -1,6 +1,6 @@
 {
   "schema": "townstead:profession_path/v1",
-  "mods": ["farmersdelight", "rusticdelight"],
+  "providers_required": true,
   "name": {
     "translate": "career.townstead.beverage_artisan.path.barista"
   },
@@ -9,6 +9,6 @@
   },
   "color": "#8B5A3C",
   "clothing": ["townstead:barista"],
-  "worksites": ["farmersdelight:cooking_pot", "farmersdelight:skillet"],
+  "worksites": [],
   "skills": ["coffee_service"]
 }

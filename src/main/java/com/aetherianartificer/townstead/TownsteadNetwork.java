@@ -286,6 +286,10 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.root.RootSetC2SPayload::write,
                 com.aetherianartificer.townstead.root.RootSetC2SPayload::read,
                 TownsteadNetwork::handleRootSet);
+        registerC2S(com.aetherianartificer.townstead.inventory.VillagerCurioRenderC2SPayload.class,
+                com.aetherianartificer.townstead.inventory.VillagerCurioRenderC2SPayload::write,
+                com.aetherianartificer.townstead.inventory.VillagerCurioRenderC2SPayload::read,
+                (payload, sp) -> com.aetherianartificer.townstead.inventory.VillagerCurioRender.toggle(sp, payload));
         registerC2S(com.aetherianartificer.townstead.root.SetGeneVariantC2SPayload.class,
                 com.aetherianartificer.townstead.root.SetGeneVariantC2SPayload::write,
                 com.aetherianartificer.townstead.root.SetGeneVariantC2SPayload::read,
@@ -322,6 +326,10 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.root.RootSyncS2CPayload::write,
                 com.aetherianartificer.townstead.root.RootSyncS2CPayload::read,
                 TownsteadNetwork::handleRootSync);
+        registerS2C(com.aetherianartificer.townstead.inventory.VillagerCurioRenderS2CPayload.class,
+                com.aetherianartificer.townstead.inventory.VillagerCurioRenderS2CPayload::write,
+                com.aetherianartificer.townstead.inventory.VillagerCurioRenderS2CPayload::read,
+                com.aetherianartificer.townstead.client.gui.inventory.VillagerCurioRenderClient::apply);
         registerS2C(com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload.class,
                 com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload::write,
                 com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload::read,

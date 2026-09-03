@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:hangout_venue/v1",
+  "mods": "brewinandchewin",
+  "buildings": ["compat/brewinandchewin/taproom_l1"],
+  "capacity": 6,
+  "activities": [
+    "townstead:tavern_shared_meal",
+    "townstead:tavern_round",
+    "townstead:tavern_supper",
+    "townstead:tavern_conversation"
+  ],
+  "amenities": ["seating", "food", "drink", "conversation"]
+}

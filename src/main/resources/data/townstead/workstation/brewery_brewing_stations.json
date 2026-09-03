@@ -1,0 +1,135 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": ["brewery"],
+  "blocks": [
+    "brewery:wooden_brewingstation",
+    "brewery:copper_brewingstation",
+    "brewery:netherite_brewingstation"
+  ],
+  "shift_end": "finish",
+  "ready": {
+    "type": "pheno:block_state",
+    "property": "liquid",
+    "value": "beer"
+  },
+  "behavior": {
+    "type": "pheno:use_block",
+    "item": "ingredient",
+    "all": true,
+    "face": "up",
+    "hit": [0.5, 1.0, 0.5]
+  },
+  "collect": {
+    "type": "pheno:use_block",
+    "item": "tool",
+    "tool": "brewery:beer_mug",
+    "face": "up",
+    "hit": [0.5, 1.0, 0.5]
+  },
+  "attendance": {
+    "poll_interval": 10,
+    "timeout": 7200,
+    "incidents": [
+      {
+        "id": "catch_overflow",
+        "when": {
+          "type": "pheno:block_state",
+          "property": "liquid",
+          "value": "overflowing"
+        },
+        "response": {
+          "type": "pheno:use_block",
+          "item": "supply",
+          "supply": "minecraft:bucket",
+          "face": "up",
+          "hit": [0.5, 1.0, 0.5]
+        },
+        "max_attempts": 4
+      },
+      {
+        "id": "refill_drain",
+        "when": {
+          "type": "pheno:block_state",
+          "property": "liquid",
+          "value": "drained"
+        },
+        "response": {
+          "type": "pheno:use_block",
+          "item": "supply",
+          "supply": "minecraft:water_bucket",
+          "face": "up",
+          "hit": [0.5, 1.0, 0.5]
+        },
+        "max_attempts": 4
+      },
+      {
+        "id": "feed_weak_oven",
+        "when": {
+          "type": "pheno:adjacent",
+          "condition": {
+            "type": "pheno:adjacent",
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                { "type": "pheno:block", "block": "brewery:brew_oven" },
+                { "type": "pheno:block_state", "property": "heat", "value": "weak" }
+              ]
+            }
+          }
+        },
+        "response": {
+          "type": "pheno:use_block",
+          "item": "supply",
+          "supply": "#minecraft:coals",
+          "face": "up",
+          "hit": [0.5, 1.0, 0.5],
+          "on": {
+            "around": "here",
+            "radius": [1, 0, 1],
+            "where": {
+              "type": "pheno:and",
+              "conditions": [
+                { "type": "pheno:block", "block": "brewery:brew_oven" },
+                { "type": "pheno:block_state", "property": "heat", "value": "weak" }
+              ]
+            },
+            "limit": 1
+          }
+        },
+        "max_attempts": 8
+      },
+      {
+        "id": "reset_timer",
+        "when": {
+          "type": "pheno:adjacent",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              { "type": "pheno:block", "block": "brewery:brew_timer" },
+              { "type": "pheno:block_state", "property": "time", "value": "true" }
+            ]
+          }
+        },
+        "response": {
+          "type": "pheno:use_block",
+          "item": "empty",
+          "face": "up",
+          "hit": [0.5, 1.0, 0.5],
+          "on": {
+            "around": "here",
+            "radius": [1, 0, 1],
+            "where": {
+              "type": "pheno:and",
+              "conditions": [
+                { "type": "pheno:block", "block": "brewery:brew_timer" },
+                { "type": "pheno:block_state", "property": "time", "value": "true" }
+              ]
+            },
+            "limit": 1
+          }
+        },
+        "max_attempts": 8
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "mods": "herbalbrews",
+  "workers": ["townstead:witch"],
+  "catalog": {
+    "node_item": "herbalbrews:cauldron"
+  },
+  "spirit": {
+    "scholarly": 8,
+    "pastoral": 3
+  }
+}

@@ -24,6 +24,7 @@ public final class BlockActionContext {
     private final LivingEntity cause;
     private final Outcome outcome;
     private final Map<String, ItemStack> itemRoles;
+    private final Map<String, List<BlockPos>> blockRoles;
     private final List<ItemStack> returnedItems;
 
     public BlockActionContext(ServerLevel level, BlockPos pos) {
@@ -31,16 +32,23 @@ public final class BlockActionContext {
     }
 
     public BlockActionContext(ServerLevel level, BlockPos pos, @Nullable LivingEntity cause) {
-        this(level, pos, cause, new Outcome(), new LinkedHashMap<>(), new ArrayList<>());
+        this(level, pos, cause, new Outcome(), new LinkedHashMap<>(), new LinkedHashMap<>(), new ArrayList<>());
     }
 
     private BlockActionContext(ServerLevel level, BlockPos pos, @Nullable LivingEntity cause, Outcome outcome,
                                Map<String, ItemStack> itemRoles, List<ItemStack> returnedItems) {
+        this(level, pos, cause, outcome, itemRoles, new LinkedHashMap<>(), returnedItems);
+    }
+
+    private BlockActionContext(ServerLevel level, BlockPos pos, @Nullable LivingEntity cause, Outcome outcome,
+                               Map<String, ItemStack> itemRoles, Map<String, List<BlockPos>> blockRoles,
+                               List<ItemStack> returnedItems) {
         this.level = level;
         this.pos = pos;
         this.cause = cause;
         this.outcome = outcome;
         this.itemRoles = itemRoles;
+        this.blockRoles = blockRoles;
         this.returnedItems = returnedItems;
     }
 
@@ -59,7 +67,7 @@ public final class BlockActionContext {
 
     /** The same context at a different block (used by offset / area-of-effect). */
     public BlockActionContext at(BlockPos newPos) {
-        return new BlockActionContext(level, newPos, cause, outcome, itemRoles, returnedItems);
+        return new BlockActionContext(level, newPos, cause, outcome, itemRoles, blockRoles, returnedItems);
     }
 
     public BlockActionContext withItemRole(String role, ItemStack stack) {
@@ -72,6 +80,14 @@ public final class BlockActionContext {
     public void setItemRole(String role, ItemStack stack) {
         itemRoles.put(role, stack == null ? ItemStack.EMPTY : stack);
     }
+
+    public BlockActionContext withBlockRoles(Map<String, List<BlockPos>> roles) {
+        blockRoles.clear();
+        if (roles != null) blockRoles.putAll(roles);
+        return this;
+    }
+
+    public Map<String, List<BlockPos>> blockRoles() { return Map.copyOf(blockRoles); }
 
     public void returnItem(ItemStack stack) {
         if (stack != null && !stack.isEmpty()) returnedItems.add(stack);

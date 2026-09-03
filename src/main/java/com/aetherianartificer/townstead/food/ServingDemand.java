@@ -8,6 +8,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.Set;
+import java.util.LinkedHashSet;
 
 /**
  * The serving menu read as standing demand.
@@ -31,10 +32,13 @@ public final class ServingDemand {
         if (level == null || villager == null || worksiteBounds == null || worksiteBounds.isEmpty()) {
             return Set.of();
         }
+        Set<ResourceLocation> demand = new LinkedHashSet<>(
+                com.aetherianartificer.townstead.hospitality.service.HospitalityServiceDelivery
+                        .demandedProducts(level, villager, worksiteBounds));
         Set<ResourceLocation> menu = BuildingServingMenus.assignedMenu(level, villager);
-        if (menu == null || menu.isEmpty()) return Set.of();
-        if (!ServingPlateService.hasEmptySurface(level, worksiteBounds)) return Set.of();
-        return menu;
+        if (menu != null && !menu.isEmpty()
+                && ServingPlateService.hasEmptySurface(level, worksiteBounds)) demand.addAll(menu);
+        return Set.copyOf(demand);
     }
 
     /** Whether this stack is one of the demanded dishes and can actually sit on a plate. */

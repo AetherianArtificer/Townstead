@@ -88,5 +88,18 @@
   "lazy.dialogue.chat.leatherworker_request.no_salt/1": "<sleepy>No salt. Skin sits. So do I.</sleepy>",
   "lazy.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<sleepy>No wet sponge. Hide can wait. I sure can.</sleepy>",
   "lazy.dialogue.chat.leatherworker_request.no_storage/1": "<sleepy>Pack's full. Maybe I'll just lean against this rack a while.</sleepy>",
-  "lazy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<sleepy>Cured. Now I can finally rest. Earned it.</sleepy>"
+  "lazy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<sleepy>Cured. Now I can finally rest. Earned it.</sleepy>",
+  "lazy.dialogue.chat.beverage_artisan_request.no_worksite/1": "<sleepy>No station. Wake me when there's somewhere to make drinks.</sleepy>",
+  "lazy.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<sleepy>Nothing left to brew with. Guess that's a break.</sleepy>",
+  "lazy.dialogue.chat.beverage_artisan_request.no_storage/1": "<sleepy>Storage is full. I am also done.</sleepy>",
+  "lazy.dialogue.chat.beverage_artisan_request.unreachable/1": "<sleepy>The path is blocked. Going around sounds exhausting.</sleepy>",
+  "lazy.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<sleepy>%2$s sounds nice. Finding the ingredients does not.</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<sleepy>Warm, comfortable, and already near a chair. Perfect.</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<sleepy>This is excellent practice for doing nothing tomorrow.</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.drunk_arrival/1": "<sleepy>Walking was ambitious. Where's the nearest seat?</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.drunk_ambient/1": "<sleepy>I would finish that story, but the middle wore me out.</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>Water. Bed. Whichever arrives first.</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>I wasn't planning to move anyway.</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.service_refused/1": "<sleepy>No more. Lifting the cup is too much work.</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.recovered/1": "<sleepy>Better. Still going back to bed.</sleepy>"
 }

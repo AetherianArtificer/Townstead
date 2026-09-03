@@ -1,0 +1,14 @@
+{
+  "color": "ffb87957",
+  "visible": true,
+  "priority": 5,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 184,
+  "noBeds": true,
+  "blocks": {
+    "cozycafe:cafe_manager": 1,
+    "cozycafe:cafe_menu": 1,
+    "#townstead:kitchen/storage": 1
+  }
+}

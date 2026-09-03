@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "brewer",
+  "mods": "brewinandchewin",
+  "priority": 30,
+  "contributes": {
+    "path": {
+      "worksites": ["brewinandchewin:keg"],
+      "work": [
+        {
+          "type": "townstead_work:brew",
+          "workstations": ["brewinandchewin:keg"],
+          "recipes": ["#townstead:brew_output"],
+          "weight": 10
+        }
+      ]
+    },
+    "profession": {
+      "poi": [
+        { "type": "townstead:station_post", "blocks": ["brewinandchewin:keg"], "slots": 1 },
+        {
+          "type": "townstead:building",
+          "type_prefix": "compat/brewinandchewin/brewhouse_l",
+          "slots_per_tier": [1, 2],
+          "path_affinity": ["brewer"]
+        }
+      ]
+    }
+  }
+}

@@ -14,6 +14,7 @@ public final class CareerChoices {
     private CareerChoices() {}
 
     public static LearnedSkills.Result learn(LivingEntity entity, ResourceLocation choice) {
+        choice = SkillDefs.canonicalId(choice);
         SkillDef existing = SkillDefs.byId(choice);
         if (LearnedSkills.has(entity, choice)) {
             if (existing != null && existing.skillGroup() != null) {
@@ -38,16 +39,18 @@ public final class CareerChoices {
     }
 
     public static boolean activate(LivingEntity entity, ResourceLocation skillGroup, ResourceLocation choice) {
-        if (!LearnedSkills.has(entity, choice)) return false;
+        ResourceLocation canonical = SkillDefs.canonicalId(choice);
+        if (!LearnedSkills.has(entity, canonical)) return false;
         if (entity instanceof VillagerEntityMCA villager) {
             var memory = TownsteadVillagers.get(villager).professionMemory();
-            boolean changed = memory.careerProfile().activateSkill(skillGroup, choice);
+            boolean changed = memory.careerProfile().activateSkill(skillGroup, canonical);
             if (changed) memory.markCareerDirty();
             return changed;
         }
         if (entity instanceof Player player) {
             final boolean[] changed = {false};
-            PlayerCareers.mutate(player, profile -> changed[0] = profile.activateSkill(skillGroup, choice));
+            PlayerCareers.mutate(player,
+                    profile -> changed[0] = profile.activateSkill(skillGroup, canonical));
             return changed[0];
         }
         return false;
@@ -55,6 +58,7 @@ public final class CareerChoices {
 
     /** The screen/command choose path: only skills of an acquired career may be equipped. */
     public static LearnedSkills.Result chooseFromAcquired(LivingEntity entity, ResourceLocation skillId) {
+        skillId = SkillDefs.canonicalId(skillId);
         CareerProfile profile = CareerProfiles.of(entity);
         if (profile == null || skillId == null) {
             return new LearnedSkills.Result(false, "no career profile");
@@ -90,6 +94,7 @@ public final class CareerChoices {
     }
 
     public static boolean isActive(LivingEntity entity, ResourceLocation skill) {
+        skill = SkillDefs.canonicalId(skill);
         SkillDef def = SkillDefs.byId(skill);
         if (def == null || !LearnedSkills.has(entity, skill)) return false;
         if (def.skillGroup() == null) return true;

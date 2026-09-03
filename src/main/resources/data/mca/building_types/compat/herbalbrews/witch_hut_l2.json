@@ -1,0 +1,15 @@
+{
+  "color": "ff483652",
+  "visible": true,
+  "priority": 4,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 184,
+  "noBeds": true,
+  "blocks": {
+    "herbalbrews:cauldron": 1,
+    "herbalbrews:jug": 1,
+    "minecraft:chest": 2,
+    "minecraft:bookshelf": 3
+  }
+}

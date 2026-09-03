@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Peel Vault"
+    "translate": "skill.townstead.cook.pizzaiolo.peel_vault"
   },
   "icon": "minecraft:wooden_shovel",
   "description": {
-    "text": "A pizza peel is a lever when the floor gets too hot to trust. Vault forward and upward to escape danger."
+    "translate": "skill.townstead.cook.pizzaiolo.peel_vault.description"
   },
   "cost": 1,
   "requires": ["pizza_spin"],

@@ -37,12 +37,15 @@ public final class ProfessionPaths {
                        ResourceLocation gateway,
                        List<ResourceLocation> skills, List<ResourceLocation> worksites,
                        int color, @Nullable ResourceLocation backdrop,
-                       List<PowerComponent> powers, List<ClothingChoice> clothing) {
+                       List<PowerComponent> powers, List<ClothingChoice> clothing,
+                       com.aetherianartificer.townstead.storage.StoragePreference storage) {
         public Path {
             skills = List.copyOf(skills);
             worksites = List.copyOf(worksites);
             powers = List.copyOf(powers);
             clothing = List.copyOf(clothing);
+            storage = storage == null
+                    ? com.aetherianartificer.townstead.storage.StoragePreference.NONE : storage;
         }
 
         /** Compatibility constructor predating the board's section styling. */
@@ -50,7 +53,8 @@ public final class ProfessionPaths {
                     ResourceLocation gateway,
                     List<ResourceLocation> skills, List<ResourceLocation> worksites) {
             this(professionId, id, displayName, gateway, skills, worksites, 0, null,
-                    List.of(), List.of());
+                    List.of(), List.of(),
+                    com.aetherianartificer.townstead.storage.StoragePreference.NONE);
         }
 
         public Path(ResourceLocation professionId, String id, Component displayName,
@@ -58,7 +62,8 @@ public final class ProfessionPaths {
                     List<ResourceLocation> worksites, int color,
                     @Nullable ResourceLocation backdrop) {
             this(professionId, id, displayName, gateway, skills, worksites,
-                    color, backdrop, List.of(), List.of());
+                    color, backdrop, List.of(), List.of(),
+                    com.aetherianartificer.townstead.storage.StoragePreference.NONE);
         }
 
         public boolean isMember(ResourceLocation skillId) {
@@ -92,6 +97,7 @@ public final class ProfessionPaths {
     @Nullable
     public static Path byId(ResourceLocation professionId, String pathId) {
         if (pathId == null) return null;
+        pathId = CareerIdAliases.canonicalPath(professionId, pathId);
         for (Path path : pathsFor(professionId)) {
             if (path.id().equals(pathId)) return path;
         }

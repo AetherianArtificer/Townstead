@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:hangout_activity/v1",
+  "kind": "drink",
+  "minimum_participants": 2,
+  "maximum_participants": 5,
+  "duration_ticks": 360,
+  "roles": { "bartender": 1, "patron": 4 },
+  "postures": ["townstead:sit"],
+  "start_when": { "type": "pheno:thirst", "max": 15 },
+  "service_when": { "type": "pheno:state", "state": "townstead_state:drunk", "min_tier": "wasted", "inverted": true },
+  "service": { "courses": [
+    { "id": "house_round", "kind": "drink", "role": "bartender", "at_ticks": 140, "lease_ticks": 100 }
+  ] },
+  "on_service_accepted": { "type": "pheno:performance", "performance": "townstead:raise_a_glass", "channel": "hospitality", "duration_ticks": 60, "priority": 25, "fallback": "vanilla_gesture" },
+  "on_service_refused": [
+    { "type": "pheno:speak", "pool": "dialogue.chat.townstead_drunk.service_refused", "variants": 4 },
+    { "type": "pheno:performance", "performance": "townstead:kind_refusal", "channel": "hospitality", "duration_ticks": 60, "priority": 60, "fallback": "stand" }
+  ],
+  "performance": { "id": "townstead:round_at_the_table", "channel": "social", "duration_ticks": 360, "priority": 15, "fallback": "vanilla_gesture" }
+}

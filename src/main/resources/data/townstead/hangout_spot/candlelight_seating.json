@@ -1,0 +1,5 @@
+{
+  "schema":"townstead:hangout_spot/v1","mods":["candlelight","farm_and_charm"],
+  "blocks":["candlelight:chair","candlelight:oak_chair","candlelight:birch_chair","candlelight:spruce_chair","candlelight:dark_oak_chair","candlelight:acacia_chair","candlelight:jungle_chair","candlelight:mangrove_chair","candlelight:warped_chair","candlelight:crimson_chair","candlelight:cherry_chair","candlelight:bamboo_chair","candlelight:sofa"],
+  "posture":"townstead:sit","capacity":1,"canonical_offset":[0,1,0],"linked_offsets":[[0,-1,0]]
+}

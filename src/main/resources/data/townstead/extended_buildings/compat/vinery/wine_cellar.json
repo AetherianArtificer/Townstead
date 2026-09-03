@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "mods": "vinery",
+  "storage_roles": ["townstead:wine"],
+  "catalog": {
+    "node_item": "vinery:wine_box"
+  },
+  "dialogue": {
+    "topics": ["wine_cellar", "vintage", "winemaking"]
+  },
+  "spirit": {
+    "pastoral": 6,
+    "commercial": 4,
+    "industrious": 2
+  }
+}

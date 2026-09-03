@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "bartender",
+  "mods": "brewery",
+  "priority": 25,
+  "contributes": {
+    "profession": {
+      "poi": [
+        {
+          "type": "townstead:building",
+          "type_prefix": "compat/brewery/brew_hall_l",
+          "slots_per_tier": [1, 2, 3],
+          "path_affinity": ["bartender"]
+        }
+      ]
+    }
+  }
+}

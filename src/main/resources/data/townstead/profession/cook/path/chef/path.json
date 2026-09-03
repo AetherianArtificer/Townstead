@@ -2,10 +2,10 @@
   "schema": "townstead:profession_path/v1",
   "mods": "chefsdelight",
   "name": {
-    "text": "Chef"
+    "translate": "career.townstead.cook.path.chef"
   },
   "title": {
-    "text": "Chef"
+    "translate": "career.townstead.cook.title.chef"
   },
   "color": "#C95F3B",
   "worksites": [

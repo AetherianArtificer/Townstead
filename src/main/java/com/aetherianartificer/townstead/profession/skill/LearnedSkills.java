@@ -55,10 +55,11 @@ public final class LearnedSkills {
     }
 
     public static boolean has(LivingEntity entity, ResourceLocation skill) {
-        return backing(entity).contains(skill);
+        return backing(entity).contains(SkillDefs.canonicalId(skill));
     }
 
     public static boolean has(UUID uuid, ResourceLocation skill) {
+        skill = SkillDefs.canonicalId(skill);
         Set<ResourceLocation> set = STATE.get(uuid);
         return set != null && set.contains(skill);
     }
@@ -114,6 +115,7 @@ public final class LearnedSkills {
      * bypass for admin setup.
      */
     private static Result learnInto(Backing backing, ResourceLocation skillId) {
+        skillId = SkillDefs.canonicalId(skillId);
         SkillDef skill = SkillDefs.byId(skillId);
         if (skill == null) return Result.fail("unknown skill '" + skillId + "'");
         Set<ResourceLocation> set = backing.view();
@@ -127,6 +129,7 @@ public final class LearnedSkills {
 
     /** Admin bypass: record a learned skill without prerequisite or exclusivity checks. */
     private static Result forceLearnInto(Backing backing, ResourceLocation skillId) {
+        skillId = SkillDefs.canonicalId(skillId);
         if (SkillDefs.byId(skillId) == null) return Result.fail("unknown skill '" + skillId + "'");
         backing.add(skillId);
         return Result.success();
@@ -145,6 +148,7 @@ public final class LearnedSkills {
      * rather than the silent default it was.</p>
      */
     private static ForgetResult forgetFrom(Backing backing, ResourceLocation skillId) {
+        skillId = SkillDefs.canonicalId(skillId);
         if (!backing.contains(skillId)) return ForgetResult.fail("not learned");
         SkillDef skill = SkillDefs.byId(skillId);
         ProfessionDef owner = skill == null ? null : ProfessionDefs.byId(skill.profession());
@@ -159,6 +163,7 @@ public final class LearnedSkills {
 
     /** Admin bypass: forget regardless of retraining policy; still cascades to dependents. */
     private static ForgetResult forceForgetFrom(Backing backing, ResourceLocation skillId) {
+        skillId = SkillDefs.canonicalId(skillId);
         if (!backing.contains(skillId)) return ForgetResult.fail("not learned");
         return ForgetResult.removed(cascadeRemove(backing, skillId));
     }

@@ -1,0 +1,13 @@
+{
+  "color": "ff74452f",
+  "visible": true,
+  "priority": 3,
+  "icon": false,
+  "iconU": 243,
+  "iconV": 184,
+  "noBeds": true,
+  "blocks": {
+    "brewery:barrel_main": 4,
+    "brewery:cabinet": 3
+  }
+}

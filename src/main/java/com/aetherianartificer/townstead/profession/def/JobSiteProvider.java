@@ -60,13 +60,23 @@ public interface JobSiteProvider {
      * making either exclusive: working here steers an unspecialized villager toward those Paths,
      * while villagers already on one of them prefer this family's available seats. It does not
      * replace a Path's station-level worksite preferences.</p>
+     *
+     * <p>{@code proprietor} reserves the first declared number of seats in every matching
+     * building for listed raw villager-profession ids. Those ids may be semantic Career aliases;
+     * keeping the raw id is what preserves a provider mod's trades, clothing, and identity.</p>
      */
     record Building(List<String> typePrefixes, List<Integer> slotsPerTier,
-                    List<String> pathAffinities) implements JobSiteProvider {
+                    List<String> pathAffinities, Proprietor proprietor) implements JobSiteProvider {
         public Building {
             typePrefixes = List.copyOf(typePrefixes);
             slotsPerTier = List.copyOf(slotsPerTier);
             pathAffinities = List.copyOf(pathAffinities);
+            proprietor = proprietor == null ? Proprietor.NONE : proprietor;
+        }
+
+        public Building(List<String> typePrefixes, List<Integer> slotsPerTier,
+                        List<String> pathAffinities) {
+            this(typePrefixes, slotsPerTier, pathAffinities, Proprietor.NONE);
         }
 
         public Building(List<String> typePrefixes, List<Integer> slotsPerTier) {
@@ -74,7 +84,7 @@ public interface JobSiteProvider {
         }
 
         public Building(List<String> typePrefixes) {
-            this(typePrefixes, List.of(), List.of());
+            this(typePrefixes, List.of(), List.of(), Proprietor.NONE);
         }
 
         public static final String KEY = "townstead:building";
@@ -92,6 +102,15 @@ public interface JobSiteProvider {
         /** Whether this building family and the named local Path favour one another. */
         public boolean hasPathAffinity(@Nullable String pathId) {
             return pathId != null && pathAffinities.contains(pathId);
+        }
+
+        /** Professions permitted to occupy the given zero-based seat; empty means ordinary staff. */
+        public Set<ResourceLocation> requiredProfessionsForSeat(
+                @Nullable String buildingTypeId, int seatIndex) {
+            int seats = slotsFor(buildingTypeId);
+            if (seatIndex < 0 || seatIndex >= seats) return Set.of();
+            return seatIndex < Math.min(seats, proprietor.slots())
+                    ? proprietor.professions() : Set.of();
         }
 
         /** How many workers this building seats; 0 when it is not one of ours. */
@@ -143,6 +162,20 @@ public interface JobSiteProvider {
                 return Integer.parseInt(buildingTypeId.substring(prefix.length()));
             } catch (NumberFormatException | IndexOutOfBoundsException ignored) {
                 return 0;
+            }
+        }
+
+        /**
+         * Reserved ownership seats for raw/native villager professions. These ids are deliberately
+         * not canonicalized: retaining the foreign profession is what retains its trades, clothes,
+         * and POI behavior while Townstead interprets it as a Career or Path.
+         */
+        public record Proprietor(Set<ResourceLocation> professions, int slots) {
+            public static final Proprietor NONE = new Proprietor(Set.of(), 0);
+
+            public Proprietor {
+                professions = Set.copyOf(professions);
+                slots = professions.isEmpty() ? 0 : Math.max(0, slots);
             }
         }
     }

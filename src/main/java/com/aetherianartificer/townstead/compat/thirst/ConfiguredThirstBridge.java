@@ -16,7 +16,7 @@ final class ConfiguredThirstBridge implements ThirstCompatBridge {
     ConfiguredThirstBridge(ThirstCompatBridge delegate) { this.delegate = delegate; }
 
     private NeedEffectProjection configured(ItemStack stack) {
-        Consumables.Definition definition = Consumables.resolve(stack);
+        Consumables.Definition definition = Consumables.resolveEffects(stack);
         if (definition == null) return NeedEffectProjection.NONE;
         if (definition.fallback() && delegate.itemRestoresThirst(stack)) return NeedEffectProjection.NONE;
         return definition.projection();

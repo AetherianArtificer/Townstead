@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:hangout_activity/v1",
+  "mods": "herbalbrews",
+  "kind": "socialize",
+  "minimum_participants": 2,
+  "maximum_participants": 4,
+  "duration_ticks": 420,
+  "roles": { "initiator": 1, "companion": 3 },
+  "postures": ["townstead:sit"],
+  "performance": {
+    "id": "townstead:cafe_conversation",
+    "channel": "social",
+    "duration_ticks": 420,
+    "priority": 10,
+    "fallback": "vanilla_gesture"
+  }
+}

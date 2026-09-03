@@ -1,12 +1,14 @@
 {
-  "schema": "townstead:workstation/v1",
-  "mods": "brewinandchewin",
-  "type": "passive_station",
-  "blocks": [
-    "brewinandchewin:keg"
-  ],
-  "fluid_source": "townstead:brewinandchewin",
-  "recipe_tier": 3,
-  "beverage": true,
-  "recipe_type": "brewinandchewin:fermenting"
+  "schema": "townstead:workstation/v2",
+  "mods": ["brewinandchewin"],
+  "blocks": ["brewinandchewin:keg"],
+  "inventory": {
+    "slots": {
+      "ingredients": [0, 1, 2, 3, 4],
+      "preview": [5],
+      "containers": [6],
+      "outputs": [7]
+    }
+  },
+  "shift_end": "finish"
 }

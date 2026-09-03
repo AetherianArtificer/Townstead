@@ -55,6 +55,7 @@ import net.minecraft.world.item.Items;
 import javax.annotation.Nullable;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -119,6 +120,8 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     private @Nullable ResourceLocation stickyBoardRecipeId;
     private @Nullable ResourceLocation stickyBoardInputId;
     private @Nullable com.aetherianartificer.townstead.work.OutputAppraisal.Appraisal lastAppraisal;
+    /** Last bounded-plan explanation, surfaced through the ordinary blocked-reason channel. */
+    private @Nullable String demandPlanFailure;
     /**
      * Surface stations can eject their result before the recipe clock expires. The safety sweep
      * stores those entities immediately; this latch preserves the completion signal after the
@@ -367,19 +370,47 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     @Override
     protected @Nullable String noRecipeMissingRequirement(
             ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (stationAnchor == null) return null;
+        if (stationAnchor == null) return demandPlanFailure;
         var def = com.aetherianartificer.townstead.work.station.StationProtocols
                 .defAt(level, stationAnchor);
-        if (def == null || def.harvestTools().isEmpty()
-                || com.aetherianartificer.townstead.work.station.StationProtocols
-                .hasHarvestTool(villager, def)) return null;
-        Predicate<ItemStack> matcher = stack -> !stack.isEmpty()
-                && def.harvestTools().contains(BuiltInRegistries.ITEM.getKey(stack.getItem()));
-        String label = WorkRecipeRegistry.harvestToolRequirementName(def);
-        // A tool in affiliated worksite storage is actionable and will be acquired normally.
-        // Only report the prerequisite when neither the worker nor that storage can supply it.
-        return WorkIngredients.nextPhysicalPull(level, villager, matcher, 1, true, label,
-                activeWorksiteBounds(level, villager)) == null ? label : null;
+        if (def != null && !def.harvestTools().isEmpty()
+                && !com.aetherianartificer.townstead.work.station.StationProtocols
+                .hasHarvestTool(villager, def)) {
+            Predicate<ItemStack> matcher = stack -> !stack.isEmpty()
+                    && def.harvestTools().contains(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+            String label = WorkRecipeRegistry.harvestToolRequirementName(def);
+            // A tool in affiliated worksite storage is actionable and will be acquired normally.
+            // Only report the prerequisite when neither the worker nor that storage can supply it.
+            if (WorkIngredients.nextPhysicalPull(level, villager, matcher, 1, true, label,
+                    activeWorksiteBounds(level, villager)) == null) return label;
+        }
+        return demandPlanFailure;
+    }
+
+    @Override
+    protected @Nullable ProducerRecipe orderedIntermediate(
+            ServerLevel level, VillagerEntityMCA villager, long gameTime,
+            com.aetherianartificer.townstead.work.order.OrderList orders,
+            com.aetherianartificer.townstead.work.order.OrderContext context) {
+        if (stationAnchor == null || stationType == null) return null;
+        LinkedHashSet<ResourceLocation> finals = new LinkedHashSet<>();
+        for (com.aetherianartificer.townstead.work.order.Order order : orders.orders()) {
+            if (order.isActivity() || order.isTag() || order.exactProduct()
+                    || !order.wantsWork(context) || !context.mayWork(order)) continue;
+            finals.add(order.output());
+        }
+        if (finals.isEmpty()) return null;
+        RecipeSelector.DemandSelection selection = RecipeSelector.planDemandedStep(
+                level, villager, stationType, stationAnchor, activeWorksiteBounds(level, villager),
+                recipeCooldownUntil,
+                ProducerWorkSupport.excludeBeverages(spec.role(), level, villager),
+                ProducerWorkSupport.restrictToBeverages(spec.role()), finals, taskTypes);
+        if (selection.status() == RecipeSelector.DemandStatus.READY) {
+            demandPlanFailure = null;
+            return selection.recipe();
+        }
+        demandPlanFailure = "Order plan for " + selection.demanded() + ": " + selection.detail();
+        return null;
     }
 
     @Override
@@ -388,6 +419,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
                                                   java.util.function.Predicate<ResourceLocation> outputAllowed) {
         if (stationAnchor == null || stationType == null) return null;
         if (!Stations.isStation(level, stationAnchor)) return null;
+        demandPlanFailure = null;
         Set<Long> worksiteBoundsLocal = activeWorksiteBounds(level, villager);
         // An empty plate asks for a menu dish before the worker's own preference gets a say.
         // Nothing viable on the menu at this station is not a failure: fall through to the
@@ -395,13 +427,26 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         Set<ResourceLocation> menuDemand = com.aetherianartificer.townstead.food.ServingDemand
                 .standing(level, villager, worksiteBoundsLocal);
         if (!menuDemand.isEmpty()) {
-            DiscoveredRecipe dish = ProducerWorkSupport.pickRecipe(
-                    spec.role(), level, villager, stationType, stationAnchor, worksiteBoundsLocal,
-                    recipeCooldownUntil, output -> outputAllowed.test(output) && menuDemand.contains(output),
-                    taskTypes);
-            if (dish != null) {
-                debugChat(level, villager, "SELECT:menu " + dish.output() + " for an empty plate");
-                return dish;
+            RecipeSelector.DemandSelection selection = RecipeSelector.planDemandedStep(
+                    level, villager, stationType, stationAnchor, worksiteBoundsLocal,
+                    recipeCooldownUntil,
+                    ProducerWorkSupport.excludeBeverages(spec.role(), level, villager),
+                    ProducerWorkSupport.restrictToBeverages(spec.role()), menuDemand, taskTypes);
+            if (selection.status() == RecipeSelector.DemandStatus.READY) {
+                demandPlanFailure = null;
+                debugChat(level, villager, "SELECT:service plan " + selection.demanded()
+                        + " via " + selection.recipe().id());
+                return selection.recipe();
+            }
+            if (selection.status() == RecipeSelector.DemandStatus.NEXT_STATION) {
+                demandPlanFailure = "Service plan for " + selection.demanded() + ": "
+                        + selection.detail();
+                debugChat(level, villager, "SELECT:" + demandPlanFailure);
+                return null;
+            }
+            if (selection.status() != RecipeSelector.DemandStatus.SATISFIED) {
+                demandPlanFailure = "Service plan for " + selection.demanded() + ": "
+                        + selection.detail();
             }
         }
         DiscoveredRecipe recipe = ProducerWorkSupport.pickRecipe(

@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.pheno.condition.block.BlockCondition;
 import com.aetherianartificer.townstead.pheno.condition.block.BlockConditions;
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
+import com.aetherianartificer.townstead.work.recipe.ProjectedStationPlan;
 import com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry;
 import com.aetherianartificer.townstead.work.recipe.WaterPurificationItems;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
@@ -64,6 +65,9 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
     @Override
     public boolean supports(ServerLevel level, BlockPos anchor, WorkstationDef ignored,
                             DiscoveredRecipe recipe) {
+        WorkstationV2Def definition = v2(level, anchor);
+        if (definition != null && !targetsOperational(level, anchor, definition)) return false;
+        if (!ProjectedStationPlan.from(recipe).eligible()) return false;
         ResourceLocation block = BuiltInRegistries.BLOCK.getKey(level.getBlockState(anchor).getBlock());
         ResourceLocation type = WorkRecipeRegistry.recipeTypeId(recipe);
         if (type != null && WorkstationRecipeTypes.forBlock(block).contains(type)) return true;
@@ -107,6 +111,7 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
     public int capacity(ServerLevel level, BlockPos anchor, WorkstationDef ignored) {
         WorkstationV2Def def = v2(level, anchor);
         if (def == null) return 0;
+        if (!targetsOperational(level, anchor, def)) return 0;
         if (!def.isOperational(level, anchor)) return def.hasPreparationAction() || def.hasReservation() ? 1 : 0;
         if (connectedStructure(def)) {
             List<BlockPos> structure = connected(level, anchor, def);
@@ -137,6 +142,14 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         // the worksite index precisely when somebody provides the Cook with a knife.
         return availableInsertionSlots(insertionSlots, ItemStack::isEmpty,
                 stack -> isReusableShelfTool(level, anchor, stack));
+    }
+
+    @Override
+    public List<RecipeIngredient> additionalInputs(ServerLevel level, BlockPos anchor,
+                                                   WorkstationDef ignored,
+                                                   DiscoveredRecipe recipe) {
+        ProjectedStationPlan plan = ProjectedStationPlan.from(recipe);
+        return plan.eligible() ? plan.materials() : List.of();
     }
 
     static <T> int availableInsertionSlots(List<T> slots, Predicate<T> empty,
@@ -861,6 +874,21 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         return runActionOutcome(level, villager, anchor, recipe, action, role, def, Set.of()).succeeded();
     }
 
+    /** Executes authored attended-process actions through the same item-custody transaction. */
+    static boolean executeProtocolActions(ServerLevel level, VillagerEntityMCA villager,
+                                          BlockPos anchor, WorkstationV2Def def,
+                                          @Nullable JsonElement source) {
+        if (source == null) return true;
+        for (JsonElement element : WorkstationV2Def.actions(source)) {
+            if (!element.isJsonObject()) return false;
+            JsonObject action = element.getAsJsonObject();
+            String role = role(action);
+            if (!"empty".equals(role) && !"tool".equals(role) && !"supply".equals(role)) return false;
+            if (!runAction(level, villager, anchor, null, action, role, def)) return false;
+        }
+        return true;
+    }
+
     private static UseOutcome runActionOutcome(ServerLevel level, VillagerEntityMCA villager,
                                      BlockPos anchor, @Nullable DiscoveredRecipe recipe, JsonObject action,
                                      String role, WorkstationV2Def def, Set<ResourceLocation> expected) {
@@ -931,6 +959,10 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         }
         var context = new com.aetherianartificer.townstead.pheno.action.block.BlockActionContext(
                 level, pos, villager).withItemRole(role, supplied.copy());
+        WorkstationV2Def def = v2(level, pos);
+        if (def != null && def.targetLayout() != null) {
+            context.withBlockRoles(def.targetLayout().resolve(level, pos, def.id()).roles());
+        }
         parsed.run(context);
         ItemStack remainder = context.itemRole(role);
         boolean returnedExpected = !remainder.isEmpty()
@@ -1457,9 +1489,28 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
 
     private static com.aetherianartificer.townstead.pheno.selector.SelectorContext stationSelectorContext(
             ServerLevel level, BlockPos origin, WorkstationV2Def def) {
-        return com.aetherianartificer.townstead.pheno.selector.SelectorContext
+        var context = com.aetherianartificer.townstead.pheno.selector.SelectorContext
                 .ofBlock(level, origin, null)
                 .withDefaultBlockMembership(pos -> def.blocks().contains(
                         BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock())));
+        if (def.targetLayout() != null) {
+            for (var role : def.targetLayout().resolve(level, origin, def.id()).roles().entrySet()) {
+                context = context.withBlockRole(role.getKey(), role.getValue());
+            }
+        }
+        return context;
+    }
+
+    static StationTargetLayout.Resolution targetResolution(ServerLevel level, BlockPos anchor,
+                                                            WorkstationV2Def def) {
+        return def.targetLayout() == null
+                ? new StationTargetLayout.Resolution(Map.of("owner", List.of(new BlockPos(
+                        anchor.getX(), anchor.getY(), anchor.getZ()))), List.of())
+                : def.targetLayout().resolve(level, anchor, def.id());
+    }
+
+    private static boolean targetsOperational(ServerLevel level, BlockPos anchor,
+                                              WorkstationV2Def def) {
+        return targetResolution(level, anchor, def).complete();
     }
 }

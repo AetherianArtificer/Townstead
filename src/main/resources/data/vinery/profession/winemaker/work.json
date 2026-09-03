@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "register_profession": false,
+  "poi": [],
+  "tasks": [],
+  "storage": {
+    "preferred_roles": ["townstead:wine"]
+  }
+}

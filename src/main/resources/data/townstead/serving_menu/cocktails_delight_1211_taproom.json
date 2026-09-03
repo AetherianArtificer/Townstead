@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:serving_menu/v1",
+  "mods": ["brewinandchewin", "cocktailsdelight"],
+  "buildings": ["inn", "compat/brewinandchewin/taproom_l1"],
+  "products": [
+    "cocktailsdelight:vodka_tonic",
+    "cocktailsdelight:boilermaker"
+  ]
+}

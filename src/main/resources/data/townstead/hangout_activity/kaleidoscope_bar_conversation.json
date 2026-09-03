@@ -1,0 +1,5 @@
+{
+  "schema":"townstead:hangout_activity/v1","mods":"kaleidoscope_tavern","kind":"socialize",
+  "minimum_participants":2,"maximum_participants":5,"duration_ticks":420,"roles":{"storyteller":1,"listener":4},"postures":["townstead:sit"],
+  "performance":{"id":"townstead:bar_story","channel":"social","duration_ticks":420,"priority":15,"fallback":"vanilla_gesture"}
+}

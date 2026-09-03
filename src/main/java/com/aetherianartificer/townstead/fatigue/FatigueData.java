@@ -284,7 +284,9 @@ public final class FatigueData {
      */
     public static boolean isEnergyRestoring(ItemStack stack) {
         if (stack.isEmpty()) return false;
-        if (com.aetherianartificer.townstead.needs.Consumables.projection(stack).energizes()) return true;
+        if (com.aetherianartificer.townstead.needs.Consumables.projection(
+                stack, com.aetherianartificer.townstead.food.ConsumptionPolicy.Consumer.VILLAGER)
+                .energizes()) return true;
         if (stack.is(ENERGY_RESTORING_TAG)) return true;
         return false;
     }
@@ -299,14 +301,18 @@ public final class FatigueData {
         net.minecraft.world.SimpleContainer inv = villager.getInventory();
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
-            if (isEnergyRestoring(stack)) {
+            if (isEnergyRestoring(stack)
+                    && com.aetherianartificer.townstead.hunger.VillagerConsumptionManager
+                            .permitsManagedVillagerConsumption(stack)) {
                 //? if >=1.21 {
                 ItemStack consumed = stack.copyWithCount(1);
                 //?} else {
                 /*ItemStack consumed = stack.copy(); consumed.setCount(1);
                 *///?}
                 stack.shrink(1);
-                var configured = com.aetherianartificer.townstead.needs.Consumables.projection(consumed);
+                var configured = com.aetherianartificer.townstead.needs.Consumables.projection(
+                        consumed,
+                        com.aetherianartificer.townstead.food.ConsumptionPolicy.Consumer.VILLAGER);
                 com.aetherianartificer.townstead.needs.Consumables.apply(villager, consumed);
                 if (!configured.energizes()) applyCoffeeEffect(villager, consumed);
                 return true;

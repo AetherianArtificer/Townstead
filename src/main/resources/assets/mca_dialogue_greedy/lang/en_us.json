@@ -134,5 +134,18 @@
   "greedy.dialogue.chat.leatherworker_request.no_salt/1": "<excited>Salt is cheap. Spoiled hides are not. Which would you rather pay for?</excited>",
   "greedy.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<excited>A wet sponge, %1$s. Every hour this rack sits idle is coin lost.</excited>",
   "greedy.dialogue.chat.leatherworker_request.no_storage/1": "<excited>I can't sell from a stuffed pack. Storage, %1$s. Storage moves units.</excited>",
-  "greedy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<excited>Cured. That's good leather, that's good coin.</excited>"
+  "greedy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<excited>Cured. That's good leather, that's good coin.</excited>",
+  "greedy.dialogue.chat.beverage_artisan_request.no_worksite/1": "<angry>No station means no drinks, and no drinks means no emeralds.</angry>",
+  "greedy.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<angry>Empty shelves stop paying customers. Restock them.</angry>",
+  "greedy.dialogue.chat.beverage_artisan_request.no_storage/1": "<angry>Finished stock needs storage before it can become profit.</angry>",
+  "greedy.dialogue.chat.beverage_artisan_request.unreachable/1": "<angry>A blocked station is lost business. Clear the path.</angry>",
+  "greedy.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<angry>%2$s would sell beautifully, if someone supplied the ingredients.</angry>",
+  "greedy.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<happy>Now that was worth every emerald.</happy>",
+  "greedy.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<happy>I'll buy the next round if somebody else buys this one.</happy>",
+  "greedy.dialogue.chat.townstead_drunk.drunk_arrival/1": "<excited>A toast to profit, and to whoever is paying!</excited>",
+  "greedy.dialogue.chat.townstead_drunk.drunk_ambient/1": "<excited>I have a brilliant venture. Investments accepted immediately.</excited>",
+  "greedy.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>Close my tab before generosity ruins me.</sleepy>",
+  "greedy.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>Water is free, yes? Bring plenty.</sleepy>",
+  "greedy.dialogue.chat.townstead_drunk.service_refused/1": "<angry>No more. I'm not paying to forget what I bought.</angry>",
+  "greedy.dialogue.chat.townstead_drunk.recovered/1": "<happy>Clear head, intact purse. A successful recovery.</happy>"
 }

@@ -1,0 +1,6 @@
+{
+  "schema":"townstead:hangout_venue/v1","mods":["candlelight","farm_and_charm"],
+  "buildings":["compat/candlelight/restaurant_l1","compat/candlelight/restaurant_l2","compat/candlelight/restaurant_l3"],
+  "capacity":8,"activities":["townstead:candlelight_dinner","townstead:candlelight_after_dinner"],
+  "amenities":["seating","food","drink","conversation","place_setting","dinner_bell"]
+}

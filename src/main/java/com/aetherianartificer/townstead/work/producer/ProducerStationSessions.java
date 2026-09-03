@@ -67,6 +67,8 @@ public final class ProducerStationSessions {
         SessionSnapshot session = SESSIONS.get(key);
         if (session == null) return null;
         if (session.untilTick() <= level.getGameTime()) {
+            com.aetherianartificer.townstead.work.station.AttendedStationProtocols.end(
+                    level, session.owner(), pos);
             SESSIONS.remove(key);
             return null;
         }
@@ -83,6 +85,9 @@ public final class ProducerStationSessions {
             if (!entry.getKey().startsWith(prefix)) continue;
             SessionSnapshot session = entry.getValue();
             if (session.untilTick() <= gameTime) {
+                long packed = Long.parseLong(entry.getKey().substring(entry.getKey().lastIndexOf('|') + 1));
+                com.aetherianartificer.townstead.work.station.AttendedStationProtocols.end(
+                        level, session.owner(), BlockPos.of(packed));
                 SESSIONS.remove(entry.getKey(), session);
                 continue;
             }
@@ -96,6 +101,7 @@ public final class ProducerStationSessions {
         String key = ProducerClaimKeys.claimKey(level.dimension().location().toString(), pos.asLong());
         SessionSnapshot session = SESSIONS.get(key);
         if (session == null || !session.isOwner(owner)) return;
+        com.aetherianartificer.townstead.work.station.AttendedStationProtocols.end(level, owner, pos);
         SESSIONS.remove(key);
     }
 }

@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "bartender",
+  "mods": ["candlelight", "farm_and_charm"],
+  "priority": 20,
+  "contributes": {
+    "path": {"worksites": ["candlelight:table_set", "candlelight:dinner_bell"]},
+    "profession": {"poi": [{
+      "type": "townstead:building",
+      "type_prefix": "compat/candlelight/restaurant_l",
+      "slots_per_tier": [1, 1, 2],
+      "path_affinity": ["bartender"]
+    }]}
+  }
+}

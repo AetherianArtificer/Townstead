@@ -1,0 +1,58 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "brewer",
+  "mods": "brewery",
+  "priority": 20,
+  "contributes": {
+    "path": {
+      "worksites": [
+        "brewery:wooden_brewingstation",
+        "brewery:copper_brewingstation",
+        "brewery:netherite_brewingstation"
+      ]
+    },
+    "profession": {
+      "poi": [
+        {
+          "type": "townstead:station_post",
+          "blocks": [
+            "brewery:wooden_brewingstation",
+            "brewery:copper_brewingstation",
+            "brewery:netherite_brewingstation"
+          ],
+          "slots": 1
+        },
+        {
+          "type": "townstead:building",
+          "type_prefix": "compat/brewery/brewhouse_l",
+          "slots_per_tier": [1, 2, 3],
+          "path_affinity": ["brewer"]
+        }
+      ],
+      "tasks": [
+        {
+          "type": "townstead_work:brew",
+          "workstations": ["brewery:wooden_brewingstation"],
+          "recipes": ["#townstead:compat/brewery/wood_drinks"],
+          "weight": 10
+        },
+        {
+          "type": "townstead_work:brew",
+          "workstations": ["brewery:copper_brewingstation"],
+          "recipes": [
+            "#townstead:compat/brewery/wood_drinks",
+            "#townstead:compat/brewery/copper_drinks"
+          ],
+          "weight": 10
+        },
+        {
+          "type": "townstead_work:brew",
+          "workstations": ["brewery:netherite_brewingstation"],
+          "recipes": ["#townstead:compat/brewery/drinks"],
+          "weight": 10
+        }
+      ]
+    }
+  }
+}

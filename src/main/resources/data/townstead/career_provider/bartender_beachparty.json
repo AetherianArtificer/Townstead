@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "bartender",
+  "mods": "beachparty",
+  "priority": 20,
+  "aliases": ["beachparty:sandymerchant"],
+  "contributes": {
+    "path": { "worksites": ["beachparty:palm_bar", "beachparty:mini_fridge"] },
+    "profession": {
+      "poi": [
+        { "type": "townstead:job_block", "block": "beachparty:palm_bar", "via": "beachparty:sandymerchant" }
+      ]
+    }
+  }
+}

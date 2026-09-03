@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:recipe_projection/v1",
+  "mods": "vinery",
+  "recipe_types": ["vinery:apple_mashing"],
+  "domain": "winemaking.apple_mashing",
+  "fields": {
+    "inputs": { "aliases": ["getIngredients", "input"], "operation": "list", "required": true },
+    "output": { "aliases": ["getResultItem", "result"], "operation": "item_stack_id", "required": true },
+    "readiness": { "default": true, "operation": "boolean" }
+  }
+}

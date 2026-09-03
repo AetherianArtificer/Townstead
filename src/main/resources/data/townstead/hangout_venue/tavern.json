@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:hangout_venue/v1",
+  "buildings": ["inn"],
+  "capacity": 8,
+  "activities": [
+    "townstead:tavern_shared_meal",
+    "townstead:tavern_round",
+    "townstead:tavern_supper",
+    "townstead:tavern_conversation"
+  ],
+  "amenities": ["seating", "food", "drink", "conversation"]
+}

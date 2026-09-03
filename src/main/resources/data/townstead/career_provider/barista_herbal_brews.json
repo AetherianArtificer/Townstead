@@ -1,0 +1,40 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "barista",
+  "mods": "herbalbrews",
+  "priority": 30,
+  "contributes": {
+    "path": {
+      "worksites": ["herbalbrews:tea_kettle", "herbalbrews:copper_tea_kettle"],
+      "work": [
+        {
+          "type": "townstead_work:brew",
+          "access": "path",
+          "workstations": ["herbalbrews:tea_kettle", "herbalbrews:copper_tea_kettle"],
+          "recipes": ["#townstead:compat/herbalbrews/drinks"],
+          "weight": 10
+        }
+      ]
+    },
+    "profession": {
+      "poi": [
+        {
+          "type": "townstead:station_post",
+          "blocks": ["herbalbrews:tea_kettle", "herbalbrews:copper_tea_kettle"],
+          "slots": 1
+        },
+        {
+          "type": "townstead:building",
+          "type_prefixes": [
+            "compat/herbalbrews/herbal_cafe_l",
+            "compat/herbalbrews/tea_house_l",
+            "compat/herbalbrews/tea_drying_house_l"
+          ],
+          "slots_per_tier": [1, 2, 3],
+          "path_affinity": ["barista"]
+        }
+      ]
+    }
+  }
+}

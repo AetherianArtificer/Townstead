@@ -1,0 +1,15 @@
+{
+  "color": "ff6f4937",
+  "visible": true,
+  "priority": 4,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 184,
+  "noBeds": true,
+  "blocks": {
+    "brewinandchewin:item_mat": 2,
+    "brewinandchewin:keg": 1,
+    "#townstead:kitchen/storage": 1,
+    "#townstead:hangout/seats": 2
+  }
+}

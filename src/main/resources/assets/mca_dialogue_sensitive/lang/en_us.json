@@ -172,5 +172,18 @@
   "sensitive.dialogue.chat.leatherworker_request.no_salt/1": "<nervous>Without salt the hide spoils. I'd really rather not let that happen.</nervous>",
   "sensitive.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<nervous>A wet sponge or rag would mean so much. The hide is waiting.</nervous>",
   "sensitive.dialogue.chat.leatherworker_request.no_storage/1": "<nervous>I'd hate for finished leather to sit in my pack. A chest, if you can.</nervous>",
-  "sensitive.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Look... it cured. Properly. I'm so relieved.</happy>"
+  "sensitive.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Look... it cured. Properly. I'm so relieved.</happy>",
+  "sensitive.dialogue.chat.beverage_artisan_request.no_worksite/1": "<nervous>I hate disappointing everyone. Could we set up a drink station?</nervous>",
+  "sensitive.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<nervous>The shelves are empty. I should have noticed sooner.</nervous>",
+  "sensitive.dialogue.chat.beverage_artisan_request.no_storage/1": "<nervous>The drinks deserve better than a crowded shelf. Could we add storage?</nervous>",
+  "sensitive.dialogue.chat.beverage_artisan_request.unreachable/1": "<nervous>I can't reach my station. I hope I haven't kept anyone waiting.</nervous>",
+  "sensitive.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<nervous>I wanted %2$s to be just right, but we're missing the ingredients.</nervous>",
+  "sensitive.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<happy>Everything feels a little softer around the edges.</happy>",
+  "sensitive.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<happy>I'm very glad we're all here together.</happy>",
+  "sensitive.dialogue.chat.townstead_drunk.drunk_arrival/1": "<sad>I might have said too much. Nobody is upset, are they?</sad>",
+  "sensitive.dialogue.chat.townstead_drunk.drunk_ambient/1": "<sad>That song always makes me think of everyone I've missed.</sad>",
+  "sensitive.dialogue.chat.townstead_drunk.wasted_arrival/1": "<nervous>I don't feel well. Please stay nearby while I drink some water.</nervous>",
+  "sensitive.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>I'm all right. I just need everything to be quiet.</sleepy>",
+  "sensitive.dialogue.chat.townstead_drunk.service_refused/1": "<nervous>No more, please. Water would be kind.</nervous>",
+  "sensitive.dialogue.chat.townstead_drunk.recovered/1": "<happy>I feel like myself again. Thank you for looking after me.</happy>"
 }

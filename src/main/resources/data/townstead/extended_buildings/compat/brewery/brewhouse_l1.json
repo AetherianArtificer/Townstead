@@ -1,0 +1,1 @@
+{"schema":"townstead:extended_building/v1","mods":"brewery","workers":["townstead:beverage_artisan"],"catalog":{"node_item":"brewery:wooden_brewingstation"},"dialogue":{"topics":["brewhouse","brewing"]},"spirit":{"pastoral":3,"industrious":5,"commercial":2}}

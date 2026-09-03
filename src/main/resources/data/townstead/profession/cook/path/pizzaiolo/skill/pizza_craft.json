@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Pizza Craft"
+    "translate": "skill.townstead.cook.pizzaiolo.pizza_craft"
   },
   "icon": "minecraft:bread",
   "description": {
-    "text": "Learn the foundations of dough, sauce, and heat that define a Pizzaiolo. Feed nearby allies to restore a little hunger when the kitchen turns dangerous."
+    "translate": "skill.townstead.cook.pizzaiolo.pizza_craft.description"
   },
   "cost": 1,
   "power": {

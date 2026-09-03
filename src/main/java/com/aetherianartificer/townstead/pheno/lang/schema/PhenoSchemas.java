@@ -195,6 +195,53 @@ public final class PhenoSchemas {
                 .field(of("item", PhenoType.ID))
                 .field(of("cooldown", PhenoType.DURATION)).build());
 
+        NodeSchemas.register(NodeSchema.of("pheno:add_state", NodeDomain.ACTION)
+                .doc("Adds to a canonical open entity state through one eligible writable backing.")
+                .field(required("state", PhenoType.ID))
+                .field(of("amount", PhenoType.ANY))
+                .field(of("duration", PhenoType.DURATION))
+                .field(of("source", PhenoType.ID)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:set_state", NodeDomain.ACTION)
+                .doc("Sets a canonical open entity state through one eligible writable backing.")
+                .field(required("state", PhenoType.ID))
+                .field(required("amount", PhenoType.ANY))
+                .field(of("duration", PhenoType.DURATION))
+                .field(of("source", PhenoType.ID)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:clear_state", NodeDomain.ACTION)
+                .doc("Clears writable contributions without removing observed foreign status effects.")
+                .field(required("state", PhenoType.ID))
+                .field(of("source", PhenoType.ID)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:performance", NodeDomain.ACTION)
+                .doc("Requests a semantic performance; providers may use Emotecraft, bbmodel, animation JSON, or the vanilla fallback.")
+                .field(required("performance", PhenoType.ID))
+                .field(of("channel", PhenoType.STRING))
+                .field(of("duration_ticks", PhenoType.DURATION))
+                .field(of("priority", PhenoType.INT))
+                .field(of("fallback", PhenoType.STRING)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:speak", NodeDomain.ACTION)
+                .doc("Lets an MCA villager speak a translated, personality-aware dialogue pool.")
+                .field(required("pool", PhenoType.STRING))
+                .field(of("variants", PhenoType.INT)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:wander", NodeDomain.ACTION)
+                .doc("Requests one bounded pathfinder wander while idle; yields to work, rest, panic, combat, sleep, and existing navigation.")
+                .field(of("horizontal", PhenoType.INT))
+                .field(of("vertical", PhenoType.INT))
+                .field(of("speed", PhenoType.FLOAT)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:state", NodeDomain.CONDITION)
+                .doc("Queries a canonical open entity state independently of its active backing.")
+                .field(required("state", PhenoType.ID))
+                .field(of("active", PhenoType.BOOL))
+                .field(of("tier", PhenoType.STRING))
+                .field(of("min_tier", PhenoType.STRING))
+                .field(of("max_tier", PhenoType.STRING))
+                .field(of("min", PhenoType.FLOAT))
+                .field(of("max", PhenoType.FLOAT))
+                .field(of("source", PhenoType.ID))
+                .field(of("min_remaining", PhenoType.DURATION))
+                .field(of("max_remaining", PhenoType.DURATION)).build());
+
         NodeSchemas.register(NodeSchema.of("pheno:jump", NodeDomain.ACTION)
                 .doc("Makes the entity jump (the vanilla impulse, respecting Jump Boost), scaled by "
                         + "strength; clears fall distance so a mid-air jump banks no fall damage.")
@@ -342,7 +389,7 @@ public final class PhenoSchemas {
 
         NodeSchemas.register(NodeSchema.of("pheno:building", NodeDomain.CONDITION)
                 .doc("Tests the Townstead/MCA building at the entity's position.")
-                .field(of("building", PhenoType.STRING).doc("Building type id or slug, such as mca:tavern or tavern."))
+                .field(of("building", PhenoType.STRING).doc("MCA building type or slug, such as inn or compat/brewery/brew_hall_l1."))
                 .field(of("building_type", PhenoType.STRING).doc("Alias for building."))
                 .field(of("building_prefix", PhenoType.STRING)
                         .doc("Matches the start of the full building type id."))

@@ -11,8 +11,10 @@ import java.util.Set;
 /**
  * Server-side registry of data-driven {@link ProfessionDef}s, replaced each datapack reload by
  * {@link ProfessionDataLoader}. Compatibility ids resolve either to the Career root or to the
- * root plus a specialization Path. Resolution changes Townstead semantics only: it never
- * registers, assigns, or otherwise manufactures the foreign villager profession.
+ * root plus a specialization Path. Resolution alone changes Townstead semantics only and never
+ * registers or assigns the foreign villager profession. A building provider may separately and
+ * explicitly reserve a proprietor seat for that raw id; the employment allocator can then assign
+ * it to preserve the provider mod's trades and presentation.
  */
 public final class ProfessionDefs {
 

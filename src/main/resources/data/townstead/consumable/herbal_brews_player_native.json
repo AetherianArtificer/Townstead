@@ -1,0 +1,22 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": "herbalbrews",
+  "items": [
+    "herbalbrews:black_tea",
+    "herbalbrews:coffee",
+    "herbalbrews:green_tea",
+    "herbalbrews:hibiscus_tea",
+    "herbalbrews:lavender_tea",
+    "herbalbrews:milk_coffee",
+    "herbalbrews:oolong_tea",
+    "herbalbrews:rooibos_tea",
+    "herbalbrews:yerba_mate_tea"
+  ],
+  "transaction": {
+    "mode": "observe_native",
+    "accounting": "consume_one",
+    "consumers": ["player"],
+    "servings": 1,
+    "remainder": { "mode": "native", "destination": "holder" }
+  }
+}

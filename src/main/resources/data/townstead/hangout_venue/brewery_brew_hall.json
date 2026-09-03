@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:hangout_venue/v1",
+  "mods": ["brewery"],
+  "buildings": [
+    "compat/brewery/brew_hall_l1",
+    "compat/brewery/brew_hall_l2",
+    "compat/brewery/brew_hall_l3"
+  ],
+  "capacity": 10,
+  "activities": [
+    "townstead:tavern_shared_meal",
+    "townstead:tavern_round",
+    "townstead:tavern_supper",
+    "townstead:tavern_conversation"
+  ],
+  "amenities": ["seating", "food", "drink", "conversation"]
+}

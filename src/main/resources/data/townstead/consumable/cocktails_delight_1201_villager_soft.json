@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": ["brewinandchewin", "brewincompatdelight"],
+  "items": ["brewincompatdelight:lemon_lime", "brewincompatdelight:cranberry_juice"],
+  "transaction": {
+    "mode": "replace_with_pheno",
+    "accounting": "consume_one",
+    "consumers": ["villager"],
+    "remainder": { "mode": "none", "destination": "source" },
+    "effect_admission": { "default": "deny", "allow": ["attribute"] }
+  }
+}

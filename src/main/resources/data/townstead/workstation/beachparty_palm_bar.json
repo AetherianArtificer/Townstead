@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": "beachparty",
+  "blocks": ["beachparty:palm_bar"],
+  "inventory": {"slots": {"outputs": [0], "ingredients": [1,2,3,4]}},
+  "shift_end": "finish"
+}

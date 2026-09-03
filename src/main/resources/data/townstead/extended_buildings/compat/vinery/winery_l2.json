@@ -1,0 +1,1 @@
+{"schema":"townstead:extended_building/v1","mods":"vinery","workers":["vinery:winemaker"],"catalog":{"node_item":"vinery:apple_press"},"dialogue":{"topics":["winery","winemaking"]},"spirit":{"pastoral":8,"industrious":5,"commercial":4}}

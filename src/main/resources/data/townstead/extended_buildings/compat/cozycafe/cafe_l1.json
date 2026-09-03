@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "enclosure": "optional",
+  "workers": ["townstead:cook", "townstead:beverage_artisan"],
+  "catalog": { "node_item": "cozycafe:cafe_manager" },
+  "spirit": { "commercial": 6, "pastoral": 2 }
+}

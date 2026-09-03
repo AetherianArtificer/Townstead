@@ -72,11 +72,13 @@ public final class ProfessionAutoAssign {
             return;
         }
         if (current != VillagerProfession.NONE) return;
-        if (assignable == null) return;
         if (!def.eligible(villager)) return;
-        if (!ProfessionSites.hasFreeSite(level, villager, def)) return;
-        narrate(level, villager, "SEAT:hired into " + def.id());
-        villager.setProfession(assignable);
+        VillagerProfession hired = ProfessionSites.professionForAvailableSite(
+                level, villager, def);
+        if (hired == null) return;
+        narrate(level, villager, "SEAT:hired into "
+                + ProfessionSlotRules.professionKey(hired) + " for " + def.id());
+        villager.setProfession(hired);
         Townstead.townstead$broadcastProfessionTier(villager);
     }
 

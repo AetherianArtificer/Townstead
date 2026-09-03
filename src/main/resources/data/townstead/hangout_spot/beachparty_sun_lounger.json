@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:hangout_spot/v1",
+  "mods": "beachparty",
+  "blocks": ["beachparty:beach_sun_lounger"],
+  "posture": "townstead:relax",
+  "adapter": "townstead:recline",
+  "capacity": 1,
+  "linked_offsets": [[0, 0, -1]],
+  "linked_offsets_relative_to_facing": true,
+  "embodiment_offset": [0, 0.49375, 0],
+  "embodiment_offset_relative_to_facing": true,
+  "available_when": {
+    "type": "pheno:and",
+    "conditions": [
+      {"type": "pheno:block_state", "property": "part", "value": "head"},
+      {"type": "pheno:block_state", "property": "down", "value": "true"}
+    ]
+  },
+  "rest": {"fatigue_recovery": 0.6}
+}

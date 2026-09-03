@@ -38,6 +38,8 @@ public final class UseBlockBlockActionType implements BlockActionType {
 
     @Override
     public BlockAction parse(JsonObject json) {
+        BlockInteractionGeometry geometry = BlockInteractionGeometry.parse(json);
+        if (geometry == null) return null;
         String role = json.has("item") ? json.get("item").getAsString() : "empty";
         boolean secondaryUse = json.has("secondary_use") && json.get("secondary_use").getAsBoolean();
         return context -> {
@@ -53,12 +55,16 @@ public final class UseBlockBlockActionType implements BlockActionType {
                 actor.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
                 actor.setShiftKeyDown(secondaryUse);
                 actor.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
-                if (context.cause() != null) {
-                    actor.setPos(context.cause().getX(), context.cause().getY(), context.cause().getZ());
+                Vec3 fallback = context.cause() == null ? null : context.cause().position();
+                Vec3 actorPosition = geometry.actorPosition(context.pos(), fallback);
+                actor.setPos(actorPosition.x, actorPosition.y, actorPosition.z);
+                if (geometry.actorFacing() != null) {
+                    actor.setYRot(geometry.actorFacing().toYRot());
+                    actor.setXRot(geometry.actorFacing() == Direction.UP ? -90.0f
+                            : geometry.actorFacing() == Direction.DOWN ? 90.0f : 0.0f);
                 }
                 actor.setItemInHand(InteractionHand.MAIN_HAND, supplied);
-                BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(context.pos()),
-                        Direction.UP, context.pos(), false);
+                BlockHitResult hit = geometry.hit(context.pos());
                 BlockState beforeBlock = context.level().getBlockState(context.pos());
                 ItemStack beforeItem = actor.getMainHandItem().copy();
                 // Some public block interactions return their result by spawning it beside the

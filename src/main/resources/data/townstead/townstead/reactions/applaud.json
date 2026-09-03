@@ -1,6 +1,6 @@
 {
     "schema": "townstead:reaction/v2",
-    "display_name": "Applaud",
+    "display_name": "reaction.townstead.applaud",
     "tags": ["social", "approval"],
     "cooldown": "20s",
     "chance": 1.0,

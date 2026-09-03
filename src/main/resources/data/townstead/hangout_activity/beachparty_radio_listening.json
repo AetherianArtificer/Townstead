@@ -1,0 +1,5 @@
+{
+  "schema":"townstead:hangout_activity/v1","mods":"beachparty","kind":"socialize",
+  "minimum_participants":2,"maximum_participants":6,"duration_ticks":600,"roles":{"listener":6},"postures":["townstead:sit","townstead:relax"],
+  "performance":{"id":"townstead:listen_to_music","channel":"social","duration_ticks":600,"priority":10,"fallback":"stand"}
+}

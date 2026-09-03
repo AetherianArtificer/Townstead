@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:serving_menu/v1",
+  "mods": "herbalbrews",
+  "buildings": [
+    "compat/herbalbrews/tea_house_l1",
+    "compat/herbalbrews/tea_house_l2",
+    "compat/herbalbrews/tea_house_l3"
+  ],
+  "products": [
+    "herbalbrews:black_tea",
+    "herbalbrews:green_tea",
+    "herbalbrews:hibiscus_tea",
+    "herbalbrews:lavender_tea",
+    "herbalbrews:oolong_tea",
+    "herbalbrews:rooibos_tea",
+    "herbalbrews:yerba_mate_tea"
+  ]
+}

@@ -134,5 +134,18 @@
   "odd.dialogue.chat.leatherworker_request.no_salt/1": "<excited>The skin cries for salt! White grains, white grains, where are you hiding?</excited>",
   "odd.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<excited>A wet thing! A sponge or a rag! The hide thirsts! It thirsts!</excited>",
   "odd.dialogue.chat.leatherworker_request.no_storage/1": "<excited>The leather wants to roam! But my pack is its prison! Free it, %1$s!</excited>",
-  "odd.dialogue.chat.leatherworker_flavor.leather_cured/1": "<excited>Cured! From skin to leather, the hide became something new! Magic!</excited>"
+  "odd.dialogue.chat.leatherworker_flavor.leather_cured/1": "<excited>Cured! From skin to leather, the hide became something new! Magic!</excited>",
+  "odd.dialogue.chat.beverage_artisan_request.no_worksite/1": "<mysterious>The drinks have nowhere to be born. Build them a station.</mysterious>",
+  "odd.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<mysterious>The shelves echo. Ingredients make a friendlier sound.</mysterious>",
+  "odd.dialogue.chat.beverage_artisan_request.no_storage/1": "<mysterious>The finished drinks require a cupboard of destiny.</mysterious>",
+  "odd.dialogue.chat.beverage_artisan_request.unreachable/1": "<mysterious>The path rejects me. Perhaps move the path.</mysterious>",
+  "odd.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<mysterious>%2$s waits in the realm of possibility. Its ingredients do not.</mysterious>",
+  "odd.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<mysterious>The lanterns have grown halos. They seem pleased.</mysterious>",
+  "odd.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<mysterious>My cup says we have met before. I believe it.</mysterious>",
+  "odd.dialogue.chat.townstead_drunk.drunk_arrival/1": "<excited>The floor has learned to swim!</excited>",
+  "odd.dialogue.chat.townstead_drunk.drunk_ambient/1": "<mysterious>I know where the missing words went. They refuse to return.</mysterious>",
+  "odd.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>Water, please. The walls are breathing too loudly.</sleepy>",
+  "odd.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>I have become a rug with opinions.</sleepy>",
+  "odd.dialogue.chat.townstead_drunk.service_refused/1": "<mysterious>The cup and I must spend time apart.</mysterious>",
+  "odd.dialogue.chat.townstead_drunk.recovered/1": "<happy>My thoughts have returned. Not all are mine.</happy>"
 }

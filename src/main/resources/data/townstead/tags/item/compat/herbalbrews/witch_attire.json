@@ -1,0 +1,6 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "herbalbrews:witch_hat", "required": false }
+  ]
+}

@@ -116,7 +116,7 @@ import java.util.UUID;
  *
  * <p><b>Location:</b> {@code in_building:<type>}. The slug after the
  * colon is the building type minus its namespace, so a vanilla
- * {@code mca:tavern} surfaces as {@code in_building:tavern}.</p>
+ * MCA's {@code inn} surfaces as {@code in_building:inn}.</p>
  *
  * <p><b>Music:</b> {@code near_music} — any registered
  * {@link MusicSourceProvider} reports an active source within 12

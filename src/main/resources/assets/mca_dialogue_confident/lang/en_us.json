@@ -138,5 +138,18 @@
   "confident.dialogue.chat.leatherworker_request.no_salt/1": "<excited>Salt cures. I'm out. Solve it.</excited>",
   "confident.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<excited>A wet sponge or rag, ready when I am. That's the standard.</excited>",
   "confident.dialogue.chat.leatherworker_request.no_storage/1": "<excited>Finished leather belongs in a chest, not on my back. Provide one.</excited>",
-  "confident.dialogue.chat.leatherworker_flavor.leather_cured/1": "<excited>Cured to perfection. As expected.</excited>"
+  "confident.dialogue.chat.leatherworker_flavor.leather_cured/1": "<excited>Cured to perfection. As expected.</excited>",
+  "confident.dialogue.chat.beverage_artisan_request.no_worksite/1": "<angry>Give me a proper drink station. I'll handle everything after that.</angry>",
+  "confident.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<angry>The only thing stopping service is an empty shelf. Restock it.</angry>",
+  "confident.dialogue.chat.beverage_artisan_request.no_storage/1": "<angry>I make more than this room can hold. Add storage.</angry>",
+  "confident.dialogue.chat.beverage_artisan_request.unreachable/1": "<angry>Clear the way to my station. I have work to do.</angry>",
+  "confident.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<angry>I know exactly how to make %2$s. Supply the ingredients.</angry>",
+  "confident.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<happy>A pleasant warmth. Entirely under control.</happy>",
+  "confident.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<happy>I chose this pace, and it is an excellent one.</happy>",
+  "confident.dialogue.chat.townstead_drunk.drunk_arrival/1": "<excited>I remain the most composed person in this room.</excited>",
+  "confident.dialogue.chat.townstead_drunk.drunk_ambient/1": "<excited>That was not a stumble. It was a decisive change of direction.</excited>",
+  "confident.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>I have reached my limit. Bring water and a chair.</sleepy>",
+  "confident.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>I am resting because I decided to, not because the floor won.</sleepy>",
+  "confident.dialogue.chat.townstead_drunk.service_refused/1": "<happy>No more. A good host knows when the evening has peaked.</happy>",
+  "confident.dialogue.chat.townstead_drunk.recovered/1": "<happy>Clear-headed again. Naturally.</happy>"
 }

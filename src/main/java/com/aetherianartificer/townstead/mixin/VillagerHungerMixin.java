@@ -91,6 +91,7 @@ public abstract class VillagerHungerMixin extends Villager {
         // built-in work behaviors, preventing job-site pathing from overriding ours.
         brain.addActivity(Activity.WORK,
                 ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>>of(
+                        Pair.of(69, new com.aetherianartificer.townstead.hospitality.service.HospitalityCleanupTask()),
                         Pair.of(70, new HarvestWorkTask()),
                         Pair.of(71, new FishermanWorkTask()),
                         Pair.of(72, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(

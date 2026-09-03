@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "brewer",
+  "mods": "kaleidoscope_tavern",
+  "priority": 40,
+  "contributes": {
+    "path": { "worksites": ["kaleidoscope_tavern:pressing_tub", "kaleidoscope_tavern:barrel"] },
+    "profession": {
+      "poi": [
+        {
+          "type": "townstead:station_post",
+          "blocks": ["kaleidoscope_tavern:pressing_tub", "kaleidoscope_tavern:barrel"],
+          "slots": 1
+        }
+      ]
+    }
+  }
+}

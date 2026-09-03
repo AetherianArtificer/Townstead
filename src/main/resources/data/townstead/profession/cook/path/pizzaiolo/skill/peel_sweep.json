@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Peel Sweep"
+    "translate": "skill.townstead.cook.pizzaiolo.peel_sweep"
   },
   "icon": "minecraft:iron_shovel",
   "description": {
-    "text": "Clear the floor with the same broad motion that turns a pie. Sweep nearby foes with the peel."
+    "translate": "skill.townstead.cook.pizzaiolo.peel_sweep.description"
   },
   "cost": 1,
   "requires": ["stone_heat"],

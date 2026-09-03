@@ -1,9 +1,9 @@
 {
   "display_name": {
-    "text": "Charcutier"
+    "translate": "combo_skill.townstead.charcutier"
   },
   "description": {
-    "text": "The block and the kitchen meet in cured meat. Earn 1 additional XP in both crafts whenever work is completed."
+    "translate": "combo_skill.townstead.charcutier.description"
   },
   "icon": "farmersdelight:ham",
   "mods": "farmersdelight",

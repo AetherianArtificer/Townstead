@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:hangout_venue/v1",
+  "mods": "herbalbrews",
+  "buildings": [
+    "compat/herbalbrews/herbal_cafe_l1",
+    "compat/herbalbrews/herbal_cafe_l2",
+    "compat/herbalbrews/herbal_cafe_l3"
+  ],
+  "capacity": 6,
+  "activities": [
+    "townstead:herbal_brews_coffee_break",
+    "townstead:herbal_brews_tasting",
+    "townstead:herbal_brews_cafe_conversation"
+  ],
+  "amenities": ["seating", "drink", "conversation", "tea_service"]
+}

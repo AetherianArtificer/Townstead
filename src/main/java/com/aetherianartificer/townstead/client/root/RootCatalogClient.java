@@ -24,6 +24,7 @@ public final class RootCatalogClient {
     private RootCatalogClient() {}
 
     public static void setFrom(RootCatalogSyncPayload payload) {
+        com.aetherianartificer.townstead.root.PresentEntityGroups.setSynced(payload.entityGroups());
         ROOTS = List.copyOf(payload.entries());
         Map<String, GeneCatalogEntry> genes = new LinkedHashMap<>();
         for (GeneCatalogEntry g : payload.genes()) {
@@ -41,6 +42,8 @@ public final class RootCatalogClient {
         // are only recomputed in refreshDimensions, so re-run it on the loaded rigged entities now, otherwise
         // an in-place data-pack tweak won't apply until each entity respawns.
         refreshRiggedDimensions();
+        // Root-gated creative content (the spider-folk scarf) was decided before this catalog existed.
+        CreativeTabRefresh.refreshTownsteadTab();
         // Bridge data-pack traits into MCA's registry client-side so the editor lists them.
         // (enabledTraits comes from the server via MCA's own config sync.) Defensive against MCA drift.
         boolean any = false;

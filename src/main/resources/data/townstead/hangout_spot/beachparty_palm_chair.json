@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:hangout_spot/v1",
+  "mods": "beachparty",
+  "blocks": ["beachparty:palm_chair"],
+  "posture": "townstead:sit",
+  "adapter": "beachparty:native_chair",
+  "capacity": 1,
+  "linked_offsets": [[0, 1, 0]],
+  "available_when": {"type": "pheno:block_state", "property": "half", "value": "lower"}
+}

@@ -128,5 +128,18 @@
   "grumpy.dialogue.chat.leatherworker_request.no_salt/1": "<angry>Salt. The white grainy stuff. Surely even you can find some.</angry>",
   "grumpy.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<angry>A wet sponge. Or a wet rag. Either. I'm not fussy. I'm just empty-handed.</angry>",
   "grumpy.dialogue.chat.leatherworker_request.no_storage/1": "<angry>My pack is full of leather. Where's it supposed to go? Your pockets?</angry>",
-  "grumpy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<angry>Done. Leather. Don't touch it with sticky fingers.</angry>"
+  "grumpy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<angry>Done. Leather. Don't touch it with sticky fingers.</angry>",
+  "grumpy.dialogue.chat.townstead_drunk.tipsy_arrival/1": "The drink is fine. Do not make a celebration out of it.",
+  "grumpy.dialogue.chat.townstead_drunk.tipsy_ambient/1": "I am enjoying myself. Quietly. Do not ruin it.",
+  "grumpy.dialogue.chat.townstead_drunk.drunk_arrival/1": "The floor moved first. I saw it.",
+  "grumpy.dialogue.chat.townstead_drunk.drunk_ambient/1": "I know exactly what I meant. The words are being difficult.",
+  "grumpy.dialogue.chat.townstead_drunk.wasted_arrival/1": "Enough. Water, a chair, and silence.",
+  "grumpy.dialogue.chat.townstead_drunk.wasted_ambient/1": "Stop asking if I am all right. Bring water.",
+  "grumpy.dialogue.chat.townstead_drunk.service_refused/1": "No. Water. I should not have to be the sensible one here.",
+  "grumpy.dialogue.chat.townstead_drunk.recovered/1": "Quiet morning. Keep it that way.",
+  "grumpy.dialogue.chat.beverage_artisan_request.no_worksite/1": "No station, no drinks. This should not need explaining.",
+  "grumpy.dialogue.chat.beverage_artisan_request.no_ingredients/1": "The shelves are empty. Again. Bring ingredients.",
+  "grumpy.dialogue.chat.beverage_artisan_request.no_storage/1": "Finished drinks need storage. Preferably before they cover the floor.",
+  "grumpy.dialogue.chat.beverage_artisan_request.unreachable/1": "My station is blocked. Clear the path.",
+  "grumpy.dialogue.chat.beverage_artisan_request.no_ingredients_item": "I could make %2$s if somebody supplied the ingredients."
 }

@@ -1,6 +1,6 @@
 {
     "schema": "townstead:reaction/v2",
-    "display_name": "Wave",
+    "display_name": "reaction.townstead.wave",
     "tags": ["social", "greeting"],
     "cooldown": "10s",
     "mirror_radius": 6,

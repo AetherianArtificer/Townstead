@@ -1,0 +1,6 @@
+{
+  "schema":"townstead:hangout_venue/v1","mods":"beachparty",
+  "buildings":["compat/beachparty/beach_cocktail_bar_l1","compat/beachparty/beach_cocktail_bar_l2","compat/beachparty/beach_cocktail_bar_l3"],
+  "capacity":8,"activities":["townstead:beachparty_cocktail_round","townstead:beachparty_radio_listening"],
+  "amenities":["seating","drink","conversation","radio"]
+}

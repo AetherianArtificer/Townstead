@@ -1,0 +1,1 @@
+{"schema":"townstead:extended_building/v1","mods":"vinery","workers":["vinery:winemaker"],"catalog":{"node_item":"vinery:fermentation_barrel"},"dialogue":{"topics":["winery","winemaking"]},"spirit":{"pastoral":5,"industrious":3,"commercial":2}}

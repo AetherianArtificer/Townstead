@@ -24,7 +24,8 @@ public final class RootCatalog {
 
     public record Snapshot(List<RootCatalogEntry> origins, List<GeneCatalogEntry> genes,
                            List<TraitCatalogEntry> traits,
-                           List<com.aetherianartificer.townstead.root.rig.RigDefinition> rigs) {}
+                           List<com.aetherianartificer.townstead.root.rig.RigDefinition> rigs,
+                           List<String> entityGroups) {}
 
     public static Snapshot build() {
         List<RootCatalogEntry> origins = new ArrayList<>();
@@ -91,7 +92,8 @@ public final class RootCatalog {
             genes.computeIfAbsent(gene.id(), RootCatalog::toGeneEntry);
         }
         return new Snapshot(origins, new ArrayList<>(genes.values()), traits,
-                com.aetherianartificer.townstead.root.rig.RigRegistry.all());
+                com.aetherianartificer.townstead.root.rig.RigRegistry.all(),
+                PresentEntityGroups.keysFromRegistries());
     }
 
     /**

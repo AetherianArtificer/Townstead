@@ -24,11 +24,13 @@ import java.util.Set;
  */
 //? if neoforge {
 public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCatalogEntry> genes,
-                                       List<TraitCatalogEntry> traits, List<RigDefinition> rigs)
+                                       List<TraitCatalogEntry> traits, List<RigDefinition> rigs,
+                                       List<String> entityGroups)
         implements CustomPacketPayload {
 //?} else {
 /*public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCatalogEntry> genes,
-                                       List<TraitCatalogEntry> traits, List<RigDefinition> rigs) {
+                                       List<TraitCatalogEntry> traits, List<RigDefinition> rigs,
+                                       List<String> entityGroups) {
 *///?}
 
     //? if neoforge {
@@ -132,6 +134,8 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         }
         buf.writeVarInt(rigs.size());
         for (RigDefinition r : rigs) writeRig(buf, r);
+        buf.writeVarInt(entityGroups.size());
+        for (String group : entityGroups) buf.writeUtf(group);
     }
 
     public static RootCatalogSyncPayload read(FriendlyByteBuf buf) {
@@ -242,7 +246,10 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         int rn = buf.readVarInt();
         List<RigDefinition> rigs = new ArrayList<>(rn);
         for (int i = 0; i < rn; i++) rigs.add(readRig(buf));
-        return new RootCatalogSyncPayload(entries, genes, traits, rigs);
+        int groupCount = buf.readVarInt();
+        List<String> entityGroups = new ArrayList<>(groupCount);
+        for (int i = 0; i < groupCount; i++) entityGroups.add(buf.readUtf());
+        return new RootCatalogSyncPayload(entries, genes, traits, rigs, entityGroups);
     }
 
     private static void writeChannels(FriendlyByteBuf buf, List<GeneCatalogEntry.Channel> channels) {

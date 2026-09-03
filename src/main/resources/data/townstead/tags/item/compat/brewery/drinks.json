@@ -1,0 +1,21 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "brewery:beer_wheat", "required": false },
+    { "id": "brewery:beer_hops", "required": false },
+    { "id": "brewery:beer_barley", "required": false },
+    { "id": "brewery:beer_oat", "required": false },
+    { "id": "brewery:beer_nettle", "required": false },
+    { "id": "brewery:beer_haley", "required": false },
+    { "id": "brewery:whiskey_ak", "required": false },
+    { "id": "brewery:whiskey_cristelwalker", "required": false },
+    { "id": "brewery:whiskey_smokey_reverie", "required": false },
+    { "id": "brewery:whiskey_maggoallan", "required": false },
+    { "id": "brewery:whiskey_lilitusinglemalt", "required": false },
+    { "id": "brewery:whiskey_jojannik", "required": false },
+    { "id": "brewery:whiskey_jamesons_malt", "required": false },
+    { "id": "brewery:whiskey_highland_hearth", "required": false },
+    { "id": "brewery:whiskey_carrasconlabel", "required": false },
+    { "id": "brewery:dark_brew", "required": false }
+  ]
+}

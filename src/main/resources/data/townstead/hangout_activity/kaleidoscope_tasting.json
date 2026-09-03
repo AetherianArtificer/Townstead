@@ -1,0 +1,6 @@
+{
+  "schema":"townstead:hangout_activity/v1","mods":"kaleidoscope_tavern","kind":"drink",
+  "minimum_participants":2,"maximum_participants":5,"duration_ticks":480,"roles":{"proposer":1,"guest":4},"postures":["townstead:sit"],
+  "service_when":{"type":"pheno:state","state":"townstead_state:drunk","min_tier":"wasted","inverted":true},
+  "performance":{"id":"townstead:tasting_notes","channel":"hospitality","duration_ticks":480,"priority":25,"fallback":"vanilla_gesture"}
+}

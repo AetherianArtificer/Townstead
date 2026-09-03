@@ -1,0 +1,15 @@
+{
+  "schema":"townstead:recipe_projection/v1",
+  "mods":"kaleidoscope_tavern",
+  "recipe_types":["kaleidoscope_tavern:barrel"],
+  "domain":"brewing.fermentation",
+  "fields":{
+    "inputs":{"path":"ingredients","operation":"list"},
+    "input_fluid":{"path":"fluid","operation":"fluid_id","required":true},
+    "fluid_amount":{"default":4000,"operation":"integer"},
+    "container":{"path":"carrier","operation":"list","required":true},
+    "output":{"path":"result","operation":"item_stack_id","required":true},
+    "time":{"path":"unitTime","operation":"integer","required":true},
+    "readiness":{"default":true,"operation":"boolean"}
+  }
+}

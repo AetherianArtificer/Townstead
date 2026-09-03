@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:hangout_activity/v1",
+  "kind": "eat",
+  "minimum_participants": 2,
+  "maximum_participants": 4,
+  "duration_ticks": 420,
+  "roles": { "server": 1, "patron": 3 },
+  "postures": ["townstead:sit"],
+  "start_when": { "type": "pheno:hunger", "max": 69 },
+  "service": { "courses": [
+    { "id": "shared_meal", "kind": "eat", "role": "server", "at_ticks": 180, "lease_ticks": 100 }
+  ] },
+  "performance": { "id": "townstead:shared_meal", "channel": "hospitality", "duration_ticks": 420, "priority": 15, "fallback": "vanilla_gesture" }
+}

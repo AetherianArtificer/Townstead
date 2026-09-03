@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": ["brewery"],
+  "items": ["#townstead:compat/brewery/drinks"],
+  "effects": {
+    "type": "pheno:add_state",
+    "state": "townstead_state:drunk",
+    "amount": 20,
+    "duration": 6000,
+    "source": "brewery:drink"
+  },
+  "transaction": {
+    "mode": "replace_with_pheno",
+    "accounting": "consume_one",
+    "consumers": ["villager"],
+    "servings": 1,
+    "remainder": {
+      "mode": "item",
+      "item": "brewery:beer_mug",
+      "destination": "storage"
+    },
+    "effect_admission": {
+      "default": "deny"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "mods": "brewery",
+  "storage_roles": ["townstead:brewed_drinks"],
+  "catalog": {
+    "node_item": "brewery:barrel_main"
+  },
+  "dialogue": {
+    "topics": ["cask_cellar", "brewing", "vintage"]
+  },
+  "spirit": {
+    "pastoral": 5,
+    "industrious": 4,
+    "commercial": 3
+  }
+}
