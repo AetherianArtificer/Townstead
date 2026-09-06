@@ -79,13 +79,13 @@ public final class BirthCommand {
     private static int birthAuto(CommandSourceStack source) {
         ServerPlayer player = source.getPlayer();
         if (player == null) {
-            source.sendFailure(Component.literal("This form must be run by a player. Supply <mother> instead."));
+            source.sendFailure(Component.translatable("command.townstead.birth.player_required"));
             return 0;
         }
         VillagerEntityMCA mother = pickLookedAtOrNearest(player, null);
         if (mother == null) {
-            source.sendFailure(Component.literal("No MCA villager near your crosshair (within "
-                    + (int) LOOK_RANGE + " blocks)."));
+            source.sendFailure(Component.translatable(
+                    "command.townstead.birth.no_nearby_villager", (int) LOOK_RANGE));
             return 0;
         }
         return birth(source, mother, null);
@@ -94,13 +94,13 @@ public final class BirthCommand {
     private static int birthLookedAt(CommandSourceStack source, Entity father) {
         ServerPlayer player = source.getPlayer();
         if (player == null) {
-            source.sendFailure(Component.literal("@target requires a player caller. Supply <mother> instead."));
+            source.sendFailure(Component.translatable("command.townstead.birth.target_mother.player_required"));
             return 0;
         }
         VillagerEntityMCA mother = pickLookedAtOrNearest(player, null);
         if (mother == null) {
-            source.sendFailure(Component.literal("No MCA villager near your crosshair (within "
-                    + (int) LOOK_RANGE + " blocks)."));
+            source.sendFailure(Component.translatable(
+                    "command.townstead.birth.no_nearby_villager", (int) LOOK_RANGE));
             return 0;
         }
         return birthExplicit(source, mother, father);
@@ -108,18 +108,18 @@ public final class BirthCommand {
 
     private static int birthFatherLookedAt(CommandSourceStack source, Entity mother) {
         if (!(mother instanceof VillagerEntityMCA motherMca)) {
-            source.sendFailure(Component.literal("Mother must be an MCA villager."));
+            source.sendFailure(Component.translatable("command.townstead.birth.invalid_mother"));
             return 0;
         }
         ServerPlayer player = source.getPlayer();
         if (player == null) {
-            source.sendFailure(Component.literal("@target requires a player caller. Supply <father> instead."));
+            source.sendFailure(Component.translatable("command.townstead.birth.target_father.player_required"));
             return 0;
         }
         VillagerEntityMCA father = pickLookedAtOrNearest(player, motherMca);
         if (father == null) {
-            source.sendFailure(Component.literal("No MCA villager other than the mother near your crosshair (within "
-                    + (int) LOOK_RANGE + " blocks)."));
+            source.sendFailure(Component.translatable(
+                    "command.townstead.birth.no_nearby_father", (int) LOOK_RANGE));
             return 0;
         }
         return birth(source, motherMca, father);
@@ -127,11 +127,11 @@ public final class BirthCommand {
 
     private static int birthExplicit(CommandSourceStack source, Entity mother, Entity father) {
         if (!(mother instanceof VillagerEntityMCA motherMca)) {
-            source.sendFailure(Component.literal("Mother must be an MCA villager."));
+            source.sendFailure(Component.translatable("command.townstead.birth.invalid_mother"));
             return 0;
         }
         if (father != null && !(father instanceof VillagerEntityMCA) && !(father instanceof Player)) {
-            source.sendFailure(Component.literal("Father must be an MCA villager or a player (@s for yourself)."));
+            source.sendFailure(Component.translatable("command.townstead.birth.invalid_father"));
             return 0;
         }
         return birth(source, motherMca, father);
@@ -145,18 +145,19 @@ public final class BirthCommand {
 
         List<VillagerEntityMCA> born = DirectBirth.spawnOffspring(mother, coParent);
         if (born.isEmpty()) {
-            source.sendFailure(Component.literal("No child was born."));
+            source.sendFailure(Component.translatable("command.townstead.birth.none"));
             return 0;
         }
 
         boolean selfParented = coParent == mother;
         String names = String.join(", ", born.stream().map(c -> c.getName().getString()).toList());
-        String parents = mother.getName().getString()
-                + (selfParented ? " (self-parented)" : " and " + coParent.getName().getString());
-        source.sendSuccess(() -> Component.literal(parents + " gave birth to " + names + "."), true);
+        source.sendSuccess(() -> selfParented
+                ? Component.translatable("command.townstead.birth.success.self",
+                        mother.getDisplayName(), names)
+                : Component.translatable("command.townstead.birth.success.parents",
+                        mother.getDisplayName(), coParent.getDisplayName(), names), true);
         if (selfParented && father == null) {
-            source.sendSuccess(() -> Component.literal(
-                    "  No partner found; inherited from a single parent. Try /townstead birth @target @s to test cross-parent inheritance."),
+            source.sendSuccess(() -> Component.translatable("command.townstead.birth.single_parent_hint"),
                     false);
         }
         return born.size();

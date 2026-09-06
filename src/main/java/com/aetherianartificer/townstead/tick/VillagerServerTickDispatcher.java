@@ -21,6 +21,9 @@ public final class VillagerServerTickDispatcher {
             EmptyContainerDropoff.forget(villager);
             com.aetherianartificer.townstead.profession.ProfessionSites.forget(villager);
             com.aetherianartificer.townstead.work.WorkActivities.forget(villager);
+            com.aetherianartificer.townstead.hangout.HangoutEngine.forget(villager);
+            com.aetherianartificer.townstead.dialogue.conversation.ConversationEngine.forget(villager);
+            com.aetherianartificer.townstead.pheno.state.EntityStates.forget(villager);
             return;
         }
 
@@ -33,6 +36,7 @@ public final class VillagerServerTickDispatcher {
     }
 
     private static void tickUnprofiled(VillagerEntityMCA villager, long gameTime) {
+        com.aetherianartificer.townstead.dialogue.conversation.ConversationEngine.consider(villager);
         ProfessionAutoAssignTicker.tick(villager);
         ProfessionTradeBackfillTicker.tick(villager);
         HungerVillagerTicker.tick(villager);
@@ -55,9 +59,12 @@ public final class VillagerServerTickDispatcher {
         com.aetherianartificer.townstead.root.ability.GlideAI.tick(villager);
         com.aetherianartificer.townstead.root.ability.ResourceValues.tick(villager);
         com.aetherianartificer.townstead.root.collection.CollectionValues.tick(villager);
+        com.aetherianartificer.townstead.hangout.HangoutEngine.tick(villager);
+        com.aetherianartificer.townstead.pheno.state.EntityStates.tick(villager);
     }
 
     private static void tickProfiled(VillagerEntityMCA villager, long gameTime) {
+        profile("villager.conversation", () -> com.aetherianartificer.townstead.dialogue.conversation.ConversationEngine.consider(villager));
 
         profile("villager.profession_auto_assign", () -> ProfessionAutoAssignTicker.tick(villager));
         profile("villager.profession_trade_backfill", () -> ProfessionTradeBackfillTicker.tick(villager));
@@ -95,6 +102,10 @@ public final class VillagerServerTickDispatcher {
                 com.aetherianartificer.townstead.root.ability.ResourceValues.tick(villager));
         profile("villager.gene_collection", () ->
                 com.aetherianartificer.townstead.root.collection.CollectionValues.tick(villager));
+        profile("villager.hangout", () ->
+                com.aetherianartificer.townstead.hangout.HangoutEngine.tick(villager));
+        profile("villager.pheno_state", () ->
+                com.aetherianartificer.townstead.pheno.state.EntityStates.tick(villager));
         profile("villager.chronicle_birth", () ->
                 com.aetherianartificer.townstead.chronicle.emit.PendingBirths.tick(villager));
         profile("villager.chronicle_marriage", () ->

@@ -149,15 +149,16 @@ class WorkTaskSchemaTest {
         assertFalse(work.has("path_worksites"),
                 "mod-gated Baker paths must own their stations so skipped paths leave no stale work links");
         JsonObject jamMaker = resourceJson(
-                "/data/townstead/profession/baker/path/confiturier/path.json");
-        assertEquals("Jam Maker", jamMaker.getAsJsonObject("name").get("text").getAsString());
+                "/data/townstead/profession/baker/path/jam_maker/path.json");
+        assertEquals("career.townstead.baker.path.jam_maker",
+                jamMaker.getAsJsonObject("name").get("translate").getAsString());
         assertEquals("bakery", jamMaker.getAsJsonArray("mods").get(0).getAsString());
         assertEquals("bakery:small_cooking_pot",
                 jamMaker.getAsJsonArray("worksites").get(0).getAsString());
         JsonObject pastryChef = resourceJson(
-                "/data/townstead/profession/baker/path/patissier/path.json");
-        assertEquals("Pastry Chef",
-                pastryChef.getAsJsonObject("name").get("text").getAsString());
+                "/data/townstead/profession/baker/path/pastry_chef/path.json");
+        assertEquals("career.townstead.baker.path.pastry_chef",
+                pastryChef.getAsJsonObject("name").get("translate").getAsString());
         assertEquals("bakery", pastryChef.getAsJsonArray("mods").get(0).getAsString());
         assertEquals("bakery:baker_station",
                 pastryChef.getAsJsonArray("worksites").get(0).getAsString());

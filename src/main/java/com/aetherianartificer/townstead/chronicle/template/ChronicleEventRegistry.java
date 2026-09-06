@@ -25,7 +25,8 @@ public final class ChronicleEventRegistry {
     public static @Nullable ChronicleEventTemplate byId(ResourceLocation id) {
         ChronicleEventTemplate template = ENTRIES.get(id);
         if (template != null) return template;
-        return ENTRIES.get(LegacyNamespace.remap(id));
+        ResourceLocation remapped = LegacyNamespace.remap(id);
+        return remapped == null ? null : ENTRIES.get(remapped);
     }
 
     public static Map<ResourceLocation, ChronicleEventTemplate> all() {

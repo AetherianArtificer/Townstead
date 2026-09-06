@@ -1,0 +1,114 @@
+{
+  "schema": "townstead:hangout_policy/v2",
+  "social_radius": 24,
+  "venue_radius": 256,
+  "minimum_visit_ticks": 500,
+  "maximum_visit_ticks": 1800,
+  "revisit_cooldown_ticks": 2400,
+  "retry_cooldown_ticks": 200,
+  "arrival_timeout_ticks": 600,
+  "lease_ticks": 1400,
+  "visitor_when": {
+    "type": "pheno:profession",
+    "profession": "#townstead_hangouts:on_duty",
+    "inverted": true
+  },
+  "companion_when": {
+    "type": "pheno:profession",
+    "profession": "#townstead_hangouts:on_duty",
+    "inverted": true
+  },
+  "bond_weights": {
+    "townstead:marriage": 100,
+    "mca:marriage": 100,
+    "townstead:friendship": 25
+  },
+  "personality_tag_weights": {
+    "friendly": {
+      "townstead_hangouts:social": 1.6,
+      "townstead_hangouts:communal": 1.35,
+      "townstead_hangouts:lively": 1.2
+    },
+    "flirty": {
+      "townstead_hangouts:intimate": 2.0,
+      "townstead_hangouts:refined": 1.6,
+      "townstead_hangouts:social": 1.35
+    },
+    "playful": {
+      "townstead_hangouts:lively": 2.1,
+      "townstead_hangouts:music": 1.8,
+      "townstead_hangouts:outdoors": 1.3,
+      "townstead_hangouts:quiet": 0.65
+    },
+    "gloomy": {
+      "townstead_hangouts:quiet": 1.8,
+      "townstead_hangouts:intimate": 1.5,
+      "townstead_hangouts:cozy": 1.3,
+      "townstead_hangouts:lively": 0.6
+    },
+    "sensitive": {
+      "townstead_hangouts:quiet": 2.0,
+      "townstead_hangouts:cozy": 1.6,
+      "townstead_hangouts:intimate": 1.4,
+      "townstead_hangouts:lively": 0.65
+    },
+    "greedy": {
+      "townstead_hangouts:refined": 1.9,
+      "townstead_hangouts:drink": 1.2,
+      "townstead_hangouts:rustic": 0.75
+    },
+    "odd": {
+      "townstead_hangouts:quirky": 2.4,
+      "townstead_hangouts:tea": 1.35,
+      "townstead_hangouts:music": 1.25
+    },
+    "crabby": {
+      "townstead_hangouts:quiet": 2.0,
+      "townstead_hangouts:cozy": 1.4,
+      "townstead_hangouts:lively": 0.55,
+      "townstead_hangouts:social": 0.75
+    },
+    "grumpy": {
+      "townstead_hangouts:quiet": 2.0,
+      "townstead_hangouts:cozy": 1.4,
+      "townstead_hangouts:lively": 0.55,
+      "townstead_hangouts:social": 0.75
+    },
+    "extroverted": {
+      "townstead_hangouts:social": 2.0,
+      "townstead_hangouts:lively": 1.8,
+      "townstead_hangouts:communal": 1.45,
+      "townstead_hangouts:quiet": 0.65
+    },
+    "introverted": {
+      "townstead_hangouts:quiet": 2.0,
+      "townstead_hangouts:intimate": 1.6,
+      "townstead_hangouts:cozy": 1.5,
+      "townstead_hangouts:lively": 0.55
+    },
+    "relaxed": {
+      "townstead_hangouts:cozy": 1.8,
+      "townstead_hangouts:outdoors": 1.65,
+      "townstead_hangouts:quiet": 1.5,
+      "townstead_hangouts:refined": 0.85
+    },
+    "anxious": {
+      "townstead_hangouts:quiet": 2.0,
+      "townstead_hangouts:cozy": 1.7,
+      "townstead_hangouts:intimate": 1.35,
+      "townstead_hangouts:lively": 0.5
+    },
+    "peaceful": {
+      "townstead_hangouts:quiet": 2.0,
+      "townstead_hangouts:cozy": 1.5,
+      "townstead_hangouts:outdoors": 1.4,
+      "townstead_hangouts:lively": 0.6
+    },
+    "upbeat": {
+      "townstead_hangouts:lively": 1.9,
+      "townstead_hangouts:social": 1.6,
+      "townstead_hangouts:music": 1.55,
+      "townstead_hangouts:outdoors": 1.25
+    }
+  }
+}

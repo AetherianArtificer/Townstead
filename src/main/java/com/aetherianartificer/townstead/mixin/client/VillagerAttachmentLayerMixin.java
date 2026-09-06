@@ -38,8 +38,12 @@ public abstract class VillagerAttachmentLayerMixin<T extends Mob & VillagerLike<
     private void townstead$addAttachmentLayer(Mob villager, PoseStack matrices, float tickDelta, CallbackInfo ci) {
         if (townstead$attachmentLayerAdded) return;
         townstead$attachmentLayerAdded = true;
+        // First in the stack, so every layer that copies MCA's model pose sees adult proportions.
+        this.layers.add(0, new com.aetherianartificer.townstead.client.species.AdultProportionsLayer<>(this));
         this.addLayer(new AttachmentRenderLayer<>(this));
         this.addLayer(new WornItemLayer<>(this));
+        com.aetherianartificer.townstead.compat.curios.CuriosClientCompat.addLayer(this);
+        com.aetherianartificer.townstead.compat.curios.GraftedWearableLayers.addAll(this);
         townstead$insertSkinOverlayLayer();
     }
 

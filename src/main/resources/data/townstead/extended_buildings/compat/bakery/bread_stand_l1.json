@@ -8,7 +8,7 @@
     "node_item": "bakery:tray"
   },
   "spirit": {
-    "pastoral": 4,
-    "commercial": 2
+    "commercial": 4,
+    "pastoral": 2
   }
 }

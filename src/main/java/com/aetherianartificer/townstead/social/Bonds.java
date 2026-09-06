@@ -12,8 +12,8 @@ import java.util.List;
  * has formed so far. Same question, so {@code pheno:bonds} reads the same in
  * both places.
  *
- * <p>Townstead does not own a bond store yet: this reads MCA today and is the
- * seam a Townstead-owned store would slot behind.</p>
+ * <p>Live ties combine MCA marriages with mutual friendships earned through
+ * completed conversations in the world's SavedData.</p>
  */
 @FunctionalInterface
 public interface Bonds {
@@ -43,8 +43,10 @@ public interface Bonds {
         if (entity == null) return EMPTY;
         return () -> {
             List<BondKind> married = BondKinds.bySource(SOURCE_MCA_MARRIAGE);
-            if (married.isEmpty()) return List.of();
             List<Bond> bonds = new ArrayList<>(1);
+            if (entity.level() instanceof net.minecraft.server.level.ServerLevel level) {
+                bonds.addAll(RelationshipService.data(level.getServer()).bonds().bonds(entity.getUUID()));
+            }
             try {
                 EntityRelationship.of(entity).ifPresent(rel -> {
                     if (!rel.isMarried()) return;

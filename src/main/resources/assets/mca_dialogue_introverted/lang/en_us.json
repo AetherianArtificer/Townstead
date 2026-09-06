@@ -150,5 +150,18 @@
   "introverted.dialogue.chat.leatherworker_request.no_salt/1": "<nervous>Sorry, just... I'd need some salt for the hide. If you have any.</nervous>",
   "introverted.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<nervous>A, um, wet sponge? Or a damp rag would work too.</nervous>",
   "introverted.dialogue.chat.leatherworker_request.no_storage/1": "<nervous>My pack is, um, kind of full. A chest nearby would help.</nervous>",
-  "introverted.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Oh... it cured. The leather looks really nice.</happy>"
+  "introverted.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Oh... it cured. The leather looks really nice.</happy>",
+  "introverted.dialogue.chat.beverage_artisan_request.no_worksite/1": "<nervous>Um, I need a drink station. Somewhere quiet would be nice.</nervous>",
+  "introverted.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<nervous>The ingredients are gone. Could someone restock them?</nervous>",
+  "introverted.dialogue.chat.beverage_artisan_request.no_storage/1": "<nervous>There isn't room for the finished drinks. Maybe another chest?</nervous>",
+  "introverted.dialogue.chat.beverage_artisan_request.unreachable/1": "<nervous>I can't get to my station. Something is in the way.</nervous>",
+  "introverted.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<nervous>I could make %2$s, if we had the ingredients.</nervous>",
+  "introverted.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<happy>The crowd feels a little less frightening now.</happy>",
+  "introverted.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<nervous>I think I've said more tonight than I did all week.</nervous>",
+  "introverted.dialogue.chat.townstead_drunk.drunk_arrival/1": "<nervous>Did I just greet everyone? Everyone?</nervous>",
+  "introverted.dialogue.chat.townstead_drunk.drunk_ambient/1": "<nervous>I had a private thought, but apparently I announced it.</nervous>",
+  "introverted.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>I need water and somewhere with no people.</sleepy>",
+  "introverted.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>I'm going to be very quiet now. Extremely quiet.</sleepy>",
+  "introverted.dialogue.chat.townstead_drunk.service_refused/1": "<nervous>No more, please. Water would be enough.</nervous>",
+  "introverted.dialogue.chat.townstead_drunk.recovered/1": "<happy>Quiet again. I feel much more like myself.</happy>"
 }

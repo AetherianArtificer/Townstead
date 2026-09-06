@@ -59,10 +59,13 @@ public final class CareerProfile {
     /** Where the subject pressed the Archives stamp for each skill they registered. */
     public Map<ResourceLocation, CareerStamp> stamps() { return Map.copyOf(stamps); }
 
-    public CareerStamp stamp(ResourceLocation skill) { return stamps.get(skill); }
+    public CareerStamp stamp(ResourceLocation skill) {
+        return stamps.get(com.aetherianartificer.townstead.profession.def.SkillDefs.canonicalId(skill));
+    }
 
     /** First press wins: a registered mark is a record of the day, not a movable decoration. */
     public boolean stamp(ResourceLocation skill, CareerStamp mark) {
+        skill = com.aetherianartificer.townstead.profession.def.SkillDefs.canonicalId(skill);
         if (skill == null || mark == null || stamps.containsKey(skill)) return false;
         stamps.put(skill, mark);
         return true;
@@ -82,10 +85,12 @@ public final class CareerProfile {
 
     /** Learning is permanent history. Activation is a separate operation. */
     public boolean learnChoice(ResourceLocation choice) {
+        choice = com.aetherianartificer.townstead.profession.def.SkillDefs.canonicalId(choice);
         return choice != null && learnedChoices.add(choice);
     }
 
     public boolean activateSkill(ResourceLocation skillGroup, ResourceLocation skill) {
+        skill = com.aetherianartificer.townstead.profession.def.SkillDefs.canonicalId(skill);
         if (skillGroup == null || skill == null || !learnedChoices.contains(skill)) return false;
         return !skill.equals(activeBySkillGroup.put(skillGroup, skill));
     }
@@ -122,8 +127,10 @@ public final class CareerProfile {
 
     /** Explicit admin/migration repair only; normal gameplay never forgets history. */
     public boolean adminForgetChoice(ResourceLocation choice) {
-        if (choice == null || !learnedChoices.remove(choice)) return false;
-        activeBySkillGroup.values().removeIf(choice::equals);
+        ResourceLocation canonical = com.aetherianartificer.townstead.profession.def.SkillDefs
+                .canonicalId(choice);
+        if (canonical == null || !learnedChoices.remove(canonical)) return false;
+        activeBySkillGroup.values().removeIf(canonical::equals);
         return true;
     }
 

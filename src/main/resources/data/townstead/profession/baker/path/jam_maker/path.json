@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "mods": ["bakery"],
+  "name": {
+    "translate": "career.townstead.baker.path.jam_maker"
+  },
+  "title": {
+    "translate": "career.townstead.baker.title.jam_maker"
+  },
+  "color": "#8E3B46",
+  "worksites": [
+    "bakery:small_cooking_pot"
+  ],
+  "skills": [
+    "setting_point",
+    "clean_jar",
+    "slow_boil"
+  ]
+}

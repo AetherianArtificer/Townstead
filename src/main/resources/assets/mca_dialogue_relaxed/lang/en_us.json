@@ -88,5 +88,18 @@
   "relaxed.dialogue.chat.leatherworker_request.no_salt/1": "<happy>Salt when you can. The hide will keep a little while.</happy>",
   "relaxed.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<happy>A wet sponge or rag whenever you have one. No hurry.</happy>",
   "relaxed.dialogue.chat.leatherworker_request.no_storage/1": "<happy>Pack's getting full. A chest, when it's convenient.</happy>",
-  "relaxed.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Came out nice. Worth the wait.</happy>"
+  "relaxed.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Came out nice. Worth the wait.</happy>",
+  "relaxed.dialogue.chat.beverage_artisan_request.no_worksite/1": "<happy>A drink station would be nice whenever there's time.</happy>",
+  "relaxed.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<happy>We're out of ingredients. Restock when you get a chance.</happy>",
+  "relaxed.dialogue.chat.beverage_artisan_request.no_storage/1": "<happy>Storage is full. Another chest should sort it.</happy>",
+  "relaxed.dialogue.chat.beverage_artisan_request.unreachable/1": "<happy>Something's in the way of the station. No rush, just a heads-up.</happy>",
+  "relaxed.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<happy>I can make %2$s once the ingredients turn up.</happy>",
+  "relaxed.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<happy>That's a pleasant little glow.</happy>",
+  "relaxed.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<happy>Good drink, good chair, nowhere else to be.</happy>",
+  "relaxed.dialogue.chat.townstead_drunk.drunk_arrival/1": "<happy>The room can spin if it likes. I'm staying put.</happy>",
+  "relaxed.dialogue.chat.townstead_drunk.drunk_ambient/1": "<happy>The story will find its ending eventually.</happy>",
+  "relaxed.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>That's plenty. Water and a quiet place, please.</sleepy>",
+  "relaxed.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>I'll be fine right here until the room settles.</sleepy>",
+  "relaxed.dialogue.chat.townstead_drunk.service_refused/1": "<happy>I'm done for tonight. Water sounds better anyway.</happy>",
+  "relaxed.dialogue.chat.townstead_drunk.recovered/1": "<happy>Feeling steady again. Nice and easy.</happy>"
 }

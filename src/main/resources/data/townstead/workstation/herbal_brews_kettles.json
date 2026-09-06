@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": "herbalbrews",
+  "blocks": ["herbalbrews:tea_kettle", "herbalbrews:copper_tea_kettle"],
+  "inventory": {
+    "slots": {
+      "outputs": [0]
+    }
+  },
+  "shift_end": "finish"
+}

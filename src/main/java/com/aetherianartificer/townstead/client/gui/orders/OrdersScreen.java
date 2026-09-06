@@ -82,12 +82,32 @@ public class OrdersScreen extends Screen {
     /** Header actions share one footprint so Assignment and Back read as a matched pair. */
     private static final int DETAIL_ACTION_W = 76;
 
-    private static final String[] MODE_LABELS = {"Make", "Keep in stock", "Per villager", "Standing"};
-    private static final String[] SCOPE_LABELS = {"Here", "The village"};
-    private static final String[] LIST_LABELS = {"Work freely", "Stand down"};
-    private static final String[] TAB_LABELS = {"Produce", "Jobs"};
+    private static final String[] MODE_LABEL_KEYS = {
+            "townstead.orders.mode.make", "townstead.orders.mode.keep_stocked",
+            "townstead.orders.mode.per_villager", "townstead.orders.mode.standing"};
+    private static final String[] SCOPE_LABEL_KEYS = {
+            "townstead.orders.scope.here", "townstead.orders.scope.village"};
+    private static final String[] LIST_LABEL_KEYS = {
+            "townstead.orders.policy.free", "townstead.orders.policy.list_only"};
+    private static final String[] TAB_LABEL_KEYS = {
+            "townstead.orders.tab.produce", "townstead.orders.tab.jobs"};
 
     private static @Nullable OrdersScreen open;
+
+    private static String tr(String key, Object... args) {
+        return Component.translatable(key, args).getString();
+    }
+
+    private static String[] labels(String[] keys) {
+        String[] labels = new String[keys.length];
+        for (int i = 0; i < keys.length; i++) labels[i] = tr(keys[i]);
+        return labels;
+    }
+
+    private static String[] modeLabels() { return labels(MODE_LABEL_KEYS); }
+    private static String[] scopeLabels() { return labels(SCOPE_LABEL_KEYS); }
+    private static String[] listLabels() { return labels(LIST_LABEL_KEYS); }
+    private static String[] tabLabels() { return labels(TAB_LABEL_KEYS); }
 
     private OrdersSnapshotS2CPayload data;
     private @Nullable EditBox search;
@@ -146,7 +166,7 @@ public class OrdersScreen extends Screen {
     }
 
     public OrdersScreen(OrdersSnapshotS2CPayload data) {
-        super(Component.literal("Orders"));
+        super(Component.translatable("townstead.orders.title"));
         this.data = data;
     }
 
@@ -202,10 +222,10 @@ public class OrdersScreen extends Screen {
 
     /** The header only wraps when its own contents do not fit; row density is a separate choice. */
     private boolean compactHeader() {
-        Rect[] probe = Controls.segmentLayout(this.font, 0, 0, LIST_LABELS);
+        Rect[] probe = Controls.segmentLayout(this.font, 0, 0, listLabels());
         int controls = probe[probe.length - 1].right();
         int required = INSET * 2 + Controls.SCROLLBAR_W + this.font.width(data.worksiteName())
-                + this.font.width("WHEN DONE") + controls + 28;
+                + this.font.width(tr("townstead.orders.policy.heading")) + controls + 28;
         return ordersWidth() < required;
     }
     private int listTop() { return contentTop() + stripHeight(); }
@@ -221,10 +241,11 @@ public class OrdersScreen extends Screen {
         String previous = search == null ? "" : search.getValue();
         int toggle = 14;
         search = new EditBox(this.font, catalogueLeft() + INSET + 1, searchTop(),
-                catalogueWidth() - INSET * 2 - toggle - 4, SEARCH_H - 4, Component.literal("Search"));
+                catalogueWidth() - INSET * 2 - toggle - 4, SEARCH_H - 4,
+                Component.translatable("townstead.ui.search"));
         search.setMaxLength(64);
         search.setBordered(true);
-        search.setHint(Component.literal("Search..."));
+        search.setHint(Component.translatable("townstead.orders.search.hint"));
         search.setValue(previous);
         search.setResponder(v -> refreshCatalogue());
         addRenderableWidget(search);
@@ -243,7 +264,7 @@ public class OrdersScreen extends Screen {
         addRenderableWidget(makeableButton);
 
         // A plain Minecraft button, because it does the plainest thing on the screen.
-        addRenderableWidget(Button.builder(Component.literal("Close"), b -> onClose())
+        addRenderableWidget(Button.builder(Component.translatable("townstead.ui.close"), b -> onClose())
                 .bounds(this.width - SPACING - 60, contentTop() - FRAME - 23, 60, 20)
                 .build());
 
@@ -279,16 +300,17 @@ public class OrdersScreen extends Screen {
                             .toLowerCase(Locale.ROOT).contains(query)) {
                 continue;
             }
-            String group = option.activity() ? "Jobs"
-                    : option.tag() ? "Kinds"
+            String group = option.activity() ? tr("townstead.orders.group.jobs")
+                    : option.tag() ? tr("townstead.orders.group.kinds")
                     : ModNames.of(option.output().getNamespace());
             byMod.computeIfAbsent(group, k -> new ArrayList<>()).add(option);
         }
         // Kinds lead: an order for "cooked meats" is the usual ask, the single items are the
         // long tail beneath it.
-        List<Option> kinds = byMod.remove("Kinds");
+        String kindsLabel = tr("townstead.orders.group.kinds");
+        List<Option> kinds = byMod.remove(kindsLabel);
         Map<String, List<Option>> ordered = new LinkedHashMap<>();
-        if (kinds != null) ordered.put("Kinds", kinds);
+        if (kinds != null) ordered.put(kindsLabel, kinds);
         ordered.putAll(byMod);
 
         List<PaletteList.ToolEntry> entries = new ArrayList<>();
@@ -429,7 +451,7 @@ public class OrdersScreen extends Screen {
     private void drawCatalogue(GuiGraphics g, int mouseX, int mouseY) {
         int x = catalogueLeft();
         Rect[] tabs = catalogueTabs();
-        Controls.drawTabs(g, this.font, tabs, TAB_LABELS, jobsTab ? 1 : 0,
+        Controls.drawTabs(g, this.font, tabs, tabLabels(), jobsTab ? 1 : 0,
                 Controls.segmentAt(tabs, mouseX, mouseY));
 
         String empty = emptyCatalogueReason();
@@ -455,20 +477,20 @@ public class OrdersScreen extends Screen {
         if (catalogue != null && catalogue.children().size() > 0) return null;
         if (jobsTab) {
             return data.options().stream().anyMatch(Option::activity)
-                    ? "Nothing matches that search."
-                    : "No jobs are worked at this place.";
+                    ? tr("townstead.orders.empty.no_match")
+                    : tr("townstead.orders.empty.no_jobs");
         }
         // Was "no trade works here", which is a lie whenever a trade does work here and simply has
         // no catalogue behind it yet. The screen cannot tell those apart, so it says both.
-        if (data.options().isEmpty()) return "Nothing can be ordered here. Either no trade works this place, or the trade that does has nothing it can be asked for.";
-        if (makeableOnly) return "Nothing here can be made from what is stored right now. Untick the filter to see everything.";
-        return "Nothing matches that search.";
+        if (data.options().isEmpty()) return tr("townstead.orders.empty.unavailable");
+        if (makeableOnly) return tr("townstead.orders.empty.not_makeable");
+        return tr("townstead.orders.empty.no_match");
     }
 
     /** The two shelves the catalogue is split across, sitting where the Field Post puts its own. */
     private Rect[] catalogueTabs() {
         return Controls.tabLayout(catalogueLeft(), contentTop() + SEARCH_H + 4,
-                catalogueWidth(), TAB_LABELS.length);
+                catalogueWidth(), TAB_LABEL_KEYS.length);
     }
 
     // ── Orders ──
@@ -485,7 +507,7 @@ public class OrdersScreen extends Screen {
         int textY = compact ? y + 5 : y + (STRIP_H - this.font.lineHeight) / 2;
 
         Rect[] listSeg = listSegments();
-        String label = "WHEN DONE";
+        String label = tr("townstead.orders.policy.heading");
         int nameRoom = compact
                 ? x + ordersWidth() - INSET - Controls.SCROLLBAR_W - (x + INSET + 2)
                 : listSeg[0].x() - this.font.width(label) - 10 - (x + INSET + 2) - 8;
@@ -495,7 +517,8 @@ public class OrdersScreen extends Screen {
         // beside the name made the strip read like a form.
         tip(new Rect(x + INSET + 2, textY - 1, this.font.width(name), this.font.lineHeight + 2),
                 mouseX, mouseY,
-                "post".equals(data.worksiteDetail()) ? "Bound to a post" : "Bound to this room");
+                "post".equals(data.worksiteDetail())
+                        ? tr("townstead.orders.bound.post") : tr("townstead.orders.bound.room"));
 
         // At compact widths the place name gets its own line. The policy drops beneath it; its
         // caption is shown only when the remaining room can hold it instead of crushing the name.
@@ -505,18 +528,18 @@ public class OrdersScreen extends Screen {
                     listSeg[0].y() + (Controls.SEG_H - this.font.lineHeight) / 2 + 1,
                     Palette.LABEL_DIM, false);
         }
-        Controls.drawSegments(g, this.font, listSeg, LIST_LABELS, data.listOnly() ? 1 : 0,
+        Controls.drawSegments(g, this.font, listSeg, listLabels(), data.listOnly() ? 1 : 0,
                 Controls.segmentAt(listSeg, mouseX, mouseY));
         tip(new Rect(listSeg[0].x(), listSeg[0].y(),
                         listSeg[listSeg.length - 1].right() - listSeg[0].x(), Controls.SEG_H),
-                mouseX, mouseY, "Stand down: work only this list, and rest once it is done");
+                mouseX, mouseY, tr("townstead.orders.policy.list_only.tooltip"));
 
         g.fill(x + INSET, y + stripHeight() - 1, x + ordersWidth() - INSET, y + stripHeight(),
                 FrameRenderer.FRAME_HIGHLIGHT);
     }
 
     private Rect[] listSegments() {
-        Rect[] probe = Controls.segmentLayout(this.font, 0, 0, LIST_LABELS);
+        Rect[] probe = Controls.segmentLayout(this.font, 0, 0, listLabels());
         int total = probe[probe.length - 1].right();
         // Right edge on the same line as the rows' margin marks: content right, which stops
         // short of the frame by the scrollbar's lane.
@@ -524,7 +547,7 @@ public class OrdersScreen extends Screen {
                 ordersLeft() + ordersWidth() - INSET - Controls.SCROLLBAR_W - total,
                 compactHeader() ? contentTop() + 20
                         : contentTop() + (STRIP_H - Controls.SEG_H) / 2,
-                LIST_LABELS);
+                listLabels());
     }
 
     private void drawOrders(GuiGraphics g, int mouseX, int mouseY) {
@@ -535,9 +558,9 @@ public class OrdersScreen extends Screen {
         List<Row> rows = data.rows();
         int bottom = orderListBottom() - INSET;
         if (rows.isEmpty()) {
-            g.drawString(this.font, "No orders yet. Villagers work as they see fit.",
+            g.drawString(this.font, Component.translatable("townstead.orders.empty.no_orders"),
                     x + INSET + 2, listTop() + 6, Palette.LABEL_DIM, false);
-            g.drawString(this.font, "Pick something on the left to start a list.",
+            g.drawString(this.font, Component.translatable("townstead.orders.empty.pick_item"),
                     x + INSET + 2, listTop() + 17, Palette.INK_DIM, false);
             return;
         }
@@ -580,8 +603,8 @@ public class OrdersScreen extends Screen {
         boolean canDown = index < data.rows().size() - 1;
         drawCaret(g, carets[0], true, canUp && carets[0].contains(mouseX, mouseY), canUp);
         drawCaret(g, carets[1], false, canDown && carets[1].contains(mouseX, mouseY), canDown);
-        if (canUp) tip(carets[0], mouseX, mouseY, "Work this sooner");
-        if (canDown) tip(carets[1], mouseX, mouseY, "Work this later");
+        if (canUp) tip(carets[0], mouseX, mouseY, tr("townstead.orders.move.sooner"));
+        if (canDown) tip(carets[1], mouseX, mouseY, tr("townstead.orders.move.later"));
 
         Controls.drawSlot(g, c.item, body.y() + LINE1_Y);
         drawItem(g, iconFor(row), c.item + 1, body.y() + LINE1_Y + 1);
@@ -621,7 +644,7 @@ public class OrdersScreen extends Screen {
                     mode.x(), mode.y() + 3,
                     Palette.LABEL_DIM, false);
         } else {
-            Controls.drawButton(g, this.font, mode, MODE_LABELS[row.mode().ordinal()],
+            Controls.drawButton(g, this.font, mode, modeLabels()[row.mode().ordinal()],
                     false, mode.contains(mouseX, mouseY), true);
             tip(mode, mouseX, mouseY, modeTip(row.mode()));
         }
@@ -633,9 +656,9 @@ public class OrdersScreen extends Screen {
         }
 
         Rect details = detailsLink(c, body, row);
-        Controls.drawButton(g, this.font, details, "Details", false,
+        Controls.drawButton(g, this.font, details, tr("townstead.orders.details"), false,
                 details.contains(mouseX, mouseY), true);
-        tip(details, mouseX, mouseY, "Everything else about this line");
+        tip(details, mouseX, mouseY, tr("townstead.orders.details.tooltip"));
 
         // The ruled margin, and the marks against it. Each row's stretch reaches up into the
         // seam above and down through its own divider, so the rule reads as one line down the
@@ -648,9 +671,10 @@ public class OrdersScreen extends Screen {
         Controls.drawHoldMark(g, hold, row.paused(), hold.contains(mouseX, mouseY));
         Controls.drawCopyMark(g, copy, copy.contains(mouseX, mouseY));
         Controls.drawStrikeMark(g, strike, strike.contains(mouseX, mouseY));
-        tip(hold, mouseX, mouseY, row.paused() ? "Resume this order" : "Hold this order");
-        tip(copy, mouseX, mouseY, "Copy this order below");
-        tip(strike, mouseX, mouseY, "Strike this order out");
+        tip(hold, mouseX, mouseY, row.paused()
+                ? tr("townstead.orders.action.resume") : tr("townstead.orders.action.hold"));
+        tip(copy, mouseX, mouseY, tr("townstead.orders.action.copy"));
+        tip(strike, mouseX, mouseY, tr("townstead.orders.action.remove"));
 
         if (showReason) {
             g.drawString(this.font, trim(reason, body.right() - 8 - c.main), c.main,
@@ -675,14 +699,14 @@ public class OrdersScreen extends Screen {
         Option option = optionFor(row.product());
         if (option == null || option.missing().isEmpty()) return row.reason();
         long phase = net.minecraft.Util.getMillis() / 1200L;
-        StringBuilder out = new StringBuilder("Missing: ");
+        StringBuilder out = new StringBuilder(tr("townstead.orders.missing.prefix"));
         int shown = Math.min(2, option.missing().size());
         for (int i = 0; i < shown; i++) {
             if (i > 0) out.append(", ");
             var need = option.missing().get(i);
             if (need.count() > 1) out.append(need.count()).append(' ');
             if (need.items().isEmpty()) {
-                out.append(need.label().isBlank() ? "item" : need.label());
+                out.append(need.label().isBlank() ? tr("townstead.orders.item.generic") : need.label());
                 continue;
             }
             int choice = (int) Math.floorMod(phase, need.items().size());
@@ -702,10 +726,10 @@ public class OrdersScreen extends Screen {
 
     private static String modeTip(Order.Mode mode) {
         return switch (mode) {
-            case MAKE -> "Make that many, then this line is finished";
-            case KEEP_STOCKED -> "Work whenever the stores hold fewer than that";
-            case PER_VILLAGER -> "That many for every villager, counted the same way";
-            case STANDING -> "No target: make this when there is nothing more pressing";
+            case MAKE -> tr("townstead.orders.mode.make.tooltip");
+            case KEEP_STOCKED -> tr("townstead.orders.mode.keep_stocked.tooltip");
+            case PER_VILLAGER -> tr("townstead.orders.mode.per_villager.tooltip");
+            case STANDING -> tr("townstead.orders.mode.standing.tooltip");
         };
     }
 
@@ -794,7 +818,7 @@ public class OrdersScreen extends Screen {
         }
         int stepper = row.mode().hasTarget()
                 ? Controls.stepperWidth(this.font, String.valueOf(row.target())) + 5 : 0;
-        int details = this.font.width("Details") + 12 + 5;
+        int details = this.font.width(tr("townstead.orders.details")) + 12 + 5;
         int room = (c.state + COL_STATE) - c.main - stepper - details;
         return new Rect(c.main, body.y() + LINE2_Y, Math.max(38, Math.min(COL_MODE, room)),
                 Controls.SEG_H);
@@ -818,7 +842,7 @@ public class OrdersScreen extends Screen {
 
     /** Right-aligned under the chip, so every row's Details sits on the same vertical line. */
     private Rect detailsLink(Columns c, Rect body, Row row) {
-        int w = this.font.width("Details") + 12;
+        int w = this.font.width(tr("townstead.orders.details")) + 12;
         if (compactRows()) {
             return new Rect(c.state - 5 - w, body.y() + COMPACT_LINE2_Y,
                     w, Controls.SEG_H);
@@ -862,31 +886,32 @@ public class OrdersScreen extends Screen {
 
         Controls.drawSlot(g, x + INSET + 3, y + 4);
         drawItem(g, d.icon, x + INSET + 4, y + 5);
-        String draftTitle = (d.activity ? "NEW JOB — " : "NEW ORDER — ")
-                + d.name().toUpperCase(Locale.ROOT);
+        String draftTitle = tr(d.activity
+                ? "townstead.orders.draft.job" : "townstead.orders.draft.order",
+                d.name().toUpperCase(Locale.ROOT));
         g.drawString(this.font, trim(draftTitle, w - INSET * 2 - 32),
                 x + INSET + 26, y + 9, Palette.BAR_FILL, false);
 
         if (d.activity) {
             // A job has no number and no scope. Saying so is more use than four dead buttons.
-            g.drawString(this.font, "Worked whenever there is any, in list order.",
+            g.drawString(this.font, Component.translatable("townstead.orders.job.list_order"),
                     x + INSET + 3, composerModeY() + 3, Palette.LABEL_DIM, false);
         } else {
         Rect[] modes = composerModes();
-        Controls.drawSegments(g, this.font, modes, MODE_LABELS, d.mode.ordinal(),
+        Controls.drawSegments(g, this.font, modes, modeLabels(), d.mode.ordinal(),
                 Controls.segmentAt(modes, mouseX, mouseY));
         if (d.mode.hasTarget()) {
             Rect[] stepper = composerStepper();
             Controls.drawStepper(g, this.font, stepper, String.valueOf(d.target), true,
                     hitIndex(stepper, mouseX, mouseY));
             Rect[] scope = composerScope();
-            Controls.drawSegments(g, this.font, scope, SCOPE_LABELS, d.scope.ordinal(),
+            Controls.drawSegments(g, this.font, scope, scopeLabels(), d.scope.ordinal(),
                     Controls.segmentAt(scope, mouseX, mouseY));
         }
         }
 
         Rect discard = composerDiscard();
-        Controls.drawPill(g, this.font, discard, "Discard", true,
+        Controls.drawPill(g, this.font, discard, tr("townstead.orders.discard"), true,
                 discard.contains(mouseX, mouseY), Palette.LABEL_LIGHT);
         Rect add = composerAdd();
         Controls.drawButton(g, this.font, add, addLabel(), true,
@@ -898,9 +923,9 @@ public class OrdersScreen extends Screen {
         Draft d = draft;
         if (d != null) {
             Option option = optionFor(d.product);
-            if (option != null && option.commission()) return "Add held item";
+            if (option != null && option.commission()) return tr("townstead.orders.add_held_item");
         }
-        return "Add to list";
+        return tr("townstead.orders.add_to_list");
     }
 
     // Three rows, because the mode picker alone is about two hundred pixels and everything used to
@@ -913,7 +938,7 @@ public class OrdersScreen extends Screen {
     private boolean composerModesWrapped() {
         Draft d = draft;
         if (d == null || d.activity) return false;
-        Rect[] probe = Controls.segmentLayout(this.font, 0, 0, MODE_LABELS);
+        Rect[] probe = Controls.segmentLayout(this.font, 0, 0, modeLabels());
         return probe[probe.length - 1].right() > ordersWidth() - (INSET + 3) * 2;
     }
 
@@ -925,11 +950,11 @@ public class OrdersScreen extends Screen {
     private boolean composerCramped() {
         Draft d = draft;
         if (d == null || d.activity || !d.mode.hasTarget()) return false;
-        Rect[] scope = Controls.segmentLayout(this.font, 0, 0, SCOPE_LABELS);
+        Rect[] scope = Controls.segmentLayout(this.font, 0, 0, scopeLabels());
         int left = INSET + 3 + Controls.stepperWidth(this.font, String.valueOf(d.target))
                 + 8 + scope[scope.length - 1].right();
-        int right = this.font.width("Add to list") + 12 + 6
-                + this.font.width("Discard") + 12 + INSET + 3;
+        int right = this.font.width(tr("townstead.orders.add_to_list")) + 12 + 6
+                + this.font.width(tr("townstead.orders.discard")) + 12 + INSET + 3;
         return left + 10 + right > ordersWidth();
     }
 
@@ -953,7 +978,7 @@ public class OrdersScreen extends Screen {
                     new Rect(x + each, composerModeY() + 16, available - each, Controls.SEG_H)
             };
         }
-        return Controls.segmentLayout(this.font, ordersLeft() + INSET + 3, composerModeY(), MODE_LABELS);
+        return Controls.segmentLayout(this.font, ordersLeft() + INSET + 3, composerModeY(), modeLabels());
     }
 
     private Rect[] composerStepper() {
@@ -964,7 +989,7 @@ public class OrdersScreen extends Screen {
     private Rect[] composerScope() {
         Rect[] stepper = composerStepper();
         return Controls.segmentLayout(this.font,
-                stepper[Controls.STEPPER_PARTS - 1].right() + 8, composerActionY(), SCOPE_LABELS);
+                stepper[Controls.STEPPER_PARTS - 1].right() + 8, composerActionY(), scopeLabels());
     }
 
     private Rect composerAdd() {
@@ -975,7 +1000,7 @@ public class OrdersScreen extends Screen {
 
     private Rect composerDiscard() {
         Rect add = composerAdd();
-        Rect probe = Controls.pillLayout(this.font, 0, 0, "Discard");
+        Rect probe = Controls.pillLayout(this.font, 0, 0, tr("townstead.orders.discard"));
         return new Rect(add.x() - 6 - probe.w(), composerButtonsY(), probe.w(), Controls.PILL_H);
     }
 
@@ -1017,9 +1042,9 @@ public class OrdersScreen extends Screen {
             String assignmentText = trim(assignmentSummary(row) + " ▾", assignment.w() - 10);
             Controls.drawPill(g, this.font, assignment, assignmentText, true,
                     assignment.contains(mouseX, mouseY), Palette.LABEL_LIGHT);
-            tip(assignment, mouseX, mouseY, "Assignment");
+            tip(assignment, mouseX, mouseY, tr("townstead.orders.assignment"));
         }
-        Controls.drawPill(g, this.font, back, "Back", true, back.contains(mouseX, mouseY),
+        Controls.drawPill(g, this.font, back, tr("townstead.ui.back"), true, back.contains(mouseX, mouseY),
                 Palette.LABEL_LIGHT);
         g.fill(win.x() + INSET, win.y() + DETAIL_STRIP_H - 1, win.right() - INSET,
                 win.y() + DETAIL_STRIP_H, FrameRenderer.FRAME_HIGHLIGHT);
@@ -1050,10 +1075,11 @@ public class OrdersScreen extends Screen {
      */
     private void drawSetColumn(GuiGraphics g, Row row, int x, int top, int bottom) {
         Rect box = new Rect(x, top, factsWidth(), bottom - top);
-        Controls.drawBox(g, this.font, box, "Counts as");
+        Controls.drawBox(g, this.font, box, tr("townstead.orders.counts_as"));
         List<ItemStack> members = setMembers(row.output());
         if (members.isEmpty()) {
-            g.drawString(this.font, "Nothing counts yet.", x + 6, top + 8, Palette.LABEL_DIM, false);
+            g.drawString(this.font, Component.translatable("townstead.orders.counts_as.empty"),
+                    x + 6, top + 8, Palette.LABEL_DIM, false);
             return;
         }
         drawStackRows(g, members, detailListArea(row));
@@ -1153,12 +1179,13 @@ public class OrdersScreen extends Screen {
     static String displayedNeedName(OrdersSnapshotS2CPayload.Need need,
                                     ResourceLocation displayedItem) {
         if (need != null && !need.label().isBlank()) return need.label();
-        return displayedItem == null ? "item" : itemName(displayedItem);
+        return displayedItem == null ? tr("townstead.orders.item.generic") : itemName(displayedItem);
     }
 
     static String stackRowName(ItemStack stack, String semanticLabel) {
         if (semanticLabel != null && !semanticLabel.isBlank()) return semanticLabel;
-        return stack == null || stack.isEmpty() ? "item" : stack.getHoverName().getString();
+        return stack == null || stack.isEmpty()
+                ? tr("townstead.orders.item.generic") : stack.getHoverName().getString();
     }
 
     /** Waiting orders foreground only what is absent; every other state shows the full recipe. */
@@ -1190,23 +1217,25 @@ public class OrdersScreen extends Screen {
      */
     private void drawFactsColumn(GuiGraphics g, Row row, int x, int top, int bottom) {
         Rect box = new Rect(x, top, factsWidth(), bottom - top);
-        Controls.drawBox(g, this.font, box, "This recipe");
+        Controls.drawBox(g, this.font, box, tr("townstead.orders.recipe.heading"));
         Option option = optionFor(row.product());
         if (option == null) {
-            g.drawString(this.font, "Nothing here makes this.", x + 6, top + 9,
+            g.drawString(this.font, Component.translatable("townstead.orders.recipe.empty"), x + 6, top + 9,
                     Palette.LABEL_DIM, false);
             return;
         }
         int y = top + 8;
-        y = fact(g, x, y, box.w(), "Makes", String.valueOf(option.makes()));
-        y = fact(g, x, y, box.w(), "Station", option.stationLabel());
+        y = fact(g, x, y, box.w(), tr("townstead.orders.recipe.makes"), String.valueOf(option.makes()));
+        y = fact(g, x, y, box.w(), tr("townstead.orders.recipe.station"), option.stationLabel());
         boolean showingMissing = row.status() == OrdersSnapshotS2CPayload.Status.WAITING
                 && !option.missing().isEmpty();
         List<OrdersSnapshotS2CPayload.Need> shown = shownNeeds(row, option);
-        g.drawString(this.font, showingMissing ? "MISSING" : "NEEDS", x + 6, y + 4,
+        g.drawString(this.font, Component.translatable(showingMissing
+                        ? "townstead.orders.recipe.missing" : "townstead.orders.recipe.needs"), x + 6, y + 4,
                 showingMissing ? Palette.LABEL_WARM : Palette.INK_DIM, false);
         if (shown.isEmpty()) {
-            g.drawString(this.font, "Nothing", x + 6, y + 15, Palette.LABEL_DIM, false);
+            g.drawString(this.font, Component.translatable("townstead.orders.none"),
+                    x + 6, y + 15, Palette.LABEL_DIM, false);
             return;
         }
         drawStackRows(g, needStacks(shown), needLabels(shown), detailListArea(row));
@@ -1220,14 +1249,11 @@ public class OrdersScreen extends Screen {
     private void drawJobDetails(GuiGraphics g, Row row, Rect win, int top) {
         Rect box = new Rect(win.x() + DETAIL_PAD, top,
                 win.w() - DETAIL_PAD * 2, win.bottom() - DETAIL_PAD - top);
-        Controls.drawBox(g, this.font, box, "This job");
+        Controls.drawBox(g, this.font, box, tr("townstead.orders.job.heading"));
         int x = box.x() + 6;
         int y = top + 9;
-        for (var line : this.font.split(Component.literal(
-                row.paused()
-                        ? "Held. Nobody here will take this on until it is resumed."
-                        : "Worked whenever there is any of it to do. Lines above this one are "
-                                + "taken first."), box.w() - 12)) {
+        for (var line : this.font.split(Component.translatable(row.paused()
+                        ? "townstead.orders.job.held" : "townstead.orders.job.active"), box.w() - 12)) {
             g.drawString(this.font, line, x, y, Palette.LABEL_MID, false);
             y += this.font.lineHeight + 1;
         }
@@ -1249,32 +1275,33 @@ public class OrdersScreen extends Screen {
         boolean hasTarget = row.mode().hasTarget();
 
         Rect howMuch = new Rect(x, top, w, 50);
-        Controls.drawBox(g, this.font, howMuch, "How much");
+        Controls.drawBox(g, this.font, howMuch, tr("townstead.orders.settings.quantity"));
         Rect[] modes = detailsModes();
-        Controls.drawSegments(g, this.font, modes, MODE_LABELS, row.mode().ordinal(),
+        Controls.drawSegments(g, this.font, modes, modeLabels(), row.mode().ordinal(),
                 Controls.segmentAt(modes, mouseX, mouseY));
         Rect[] stepper = detailsStepper(row);
         Controls.drawStepper(g, this.font, stepper, String.valueOf(row.target()), hasTarget,
                 hitIndex(stepper, mouseX, mouseY));
-        String have = "have " + row.have();
+        String have = tr("townstead.orders.settings.have", row.have());
         g.drawString(this.font, have, howMuch.right() - 6 - this.font.width(have),
                 stepper[0].y() + 3, Palette.LABEL_DIM, false);
 
         // Was headed "Ingredients", which it never was about: the scope says where the ORDER's
         // stock is counted, and with the stores pass it finally means what it says.
         Rect where = new Rect(x, top + 58, w, 30);
-        Controls.drawBox(g, this.font, where, "Counting");
+        Controls.drawBox(g, this.font, where, tr("townstead.orders.settings.counting"));
         Rect[] scope = detailsScope();
-        g.drawString(this.font, "Counted across", where.x() + 6, scope[0].y() + 3,
+        g.drawString(this.font, Component.translatable("townstead.orders.settings.counted_across"),
+                where.x() + 6, scope[0].y() + 3,
                 Palette.LABEL_DIM, false);
-        Controls.drawSegments(g, this.font, scope, SCOPE_LABELS,
+        Controls.drawSegments(g, this.font, scope, scopeLabels(),
                 hasTarget ? row.scope().ordinal() : -1,
                 hasTarget ? Controls.segmentAt(scope, mouseX, mouseY) : -1);
 
     }
 
     private String assignmentSummary(Row row) {
-        return row.workLabel().isEmpty() ? "Automatic" : row.workLabel();
+        return row.workLabel().isEmpty() ? tr("townstead.orders.assignment.automatic") : row.workLabel();
     }
 
     private Rect detailsAssignment(Row row) {
@@ -1294,7 +1321,7 @@ public class OrdersScreen extends Screen {
         int left = win.x() + DETAIL_PAD;
         int right = left + width + gap;
         Rect workerBox = new Rect(left, top, width, win.bottom() - DETAIL_PAD - top);
-        Controls.drawBox(g, this.font, workerBox, "Worker");
+        Controls.drawBox(g, this.font, workerBox, tr("townstead.orders.assignment.worker"));
         int visible = assignmentVisibleRows();
         int total = assignmentChoiceCount(row);
         setScroll = Math.max(0, Math.min(setScroll, Math.max(0, total - visible)));
@@ -1302,7 +1329,8 @@ public class OrdersScreen extends Screen {
             int actual = setScroll + shown;
             if (actual >= 1 + row.workers().size()) break;
             if (actual == 0) {
-                drawWorkChoice(g, workerChoiceRect(shown), "Automatic", "Anyone suitable",
+                drawWorkChoice(g, workerChoiceRect(shown), tr("townstead.orders.assignment.automatic"),
+                        tr("townstead.orders.assignment.anyone_suitable"),
                         row.worker().isEmpty(), mouseX, mouseY);
             } else {
                 var choice = row.workers().get(actual - 1);
@@ -1312,9 +1340,9 @@ public class OrdersScreen extends Screen {
         }
 
         Rect operatorBox = new Rect(right, top, width, win.bottom() - DETAIL_PAD - top);
-        Controls.drawBox(g, this.font, operatorBox, "Operated by");
+        Controls.drawBox(g, this.font, operatorBox, tr("townstead.orders.assignment.operated_by"));
         if (!row.operated()) {
-            g.drawString(this.font, "This station needs no operator.", right + 6, top + 10,
+            g.drawString(this.font, Component.translatable("townstead.orders.assignment.no_operator"), right + 6, top + 10,
                     Palette.LABEL_DIM, false);
             if (total > visible) {
                 Rect area = assignmentScrollArea();
@@ -1327,16 +1355,18 @@ public class OrdersScreen extends Screen {
             int actual = setScroll + shown;
             if (actual >= operatorCount) break;
             if (actual == 0) {
-                drawWorkChoice(g, operatorChoiceRect(shown), "Automatic", "Station preference",
+                drawWorkChoice(g, operatorChoiceRect(shown), tr("townstead.orders.assignment.automatic"),
+                        tr("townstead.orders.assignment.station_preference"),
                         row.operation() == Order.Operation.AUTOMATIC, mouseX, mouseY);
             } else if (row.workerFallback() && actual == 1) {
-                drawWorkChoice(g, operatorChoiceRect(shown), "Assigned worker",
-                        "Operates it themselves", row.operation() == Order.Operation.WORKER,
+                drawWorkChoice(g, operatorChoiceRect(shown), tr("townstead.orders.assignment.assigned_worker"),
+                        tr("townstead.orders.assignment.operates_self"), row.operation() == Order.Operation.WORKER,
                         mouseX, mouseY);
             } else {
                 int index = actual - 1 - (row.workerFallback() ? 1 : 0);
                 var choice = row.operators().get(index);
-                drawWorkChoice(g, operatorChoiceRect(shown), choice.name(), "Eligible animal",
+                drawWorkChoice(g, operatorChoiceRect(shown), choice.name(),
+                        tr("townstead.orders.assignment.eligible_animal"),
                         row.operation() == Order.Operation.ENTITY
                                 && choice.uuid().equals(row.operator()), mouseX, mouseY);
             }
@@ -1460,10 +1490,11 @@ public class OrdersScreen extends Screen {
             int h = DETAIL_STRIP_H + DETAIL_PAD + 4 + 44 + DETAIL_PAD;
             return new Rect((this.width - w) / 2, (this.height - h) / 2, w, h);
         }
-        Rect[] modes = Controls.segmentLayout(this.font, 0, 0, MODE_LABELS);
-        Rect[] scopes = Controls.segmentLayout(this.font, 0, 0, SCOPE_LABELS);
+        Rect[] modes = Controls.segmentLayout(this.font, 0, 0, modeLabels());
+        Rect[] scopes = Controls.segmentLayout(this.font, 0, 0, scopeLabels());
         int settings = Math.max(modes[modes.length - 1].right() + 12,
-                this.font.width("Counted across") + 8 + scopes[scopes.length - 1].right() + 12);
+                this.font.width(tr("townstead.orders.settings.counted_across"))
+                        + 8 + scopes[scopes.length - 1].right() + 12);
         if (detailsStacked()) {
             int w = Math.min(this.width - SPACING * 2 - FRAME * 2, 360);
             int desiredH = DETAIL_STRIP_H + DETAIL_PAD + 4 + 88 + DETAIL_PAD + 88 + DETAIL_PAD;
@@ -1506,7 +1537,7 @@ public class OrdersScreen extends Screen {
 
     private Rect[] detailsModes() {
         return Controls.segmentLayout(this.font, settingsLeft() + 6, detailsSettingsTop() + 8,
-                MODE_LABELS);
+                modeLabels());
     }
 
     private Rect[] detailsStepper(Row row) {
@@ -1516,8 +1547,8 @@ public class OrdersScreen extends Screen {
 
     private Rect[] detailsScope() {
         return Controls.segmentLayout(this.font,
-                settingsLeft() + 6 + this.font.width("Counted across") + 8,
-                detailsSettingsTop() + 66, SCOPE_LABELS);
+                settingsLeft() + 6 + this.font.width(tr("townstead.orders.settings.counted_across")) + 8,
+                detailsSettingsTop() + 66, scopeLabels());
     }
 
     @Nullable
@@ -1973,7 +2004,7 @@ public class OrdersScreen extends Screen {
             ItemStack fuel = new ItemStack(net.minecraft.world.item.Items.COAL);
             //? if >=1.21 {
             fuel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-                    net.minecraft.network.chat.Component.literal("Any furnace fuel"));
+                    net.minecraft.network.chat.Component.translatable("townstead.orders.fuel.any"));
             //?} else {
             /*fuel.setHoverName(net.minecraft.network.chat.Component.literal("Any furnace fuel"));
             *///?}
@@ -1995,11 +2026,11 @@ public class OrdersScreen extends Screen {
 
     private static String statusLabel(OrdersSnapshotS2CPayload.Status status) {
         return switch (status) {
-            case WORKING -> "WORKING";
-            case WAITING -> "WAITING";
-            case BLOCKED -> "BLOCKED";
-            case PAUSED -> "HELD";
-            case SATISFIED -> "DONE";
+            case WORKING -> tr("townstead.orders.status.working");
+            case WAITING -> tr("townstead.orders.status.waiting");
+            case BLOCKED -> tr("townstead.orders.status.blocked");
+            case PAUSED -> tr("townstead.orders.status.held");
+            case SATISFIED -> tr("townstead.orders.status.done");
         };
     }
 

@@ -1,0 +1,23 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "state": "townstead_state:drunk",
+  "tier": "wasted",
+  "priority": 50,
+  "on_enter": [
+    { "type": "pheno:speak", "pool": "dialogue.chat.townstead_drunk.wasted_arrival", "variants": 4 },
+    { "type": "pheno:performance", "performance": "townstead:steady_yourself", "channel": "state", "duration_ticks": 100, "priority": 50, "fallback": "stand" }
+  ],
+  "on_tier_change": { "type": "pheno:performance", "performance": "townstead:steady_yourself", "channel": "state", "duration_ticks": 100, "priority": 50, "fallback": "stand" },
+  "while_active": {
+    "interval": 220,
+    "chance": 0.35,
+    "do": {
+      "type": "pheno:choice",
+      "actions": [
+        { "weight": 3, "action": { "type": "pheno:performance", "performance": "townstead:steady_yourself", "channel": "state", "duration_ticks": 80, "priority": 50, "fallback": "stand" } },
+        { "weight": 2, "action": { "type": "pheno:speak", "pool": "dialogue.chat.townstead_drunk.wasted_ambient", "variants": 4 } }
+      ]
+    }
+  },
+  "on_exit": { "type": "pheno:speak", "pool": "dialogue.chat.townstead_drunk.recovered", "variants": 4 }
+}

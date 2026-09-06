@@ -1,0 +1,14 @@
+{
+  "schema":"townstead:hangout_venue/v2","mods":"kaleidoscope_tavern",
+  "buildings":["compat/kaleidoscope_tavern/tavern_l1","compat/kaleidoscope_tavern/tavern_l2","compat/kaleidoscope_tavern/tavern_l3"],
+  "capacity":10,"activities":["townstead:kaleidoscope_tasting","townstead:kaleidoscope_bar_conversation","townstead:tavern_shared_meal"],
+  "tags":["townstead_hangouts:lively","townstead_hangouts:social","townstead_hangouts:quirky","townstead_hangouts:food","townstead_hangouts:drink"],
+  "amenities":["seating","food","drink","conversation","glassware","bottle_storage"],
+  "staff_roles": {
+    "bartender": {"type":"pheno:profession","profession":"townstead:beverage_artisan","path":"bartender"},
+    "server": {"type":"pheno:or","conditions":[
+      {"type":"pheno:profession","profession":"townstead:beverage_artisan","path":"bartender"},
+      {"type":"pheno:profession","profession":"townstead:cook"}
+    ]}
+  }
+}

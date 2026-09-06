@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "[PLACEHOLDER] SCRIBE SKILL 02"
+    "translate": "skill.townstead.scribe.steady_hand"
   },
   "icon": "minecraft:barrier",
   "description": {
-    "text": "PLACEHOLDER COPY: Define the final name, icon, description, and player-facing identity for scribe/steady_hand."
+    "translate": "skill.townstead.scribe.steady_hand.description"
   },
   "tier": 2,
   "cost": 1,

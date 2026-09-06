@@ -1,0 +1,6 @@
+{
+  "schema":"townstead:serving_menu/v1",
+  "mods":["candlelight","farm_and_charm"],
+  "buildings":["compat/candlelight/restaurant_l1","compat/candlelight/restaurant_l2","compat/candlelight/restaurant_l3"],
+  "products":["candlelight:tomato_soup","candlelight:mushroom_soup","candlelight:pasta_with_mozzarella","candlelight:bolognese","candlelight:beef_with_mushroom_in_wine_and_potatoes","candlelight:pasta_with_bolognese","candlelight:roastbeef_with_glazed_carrots","candlelight:roasted_lamb_with_lettuce","candlelight:fillet_steak","candlelight:tropical_fish_supreme","candlelight:chicken_alfredo","candlelight:salmon_on_white_wine","candlelight:chicken_with_vegetables","candlelight:pork_ribs","candlelight:lasagne","candlelight:beef_wellington","candlelight:khinkali","candlelight:beetroot_salad","candlelight:chicken_teriyaki","candlelight:salad","candlelight:beef_tartare","candlelight:pasta_with_lettuce","candlelight:omelet","candlelight:harvest_plate","candlelight:chocolate_mousse","candlelight:fresh_garden_salad","candlelight:tomato_mozzarella_salad"]
+}

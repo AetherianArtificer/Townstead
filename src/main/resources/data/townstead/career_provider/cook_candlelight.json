@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:cook",
+  "mods": ["candlelight", "farm_and_charm"],
+  "priority": 30,
+  "contributes": {
+    "profession": {
+      "poi": [{
+        "type": "townstead:building",
+        "type_prefix": "compat/candlelight/restaurant_l",
+        "slots_per_tier": [1, 2, 3]
+      }],
+      "tasks": [{
+        "type": "townstead_work:cook",
+        "workstations": ["candlelight:cooking_pot", "candlelight:cooking_pan", "#candlelight:stoves"],
+        "weight": 10
+      }]
+    }
+  }
+}

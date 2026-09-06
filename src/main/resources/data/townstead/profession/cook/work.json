@@ -12,6 +12,11 @@
       "type_prefix": "compat/pizzadelight/pizzeria_l",
       "slots_per_tier": [1, 2, 3],
       "path_affinity": ["pizzaiolo"]
+    },
+    {
+      "type": "townstead:building",
+      "type_prefix": "compat/cozycafe/cafe_l",
+      "slots_per_tier": [3]
     }
   ],
   "tasks": [

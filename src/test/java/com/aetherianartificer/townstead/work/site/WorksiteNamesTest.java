@@ -59,8 +59,8 @@ class WorksiteNamesTest {
     private static WorksiteKey key() {
         //? if >=1.21 {
         return new WorksiteKey(
-                net.minecraft.resources.ResourceLocation.parse("townstead:anchor"),
-                net.minecraft.resources.ResourceLocation.parse("minecraft:overworld"), 1L);
+                net.minecraft.resources.ResourceLocation.tryParse("townstead:anchor"),
+                net.minecraft.resources.ResourceLocation.tryParse("minecraft:overworld"), 1L);
         //?} else {
         /*return new WorksiteKey(
                 new net.minecraft.resources.ResourceLocation("townstead:anchor"),

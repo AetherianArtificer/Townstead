@@ -1,7 +1,7 @@
 {
   "schema": "townstead:extended_building/v1",
   "spirit": {
-    "commercial": 5,
-    "tourism": 2
+    "tourism": 5,
+    "commercial": 2
   }
 }

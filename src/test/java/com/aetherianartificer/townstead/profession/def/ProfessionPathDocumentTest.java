@@ -19,6 +19,7 @@ class ProfessionPathDocumentTest {
                         {"schema":"townstead:profession_path/v1",
                          "name":"Hive Keeper","title":"Apiarist","color":"#D6A928",
                          "worksites":["minecraft:beehive"],
+                         "storage":{"preferred_roles":["townstead:honey"]},
                          "clothing":["example:beekeeper","minecraft:farmer"],
                          "skills":[
                            "smoker_use",
@@ -35,6 +36,8 @@ class ProfessionPathDocumentTest {
                 path.getAsJsonArray("worksites").get(0).getAsString());
         assertEquals("example:beekeeper",
                 path.getAsJsonArray("clothing").get(0).getAsString());
+        assertEquals("townstead:honey", path.getAsJsonObject("storage")
+                .getAsJsonArray("preferred_roles").get(0).getAsString());
         assertEquals(1, applied.skillTiers().get("hive_keeper/smoker_use"));
         assertEquals(2, applied.skillTiers().get("hive_keeper/protective_clothing"));
         assertEquals(2, applied.skillTiers().get("hive_keeper/veil_mending"));

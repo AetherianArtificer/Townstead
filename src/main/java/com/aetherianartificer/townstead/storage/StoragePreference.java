@@ -43,7 +43,11 @@ public record StoragePreference(List<ResourceLocation> preferredRoles) {
         ResourceLocation id = BuiltInRegistries.VILLAGER_PROFESSION
                 .getKey(villager.getVillagerData().getProfession());
         ProfessionDef def = id == null ? null : ProfessionDefs.byId(id);
-        return def == null ? NONE : def.storage();
+        if (def == null) return NONE;
+        var path = com.aetherianartificer.townstead.profession.ProfessionIdentity
+                .path(villager, def.id());
+        if (path != null && !path.storage().preferredRoles().isEmpty()) return path.storage();
+        return def.storage();
     }
 
     /** Parses {@code "storage":{"preferred_roles":["townstead:materials"]}}. */

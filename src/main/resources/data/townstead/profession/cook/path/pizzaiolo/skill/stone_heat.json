@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Stone Heat"
+    "translate": "skill.townstead.cook.pizzaiolo.stone_heat"
   },
   "icon": "minecraft:magma_block",
   "description": {
-    "text": "Hold a hard, even heat through a long service. Gain fire resistance and ignite hostile creatures around you."
+    "translate": "skill.townstead.cook.pizzaiolo.stone_heat.description"
   },
   "cost": 1,
   "requires": ["stone_oven"],

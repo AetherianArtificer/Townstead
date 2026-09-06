@@ -1,12 +1,12 @@
 {
   "schema": "townstead:profession/v2",
   "display_name": {
-    "text": "Cook"
+    "translate": "career.townstead.cook"
   },
   "icon": "minecraft:cooked_beef",
   "work_sound": "minecraft:entity.villager.work_butcher",
   "description": {
-    "text": "Prepare food to build a history of culinary mastery."
+    "translate": "career.townstead.cook.description"
   },
   "clothing": [
     "townstead:cook",

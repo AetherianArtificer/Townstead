@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:reaction/v3",
+  "display_name": "reaction.townstead.ponder",
+  "tags": [
+    "thought"
+  ],
+  "cooldown": "180s",
+  "chance": "20%",
+  "triggers": [
+    {
+      "type": "context_enter",
+      "tags": [
+        "at_workstation"
+      ]
+    }
+  ],
+  "choices": [
+    {
+      "do": {
+        "type": "pheno:performance",
+        "performance": "townstead:reaction_ponder",
+        "channel": "reaction",
+        "duration_ticks": 48,
+        "priority": 30,
+        "fallback": "stand"
+      }
+    }
+  ]
+}

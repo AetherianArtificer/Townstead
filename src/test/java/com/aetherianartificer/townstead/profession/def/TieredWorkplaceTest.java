@@ -1,8 +1,11 @@
 package com.aetherianartificer.townstead.profession.def;
 
+import com.google.gson.JsonParser;
+import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -77,5 +80,24 @@ class TieredWorkplaceTest {
         assertEquals(1, plain.slotsFor("bakery"));
         assertEquals(0, plain.tierOf("bakery"));
         assertEquals(0, plain.slotsFor("library"));
+    }
+
+    @Test
+    void proprietorReservationParsesAndAppliesToTheFirstSeatAtEveryTier() {
+        JobSiteProvider.Building bars = (JobSiteProvider.Building) JobSiteProviders.parse(
+                JsonParser.parseString("""
+                        {"type":"townstead:building",
+                         "type_prefix":"compat/beachparty/beach_cocktail_bar_l",
+                         "slots_per_tier":[1,2,3],
+                         "proprietor":{"professions":["beachparty:sandymerchant"],"slots":1}}
+                        """).getAsJsonObject());
+
+        assertEquals(Set.of(ResourceLocation.tryParse("beachparty:sandymerchant")),
+                bars.requiredProfessionsForSeat(
+                        "compat/beachparty/beach_cocktail_bar_l3", 0));
+        assertTrue(bars.requiredProfessionsForSeat(
+                        "compat/beachparty/beach_cocktail_bar_l3", 1).isEmpty());
+        assertTrue(bars.requiredProfessionsForSeat(
+                        "compat/beachparty/beach_cocktail_bar_l3", 2).isEmpty());
     }
 }

@@ -154,7 +154,21 @@ public final class Stations {
 
     /** Author-declared stand cells for a station (workstation def "stands" offsets), safety-checked. */
     public static List<BlockPos> preferredStands(BlockGetter level, BlockPos anchor) {
-        WorkstationDef def = Workstations.byState(level.getBlockState(anchor));
+        BlockState state = level.getBlockState(anchor);
+        WorkstationV2Def v2 = Workstations.v2ByState(state);
+        if (v2 != null && !v2.stands().isEmpty()) {
+            List<BlockPos> out = new ArrayList<>();
+            Direction facing = state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING)
+                    ? state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING)
+                    : Direction.NORTH;
+            for (Vec3i authored : v2.stands()) {
+                Vec3i offset = v2.standsRelativeToFacing() ? rotateFromNorth(authored, facing) : authored;
+                BlockPos pos = anchor.offset(offset);
+                if (WorkPathing.isSafeStandPosition(level, pos)) out.add(pos.immutable());
+            }
+            return List.copyOf(out);
+        }
+        WorkstationDef def = Workstations.byState(state);
         // An empty placement anchor carries no block; its stands come from the place-surface def
         // whose surface sits below.
         if (def == null && level instanceof ServerLevel serverLevel
@@ -168,6 +182,16 @@ public final class Stations {
             if (WorkPathing.isSafeStandPosition(level, pos)) out.add(pos.immutable());
         }
         return out;
+    }
+
+    /** Rotate a station-local offset whose forward direction is north into block-state facing. */
+    static Vec3i rotateFromNorth(Vec3i offset, Direction facing) {
+        return switch (facing) {
+            case EAST -> new Vec3i(-offset.getZ(), offset.getY(), offset.getX());
+            case SOUTH -> new Vec3i(-offset.getX(), offset.getY(), -offset.getZ());
+            case WEST -> new Vec3i(offset.getZ(), offset.getY(), -offset.getX());
+            default -> offset;
+        };
     }
 
     /** The declared stand nearest this villager, or null when none are declared or safe. */

@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Kitchen Rhythm"
+    "translate": "skill.townstead.cook.pizzaiolo.kitchen_rhythm"
   },
   "icon": "minecraft:note_block",
   "description": {
-    "text": "Dough, peel, and oven settle into a practiced rhythm. Gain 1 additional Cook XP whenever work is completed."
+    "translate": "skill.townstead.cook.pizzaiolo.kitchen_rhythm.description"
   },
   "cost": 1,
   "requires": ["pizza_craft"],

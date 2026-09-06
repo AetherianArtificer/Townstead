@@ -1,0 +1,117 @@
+{
+  "schema": "townstead:conversation/v1",
+  "weight": 4,
+  "context": ["memory:townstead_social:witnessed_harm"],
+  "start": "open",
+  "turns": {
+    "open": {
+      "speaker": "initiator",
+      "lines": [
+        "dialogue.townstead_social.checking_after_harm.open.1",
+        "dialogue.townstead_social.checking_after_harm.open.2",
+        "dialogue.townstead_social.checking_after_harm.open.3"
+      ],
+      "duration": "4s",
+      "gesture": {"performance": "townstead:conversation_talk", "expression": "townstead_expressions:worry"},
+      "listener": {"performance": "townstead:conversation_listen"},
+      "replies": ["accepts_concern", "guards_pride"]
+    },
+    "accepts_concern": {
+      "speaker": "responder",
+      "lines": [
+        "dialogue.townstead_social.checking_after_harm.accepts_concern.1",
+        "dialogue.townstead_social.checking_after_harm.accepts_concern.2",
+        "dialogue.townstead_social.checking_after_harm.accepts_concern.3"
+      ],
+      "duration": "4s",
+      "gesture": {"performance": "townstead:conversation_talk"},
+      "listener": {"performance": "townstead:conversation_listen"},
+      "personality_weights": {"friendly": 1.7, "sensitive": 1.8, "relaxed": 1.4, "default": 1},
+      "relationship_weights": {"friend": 1.8, "strained": 0.45, "default": 1},
+      "replies": ["offers_help"]
+    },
+    "guards_pride": {
+      "speaker": "responder",
+      "lines": [
+        "dialogue.townstead_social.checking_after_harm.guards_pride.1",
+        "dialogue.townstead_social.checking_after_harm.guards_pride.2",
+        "dialogue.townstead_social.checking_after_harm.guards_pride.3"
+      ],
+      "duration": "4s",
+      "gesture": {"performance": "townstead:reaction_shrug", "expression": "townstead_expressions:annoyed"},
+      "listener": {"performance": "townstead:conversation_listen"},
+      "personality_weights": {"crabby": 2.2, "introverted": 1.7, "gloomy": 1.4, "default": 0.65},
+      "relationship_weights": {"friend": 0.5, "strained": 1.9, "default": 1},
+      "replies": ["gives_space"]
+    },
+    "offers_help": {
+      "speaker": "initiator",
+      "lines": [
+        "dialogue.townstead_social.checking_after_harm.offers_help.1",
+        "dialogue.townstead_social.checking_after_harm.offers_help.2"
+      ],
+      "duration": "4s",
+      "gesture": {"performance": "townstead:conversation_talk"},
+      "listener": {"performance": "townstead:conversation_listen"},
+      "replies": ["accepts_help"]
+    },
+    "gives_space": {
+      "speaker": "initiator",
+      "lines": [
+        "dialogue.townstead_social.checking_after_harm.gives_space.1",
+        "dialogue.townstead_social.checking_after_harm.gives_space.2"
+      ],
+      "duration": "3s",
+      "gesture": {"performance": "townstead:kind_refusal"},
+      "listener": {"performance": "townstead:conversation_listen"},
+      "replies": ["ends_guarded"]
+    },
+    "accepts_help": {
+      "speaker": "responder",
+      "lines": [
+        "dialogue.townstead_social.checking_after_harm.accepts_help.1",
+        "dialogue.townstead_social.checking_after_harm.accepts_help.2"
+      ],
+      "duration": "4s",
+      "gesture": {"performance": "townstead:reaction_nod", "expression": "townstead_expressions:relief"},
+      "listener": {"performance": "townstead:conversation_listen"},
+      "outcome": {
+        "memory": "townstead_social:reassured",
+        "initiator_memory": "townstead_social:offered_support",
+        "responder_memory": "townstead_social:reassured",
+        "initiator_opinion": 2,
+        "responder_opinion": 3,
+        "initiator_relationship": [
+          {"quality": "townstead:comfort", "amount": 2},
+          {"quality": "townstead:trust", "amount": 1}
+        ],
+        "responder_relationship": [
+          {"quality": "townstead:comfort", "amount": 3},
+          {"quality": "townstead:trust", "amount": 3}
+        ],
+        "initiator_mood": 1,
+        "responder_mood": 2
+      }
+    },
+    "ends_guarded": {
+      "speaker": "responder",
+      "lines": [
+        "dialogue.townstead_social.checking_after_harm.ends_guarded.1",
+        "dialogue.townstead_social.checking_after_harm.ends_guarded.2"
+      ],
+      "duration": "3s",
+      "gesture": {"performance": "townstead:conversation_talk"},
+      "listener": {"performance": "townstead:conversation_listen"},
+      "outcome": {
+        "memory": "townstead_social:needs_space",
+        "initiator_memory": "townstead_social:missed_connection",
+        "responder_memory": "townstead_social:needs_space",
+        "responder_relationship": [
+          {"quality": "townstead:comfort", "amount": -1, "half_life_days": 20}
+        ],
+        "initiator_mood": 0,
+        "responder_mood": -1
+      }
+    }
+  }
+}

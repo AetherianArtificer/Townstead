@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "providers_required": true,
+  "name": { "translate": "career.townstead.beverage_artisan.path.bartender" },
+  "title": { "translate": "career.townstead.beverage_artisan.title.bartender" },
+  "color": "#68455B",
+  "clothing": ["minecraft:leatherworker"],
+  "worksites": [],
+  "skills": ["read_the_room"]
+}

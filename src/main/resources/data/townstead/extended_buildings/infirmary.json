@@ -3,7 +3,6 @@
   "storage_roles": ["townstead:medical"],
   "workers": ["minecraft:cleric"],
   "spirit": {
-    "scholar": 5,
-    "commercial": 2
+    "scholar": 5
   }
 }

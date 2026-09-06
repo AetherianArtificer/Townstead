@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": ["brewinandchewin", "cocktailsdelight"],
+  "items": [
+    "cocktailsdelight:vodka_tonic",
+    "cocktailsdelight:boilermaker",
+    "cocktailsdelight:mojito",
+    "cocktailsdelight:pina_colada",
+    "cocktailsdelight:whiskey_sour",
+    "cocktailsdelight:lemon_lime",
+    "cocktailsdelight:cranberry_juice"
+  ],
+  "transaction": {
+    "mode": "observe_native",
+    "accounting": "consume_one",
+    "consumers": ["player"],
+    "remainder": { "mode": "native", "destination": "holder" }
+  }
+}

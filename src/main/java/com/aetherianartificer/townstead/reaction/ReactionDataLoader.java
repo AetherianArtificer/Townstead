@@ -79,7 +79,7 @@ public final class ReactionDataLoader implements PreparableReloadListener {
             }
             if (accumulator == null) continue;
             if (accumulator.bindings().isEmpty()) {
-                Townstead.LOGGER.warn("Reaction '{}' has no usable bindings after merge; will never fire", reactionId);
+                Townstead.LOGGER.warn("Reaction '{}' has no usable outcomes after merge; will never fire", reactionId);
             }
             merged.put(reactionId, accumulator);
         }

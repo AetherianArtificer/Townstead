@@ -127,5 +127,18 @@
   "crabby.dialogue.chat.leatherworker_request.no_salt/1": "<angry>No salt. Brilliant. Just let it rot, I guess.</angry>",
   "crabby.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<angry>Wet sponge. Wet rag. Pick one. Anything. Please.</angry>",
   "crabby.dialogue.chat.leatherworker_request.no_storage/1": "<angry>Pack's full. Where's this leather supposed to go, my hat?</angry>",
-  "crabby.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Fine. Leather. Took long enough.</happy>"
+  "crabby.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Fine. Leather. Took long enough.</happy>",
+  "crabby.dialogue.chat.beverage_artisan_request.no_worksite/1": "<angry>No drink station. Shall I brew on the floor?</angry>",
+  "crabby.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<angry>Empty shelves again. Wonderful. Bring ingredients.</angry>",
+  "crabby.dialogue.chat.beverage_artisan_request.no_storage/1": "<angry>No room for the finished drinks. Did nobody plan ahead?</angry>",
+  "crabby.dialogue.chat.beverage_artisan_request.unreachable/1": "<angry>Something's blocking my station. Move it.</angry>",
+  "crabby.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<angry>I could make %2$s if anyone had remembered the ingredients.</angry>",
+  "crabby.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<angry>It's a decent drink. Stop staring.</angry>",
+  "crabby.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<angry>I'm pacing myself. Mind your own cup.</angry>",
+  "crabby.dialogue.chat.townstead_drunk.drunk_arrival/1": "<angry>The room is crooked. Somebody should fix that.</angry>",
+  "crabby.dialogue.chat.townstead_drunk.drunk_ambient/1": "<angry>I had a perfectly good point before you interrupted the table.</angry>",
+  "crabby.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>No more. Water, and keep the noise down.</sleepy>",
+  "crabby.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>If the floor would stop moving, I'd get up.</sleepy>",
+  "crabby.dialogue.chat.townstead_drunk.service_refused/1": "<angry>I said no. Bring water and leave the jug.</angry>",
+  "crabby.dialogue.chat.townstead_drunk.recovered/1": "<angry>My head hurts. Quiet.</angry>"
 }

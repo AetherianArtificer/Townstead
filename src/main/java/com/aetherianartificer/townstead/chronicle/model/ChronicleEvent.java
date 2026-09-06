@@ -56,7 +56,7 @@ public record ChronicleEvent(
                 participations, params);
     }
 
-    /** True when this event spreads (gets accounts) rather than only counting. */
+    /** True when accounts of this event may enter the public spread pool. Private participants can still learn it. */
     public boolean newsworthy() {
         return reach > REACH_NONE;
     }

@@ -35,6 +35,11 @@ repositories {
     // Reserved with an explicit carve-out: "Write your own code that uses this code as a
     // dependency (such as addons or datapacks)." Nothing of theirs ships in our jar.
     maven { url = uri("https://code.redspace.io/releases") }
+    // Curios API, for the optional wearables integration (villager Curios slots and screen).
+    maven {
+        url = uri("https://www.cursemaven.com")
+        content { includeGroup("curse.maven") }
+    }
     mavenCentral()
 }
 
@@ -52,6 +57,8 @@ dependencies {
     // Iron's Spells API, for reading what is actually in a quick-cast slot. compileOnly and
     // non-transitive: the bridge is guarded by ModList, so nothing here is required at runtime.
     compileOnly("io.redspace:irons_spellbooks:1.21.1-3.16.2:api") { isTransitive = false }
+    // Curios (runtime optional): everything Curios-shaped lives in compat.curios behind ModCompat.
+    compileOnly("curse.maven:curios-309927:6529130")
     // Pure-Java Chronicle archive backend, embedded without SQLite's native binaries.
     implementation(jarJar("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")!!)
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
@@ -105,6 +112,7 @@ tasks.withType<ProcessResources> {
         }
     }
     doLast {
+        if (name != "processResources") return@doLast
         val compatRoot = destinationDir.resolve("townstead_compat/building_types/compat")
         val index = destinationDir.resolve("townstead_compat/index.txt")
         val entries = if (compatRoot.isDirectory) compatRoot.walkTopDown()

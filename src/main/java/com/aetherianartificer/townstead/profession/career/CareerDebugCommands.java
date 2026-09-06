@@ -18,6 +18,7 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -110,42 +111,41 @@ public final class CareerDebugCommands {
 
     private static int points(CommandSourceStack source, LivingEntity entity) {
         if (entity == null) {
-            source.sendFailure(Component.literal("No living target."));
+            source.sendFailure(Component.translatable("townstead.command.career.debug.no_living_target"));
             return 0;
         }
         List<ProfessionDef> careers = careersOf(entity);
         if (careers.isEmpty()) {
-            source.sendFailure(Component.literal(
-                    entity.getName().getString() + " has no career."));
+            source.sendFailure(Component.translatable(
+                    "townstead.command.career.debug.no_career", entity.getName()));
             return 0;
         }
-        source.sendSuccess(() -> Component.literal(
-                "=== Insight: " + entity.getName().getString() + " ("
-                        + SkillPoints.available(entity) + " available, "
-                        + SkillPoints.earned(entity) + " earned, "
-                        + SkillPoints.spent(entity) + " spent) ===")
+        source.sendSuccess(() -> Component.translatable("townstead.command.career.debug.insight_heading",
+                        entity.getName(), SkillPoints.available(entity), SkillPoints.earned(entity),
+                        SkillPoints.spent(entity))
                 .withStyle(ChatFormatting.GOLD), false);
         for (ProfessionDef def : careers) {
-            source.sendSuccess(() -> Component.literal(line(entity, def)), false);
+            source.sendSuccess(() -> line(entity, def), false);
         }
         return careers.size();
     }
 
-    private static String line(LivingEntity entity, ProfessionDef def) {
+    private static Component line(LivingEntity entity, ProfessionDef def) {
         ProfessionXpStore store = CareerTreeRows.storeOf(entity);
         int level = store == null ? 1 : ProfessionProgress.getTier(store, def.id());
         int earned = SkillPoints.earned(entity, def);
-        StringBuilder text = new StringBuilder(String.format(
-                "%s: level %d/%d, %d xp, contributes %d Insight, spends %d here",
-                def.displayName().getString(), level,
-                ProfessionProgressions.spec(def.id()).maxTier(),
-                store == null ? 0 : ProfessionProgress.getXp(store, def.id()),
-                earned, SkillPoints.spent(entity, def)));
         ProfessionPaths.Path committed = ProfessionPaths.committedPath(
                 def.id(), LearnedSkills.learned(entity)::contains);
-        text.append(committed == null ? ", no path chosen"
-                : ", path: " + committed.displayName().getString());
-        return text.toString();
+        if (committed == null) {
+            return Component.translatable("townstead.command.career.debug.line.no_path",
+                    def.displayName(), level, ProfessionProgressions.spec(def.id()).maxTier(),
+                    store == null ? 0 : ProfessionProgress.getXp(store, def.id()), earned,
+                    SkillPoints.spent(entity, def));
+        }
+        return Component.translatable("townstead.command.career.debug.line.path",
+                def.displayName(), level, ProfessionProgressions.spec(def.id()).maxTier(),
+                store == null ? 0 : ProfessionProgress.getXp(store, def.id()), earned,
+                SkillPoints.spent(entity, def), committed.displayName());
     }
 
     // ── Grant / revoke, through the level track ────────────────────────────
@@ -160,8 +160,8 @@ public final class CareerDebugCommands {
         if (entity == null || def == null) return 0;
         ProfessionXpStore store = CareerTreeRows.storeOf(entity);
         if (store == null) {
-            source.sendFailure(Component.literal(
-                    entity.getName().getString() + " has no progression state."));
+            source.sendFailure(Component.translatable(
+                    "townstead.command.career.debug.no_progression", entity.getName()));
             return 0;
         }
         int before = ProfessionProgress.getTier(store, def.id());
@@ -177,8 +177,8 @@ public final class CareerDebugCommands {
             int spent = SkillPoints.spent(entity);
             int available = SkillPoints.available(entity);
             if (count > available) {
-                source.sendFailure(Component.literal("Only " + Math.max(0, available)
-                        + " unspent Insight to revoke; the rest is spent. Respec first."));
+                source.sendFailure(Component.translatable(
+                        "townstead.command.career.debug.revoke.spent", Math.max(0, available)));
                 return 0;
             }
             int earnedOutsideCareer = SkillPoints.earned(entity) - earnedBefore;
@@ -192,18 +192,18 @@ public final class CareerDebugCommands {
         }
         int reached = ProfessionProgress.setLevel(store, def.id(), wanted);
         int delta = def.skillPointsThrough(reached) - earnedBefore;
-        source.sendSuccess(() -> Component.literal(String.format(
-                "%s: level %d -> %d, %+d Insight.",
-                def.displayName().getString(), before, reached, delta))
+        source.sendSuccess(() -> Component.translatable("townstead.command.career.debug.level_changed",
+                        def.displayName(), before, reached, String.format("%+d", delta))
                 .withStyle(ChatFormatting.GREEN), true);
         if (Math.abs(delta) < count) {
-            source.sendSuccess(() -> Component.literal("  The level track ran out at "
-                    + (grant ? "level " + reached + " (the top)" : "level " + reached)
-                    + ", so you got " + Math.abs(delta) + " of the " + count + " asked for.")
+            source.sendSuccess(() -> Component.translatable(grant
+                            ? "townstead.command.career.debug.track_limit.top"
+                            : "townstead.command.career.debug.track_limit",
+                    reached, Math.abs(delta), count)
                     .withStyle(ChatFormatting.YELLOW), false);
         }
         warnAboveLevel(source, entity, def, reached);
-        source.sendSuccess(() -> Component.literal("  " + line(entity, def)), false);
+        source.sendSuccess(() -> indent(line(entity, def)), false);
         return 1;
     }
 
@@ -212,17 +212,17 @@ public final class CareerDebugCommands {
         if (entity == null || def == null) return 0;
         ProfessionXpStore store = CareerTreeRows.storeOf(entity);
         if (store == null) {
-            source.sendFailure(Component.literal(
-                    entity.getName().getString() + " has no progression state."));
+            source.sendFailure(Component.translatable(
+                    "townstead.command.career.debug.no_progression", entity.getName()));
             return 0;
         }
         int before = ProfessionProgress.getTier(store, def.id());
         int reached = ProfessionProgress.setLevel(store, def.id(), level);
-        source.sendSuccess(() -> Component.literal(def.displayName().getString()
-                + ": level " + before + " -> " + reached + " (" + def.levelName(reached).getString()
-                + ").").withStyle(ChatFormatting.GREEN), true);
+        source.sendSuccess(() -> Component.translatable("townstead.command.career.debug.level_set",
+                def.displayName(), before, reached, def.levelName(reached))
+                .withStyle(ChatFormatting.GREEN), true);
         warnAboveLevel(source, entity, def, reached);
-        source.sendSuccess(() -> Component.literal("  " + line(entity, def)), false);
+        source.sendSuccess(() -> indent(line(entity, def)), false);
         return reached;
     }
 
@@ -242,8 +242,9 @@ public final class CareerDebugCommands {
         }
         if (stranded == 0) return;
         int count = stranded;
-        source.sendSuccess(() -> Component.literal("  " + count
-                + " learned skill(s) now sit above this level. They stay active; respec to clear.")
+        source.sendSuccess(() -> Component.translatable(count == 1
+                        ? "townstead.command.career.debug.skills_above.one"
+                        : "townstead.command.career.debug.skills_above.many", count)
                 .withStyle(ChatFormatting.YELLOW), false);
     }
 
@@ -262,8 +263,8 @@ public final class CareerDebugCommands {
             if (learned.contains(skillId)) owned.add(skillId);
         }
         if (owned.isEmpty()) {
-            source.sendFailure(Component.literal(entity.getName().getString()
-                    + " has learned nothing from " + def.displayName().getString() + "."));
+            source.sendFailure(Component.translatable("townstead.command.career.debug.respec.empty",
+                    entity.getName(), def.displayName()));
             return 0;
         }
         int spentBefore = SkillPoints.spent(entity, def);
@@ -276,13 +277,11 @@ public final class CareerDebugCommands {
         }
         int refunded = spentBefore - SkillPoints.spent(entity, def);
         int total = removed;
-        source.sendSuccess(() -> Component.literal(String.format(
-                "%s respec: forgot %d skill%s, refunded %d point%s.",
-                def.displayName().getString(), total, total == 1 ? "" : "s",
-                refunded, refunded == 1 ? "" : "s")).withStyle(ChatFormatting.GREEN), true);
-        source.sendSuccess(() -> Component.literal("  " + line(entity, def)), false);
-        source.sendSuccess(() -> Component.literal(
-                "  Reopen the Career screen to see the board redraw.")
+        source.sendSuccess(() -> Component.translatable("townstead.command.career.debug.respec.success",
+                def.displayName(), total, refunded).withStyle(ChatFormatting.GREEN), true);
+        source.sendSuccess(() -> indent(line(entity, def)), false);
+        source.sendSuccess(() -> Component.translatable(
+                "townstead.command.career.debug.respec.reopen")
                 .withStyle(ChatFormatting.GRAY), false);
         return total;
     }
@@ -312,7 +311,8 @@ public final class CareerDebugCommands {
                                      com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx) {
         ResourceLocation id = ResourceLocationArgument.getId(ctx, "career");
         ProfessionDef def = ProfessionDefs.byId(id);
-        if (def == null) source.sendFailure(Component.literal("Unknown career '" + id + "'."));
+        if (def == null) source.sendFailure(Component.translatable(
+                "townstead.command.career.debug.unknown", id.toString()));
         return def;
     }
 
@@ -320,12 +320,17 @@ public final class CareerDebugCommands {
     private static LivingEntity self(CommandSourceStack source) {
         LivingEntity player = source.getPlayer();
         if (player == null) {
-            source.sendFailure(Component.literal("Name a target: this console has no player."));
+            source.sendFailure(Component.translatable(
+                    "townstead.command.career.debug.console_target"));
         }
         return player;
     }
 
     private static LivingEntity living(Entity entity) {
         return entity instanceof LivingEntity value ? value : null;
+    }
+
+    private static MutableComponent indent(Component component) {
+        return Component.empty().append("  ").append(component);
     }
 }

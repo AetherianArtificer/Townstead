@@ -129,5 +129,18 @@
   "flirty.dialogue.chat.leatherworker_request.no_salt/1": "<flirty>Salt, my dear. Just a pinch and the magic begins.</flirty>",
   "flirty.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<flirty>A wet sponge, sweetheart. The hide is positively craving it.</flirty>",
   "flirty.dialogue.chat.leatherworker_request.no_storage/1": "<flirty>My pack is overflowing, dear. Find me a place to put all this leather.</flirty>",
-  "flirty.dialogue.chat.leatherworker_flavor.leather_cured/1": "<flirty>Look at this leather, darling. Soft as a kiss.</flirty>"
+  "flirty.dialogue.chat.leatherworker_flavor.leather_cured/1": "<flirty>Look at this leather, darling. Soft as a kiss.</flirty>",
+  "flirty.dialogue.chat.beverage_artisan_request.no_worksite/1": "<flirty>Build me a lovely drink station, darling, and I'll make it worth the visit.</flirty>",
+  "flirty.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<flirty>My shelves are bare, sweetheart. Bring me something tempting to work with.</flirty>",
+  "flirty.dialogue.chat.beverage_artisan_request.no_storage/1": "<flirty>These drinks need somewhere to wait for company, darling.</flirty>",
+  "flirty.dialogue.chat.beverage_artisan_request.unreachable/1": "<flirty>Something's keeping me from my station. Clear me a path, love?</flirty>",
+  "flirty.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<flirty>I would adore making %2$s for you, if I had the ingredients.</flirty>",
+  "flirty.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<flirty>Oh, everyone looks especially charming tonight.</flirty>",
+  "flirty.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<flirty>Come closer, darling. I promise the story improves from here.</flirty>",
+  "flirty.dialogue.chat.townstead_drunk.drunk_arrival/1": "<flirty>I was going to play hard to get, but walking is hard enough.</flirty>",
+  "flirty.dialogue.chat.townstead_drunk.drunk_ambient/1": "<flirty>Is the room spinning, or did you just turn my head?</flirty>",
+  "flirty.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>Water, please, and a strong arm to the nearest chair.</sleepy>",
+  "flirty.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>Stay close, sweetheart. The floor and I are not speaking.</sleepy>",
+  "flirty.dialogue.chat.townstead_drunk.service_refused/1": "<flirty>No more for me, darling. Water can have my attention now.</flirty>",
+  "flirty.dialogue.chat.townstead_drunk.recovered/1": "<happy>There I am. Still charming, thankfully.</happy>"
 }

@@ -8,6 +8,7 @@ import com.aetherianartificer.townstead.work.recipe.FluidCarriers;
 import com.aetherianartificer.townstead.work.recipe.FluidRecipeSources;
 import com.aetherianartificer.townstead.work.recipe.FluidRecipes;
 import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
+import com.aetherianartificer.townstead.work.recipe.RecipeProjections;
 import com.aetherianartificer.townstead.work.recipe.StationType;
 
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -119,11 +120,12 @@ public final class CauponaFluidRecipes {
 
     @Nullable
     private static Brew candidate(ResourceLocation id, Recipe<?> recipe, Boiling boiling) {
-        ResourceLocation output = CauponaRecipeAccess.readFluidId(recipe, "getOutput", "output");
-        if (output == null) return null;
+        RecipeProjections.View projection = RecipeProjections.project(id, COOKING, recipe);
+        ResourceLocation output = projection.idValue("output_fluid");
+        if (!projection.succeeded() || output == null) return null;
 
         // A recipe that allows anything is a fallback, not something to plan a shift around.
-        List<?> allow = CauponaRecipeAccess.readList(recipe, "getAllow", "allow");
+        List<?> allow = projection.listValue("allow");
         if (allow.isEmpty()) return null;
 
         Set<ResourceLocation> items = null;
@@ -139,21 +141,21 @@ public final class CauponaFluidRecipes {
         }
         if (items == null || items.isEmpty()) return null;
 
-        for (Object condition : CauponaRecipeAccess.readList(recipe, "getDeny", "deny")) {
+        for (Object condition : projection.listValue("deny")) {
             items.removeAll(CauponaRecipeAccess.acceptedItems(condition));
         }
         if (items.isEmpty()) return null;
 
-        Base base = boiling.reachableBase(CauponaRecipeAccess.readList(recipe, "getBase", "base"));
+        Base base = boiling.reachableBase(projection.listValue("base"));
         if (base == null) return null;
 
         // Density is measured per serving, so a full pot needs that much in every part of it.
-        float density = CauponaRecipeAccess.readFloat(recipe, "getDensity", "density", 1f);
+        float density = (float) projection.numberValue("density", 1f);
         int parts = BATCH_MB / SERVING_MB;
         int count = Math.min(MAX_INGREDIENTS, Math.max(1, (int) Math.ceil(density * parts)));
 
-        int cookTime = CauponaRecipeAccess.readInt(recipe, "getTime", "time", 200);
-        int priority = CauponaRecipeAccess.readInt(recipe, "getPriority", "priority", 0);
+        int cookTime = projection.intValue("time", 200);
+        int priority = projection.intValue("priority", 0);
         return new Brew(id, priority, base.carried(), output, items,
                 count, Math.max(1, (base.boilTicks() + cookTime) * parts));
     }
@@ -202,16 +204,17 @@ public final class CauponaFluidRecipes {
         /*for (Recipe<?> recipe : WorkRecipeRegistry.getRecipesForType(level, BOWL)) {
             ResourceLocation id = recipe.getId();
         *///?}
-            ResourceLocation filled = CauponaRecipeAccess.readItemId(recipe, "getBowl", "bowl");
+            RecipeProjections.View projection = RecipeProjections.project(id, BOWL, recipe);
+            ResourceLocation filled = projection.idValue("output");
             Set<ResourceLocation> empties = CauponaRecipeAccess.ingredientItems(
-                    CauponaRecipeAccess.read(recipe, "getInBowl", "inBowl"));
-            if (filled == null || empties.isEmpty()) continue;
+                    projection.value("container"));
+            if (!projection.succeeded() || filled == null || empties.isEmpty()) continue;
             ResourceLocation empty = empties.iterator().next();
 
             // One bowl recipe covers every fluid its ingredient matches, so it becomes one pour
             // per fluid — the join only ever looks a fluid up by id.
             for (ResourceLocation fluid : CauponaRecipeAccess.fluidIds(
-                    CauponaRecipeAccess.read(recipe, "getFluid", "fluid"))) {
+                    projection.value("input_fluid"))) {
                 out.add(new FluidRecipes.Pour(id, fluid, SERVING_MB, filled, empty));
             }
         }
@@ -238,11 +241,19 @@ public final class CauponaFluidRecipes {
             //?} else {
             /*for (Recipe<?> recipe : WorkRecipeRegistry.getRecipesForType(level, BOILING)) {
             *///?}
-                ResourceLocation after = CauponaRecipeAccess.readFluidId(recipe, "getAfter", "after");
-                if (after == null) continue;
-                int time = CauponaRecipeAccess.readInt(recipe, "getTime", "time", 200);
+                // Recipe ids are irrelevant to this conversion map, but provenance still records
+                // the owning holder when the supported loader exposes it.
+                //? if >=1.21 {
+                ResourceLocation recipeId = holder.id();
+                //?} else {
+                /*ResourceLocation recipeId = recipe.getId();
+                *///?}
+                RecipeProjections.View projection = RecipeProjections.project(recipeId, BOILING, recipe);
+                ResourceLocation after = projection.idValue("after");
+                if (!projection.succeeded() || after == null) continue;
+                int time = projection.intValue("time", 200);
                 for (ResourceLocation before : CauponaRecipeAccess.fluidIds(
-                        CauponaRecipeAccess.read(recipe, "getBefore", "before"))) {
+                        projection.value("before"))) {
                     next.putIfAbsent(before, after);
                     times.putIfAbsent(before, time);
                 }

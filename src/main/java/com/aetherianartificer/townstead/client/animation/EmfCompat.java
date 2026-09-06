@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.client.animation;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.client.animation.emote.EmotePlaybackRegistry;
+import com.aetherianartificer.townstead.client.animation.nativeclip.NativePlaybackRegistry;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.lang.reflect.Method;
@@ -16,8 +17,10 @@ import java.util.function.Function;
  * for an entity, EMF renders the entity's true vanilla model — real vanilla cubes,
  * the same instances playerAnim registered bend mutators on — then hands back to
  * the CEM model afterwards. Registering "has an active Townstead-tracked emote"
- * restores bend for exactly the emote's duration. EmotecraftEventBridge mirrors
- * player emotes into EmotePlaybackRegistry, so this covers players and villagers
+ * restores bend for exactly the emote's duration. The same arbitration is required
+ * for Townstead-native performances: otherwise EMF re-poses the model after MCA's
+ * {@code setupAnim} and silently erases every native clip transform. EmotecraftEventBridge
+ * mirrors player emotes into EmotePlaybackRegistry, so this covers players and villagers
  * alike. Reflective: EMF is an optional runtime neighbor, never a compile dep.
  */
 public final class EmfCompat {
@@ -31,11 +34,13 @@ public final class EmfCompat {
         try {
             Class<?> api = Class.forName("traben.entity_model_features.EMFAnimationApi");
             Method register = api.getMethod("registerVanillaModelCondition", Function.class);
-            Function<Object, Boolean> activeEmote = emfEntity ->
-                    emfEntity instanceof LivingEntity living
-                            && EmotePlaybackRegistry.get(living.getUUID()) != null;
-            register.invoke(null, activeEmote);
-            Townstead.LOGGER.info("[EmfCompat] registered EMF vanilla-model condition for active emotes");
+            Function<Object, Boolean> townsteadOwnsPose = emfEntity -> {
+                if (!(emfEntity instanceof LivingEntity living)) return false;
+                return EmotePlaybackRegistry.get(living.getUUID()) != null
+                        || NativePlaybackRegistry.hasActive(living.getId(), living.level().getGameTime());
+            };
+            register.invoke(null, townsteadOwnsPose);
+            Townstead.LOGGER.info("[EmfCompat] registered EMF vanilla-model condition for active Townstead performances");
         } catch (ClassNotFoundException ignored) {
             // EMF not installed; nothing to cooperate with.
         } catch (ReflectiveOperationException e) {

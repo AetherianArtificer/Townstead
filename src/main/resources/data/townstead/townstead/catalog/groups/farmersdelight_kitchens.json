@@ -1,6 +1,6 @@
 {
   "schema": "townstead:catalog_group/v1",
-  "label": "Kitchens",
+  "label": "townstead.catalog.group.kitchens",
   "match_prefix": "compat/farmersdelight/kitchen_l",
   "layout": "tiered",
   "priority": 10

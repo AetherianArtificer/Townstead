@@ -1,0 +1,15 @@
+{
+  "schema": "pheno:entity_state/v1",
+  "id": "townstead_state:drunk",
+  "min": 0,
+  "max": 100,
+  "initial": 0,
+  "tiers": [
+    { "id": "tipsy", "min": 20 },
+    { "id": "drunk", "min": 50 },
+    { "id": "wasted", "min": 80 }
+  ],
+  "merge": "max",
+  "persistence": "persistent",
+  "death": "clear"
+}

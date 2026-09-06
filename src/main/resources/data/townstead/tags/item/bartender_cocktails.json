@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "cocktailsdelight:vodka_tonic", "required": false },
+    { "id": "cocktailsdelight:boilermaker", "required": false },
+    { "id": "cocktailsdelight:mojito", "required": false },
+    { "id": "cocktailsdelight:pina_colada", "required": false },
+    { "id": "cocktailsdelight:whiskey_sour", "required": false },
+    { "id": "cocktailsdelight:lemon_lime", "required": false },
+    { "id": "cocktailsdelight:cranberry_juice", "required": false }
+  ]
+}

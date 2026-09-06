@@ -1,8 +1,11 @@
 package com.aetherianartificer.townstead.pheno.condition;
 
 import com.aetherianartificer.townstead.root.CanonicalStage;
+import com.aetherianartificer.townstead.root.LifeStage;
 import com.aetherianartificer.townstead.social.Bonds;
+import net.minecraft.resources.ResourceLocation;
 
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -23,7 +26,18 @@ public interface PhenoSubject {
     /** The stage they present as at the moment being asked about. */
     CanonicalStage lifeStage();
 
+    /**
+     * Open semantic tags of the resolved life stage. Historical/fabricated subjects default to
+     * canonical compatibility tags, while richer subjects may override this with authored tags.
+     */
+    default Set<ResourceLocation> lifeStageTags() {
+        return LifeStage.defaultTags(lifeStage());
+    }
+
     Bonds bonds();
+
+    /** Known experience supplied by a simulation, or null when it cannot answer belief queries. */
+    default com.aetherianartificer.townstead.social.SocialKnowledge socialKnowledge() { return null; }
 
     /**
      * A chronicle counter for this subject. Live, this is the server's exact

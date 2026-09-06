@@ -13,6 +13,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +21,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * A race's whole life cycle, carried as a single heritable gene: the ordered
@@ -38,7 +41,8 @@ import java.util.Map;
  *   "locus": "townstead_roots:life_cycle",
  *   "variance": 0.15,
  *   "stages": [
- *     { "id": "baby", "label": { "translate": "..." }, "presents_as": "baby", "days": 4 },
+ *     { "id": "baby", "label": { "translate": "..." }, "presents_as": "baby", "days": 4,
+ *       "tags": ["example:lifecycle_capability"] },
  *     ...
  *     { "id": "senior", ..., "presents_as": "senior", "days": 60, "on_end": "stay" }
  *   ]
@@ -138,14 +142,40 @@ public final class LifeCycleGeneType implements GeneType {
             boolean mobile = GsonHelper.getAsBoolean(s, "mobile", true);
             boolean needs = GsonHelper.getAsBoolean(s, "needs", true);
             boolean talkable = GsonHelper.getAsBoolean(s, "talkable", true);
+            // Absent preserves the canonical compatibility defaults. An explicitly empty array is
+            // meaningful: a custom adult-presenting stage can opt out of every default capability.
+            Set<ResourceLocation> tags = s.has("tags")
+                    ? parseTags(s.get("tags"), context + "." + id)
+                    : LifeStage.defaultTags(presentsAs);
             // Optional per-stage death loot (added on top of normal drops): "death_loot": [ {item,count|min/max,chance} ].
             List<com.aetherianartificer.townstead.root.loot.LootDrop> deathLoot =
                     s.has("death_loot") && s.get("death_loot").isJsonArray()
                             ? com.aetherianartificer.townstead.root.loot.LootDrop.parseList(s.getAsJsonArray("death_loot"))
                             : List.of();
             stages.add(new LifeStage(id, label, presentsAs, days, narrStart, narrEnd, onEnd, scale, explicitNarrative,
-                    rig.isEmpty() ? null : rig, mobile, needs, talkable, deathLoot));
+                    rig.isEmpty() ? null : rig, mobile, needs, talkable, tags, deathLoot));
         }
         return stages;
+    }
+
+    private static Set<ResourceLocation> parseTags(JsonElement value, String context) {
+        if (!value.isJsonArray()) {
+            LOGGER.warn("{} — stage 'tags' must be an array", context);
+            return Set.of();
+        }
+        Set<ResourceLocation> tags = new LinkedHashSet<>();
+        for (JsonElement element : value.getAsJsonArray()) {
+            if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+                LOGGER.warn("{} — ignoring non-string life-stage tag", context);
+                continue;
+            }
+            ResourceLocation tag = ResourceLocation.tryParse(element.getAsString());
+            if (tag == null) {
+                LOGGER.warn("{} — ignoring invalid life-stage tag '{}'", context, element);
+                continue;
+            }
+            tags.add(tag);
+        }
+        return Set.copyOf(tags);
     }
 }

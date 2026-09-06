@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:profession/v2",
+  "mods": "vinery",
+  "display_name": { "translate": "career.townstead.winemaker" },
+  "description": { "translate": "career.townstead.winemaker.description" },
+  "icon": "vinery:fermentation_barrel",
+  "work_sound": "minecraft:block.barrel.open",
+  "unlock_model": "experiential"
+}

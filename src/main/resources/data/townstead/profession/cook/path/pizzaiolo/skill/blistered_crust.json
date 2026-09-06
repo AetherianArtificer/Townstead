@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Blistered Crust"
+    "translate": "skill.townstead.cook.pizzaiolo.blistered_crust"
   },
   "icon": "minecraft:baked_potato",
   "description": {
-    "text": "The best crust carries the small scars of fierce heat and careful timing. Gain 2 additional Cook XP for each Cook rank you hold."
+    "translate": "skill.townstead.cook.pizzaiolo.blistered_crust.description"
   },
   "cost": 1,
   "requires": ["peel_vault"],

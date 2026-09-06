@@ -118,6 +118,22 @@ class WorkstationV2DefTest {
     }
 
     @Test
+    void fluidRecipeSourceSurvivesTheV2CompatibilityView() {
+        WorkstationV2Def def = parse("""
+                {"schema":"townstead:workstation/v2","blocks":["example:keg"],
+                 "fluid_source":"townstead:example_keg"}
+                """);
+        assertNotNull(def);
+        assertEquals("townstead:example_keg", def.fluidSource());
+        WorkstationDef legacy = def.legacyView(java.util.Set.of(id("example:fermenting")));
+        assertTrue(legacy.fluidStation());
+        assertEquals("townstead:example_keg", legacy.fluidSource());
+        assertNull(parse("""
+                {"blocks":["example:keg"],"fluid_source":""}
+                """));
+    }
+
+    @Test
     void onlyExceptionalInventoryAndBehaviorFactsAreParsed() {
         WorkstationV2Def def = parse("""
                 {"schema":"townstead:workstation/v2","blocks":["example:pot"],
@@ -403,6 +419,74 @@ class WorkstationV2DefTest {
                 {"blocks":["example:wok"],
                  "collect":{"type":"pheno:use_block","secondary_use":"yes"}}
                 """));
+    }
+
+    @Test
+    void parsesFacingRelativeStaffStands() {
+        WorkstationV2Def def = parse("""
+                {"schema":"townstead:workstation/v2","blocks":["example:bar"],
+                 "stands":[[0,0,1],[-1,0,1],[1,0,1]],
+                 "stands_relative_to_facing":true}
+                """);
+        assertNotNull(def);
+        assertTrue(def.standsRelativeToFacing());
+        assertEquals(3, def.stands().size());
+        assertEquals(new net.minecraft.core.Vec3i(0, 0, 1), def.stands().get(0));
+        assertEquals(def.stands(), def.legacyView(java.util.Set.of()).stands());
+    }
+
+    @Test
+    void parsesPreciseBoundedNativeInteraction() {
+        WorkstationV2Def def = parse("""
+                {"blocks":["example:press"],
+                 "behavior":{"type":"pheno:repeat","times":3,"block_action":{
+                   "type":"pheno:use_block","item":"tool","tool":"#example:press_tools",
+                   "face":"north","hit":[0.5,0.75,0.0],
+                   "actor_offset":[0.0,0.0,1.5],"actor_facing":"north"}}}
+                """);
+        assertNotNull(def);
+        assertTrue(def.behaviorUses("tool"));
+        assertNull(parse("""
+                {"blocks":["example:press"],"behavior":{"type":"pheno:repeat","times":65,
+                 "block_action":{"type":"pheno:use_block"}}}
+                """));
+        assertNull(parse("""
+                {"blocks":["example:press"],"behavior":{"type":"pheno:use_block",
+                 "face":"north","hit":[0.5,1.2,0.0]}}
+                """));
+    }
+
+    @Test
+    void parsesAttendedProcessWithBoundedRecoveryActions() {
+        WorkstationV2Def def = parse("""
+                {"blocks":["example:kettle"],
+                 "attendance":{"poll_interval":10,"timeout":1200,"incidents":[
+                   {"id":"overflow","when":{"type":"pheno:block_state",
+                     "property":"liquid","value":"overflowing"},"max_attempts":3,
+                    "response":{"type":"pheno:use_block","item":"supply",
+                     "supply":"minecraft:bucket","face":"up","hit":[0.5,1.0,0.5]}}
+                 ],
+                 "safe_stop":{"type":"pheno:use_block","item":"empty"},
+                 "cleanup":{"type":"pheno:use_block","item":"empty"}}}
+                """);
+        assertNotNull(def);
+        assertNotNull(def.attendance());
+        assertEquals(10, def.attendance().pollInterval());
+        assertEquals("overflow", def.attendance().incidents().get(0).id());
+        assertTrue(def.supplySelectors().contains("minecraft:bucket"),
+                "incident response supplies participate in normal producer gathering");
+        assertNull(parse("""
+                {"blocks":["example:kettle"],"attendance":{"poll_interval":0,"timeout":10,
+                 "incidents":[{"id":"event","when":{"type":"pheno:block_state",
+                  "property":"busy","value":"true"},"response":{"type":"pheno:use_block"}}]}}
+                """));
+    }
+
+    @Test
+    void attendanceAttemptsAreStrictlyCapped() {
+        assertTrue(AttendedStationProtocols.mayAttempt(0, 3));
+        assertTrue(AttendedStationProtocols.mayAttempt(2, 3));
+        assertFalse(AttendedStationProtocols.mayAttempt(3, 3));
     }
 
     @Test

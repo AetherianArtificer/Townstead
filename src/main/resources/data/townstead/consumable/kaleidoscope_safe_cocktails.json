@@ -1,0 +1,8 @@
+{
+  "schema":"townstead:consumable/v2","mods":"kaleidoscope_tavern",
+  "items":["kaleidoscope_tavern:mystery_cocktail"],
+  "transaction":{
+    "mode":"observe_native","accounting":"consume_one","consumers":["player","villager"],"servings":1,
+    "remainder":{"mode":"item","item":"kaleidoscope_tavern:empty_glassware","destination":"holder"}
+  }
+}

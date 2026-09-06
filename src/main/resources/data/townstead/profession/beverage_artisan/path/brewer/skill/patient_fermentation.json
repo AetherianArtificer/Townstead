@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": { "translate": "skill.townstead.beverage_artisan.brewer.patient_fermentation" },
+  "icon": "minecraft:barrel",
+  "description": { "translate": "skill.townstead.beverage_artisan.brewer.patient_fermentation.description" },
+  "cost": 1
+}

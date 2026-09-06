@@ -13,6 +13,7 @@ import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
@@ -45,6 +46,9 @@ public record WorkstationV2Def(
         List<RecipeSlotRole> recipeLayout,
         List<RecipeCorrection> recipeCorrections,
         List<String> recipeSupplies,
+        @Nullable String fluidSource,
+        List<Vec3i> stands,
+        boolean standsRelativeToFacing,
         @Nullable JsonElement requiresJson,
         @Nullable BlockCondition requires,
         @Nullable JsonElement readyJson,
@@ -53,6 +57,7 @@ public record WorkstationV2Def(
         @Nullable JsonElement collect,
         @Nullable JsonElement anchor,
         @Nullable BlockSelector anchorSelector,
+        @Nullable StationTargetLayout targetLayout,
         @Nullable JsonElement structure,
         @Nullable BlockSelector structureSelector,
         @Nullable JsonElement capacity,
@@ -62,6 +67,7 @@ public record WorkstationV2Def(
         int capacityPerPosition,
         boolean stackPerPosition,
         @Nullable ReservationSpec reservation,
+        @Nullable Attendance attendance,
         ShiftEndPolicy shiftEnd) {
 
     public static final String SCHEMA = "townstead:workstation/v2";
@@ -82,6 +88,13 @@ public record WorkstationV2Def(
     /** A narrowly scoped correction for a public recipe whose owning machine demonstrably differs. */
     public record RecipeCorrection(ResourceLocation recipe, ResourceLocation output,
                                    @Nullable JsonElement mods, @Nullable JsonElement config) {}
+
+    /** An attended native process: observe incidents and perform real bounded responses. */
+    public record Attendance(int pollInterval, int timeoutTicks, List<Incident> incidents,
+                             @Nullable JsonElement safeStop, @Nullable JsonElement cleanup) {
+        public record Incident(String id, @Nullable String target, BlockCondition when,
+                               JsonElement response, int maxAttempts) {}
+    }
 
     static @Nullable WorkstationV2Def parse(ResourceLocation id, JsonObject json) {
         if (id == null || json == null || !json.has("blocks") || !json.get("blocks").isJsonArray()) {
@@ -164,6 +177,14 @@ public record WorkstationV2Def(
             }
         }
 
+        String fluidSource = null;
+        if (json.has("fluid_source")) {
+            JsonElement value = json.get("fluid_source");
+            if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) return null;
+            fluidSource = value.getAsString().trim();
+            if (fluidSource.isEmpty() || ResourceLocation.tryParse(fluidSource) == null) return null;
+        }
+
         JsonElement requiresJson = copy(json.get("requires"));
         BlockCondition requires = requiresJson == null ? null : BlockConditions.parse(requiresJson);
         if (requiresJson != null && requires == null) return null;
@@ -177,6 +198,27 @@ public record WorkstationV2Def(
                     .spec(reservationJson);
             if (reservation == null) return null;
         }
+
+        List<Vec3i> stands = new ArrayList<>();
+        if (json.has("stands")) {
+            if (!json.get("stands").isJsonArray()) return null;
+            for (JsonElement element : json.getAsJsonArray("stands")) {
+                if (!element.isJsonArray() || element.getAsJsonArray().size() != 3) return null;
+                int[] coordinate = new int[3];
+                for (int index = 0; index < 3; index++) {
+                    JsonElement value = element.getAsJsonArray().get(index);
+                    Integer parsed = integer(value);
+                    if (parsed == null || Math.abs(parsed) > 16) return null;
+                    coordinate[index] = parsed;
+                }
+                stands.add(new Vec3i(coordinate[0], coordinate[1], coordinate[2]));
+            }
+        }
+        boolean standsRelativeToFacing = json.has("stands_relative_to_facing")
+                && json.get("stands_relative_to_facing").isJsonPrimitive()
+                && json.get("stands_relative_to_facing").getAsBoolean();
+        Attendance attendance = parseAttendance(json.get("attendance"));
+        if (json.has("attendance") && attendance == null) return null;
         JsonElement readyJson = copy(json.get("ready"));
         BlockCondition ready = readyJson == null ? null : BlockConditions.parse(readyJson);
         if (readyJson != null && ready == null) return null;
@@ -187,6 +229,11 @@ public record WorkstationV2Def(
         JsonElement anchor = copy(json.get("anchor"));
         BlockSelector anchorSelector = anchor == null ? null : BlockSelectors.parse(anchor);
         if (anchor != null && anchorSelector == null) return null;
+        StationTargetLayout targetLayout = null;
+        if (json.has("targets")) {
+            targetLayout = StationTargetLayout.parse(json.get("targets"));
+            if (targetLayout == null) return null;
+        }
         JsonElement structure = copy(json.get("structure"));
         BlockSelector structureSelector = structure == null ? null : BlockSelectors.parse(structure);
         if (structure != null && structureSelector == null) return null;
@@ -241,11 +288,61 @@ public record WorkstationV2Def(
         return new WorkstationV2Def(id, Set.copyOf(blocks), List.copyOf(containers),
                 List.copyOf(ingredients), List.copyOf(catalysts), List.copyOf(outputs),
                 List.copyOf(returns), List.copyOf(previews), List.copyOf(layout),
-                List.copyOf(corrections), List.copyOf(supplies),
+                List.copyOf(corrections), List.copyOf(supplies), fluidSource, List.copyOf(stands),
+                standsRelativeToFacing,
                 requiresJson, requires, readyJson, ready, behavior, collect,
-                anchor, anchorSelector, structure, structureSelector,
+                anchor, anchorSelector, targetLayout, structure, structureSelector,
                 capacity, capacityValue, capacityPositions, capacityPositionsValue,
-                capacityPerPosition, stackPerPosition, reservation, shiftEnd);
+                capacityPerPosition, stackPerPosition, reservation, attendance, shiftEnd);
+    }
+
+    private static @Nullable Attendance parseAttendance(@Nullable JsonElement element) {
+        if (element == null || element.isJsonNull()) return null;
+        if (!element.isJsonObject()) return null;
+        JsonObject object = element.getAsJsonObject();
+        Integer pollValue = integer(object.get("poll_interval"));
+        Integer timeoutValue = integer(object.get("timeout"));
+        if (object.has("poll_interval") && pollValue == null
+                || object.has("timeout") && timeoutValue == null) return null;
+        int poll = pollValue == null ? 10 : pollValue;
+        int timeout = timeoutValue == null ? 24000 : timeoutValue;
+        if (poll < 1 || poll > 1200 || timeout < poll || timeout > 120000) return null;
+        if (!object.has("incidents") || !object.get("incidents").isJsonArray()
+                || object.getAsJsonArray("incidents").isEmpty()) return null;
+        List<Attendance.Incident> incidents = new ArrayList<>();
+        Set<String> ids = new LinkedHashSet<>();
+        for (JsonElement entry : object.getAsJsonArray("incidents")) {
+            if (!entry.isJsonObject()) return null;
+            JsonObject incident = entry.getAsJsonObject();
+            if (!incident.has("id") || !incident.get("id").isJsonPrimitive()
+                    || !incident.getAsJsonPrimitive("id").isString()) return null;
+            String id = incident.get("id").getAsString();
+            if (!id.matches("[a-z0-9_./-]+") || !ids.add(id)) return null;
+            String target = incident.has("target") && incident.get("target").isJsonPrimitive()
+                    ? incident.get("target").getAsString() : null;
+            if (incident.has("target") && (target == null || !target.matches("[a-z0-9_./-]+"))) return null;
+            BlockCondition when = BlockConditions.parse(incident.get("when"));
+            JsonElement response = copy(incident.get("response"));
+            if (when == null || response == null || !validBehavior(response)) return null;
+            Integer attemptsValue = integer(incident.get("max_attempts"));
+            if (incident.has("max_attempts") && attemptsValue == null) return null;
+            int attempts = attemptsValue == null ? 3 : attemptsValue;
+            if (attempts < 1 || attempts > 16) return null;
+            incidents.add(new Attendance.Incident(id, target, when, response, attempts));
+        }
+        JsonElement safeStop = copy(object.get("safe_stop"));
+        JsonElement cleanup = copy(object.get("cleanup"));
+        if (safeStop != null && !validBehavior(safeStop)) return null;
+        if (cleanup != null && !validBehavior(cleanup)) return null;
+        return new Attendance(poll, timeout, List.copyOf(incidents), safeStop, cleanup);
+    }
+
+    private static @Nullable Integer integer(@Nullable JsonElement element) {
+        if (element == null || !element.isJsonPrimitive()
+                || !element.getAsJsonPrimitive().isNumber()) return null;
+        double raw = element.getAsDouble();
+        int value = (int) raw;
+        return Double.isFinite(raw) && raw == value ? value : null;
     }
 
     private static boolean parseSlots(JsonObject slots, String key, List<Integer> out) {
@@ -365,14 +462,30 @@ public record WorkstationV2Def(
      * a compatibility input, but an author does not have to name an ignition tool twice merely so
      * planning can gather it before running the Pheno action.
      */
-    private List<String> supplySelectors() {
+    List<String> supplySelectors() {
         LinkedHashSet<String> selectors = new LinkedHashSet<>(recipeSupplies);
         for (JsonElement action : actions(behavior)) {
             JsonObject interaction = interactionOf(action);
             if (interaction == null || !uses(interaction, "supply") || !interaction.has("supply")) continue;
             selectors.add(interaction.get("supply").getAsString());
         }
+        if (attendance != null) {
+            for (Attendance.Incident incident : attendance.incidents()) {
+                collectSupplySelectors(incident.response(), selectors);
+            }
+            collectSupplySelectors(attendance.safeStop(), selectors);
+            collectSupplySelectors(attendance.cleanup(), selectors);
+        }
         return List.copyOf(selectors);
+    }
+
+    private static void collectSupplySelectors(@Nullable JsonElement source, Set<String> selectors) {
+        for (JsonElement action : actions(source)) {
+            JsonObject interaction = interactionOf(action);
+            if (interaction != null && uses(interaction, "supply") && interaction.has("supply")) {
+                selectors.add(interaction.get("supply").getAsString());
+            }
+        }
     }
 
     /** Whether the behavior can change transient requirements before ingredients are staged. */
@@ -402,9 +515,9 @@ public record WorkstationV2Def(
     WorkstationDef legacyView(Set<ResourceLocation> recipeTypes) {
         int container = containerSlots.isEmpty() ? 7 : containerSlots.get(0);
         return new WorkstationDef(id, blocks, List.of(), schedulingRole(recipeTypes), container, 6,
-                List.of(), null, 0, 200, false,
+                stands, null, 0, 200, false,
                 DataDrivenStationAdapter.NAME, Set.of(), List.of(), null, null, List.of(), List.of(),
-                WorkstationDef.FurnaceSlots.VANILLA, false, null, false, null,
+                WorkstationDef.FurnaceSlots.VANILLA, fluidSource != null, fluidSource, false, null,
                 // A V2 recipe family is attached to this exact block. That public association is
                 // already the author's statement that the block performs the recipe; requiring a
                 // second, manually maintained output-item tag would make the order catalogue a
@@ -476,7 +589,7 @@ public record WorkstationV2Def(
         return item != null && stack.is(item);
     }
 
-    private static Iterable<JsonElement> actions(@Nullable JsonElement value) {
+    static Iterable<JsonElement> actions(@Nullable JsonElement value) {
         if (value == null) return List.of();
         return value.isJsonArray() ? value.getAsJsonArray() : List.of(value);
     }
@@ -529,7 +642,18 @@ public record WorkstationV2Def(
         if ("pheno:offset".equals(object.get("type").getAsString())) {
             return object.has("block_action") && validAction(object.get("block_action"));
         }
+        if ("pheno:repeat".equals(object.get("type").getAsString())) {
+            if (!object.has("times") || !object.get("times").isJsonPrimitive()
+                    || !object.getAsJsonPrimitive("times").isNumber()) return false;
+            double raw = object.get("times").getAsDouble();
+            int times = (int) raw;
+            return raw == times && times >= 1
+                    && times <= com.aetherianartificer.townstead.pheno.action.block.types.RepeatBlockActionType.MAX_TIMES
+                    && object.has("block_action") && validAction(object.get("block_action"));
+        }
         if (!"pheno:use_block".equals(object.get("type").getAsString())) return false;
+        if (com.aetherianartificer.townstead.pheno.action.block.types.BlockInteractionGeometry
+                .parse(object) == null) return false;
         if (object.has("secondary_use")
                 && (!object.get("secondary_use").isJsonPrimitive()
                 || !object.getAsJsonPrimitive("secondary_use").isBoolean())) return false;

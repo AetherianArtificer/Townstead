@@ -1,0 +1,4 @@
+{
+  "schema": "townstead:profession_progression/v1",
+  "ranks": [0, 100, 300, 700, 1400]
+}

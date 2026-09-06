@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "mods": ["bakery"],
+  "name": {
+    "translate": "career.townstead.baker.path.pastry_chef"
+  },
+  "title": {
+    "translate": "career.townstead.baker.title.pastry_chef"
+  },
+  "color": "#D98CA8",
+  "worksites": [
+    "bakery:baker_station"
+  ],
+  "skills": [
+    "fine_crumb",
+    "piping_hand",
+    "sugar_work"
+  ]
+}

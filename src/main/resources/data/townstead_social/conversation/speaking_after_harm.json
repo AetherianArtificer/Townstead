@@ -1,0 +1,117 @@
+{
+  "schema": "townstead:conversation/v1",
+  "weight": 3,
+  "context": ["memory:townstead_social:was_seen_hurt"],
+  "start": "open",
+  "turns": {
+    "open": {
+      "speaker": "initiator",
+      "lines": [
+        "dialogue.townstead_social.speaking_after_harm.open.1",
+        "dialogue.townstead_social.speaking_after_harm.open.2",
+        "dialogue.townstead_social.speaking_after_harm.open.3"
+      ],
+      "duration": "4s",
+      "gesture": {"performance": "townstead:conversation_talk"},
+      "listener": {"performance": "townstead:conversation_listen", "expression": "townstead_expressions:worry"},
+      "replies": ["meets_honesty", "avoids_subject"]
+    },
+    "meets_honesty": {
+      "speaker": "responder",
+      "lines": [
+        "dialogue.townstead_social.speaking_after_harm.meets_honesty.1",
+        "dialogue.townstead_social.speaking_after_harm.meets_honesty.2",
+        "dialogue.townstead_social.speaking_after_harm.meets_honesty.3"
+      ],
+      "duration": "4s",
+      "gesture": {"performance": "townstead:conversation_talk"},
+      "listener": {"performance": "townstead:conversation_listen"},
+      "personality_weights": {"friendly": 1.8, "sensitive": 2, "peaceful": 1.5, "default": 1},
+      "relationship_weights": {"friend": 1.7, "strained": 0.5, "default": 1},
+      "replies": ["admits_fear"]
+    },
+    "avoids_subject": {
+      "speaker": "responder",
+      "lines": [
+        "dialogue.townstead_social.speaking_after_harm.avoids_subject.1",
+        "dialogue.townstead_social.speaking_after_harm.avoids_subject.2",
+        "dialogue.townstead_social.speaking_after_harm.avoids_subject.3"
+      ],
+      "duration": "3s",
+      "gesture": {"performance": "townstead:reaction_shrug"},
+      "listener": {"performance": "townstead:conversation_listen"},
+      "personality_weights": {"introverted": 1.7, "crabby": 1.6, "gloomy": 1.3, "default": 0.7},
+      "relationship_weights": {"friend": 0.55, "strained": 1.8, "default": 1},
+      "replies": ["lets_it_rest"]
+    },
+    "admits_fear": {
+      "speaker": "initiator",
+      "lines": [
+        "dialogue.townstead_social.speaking_after_harm.admits_fear.1",
+        "dialogue.townstead_social.speaking_after_harm.admits_fear.2"
+      ],
+      "duration": "4s",
+      "gesture": {"performance": "townstead:conversation_talk", "expression": "townstead_expressions:worry"},
+      "listener": {"performance": "townstead:conversation_listen"},
+      "replies": ["shares_relief"]
+    },
+    "lets_it_rest": {
+      "speaker": "initiator",
+      "lines": [
+        "dialogue.townstead_social.speaking_after_harm.lets_it_rest.1",
+        "dialogue.townstead_social.speaking_after_harm.lets_it_rest.2"
+      ],
+      "duration": "3s",
+      "gesture": {"performance": "townstead:kind_refusal"},
+      "listener": {"performance": "townstead:conversation_listen"},
+      "replies": ["ends_quietly"]
+    },
+    "shares_relief": {
+      "speaker": "responder",
+      "lines": [
+        "dialogue.townstead_social.speaking_after_harm.shares_relief.1",
+        "dialogue.townstead_social.speaking_after_harm.shares_relief.2"
+      ],
+      "duration": "4s",
+      "gesture": {"performance": "townstead:reaction_nod", "expression": "townstead_expressions:relief"},
+      "listener": {"performance": "townstead:conversation_listen"},
+      "outcome": {
+        "memory": "townstead_social:quiet_understanding",
+        "initiator_memory": "townstead_social:gratitude",
+        "responder_memory": "townstead_social:quiet_understanding",
+        "initiator_opinion": 3,
+        "responder_opinion": 2,
+        "initiator_relationship": [
+          {"quality": "townstead:trust", "amount": 3},
+          {"quality": "townstead:comfort", "amount": 3}
+        ],
+        "responder_relationship": [
+          {"quality": "townstead:trust", "amount": 2},
+          {"quality": "townstead:comfort", "amount": 2}
+        ],
+        "initiator_mood": 2,
+        "responder_mood": 1
+      }
+    },
+    "ends_quietly": {
+      "speaker": "responder",
+      "lines": [
+        "dialogue.townstead_social.speaking_after_harm.ends_quietly.1",
+        "dialogue.townstead_social.speaking_after_harm.ends_quietly.2"
+      ],
+      "duration": "3s",
+      "gesture": {"performance": "townstead:conversation_talk"},
+      "listener": {"performance": "townstead:conversation_listen"},
+      "outcome": {
+        "memory": "townstead_social:missed_connection",
+        "initiator_memory": "townstead_social:felt_unheard",
+        "responder_memory": "townstead_social:missed_connection",
+        "initiator_relationship": [
+          {"quality": "townstead:comfort", "amount": -1, "half_life_days": 20}
+        ],
+        "initiator_mood": -1,
+        "responder_mood": 0
+      }
+    }
+  }
+}

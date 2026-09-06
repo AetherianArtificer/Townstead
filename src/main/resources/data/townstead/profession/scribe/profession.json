@@ -1,12 +1,12 @@
 {
   "schema": "townstead:profession/v2",
   "display_name": {
-    "text": "Scribe"
+    "translate": "career.townstead.scribe"
   },
   "icon": "minecraft:writable_book",
   "work_sound": "minecraft:entity.villager.work_librarian",
   "description": {
-    "text": "The village's pen. Keeps the records at the Archives, prints the bulletin, and helps people toward their calling."
+    "translate": "career.townstead.scribe.description"
   },
   "clothing": [
     "townstead:scribe",
@@ -18,7 +18,7 @@
     {
       "id": "chronicler",
       "name": {
-        "text": "Chronicler"
+        "translate": "career.townstead.scribe.title.chronicler"
       },
       "skills": [
         "long_ledger",

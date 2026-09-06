@@ -83,7 +83,7 @@ public final class HeritageRegistry {
             names.add(ancestry != null ? ancestry.displayName() : Component.literal(id.getPath()));
             if (names.size() == 2) break;
         }
-        if (names.isEmpty()) return Component.literal("Mixed");
+        if (names.isEmpty()) return Component.translatable("townstead.heritage.mixed");
         if (names.size() == 1) return names.get(0);
         return Component.empty().append(names.get(0)).append(Component.literal("-")).append(names.get(1));
     }

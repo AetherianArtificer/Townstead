@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.pastry_chef.fine_crumb"
+  },
+  "icon": "minecraft:barrier",
+  "description": {
+    "translate": "skill.townstead.baker.pastry_chef.fine_crumb.description"
+  },
+  "cost": 1,
+  "grants": [
+    {
+      "capability": "townstead:baker_xp_flat",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

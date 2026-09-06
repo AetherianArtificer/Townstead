@@ -151,6 +151,8 @@ public final class FatigueVillagerTicker {
         // slowly. tick-hour 0 == 6 AM == dayTime 0, matching the sleep window + the UI.
         int tickHour = (int) (timeOfDay / 1000L);
         boolean inSleepWindow = chronotype.isPreferredSleepHour(tickHour);
+        float loungeRecovery = com.aetherianartificer.townstead.hangout.HangoutEngine
+                .restRecovery(self.getUUID());
 
         int fatigueIterations = 0;
         while (dayTime - state.lastFatigueDayTime >= FatigueData.ACCUMULATION_INTERVAL && fatigueIterations < 100) {
@@ -161,6 +163,10 @@ public final class FatigueVillagerTicker {
                 // Collapsed recovery runs on gameTime below so it's robust to
                 // doDaylightCycle=false and time-scaling mods. Skip here.
                 continue;
+            } else if (loungeRecovery > 0F) {
+                // An active lounge surface owns this interval, replacing ordinary MEET
+                // accumulation with its authored recovery rate.
+                applyFatigueDelta(needs, state, -loungeRecovery);
             } else if (inBed) {
                 // Sleeping inside the chronotype window = full recovery; an
                 // off-window nap recovers at the reduced rate.

@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": "brewinandchewin",
+  "items": [
+    "brewinandchewin:beer",
+    "brewinandchewin:mead",
+    "brewinandchewin:rice_wine",
+    "brewinandchewin:egg_grog"
+  ],
+  "transaction": {
+    "mode": "observe_native",
+    "accounting": "consume_one",
+    "consumers": ["player"],
+    "remainder": { "mode": "native", "destination": "holder" }
+  }
+}

@@ -220,7 +220,26 @@ public final class WorkRecipeRegistry {
         // 6. Apply tag-based tier overrides
         applyTierTagOverrides(level, recipes);
 
+        // 7. Authored trade tags own the food/drink boundary. Attached foreign recipes do not
+        // consistently expose that semantic fact, and names such as beer, wine and cocktail do
+        // not contain the old coffee/tea heuristic. Promote every brew-tagged output here so the
+        // catalogue and every execution selector see the same classification.
+        applyBeverageTagClassification(recipes);
+
         return recipes;
+    }
+
+    private static void applyBeverageTagClassification(List<DiscoveredRecipe> recipes) {
+        for (int i = 0; i < recipes.size(); i++) {
+            DiscoveredRecipe recipe = recipes.get(i);
+            if (recipe.beverage()
+                    || !WorkOutputTags.allows(WorkOutputTags.BREW, recipe.output())) continue;
+            recipes.set(i, new DiscoveredRecipe(
+                    recipe.id(), recipe.stationType(), recipe.tier(), recipe.output(),
+                    recipe.outputCount(), recipe.cookTimeTicks(), recipe.requiresTool(),
+                    recipe.containerItemId(), recipe.containerCount(), recipe.inputs(),
+                    recipe.purification(), true, recipe.source()));
+        }
     }
 
     // ── Campfire recipes ──

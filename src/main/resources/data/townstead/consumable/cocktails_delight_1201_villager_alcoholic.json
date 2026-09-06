@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": ["brewinandchewin", "brewincompatdelight"],
+  "items": [
+    "brewincompatdelight:vodka_tonic",
+    "brewincompatdelight:mojito",
+    "brewincompatdelight:pina_colada",
+    "brewincompatdelight:whiskey_sour"
+  ],
+  "effects": {
+    "type": "pheno:add_state",
+    "state": "townstead_state:drunk",
+    "amount": 20,
+    "duration": 1200,
+    "source": "townstead:cocktail_serving"
+  },
+  "transaction": {
+    "mode": "replace_with_pheno",
+    "accounting": "consume_one",
+    "consumers": ["villager"],
+    "remainder": { "mode": "none", "destination": "source" },
+    "effect_admission": { "default": "deny", "allow": ["attribute"] }
+  }
+}

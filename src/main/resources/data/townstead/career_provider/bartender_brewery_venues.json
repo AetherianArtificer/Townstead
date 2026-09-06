@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "bartender",
+  "mods": "brewery",
+  "priority": 25,
+  "contributes": {
+    "path": {
+      "work": [
+        {
+          "type": "townstead_work:brew",
+          "access": "path",
+          "scope": "village",
+          "workstations": ["brewery:wooden_brewingstation"],
+          "recipes": ["#townstead:compat/brewery/wood_drinks"],
+          "weight": 10
+        },
+        {
+          "type": "townstead_work:brew",
+          "access": "path",
+          "scope": "village",
+          "workstations": ["brewery:copper_brewingstation"],
+          "recipes": [
+            "#townstead:compat/brewery/wood_drinks",
+            "#townstead:compat/brewery/copper_drinks"
+          ],
+          "weight": 10
+        },
+        {
+          "type": "townstead_work:brew",
+          "access": "path",
+          "scope": "village",
+          "workstations": ["brewery:netherite_brewingstation"],
+          "recipes": ["#townstead:compat/brewery/drinks"],
+          "weight": 10
+        }
+      ]
+    },
+    "profession": {
+      "poi": [
+        {
+          "type": "townstead:building",
+          "type_prefix": "compat/brewery/brew_hall_l",
+          "slots_per_tier": [1, 2, 3],
+          "path_affinity": ["bartender"]
+        }
+      ]
+    }
+  }
+}

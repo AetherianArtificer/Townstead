@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:reaction/v3",
+  "display_name": "reaction.townstead.cry",
+  "tags": [
+    "emotional",
+    "sadness"
+  ],
+  "cooldown": "180s",
+  "chance": "20%",
+  "triggers": [
+    {
+      "type": "context_enter",
+      "tags": [
+        "near_grave",
+        "near_family"
+      ]
+    }
+  ],
+  "choices": [
+    {
+      "do": {
+        "type": "pheno:performance",
+        "performance": "townstead:reaction_cry",
+        "channel": "reaction",
+        "duration_ticks": 80,
+        "priority": 30,
+        "fallback": "stand"
+      }
+    }
+  ]
+}

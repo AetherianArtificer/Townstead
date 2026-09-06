@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Stone Oven"
+    "translate": "skill.townstead.cook.pizzaiolo.stone_oven"
   },
   "icon": "minecraft:bricks",
   "description": {
-    "text": "Read the oven by its heat, stone, and breath instead of by the clock. Gain 2 additional Cook XP whenever work is completed."
+    "translate": "skill.townstead.cook.pizzaiolo.stone_oven.description"
   },
   "cost": 1,
   "requires": ["kitchen_rhythm"],

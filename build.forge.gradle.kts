@@ -56,6 +56,8 @@ repositories {
     flatDir { dirs(rootProject.file("libs")) }
     maven("https://maven.architectury.dev/")
     maven("https://maven.blamejared.com")
+    // Curios API, for the optional wearables integration (villager Curios slots and screen).
+    maven("https://www.cursemaven.com") { content { includeGroup("curse.maven") } }
     mavenCentral()
 }
 
@@ -83,6 +85,8 @@ dependencies {
     // JEI plugin API (runtime optional; the plugin class is only loaded by JEI's scan)
     compileOnly(fg.deobf("mezz.jei:jei-1.20.1-common-api:15.20.0.135"))
     compileOnly(fg.deobf("mezz.jei:jei-1.20.1-forge-api:15.20.0.135"))
+    // Curios (runtime optional): everything Curios-shaped lives in compat.curios behind ModCompat.
+    compileOnly(fg.deobf("curse.maven:curios-309927:6418456"))
     // No Sponge Mixin annotation processor: this build ships no refmap (targets
     // are hand-written SRG with remap=false). MixinExtras' own processor is kept
     // only because its supported ForgeGradle setup requires it.
@@ -174,6 +178,7 @@ tasks.withType<ProcessResources> {
         }
     }
     doLast {
+        if (name != "processResources") return@doLast
         val compatRoot = destinationDir.resolve("townstead_compat/building_types/compat")
         val index = destinationDir.resolve("townstead_compat/index.txt")
         val entries = if (compatRoot.isDirectory) compatRoot.walkTopDown()

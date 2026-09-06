@@ -38,6 +38,7 @@ public final class ChronicleSimMain {
             case "person" -> PersonSim.run(args, loaded);
             case "scale" -> ScaleSim.run(args, loaded);
             case "taps" -> TapsSim.run(args, loaded);
+            case "social" -> SocialSim.run(args);
             default -> {
                 System.out.println("Unknown mode '" + args.mode + "'");
                 usage();
@@ -55,6 +56,7 @@ public final class ChronicleSimMain {
                   person    fabricate one person's life
                   scale     every template's importance on one scale, and who keeps it
                   taps      which reportable game events have a template, and which do not
+                  social    run deterministic JSON relationship scenarios through production rules
                   help      this text
 
                 Shared options
@@ -67,6 +69,7 @@ public final class ChronicleSimMain {
                   --threshold F        override the scope's retention threshold
                   --data PATH          data-pack root (default src/main/resources/data)
                   --items SPEC         tag contents: "tag=id,id;tag=id"
+                  --scenario PATH      social scenario file or directory
                   --help               this text
 
                 village mode
@@ -92,6 +95,8 @@ public final class ChronicleSimMain {
                   village --village 3 --years 180 --residents 14 --check
                   person --name "Bram Colefield" --age 52 --profession minecraft:farmer
                   person --threshold 1.0        keep almost everything, to see the whole candidate stream
+                  social                              run all bundled relationship scenarios
+                  social --scenario path/to/story.json
                 """);
     }
 }

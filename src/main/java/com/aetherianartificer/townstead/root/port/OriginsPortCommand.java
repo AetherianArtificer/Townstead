@@ -86,8 +86,7 @@ public final class OriginsPortCommand {
             } catch (IOException ignored) {
                 // best effort
             }
-            source.sendFailure(Component.literal("No source '" + name + "' in townstead/port-in. "
-                    + "Drop an Roots jar/zip/folder there and tab-complete the name."));
+            source.sendFailure(Component.translatable("command.townstead.port.origins.source_not_found", name));
             return 0;
         }
 
@@ -97,12 +96,12 @@ public final class OriginsPortCommand {
             readSource(source0, powers, originsByNs);
         } catch (Exception e) {
             Townstead.LOGGER.error("Roots port: failed to read {}", source0, e);
-            source.sendFailure(Component.literal("Couldn't read '" + name + "': " + e.getMessage()));
+            source.sendFailure(Component.translatable(
+                    "command.townstead.port.origins.read_failed", name, e.getMessage()));
             return 0;
         }
         if (originsByNs.isEmpty()) {
-            source.sendFailure(Component.literal("No origins found in '" + name
-                    + "' (looked for data/<namespace>/origins/*.json)."));
+            source.sendFailure(Component.translatable("command.townstead.port.origins.none_found", name));
             return 0;
         }
 
@@ -121,17 +120,15 @@ public final class OriginsPortCommand {
             }
         } catch (Exception e) {
             Townstead.LOGGER.error("Roots port failed", e);
-            source.sendFailure(Component.literal("Port failed: " + e.getMessage()));
+            source.sendFailure(Component.translatable("command.townstead.port.origins.failed", e.getMessage()));
             return 0;
         }
 
         int fRoots = totalRoots;
         int fGenes = totalGenes;
         int fSkips = totalSkips;
-        source.sendSuccess(() -> Component.literal("Ported " + fRoots + " origin(s) across "
-                + namespaces.size() + " namespace(s) " + namespaces + ": " + fGenes + " genes, "
-                + fSkips + " powers skipped to professions. Wrote townstead/port-out/. See port_report.txt; "
-                + "refine before loading."), true);
+        source.sendSuccess(() -> Component.translatable("command.townstead.port.origins.success",
+                fRoots, namespaces.size(), namespaces, fGenes, fSkips), true);
         return 1;
     }
 

@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Starter Culture"
+    "translate": "skill.townstead.cook.pizzaiolo.starter_culture"
   },
   "icon": "minecraft:wheat",
   "description": {
-    "text": "A living starter rewards anyone willing to tend it instead of rushing it. Gain 1 additional Cook XP whenever work is completed."
+    "translate": "skill.townstead.cook.pizzaiolo.starter_culture.description"
   },
   "cost": 1,
   "grants": [

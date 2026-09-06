@@ -1,0 +1,1 @@
+{"schema":"townstead:extended_building/v1","mods":"brewery","workers":["townstead:beverage_artisan"],"orders":{"recipe_namespaces":["brewery"]},"catalog":{"node_item":"brewery:barrel_main"},"dialogue":{"topics":["brew_hall","hospitality","local_tales"]},"spirit":{"commercial":11,"tourism":8}}

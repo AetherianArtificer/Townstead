@@ -4,5 +4,5 @@
   "workers": ["townstead:cook"],
   "orders": { "recipe_namespaces": ["pizzadelight"] },
   "catalog": { "node_item": "pizzadelight:pizza_station" },
-  "spirit": { "commercial": 5, "pastoral": 2 }
+  "spirit": { "commercial": 5, "industrious": 2 }
 }

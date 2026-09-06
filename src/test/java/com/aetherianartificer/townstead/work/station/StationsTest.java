@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead.work.station;
 
 import com.aetherianartificer.townstead.work.recipe.StationType;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.Direction;
+import net.minecraft.core.Vec3i;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,5 +26,14 @@ class StationsTest {
 
         assertEquals(campfire,
                 Stations.slotBlockId(campfire, StationType.FIRE_STATION, rawPizza));
+    }
+
+    @Test
+    void rotatesNorthAuthoredStaffSideWithStationFacing() {
+        Vec3i behind = new Vec3i(0, 0, 1);
+        assertEquals(new Vec3i(0, 0, 1), Stations.rotateFromNorth(behind, Direction.NORTH));
+        assertEquals(new Vec3i(1, 0, 0), Stations.rotateFromNorth(behind, Direction.WEST));
+        assertEquals(new Vec3i(0, 0, -1), Stations.rotateFromNorth(behind, Direction.SOUTH));
+        assertEquals(new Vec3i(-1, 0, 0), Stations.rotateFromNorth(behind, Direction.EAST));
     }
 }

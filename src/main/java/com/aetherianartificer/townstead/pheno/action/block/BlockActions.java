@@ -74,6 +74,7 @@ public final class BlockActions {
         return new BlockAction() {
             @Override public boolean canRun(BlockActionContext ctx) {
                 SelectorContext sctx = SelectorContext.ofBlock(ctx.level(), ctx.pos(), ctx.cause());
+                for (var role : ctx.blockRoles().entrySet()) sctx = sctx.withBlockRole(role.getKey(), role.getValue());
                 for (BlockPos pos : selector.select(sctx)) {
                     if (core.canRun(ctx.at(pos))) return true;
                 }
@@ -82,6 +83,7 @@ public final class BlockActions {
 
             @Override public void run(BlockActionContext ctx) {
                 SelectorContext sctx = SelectorContext.ofBlock(ctx.level(), ctx.pos(), ctx.cause());
+                for (var role : ctx.blockRoles().entrySet()) sctx = sctx.withBlockRole(role.getKey(), role.getValue());
                 boolean ran = false;
                 for (BlockPos pos : selector.select(sctx)) {
                     BlockActionContext selected = ctx.at(pos);

@@ -29,11 +29,16 @@ public final class BondCountValueType implements ValueType {
         String kind = GsonHelper.getAsString(json, "kind", "");
         if (kind.isEmpty()) return null;
         boolean activeOnly = GsonHelper.getAsBoolean(json, "active", true);
+        SocialTarget toward = SocialTarget.parse(GsonHelper.getAsString(json, "toward", "any"), true);
+        if (toward == null) return null;
         return Value.subjectAware(ctx -> {
             PhenoSubject subject = ctx.subject();
-            if (subject != null) return subject.bonds().count(kind, activeOnly);
             LivingEntity self = ctx.self();
-            return self == null ? 0 : Bonds.of(self).count(kind, activeOnly);
+            Bonds bonds = subject != null ? subject.bonds() : self == null ? Bonds.EMPTY : Bonds.of(self);
+            var other = toward.resolve(ctx);
+            if (!toward.any() && other == null) return Double.NaN;
+            return bonds.all().stream().filter(b -> b.kind().equals(kind) && (!activeOnly || b.active())
+                    && (toward.any() || other.equals(b.other()))).count();
         });
     }
 }

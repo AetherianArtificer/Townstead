@@ -152,5 +152,18 @@
   "athletic.dialogue.chat.leatherworker_request.no_salt/1": "<excited>Salt! Bring the salt! I can't cure without it!</excited>",
   "athletic.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<excited>Wet sponge or rag, %1$s! The hide's primed and waiting!</excited>",
   "athletic.dialogue.chat.leatherworker_request.no_storage/1": "<excited>My pack's stacked! I need a chest to drop this leather in!</excited>",
-  "athletic.dialogue.chat.leatherworker_flavor.leather_cured/1": "<excited>Cured it! Look at that leather, %1$s, top form!</excited>"
+  "athletic.dialogue.chat.leatherworker_flavor.leather_cured/1": "<excited>Cured it! Look at that leather, %1$s, top form!</excited>",
+  "athletic.dialogue.chat.beverage_artisan_request.no_worksite/1": "<excited>Set me up a drink station and I'll keep service moving!</excited>",
+  "athletic.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<excited>We're out of ingredients! Restock me and I'll get right back to it!</excited>",
+  "athletic.dialogue.chat.beverage_artisan_request.no_storage/1": "<excited>Finished drinks are piling up! I need storage before the next round!</excited>",
+  "athletic.dialogue.chat.beverage_artisan_request.unreachable/1": "<excited>The route to my station is blocked! Clear it and I'm back in the race!</excited>",
+  "athletic.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<excited>I can make %2$s as soon as someone brings the ingredients!</excited>",
+  "athletic.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<excited>Now that's a warm-up. I could dance another mile!</excited>",
+  "athletic.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<excited>Keep the water coming too. Endurance is all about pacing!</excited>",
+  "athletic.dialogue.chat.townstead_drunk.drunk_arrival/1": "<excited>I can absolutely walk a straight line. Make it a race!</excited>",
+  "athletic.dialogue.chat.townstead_drunk.drunk_ambient/1": "<excited>My balance is merely trying a more advanced exercise.</excited>",
+  "athletic.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>Training's over. Water, a bench, and no sudden hills.</sleepy>",
+  "athletic.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>I'm recovering. Very still, very professional recovery.</sleepy>",
+  "athletic.dialogue.chat.townstead_drunk.service_refused/1": "<happy>Call it there. Water is the smart next round.</happy>",
+  "athletic.dialogue.chat.townstead_drunk.recovered/1": "<happy>Back on my feet. Slowly this time.</happy>"
 }

@@ -62,6 +62,13 @@ ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies.townstead]]
+modId = "curios"
+type = "optional"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.townstead]]
 modId = "emotecraft"
 type = "optional"
 versionRange = "[2.4.12,)"

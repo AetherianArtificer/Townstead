@@ -126,6 +126,46 @@ class ChronicleDatabaseRoundTripTest {
     }
 
     @Test
+    void conversationPerspectivesSurviveArchiveReopenAndAreIndexedForBothParticipants() throws Exception {
+        Path file=tempDir.resolve("conversation.mv");
+        Map<String,String> params=Map.of("topic","townstead_social:reassurance", "outcome","townstead_social:reassured",
+                "initiator_memory","townstead_social:reassured", "responder_memory","townstead_social:offered_support");
+        ChronicleEvent exchange=new ChronicleEvent(1L,rl("townstead_social:conversation"),1L,24000L,
+                rl("minecraft:overworld"),0L,ChronicleEvent.VILLAGE_NONE,"social.conversation",1F,
+                ChronicleEvent.REACH_NONE,ChronicleEvent.NONE,ChronicleEvent.NONE,false,
+                List.of(new Participation("initiator",ChronicleRef.villager(COOK,"Bram")),
+                        new Participation("responder",ChronicleRef.villager(WITNESS,"Gareth"))),params);
+        ChronicleDatabase db=ChronicleDatabase.open(file);
+        try { db.appendEvent(exchange); assertTrue(db.flushBlocking(5000)); } finally { db.close(); }
+        ChronicleDatabase reopened=ChronicleDatabase.open(file);
+        try {
+            assertEquals(params,reopened.bySubject(COOK,0L,10).get(5,TimeUnit.SECONDS).get(0).params());
+            assertEquals(params,reopened.bySubject(WITNESS,0L,10).get(5,TimeUnit.SECONDS).get(0).params());
+        } finally { reopened.close(); }
+    }
+
+    @Test
+    void privateAccountsSurviveButDoNotCrowdPublicNewsOutAfterRestart() throws Exception {
+        Path file=tempDir.resolve("private-news.mv");
+        ChronicleDatabase db=ChronicleDatabase.open(file);
+        ChronicleEvent publicEvent=event(1,7,-1,COOK).withId(1);
+        ChronicleEvent privateEvent=new ChronicleEvent(2,rl("townstead_social:conversation"),2,48000,
+                publicEvent.dimension(),0,7,"social.conversation",1,ChronicleEvent.REACH_NONE,-1,-1,false,
+                publicEvent.participations(),Map.of());
+        try {
+            db.appendEvent(publicEvent); db.appendEvent(privateEvent);
+            db.appendAccount(new Account(1,1,COOK,"witness",-1,1,1,null));
+            db.appendAccount(new Account(2,2,COOK,"witness",-1,1,2,null));
+            assertTrue(db.flushBlocking(5000));
+        } finally { db.close(); }
+        ChronicleDatabase reopened=ChronicleDatabase.open(file);
+        try {
+            assertEquals(2,reopened.accountsByKnower(COOK,10).get(5,TimeUnit.SECONDS).size());
+            assertEquals(List.of(1L),reopened.knownStories(COOK,1).get(5,TimeUnit.SECONDS).stream().map(ChronicleStore.KnownStory::storyEventId).toList());
+        } finally { reopened.close(); }
+    }
+
+    @Test
     void witnessQueriesFindTheEventToo() throws Exception {
         ChronicleDatabase db = ChronicleDatabase.open(tempDir.resolve("witness.mv"));
         db.appendEvent(event(50L, 3, ChronicleEvent.NONE, COOK).withId(1L));
@@ -137,7 +177,7 @@ class ChronicleDatabaseRoundTripTest {
 
     private static ResourceLocation rl(String value) {
         //? if >=1.21 {
-        return ResourceLocation.parse(value);
+        return ResourceLocation.tryParse(value);
         //?} else {
         /*return new ResourceLocation(value);
         *///?}

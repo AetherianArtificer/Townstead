@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:recipe_projection/v1",
+  "mods": "caupona",
+  "recipe_types": ["caupona:cooking"],
+  "domain": "cooking.stew",
+  "fields": {
+    "output_fluid": {"aliases": ["getOutput", "output"], "operation": "fluid_id", "required": true},
+    "allow": {"aliases": ["getAllow", "allow"], "operation": "list", "required": true},
+    "deny": {"aliases": ["getDeny", "deny"], "operation": "list", "default": []},
+    "base": {"aliases": ["getBase", "base"], "operation": "list", "default": []},
+    "density": {"aliases": ["getDensity", "density"], "operation": "number", "default": 1.0},
+    "time": {"aliases": ["getTime", "time"], "operation": "integer", "default": 200},
+    "priority": {"aliases": ["getPriority", "priority"], "operation": "integer", "default": 0},
+    "conditions": {"aliases": ["conditions", "getConditions"], "operation": "list"},
+    "readiness": {"default": true, "operation": "boolean"}
+  }
+}

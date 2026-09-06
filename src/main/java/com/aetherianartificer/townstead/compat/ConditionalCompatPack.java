@@ -70,7 +70,7 @@ public final class ConditionalCompatPack {
     public static Pack create() {
         PackLocationInfo info = new PackLocationInfo(
                 Townstead.MOD_ID + "_compat_data",
-                Component.literal("Townstead Compat Building Types"),
+                Component.translatable("townstead.pack.compat_buildings.name"),
                 PackSource.BUILT_IN,
                 Optional.empty()
         );
@@ -95,7 +95,7 @@ public final class ConditionalCompatPack {
     /*public static Pack create() {
         return Pack.readMetaAndCreate(
                 Townstead.MOD_ID + "_compat_data",
-                Component.literal("Townstead Compat Building Types"),
+                Component.translatable("townstead.pack.compat_buildings.name"),
                 true,
                 id -> new CompatPackResources(id),
                 PackType.SERVER_DATA,
@@ -187,10 +187,10 @@ public final class ConditionalCompatPack {
             if (serializer == PackMetadataSection.TYPE) {
                 //? if >=1.21 {
                 return (T) new PackMetadataSection(
-                        Component.literal("Townstead compat building types"), 48);
+                        Component.translatable("townstead.pack.compat_buildings.description"), 48);
                 //?} else {
                 /*return (T) new PackMetadataSection(
-                        Component.literal("Townstead compat building types"), 15);
+                        Component.translatable("townstead.pack.compat_buildings.description"), 15);
                 *///?}
             }
             return null;

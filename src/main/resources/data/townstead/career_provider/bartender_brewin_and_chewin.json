@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "bartender",
+  "mods": "brewinandchewin",
+  "priority": 30,
+  "contributes": {
+    "path": {
+      "worksites": ["brewinandchewin:item_mat", "brewinandchewin:keg"],
+      "work": [
+        {
+          "type": "townstead_work:brew",
+          "access": "path",
+          "workstations": ["brewinandchewin:keg"],
+          "recipes": ["#townstead:brew_output"],
+          "weight": 10
+        }
+      ]
+    },
+    "profession": {
+      "poi": [
+        {
+          "type": "townstead:building",
+          "type_prefixes": ["inn", "compat/brewinandchewin/taproom_l"],
+          "slots_per_tier": [1, 2],
+          "path_affinity": ["bartender"]
+        }
+      ]
+    }
+  }
+}

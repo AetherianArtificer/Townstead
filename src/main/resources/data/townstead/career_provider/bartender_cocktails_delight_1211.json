@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "bartender",
+  "mods": ["brewinandchewin", "cocktailsdelight"],
+  "priority": 40,
+  "contributes": {
+    "path": {
+      "worksites": ["minecraft:crafting_table"],
+      "work": [
+        {
+          "type": "townstead_work:craft",
+          "workstations": ["minecraft:crafting_table"],
+          "recipes": ["#townstead:bartender_cocktails"],
+          "weight": 10
+        }
+      ]
+    }
+  }
+}

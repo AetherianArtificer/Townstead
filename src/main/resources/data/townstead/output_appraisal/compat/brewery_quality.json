@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:output_appraisal/v1",
+  "mods": "brewery",
+  "items": ["#townstead:compat/brewery/drinks"],
+  "path": ["brewery.beer_quality"],
+  "tiers": [
+    { "value": 0, "quality": 1, "label": "poor", "order_worthy": false },
+    { "value": 1, "quality": 1, "label": "standard" },
+    { "value": 2, "quality": 2, "label": "fine" },
+    { "value": 3, "quality": 3, "label": "masterwork" }
+  ]
+}

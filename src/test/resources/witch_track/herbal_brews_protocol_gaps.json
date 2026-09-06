@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:test_protocol_gap_manifest/v1",
+  "provider": "herbalbrews",
+  "domains": [
+    {
+      "id": "witchcraft.cauldron_component_transform",
+      "available": false,
+      "reason": "The native block entity merges exact potion components; its checked-in recipe is only a display dummy."
+    },
+    {
+      "id": "witchcraft.cauldron_reaction",
+      "available": false,
+      "reason": "Townstead cannot yet observe and validate a native dynamic transform before committing exact inputs."
+    },
+    {
+      "id": "witchcraft.flask_custody",
+      "available": false,
+      "reason": "Portable component-bearing output needs exact-stack custody and commission delivery."
+    },
+    {
+      "id": "witchcraft.jug_service",
+      "available": false,
+      "reason": "A Jug is one compound player serving backed by three stored exact drink stacks, not three ambient portions."
+    }
+  ]
+}

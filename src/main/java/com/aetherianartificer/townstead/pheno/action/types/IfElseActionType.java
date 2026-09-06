@@ -33,7 +33,7 @@ public final class IfElseActionType implements ActionType {
         if (condition == null || ifAction == null) return null;
         @Nullable Action elseAction = json.has("else_action") ? Actions.parse(json.get("else_action")) : null;
         return ctx -> {
-            if (condition.test(new ConditionContext(ctx.entity()))) {
+            if (condition.test(ConditionContext.of(ctx))) {
                 ifAction.run(ctx);
             } else if (elseAction != null) {
                 elseAction.run(ctx);

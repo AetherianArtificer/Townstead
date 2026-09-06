@@ -70,7 +70,7 @@ class OrderParseTest {
 
     private static net.minecraft.resources.ResourceLocation id() {
         //? if >=1.21 {
-        return net.minecraft.resources.ResourceLocation.parse("minecraft:bread");
+        return net.minecraft.resources.ResourceLocation.tryParse("minecraft:bread");
         //?} else {
         /*return new net.minecraft.resources.ResourceLocation("minecraft:bread");
         *///?}

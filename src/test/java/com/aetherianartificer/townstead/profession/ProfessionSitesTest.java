@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.profession;
 
 import com.aetherianartificer.townstead.profession.def.JobSiteProvider;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -71,6 +72,47 @@ class ProfessionSitesTest {
     }
 
     @Test
+    void nativeProprietorClaimsTheReservedSeatBeforeOrdinaryCareerStaff() {
+        ResourceLocation sandyMerchant = id("beachparty:sandymerchant");
+        JobSiteProvider.Building bars = new JobSiteProvider.Building(
+                List.of("compat/beachparty/beach_cocktail_bar_l"), List.of(1, 2, 3),
+                List.of("bartender"), new JobSiteProvider.Building.Proprietor(
+                        java.util.Set.of(sandyMerchant), 1));
+        List<JobSiteProvider> providers = List.of(bars);
+        List<ProfessionSites.Site> sites = List.of(
+                new ProfessionSites.Site(null, null, 0,
+                        bars.requiredProfessionsForSeat(
+                                "compat/beachparty/beach_cocktail_bar_l2", 0)),
+                new ProfessionSites.Site(null, null, 0,
+                        bars.requiredProfessionsForSeat(
+                                "compat/beachparty/beach_cocktail_bar_l2", 1)));
+        List<String> paths = List.of("bartender", "bartender");
+        List<ResourceLocation> professions = List.of(
+                id("townstead:beverage_artisan"), sandyMerchant);
+
+        assertEquals(1, ProfessionSites.assignedSiteIndex(
+                paths, professions, sites, providers, 0));
+        assertEquals(0, ProfessionSites.assignedSiteIndex(
+                paths, professions, sites, providers, 1));
+    }
+
+    @Test
+    void ordinaryCareerStaffCannotEraseAnUnfilledProprietorPosition() {
+        ResourceLocation sandyMerchant = id("beachparty:sandymerchant");
+        JobSiteProvider.Building bars = new JobSiteProvider.Building(
+                List.of("compat/beachparty/beach_cocktail_bar_l"), List.of(1, 2, 3),
+                List.of("bartender"), new JobSiteProvider.Building.Proprietor(
+                        java.util.Set.of(sandyMerchant), 1));
+        ProfessionSites.Site reserved = new ProfessionSites.Site(null, null, 0,
+                bars.requiredProfessionsForSeat(
+                        "compat/beachparty/beach_cocktail_bar_l1", 0));
+
+        assertEquals(-1, ProfessionSites.assignedSiteIndex(
+                List.of("bartender"), List.of(id("townstead:beverage_artisan")),
+                List.of(reserved), List.of(bars), 0));
+    }
+
+    @Test
     void standaloneJobBlocksRespectSitesPerWorker() {
         List<BlockPos> hives = List.of(
                 new BlockPos(0, 64, 0), new BlockPos(1, 64, 0),
@@ -80,5 +122,9 @@ class ProfessionSitesTest {
         assertEquals(List.of(hives.get(0), hives.get(4)),
                 ProfessionCapacity.groupedAnchors(hives, 4),
                 "four hives form one Beekeeper seat and the fifth starts another");
+    }
+
+    private static ResourceLocation id(String raw) {
+        return ResourceLocation.tryParse(raw);
     }
 }

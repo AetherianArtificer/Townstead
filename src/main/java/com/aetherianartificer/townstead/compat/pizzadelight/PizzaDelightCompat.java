@@ -66,7 +66,9 @@ public final class PizzaDelightCompat {
 
         @Override
         public boolean available(ServerLevel level, BlockPos pos) {
-            return sliceAt(level, pos) != null;
+            ItemStack slice = sliceAt(level, pos);
+            return slice != null
+                    && VillagerConsumptionManager.permitsManagedVillagerConsumption(slice);
         }
 
         @Override public boolean feeds(ServerLevel level, BlockPos pos) { return true; }
@@ -76,6 +78,7 @@ public final class PizzaDelightCompat {
         public boolean use(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
             ItemStack slice = sliceAt(level, pos);
             if (slice == null || !FoodSafety.isSafeNutritiousFood(slice, villager)) return false;
+            if (!VillagerConsumptionManager.permitsManagedVillagerConsumption(slice)) return false;
             var needs = TownsteadVillagers.get(villager).needs();
             if (needs.hunger() >= HungerData.MAX_HUNGER) return false;
             if (!consumeSlice(level, pos)) return false;

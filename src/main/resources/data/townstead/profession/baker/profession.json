@@ -1,11 +1,11 @@
 {
   "schema": "townstead:profession/v2",
   "display_name": {
-    "text": "Baker"
+    "translate": "career.townstead.baker"
   },
   "icon": "minecraft:bread",
   "description": {
-    "text": "A cook devoted to the oven, from daily bread to fine pastry."
+    "translate": "career.townstead.baker.description"
   },
   "clothing": [
     "townstead:baker",

@@ -104,12 +104,12 @@ public final class AttachmentDoctorCommand {
     private static int dumpGeo(CommandSourceStack source, String id) {
         AttachmentDef def = find(id);
         if (def == null) {
-            source.sendFailure(Component.literal("No attachment '" + id + "' is loaded."));
+            source.sendFailure(Component.translatable("townstead.command.attachment.not_loaded", id));
             return 0;
         }
         AttachmentServerData.Blob blob = AttachmentServerData.blob(def.geoSha1());
         if (blob == null) {
-            source.sendFailure(Component.literal("No geometry blob for " + id));
+            source.sendFailure(Component.translatable("townstead.command.attachment.no_geometry", id));
             return 0;
         }
         try {
@@ -118,10 +118,10 @@ public final class AttachmentDoctorCommand {
             java.nio.file.Files.createDirectories(path.getParent());
             java.nio.file.Files.write(path, blob.bytes());
             String where = path.toAbsolutePath().toString();
-            source.sendSuccess(() -> Component.literal("Wrote " + where), false);
+            source.sendSuccess(() -> Component.translatable("townstead.command.attachment.wrote", where), false);
             return 1;
         } catch (Exception e) {
-            source.sendFailure(Component.literal("Dump failed: " + e));
+            source.sendFailure(Component.translatable("townstead.command.attachment.dump_failed", e.toString()));
             return 0;
         }
     }
@@ -148,17 +148,16 @@ public final class AttachmentDoctorCommand {
         String id = StringArgumentType.getString(c, "id");
         AttachmentDef current = find(id);
         if (current == null) {
-            c.getSource().sendFailure(Component.literal("No attachment '" + id + "' is loaded."));
+            c.getSource().sendFailure(Component.translatable("townstead.command.attachment.not_loaded", id));
             return 0;
         }
         AttachmentDef updated = edit.apply(current);
         AttachmentServerData.replaceDefinition(updated);
         c.getSource().getServer().getPlayerList().getPlayers().forEach(AttachmentSync::sendManifest);
-        c.getSource().sendSuccess(() -> Component.literal(id + " -> offset ["
-                + fmt(updated.offset()[0]) + ", " + fmt(updated.offset()[1]) + ", " + fmt(updated.offset()[2])
-                + "], rotation [" + fmt(updated.rotation()[0]) + ", " + fmt(updated.rotation()[1]) + ", "
-                + fmt(updated.rotation()[2]) + "], scale " + fmt(updated.scale()) + ", bone " + updated.bone()
-                + " (live until reload; '/townstead attachment dump " + id + "' for the JSON)"), false);
+        c.getSource().sendSuccess(() -> Component.translatable("townstead.command.attachment.adjusted",
+                id, fmt(updated.offset()[0]), fmt(updated.offset()[1]), fmt(updated.offset()[2]),
+                fmt(updated.rotation()[0]), fmt(updated.rotation()[1]), fmt(updated.rotation()[2]),
+                fmt(updated.scale()), updated.bone()), false);
         return 1;
     }
 
@@ -170,16 +169,16 @@ public final class AttachmentDoctorCommand {
         float value = FloatArgumentType.getFloat(c, "value");
         AttachmentDef current = find(id);
         if (current == null) {
-            c.getSource().sendFailure(Component.literal("No attachment '" + id + "' is loaded."));
+            c.getSource().sendFailure(Component.translatable("townstead.command.attachment.not_loaded", id));
             return 0;
         }
         if (current.physics().isEmpty()) {
-            c.getSource().sendFailure(Component.literal(id + " has no physics chains."));
+            c.getSource().sendFailure(Component.translatable("townstead.command.attachment.no_physics", id));
             return 0;
         }
         if (!PHYSICS_PARAMS.contains(param)) {
-            c.getSource().sendFailure(Component.literal(
-                    "Unknown parameter '" + param + "' (known: " + String.join(", ", PHYSICS_PARAMS) + ")"));
+            c.getSource().sendFailure(Component.translatable("townstead.command.attachment.physics.unknown_parameter",
+                    param, String.join(", ", PHYSICS_PARAMS)));
             return 0;
         }
         int index = -1;
@@ -187,12 +186,14 @@ public final class AttachmentDoctorCommand {
             try {
                 index = Integer.parseInt(chainSel);
             } catch (NumberFormatException e) {
-                c.getSource().sendFailure(Component.literal("Chain must be 'all' or a chain index."));
+                c.getSource().sendFailure(Component.translatable(
+                        "townstead.command.attachment.physics.invalid_chain"));
                 return 0;
             }
             if (index < 0 || index >= current.physics().size()) {
-                c.getSource().sendFailure(Component.literal(
-                        "Chain index " + index + " out of range (0.." + (current.physics().size() - 1) + ")."));
+                c.getSource().sendFailure(Component.translatable(
+                        "townstead.command.attachment.physics.chain_out_of_range",
+                        index, current.physics().size() - 1));
                 return 0;
             }
         }
@@ -207,8 +208,8 @@ public final class AttachmentDoctorCommand {
                 current.stages(), current.poses(), chains, current.animations());
         AttachmentServerData.replaceDefinition(updated);
         c.getSource().getServer().getPlayerList().getPlayers().forEach(AttachmentSync::sendManifest);
-        c.getSource().sendSuccess(() -> Component.literal(id + " physics[" + chainSel + "] " + param + " = "
-                + fmt(value) + " (live until reload; '/townstead attachment dump " + id + "' for the JSON)"), false);
+        c.getSource().sendSuccess(() -> Component.translatable(
+                "townstead.command.attachment.physics.adjusted", id, chainSel, param, fmt(value)), false);
         return 1;
     }
 
@@ -244,7 +245,7 @@ public final class AttachmentDoctorCommand {
     private static int dump(CommandSourceStack source, String id) {
         AttachmentDef def = find(id);
         if (def == null) {
-            source.sendFailure(Component.literal("No attachment '" + id + "' is loaded."));
+            source.sendFailure(Component.translatable("townstead.command.attachment.not_loaded", id));
             return 0;
         }
         JsonObject source0 = AttachmentServerData.sourceJson(id);
@@ -258,7 +259,7 @@ public final class AttachmentDoctorCommand {
         source.sendSuccess(() -> Component.literal(pretty).withStyle(Style.EMPTY
                 .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, pretty))
                 .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                        Component.literal("Click to copy")))), false);
+                        Component.translatable("townstead.command.attachment.copy")))), false);
         return 1;
     }
 
@@ -268,16 +269,16 @@ public final class AttachmentDoctorCommand {
         int defs = AttachmentServerData.definitions().size();
         int slots = AttachmentServerData.slots().size();
         if (problems.isEmpty()) {
-            source.sendSuccess(() -> Component.literal(
-                    "Attachments healthy: " + defs + " definition(s), " + slots + " point(s), no problems found."),
+            source.sendSuccess(() -> Component.translatable(
+                    "townstead.command.attachment.healthy", defs, slots),
                     false);
             return 1;
         }
-        source.sendSuccess(() -> Component.literal(
-                "Attachment doctor: " + defs + " definition(s), " + slots + " point(s), "
-                        + problems.size() + " problem(s):"), false);
+        source.sendSuccess(() -> Component.translatable(
+                "townstead.command.attachment.problems", defs, slots, problems.size()), false);
         for (String problem : problems) {
-            source.sendSuccess(() -> Component.literal(" - " + problem), false);
+            source.sendSuccess(() -> Component.translatable(
+                    "townstead.command.attachment.problem", problem), false);
         }
         return 0;
     }

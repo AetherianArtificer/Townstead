@@ -126,5 +126,18 @@
   "peppy.dialogue.chat.leatherworker_request.no_salt/1": "<happy>Tiny ask, %1$s, salt please! Cure waits for no one!</happy>",
   "peppy.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<happy>Wet sponge! Or rag! Either's awesome! Bring one over!</happy>",
   "peppy.dialogue.chat.leatherworker_request.no_storage/1": "<happy>Pack's stuffed, %1$s! A chest would seriously save my day!</happy>",
-  "peppy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Yay! Look at this leather! Soft, smooth, sooo nice!</happy>"
+  "peppy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Yay! Look at this leather! Soft, smooth, sooo nice!</happy>",
+  "peppy.dialogue.chat.beverage_artisan_request.no_worksite/1": "<excited>Let's build a drink station! I'll make it the liveliest spot in town!</excited>",
+  "peppy.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<excited>We're out of ingredients! Quick, let's fill those shelves!</excited>",
+  "peppy.dialogue.chat.beverage_artisan_request.no_storage/1": "<excited>So many finished drinks and nowhere to put them! More storage!</excited>",
+  "peppy.dialogue.chat.beverage_artisan_request.unreachable/1": "<excited>Oops, station roadblock! Clear it and I'm right back to work!</excited>",
+  "peppy.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<excited>%2$s is next, just as soon as we find the ingredients!</excited>",
+  "peppy.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<excited>Oh, this evening just got extra sparkly!</excited>",
+  "peppy.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<excited>Another story! I have at least seven!</excited>",
+  "peppy.dialogue.chat.townstead_drunk.drunk_arrival/1": "<excited>Best evening ever! Possibly twice!</excited>",
+  "peppy.dialogue.chat.townstead_drunk.drunk_ambient/1": "<excited>I started a dance and my feet invented a new one!</excited>",
+  "peppy.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>Okay! Water time! And maybe floor time!</sleepy>",
+  "peppy.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>I'm still having fun. Just much, much quieter fun.</sleepy>",
+  "peppy.dialogue.chat.townstead_drunk.service_refused/1": "<happy>No more for me! Water can join the party!</happy>",
+  "peppy.dialogue.chat.townstead_drunk.recovered/1": "<happy>I'm back! Gently back!</happy>"
 }

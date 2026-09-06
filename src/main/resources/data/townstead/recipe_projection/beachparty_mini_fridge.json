@@ -1,0 +1,12 @@
+{
+  "schema":"townstead:recipe_projection/v1",
+  "mods":"beachparty",
+  "recipe_types":["beachparty:mini_fridge_freezing"],
+  "domain":"hospitality.freezing",
+  "fields":{
+    "inputs":{"path":"inputs","operation":"list","required":true},
+    "output":{"path":"output","operation":"item_stack_id","required":true},
+    "time":{"path":"getCraftingTime","operation":"integer","required":true},
+    "readiness":{"default":true,"operation":"boolean"}
+  }
+}

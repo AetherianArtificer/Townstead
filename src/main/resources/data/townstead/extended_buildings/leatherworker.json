@@ -2,6 +2,6 @@
   "schema": "townstead:extended_building/v1",
   "spirit": {
     "industrious": 5,
-    "martial": 2
+    "pastoral": 2
   }
 }

@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": ["candlelight", "farm_and_charm"],
+  "blocks": ["candlelight:cooking_pan"],
+  "inventory": {"slots": {"ingredients": [0,1,2,3,4,5], "containers": [6], "outputs": [7]}},
+  "requires": {"type":"pheno:offset","y":-1,"condition":{"type":"pheno:in_tag","tag":"farm_and_charm:allows_cooking"}}
+}

@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "brewinandchewin:fermenting", "required": false },
+    { "id": "brewinandchewin:keg_pouring", "required": false }
+  ]
+}

@@ -249,6 +249,10 @@ public class HydrateYoungTask extends Behavior<VillagerEntityMCA> {
 
         caregiver.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
         TownsteadVillager.Needs childNeeds = TownsteadVillagers.get(childTarget).needs();
+        if (!VillagerConsumptionManager.permitsManagedVillagerConsumption(drink)) {
+            doStop(level, caregiver, gameTime);
+            return;
+        }
         VillagerConsumptionManager.applyConsumption(caregiver, childTarget, drink, childNeeds);
         ItemStack remainder = bridge.onDrinkConsumed(drink);
         if (remainder.isEmpty()) {
@@ -342,7 +346,8 @@ public class HydrateYoungTask extends Behavior<VillagerEntityMCA> {
     }
 
     private int thirstScore(ItemStack stack, ThirstCompatBridge bridge) {
-        if (stack.isEmpty() || !bridge.itemRestoresThirst(stack)) return 0;
+        if (stack.isEmpty() || !bridge.itemRestoresThirst(stack)
+                || !VillagerConsumptionManager.permitsManagedVillagerConsumption(stack)) return 0;
         int quenched = Math.max(0, bridge.quenched(stack));
         int hydration = Math.max(0, bridge.hydration(stack));
         int purity = bridge.isPurityWaterContainer(stack) ? Math.max(0, bridge.purity(stack)) : 0;

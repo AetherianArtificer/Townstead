@@ -174,6 +174,10 @@ public final class StationProtocols {
         // A craft surface has no state to poll: the recipe's declared time IS the work, and the
         // caller gates on that clock before asking. Once asked, the craft is done.
         if (def.role() == StationType.CRAFT_SURFACE) return true;
+        StationPhase observed = phase(level, anchor, def, adapter, recipe);
+        if (observed == StationPhase.READY) return true;
+        WorkstationV2Def v2 = Workstations.v2ByState(level.getBlockState(anchor));
+        if (v2 != null && !AttendedStationProtocols.observe(level, villager, anchor, v2)) return false;
         return phase(level, anchor, def, adapter, recipe) == StationPhase.READY;
     }
 

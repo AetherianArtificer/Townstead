@@ -20,6 +20,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodProperties;
+import net.minecraft.world.Containers;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
@@ -55,6 +56,11 @@ public final class ServingPlateService {
         if (id != null && "pizzadelight:pizza".equals(id.toString())) {
             ItemStack slice = PizzaDelightCompat.sliceFromPizzaItem(stack);
             if (!slice.isEmpty()) return new Prepared(stack.copyWithCount(1), slice, 4);
+        }
+        int servings = com.aetherianartificer.townstead.needs.Consumables.servings(stack);
+        if (servings > 0) {
+            return new Prepared(stack.copyWithCount(1), stack.copyWithCount(1),
+                    servings);
         }
         //? if >=1.21 {
         FoodProperties food = stack.get(DataComponents.FOOD);
@@ -196,30 +202,38 @@ public final class ServingPlateService {
     }
 
     public static boolean feedPlayer(ServerLevel level, Player player, ServingPlateBlockEntity plate) {
-        if (plate.isEmpty() || !player.canEat(false)) return false;
+        if (plate.isEmpty()) return false;
         ItemStack serving = plate.servingStack().copyWithCount(1);
-        //? if >=1.21 {
-        FoodProperties food = serving.get(DataComponents.FOOD);
-        if (food == null || !plate.consumeOne()) return false;
-        player.getFoodData().eat(food);
-        for (FoodProperties.PossibleEffect possible : food.effects()) {
-            if (level.random.nextFloat() < possible.probability()) {
-                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(possible.effect()));
-            }
+        ConsumptionTransaction.Result result = ConsumptionTransaction.consumePlayer(
+                level, player, serving, plate::consumeOne);
+        if (!result.committed()) return false;
+        if (!result.succeeded()) {
+            com.aetherianartificer.townstead.Townstead.LOGGER.warn(
+                    "Committed serving at {} failed during native consumption: {}",
+                    plate.getBlockPos(), result.detail());
+            return true;
         }
-        //?} else {
-        /*FoodProperties food = serving.getFoodProperties(player);
-        if (food == null || !plate.consumeOne()) return false;
-        player.getFoodData().eat(food.getNutrition(), food.getSaturationModifier());
-        for (com.mojang.datafixers.util.Pair<net.minecraft.world.effect.MobEffectInstance, Float> effect : food.getEffects()) {
-            if (effect.getFirst() != null && level.random.nextFloat() < effect.getSecond()) {
-                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(effect.getFirst()));
-            }
-        }
-        *///?}
+        ItemStack remainder = result.remainder();
+        if (!remainder.isEmpty()) routePlayerRemainder(level, player, plate.getBlockPos(),
+                remainder, result.destination());
         level.playSound(null, plate.getBlockPos(), SoundEvents.GENERIC_EAT,
                 SoundSource.PLAYERS, 0.8F, 0.9F);
         return true;
+    }
+
+    private static void routePlayerRemainder(ServerLevel level, Player player, BlockPos source,
+                                             ItemStack remainder,
+                                             ConsumptionPolicy.RemainderDestination destination) {
+        if (destination == ConsumptionPolicy.RemainderDestination.HOLDER) {
+            if (!player.getInventory().add(remainder)) player.drop(remainder, false);
+            return;
+        }
+        if (destination == ConsumptionPolicy.RemainderDestination.SOURCE) {
+            Containers.dropItemStack(level, source.getX() + 0.5, source.getY() + 0.2,
+                    source.getZ() + 0.5, remainder);
+            return;
+        }
+        player.drop(remainder, false);
     }
 
     private static final class PlateFoodSource implements Amenities.WorldSource {
@@ -231,12 +245,14 @@ public final class ServingPlateService {
         @Override
         public boolean available(ServerLevel level, BlockPos pos) {
             ItemStack serving = servingAt(level, pos);
+            if (!VillagerConsumptionManager.permitsManagedVillagerConsumption(serving)) return false;
             return !serving.isEmpty() && FoodSafety.isSafeNutritiousFood(serving);
         }
 
         @Override
         public boolean use(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
             ItemStack serving = servingAt(level, pos);
+            if (!VillagerConsumptionManager.permitsManagedVillagerConsumption(serving)) return false;
             if (!FoodSafety.isSafeNutritiousFood(serving, villager)) return false;
             var needs = TownsteadVillagers.get(villager).needs();
             if (needs.hunger() >= HungerData.MAX_HUNGER || !consumeAt(level, pos)) return false;

@@ -133,5 +133,18 @@
   "gloomy.dialogue.chat.leatherworker_request.no_salt/1": "<sad>No salt. The skin will spoil. Like everything does.</sad>",
   "gloomy.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<sad>No wet sponge. The hide waits, dries, fails.</sad>",
   "gloomy.dialogue.chat.leatherworker_request.no_storage/1": "<sad>The leather has nowhere to go. Like me.</sad>",
-  "gloomy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<sad>Leather. At least one thing turned out right today.</sad>"
+  "gloomy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<sad>Leather. At least one thing turned out right today.</sad>",
+  "gloomy.dialogue.chat.beverage_artisan_request.no_worksite/1": "<sad>No drink station. Another craft with nowhere to belong.</sad>",
+  "gloomy.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<sad>The shelves are empty. Of course they are.</sad>",
+  "gloomy.dialogue.chat.beverage_artisan_request.no_storage/1": "<sad>Even the finished drinks have nowhere to go.</sad>",
+  "gloomy.dialogue.chat.beverage_artisan_request.unreachable/1": "<sad>The path is blocked. It feels appropriate somehow.</sad>",
+  "gloomy.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<sad>%2$s will remain an idea. There are no ingredients.</sad>",
+  "gloomy.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<sad>A little warmth before the long cold morning.</sad>",
+  "gloomy.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<sad>The evening is almost pleasant. That cannot last.</sad>",
+  "gloomy.dialogue.chat.townstead_drunk.drunk_arrival/1": "<sad>The room sways. At least something is trying to comfort me.</sad>",
+  "gloomy.dialogue.chat.townstead_drunk.drunk_ambient/1": "<sad>I forgot the ending. It was probably unhappy.</sad>",
+  "gloomy.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>Water and a quiet corner. Morning will find me soon enough.</sleepy>",
+  "gloomy.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>The floor has accepted me. Perhaps I live here now.</sleepy>",
+  "gloomy.dialogue.chat.townstead_drunk.service_refused/1": "<sad>No more. Let the cup disappoint someone else.</sad>",
+  "gloomy.dialogue.chat.townstead_drunk.recovered/1": "<sad>My head is clear enough to remember everything.</sad>"
 }

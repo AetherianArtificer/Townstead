@@ -1,0 +1,14 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "herbalbrews:black_tea", "required": false },
+    { "id": "herbalbrews:coffee", "required": false },
+    { "id": "herbalbrews:green_tea", "required": false },
+    { "id": "herbalbrews:hibiscus_tea", "required": false },
+    { "id": "herbalbrews:lavender_tea", "required": false },
+    { "id": "herbalbrews:milk_coffee", "required": false },
+    { "id": "herbalbrews:oolong_tea", "required": false },
+    { "id": "herbalbrews:rooibos_tea", "required": false },
+    { "id": "herbalbrews:yerba_mate_tea", "required": false }
+  ]
+}

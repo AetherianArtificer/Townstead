@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:relationship_descriptor/v1",
+  "display": { "translate": "relationship_descriptor.townstead.uneasy_attachment" },
+  "priority": 70,
+  "tags": ["attached", "uneasy"],
+  "when": {
+    "type": "pheno:and",
+    "conditions": [
+      { "type": "pheno:value", "value": { "type": "pheno:relationship", "quality": "townstead:affection" }, "comparison": ">=", "compare_to": 15 },
+      { "type": "pheno:value", "value": { "type": "pheno:relationship", "quality": "townstead:comfort" }, "comparison": "<=", "compare_to": -10 }
+    ]
+  }
+}

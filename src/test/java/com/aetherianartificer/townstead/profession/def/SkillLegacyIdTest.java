@@ -42,6 +42,27 @@ class SkillLegacyIdTest {
         assertEquals(id("townstead:quick_hands"), SkillDefs.canonicalId(id("townstead:quick_hands")));
     }
 
+    @Test
+    void renamedBakerPathsResolveOldSkillIdsToTheirCanonicalSuccessors() {
+        ResourceLocation canonical = id("townstead:baker/jam_maker/setting_point");
+        ResourceLocation legacy = id("townstead:baker/confiturier/setting_point");
+        SkillDefs.replaceAll(registry(canonical.toString()));
+
+        assertSame(SkillDefs.byId(canonical), SkillDefs.byId(legacy));
+        assertEquals(canonical, SkillDefs.canonicalId(legacy));
+        assertEquals("jam_maker", CareerIdAliases.canonicalPath(
+                id("townstead:baker"), "confiturier"));
+        assertEquals("pastry_chef", CareerIdAliases.canonicalPath(
+                id("townstead:baker"), "patissier"));
+    }
+
+    @Test
+    void renamedPathAliasAlsoCoversSkillsAddedByDatapacks() {
+        assertEquals(id("townstead:baker/pastry_chef/showpiece"),
+                CareerIdAliases.canonicalSkill(
+                        id("townstead:baker/patissier/showpiece")));
+    }
+
     private static Map<ResourceLocation, SkillDef> registry(String... ids) {
         Map<ResourceLocation, SkillDef> out = new LinkedHashMap<>();
         for (String raw : ids) {

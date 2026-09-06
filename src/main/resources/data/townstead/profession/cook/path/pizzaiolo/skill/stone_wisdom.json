@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Stone Wisdom"
+    "translate": "skill.townstead.cook.pizzaiolo.stone_wisdom"
   },
   "icon": "minecraft:stone",
   "description": {
-    "text": "Every oven has a temperament; you have learned how to listen. Gain 3 additional Cook XP for each Cook rank you hold."
+    "translate": "skill.townstead.cook.pizzaiolo.stone_wisdom.description"
   },
   "cost": 1,
   "requires": ["blistered_crust"],

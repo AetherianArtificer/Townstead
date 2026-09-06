@@ -150,5 +150,18 @@
   "shy.dialogue.chat.leatherworker_request.no_salt/1": "<nervous>S-sorry, I'd need some salt? For the hide. Just a little.</nervous>",
   "shy.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<nervous>Um, a w-wet sponge? Or a rag? Either, if it's not too much trouble...</nervous>",
   "shy.dialogue.chat.leatherworker_request.no_storage/1": "<nervous>My p-pack is f-full... could there be a chest somewhere? Please?</nervous>",
-  "shy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Oh... oh, it cured. The l-leather is really nice...</happy>"
+  "shy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Oh... oh, it cured. The l-leather is really nice...</happy>",
+  "shy.dialogue.chat.townstead_drunk.tipsy_arrival/1": "I might stay a little longer... if nobody minds.",
+  "shy.dialogue.chat.townstead_drunk.tipsy_ambient/1": "I-I think I am talking more than usual. Sorry.",
+  "shy.dialogue.chat.townstead_drunk.drunk_arrival/1": "Oh... did everyone see me stumble?",
+  "shy.dialogue.chat.townstead_drunk.drunk_ambient/1": "Was I telling that story aloud? Oh. I suppose I was.",
+  "shy.dialogue.chat.townstead_drunk.wasted_arrival/1": "Could I have water... and somewhere quiet, please?",
+  "shy.dialogue.chat.townstead_drunk.wasted_ambient/1": "I-I'll be all right. I just need to sit still.",
+  "shy.dialogue.chat.townstead_drunk.service_refused/1": "Water, please. And maybe somewhere a little quieter.",
+  "shy.dialogue.chat.townstead_drunk.recovered/1": "I feel like myself again. That's a relief.",
+  "shy.dialogue.chat.beverage_artisan_request.no_worksite/1": "Um... could we have a drink station? If it isn't too much trouble.",
+  "shy.dialogue.chat.beverage_artisan_request.no_ingredients/1": "The ingredients are gone. S-sorry, could someone restock them?",
+  "shy.dialogue.chat.beverage_artisan_request.no_storage/1": "There isn't any room left. Maybe... another chest?",
+  "shy.dialogue.chat.beverage_artisan_request.unreachable/1": "I can't reach my station. C-could someone clear the way?",
+  "shy.dialogue.chat.beverage_artisan_request.no_ingredients_item": "I could make %2$s, but... we're missing the ingredients."
 }

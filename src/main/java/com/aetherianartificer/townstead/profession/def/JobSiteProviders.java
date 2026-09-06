@@ -66,7 +66,24 @@ public final class JobSiteProviders {
                 String path = e.getAsString().trim();
                 if (!path.isEmpty() && !pathAffinities.contains(path)) pathAffinities.add(path);
             }
-            return new JobSiteProvider.Building(prefixes, slotsPerTier, pathAffinities);
+            JobSiteProvider.Building.Proprietor proprietor = JobSiteProvider.Building.Proprietor.NONE;
+            if (json.has("proprietor")) {
+                if (!json.get("proprietor").isJsonObject()) return null;
+                JsonObject authored = json.getAsJsonObject("proprietor");
+                Set<ResourceLocation> professions = new LinkedHashSet<>();
+                for (JsonElement e : GsonHelper.getAsJsonArray(
+                        authored, "professions", new JsonArray())) {
+                    if (!e.isJsonPrimitive() || !e.getAsJsonPrimitive().isString()) return null;
+                    ResourceLocation id = ResourceLocation.tryParse(e.getAsString());
+                    if (id == null) return null;
+                    professions.add(id);
+                }
+                int slots = Math.max(0, GsonHelper.getAsInt(authored, "slots", 1));
+                if (professions.isEmpty() || slots == 0) return null;
+                proprietor = new JobSiteProvider.Building.Proprietor(professions, slots);
+            }
+            return new JobSiteProvider.Building(
+                    prefixes, slotsPerTier, pathAffinities, proprietor);
         });
         register(JobSiteProvider.StationPost.KEY, json -> {
             Set<ResourceLocation> blocks = new LinkedHashSet<>();

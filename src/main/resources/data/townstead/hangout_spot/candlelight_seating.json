@@ -1,0 +1,5 @@
+{
+  "schema":"townstead:hangout_spot/v1","mods":["candlelight","farm_and_charm"],
+  "blocks":["#townstead:compat/candlelight/seating"],
+  "posture":"townstead:sit","capacity":1,"canonical_offset":[0,1,0],"linked_offsets":[[0,-1,0]]
+}

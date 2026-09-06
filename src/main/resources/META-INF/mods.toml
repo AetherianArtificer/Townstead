@@ -67,6 +67,13 @@ ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies.townstead]]
+modId = "curios"
+mandatory = false
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.townstead]]
 modId = "bendylib"
 mandatory = false
 versionRange = "[4.0.0,)"

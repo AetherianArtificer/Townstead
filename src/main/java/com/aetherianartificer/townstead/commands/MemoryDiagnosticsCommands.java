@@ -44,29 +44,15 @@ public final class MemoryDiagnosticsCommands {
         TownsteadMemoryLifecycle.Snapshot memory = TownsteadMemoryLifecycle.snapshot();
         VillageAiBudget.Snapshot budget = VillageAiBudget.snapshot();
 
-        source.sendSuccess(() -> Component.literal(
-                "Townstead memory: mcaVillages=" + villageStats.villages
-                        + ", mcaBuildings=" + villageStats.buildings
-                        + ", mcaTrackedBlockRefs=" + villageStats.blockRefs
-                        + ", townsteadSchema=" + savedData.loadedSchemaVersion() + "/" + TownsteadVillageSavedData.SCHEMA_VERSION
-                        + ", migrationComplete=" + savedData.schemaMigrationComplete()
-                        + ", townsteadVillageRecords=" + savedData.recordCount()
-                        + ", townsteadOverlays=" + savedData.overlayCount()
-                        + ", townsteadPackedPositions=" + savedData.trackedPositionCount()
-                        + ", caches[target=" + memory.targetReachability()
-                        + ", nearbyStorage=" + memory.nearbyStorageSnapshots()
-                        + ", villageStorage=" + memory.villageStorageSnapshots()
-                        + ", kitchenStorage=" + memory.kitchenStorageSnapshots()
-                        + ", dockScan=" + memory.dockScanCache()
-                        + ", indexedDocks=" + memory.dockIndexedDocks()
-                        + ", berthGroups=" + memory.dockBerthGroups()
-                        + ", producerStations=" + memory.producerStationClaims()
-                        + ", villagerStates=" + memory.villagerStates()
-                        + ", dirtyVillagerStates=" + memory.dirtyVillagerStates()
-                        + ", aiScopes=" + memory.aiBudgetScopes()
-                        + "]"
-                        + ", aiBudget[granted=" + budget.granted()
-                        + ", throttled=" + budget.throttled() + "]"),
+        source.sendSuccess(() -> Component.translatable("command.townstead.memory.report",
+                        villageStats.villages, villageStats.buildings, villageStats.blockRefs,
+                        savedData.loadedSchemaVersion(), TownsteadVillageSavedData.SCHEMA_VERSION,
+                        savedData.schemaMigrationComplete(), savedData.recordCount(), savedData.overlayCount(),
+                        savedData.trackedPositionCount(), memory.targetReachability(),
+                        memory.nearbyStorageSnapshots(), memory.villageStorageSnapshots(),
+                        memory.kitchenStorageSnapshots(), memory.dockScanCache(), memory.dockIndexedDocks(),
+                        memory.dockBerthGroups(), memory.producerStationClaims(), memory.villagerStates(),
+                        memory.dirtyVillagerStates(), memory.aiBudgetScopes(), budget.granted(), budget.throttled()),
                 false);
         return 1;
     }
@@ -74,54 +60,54 @@ public final class MemoryDiagnosticsCommands {
     private static int profileStart(CommandSourceStack source) {
         TownsteadProfiler.clear();
         TownsteadProfiler.setEnabled(true);
-        source.sendSuccess(() -> Component.literal("Townstead profiler started."), true);
+        source.sendSuccess(() -> Component.translatable("command.townstead.memory.profiler.started"), true);
         return 1;
     }
 
     private static int profileStop(CommandSourceStack source) {
         TownsteadProfiler.setEnabled(false);
-        source.sendSuccess(() -> Component.literal("Townstead profiler stopped."), true);
+        source.sendSuccess(() -> Component.translatable("command.townstead.memory.profiler.stopped"), true);
         return 1;
     }
 
     private static int profileReset(CommandSourceStack source) {
         TownsteadProfiler.clear();
-        source.sendSuccess(() -> Component.literal("Townstead profiler counters reset."), true);
+        source.sendSuccess(() -> Component.translatable("command.townstead.memory.profiler.reset"), true);
         return 1;
     }
 
     private static int profileReport(CommandSourceStack source) {
         TownsteadProfiler.Snapshot snapshot = TownsteadProfiler.snapshot();
-        StringBuilder out = new StringBuilder();
-        out.append("Townstead profiler: ")
-                .append(snapshot.enabled() ? "running" : "stopped");
+        source.sendSuccess(() -> Component.translatable("command.townstead.memory.profiler.heading",
+                Component.translatable(snapshot.enabled()
+                        ? "command.townstead.memory.profiler.running"
+                        : "command.townstead.memory.profiler.inactive")), false);
         int rows = 0;
         for (TownsteadProfiler.Row row : snapshot.rows()) {
             if (rows++ >= 12) break;
-            out.append("\n")
-                    .append(row.name())
-                    .append(": calls=").append(row.calls())
-                    .append(", totalMs=").append(String.format(java.util.Locale.ROOT, "%.3f", row.millis()))
-                    .append(", usPerCall=").append(String.format(java.util.Locale.ROOT, "%.3f", row.microsPerCall()));
+            source.sendSuccess(() -> Component.translatable("command.townstead.memory.profiler.row",
+                    row.name(), row.calls(),
+                    String.format(java.util.Locale.ROOT, "%.3f", row.millis()),
+                    String.format(java.util.Locale.ROOT, "%.3f", row.microsPerCall())), false);
         }
-        if (rows == 0) out.append("\n(no samples yet)");
-        source.sendSuccess(() -> Component.literal(out.toString()), false);
+        if (rows == 0) {
+            source.sendSuccess(() -> Component.translatable(
+                    "command.townstead.memory.profiler.no_samples"), false);
+        }
         return 1;
     }
 
     private static int migrateNow(CommandSourceStack source) {
         TownsteadVillageMigration.Result result = TownsteadVillageMigration.migrateServer(source.getServer());
-        source.sendSuccess(() -> Component.literal(
-                "Townstead migration scanned " + result.villagesScanned()
-                        + " villages and migrated/compacted "
-                        + result.buildingsMigrated() + " synthetic buildings."),
+        source.sendSuccess(() -> Component.translatable("command.townstead.memory.migration.complete",
+                        result.villagesScanned(), result.buildingsMigrated()),
                 true);
         return 1;
     }
 
     private static int purgeCaches(CommandSourceStack source) {
         TownsteadMemoryLifecycle.clearAll();
-        source.sendSuccess(() -> Component.literal("Townstead runtime caches cleared."), true);
+        source.sendSuccess(() -> Component.translatable("command.townstead.memory.caches_cleared"), true);
         return 1;
     }
 

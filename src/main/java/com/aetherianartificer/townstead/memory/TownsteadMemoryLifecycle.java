@@ -45,6 +45,7 @@ public final class TownsteadMemoryLifecycle {
     }
 
     public static void clearAll() {
+        com.aetherianartificer.townstead.dialogue.conversation.ConversationEngine.clear();
         TargetReachabilityCache.clearAll();
         NearbyStorageIndex.clearAll();
         VillageStorageIndex.clearAll();

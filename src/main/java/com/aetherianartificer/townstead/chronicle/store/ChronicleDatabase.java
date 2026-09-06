@@ -424,6 +424,7 @@ public final class ChronicleDatabase implements ChronicleStore {
                 byte[] eventBytes = require(events).get(account.storyEventId());
                 if (eventBytes == null) continue;
                 ChronicleEvent event = decodeEvent(eventBytes);
+                if (!event.newsworthy()) continue;
                 result.add(new KnownStory(event.eventId(), account.accountId(), account.fidelity(),
                         account.learnedDay(), event.templateId().toString(), event.worldDay(),
                         event.villageId(), event.magnitude(), event.reach(), account.overlayJson()));

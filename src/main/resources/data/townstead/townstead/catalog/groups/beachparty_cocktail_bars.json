@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:catalog_group/v1",
+  "label": "townstead.catalog.group.beachparty_cocktail_bars",
+  "match_prefix": "compat/beachparty/beach_cocktail_bar_l",
+  "layout": "tiered",
+  "priority": 10
+}

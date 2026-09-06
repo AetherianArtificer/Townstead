@@ -1,0 +1,24 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "state": "townstead_state:drunk",
+  "tier": "tipsy",
+  "priority": 20,
+  "on_enter": [
+    { "type": "pheno:speak", "pool": "dialogue.chat.townstead_drunk.tipsy_arrival", "variants": 4 },
+    { "type": "pheno:performance", "performance": "townstead:tipsy_warmth", "channel": "state", "duration_ticks": 50, "priority": 20, "fallback": "vanilla_gesture" }
+  ],
+  "on_tier_change": { "type": "pheno:performance", "performance": "townstead:tipsy_warmth", "channel": "state", "duration_ticks": 50, "priority": 20, "fallback": "vanilla_gesture" },
+  "while_active": {
+    "interval": 240,
+    "chance": 0.32,
+    "do": {
+      "type": "pheno:choice",
+      "actions": [
+        { "weight": 4, "action": { "type": "pheno:performance", "performance": "townstead:tipsy_story", "channel": "social", "duration_ticks": 70, "priority": 10, "fallback": "vanilla_gesture" } },
+        { "weight": 2, "action": { "type": "pheno:speak", "pool": "dialogue.chat.townstead_drunk.tipsy_ambient", "variants": 4 } },
+        { "weight": 1, "action": { "type": "pheno:wander", "horizontal": 2, "vertical": 1, "speed": 0.34 } }
+      ]
+    }
+  },
+  "on_exit": { "type": "pheno:speak", "pool": "dialogue.chat.townstead_drunk.recovered", "variants": 4 }
+}

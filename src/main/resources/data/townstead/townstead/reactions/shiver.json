@@ -1,0 +1,38 @@
+{
+  "schema": "townstead:reaction/v3",
+  "display_name": "reaction.townstead.shiver",
+  "tags": [
+    "need",
+    "cold"
+  ],
+  "cooldown": "60s",
+  "chance": "15%",
+  "triggers": [
+    {
+      "type": "context_present",
+      "tags": [
+        "freezing",
+        "under_open_sky"
+      ]
+    },
+    {
+      "type": "context_present",
+      "tags": [
+        "cold",
+        "under_open_sky"
+      ]
+    }
+  ],
+  "choices": [
+    {
+      "do": {
+        "type": "pheno:performance",
+        "performance": "townstead:reaction_shiver",
+        "channel": "reaction",
+        "duration_ticks": 80,
+        "priority": 30,
+        "fallback": "stand"
+      }
+    }
+  ]
+}

@@ -27,7 +27,7 @@ public final class PregenMemories {
                                 float fidelity, long day) {
         AccountLedger.learn(world, template, event, knower, false, role,
                 SpreadChannel.WITNESS, ChronicleEvent.NONE, fidelity,
-                DistortionOverlay.NONE, day);
+                DistortionOverlay.NONE, day, false);
 
         ChronicleEventTemplate.Impact impact = impactFor(template, role);
         float valence = 0.3f;

@@ -94,7 +94,7 @@ public final class CareerPackSource {
                 String id = packId(path, type, source);
                 PackLocationInfo info = new PackLocationInfo(
                         id,
-                        Component.literal("Townstead Career: " + displayName(path)),
+                        Component.translatable("townstead.pack.career.name", displayName(path)),
                         PackSource.BUILT_IN,
                         Optional.empty());
                 Pack pack = Pack.readMetaAndCreate(
@@ -109,7 +109,7 @@ public final class CareerPackSource {
                 if (requireCareerDocument && !isCareerPack(path)) return;
                 Pack pack = Pack.readMetaAndCreate(
                         packId(path, type, source),
-                        Component.literal("Townstead Career: " + displayName(path)),
+                        Component.translatable("townstead.pack.career.name", displayName(path)),
                         true,
                         resources,
                         type,

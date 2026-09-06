@@ -1,0 +1,22 @@
+{
+  "schema": "townstead:reaction/v3",
+  "display_name": "reaction.townstead.zombie_alarm",
+  "tags": ["emotional", "fear", "danger", "zombie"],
+  "cooldown": "60s",
+  "chance": "45%",
+  "triggers": [
+    { "type": "context_enter", "tags": ["near_zombie_villager"] }
+  ],
+  "choices": [
+    {
+      "personality_weights": {"anxious": 2.4, "sensitive": 1.8, "peaceful": 1.5, "default": 1.0},
+      "do": {
+        "type": "pheno:and",
+        "actions": [
+          {"type": "pheno:performance", "performance": "townstead:reaction_startled", "channel": "reaction", "duration_ticks": 30, "priority": 85, "fallback": "stand"},
+          {"type": "pheno:expression", "cue": "townstead_expressions:surprise"}
+        ]
+      }
+    }
+  ]
+}

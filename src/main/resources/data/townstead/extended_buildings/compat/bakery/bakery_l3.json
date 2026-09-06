@@ -7,8 +7,9 @@
     "node_item": "bakery:baker_station"
   },
   "spirit": {
-    "pastoral": 10,
-    "commercial": 12,
-    "industrious": 4
+    "commercial": 9,
+    "pastoral": 8,
+    "industrious": 5,
+    "tourism": 4
   }
 }

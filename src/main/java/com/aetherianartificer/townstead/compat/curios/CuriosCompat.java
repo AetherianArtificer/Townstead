@@ -1,45 +1,42 @@
 package com.aetherianartificer.townstead.compat.curios;
 
-import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 
-import java.lang.reflect.Method;
-import java.util.Map;
+import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
- * Reflection soft-dep bridge to the Curios API (no compile-time dependency). Lets the worn-cosmetic layer
- * render items held in an entity's Curios slots, and the equip gate police them, the same as the vanilla
- * armor slots. Curios is optional: when it's absent, or its API shifts under us, every call is a graceful
- * no-op (the bridge disables itself on the first failure, never crashes). Class/method names live only
- * here as strings; the version-specific {@code IItemHandler} type is resolved off the live handler instance
- * so no Forge/NeoForge class split is needed.
+ * Gate for the optional Curios integration. Curios is compile-time only: this class names no Curios
+ * type, and every call is a no-op without the mod, so nothing here can trip class loading on an
+ * install that lacks it. The typed calls live in {@link CuriosBridge}, which is only touched once
+ * {@link #present()} has answered yes.
  */
 public final class CuriosCompat {
 
     private static final boolean PRESENT = ModCompat.isLoaded("curios");
-    private static boolean disabled;
-    private static Method getCuriosInventory; // CuriosApi.getCuriosInventory(LivingEntity) -> Optional/LazyOptional
-    private static Method orElse;             // (Optional|LazyOptional).orElse(Object)
-    private static Method getCurios;          // ICuriosItemHandler.getCurios() -> Map<String, ICurioStacksHandler>
-    private static Method getStacks;          // ICurioStacksHandler.getStacks() -> IItemHandlerModifiable
-    private static Method getSlots;           // IItemHandler.getSlots() -> int
-    private static Method getStackInSlot;     // IItemHandler.getStackInSlot(int) -> ItemStack
-    private static Method setStackInSlot;     // IItemHandlerModifiable.setStackInSlot(int, ItemStack)
 
     private CuriosCompat() {}
 
     /** Whether Curios is installed (so callers can gate work that's pointless without it). */
     public static boolean present() {
-        return PRESENT && !disabled;
+        return PRESENT;
     }
 
     /** Feeds every non-empty Curios-slot stack the entity wears to {@code out}. No-op without Curios. */
     public static void forEachWorn(LivingEntity entity, Consumer<ItemStack> out) {
-        walk(entity, (handler, slot, stack) -> out.accept(stack));
+        if (PRESENT && entity != null) CuriosBridge.forEachWorn(entity, out);
+    }
+
+    /**
+     * Feeds every Curios-slot stack the entity shows, with its slot type id, the way Curios' own render
+     * layer walks them: a cosmetic stack first, else the worn stack when its render toggle is on.
+     */
+    public static void forEachWornVisible(LivingEntity entity, BiConsumer<String, ItemStack> out) {
+        if (PRESENT && entity != null) CuriosBridge.forEachWornVisible(entity, out);
     }
 
     /**
@@ -47,63 +44,47 @@ public final class CuriosCompat {
      * removed copy to {@code onRemoved} (to return it to the player, message, etc.). No-op without Curios.
      */
     public static void removeWhere(LivingEntity entity, Predicate<ItemStack> test, Consumer<ItemStack> onRemoved) {
-        if (entity.level().isClientSide) return;
-        walk(entity, (handler, slot, stack) -> {
-            if (!test.test(stack)) return;
-            ItemStack removed = stack.copy();
-            setStackInSlot.invoke(handler, slot, ItemStack.EMPTY);
-            onRemoved.accept(removed);
-        });
+        if (!PRESENT || entity == null || entity.level().isClientSide) return;
+        CuriosBridge.removeWhere(entity, test, onRemoved);
     }
 
-    @FunctionalInterface
-    private interface SlotVisitor {
-        void visit(Object stacksHandler, int slot, ItemStack stack) throws Exception;
+    /**
+     * Every Curios slot the entity has, in Curios' display order, as menu-ready handles. Empty without
+     * Curios or for an entity Curios assigns no slots to.
+     */
+    public static List<CurioSlotSpec> slotSpecs(LivingEntity entity) {
+        return PRESENT && entity != null ? CuriosBridge.slotSpecs(entity) : List.of();
     }
 
-    private static void walk(LivingEntity entity, SlotVisitor visitor) {
-        if (!PRESENT || disabled) return;
-        try {
-            Object inventory = handlerFor(entity);
-            if (inventory == null) return;
-            Map<?, ?> curios = (Map<?, ?>) getCurios.invoke(inventory);
-            for (Object stacksHandler : curios.values()) {
-                Object stacks = getStacks.invoke(stacksHandler);
-                ensureStackMethods(stacks);
-                int slots = (int) getSlots.invoke(stacks);
-                for (int i = 0; i < slots; i++) {
-                    ItemStack stack = (ItemStack) getStackInSlot.invoke(stacks, i);
-                    if (stack != null && !stack.isEmpty()) visitor.visit(stacks, i, stack);
-                }
-            }
-        } catch (Throwable t) {
-            disabled = true;
-            Townstead.LOGGER.warn("Curios bridge disabled (API mismatch?); Curios-slot wearables won't render or be gated", t);
-        }
+    /** Whether Curios would accept {@code stack} in the entity's given slot (tags, curio rules). */
+    public static boolean canEquip(LivingEntity entity, String slotId, int index, ItemStack stack) {
+        return PRESENT && CuriosBridge.canEquip(entity, slotId, index, stack);
     }
 
-    private static Object handlerFor(LivingEntity entity) throws Exception {
-        if (getCuriosInventory == null) resolveApi();
-        Object optional = getCuriosInventory.invoke(null, entity);
-        if (optional == null) return null;
-        if (orElse == null) orElse = optional.getClass().getMethod("orElse", Object.class);
-        return orElse.invoke(optional, (Object) null);
+    /** Whether the curio worn in the entity's given slot may be taken out again. */
+    public static boolean canUnequip(LivingEntity entity, String slotId, int index, ItemStack stack) {
+        return !PRESENT || CuriosBridge.canUnequip(entity, slotId, index, stack);
     }
 
-    private static void resolveApi() throws Exception {
-        Class<?> api = Class.forName("top.theillusivec4.curios.api.CuriosApi");
-        getCuriosInventory = api.getMethod("getCuriosInventory", LivingEntity.class);
-        getCurios = Class.forName("top.theillusivec4.curios.api.type.capability.ICuriosItemHandler")
-                .getMethod("getCurios");
-        getStacks = Class.forName("top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler")
-                .getMethod("getStacks");
+    /** Lets a curio react to being put on through a slot (equip sound and the like), as Curios' own slot does. */
+    public static void onEquipFromUse(LivingEntity entity, String slotId, int index, ItemStack stack) {
+        if (PRESENT && entity != null) CuriosBridge.onEquipFromUse(entity, slotId, index, stack);
     }
 
-    private static void ensureStackMethods(Object stacks) throws Exception {
-        if (getSlots != null) return;
-        Class<?> c = stacks.getClass();
-        getSlots = c.getMethod("getSlots");
-        getStackInSlot = c.getMethod("getStackInSlot", int.class);
-        setStackInSlot = c.getMethod("setStackInSlot", int.class, ItemStack.class);
+    /** Whether the curio in the entity's given slot renders on them (Curios' per-slot toggle). */
+    public static boolean isRendered(LivingEntity entity, String slotId, int index) {
+        return PRESENT && entity != null && CuriosBridge.isRendered(entity, slotId, index);
+    }
+
+    public static void setRendered(LivingEntity entity, String slotId, int index, boolean render) {
+        if (PRESENT && entity != null) CuriosBridge.setRendered(entity, slotId, index, render);
+    }
+
+    /**
+     * Puts one copy of {@code stack} into the first empty Curios slot that accepts it. Returns true when
+     * placed; false without Curios, or when no slot is free or fitting. Does not shrink {@code stack}.
+     */
+    public static boolean equipFirstFree(LivingEntity entity, ItemStack stack) {
+        return PRESENT && entity != null && CuriosBridge.equipFirstFree(entity, stack);
     }
 }

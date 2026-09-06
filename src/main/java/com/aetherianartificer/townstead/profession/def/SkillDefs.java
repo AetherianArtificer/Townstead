@@ -45,6 +45,9 @@ public final class SkillDefs {
         if (id == null) return null;
         SkillDef direct = ENTRIES.get(id);
         if (direct != null) return direct;
+        ResourceLocation renamed = CareerIdAliases.canonicalSkill(id);
+        direct = ENTRIES.get(renamed);
+        if (direct != null) return direct;
         ResourceLocation canonical = LEGACY.get(id);
         return canonical == null ? null : ENTRIES.get(canonical);
     }
@@ -52,6 +55,8 @@ public final class SkillDefs {
     /** The current id for {@code id}: itself when registered, its path-scoped successor, or itself unchanged. */
     public static ResourceLocation canonicalId(ResourceLocation id) {
         if (id == null || ENTRIES.containsKey(id)) return id;
+        ResourceLocation renamed = CareerIdAliases.canonicalSkill(id);
+        if (ENTRIES.containsKey(renamed)) return renamed;
         return LEGACY.getOrDefault(id, id);
     }
 

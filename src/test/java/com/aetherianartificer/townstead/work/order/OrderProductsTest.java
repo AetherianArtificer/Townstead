@@ -85,7 +85,7 @@ class OrderProductsTest {
 
     private static ResourceLocation id(String raw) {
         //? if >=1.21 {
-        return ResourceLocation.parse(raw);
+        return ResourceLocation.tryParse(raw);
         //?} else {
         /*return new ResourceLocation(raw);
         *///?}

@@ -1,11 +1,11 @@
 {
   "schema": "townstead:skill/v1",
   "display_name": {
-    "text": "Pizza Spin"
+    "translate": "skill.townstead.cook.pizzaiolo.pizza_spin"
   },
   "icon": "minecraft:snowball",
   "description": {
-    "text": "Turn a practiced flourish into breathing room when the kitchen gets crowded. Strike and toss nearby foes into the air."
+    "translate": "skill.townstead.cook.pizzaiolo.pizza_spin.description"
   },
   "cost": 1,
   "requires": ["starter_culture"],

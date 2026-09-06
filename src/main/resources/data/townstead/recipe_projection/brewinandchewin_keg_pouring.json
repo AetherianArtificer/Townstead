@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:recipe_projection/v1",
+  "mods": "brewinandchewin",
+  "recipe_types": ["brewinandchewin:keg_pouring"],
+  "domain": "brewing.pouring",
+  "fields": {
+    "input_fluid": {"aliases": ["fluid.id", "fluid", "inputFluid", "fluidStack"], "operation": "fluid_id", "required": true},
+    "fluid_amount": {"aliases": ["fluid.amount", "amount", "fluidAmount", "requiredAmount"], "operation": "integer", "required": true},
+    "output": {"aliases": ["output.id", "output.item", "output", "result", "resultItem"], "operation": "item_id", "required": true},
+    "container": {"aliases": ["container", "input", "vessel"], "operation": "item_id"},
+    "conditions": {"aliases": ["conditions", "getConditions"], "operation": "list"},
+    "readiness": {"default": true, "operation": "boolean"}
+  }
+}

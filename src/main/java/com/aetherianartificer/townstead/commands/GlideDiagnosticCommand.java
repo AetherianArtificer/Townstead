@@ -35,7 +35,8 @@ public final class GlideDiagnosticCommand {
         List<VillagerEntityMCA> villagers = player.level().getEntitiesOfClass(
                 VillagerEntityMCA.class, player.getBoundingBox().inflate(RANGE));
         if (villagers.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("No villagers within " + (int) RANGE + " blocks."), false);
+            source.sendSuccess(() -> Component.translatable(
+                    "command.townstead.glide.no_villagers", (int) RANGE), false);
             return 0;
         }
         villagers.sort(Comparator.comparingDouble(v -> v.distanceToSqr(player)));

@@ -180,7 +180,7 @@ public class FieldPostScreen extends Screen {
         int searchW = PALETTE_W - searchPad * 2 - toggleW - 2;
         searchBox = new EditBox(font, palLeft + searchPad, palTop + 3,
                 searchW, SEARCH_H - 4,
-                Component.literal("Search"));
+                Component.translatable("townstead.ui.search"));
         searchBox.setMaxLength(64);
         searchBox.setBordered(true);
         searchBox.setHint(Component.translatable("townstead.field_post.search.hint"));

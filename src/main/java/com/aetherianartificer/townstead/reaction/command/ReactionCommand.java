@@ -6,7 +6,6 @@ import com.aetherianartificer.townstead.reaction.ReactionContext;
 import com.aetherianartificer.townstead.reaction.ReactionDispatcher;
 import com.aetherianartificer.townstead.reaction.ReactionRegistry;
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import com.mojang.brigadier.suggestion.Suggestions;
@@ -16,6 +15,7 @@ import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -27,7 +27,7 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -54,79 +54,80 @@ public final class ReactionCommand {
                 Commands.literal("townstead").then(Commands.literal("reaction")
                         .then(Commands.literal("list").executes(c -> list(c.getSource())))
                         .then(Commands.literal("play")
-                                .then(Commands.argument("id", StringArgumentType.string())
+                                .then(Commands.argument("id", ResourceLocationArgument.id())
                                         .suggests(reactionIds)
                                         .executes(c -> playAuto(
                                                 c.getSource(),
-                                                StringArgumentType.getString(c, "id")))
+                                                ResourceLocationArgument.getId(c, "id")))
                                         .then(Commands.argument("target", EntityArgument.entity())
                                                 .executes(c -> playExplicit(
                                                         c.getSource(),
-                                                        StringArgumentType.getString(c, "id"),
+                                                        ResourceLocationArgument.getId(c, "id"),
                                                         EntityArgument.getEntity(c, "target"))))))));
     }
 
     private static int list(CommandSourceStack source) {
         Collection<Reaction> all = ReactionRegistry.all();
         if (all.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("No reactions loaded."), false);
+            source.sendSuccess(() -> Component.translatable("command.townstead.reaction.none"), false);
             return 0;
         }
-        List<String> sorted = new ArrayList<>(all.size());
-        for (Reaction r : all) {
-            String label = r.displayName().orElse(r.id().toString());
-            sorted.add(r.id() + (r.displayName().isPresent() ? " (" + label + ")" : "")
-                    + " [" + r.bindings().size() + " binding(s), " + r.rawTriggers().size() + " trigger(s)]");
-        }
-        Collections.sort(sorted);
-        source.sendSuccess(() -> Component.literal("Loaded reactions (" + sorted.size() + "):"), false);
-        for (String line : sorted) {
-            source.sendSuccess(() -> Component.literal("  " + line), false);
+        List<Reaction> sorted = new ArrayList<>(all);
+        sorted.sort(Comparator.comparing(r -> r.id().toString()));
+        source.sendSuccess(() -> Component.translatable(
+                "command.townstead.reaction.list.heading", sorted.size()), false);
+        for (Reaction reaction : sorted) {
+            Component line = reaction.displayName()
+                    .map(key -> Component.translatable("command.townstead.reaction.list.entry",
+                            reaction.id().toString(), Component.translatableWithFallback(key, key),
+                            reaction.bindings().size(), reaction.rawTriggers().size()))
+                    .orElseGet(() -> Component.translatable("command.townstead.reaction.list.entry.unnamed",
+                            reaction.id().toString(), reaction.bindings().size(), reaction.rawTriggers().size()));
+            source.sendSuccess(() -> line, false);
         }
         return sorted.size();
     }
 
-    private static int playAuto(CommandSourceStack source, String idRaw) {
+    private static int playAuto(CommandSourceStack source, ResourceLocation requested) {
         ServerPlayer player = source.getPlayer();
         if (player == null) {
-            source.sendFailure(Component.literal("This form must be run by a player. Supply <target> instead."));
+            source.sendFailure(Component.translatable("command.townstead.reaction.player_required"));
             return 0;
         }
         VillagerEntityMCA villager = pickLookedAtOrNearest(player);
         if (villager == null) {
-            source.sendFailure(Component.literal("No MCA villager near your crosshair (within "
-                    + (int) LOOK_RANGE + " blocks)."));
+            source.sendFailure(Component.translatable(
+                    "command.townstead.reaction.no_nearby_villager", (int) LOOK_RANGE));
             return 0;
         }
-        return play(source, villager, idRaw);
+        return play(source, villager, requested);
     }
 
-    private static int playExplicit(CommandSourceStack source, String idRaw, Entity target) {
+    private static int playExplicit(CommandSourceStack source, ResourceLocation requested, Entity target) {
         if (!(target instanceof VillagerEntityMCA villager)) {
-            source.sendFailure(Component.literal("Target must be an MCA villager."));
+            source.sendFailure(Component.translatable("command.townstead.reaction.invalid_target"));
             return 0;
         }
-        return play(source, villager, idRaw);
+        return play(source, villager, requested);
     }
 
-    private static int play(CommandSourceStack source, VillagerEntityMCA villager, String idRaw) {
-        ResourceLocation id = parseId(source, idRaw);
-        if (id == null) return 0;
+    private static int play(CommandSourceStack source, VillagerEntityMCA villager, ResourceLocation requested) {
+        ResourceLocation id = "minecraft".equals(requested.getNamespace())
+                ? ResourceLocation.tryParse("townstead:" + requested.getPath()) : requested;
         if (ReactionRegistry.get(id).isEmpty()) {
-            source.sendFailure(Component.literal("Unknown reaction: " + id));
+            source.sendFailure(Component.translatable("command.townstead.reaction.unknown", id.toString()));
             return 0;
         }
         ServerLevel level = (ServerLevel) villager.level();
         boolean played = ReactionDispatcher.fire(level, (LivingEntity) villager, id,
                 ReactionContext.command(villager.blockPosition()));
         if (played) {
-            source.sendSuccess(() -> Component.literal("Playing reaction " + id + " on "
-                            + villager.getName().getString() + "."),
+            source.sendSuccess(() -> Component.translatable(
+                            "command.townstead.reaction.playing", id.toString(), villager.getDisplayName()),
                     false);
             return 1;
         }
-        source.sendFailure(Component.literal("Reaction " + id
-                + " did not play (cooldown, chance, or no candidate)."));
+        source.sendFailure(Component.translatable("command.townstead.reaction.not_played", id.toString()));
         return 0;
     }
 
@@ -167,20 +168,6 @@ public final class ReactionCommand {
         if (bestLook != null) return bestLook;
         if (bestNear != null && bestNearDist <= LOOK_RANGE * LOOK_RANGE) return bestNear;
         return null;
-    }
-
-    private static ResourceLocation parseId(CommandSourceStack source, String raw) {
-        try {
-            //? if neoforge {
-            return ResourceLocation.parse(raw);
-            //?} else {
-            /*return new ResourceLocation(raw);
-            *///?}
-        } catch (Exception e) {
-            source.sendFailure(Component.literal("Invalid reaction id: " + raw));
-            Townstead.LOGGER.debug("Invalid reaction id from command: {}", raw);
-            return null;
-        }
     }
 
     private static CompletableFuture<Suggestions> suggestReactionIds(

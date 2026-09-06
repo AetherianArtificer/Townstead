@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.client.gui.orders;
 
 import com.aetherianartificer.townstead.client.NamespaceNames;
+import net.minecraft.network.chat.Component;
 
 import java.util.Locale;
 
@@ -17,8 +18,12 @@ public final class ModNames {
     private ModNames() {}
 
     public static String of(String namespace) {
-        if (namespace == null || namespace.isEmpty()) return "Unknown";
-        if ("minecraft".equals(namespace)) return "Vanilla";
+        if (namespace == null || namespace.isEmpty()) {
+            return Component.translatable("townstead.mod_name.unknown").getString();
+        }
+        if ("minecraft".equals(namespace)) {
+            return Component.translatable("townstead.mod_name.minecraft").getString();
+        }
         String authored = NamespaceNames.authored(namespace).orElse(null);
         if (authored != null) return authored;
         String display = lookup(namespace);
