@@ -42,6 +42,12 @@ class PhenoValidatorTest {
         assertTrue(has(diag, "$.action", "Missing required field"),
                 "active_ability without 'action' must be flagged at $.action");
     }
+    @Test
+    void numericExpressionsValidateNestedValueTypes() {
+        Diagnostics diag=validate("{'type':'pheno:attribute','attribute':'minecraft:generic.max_health',"
+                + "'condition':{'type':'pheno:value','value':{'type':'pheno:arithmetic','values':[1,{'type':'test:missing_value'}]},'compare_to':0}}");
+        assertTrue(has(diag,"$.condition.value.values[1].type","Unknown value"));
+    }
 
     @Test
     void scalarTypeMismatchIsFlaggedWithExactPath() {

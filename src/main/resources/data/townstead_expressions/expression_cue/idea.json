@@ -1,0 +1,1 @@
+{"kind":"icon","texture":"townstead_expressions:textures/expression/idea.png","duration_ticks":55,"cooldown_ticks":120,"rise":0.4,"scale":0.9,"color":"#FFFFFFFF","audience":"nearby","max_distance":48,"fallback_particle":"minecraft:electric_spark"}

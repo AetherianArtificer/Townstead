@@ -4,6 +4,10 @@ import com.aetherianartificer.townstead.calendar.WorldCalendarSavedData.VillageK
 import com.aetherianartificer.townstead.chronicle.model.SentimentEntry;
 import com.aetherianartificer.townstead.chronicle.model.VillageHistory;
 import com.aetherianartificer.townstead.chronicle.model.VillagerMemory;
+import com.aetherianartificer.townstead.social.RelationshipLedger;
+import com.aetherianartificer.townstead.social.RelationshipQualities;
+import com.aetherianartificer.townstead.social.BondLedger;
+import com.aetherianartificer.townstead.social.SocialMemories;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.core.HolderLookup;
@@ -30,7 +34,7 @@ import java.util.UUID;
  */
 public class ChronicleSavedData extends SavedData {
     public static final String FILE_ID = "townstead_chronicles";
-    public static final int SCHEMA_VERSION = 2;
+    public static final int SCHEMA_VERSION = 4;
 
     public static final int MAX_MEMORIES_PER_VILLAGER = 32;
     public static final int MAX_SENTIMENT_PARTNERS = 24;
@@ -51,6 +55,8 @@ public class ChronicleSavedData extends SavedData {
     private final Map<UUID, List<VillagerMemory>> memories = new HashMap<>();
     private final Map<VillageKey, VillageHistory> histories = new HashMap<>();
     private final Map<UUID, Map<UUID, SentimentEntry>> sentiments = new HashMap<>();
+    private RelationshipLedger relationships = new RelationshipLedger();
+    private BondLedger bonds = new BondLedger();
     private final Object2IntOpenHashMap<UUID> newsPoints = new Object2IntOpenHashMap<>();
     // Belief-driven mood: accumulated on-learn impacts (decay daily) and the
     // portion currently applied to MCA mood (so removal reverses cleanly).
@@ -159,6 +165,37 @@ public class ChronicleSavedData extends SavedData {
         setDirty();
     }
 
+    /** Adds one experienced or learned episode exactly once. */
+    public boolean addEpisodicMemory(UUID knower, String operationId, String memoryKey,
+                                     @Nullable UUID otherParty, long day, float strength, float valence,
+                                     String source, Map<String, String> params) {
+        if (knower == null || operationId == null || operationId.isBlank() || memoryKey == null || memoryKey.isBlank()
+                || !Float.isFinite(strength) || strength <= 0 || !Float.isFinite(valence)) return false;
+        List<VillagerMemory> list = memories.computeIfAbsent(knower, ignored -> new ArrayList<>());
+        if (list.stream().anyMatch(memory -> memory.matchesOperation(operationId))) return false;
+        var definition = SocialMemories.byId(memoryKey);
+        list.add(new VillagerMemory(memoryKey, otherParty, day, strength,
+                Math.max(-1, Math.min(1, valence)), params, operationId, source, definition));
+        while (list.size() > MAX_MEMORIES_PER_VILLAGER) {
+            VillagerMemory weakest = list.stream().min(java.util.Comparator
+                    .comparingInt(VillagerMemory::retentionPriority)
+                    .thenComparingDouble(VillagerMemory::strength)
+                    .thenComparingLong(VillagerMemory::lastDay)).orElseThrow();
+            list.remove(weakest);
+        }
+        setDirty();
+        return true;
+    }
+
+    /** Uses the definition's defaults; useful for authored conversation outcomes. */
+    public boolean addEpisodicMemory(UUID knower, String operationId, String memoryKey,
+                                     @Nullable UUID otherParty, long day, String source,
+                                     Map<String, String> params) {
+        var definition = SocialMemories.byId(memoryKey);
+        return addEpisodicMemory(knower, operationId, memoryKey, otherParty, day,
+                definition.defaultStrength(), definition.defaultValence(), source, params);
+    }
+
     // ---- village digests ----
 
     public VillageHistory historyFor(VillageKey key) {
@@ -187,6 +224,22 @@ public class ChronicleSavedData extends SavedData {
         return map == null ? null : map.get(toward);
     }
 
+    public RelationshipLedger relationships() { return relationships; }
+    public BondLedger bonds() { return bonds; }
+
+    public boolean formBond(String operationId, String kind, UUID first, String firstName, UUID second,
+                            String secondName, long day, String formedBy) {
+        boolean formed = bonds.form(operationId, kind, first, firstName, second, secondName, day, formedBy);
+        if (formed) setDirty();
+        return formed;
+    }
+
+    public boolean applyRelationship(UUID from, UUID toward, RelationshipLedger.Contribution contribution) {
+        boolean applied = relationships.apply(from, toward, contribution);
+        if (applied) setDirty();
+        return applied;
+    }
+
     public void adjustSentiment(UUID from, UUID toward, float delta, long day, long accountId) {
         Map<UUID, SentimentEntry> map = sentiments.computeIfAbsent(from, ignored -> new HashMap<>());
         SentimentEntry entry = map.get(toward);
@@ -206,6 +259,12 @@ public class ChronicleSavedData extends SavedData {
                 if (weakest != null) map.remove(weakest);
             }
             map.put(toward, new SentimentEntry(delta, day, accountId));
+        }
+        if (accountId >= 0 && delta != 0) {
+            var quality = RelationshipQualities.byId(RelationshipQualities.AFFECTION);
+            relationships.apply(from, toward, new RelationshipLedger.Contribution(
+                    "chronicle_account:" + accountId, RelationshipQualities.AFFECTION, delta, day,
+                    quality.defaultHalfLifeDays(), "townstead:chronicle_account"));
         }
         setDirty();
     }
@@ -250,13 +309,13 @@ public class ChronicleSavedData extends SavedData {
 
     // ---- daily decay (called once per day rollover) ----
 
-    public void decayDaily() {
+    public void decayDaily(long today) {
         boolean changed = false;
         for (List<VillagerMemory> list : memories.values()) {
             for (int i = list.size() - 1; i >= 0; i--) {
                 VillagerMemory memory = list.get(i);
-                memory.decay(MEMORY_DAILY_DECAY);
-                if (memory.strength() < MEMORY_PRUNE_BELOW) list.remove(i);
+                memory.decayDaily(MEMORY_DAILY_DECAY);
+                if (memory.forgotten(MEMORY_PRUNE_BELOW)) list.remove(i);
                 changed = true;
             }
         }
@@ -270,6 +329,9 @@ public class ChronicleSavedData extends SavedData {
             }
         }
         sentiments.values().removeIf(Map::isEmpty);
+        int relationshipsBefore = relationshipContributionCount();
+        relationships.prune(today);
+        if (relationshipContributionCount() != relationshipsBefore) changed = true;
         for (var it = moodImpacts.object2FloatEntrySet().iterator(); it.hasNext(); ) {
             var entry = it.next();
             float decayed = entry.getFloatValue() * MOOD_IMPACT_DAILY_DECAY;
@@ -289,6 +351,9 @@ public class ChronicleSavedData extends SavedData {
     public int memoryHolders() { return memories.size(); }
     public int historyVillages() { return histories.size(); }
     public int sentimentHolders() { return sentiments.size(); }
+    public int relationshipContributionCount() {
+        return relationships.contributionCount();
+    }
 
     // ---- persistence ----
 
@@ -357,6 +422,10 @@ public class ChronicleSavedData extends SavedData {
             if (e.hasUUID("id")) data.newsPoints.put(e.getUUID("id"), e.getInt("points"));
         }
 
+        if (tag.contains("relationships", Tag.TAG_COMPOUND))
+            data.relationships = RelationshipLedger.load(tag.getCompound("relationships"));
+        if (tag.contains("bonds", Tag.TAG_COMPOUND)) data.bonds = BondLedger.load(tag.getCompound("bonds"));
+
         ListTag moodList = tag.getList("moodImpacts", Tag.TAG_COMPOUND);
         for (int i = 0; i < moodList.size(); i++) {
             CompoundTag e = moodList.getCompound(i);
@@ -366,7 +435,7 @@ public class ChronicleSavedData extends SavedData {
         }
         // v0/v1 had the same collections but no enforced archive-id reconciliation.
         // The startup handshake performs that migration after both tiers are open.
-        if (schemaVersion < 2) data.setDirty();
+        if (schemaVersion < SCHEMA_VERSION) data.setDirty();
         return data;
     }
 
@@ -430,6 +499,8 @@ public class ChronicleSavedData extends SavedData {
             sentimentList.add(entry);
         }
         tag.put("sentiments", sentimentList);
+        tag.put("relationships", relationships.save());
+        tag.put("bonds", bonds.save());
 
         ListTag pointsList = new ListTag();
         for (Object2IntMap.Entry<UUID> e : newsPoints.object2IntEntrySet()) {
@@ -454,6 +525,7 @@ public class ChronicleSavedData extends SavedData {
         tag.put("moodImpacts", moodList);
         return tag;
     }
+
 
     private static ResourceLocation parseRl(String value) {
         //? if >=1.21 {

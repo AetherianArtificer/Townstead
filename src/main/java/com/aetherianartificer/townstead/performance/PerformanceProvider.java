@@ -9,5 +9,7 @@ public interface PerformanceProvider {
     /** Higher values are tried first; id is the deterministic tie-breaker. */
     default int priority() { return 0; }
     boolean supports(PerformanceRequest request);
+    /** Explicit pack mappings may identify a backend even when the clip uses a pack-owned namespace. */
+    default boolean supportsMapped(PerformanceRequest request) { return supports(request); }
     @Nullable PerformanceHandle play(ServerLevel level, PerformanceRequest request);
 }

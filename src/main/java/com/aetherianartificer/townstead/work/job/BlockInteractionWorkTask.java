@@ -16,6 +16,7 @@ import com.aetherianartificer.townstead.work.site.Worksite;
 import com.aetherianartificer.townstead.work.station.StationDropOutputs;
 import com.aetherianartificer.townstead.work.station.StationProtocols;
 import com.aetherianartificer.townstead.work.station.StationSupplies;
+import com.aetherianartificer.townstead.work.station.Stations;
 import com.aetherianartificer.townstead.pheno.selector.SelectorContext;
 import com.aetherianartificer.townstead.storage.PhysicalStorageDelivery;
 import com.google.common.collect.ImmutableMap;
@@ -60,6 +61,8 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
     private static final int START_SCAN_INTERVAL_TICKS = 10;
 
     private @Nullable Candidate target;
+    /** Safe floor cell used to approach the target; never the station/counter block itself. */
+    private @Nullable BlockPos targetStand;
     private @Nullable WorkJobDef.Interaction interaction;
     private @Nullable Order claimedOrder;
     private @Nullable Worksite claimedOrderSite;
@@ -159,6 +162,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         releaseOrderClaim();
         target = null;
+        targetStand = null;
         interaction = null;
         worksite = Set.of();
         deliveryItems = Set.of();
@@ -188,7 +192,10 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
             if (selected == null) continue;
             List<RequirementSession> planned = planRequirements(level, villager, candidate);
             if (planned == null) continue;
+            BlockPos stand = Stations.findStandingPosition(level, villager, candidate.pos());
+            if (stand == null) continue;
             target = candidate;
+            targetStand = stand;
             interaction = selected.candidate();
             requirements = new ArrayList<>(planned);
             worksite = candidate.extent();
@@ -233,11 +240,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         }
         BlockPos pos = target.pos();
         villager.getLookControl().setLookAt(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-        if (villager.distanceToSqr(Vec3.atCenterOf(pos)) > USE_RANGE_SQ) {
-            setWalkTarget(villager, pos);
-            useAt = gameTime + WORK_DELAY;
-            return;
-        }
+        if (!approachWorkstation(level, villager, pos, gameTime)) return;
         villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
         if (gameTime < useAt) return;
         for (WorkJobDef.ManagedRequirement requirement : target.definition().requirements()) {
@@ -260,6 +263,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         releaseAllRequirements(level, villager);
         releaseOrderClaim();
         target = null;
+        targetStand = null;
         interaction = null;
         requirements = List.of();
         worksite = Set.of();
@@ -551,8 +555,33 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         return gameTime >= useAt;
     }
 
+    /**
+     * Approach a workstation from a safe adjacent floor cell. Walking directly to the target
+     * block lets vanilla navigation treat a full counter top as the closest reachable surface,
+     * which is why workers climbed onto bars and machines.
+     */
+    private boolean approachWorkstation(ServerLevel level, VillagerEntityMCA villager,
+                                        BlockPos station, long gameTime) {
+        if (targetStand == null
+                || !com.aetherianartificer.townstead.work.WorkPathing.isSafeStandPosition(level, targetStand)) {
+            targetStand = Stations.findStandingPosition(level, villager, station);
+        }
+        if (targetStand == null) {
+            target = null;
+            return false;
+        }
+        if (villager.distanceToSqr(Vec3.atBottomCenterOf(targetStand)) > 2.25d
+                || villager.distanceToSqr(Vec3.atCenterOf(station)) > USE_RANGE_SQ) {
+            setWalkTarget(villager, targetStand);
+            useAt = gameTime + WORK_DELAY;
+            return false;
+        }
+        villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+        return gameTime >= useAt;
+    }
+
     private void moveForCurrentPhase(VillagerEntityMCA villager, long gameTime) {
-        BlockPos next = target == null ? null : target.pos();
+        BlockPos next = target == null ? null : targetStand;
         if (phase == Phase.PREPARE && requirementIndex < requirements.size()) {
             next = requirements.get(requirementIndex).source;
         } else if (phase == Phase.CLEANUP && requirementIndex >= 0
@@ -604,6 +633,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
 
     private void finishCycle() {
         target = null;
+        targetStand = null;
         interaction = null;
         requirements = List.of();
         worksite = Set.of();

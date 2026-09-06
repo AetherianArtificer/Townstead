@@ -33,7 +33,7 @@ public final class BeachpartyChairAdapter implements HangoutEmbodiment.PostureAd
     @Override
     public @Nullable HangoutEmbodiment.Handle enter(ServerLevel level, VillagerEntityMCA villager,
                                                      BlockPos spot, ResourceLocation posture,
-                                                     Vec3 position, UUID session) {
+                                                     Vec3 position, UUID visitId) {
         BlockPos base = normalizeBase(level.getBlockState(spot), spot);
         ResourceLocation block = BuiltInRegistries.BLOCK.getKey(level.getBlockState(base).getBlock());
         Double height = HEIGHTS.get(block);
@@ -43,8 +43,8 @@ public final class BeachpartyChairAdapter implements HangoutEmbodiment.PostureAd
         if (type == null) return null;
         Entity chair = type.create(level);
         if (chair == null) return null;
-        chair.moveTo(base.getX() + 0.5D, base.getY() + height, base.getZ() + 0.5D, 0F, 0F);
-        HangoutEmbodiment.markSessionAnchor(chair, session);
+        chair.moveTo(position.x, position.y, position.z, 0F, 0F);
+        HangoutEmbodiment.markVisitAnchor(chair, visitId);
         if (!addNativeClaim(level, base, chair, villager.blockPosition())) {
             chair.discard();
             return HangoutEmbodiment.BLOCKED;

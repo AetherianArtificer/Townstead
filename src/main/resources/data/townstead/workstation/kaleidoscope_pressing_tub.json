@@ -1,0 +1,6 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": "kaleidoscope_tavern",
+  "blocks": ["kaleidoscope_tavern:pressing_tub"],
+  "shift_end": "finish"
+}

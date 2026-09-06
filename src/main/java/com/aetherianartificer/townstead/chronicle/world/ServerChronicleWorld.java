@@ -173,6 +173,11 @@ public record ServerChronicleWorld(MinecraftServer server) implements ChronicleW
         KnownStoriesCache.add(knower, entry);
     }
 
+    @Override public void onLearned(ChronicleEventTemplate template, ChronicleEvent event, Account account,
+                                    com.aetherianartificer.townstead.chronicle.knowledge.DistortionOverlay overlay) {
+        com.aetherianartificer.townstead.chronicle.knowledge.ChronicleLearnedReactions.onLearned(server, template, event, account, overlay);
+    }
+
     @Override
     public void addMoodImpact(UUID knower, float amount) {
         ChronicleSavedData.get(server).addMoodImpact(knower, amount);
@@ -189,5 +194,13 @@ public record ServerChronicleWorld(MinecraftServer server) implements ChronicleW
                                      Map<String, String> params) {
         ChronicleSavedData.get(server).addOrReinforceMemory(knower, memoryKey, otherParty,
                 day, strength, valence, params);
+    }
+
+    @Override
+    public void addEpisodicMemory(UUID knower, String operationId, String memoryKey, @Nullable UUID otherParty,
+                                  long day, float strength, float valence, String source,
+                                  Map<String, String> params) {
+        ChronicleSavedData.get(server).addEpisodicMemory(knower, operationId, memoryKey, otherParty,
+                day, strength, valence, source, params);
     }
 }

@@ -38,6 +38,9 @@ public final class ChildSlots {
                 }
             case CONDITION:
                 switch (key) {
+                    case "value":
+                    case "compare_to":
+                        return NodeDomain.VALUE;
                     case "condition":
                     case "conditions":
                         return NodeDomain.CONDITION;
@@ -46,6 +49,10 @@ public final class ChildSlots {
                     default:
                         return null;
                 }
+            case VALUE:
+                if (key.equals("entity_condition")) return NodeDomain.CONDITION;
+                if (key.equals("values") || key.equals("then") || key.equals("else")) return NodeDomain.VALUE;
+                return null;
             case BLOCK_ACTION:
                 if (key.equals("block_action") || key.equals("then") || key.equals("else")) {
                     return NodeDomain.BLOCK_ACTION;

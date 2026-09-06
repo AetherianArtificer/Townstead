@@ -26,16 +26,24 @@ import java.util.List;
 public final class McaAnimationBridge {
     private static final EmfAnimationSourceAdapter EMF_ADAPTER = new EmfAnimationSourceAdapter();
     private static final RootAnimationSourceAdapter ROOT_ADAPTER = new RootAnimationSourceAdapter();
+    private static final NativePerformanceSourceAdapter NATIVE_PERFORMANCE_ADAPTER = new NativePerformanceSourceAdapter();
+    private static final BenchAnimationSourceAdapter BENCH_ADAPTER = new BenchAnimationSourceAdapter();
+    private static final StoolAnimationSourceAdapter STOOL_ADAPTER = new StoolAnimationSourceAdapter();
     private static final EmotecraftAnimationSourceAdapter EMOTE_ADAPTER = new EmotecraftAnimationSourceAdapter();
     // NOTE: DebugAnimationSourceAdapter is intentionally NOT registered here. It waves every
     // villager's right arm and keys off DEBUG_VILLAGER_AI, which is the general AI-logging flag —
     // leaving it wired in meant turning on AI debug logging visibly animated all villagers. Re-add
     // it locally only when specifically testing the animation hook.
     // Order is layered, last writer wins: EMF/Fresh-Animations is the base, the origin pose layer
-    // (crouch/...) overrides it, and an Emotecraft emote overrides that on the bones it animates.
+    // (crouch/...) overrides it, furniture posture refines the seated silhouette, and an Emotecraft
+    // emote overrides that on the bones it animates.
     private static final List<AnimationSourceAdapter> SOURCES = List.of(
             EMF_ADAPTER,
             ROOT_ADAPTER,
+            BENCH_ADAPTER,
+            STOOL_ADAPTER,
+            new ReclineAnimationSourceAdapter(),
+            NATIVE_PERFORMANCE_ADAPTER,
             EMOTE_ADAPTER
     );
 
@@ -65,6 +73,8 @@ public final class McaAnimationBridge {
         EmoteReflection.invalidate();
         EMOTE_ADAPTER.invalidate();
         EmoteRegistry.reload();
+        com.aetherianartificer.townstead.client.animation.nativeclip.NativeClipRegistry.reload(
+                Minecraft.getInstance().getResourceManager());
         com.aetherianartificer.townstead.client.animation.emote.EmoteCoverage.invalidate();
         EmotecraftEventBridge.ensureRegistered();
     }
@@ -228,7 +238,9 @@ public final class McaAnimationBridge {
             McaModelPartApplier.ApplyStats stats
     ) {
         if (!com.aetherianartificer.townstead.TownsteadConfig.DEBUG_LOGGING.get()) return;
-        if (!"emf".equals(sourceId) && !("emotes".equals(sourceId) && !transforms.isEmpty())) return;
+        if (!"emf".equals(sourceId)
+                && !("emotes".equals(sourceId) && !transforms.isEmpty())
+                && !("native_performance".equals(sourceId) && !transforms.isEmpty())) return;
         long tick = entity.level().getGameTime();
         if (tick - lastDiagnosticTick < 120L) return;
         lastDiagnosticTick = tick;

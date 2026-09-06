@@ -76,7 +76,11 @@ public final class PerformanceProviders {
     }
 
     private static @Nullable PerformanceHandle mapped(ServerLevel level, PerformanceRequest request) {
+        String personality = request.actor() instanceof net.conczin.mca.entity.VillagerEntityMCA villager
+                ? com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat.legacyName(
+                        villager.getVillagerBrain().getPersonality()) : "";
         for (PerformanceMappings.Target target : PerformanceMappings.targets(request.performance())) {
+            if (!target.matchesPersonality(personality)) continue;
             PerformanceRequest mapped = new PerformanceRequest(request.actor(), target.performance(),
                     request.channel(), request.durationTicks(), request.priority(), PerformanceRequest.Fallback.NONE);
             PerformanceHandle handle = direct(level, mapped, target.provider());
@@ -89,7 +93,7 @@ public final class PerformanceProviders {
                                                         @Nullable String onlyProvider) {
         for (PerformanceProvider provider : all()) {
             if (onlyProvider != null && !onlyProvider.equals(provider.id())) continue;
-            if (!provider.supports(request)) continue;
+            if (!(onlyProvider == null ? provider.supports(request) : provider.supportsMapped(request))) continue;
             PerformanceHandle handle = provider.play(level, request);
             if (handle != null) return handle;
         }
@@ -99,6 +103,7 @@ public final class PerformanceProviders {
     private static synchronized void bootstrap() {
         if (bootstrapped) return;
         bootstrapped = true;
+        register(new NativePerformanceProvider());
         register(new ReactionPerformanceProvider());
         register(new VanillaPerformanceProvider());
     }
@@ -113,9 +118,22 @@ public final class PerformanceProviders {
         expired.forEach(PerformanceHandle::stop);
     }
 
+    /** Stop the actor's current performance on one semantic channel. Used by debug tooling too. */
+    public static void stop(net.minecraft.world.entity.LivingEntity actor, String channelName) {
+        if (actor == null || channelName == null || channelName.isBlank()) return;
+        PerformanceHandle handle;
+        synchronized (PerformanceProviders.class) {
+            Active active = ACTIVE.remove(new Channel(actor.getUUID(), channelName));
+            handle = active == null ? null : active.handle();
+        }
+        if (handle != null) handle.stop();
+    }
+
     private static @Nullable PerformanceHandle fallback(PerformanceRequest request) {
         return switch (request.fallback()) {
-            case NONE -> PerformanceHandle.NONE;
+            // NONE means the request was not presented. Returning a no-op handle here
+            // made debug commands (and callers) report success for unknown clips.
+            case NONE -> null;
             case VANILLA_GESTURE -> {
                 request.actor().swing(net.minecraft.world.InteractionHand.MAIN_HAND);
                 yield PerformanceHandle.NONE;

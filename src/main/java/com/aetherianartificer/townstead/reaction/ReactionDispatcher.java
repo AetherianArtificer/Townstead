@@ -10,20 +10,27 @@ import com.aetherianartificer.townstead.reaction.effect.ReactionSideEffects;
 import com.aetherianartificer.townstead.reaction.trigger.event.MirrorPropagator;
 import com.aetherianartificer.townstead.reaction.trigger.event.SocialInteractionTracker;
 import com.aetherianartificer.townstead.reaction.trigger.types.ContextEnterTriggerType;
+import com.aetherianartificer.townstead.reaction.trigger.types.ContextExitTriggerType;
 import com.aetherianartificer.townstead.reaction.trigger.types.ContextPresentTriggerType;
+import com.aetherianartificer.townstead.reaction.trigger.types.DamageTriggerType;
 import com.aetherianartificer.townstead.reaction.trigger.types.GestureTriggerType;
 import com.aetherianartificer.townstead.reaction.trigger.types.IdleSpotTriggerType;
 import com.aetherianartificer.townstead.reaction.trigger.types.TaskTriggerType;
 import com.aetherianartificer.townstead.reaction.trigger.types.TimeTriggerType;
 import com.aetherianartificer.townstead.pheno.action.ActionContext;
 import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
+import com.google.gson.JsonObject;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.relationship.Personality;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
+import net.minecraft.util.GsonHelper;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.phys.AABB;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -36,9 +43,8 @@ import java.util.Set;
  * Central server-side entry point for triggering a reaction. Trigger
  * sources (debug command, gesture handler, task lifecycle, etc.) call
  * {@link #fire(ServerLevel, LivingEntity, ResourceLocation, ReactionContext)};
- * the dispatcher gates by cooldown/lock/chance, scores bindings by
- * personality weight + binding chance, picks one weighted, hands off to
- * the matching {@link ReactionBackend}, then emits side effects.
+ * the dispatcher gates by cooldown/lock/chance, selects a personality-weighted
+ * outcome, then runs its optional legacy animation and composable Pheno outputs.
  */
 public final class ReactionDispatcher {
     private ReactionDispatcher() {}
@@ -55,24 +61,25 @@ public final class ReactionDispatcher {
         if (level == null || villager == null || reaction == null || context == null) return false;
         long gameTime = level.getGameTime();
         RandomSource random = level.getRandom();
+        boolean forced = context.source() == ReactionContext.TriggerSource.COMMAND;
 
-        if (context.source() != ReactionContext.TriggerSource.COMMAND) {
+        if (!forced) {
             if (ReactionLockTracker.isLocked(villager, gameTime)) return false;
             if (villager.isSleeping()) return false;
         }
         String reactionKey = reaction.id().toString();
-        if (!ReactionCooldownTracker.canClaim(villager, reactionKey, reaction.cooldownTicks(), gameTime)) {
+        if (!forced && !ReactionCooldownTracker.canClaim(villager, reactionKey, reaction.cooldownTicks(), gameTime)) {
             return false;
         }
-        if (reaction.chance() < 1.0F && random.nextFloat() >= reaction.chance()) {
+        if (!forced && reaction.chance() < 1.0F && random.nextFloat() >= reaction.chance()) {
             return false;
         }
 
-        if (!context.contextTags().containsAll(reaction.conditions().requiredTags())) {
+        if (!forced && !context.contextTags().containsAll(reaction.conditions().requiredTags())) {
             return false;
         }
-        if (reaction.phenoCondition().isPresent()
-                && !reaction.phenoCondition().get().test(new ConditionContext(villager))) {
+        if (!forced && reaction.phenoCondition().isPresent()
+                && !reaction.phenoCondition().get().test(new ConditionContext(villager, context.counterpart()))) {
             return false;
         }
 
@@ -80,12 +87,12 @@ public final class ReactionDispatcher {
         List<ReactionBinding> candidates = new ArrayList<>(reaction.bindings().size());
         List<Double> weights = new ArrayList<>(reaction.bindings().size());
         for (ReactionBinding binding : reaction.bindings()) {
-            if (!context.contextTags().containsAll(binding.requiredTags())) continue;
-            if (binding.phenoCondition().isPresent()
-                    && !binding.phenoCondition().get().test(new ConditionContext(villager))) continue;
+            if (!forced && !context.contextTags().containsAll(binding.requiredTags())) continue;
+            if (!forced && binding.phenoCondition().isPresent()
+                    && !binding.phenoCondition().get().test(new ConditionContext(villager, context.counterpart()))) continue;
             // Filter by per-binding cooldown before personality so a binding
             // on cooldown is never picked.
-            if (binding.cooldownTicks() > 0
+            if (!forced && binding.cooldownTicks() > 0
                     && !ReactionCooldownTracker.canClaim(villager, bindingKey(reaction, binding),
                             binding.cooldownTicks(), gameTime)) {
                 continue;
@@ -93,7 +100,7 @@ public final class ReactionDispatcher {
             float pm = binding.personalityMultiplier(personalityKey);
             double effective = (double) binding.weight() * pm;
             if (effective <= 0.0) continue;
-            if (binding.chance() < 1.0F && random.nextFloat() >= binding.chance()) continue;
+            if (!forced && binding.chance() < 1.0F && random.nextFloat() >= binding.chance()) continue;
             candidates.add(binding);
             weights.add(effective);
         }
@@ -103,27 +110,50 @@ public final class ReactionDispatcher {
         if (picked.isEmpty()) return false;
         ReactionBinding chosen = picked.get();
 
-        Optional<ReactionBackend> backend = ReactionBackends.get(chosen.backendKey());
-        if (backend.isEmpty()) {
-            Townstead.LOGGER.debug("Reaction '{}' references unknown backend '{}'", reaction.id(), chosen.backendKey());
-            return false;
+        Optional<String> playedRef = Optional.empty();
+        if (chosen.hasAnimation()) {
+            Optional<ReactionBackend> backend = ReactionBackends.get(chosen.backendKey());
+            if (backend.isEmpty()) {
+                Townstead.LOGGER.debug("Reaction '{}' references unavailable backend '{}'",
+                        reaction.id(), chosen.backendKey());
+            } else {
+                playedRef = backend.get().play(level, villager, chosen, context);
+            }
+            if (chosen.animationRequired() && playedRef.isEmpty()) return false;
         }
 
-        Optional<String> playedRef = backend.get().play(level, villager, chosen, context);
-        if (playedRef.isEmpty()) return false;
+        LivingEntity counterpart = context.counterpart();
+        boolean producedOutput = playedRef.isPresent()
+                || chosen.sound().isPresent() || chosen.particles().isPresent()
+                || chosen.speechPool().filter(value -> !value.isBlank()).isPresent();
+        if (chosen.phenoAction().isPresent()) {
+            ActionContext actionContext = new ActionContext(villager, counterpart);
+            chosen.phenoAction().get().run(actionContext);
+            // An outcome was genuinely selected even when an individual action reports a soft
+            // refusal (for example an expression display throttle). Claim the reaction cooldown
+            // so the trigger cannot hammer the other actions every context stride.
+            producedOutput = true;
+        }
+        if (reaction.phenoAction().isPresent()) {
+            ActionContext actionContext = new ActionContext(villager, counterpart);
+            reaction.phenoAction().get().run(actionContext);
+            producedOutput = true;
+        }
+        if (!producedOutput) return false;
 
         // Commit both cooldown stamps now that the fire is real.
-        if (reaction.cooldownTicks() > 0) {
+        if (!forced && reaction.cooldownTicks() > 0) {
             ReactionCooldownTracker.claim(villager, reactionKey, gameTime);
         }
-        if (chosen.cooldownTicks() > 0) {
+        if (!forced && chosen.cooldownTicks() > 0) {
             ReactionCooldownTracker.claim(villager, bindingKey(reaction, chosen), gameTime);
         }
 
         ReactionSideEffects.emit(level, villager, chosen.sound(), chosen.particles());
-        LivingEntity counterpart = context.playerCause();
-        chosen.phenoAction().ifPresent(action -> action.run(new ActionContext(villager, counterpart)));
-        reaction.phenoAction().ifPresent(action -> action.run(new ActionContext(villager, counterpart)));
+        if (chosen.speechPool().isPresent() && villager instanceof VillagerEntityMCA mca) {
+            String pool = chosen.speechPool().get().trim();
+            if (!pool.isEmpty()) mca.sendChatToAllAround(pool);
+        }
         // allow_movement bindings skip the lock entirely so the villager
         // can keep walking while the animation plays on top.
         if (!chosen.allowMovement()) {
@@ -133,7 +163,7 @@ public final class ReactionDispatcher {
             }
         }
         applyHeartsAdjustment(villager, reaction, context, gameTime);
-        MirrorPropagator.propagate(level, villager, reaction, playedRef.get(), context);
+        playedRef.ifPresent(ref -> MirrorPropagator.propagate(level, villager, reaction, ref, context));
         return true;
     }
 
@@ -179,17 +209,58 @@ public final class ReactionDispatcher {
      * causing it) or from another villager's reaction mirroring to its
      * neighbors (depth 1, no player). Depth-1 events do not re-mirror.
      */
-    public static int onGesture(ServerLevel level, Player playerCause, LivingEntity villager, String emoteName,
+    public static int onGesture(ServerLevel level, Entity gestureSource, LivingEntity villager, String emoteName,
             int depth) {
         if (villager == null || emoteName == null || emoteName.isBlank()) return 0;
-        String key = emoteName.toLowerCase(Locale.ROOT);
+        String key = GestureTriggerType.normalizeEmoteName(emoteName);
         List<ResourceLocation> matches = ReactionRegistry.triggers().matchesFor(GestureTriggerType.KEY, key);
         if (matches.isEmpty()) return 0;
+        Player playerCause = gestureSource instanceof Player player ? player : null;
         ReactionContext ctx = new ReactionContext(ReactionContext.TriggerSource.GESTURE, playerCause,
-                villager.blockPosition(), Set.of(), Math.max(0, depth));
+                villager.blockPosition(), Set.of(), Math.max(0, depth), gestureSource instanceof LivingEntity living ? living : null);
         int fired = 0;
-        for (ResourceLocation id : matches) if (fire(level, villager, id, ctx)) fired++;
+        for (ResourceLocation id : matches) {
+            Reaction reaction = ReactionRegistry.get(id).orElse(null);
+            if (reaction != null && gestureTriggerMatches(reaction, key, gestureSource, villager)
+                    && fire(level, villager, reaction, ctx)) fired++;
+        }
         return fired;
+    }
+
+    /** Largest authored range for a gesture, used to bound the initial entity query. */
+    public static double gestureRange(String emoteName) {
+        if (emoteName == null || emoteName.isBlank()) return 0.0;
+        String key = GestureTriggerType.normalizeEmoteName(emoteName);
+        double range = 0.0;
+        for (ResourceLocation id : ReactionRegistry.triggers().matchesFor(GestureTriggerType.KEY, key)) {
+            Reaction reaction = ReactionRegistry.get(id).orElse(null);
+            if (reaction == null) continue;
+            for (JsonObject raw : reaction.rawTriggers()) {
+                if (!GestureTriggerType.KEY.equals(GsonHelper.getAsString(raw, "type", ""))) continue;
+                GestureTriggerType.Instance trigger = (GestureTriggerType.Instance) new GestureTriggerType().parse(raw);
+                if (trigger != null && trigger.emoteName().equals(key)) {
+                    range = Math.max(range, trigger.maxDistance());
+                }
+            }
+        }
+        return range;
+    }
+
+    private static boolean gestureTriggerMatches(Reaction reaction, String emoteKey, Entity source,
+                                                 LivingEntity villager) {
+        for (JsonObject raw : reaction.rawTriggers()) {
+            if (!GestureTriggerType.KEY.equals(GsonHelper.getAsString(raw, "type", ""))) continue;
+            GestureTriggerType.Instance trigger = (GestureTriggerType.Instance) new GestureTriggerType().parse(raw);
+            if (trigger == null || !trigger.emoteName().equals(emoteKey)) continue;
+            if (source == null) return true;
+            if (source.distanceToSqr(villager) > trigger.maxDistance() * trigger.maxDistance()) continue;
+            if (trigger.minDot() <= -1.0F) return true;
+            var towardSource = source.position().subtract(villager.position());
+            if (towardSource.lengthSqr() < 1.0E-6) return true;
+            double dot = villager.getLookAngle().normalize().dot(towardSource.normalize());
+            if (dot >= trigger.minDot()) return true;
+        }
+        return false;
     }
 
     /**
@@ -218,6 +289,16 @@ public final class ReactionDispatcher {
      * incoming tags index to any reaction.
      */
     public static int onContextEnter(ServerLevel level, LivingEntity villager, Set<String> newTags) {
+        return onContextEnter(level, villager, newTags, newTags);
+    }
+
+    /**
+     * Dispatch newly-entered trigger keys while evaluating outcome requirements against the full
+     * current snapshot. This lets "entered shelter while it is raining" work as authored: only
+     * {@code under_roof} needs to be new, while {@code raining} may already have been present.
+     */
+    public static int onContextEnter(ServerLevel level, LivingEntity villager, Set<String> newTags,
+                                     Set<String> currentTags) {
         if (villager == null || newTags == null || newTags.isEmpty()) return 0;
         Set<ResourceLocation> seen = new HashSet<>();
         for (String tag : newTags) {
@@ -229,9 +310,13 @@ public final class ReactionDispatcher {
         if (seen.isEmpty()) return 0;
         ReactionContext ctx = new ReactionContext(ReactionContext.TriggerSource.CONTEXT, null,
                 villager.blockPosition(),
-                Set.copyOf(newTags), 0);
+                Set.copyOf(currentTags == null ? newTags : currentTags), 0);
         int fired = 0;
-        for (ResourceLocation id : seen) if (fire(level, villager, id, ctx)) fired++;
+        for (ResourceLocation id : seen) {
+            Reaction reaction = ReactionRegistry.get(id).orElse(null);
+            if (reaction != null && contextTriggerMatches(reaction, ContextEnterTriggerType.KEY,
+                    newTags, ctx.contextTags()) && fire(level, villager, reaction, ctx)) fired++;
+        }
         return fired;
     }
 
@@ -255,7 +340,11 @@ public final class ReactionDispatcher {
         ReactionContext ctx = new ReactionContext(ReactionContext.TriggerSource.CONTEXT, null,
                 villager.blockPosition(), Set.copyOf(currentTags), 0);
         int fired = 0;
-        for (ResourceLocation id : seen) if (fire(level, villager, id, ctx)) fired++;
+        for (ResourceLocation id : seen) {
+            Reaction reaction = ReactionRegistry.get(id).orElse(null);
+            if (reaction != null && contextTriggerMatches(reaction, ContextPresentTriggerType.KEY,
+                    currentTags, currentTags) && fire(level, villager, reaction, ctx)) fired++;
+        }
         return fired;
     }
 
@@ -277,7 +366,7 @@ public final class ReactionDispatcher {
     /**
      * Invoked by the location tick hook on the stride for matching
      * {@code time} triggers (night, day, dawn, dusk). The hook is
-     * responsible for honoring each trigger's {@code interval_ticks}.
+     * also honors each trigger's {@code interval_ticks}, staggered by entity.
      */
     public static int onTimePhase(ServerLevel level, LivingEntity villager, String phase) {
         if (villager == null || phase == null || phase.isBlank()) return 0;
@@ -287,11 +376,149 @@ public final class ReactionDispatcher {
         ReactionContext ctx = new ReactionContext(ReactionContext.TriggerSource.TIME, null,
                 villager.blockPosition(), Set.of(), 0);
         int fired = 0;
-        for (ResourceLocation id : matches) if (fire(level, villager, id, ctx)) fired++;
+        for (ResourceLocation id : matches) {
+            Reaction reaction = ReactionRegistry.get(id).orElse(null);
+            if (reaction != null && timeTriggerDue(reaction, phase, level.getGameTime(), villager.getId())
+                    && fire(level, villager, reaction, ctx)) fired++;
+        }
         return fired;
     }
 
+    /** Dispatches once when a previously satisfied context set stops being satisfied. */
+    public static int onContextExit(ServerLevel level, LivingEntity villager, Set<String> exitedTags,
+                                    Set<String> priorTags, Set<String> currentTags) {
+        if (villager == null || exitedTags == null || exitedTags.isEmpty()) return 0;
+        Set<ResourceLocation> seen = new HashSet<>();
+        for (String tag : exitedTags) {
+            String key = tag.toLowerCase(Locale.ROOT);
+            seen.addAll(ReactionRegistry.triggers().matchesFor(ContextExitTriggerType.KEY, key));
+        }
+        if (seen.isEmpty()) return 0;
+        Set<String> before = priorTags == null ? Set.of() : Set.copyOf(priorTags);
+        Set<String> after = currentTags == null ? Set.of() : Set.copyOf(currentTags);
+        ReactionContext context = new ReactionContext(ReactionContext.TriggerSource.CONTEXT, null,
+                villager.blockPosition(), after, 0);
+        int fired = 0;
+        for (ResourceLocation id : seen) {
+            Reaction reaction = ReactionRegistry.get(id).orElse(null);
+            if (reaction != null && contextExitTriggerMatches(reaction, exitedTags, before)
+                    && fire(level, villager, reaction, context)) fired++;
+        }
+        return fired;
+    }
+
+    /**
+     * Dispatches one real damage event from the victim, attacker, and nearby-witness perspectives.
+     * Witness scanning is skipped unless a loaded reaction asks for that role.
+     */
+    public static int onDamage(ServerLevel level, LivingEntity victim, DamageSource source, float amount) {
+        if (level == null || victim == null || source == null || !Float.isFinite(amount) || amount <= 0) return 0;
+        LivingEntity attacker = source.getEntity() instanceof LivingEntity living ? living : null;
+        int fired = 0;
+        if (victim instanceof VillagerEntityMCA villager) {
+            fired += dispatchDamageRole(level, villager, attacker, source, amount, "victim");
+        }
+        if (attacker instanceof VillagerEntityMCA villager) {
+            fired += dispatchDamageRole(level, villager, victim, source, amount, "attacker");
+        }
+        if (!ReactionRegistry.triggers().matchesFor(DamageTriggerType.KEY, "witness").isEmpty()) {
+            AABB area = victim.getBoundingBox().inflate(12.0);
+            for (VillagerEntityMCA witness : level.getEntitiesOfClass(VillagerEntityMCA.class, area,
+                    entity -> entity != victim && entity != attacker && entity.isAlive())) {
+                fired += dispatchDamageRole(level, witness, victim, source, amount, "witness");
+            }
+        }
+        return fired;
+    }
+
+    private static int dispatchDamageRole(ServerLevel level, VillagerEntityMCA actor, LivingEntity counterpart,
+                                          DamageSource source, float amount, String role) {
+        List<ResourceLocation> matches = ReactionRegistry.triggers().matchesFor(DamageTriggerType.KEY, role);
+        if (matches.isEmpty()) return 0;
+        Set<String> tags = new HashSet<>(
+                com.aetherianartificer.townstead.reaction.trigger.event.ContextResolver.tagsFor(level, actor));
+        tags.add("damage");
+        tags.add("damage_role:" + role);
+        String sourceKey = source.getMsgId().toLowerCase(Locale.ROOT);
+        tags.add("damage_source:" + sourceKey);
+        if (source.is(net.minecraft.tags.DamageTypeTags.IS_FIRE)) tags.add("damage_fire");
+        if (source.is(net.minecraft.tags.DamageTypeTags.IS_EXPLOSION)) tags.add("damage_explosion");
+        Entity causing = source.getEntity();
+        if (causing instanceof Player) tags.add("attacker_player");
+        if (causing instanceof VillagerEntityMCA) tags.add("attacker_villager");
+        if (causing instanceof net.minecraft.world.entity.monster.Monster) tags.add("attacker_monster");
+        if (causing instanceof Player || causing instanceof VillagerEntityMCA) tags.add("attacker_person");
+        LivingEntity harmed = "victim".equals(role) ? actor : counterpart;
+        if (harmed instanceof Player) tags.add("victim_player");
+        if (harmed instanceof VillagerEntityMCA) tags.add("victim_villager");
+        if (harmed instanceof net.minecraft.world.entity.monster.Monster) tags.add("victim_monster");
+        if (harmed instanceof Player || harmed instanceof VillagerEntityMCA) tags.add("victim_person");
+        Player playerCause = causing instanceof Player player ? player : null;
+        ReactionContext context = new ReactionContext(ReactionContext.TriggerSource.DAMAGE, playerCause,
+                victimLocation(role, actor, counterpart), Set.copyOf(tags), 0, counterpart);
+        int fired = 0;
+        for (ResourceLocation id : matches) {
+            Reaction reaction = ReactionRegistry.get(id).orElse(null);
+            if (reaction != null && damageTriggerMatches(reaction, role, sourceKey, amount)
+                    && fire(level, actor, reaction, context)) fired++;
+        }
+        return fired;
+    }
+
+    private static net.minecraft.core.BlockPos victimLocation(String role, LivingEntity actor,
+                                                               LivingEntity counterpart) {
+        return "victim".equals(role) || counterpart == null
+                ? actor.blockPosition() : counterpart.blockPosition();
+    }
+
     // ──────────────────────────── internals ────────────────────────────
+
+    private static boolean contextTriggerMatches(Reaction reaction, String type, Set<String> entered,
+                                                 Set<String> current) {
+        for (JsonObject trigger : reaction.rawTriggers()) {
+            if (!type.equals(GsonHelper.getAsString(trigger, "type", ""))) continue;
+            List<String> required = ReactionConditions.parseStringArray(trigger, "tags").stream()
+                    .map(value -> value.toLowerCase(Locale.ROOT)).toList();
+            if (required.isEmpty() || !current.containsAll(required)) continue;
+            if (!ContextEnterTriggerType.KEY.equals(type)) return true;
+            for (String value : required) if (entered.contains(value)) return true;
+        }
+        return false;
+    }
+
+    private static boolean contextExitTriggerMatches(Reaction reaction, Set<String> exited,
+                                                     Set<String> prior) {
+        for (JsonObject trigger : reaction.rawTriggers()) {
+            if (!ContextExitTriggerType.KEY.equals(GsonHelper.getAsString(trigger, "type", ""))) continue;
+            List<String> required = ReactionConditions.parseStringArray(trigger, "tags").stream()
+                    .map(value -> value.toLowerCase(Locale.ROOT)).toList();
+            if (required.isEmpty() || !prior.containsAll(required)) continue;
+            for (String value : required) if (exited.contains(value)) return true;
+        }
+        return false;
+    }
+
+    private static boolean damageTriggerMatches(Reaction reaction, String role, String source, float amount) {
+        for (JsonObject trigger : reaction.rawTriggers()) {
+            if (!DamageTriggerType.KEY.equals(GsonHelper.getAsString(trigger, "type", ""))) continue;
+            if (!role.equalsIgnoreCase(GsonHelper.getAsString(trigger, "role", "victim"))) continue;
+            if (amount < GsonHelper.getAsFloat(trigger, "min_amount", 0)) continue;
+            List<String> sources = ReactionConditions.parseStringArray(trigger, "sources").stream()
+                    .map(value -> value.toLowerCase(Locale.ROOT)).toList();
+            if (sources.isEmpty() || sources.contains(source)) return true;
+        }
+        return false;
+    }
+
+    private static boolean timeTriggerDue(Reaction reaction, String phase, long gameTime, int entityId) {
+        for (JsonObject trigger : reaction.rawTriggers()) {
+            if (!TimeTriggerType.KEY.equals(GsonHelper.getAsString(trigger, "type", ""))) continue;
+            if (!phase.equalsIgnoreCase(GsonHelper.getAsString(trigger, "phase", ""))) continue;
+            int interval = Math.max(20, GsonHelper.getAsInt(trigger, "interval_ticks", 1200));
+            if (Math.floorMod(gameTime + (entityId & 0x0F), interval) < 20) return true;
+        }
+        return false;
+    }
 
     /**
      * Pick the lock duration for the chosen binding. Preferred path:

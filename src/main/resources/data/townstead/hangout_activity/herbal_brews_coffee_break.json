@@ -1,13 +1,32 @@
 {
-  "schema": "townstead:hangout_activity/v1",
+  "schema": "townstead:hangout_activity/v2",
   "mods": "herbalbrews",
   "kind": "drink",
   "minimum_participants": 2,
   "maximum_participants": 4,
   "duration_ticks": 360,
-  "roles": { "inviter": 1, "companion": 3 },
-  "postures": ["townstead:sit"],
-  "start_when": { "type": "pheno:energy", "max": 10 },
+  "roles": {
+    "inviter": 1,
+    "companion": 3
+  },
+  "postures": [
+    "townstead:sit"
+  ],
+  "start_when": {
+    "type": "pheno:energy",
+    "max": 10
+  },
+  "service": {
+    "courses": [
+      {
+        "id": "coffee_service",
+        "kind": "drink",
+        "role": "barista",
+        "at_ticks": 100,
+        "lease_ticks": 100
+      }
+    ]
+  },
   "on_service_accepted": {
     "type": "pheno:performance",
     "performance": "townstead:coffee_service",
@@ -22,5 +41,9 @@
     "duration_ticks": 360,
     "priority": 15,
     "fallback": "vanilla_gesture"
+  },
+  "social_cues": {
+    "conversations": true,
+    "dialogue_interval_ticks": 240
   }
 }

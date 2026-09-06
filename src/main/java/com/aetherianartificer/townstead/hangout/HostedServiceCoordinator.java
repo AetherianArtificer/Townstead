@@ -11,7 +11,7 @@ import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
 /**
- * Ordered, lease-backed course state for Townstead-owned sessions. This is a coordinator called by
+ * Ordered, lease-backed course state for Townstead-owned social beats. This coordinator is called by
  * the hangout engine, not a second AI scheduler: cook/brew tasks and provider-owned fulfillment
  * remain in the existing hospitality pipeline.
  */
@@ -24,26 +24,35 @@ public final class HostedServiceCoordinator {
         }
     }
 
-    private static final ResourceLocation PROVIDER = ResourceLocation.tryParse("townstead:hangout");
+    private static final ResourceLocation PROVIDER = ResourceLocation.tryParse("townstead_hangouts:hosted_service");
     private final ServiceClaimLedger claims = new ServiceClaimLedger();
     private final Map<Guest, Integer> completed = new HashMap<>();
 
-    public Result attempt(ResourceLocation dimension, UUID session, String site, UUID guest, UUID worker,
+    public Result attempt(ResourceLocation dimension, UUID beatId, String site, UUID guest, UUID worker,
                    HangoutActivity.ServiceCourse course, int index, long activeTicks, long now,
-                   boolean serviceAllowed, boolean amenityPresent, BooleanSupplier fulfillment) {
-        Guest key = new Guest(session, guest);
+                   boolean activityServiceAllowed, boolean courseEligible,
+                   boolean amenityPresent, BooleanSupplier fulfillment) {
+        Guest key = new Guest(beatId, guest);
         int next = completed.getOrDefault(key, 0);
         if (index < next) return new Result(Status.COMPLETE, "course_already_completed");
         if (index > next) return new Result(Status.OUT_OF_ORDER, "previous_course_pending");
         if (activeTicks < course.atTicks()) return new Result(Status.NOT_DUE, "course_not_due");
+        // Eligibility is guest truth, independent of whether today's venue happens to have staff
+        // or stock. Resolve it before labor acquisition so an excluded course cannot reserve work
+        // or be misdiagnosed as a missing bartender.
+        if (!activityServiceAllowed) {
+            return finish(key, index, Status.REFUSED, "activity_service_condition_refused");
+        }
+        if (!courseEligible) {
+            return finish(key, index, Status.REFUSED, "course_eligibility_refused");
+        }
         if (worker == null) return finish(key, index, Status.MISSING_SERVER, "missing_role:" + course.role());
 
         ServiceRequestKey request = new ServiceRequestKey(PROVIDER, dimension, site,
-                session.toString(), guest + "/" + course.id());
+                beatId.toString(), guest + "/" + course.id());
         ServiceLaborClaim claim = claims.tryClaim(request, course.role(), worker, now, course.leaseTicks());
         if (claim == null) return new Result(Status.CLAIMED, "claimed_by_another_worker");
         try {
-            if (!serviceAllowed) return finish(key, index, Status.REFUSED, "service_condition_refused");
             if (!amenityPresent) return finish(key, index, Status.MISSING_AMENITY,
                     "missing_amenity:" + course.kind().name().toLowerCase(java.util.Locale.ROOT));
             if (fulfillment == null || !fulfillment.getAsBoolean()) {
@@ -55,8 +64,8 @@ public final class HostedServiceCoordinator {
         }
     }
 
-    public void forget(UUID session) {
-        completed.keySet().removeIf(key -> key.session().equals(session));
+    public void forget(UUID beatId) {
+        completed.keySet().removeIf(key -> key.beatId().equals(beatId));
     }
 
     public void prune(long now) { claims.prune(now); }
@@ -66,5 +75,5 @@ public final class HostedServiceCoordinator {
         return new Result(status, reason);
     }
 
-    private record Guest(UUID session, UUID guest) {}
+    private record Guest(UUID beatId, UUID guest) {}
 }

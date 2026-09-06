@@ -90,10 +90,21 @@ public interface ChronicleWorld {
 
     void noteKnownStory(UUID knower, KnownStoriesCache.Entry entry);
 
+    /** Optional presentation hook after belief effects commit; offline simulations need no renderer. */
+    default void onLearned(ChronicleEventTemplate template, ChronicleEvent event, Account account,
+                           com.aetherianartificer.townstead.chronicle.knowledge.DistortionOverlay overlay) {}
+
     void addMoodImpact(UUID knower, float amount);
 
     void adjustSentiment(UUID from, UUID toward, float delta, long day, long accountId);
 
     void addOrReinforceMemory(UUID knower, String memoryKey, @Nullable UUID otherParty,
                               long day, float strength, float valence, Map<String, String> params);
+
+    /** Repeat-safe episodic memory. Offline worlds may retain the aggregate fallback. */
+    default void addEpisodicMemory(UUID knower, String operationId, String memoryKey,
+                                   @Nullable UUID otherParty, long day, float strength, float valence,
+                                   String source, Map<String, String> params) {
+        addOrReinforceMemory(knower, memoryKey, otherParty, day, strength, valence, params);
+    }
 }

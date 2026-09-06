@@ -58,12 +58,14 @@ public final class Chronicles {
         ArcManager.clearAll();
         com.aetherianartificer.townstead.chronicle.knowledge.KnownStoriesCache.setLoader(null);
         com.aetherianartificer.townstead.chronicle.knowledge.KnownStoriesCache.clearAll();
+        com.aetherianartificer.townstead.social.RelationshipService.clear(server);
         if (s != null) s.close();
     }
 
     /** Once per calendar day, from the WorldCalendarTicker rollover. */
     public static void onDayRollover(MinecraftServer server) {
-        ChronicleSavedData.get(server).decayDaily();
+        ChronicleSavedData.get(server).decayDaily(
+                com.aetherianartificer.townstead.calendar.TownsteadCalendar.worldDay(server));
         ChronicleStore s = store;
         if (s != null) s.requestCheckpoint();
     }

@@ -1,1 +1,1 @@
-{"schema":"townstead:extended_building/v1","mods":"kaleidoscope_tavern","workers":["townstead:beverage_artisan"],"catalog":{"node_item":"kaleidoscope_tavern:chalkboard"},"spirit":{"commercial":12,"tourism":4}}
+{"schema":"townstead:extended_building/v1","mods":"kaleidoscope_tavern","workers":["townstead:beverage_artisan"],"orders":{"recipe_namespaces":["kaleidoscope_tavern"]},"catalog":{"node_item":"kaleidoscope_tavern:chalkboard"},"spirit":{"commercial":12,"tourism":4}}

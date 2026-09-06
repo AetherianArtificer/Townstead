@@ -10,6 +10,32 @@
         "brewery:wooden_brewingstation",
         "brewery:copper_brewingstation",
         "brewery:netherite_brewingstation"
+      ],
+      "work": [
+        {
+          "type": "townstead_work:brew",
+          "access": "path",
+          "workstations": ["brewery:wooden_brewingstation"],
+          "recipes": ["#townstead:compat/brewery/wood_drinks"],
+          "weight": 10
+        },
+        {
+          "type": "townstead_work:brew",
+          "access": "path",
+          "workstations": ["brewery:copper_brewingstation"],
+          "recipes": [
+            "#townstead:compat/brewery/wood_drinks",
+            "#townstead:compat/brewery/copper_drinks"
+          ],
+          "weight": 10
+        },
+        {
+          "type": "townstead_work:brew",
+          "access": "path",
+          "workstations": ["brewery:netherite_brewingstation"],
+          "recipes": ["#townstead:compat/brewery/drinks"],
+          "weight": 10
+        }
       ]
     },
     "profession": {
@@ -28,29 +54,6 @@
           "type_prefix": "compat/brewery/brewhouse_l",
           "slots_per_tier": [1, 2, 3],
           "path_affinity": ["brewer"]
-        }
-      ],
-      "tasks": [
-        {
-          "type": "townstead_work:brew",
-          "workstations": ["brewery:wooden_brewingstation"],
-          "recipes": ["#townstead:compat/brewery/wood_drinks"],
-          "weight": 10
-        },
-        {
-          "type": "townstead_work:brew",
-          "workstations": ["brewery:copper_brewingstation"],
-          "recipes": [
-            "#townstead:compat/brewery/wood_drinks",
-            "#townstead:compat/brewery/copper_drinks"
-          ],
-          "weight": 10
-        },
-        {
-          "type": "townstead_work:brew",
-          "workstations": ["brewery:netherite_brewingstation"],
-          "recipes": ["#townstead:compat/brewery/drinks"],
-          "weight": 10
         }
       ]
     }

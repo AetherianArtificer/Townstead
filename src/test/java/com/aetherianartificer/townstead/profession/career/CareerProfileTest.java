@@ -77,7 +77,7 @@ class CareerProfileTest {
 
     private static ResourceLocation id(String value) {
         //? if >=1.21 {
-        return ResourceLocation.parse(value);
+        return ResourceLocation.tryParse(value);
         //?} else {
         /*return new ResourceLocation(value);
         *///?}

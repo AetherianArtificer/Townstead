@@ -27,6 +27,7 @@ public final class SelectorContext {
     private final Level level;
     private final Vec3 pos;
     private final @Nullable com.aetherianartificer.townstead.pheno.condition.PhenoSubject subject;
+    private final @Nullable java.util.UUID otherId;
     private final Map<String, List<BlockPos>> blockRoles;
     private final @Nullable Predicate<BlockPos> defaultBlockMembership;
     private final @Nullable Integer villageId;
@@ -53,6 +54,7 @@ public final class SelectorContext {
         this.villageId = villageId;
         this.reservations = reservations;
         this.subject = null;
+        this.otherId = other == null ? null : other.getUUID();
     }
 
     /**
@@ -61,7 +63,7 @@ public final class SelectorContext {
      * values and selectors that declare they can work from a subject may use it
      * (the same discipline conditions follow).
      */
-    private SelectorContext(com.aetherianartificer.townstead.pheno.condition.PhenoSubject subject) {
+    private SelectorContext(com.aetherianartificer.townstead.pheno.condition.PhenoSubject subject, @Nullable java.util.UUID otherId) {
         this.self = null;
         this.other = null;
         this.origin = null;
@@ -72,6 +74,7 @@ public final class SelectorContext {
         this.villageId = null;
         this.reservations = null;
         this.subject = subject;
+        this.otherId = otherId;
     }
 
     /** Non-null exactly when this frame describes someone not in the world. */
@@ -85,8 +88,8 @@ public final class SelectorContext {
     }
 
     public static SelectorContext of(ConditionContext ctx) {
-        if (ctx.subject() != null) return new SelectorContext(ctx.subject());
-        return new SelectorContext(ctx.entity(), null, ctx.entity(), ctx.level(), ctx.entity().position());
+        if (ctx.subject() != null) return new SelectorContext(ctx.subject(), ctx.otherId());
+        return new SelectorContext(ctx.entity(), ctx.other(), ctx.origin(), ctx.level(), ctx.entity() == null ? Vec3.ZERO : ctx.entity().position());
     }
 
     /** A block-rooted frame (block actions): the focus is a position, the entity (if any) is the cause. */
@@ -97,6 +100,7 @@ public final class SelectorContext {
     @Nullable public LivingEntity self() { return self; }
 
     @Nullable public LivingEntity other() { return other; }
+    @Nullable public java.util.UUID otherId() { return otherId; }
 
     @Nullable public LivingEntity origin() { return origin; }
 

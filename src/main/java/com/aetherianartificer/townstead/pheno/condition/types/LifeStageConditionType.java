@@ -11,6 +11,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.Nullable;
@@ -19,8 +20,9 @@ import java.util.EnumSet;
 import java.util.Set;
 
 /**
- * {@code pheno:life_stage} — the canonical stage the subject presents as
- * ({@code stage}: one of baby/toddler/child/teen/adult/senior, or a list).
+ * {@code pheno:life_stage} — either the canonical stage the subject presents as
+ * ({@code stage}: one of baby/toddler/child/teen/adult/senior, or a list), or an
+ * open semantic tag authored on the resolved stage ({@code tag}).
  * Reads the Root's own life cycle, so "adult" means whatever adulthood means
  * for that Root, and it is the same axis the marriage and employment gates use.
  *
@@ -40,6 +42,14 @@ public final class LifeStageConditionType implements ConditionType {
 
     @Override
     public Condition parse(JsonObject json) {
+        if (json.has("tag")) {
+            if (json.has("stage") || json.has("is")) return null;
+            JsonElement value = json.get("tag");
+            if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) return null;
+            ResourceLocation tag = ResourceLocation.tryParse(value.getAsString());
+            if (tag == null) return null;
+            return Condition.subjectAware(ctx -> hasTag(ctx, tag));
+        }
         Set<CanonicalStage> stages = EnumSet.noneOf(CanonicalStage.class);
         JsonElement value = json.has("stage") ? json.get("stage") : json.get("is");
         if (value == null) return null;
@@ -79,5 +89,19 @@ public final class LifeStageConditionType implements ConditionType {
         }
         // Players and other entities read as adults, as they do everywhere else.
         return entity == null ? null : CanonicalStage.ADULT;
+    }
+
+    private static boolean hasTag(ConditionContext ctx, ResourceLocation tag) {
+        PhenoSubject subject = ctx.subject();
+        if (subject != null) return subject.lifeStageTags().contains(tag);
+        LivingEntity entity = ctx.entity();
+        if (entity instanceof VillagerEntityMCA villager) {
+            LifeStage stage = LifeStageProgression.currentStage(villager);
+            if (stage != null) return stage.tags().contains(tag);
+            // Fail closed until Townstead's lifecycle has resolved. In particular, never infer an
+            // alcohol capability from MCA's coarser baby/adult state.
+            return false;
+        }
+        return entity != null && LifeStage.defaultTags(CanonicalStage.ADULT).contains(tag);
     }
 }

@@ -39,12 +39,19 @@ public final class GestureTriggerType implements TriggerType {
         String raw = GsonHelper.getAsString(json, "emote", "");
         if (raw.isBlank()) return null;
         // Accept either "emotecraft:Name" or bare "Name"; index by the name stem only.
-        int colon = raw.indexOf(':');
-        String name = colon >= 0 ? raw.substring(colon + 1) : raw;
+        String name = normalizeEmoteName(raw);
         if (name.isBlank()) return null;
         float maxDistance = GsonHelper.getAsFloat(json, "max_distance", 6.0F);
         float minDot = GsonHelper.getAsFloat(json, "min_dot", 0.6F);
-        return new Instance(name.toLowerCase(Locale.ROOT), maxDistance, minDot);
+        return new Instance(name, maxDistance, minDot);
+    }
+
+    /** The trigger index deliberately ignores the optional backend namespace. */
+    public static String normalizeEmoteName(String raw) {
+        if (raw == null) return "";
+        int colon = raw.indexOf(':');
+        String name = colon >= 0 ? raw.substring(colon + 1) : raw;
+        return name.trim().toLowerCase(Locale.ROOT);
     }
 
     @Override

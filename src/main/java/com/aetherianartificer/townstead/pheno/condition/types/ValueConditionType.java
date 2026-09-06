@@ -48,7 +48,8 @@ public final class ValueConditionType implements ConditionType {
             @Override
             public boolean test(com.aetherianartificer.townstead.pheno.condition.ConditionContext ctx) {
                 SelectorContext frame = SelectorContext.of(ctx);
-                return comparison.compare(left.get(frame), right.get(frame));
+                double a = left.get(frame), b = right.get(frame);
+                return Double.isFinite(a) && Double.isFinite(b) && comparison.compare(a, b);
             }
 
             @Override

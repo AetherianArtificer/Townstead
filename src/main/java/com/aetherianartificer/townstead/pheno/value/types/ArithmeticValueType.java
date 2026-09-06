@@ -30,7 +30,7 @@ public final class ArithmeticValueType implements ValueType {
         if (!List.of("add", "subtract", "multiply", "divide", "min", "max").contains(operation)) {
             return null;
         }
-        return context -> {
+        Value compiled = context -> {
             double result = values.get(0).get(context);
             for (int i = 1; i < values.size(); i++) {
                 double next = values.get(i).get(context);
@@ -45,5 +45,6 @@ public final class ArithmeticValueType implements ValueType {
             }
             return result;
         };
+        return values.stream().allMatch(Value::supportsSubject) ? Value.subjectAware(compiled) : compiled;
     }
 }

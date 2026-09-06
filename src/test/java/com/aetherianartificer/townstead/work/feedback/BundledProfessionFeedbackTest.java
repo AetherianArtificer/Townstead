@@ -104,7 +104,7 @@ class BundledProfessionFeedbackTest {
 
     private static net.minecraft.resources.ResourceLocation id(String value) {
         //? if >=1.21 {
-        return net.minecraft.resources.ResourceLocation.parse(value);
+        return net.minecraft.resources.ResourceLocation.tryParse(value);
         //?} else {
         /*return new net.minecraft.resources.ResourceLocation(value);
         *///?}

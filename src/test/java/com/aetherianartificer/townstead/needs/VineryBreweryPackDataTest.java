@@ -71,6 +71,30 @@ class VineryBreweryPackDataTest {
     }
 
     @Test
+    void brewHallsExposeBreweryStockAndBartendersMayUseVillageBrewhouses() {
+        JsonObject bartender = data("career_provider/bartender_brewery_venues.json");
+        JsonArray work = bartender.getAsJsonObject("contributes").getAsJsonObject("path")
+                .getAsJsonArray("work");
+        assertEquals(3, work.size());
+        for (JsonElement element : work) {
+            JsonObject task = element.getAsJsonObject();
+            assertEquals("path", task.get("access").getAsString());
+            assertEquals("village", task.get("scope").getAsString());
+            assertEquals("townstead_work:brew", task.get("type").getAsString());
+        }
+
+        JsonObject menu = data("serving_menu/brewery_brew_hall.json");
+        assertEquals(3, menu.getAsJsonArray("buildings").size());
+        assertEquals(16, menu.getAsJsonArray("products").size());
+        for (String tier : List.of("brew_hall_l1", "brew_hall_l2", "brew_hall_l3",
+                "brewhouse_l1", "brewhouse_l2", "brewhouse_l3")) {
+            JsonObject building = data("extended_buildings/compat/brewery/" + tier + ".json");
+            assertEquals(Set.of("brewery"), strings(building.getAsJsonObject("orders")
+                    .getAsJsonArray("recipe_namespaces")));
+        }
+    }
+
+    @Test
     void nativeWinemakerIsEnrichedWithoutInventingVintnerWork() {
         JsonObject provider = data("career_provider/winemaker_vinery.json");
         assertEquals("vinery:winemaker", provider.get("profession").getAsString());
@@ -106,6 +130,17 @@ class VineryBreweryPackDataTest {
         assertTrue(cellar.getAsJsonArray("storage_roles").asList().stream()
                 .anyMatch(value -> "townstead:brewed_drinks".equals(value.getAsString())));
         assertFalse(cellar.has("workers"), "a Cask Cellar is storage, not another worksite");
+    }
+
+    @Test
+    void wineryTastingTiersGuaranteeEnoughRecognizedSeats() {
+        JsonObject tierTwo = resource("/townstead_compat/building_types/compat/vinery/winery_l2.json");
+        JsonObject tierThree = resource("/townstead_compat/building_types/compat/vinery/winery_l3.json");
+        assertEquals(2, tierTwo.getAsJsonObject("blocks").get("#townstead_hangouts:seats").getAsInt());
+        assertEquals(4, tierThree.getAsJsonObject("blocks").get("#townstead_hangouts:seats").getAsInt());
+
+        JsonObject venue = data("hangout_venue/vinery_winery_tasting.json");
+        assertTrue(strings(venue.getAsJsonArray("amenities")).contains("seating"));
     }
 
     @Test

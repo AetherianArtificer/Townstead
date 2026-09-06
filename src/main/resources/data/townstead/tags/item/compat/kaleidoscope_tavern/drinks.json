@@ -1,0 +1,20 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "kaleidoscope_tavern:wine", "required": false },
+    { "id": "kaleidoscope_tavern:carignan", "required": false },
+    { "id": "kaleidoscope_tavern:honey_wine", "required": false },
+    { "id": "kaleidoscope_tavern:ice_wine", "required": false },
+    { "id": "kaleidoscope_tavern:luminous_bride", "required": false },
+    { "id": "kaleidoscope_tavern:miners_star", "required": false },
+    { "id": "kaleidoscope_tavern:mother_snow", "required": false },
+    { "id": "kaleidoscope_tavern:plum_wine", "required": false },
+    { "id": "kaleidoscope_tavern:polaris_sweet_white", "required": false },
+    { "id": "kaleidoscope_tavern:sakura_wine", "required": false },
+    { "id": "kaleidoscope_tavern:sherry", "required": false },
+    { "id": "kaleidoscope_tavern:sunset_glow", "required": false },
+    { "id": "kaleidoscope_tavern:vodka", "required": false },
+    { "id": "kaleidoscope_tavern:whiskey", "required": false },
+    { "id": "kaleidoscope_tavern:mystery_cocktail", "required": false }
+  ]
+}

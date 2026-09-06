@@ -960,5 +960,10 @@
   "dialogue.chat.townstead_drunk.recovered/1": "There I am. Water first, breakfast second, apologies as required.",
   "dialogue.chat.townstead_drunk.recovered/2": "The world has stopped swaying. I shall try not to start it again.",
   "dialogue.chat.townstead_drunk.recovered/3": "A clear head. What a beautifully quiet thing.",
-  "dialogue.chat.townstead_drunk.recovered/4": "I remember most of last night. The rest can remain a village mystery."
+  "dialogue.chat.townstead_drunk.recovered/4": "I remember most of last night. The rest can remain a village mystery.",
+
+  "dialogue.chat.townstead_beachparty.cabana_solo/1": "Now this is more like it: a seat, a breeze, and nowhere urgent to be.",
+  "dialogue.chat.townstead_beachparty.cabana_solo/2": "I'll hold down this stool until the company improves.",
+  "dialogue.chat.townstead_beachparty.cabana_solo/3": "If anyone asks, I'm conducting important research on relaxation.",
+  "dialogue.chat.townstead_beachparty.cabana_solo/4": "A quiet bar still counts as a bar. The view is doing excellent work."
 }

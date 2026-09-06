@@ -116,6 +116,38 @@ public final class ChronicleTaps {
         }
     }
 
+    /** A completed, budgeted exchange; the archive is optional and never drives its reward. */
+    public static void conversation(LivingEntity actor, LivingEntity other, ResourceLocation topic,
+                                    String outcome, String initiatorMemory, String responderMemory) {
+        try {
+            if (!(actor.level() instanceof ServerLevel level)) return;
+            Chronicles.addCounter(level.getServer(), actor.getUUID(), "townstead:conversation", 1);
+            Chronicles.addCounter(level.getServer(), other.getUUID(), "townstead:conversation", 1);
+            ChronicleEmitter.emit(level, new TriggerKey("social", "townstead:conversation"), actor, other, 1.0f,
+                    Map.of("topic", topic.toString(), "outcome", outcome,
+                            "initiator_memory", initiatorMemory, "responder_memory", responderMemory));
+        } catch (Throwable t) {
+            swallow(t);
+        }
+    }
+
+    /** A reaction or other Pheno host committed a durable two-person social result. */
+    public static void socialOutcome(LivingEntity actor, LivingEntity other, ResourceLocation source,
+                                     String actorMemory, String otherMemory) {
+        try {
+            if (!(actor.level() instanceof ServerLevel level) || other == null || source == null) return;
+            Chronicles.addCounter(level.getServer(), actor.getUUID(), "townstead:social_outcome", 1);
+            Chronicles.addCounter(level.getServer(), other.getUUID(), "townstead:social_outcome", 1);
+            if (ChronicleTriggerIndex.isEmpty()) return;
+            ChronicleEmitter.emit(level, new TriggerKey("social", "townstead:social_outcome"),
+                    actor, other, 1.0f, Map.of("source", source.toString(),
+                            "actor_memory", actorMemory == null ? "" : actorMemory,
+                            "other_memory", otherMemory == null ? "" : otherMemory));
+        } catch (Throwable t) {
+            swallow(t);
+        }
+    }
+
     /** Heart shift between two entities; one friendship/argument story per pair per day. */
     public static void social(LivingEntity actor, LivingEntity other, boolean positive) {
         try {

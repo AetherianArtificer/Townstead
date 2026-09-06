@@ -13,6 +13,7 @@ import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
@@ -45,6 +46,9 @@ public record WorkstationV2Def(
         List<RecipeSlotRole> recipeLayout,
         List<RecipeCorrection> recipeCorrections,
         List<String> recipeSupplies,
+        @Nullable String fluidSource,
+        List<Vec3i> stands,
+        boolean standsRelativeToFacing,
         @Nullable JsonElement requiresJson,
         @Nullable BlockCondition requires,
         @Nullable JsonElement readyJson,
@@ -173,6 +177,14 @@ public record WorkstationV2Def(
             }
         }
 
+        String fluidSource = null;
+        if (json.has("fluid_source")) {
+            JsonElement value = json.get("fluid_source");
+            if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) return null;
+            fluidSource = value.getAsString().trim();
+            if (fluidSource.isEmpty() || ResourceLocation.tryParse(fluidSource) == null) return null;
+        }
+
         JsonElement requiresJson = copy(json.get("requires"));
         BlockCondition requires = requiresJson == null ? null : BlockConditions.parse(requiresJson);
         if (requiresJson != null && requires == null) return null;
@@ -186,6 +198,25 @@ public record WorkstationV2Def(
                     .spec(reservationJson);
             if (reservation == null) return null;
         }
+
+        List<Vec3i> stands = new ArrayList<>();
+        if (json.has("stands")) {
+            if (!json.get("stands").isJsonArray()) return null;
+            for (JsonElement element : json.getAsJsonArray("stands")) {
+                if (!element.isJsonArray() || element.getAsJsonArray().size() != 3) return null;
+                int[] coordinate = new int[3];
+                for (int index = 0; index < 3; index++) {
+                    JsonElement value = element.getAsJsonArray().get(index);
+                    Integer parsed = integer(value);
+                    if (parsed == null || Math.abs(parsed) > 16) return null;
+                    coordinate[index] = parsed;
+                }
+                stands.add(new Vec3i(coordinate[0], coordinate[1], coordinate[2]));
+            }
+        }
+        boolean standsRelativeToFacing = json.has("stands_relative_to_facing")
+                && json.get("stands_relative_to_facing").isJsonPrimitive()
+                && json.get("stands_relative_to_facing").getAsBoolean();
         Attendance attendance = parseAttendance(json.get("attendance"));
         if (json.has("attendance") && attendance == null) return null;
         JsonElement readyJson = copy(json.get("ready"));
@@ -257,7 +288,8 @@ public record WorkstationV2Def(
         return new WorkstationV2Def(id, Set.copyOf(blocks), List.copyOf(containers),
                 List.copyOf(ingredients), List.copyOf(catalysts), List.copyOf(outputs),
                 List.copyOf(returns), List.copyOf(previews), List.copyOf(layout),
-                List.copyOf(corrections), List.copyOf(supplies),
+                List.copyOf(corrections), List.copyOf(supplies), fluidSource, List.copyOf(stands),
+                standsRelativeToFacing,
                 requiresJson, requires, readyJson, ready, behavior, collect,
                 anchor, anchorSelector, targetLayout, structure, structureSelector,
                 capacity, capacityValue, capacityPositions, capacityPositionsValue,
@@ -483,9 +515,9 @@ public record WorkstationV2Def(
     WorkstationDef legacyView(Set<ResourceLocation> recipeTypes) {
         int container = containerSlots.isEmpty() ? 7 : containerSlots.get(0);
         return new WorkstationDef(id, blocks, List.of(), schedulingRole(recipeTypes), container, 6,
-                List.of(), null, 0, 200, false,
+                stands, null, 0, 200, false,
                 DataDrivenStationAdapter.NAME, Set.of(), List.of(), null, null, List.of(), List.of(),
-                WorkstationDef.FurnaceSlots.VANILLA, false, null, false, null,
+                WorkstationDef.FurnaceSlots.VANILLA, fluidSource != null, fluidSource, false, null,
                 // A V2 recipe family is attached to this exact block. That public association is
                 // already the author's statement that the block performs the recipe; requiring a
                 // second, manually maintained output-item tag would make the order catalogue a

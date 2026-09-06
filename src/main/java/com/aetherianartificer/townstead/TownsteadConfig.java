@@ -68,6 +68,8 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue FARMER_GROOM_SCAN_INTERVAL_TICKS;
     public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_AI;
     public static final ModConfigSpec.BooleanValue ENABLE_WORK_FEEDBACK;
+    public static final ModConfigSpec.BooleanValue ENABLE_CONVERSATIONS;
+    public static final ModConfigSpec.DoubleValue IDLE_CONVERSATION_CHANCE;
     public static final ModConfigSpec.BooleanValue ENABLE_REPEATED_WORK_REQUESTS;
     public static final ModConfigSpec.IntValue MINIMUM_WORK_REQUEST_INTERVAL_TICKS;
     public static final ModConfigSpec.IntValue FISHERMAN_WATER_SEARCH_RADIUS;
@@ -156,6 +158,8 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.IntValue FARMER_GROOM_SCAN_INTERVAL_TICKS;
     public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_AI;
     public static final ForgeConfigSpec.BooleanValue ENABLE_WORK_FEEDBACK;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_CONVERSATIONS;
+    public static final ForgeConfigSpec.DoubleValue IDLE_CONVERSATION_CHANCE;
     public static final ForgeConfigSpec.BooleanValue ENABLE_REPEATED_WORK_REQUESTS;
     public static final ForgeConfigSpec.IntValue MINIMUM_WORK_REQUEST_INTERVAL_TICKS;
     public static final ForgeConfigSpec.IntValue FISHERMAN_WATER_SEARCH_RADIUS;
@@ -323,6 +327,17 @@ public final class TownsteadConfig {
                 .comment("Fatigue accumulation multiplier when working during misaligned cycle hours.")
                 .define("fatigueMisalignedMultiplier", 1.25);
         b.pop();
+        b.pop();
+
+        b.translation("townstead.configuration.conversations").push("conversations");
+        ENABLE_CONVERSATIONS = b
+                .translation("townstead.configuration.conversations.enabled")
+                .comment("Allow autonomous and Pheno villager conversations, including during hangouts. Operator previews remain available.")
+                .define("enabled", true);
+        IDLE_CONVERSATION_CHANCE = b
+                .translation("townstead.configuration.conversations.idleStartChance")
+                .comment("Chance per staggered ten-second idle check to invite a nearby available villager. Hangout and Pheno invitations use their own cadence.")
+                .defineInRange("idleStartChance", 0.3, 0.0, 1.0);
         b.pop();
 
         // ── Work feedback ──

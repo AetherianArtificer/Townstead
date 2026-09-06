@@ -1,0 +1,34 @@
+{
+  "schema": "townstead:reaction/v3",
+  "display_name": "reaction.townstead.raid_alarm",
+  "tags": ["emotional", "fear", "danger", "raid"],
+  "cooldown": "90s",
+  "chance": "65%",
+  "triggers": [
+    { "type": "context_enter", "tags": ["raid_active"] }
+  ],
+  "choices": [
+    {
+      "weight": 3,
+      "personality_weights": {"anxious": 2.0, "sensitive": 1.4, "peaceful": 1.5, "default": 1.0},
+      "do": {
+        "type": "pheno:and",
+        "actions": [
+          {"type": "pheno:performance", "performance": "townstead:reaction_startled", "channel": "reaction", "duration_ticks": 30, "priority": 90, "fallback": "stand"},
+          {"type": "pheno:expression", "cue": "townstead_expressions:worry"}
+        ]
+      }
+    },
+    {
+      "weight": 2,
+      "personality_weights": {"extroverted": 1.8, "crabby": 1.5, "upbeat": 1.3, "peaceful": 0.4, "default": 1.0},
+      "do": {
+        "type": "pheno:and",
+        "actions": [
+          {"type": "pheno:performance", "performance": "townstead:reaction_nod", "channel": "reaction", "duration_ticks": 20, "priority": 80, "fallback": "vanilla_gesture"},
+          {"type": "pheno:expression", "cue": "townstead_expressions:approval"}
+        ]
+      }
+    }
+  ]
+}

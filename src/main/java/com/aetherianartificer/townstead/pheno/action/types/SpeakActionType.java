@@ -20,6 +20,7 @@ public final class SpeakActionType implements ActionType {
         int variants = Math.max(1, GsonHelper.getAsInt(json, "variants", 1));
         return ctx -> {
             if (!(ctx.entity() instanceof VillagerEntityMCA villager)) return;
+            if (com.aetherianartificer.townstead.dialogue.conversation.ConversationEngine.active(villager.getUUID())) return;
             String phrase = numbered ? pool + "/" + (villager.getRandom().nextInt(variants) + 1) : pool;
             villager.sendChatToAllAround(phrase);
         };

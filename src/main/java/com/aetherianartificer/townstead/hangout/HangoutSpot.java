@@ -55,7 +55,7 @@ public record HangoutSpot(ResourceLocation id, Set<ResourceLocation> blocks,
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 
-    /** Absolute session-anchor position, with optional [right, up, forward] authoring. */
+    /** Absolute visit-anchor position, with optional [right, up, forward] authoring. */
     public Vec3 embodimentPosition(BlockState state, BlockPos anchor) {
         double x = embodimentOffset.x;
         double z = embodimentOffset.z;

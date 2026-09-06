@@ -1,0 +1,1 @@
+{"schema":"townstead_performance:native_clip/v1","duration_ticks":60,"loop":true,"bones":{"torso":{"rotation":[{"tick":0,"value":[-18,0,0]},{"tick":60,"value":[-18,0,0]}]},"head":{"rotation":[{"tick":0,"value":[10,0,0]},{"tick":60,"value":[10,0,0]}]},"right_leg":{"rotation":[{"tick":0,"value":[-12,5,0]}]},"left_leg":{"rotation":[{"tick":0,"value":[-8,-5,0]}]}}}

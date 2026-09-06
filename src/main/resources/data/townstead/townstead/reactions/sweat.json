@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:reaction/v3",
+  "display_name": "reaction.townstead.sweat",
+  "tags": [
+    "need",
+    "heat"
+  ],
+  "cooldown": "60s",
+  "chance": "15%",
+  "triggers": [
+    {
+      "type": "context_present",
+      "tags": [
+        "hot",
+        "under_open_sky"
+      ]
+    }
+  ],
+  "choices": [
+    {
+      "do": {
+        "type": "pheno:performance",
+        "performance": "townstead:reaction_sweat",
+        "channel": "reaction",
+        "duration_ticks": 60,
+        "priority": 30,
+        "fallback": "stand"
+      }
+    }
+  ]
+}

@@ -90,6 +90,47 @@ class BrewinCocktailPackDataTest {
         }
     }
 
+    @Test
+    void everyNewTavernMachineHasPathScopedBrewWorkAndAnOrderScope() {
+        JsonObject brewinBartender = data("career_provider/bartender_brewin_and_chewin.json");
+        JsonObject kegTask = brewinBartender.getAsJsonObject("contributes")
+                .getAsJsonObject("path").getAsJsonArray("work").get(0).getAsJsonObject();
+        assertEquals("path", kegTask.get("access").getAsString());
+        assertEquals("brewinandchewin:keg",
+                kegTask.getAsJsonArray("workstations").get(0).getAsString());
+
+        JsonObject kaleidoBartender = data("career_provider/bartender_kaleidoscope_tavern.json");
+        JsonObject shakerTask = kaleidoBartender.getAsJsonObject("contributes")
+                .getAsJsonObject("path").getAsJsonArray("work").get(0).getAsJsonObject();
+        assertEquals("path", shakerTask.get("access").getAsString());
+        assertEquals("kaleidoscope_tavern:shaker",
+                shakerTask.getAsJsonArray("workstations").get(0).getAsString());
+
+        for (String station : List.of("kaleidoscope_shaker", "kaleidoscope_pressing_tub",
+                "kaleidoscope_barrel")) {
+            assertEquals("townstead:workstation/v2",
+                    data("workstation/" + station + ".json").get("schema").getAsString());
+        }
+        for (String building : List.of("tavern_l1", "tavern_l2", "tavern_l3",
+                "press_house", "cellar")) {
+            JsonObject sidecar = data("extended_buildings/compat/kaleidoscope_tavern/"
+                    + building + ".json");
+            assertEquals(Set.of("kaleidoscope_tavern"), strings(sidecar
+                    .getAsJsonObject("orders").getAsJsonArray("recipe_namespaces")));
+        }
+        assertEquals(15, data("serving_menu/kaleidoscope_tavern.json")
+                .getAsJsonArray("products").size());
+    }
+
+    @Test
+    void taproomRequiresTheSameSeatTagTheHangoutRuntimeScans() {
+        JsonObject taproom = resource("/townstead_compat/building_types/compat/brewinandchewin/taproom_l1.json");
+        JsonObject stairSpot = data("hangout_spot/stair_seat.json");
+
+        assertTrue(taproom.getAsJsonObject("blocks").has("#townstead_hangouts:seats"));
+        assertTrue(strings(stairSpot.getAsJsonArray("blocks")).contains("#townstead_hangouts:seats"));
+    }
+
     private static JsonObject data(String path) {
         return resource("/data/townstead/" + path);
     }

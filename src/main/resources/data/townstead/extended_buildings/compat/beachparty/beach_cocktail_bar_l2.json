@@ -3,6 +3,7 @@
   "mods": "beachparty",
   "enclosure": "optional",
   "workers": ["townstead:beverage_artisan"],
+  "orders": {"recipe_namespaces": ["beachparty"]},
   "catalog": {"node_item": "beachparty:coconut_cocktail"},
   "spirit": {
     "commercial": 8,

@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:reaction/v3",
+  "display_name": "reaction.townstead.threat_passed",
+  "tags": ["emotional", "relief", "danger"],
+  "cooldown": "75s",
+  "chance": "35%",
+  "triggers": [
+    { "type": "context_exit", "tags": ["near_mob_threat"] }
+  ],
+  "choices": [
+    {
+      "do": {
+        "type": "pheno:and",
+        "actions": [
+          {"type": "pheno:performance", "performance": "townstead:reaction_shrug", "channel": "reaction", "duration_ticks": 26, "priority": 40, "fallback": "stand"},
+          {"type": "pheno:expression", "cue": "townstead_expressions:relief"}
+        ]
+      }
+    }
+  ]
+}

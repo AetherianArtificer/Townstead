@@ -38,10 +38,10 @@ import java.util.Set;
 
 /** Versioned, transactional registry for all four hangout resource families. */
 public final class HangoutData {
-    public static final String VENUE_SCHEMA = "townstead:hangout_venue/v1";
+    public static final String VENUE_SCHEMA = "townstead:hangout_venue/v2";
     public static final String SPOT_SCHEMA = "townstead:hangout_spot/v1";
-    public static final String ACTIVITY_SCHEMA = "townstead:hangout_activity/v1";
-    public static final String POLICY_SCHEMA = "townstead:hangout_policy/v1";
+    public static final String ACTIVITY_SCHEMA = "townstead:hangout_activity/v2";
+    public static final String POLICY_SCHEMA = "townstead:hangout_policy/v2";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/Hangouts");
     private static volatile Map<ResourceLocation, HangoutVenue> venues = Map.of();
@@ -58,12 +58,29 @@ public final class HangoutData {
 
     static HangoutVenue parseVenue(ResourceLocation id, JsonObject json) {
         TownsteadSchema.validateRequired(json, VENUE_SCHEMA);
-        requireOnly(json, "schema", "mods", "buildings", "capacity", "activities", "amenities", "open_when");
+        requireOnly(json, "schema", "mods", "buildings", "capacity", "activities", "tags", "amenities",
+                "staff_roles", "open_when", "admission_when");
         Set<String> buildings = strings(json, "buildings", true);
         List<ResourceLocation> activityIds = idList(json, "activities", false);
         Condition open = condition(json, "open_when");
+        Map<String, Condition> staffRoles = new LinkedHashMap<>();
+        if (json.has("staff_roles")) {
+            if (!json.get("staff_roles").isJsonObject()) {
+                throw new IllegalArgumentException("staff_roles must be an object");
+            }
+            for (Map.Entry<String, JsonElement> entry : json.getAsJsonObject("staff_roles").entrySet()) {
+                if (!entry.getValue().isJsonObject()) {
+                    throw new IllegalArgumentException("staff role '" + entry.getKey() + "' must be a Pheno condition");
+                }
+                Condition parsed = Conditions.parse(PhenoNormalizer.normalizeCondition(entry.getValue().getAsJsonObject()));
+                if (parsed == null) throw new IllegalArgumentException("staff role '" + entry.getKey() + "' is invalid");
+                staffRoles.put(entry.getKey(), parsed);
+            }
+        }
         return new HangoutVenue(id, buildings, positive(json, "capacity", 8), activityIds,
-                strings(json, "amenities", false), open);
+                ids(json, "tags", false),
+                strings(json, "amenities", false), staffRoles, open,
+                condition(json, "admission_when"));
     }
 
     static HangoutSpot parseSpot(ResourceLocation id, JsonObject json) {
@@ -111,9 +128,10 @@ public final class HangoutData {
     static HangoutActivity parseActivity(ResourceLocation id, JsonObject json) {
         TownsteadSchema.validateRequired(json, ACTIVITY_SCHEMA);
         requireOnly(json, "schema", "mods", "kind", "minimum_participants", "maximum_participants",
-                "duration_ticks", "roles", "postures", "start_when", "continue_when",
+                "duration_ticks", "yield_to_groups", "roles", "postures", "participant_when",
+                "start_when", "continue_when",
                 "service_when", "on_start", "on_tick", "on_finish", "on_service_accepted",
-                "on_service_refused", "on_service_missing", "service", "performance");
+                "on_service_refused", "on_service_missing", "service", "social_cues", "performance");
         int min = positive(json, "minimum_participants", 2);
         int max = positive(json, "maximum_participants", Math.max(2, min));
         HangoutActivity.Kind kind;
@@ -147,7 +165,7 @@ public final class HangoutData {
             for (JsonElement element : service.getAsJsonArray("courses")) {
                 if (!element.isJsonObject()) throw new IllegalArgumentException("service courses must be objects");
                 JsonObject course = element.getAsJsonObject();
-                requireOnly(course, "id", "kind", "role", "at_ticks", "lease_ticks");
+                requireOnly(course, "id", "kind", "role", "at_ticks", "lease_ticks", "eligible_when");
                 HangoutActivity.Kind courseKind;
                 try {
                     courseKind = HangoutActivity.Kind.valueOf(GsonHelper.getAsString(course, "kind", "mixed")
@@ -159,13 +177,13 @@ public final class HangoutData {
                         GsonHelper.getAsString(course, "id", "course_" + index++), courseKind,
                         GsonHelper.getAsString(course, "role"),
                         Math.max(0, GsonHelper.getAsInt(course, "at_ticks", 0)),
-                        positive(course, "lease_ticks", 100)));
+                        positive(course, "lease_ticks", 100), condition(course, "eligible_when")));
             }
             Set<String> courseIds = new LinkedHashSet<>();
             for (HangoutActivity.ServiceCourse course : serviceCourses) {
-                if (!roles.containsKey(course.role())) {
+                if (roles.containsKey(course.role())) {
                     throw new IllegalArgumentException("service course '" + course.id()
-                            + "' names role '" + course.role() + "' absent from roles");
+                            + "' uses visitor role '" + course.role() + "'; staff roles belong to the venue");
                 }
                 if (!courseIds.add(course.id())) {
                     throw new IllegalArgumentException("duplicate service course id '" + course.id() + "'");
@@ -189,19 +207,36 @@ public final class HangoutData {
                     positive(value, "duration_ticks", positive(json, "duration_ticks", 240)),
                     GsonHelper.getAsInt(value, "priority", 0), fallback);
         }
-        return new HangoutActivity(id, kind, min, max, positive(json, "duration_ticks", 240), roles,
-                ids(json, "postures", false), condition(json, "start_when"),
+        HangoutActivity.SocialCues socialCues = null;
+        if (json.has("social_cues")) {
+            if (!json.get("social_cues").isJsonObject()) {
+                throw new IllegalArgumentException("social_cues must be an object");
+            }
+            JsonObject value = json.getAsJsonObject("social_cues");
+            requireOnly(value, "conversations", "dialogue_intent", "dialogue_interval_ticks",
+                    "expressions", "expression_interval_ticks");
+            String intent = GsonHelper.getAsString(value, "dialogue_intent", "");
+            List<ResourceLocation> expressions = idList(value, "expressions", false);
+            socialCues = new HangoutActivity.SocialCues(intent,
+                    positive(value, "dialogue_interval_ticks", 180), expressions,
+                    positive(value, "expression_interval_ticks", 120), GsonHelper.getAsBoolean(value, "conversations", false));
+        }
+        return new HangoutActivity(id, kind, min, max, positive(json, "duration_ticks", 240),
+                GsonHelper.getAsBoolean(json, "yield_to_groups", false), roles,
+                ids(json, "postures", false), condition(json, "participant_when"),
+                condition(json, "start_when"),
                 condition(json, "continue_when"), condition(json, "service_when"),
                 action(json, "on_start"), action(json, "on_tick"), action(json, "on_finish"),
                 action(json, "on_service_accepted"), action(json, "on_service_refused"),
-                action(json, "on_service_missing"), serviceCourses, performance);
+                action(json, "on_service_missing"), serviceCourses, socialCues, performance);
     }
 
     static HangoutPolicy parsePolicy(ResourceLocation id, JsonObject json) {
         TownsteadSchema.validateRequired(json, POLICY_SCHEMA);
-        requireOnly(json, "schema", "mods", "minimum_group", "maximum_group", "solo_fallback",
-                "invite_radius", "venue_radius", "cooldown_ticks", "arrival_timeout_ticks",
-                "lease_ticks", "bond_weights", "initiator_when", "companion_when");
+        requireOnly(json, "schema", "mods", "social_radius", "venue_radius",
+                "minimum_visit_ticks", "maximum_visit_ticks", "revisit_cooldown_ticks",
+                "retry_cooldown_ticks", "arrival_timeout_ticks", "lease_ticks", "bond_weights",
+                "personality_tag_weights", "visitor_when", "companion_when");
         Map<String, Integer> weights = new LinkedHashMap<>();
         if (json.has("bond_weights")) {
             if (!json.get("bond_weights").isJsonObject()) throw new IllegalArgumentException("bond_weights must be an object");
@@ -212,12 +247,48 @@ public final class HangoutData {
                 weights.put(weight.getKey(), weight.getValue().getAsInt());
             }
         }
+        Map<String, Map<ResourceLocation, Double>> personalityTagWeights = new LinkedHashMap<>();
+        if (json.has("personality_tag_weights")) {
+            if (!json.get("personality_tag_weights").isJsonObject()) {
+                throw new IllegalArgumentException("personality_tag_weights must be an object");
+            }
+            for (Map.Entry<String, JsonElement> personality
+                    : json.getAsJsonObject("personality_tag_weights").entrySet()) {
+                if (!personality.getValue().isJsonObject()) {
+                    throw new IllegalArgumentException("personality tag profile '" + personality.getKey()
+                            + "' must be an object");
+                }
+                Map<ResourceLocation, Double> tagWeights = new LinkedHashMap<>();
+                for (Map.Entry<String, JsonElement> tag : personality.getValue().getAsJsonObject().entrySet()) {
+                    ResourceLocation tagId = ResourceLocation.tryParse(tag.getKey());
+                    if (tagId == null) {
+                        throw new IllegalArgumentException("invalid venue tag '" + tag.getKey() + "'");
+                    }
+                    if (!tag.getValue().isJsonPrimitive()
+                            || !tag.getValue().getAsJsonPrimitive().isNumber()) {
+                        throw new IllegalArgumentException("venue tag weight '" + tag.getKey()
+                                + "' must be a number");
+                    }
+                    double value = tag.getValue().getAsDouble();
+                    if (!Double.isFinite(value) || value <= 0D) {
+                        throw new IllegalArgumentException("venue tag weight '" + tag.getKey()
+                                + "' must be finite and positive");
+                    }
+                    tagWeights.put(tagId, value);
+                }
+                personalityTagWeights.put(personality.getKey().trim().toLowerCase(Locale.ROOT),
+                        Map.copyOf(tagWeights));
+            }
+        }
         int timeout = positive(json, "arrival_timeout_ticks", 200);
-        return new HangoutPolicy(id, positive(json, "minimum_group", 2), positive(json, "maximum_group", 4),
-                GsonHelper.getAsBoolean(json, "solo_fallback", false), positive(json, "invite_radius", 24),
-                positive(json, "venue_radius", 64), Math.max(0, GsonHelper.getAsInt(json, "cooldown_ticks", 1200)),
+        return new HangoutPolicy(id, positive(json, "social_radius", 24),
+                positive(json, "venue_radius", 64), positive(json, "minimum_visit_ticks", 400),
+                positive(json, "maximum_visit_ticks", 1800),
+                Math.max(0, GsonHelper.getAsInt(json, "revisit_cooldown_ticks", 2400)),
+                Math.max(0, GsonHelper.getAsInt(json, "retry_cooldown_ticks", 200)),
                 timeout, positive(json, "lease_ticks", timeout + 600), weights,
-                condition(json, "initiator_when"), condition(json, "companion_when"));
+                personalityTagWeights,
+                condition(json, "visitor_when"), condition(json, "companion_when"));
     }
 
     private static @Nullable Condition condition(JsonObject json, String key) {
@@ -360,6 +431,12 @@ public final class HangoutData {
             Map<ResourceLocation, HangoutSpot> nextSpots = parseFamily(prepared.get("hangout_spot"), HangoutData::parseSpot);
             Map<ResourceLocation, HangoutActivity> nextActivities = parseFamily(prepared.get("hangout_activity"), HangoutData::parseActivity);
             Map<ResourceLocation, HangoutPolicy> nextPolicies = parseFamily(prepared.get("hangout_policy"), HangoutData::parsePolicy);
+            nextVenues.entrySet().removeIf(entry -> {
+                String violation = venueContractViolation(entry.getValue(), nextActivities);
+                if (violation == null) return false;
+                LOGGER.warn("Hangout venue {} rejected: {}", entry.getKey(), violation);
+                return true;
+            });
             venues = Map.copyOf(nextVenues);
             spots = Map.copyOf(nextSpots);
             activities = Map.copyOf(nextActivities);
@@ -393,5 +470,24 @@ public final class HangoutData {
         }
 
         @FunctionalInterface private interface Parser<T> { T parse(ResourceLocation id, JsonObject json); }
+    }
+
+    static @Nullable String venueContractViolation(HangoutVenue venue,
+                                                    Map<ResourceLocation, HangoutActivity> activities) {
+        for (ResourceLocation activityId : venue.activities()) {
+            HangoutActivity activity = activities.get(activityId);
+            if (activity == null) return "references missing activity '" + activityId + "'";
+            for (HangoutActivity.ServiceCourse course : activity.serviceCourses()) {
+                if (activity.roles().containsKey(course.role())) {
+                    return "activity '" + activityId + "' assigns service role '" + course.role()
+                            + "' to a visitor";
+                }
+                if (!venue.staffRoles().containsKey(course.role())) {
+                    return "activity '" + activityId + "' requires undeclared staff role '"
+                            + course.role() + "'";
+                }
+            }
+        }
+        return null;
     }
 }

@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BeachpartySeatingDataTest {
     @Test
@@ -85,6 +86,33 @@ class BeachpartySeatingDataTest {
                 () -> new HangoutSpot.RestBonus(0F));
         org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
                 () -> new HangoutSpot.RestBonus(Float.NaN));
+    }
+
+    @Test
+    void optionalForeignSeatTagsDoNotBreakWhenTheirModsAreAbsent() throws Exception {
+        for (String entry : java.util.List.of(
+                "townstead_hangouts|stools.json",
+                "townstead|compat/kaleidoscope_tavern/seating.json")) {
+            String[] source = entry.split("\\|", 2);
+            JsonObject tag = versionedBlockTag(source[0], source[1]);
+            assertTrue(tag.getAsJsonArray("values").asList().stream()
+                    .allMatch(value -> value.isJsonObject()
+                            && value.getAsJsonObject().has("required")
+                            && !value.getAsJsonObject().get("required").getAsBoolean()), entry);
+        }
+    }
+
+    private static JsonObject versionedBlockTag(String namespace, String relative) throws Exception {
+        for (String family : java.util.List.of("block", "blocks")) {
+            String path = "/data/" + namespace + "/tags/" + family + "/" + relative;
+            try (var stream = BeachpartySeatingDataTest.class.getResourceAsStream(path)) {
+                if (stream == null) continue;
+                try (var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+                    return JsonParser.parseReader(reader).getAsJsonObject();
+                }
+            }
+        }
+        throw new AssertionError("missing versioned block tag " + namespace + ":" + relative);
     }
 
     private static HangoutSpot spot(String name) throws Exception {

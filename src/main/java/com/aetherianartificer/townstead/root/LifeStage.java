@@ -2,9 +2,11 @@ package com.aetherianartificer.townstead.root;
 
 import com.aetherianartificer.townstead.root.loot.LootDrop;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * One entry in a {@link LifeCycle}'s ordered list.
@@ -51,6 +53,11 @@ public record LifeStage(
         boolean mobile,
         boolean needs,
         boolean talkable,
+        // Open, data-authored semantic tags for permissions and capabilities that vary by life
+        // stage (for example adult admission or alcohol consumption). These are deliberately
+        // separate from presentsAs: two stages may present as adults while supporting different
+        // activities.
+        Set<ResourceLocation> tags,
         // Items this stage drops when the villager (or a player of the origin) dies, ADDED on top of normal
         // drops (an egg stage drops a spider egg, an adult drops silk). Rolled + spawned server-side by
         // DeathLoot; never null (empty = no extra drops). Server-only, no client sync.
@@ -63,6 +70,7 @@ public record LifeStage(
         if (narrativeStart < 0f) narrativeStart = 0f;
         if (narrativeEnd < narrativeStart) narrativeEnd = narrativeStart;
         if (scale <= 0f) scale = 1f;
+        tags = tags == null ? Set.of() : Set.copyOf(tags);
         deathLoot = deathLoot == null ? List.of() : List.copyOf(deathLoot);
     }
 
@@ -76,7 +84,20 @@ public record LifeStage(
                                int days, @Nullable StageEndAction onEnd) {
         return new LifeStage(id, label, presentsAs, days,
                 presentsAs.defaultNarrativeStart(), presentsAs.defaultNarrativeEnd(), onEnd,
-                presentsAs.defaultScale(), false, null, true, true, true, List.of());
+                presentsAs.defaultScale(), false, null, true, true, true,
+                defaultTags(presentsAs), List.of());
+    }
+
+    /**
+     * Compatibility defaults for life-cycle data authored before stage tags existed. Supplying an
+     * explicit {@code tags} array (including an empty one) replaces these defaults in the parser.
+     */
+    public static Set<ResourceLocation> defaultTags(CanonicalStage stage) {
+        if (stage != CanonicalStage.ADULT && stage != CanonicalStage.SENIOR) return Set.of();
+        return Set.of(
+                ResourceLocation.tryParse("townstead_lifecycle:adult"),
+                ResourceLocation.tryParse("townstead_lifecycle:can_consume_alcohol")
+        );
     }
 
     /** Apparent ("life years") age at {@code delta} (0..1) through this stage. */

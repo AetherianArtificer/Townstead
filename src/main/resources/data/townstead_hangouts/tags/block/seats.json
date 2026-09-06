@@ -1,0 +1,17 @@
+{
+  "replace": false,
+  "values": [
+    "#townstead_hangouts:stairs",
+    "#townstead_hangouts:benches",
+    "#townstead_hangouts:stools",
+    {"id":"#townstead:compat/candlelight/seating","required":false},
+    {"id":"#townstead:compat/kaleidoscope_tavern/seating","required":false},
+    {"id":"#c:chairs","required":false},
+    {"id":"#c:seats","required":false},
+    {"id":"#forge:chairs","required":false},
+    {"id":"#forge:seats","required":false},
+    {"id":"beachparty:beach_chair","required":false},
+    {"id":"beachparty:hooded_beach_chair","required":false},
+    {"id":"beachparty:palm_chair","required":false}
+  ]
+}

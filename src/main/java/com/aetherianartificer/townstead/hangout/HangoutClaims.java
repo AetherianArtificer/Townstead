@@ -10,7 +10,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-/** Atomic, session-owned leases for participants, venue capacity, spots, and linked resources. */
+/** Atomic, owner-scoped leases for visitors, venue capacity, spots, and linked resources. */
 public final class HangoutClaims {
     public record Key(String dimension, String kind, String value) {
         public Key {
@@ -20,50 +20,55 @@ public final class HangoutClaims {
         }
     }
 
-    public record Lease(Key key, UUID session, long expiresAt) {}
+    public record Lease(Key key, UUID owner, long expiresAt) {}
 
     private final Map<Key, Lease> leases = new HashMap<>();
 
-    public synchronized boolean tryClaimAll(UUID session, Collection<Key> requested, long now, long leaseTicks) {
-        Objects.requireNonNull(session, "session");
+    public synchronized boolean tryClaimAll(UUID owner, Collection<Key> requested, long now, long leaseTicks) {
+        Objects.requireNonNull(owner, "owner");
         if (leaseTicks < 1) throw new IllegalArgumentException("leaseTicks must be positive");
         Set<Key> keys = new LinkedHashSet<>(requested == null ? List.of() : requested);
         if (keys.isEmpty()) return false;
         prune(now);
         for (Key key : keys) {
             Lease existing = leases.get(key);
-            if (existing != null && !existing.session().equals(session)) return false;
+            if (existing != null && !existing.owner().equals(owner)) return false;
         }
         long expiry = now + leaseTicks;
-        for (Key key : keys) leases.put(key, new Lease(key, session, expiry));
+        for (Key key : keys) leases.put(key, new Lease(key, owner, expiry));
         return true;
     }
 
-    public synchronized boolean renew(UUID session, long now, long leaseTicks) {
+    public synchronized boolean renew(UUID owner, long now, long leaseTicks) {
         if (leaseTicks < 1) throw new IllegalArgumentException("leaseTicks must be positive");
         prune(now);
         List<Key> owned = new ArrayList<>();
-        for (Lease lease : leases.values()) if (lease.session().equals(session)) owned.add(lease.key());
+        for (Lease lease : leases.values()) if (lease.owner().equals(owner)) owned.add(lease.key());
         if (owned.isEmpty()) return false;
         long expiry = now + leaseTicks;
-        for (Key key : owned) leases.put(key, new Lease(key, session, expiry));
+        for (Key key : owned) leases.put(key, new Lease(key, owner, expiry));
         return true;
     }
 
-    public synchronized boolean owns(UUID session, Key key, long now) {
+    public synchronized boolean owns(UUID owner, Key key, long now) {
         prune(now);
         Lease lease = leases.get(key);
-        return lease != null && lease.session().equals(session);
+        return lease != null && lease.owner().equals(owner);
     }
 
-    public synchronized boolean available(Key key, UUID session, long now) {
+    public synchronized boolean available(Key key, UUID owner, long now) {
         prune(now);
         Lease lease = leases.get(key);
-        return lease == null || lease.session().equals(session);
+        return lease == null || lease.owner().equals(owner);
     }
 
-    public synchronized void release(UUID session) {
-        leases.entrySet().removeIf(entry -> entry.getValue().session().equals(session));
+    public synchronized void release(UUID owner) {
+        leases.entrySet().removeIf(entry -> entry.getValue().owner().equals(owner));
+    }
+
+    public synchronized void releaseKind(UUID owner, String kind) {
+        leases.entrySet().removeIf(entry -> entry.getValue().owner().equals(owner)
+                && entry.getKey().kind().equals(kind));
     }
 
     public synchronized void prune(long now) {

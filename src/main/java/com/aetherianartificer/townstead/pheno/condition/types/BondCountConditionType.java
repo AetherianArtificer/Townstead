@@ -4,14 +4,11 @@ import com.aetherianartificer.townstead.pheno.condition.Comparison;
 import com.aetherianartificer.townstead.pheno.condition.Condition;
 import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
 import com.aetherianartificer.townstead.pheno.condition.ConditionType;
-import com.aetherianartificer.townstead.pheno.condition.PhenoSubject;
 import com.aetherianartificer.townstead.pheno.selector.SelectorContext;
 import com.aetherianartificer.townstead.pheno.value.Value;
 import com.aetherianartificer.townstead.pheno.value.Values;
-import com.aetherianartificer.townstead.social.Bonds;
 import com.google.gson.JsonObject;
 import net.minecraft.util.GsonHelper;
-import net.minecraft.world.entity.LivingEntity;
 
 /**
  * {@code pheno:bond_count} — how many ties of a kind someone holds, compared
@@ -47,7 +44,8 @@ public final class BondCountConditionType implements ConditionType {
     public Condition parse(JsonObject json) {
         String kind = GsonHelper.getAsString(json, "kind", "");
         if (kind.isEmpty()) return null;
-        boolean activeOnly = GsonHelper.getAsBoolean(json, "active", true);
+        Value count = new com.aetherianartificer.townstead.pheno.value.types.BondCountValueType().parse(json);
+        if (count == null) return null;
         Comparison comparison = Comparison.parse(GsonHelper.getAsString(json, "comparison", ">="));
         Value compareTo = json.has("compare_to")
                 ? Values.parse(json.get("compare_to")) : Values.constant(1);
@@ -56,8 +54,8 @@ public final class BondCountConditionType implements ConditionType {
         return new Condition() {
             @Override
             public boolean test(ConditionContext ctx) {
-                return comparison.compare(count(ctx, kind, activeOnly),
-                        compareTo.get(SelectorContext.of(ctx)));
+                double a = count.get(SelectorContext.of(ctx)), b = compareTo.get(SelectorContext.of(ctx));
+                return Double.isFinite(a) && Double.isFinite(b) && comparison.compare(a, b);
             }
 
             @Override
@@ -67,10 +65,4 @@ public final class BondCountConditionType implements ConditionType {
         };
     }
 
-    private static int count(ConditionContext ctx, String kind, boolean activeOnly) {
-        PhenoSubject subject = ctx.subject();
-        if (subject != null) return subject.bonds().count(kind, activeOnly);
-        LivingEntity entity = ctx.entity();
-        return entity == null ? 0 : Bonds.of(entity).count(kind, activeOnly);
-    }
 }

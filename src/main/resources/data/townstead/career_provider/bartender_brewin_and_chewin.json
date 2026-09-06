@@ -5,7 +5,18 @@
   "mods": "brewinandchewin",
   "priority": 30,
   "contributes": {
-    "path": { "worksites": ["brewinandchewin:item_mat"] },
+    "path": {
+      "worksites": ["brewinandchewin:item_mat", "brewinandchewin:keg"],
+      "work": [
+        {
+          "type": "townstead_work:brew",
+          "access": "path",
+          "workstations": ["brewinandchewin:keg"],
+          "recipes": ["#townstead:brew_output"],
+          "weight": 10
+        }
+      ]
+    },
     "profession": {
       "poi": [
         {

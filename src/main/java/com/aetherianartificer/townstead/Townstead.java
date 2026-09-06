@@ -481,6 +481,7 @@ public class Townstead {
             townstead$profile("server.chronicle_pregen", () ->
                     com.aetherianartificer.townstead.chronicle.pregen.PregenScheduler.tick(e.getServer()));
             com.aetherianartificer.townstead.pheno.action.ActionScheduler.tick(e.getServer());
+            com.aetherianartificer.townstead.dialogue.conversation.ConversationEngine.tick(e.getServer());
             com.aetherianartificer.townstead.pheno.field.CloudManager.tick(e.getServer());
             com.aetherianartificer.townstead.work.order.OrdersWatchers.tick(e.getServer());
             com.aetherianartificer.townstead.work.job.ManagedRequirementLeases.tick(e.getServer());
@@ -634,6 +635,10 @@ public class Townstead {
                                 e.getDispatcher(), e.getBuildContext()));
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.SocialDebugCommand.register(
+                                e.getDispatcher(), e.getBuildContext()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.reaction.command.ReactionCommand.register(
                                 e.getDispatcher(), e.getBuildContext()));
         NeoForge.EVENT_BUS.addListener(
@@ -707,6 +712,10 @@ public class Townstead {
             else e.setAmount(modified);
             com.aetherianartificer.townstead.root.trigger.GeneTriggers.onDamage(
                     e.getEntity(), e.getSource(), e.getAmount());
+            if (modified > 0f && e.getEntity().level() instanceof net.minecraft.server.level.ServerLevel level) {
+                com.aetherianartificer.townstead.reaction.ReactionDispatcher.onDamage(
+                        level, e.getEntity(), e.getSource(), modified);
+            }
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingDeathEvent e) -> {
             if (com.aetherianartificer.townstead.root.Immortality.survivesDeath(e.getEntity(), e.getSource())
@@ -887,6 +896,7 @@ public class Townstead {
                 townstead$profile("server.chronicle_pregen", () ->
                         com.aetherianartificer.townstead.chronicle.pregen.PregenScheduler.tick(e.getServer()));
                 com.aetherianartificer.townstead.pheno.action.ActionScheduler.tick(e.getServer());
+            com.aetherianartificer.townstead.dialogue.conversation.ConversationEngine.tick(e.getServer());
                 com.aetherianartificer.townstead.pheno.field.CloudManager.tick(e.getServer());
                 com.aetherianartificer.townstead.work.order.OrdersWatchers.tick(e.getServer());
                 com.aetherianartificer.townstead.work.job.ManagedRequirementLeases.tick(e.getServer());
@@ -1034,6 +1044,10 @@ public class Townstead {
                                 e.getDispatcher(), e.getBuildContext()));
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.SocialDebugCommand.register(
+                                e.getDispatcher(), e.getBuildContext()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.reaction.command.ReactionCommand.register(
                                 e.getDispatcher(), e.getBuildContext()));
         MinecraftForge.EVENT_BUS.addListener(
@@ -1122,6 +1136,10 @@ public class Townstead {
             else e.setAmount(modified);
             com.aetherianartificer.townstead.root.trigger.GeneTriggers.onDamage(
                     e.getEntity(), e.getSource(), e.getAmount());
+            if (modified > 0f && e.getEntity().level() instanceof net.minecraft.server.level.ServerLevel level) {
+                com.aetherianartificer.townstead.reaction.ReactionDispatcher.onDamage(
+                        level, e.getEntity(), e.getSource(), modified);
+            }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingDeathEvent e) -> {
             if (com.aetherianartificer.townstead.root.Immortality.survivesDeath(e.getEntity(), e.getSource())
@@ -1369,11 +1387,17 @@ public class Townstead {
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
                     new com.aetherianartificer.townstead.reaction.trigger.types.ContextEnterTriggerType());
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.types.ContextExitTriggerType());
+            com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
                     new com.aetherianartificer.townstead.reaction.trigger.types.ContextPresentTriggerType());
+            com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.types.DamageTriggerType());
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
                     new com.aetherianartificer.townstead.reaction.trigger.types.IdleSpotTriggerType());
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
                     new com.aetherianartificer.townstead.reaction.trigger.types.TimeTriggerType());
+            com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
+                    new com.aetherianartificer.townstead.reaction.trigger.types.ChronicleLearnedTriggerType());
             com.aetherianartificer.townstead.reaction.trigger.event.MusicSourceProviders.register(
                     new com.aetherianartificer.townstead.reaction.trigger.event.JukeboxMusicSourceProvider());
 
@@ -1897,12 +1921,20 @@ public class Townstead {
         com.aetherianartificer.townstead.pheno.selector.BlockSelectorTypes.register(
                 new com.aetherianartificer.townstead.pheno.selector.types.ColumnBlockSelectorType());
         // Value sources (the object form of a number)
+        for (var kind : com.aetherianartificer.townstead.pheno.value.types.ChronicleValueType.Kind.values()) {
+            com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                    new com.aetherianartificer.townstead.pheno.value.types.ChronicleValueType(kind));
+        }
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
                 new com.aetherianartificer.townstead.pheno.value.types.CountValueType());
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
                 new com.aetherianartificer.townstead.pheno.value.types.IfValueType());
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
                 new com.aetherianartificer.townstead.pheno.value.types.BondCountValueType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.RelationshipValueType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.SocialInclinationValueType());
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
                 new com.aetherianartificer.townstead.pheno.value.types.BondMaxValueType());
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
@@ -2022,6 +2054,15 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.action.types.PerformanceActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.SpeakActionType());
+        // Expression subsystem: semantic overhead cues and repetition-aware dialogue requests.
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.ExpressionActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.ContextualDialogueActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.ConversationActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.SocialOutcomeActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.WanderActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
@@ -2176,6 +2217,11 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.work.feedback.ProfessionFeedbackJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.profession.def.ComboSkills.Loader());
         event.addListener(new com.aetherianartificer.townstead.social.BondKindJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.social.RelationshipQualityJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.social.SocialMemoryJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.social.SocialInclinationJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.social.InitialImpressions.Loader());
+        event.addListener(new com.aetherianartificer.townstead.social.RelationshipDescriptorJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.collection.CollectionJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.pheno.state.EntityStateLoaders.Definitions());
         event.addListener(new com.aetherianartificer.townstead.pheno.state.EntityStateLoaders.Backings());
@@ -2185,6 +2231,9 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.needs.Amenities.Loader());
         event.addListener(new com.aetherianartificer.townstead.hangout.HangoutData.Loader());
         event.addListener(new com.aetherianartificer.townstead.performance.PerformanceMappings.Loader());
+        event.addListener(new com.aetherianartificer.townstead.expression.ExpressionCues.Loader());
+        event.addListener(new com.aetherianartificer.townstead.dialogue.contextual.ContextualDialogue.Loader());
+        event.addListener(new com.aetherianartificer.townstead.dialogue.conversation.ConversationTopics.Loader());
         event.addListener(new com.aetherianartificer.townstead.food.ServingSurfaces.Loader());
         event.addListener(new com.aetherianartificer.townstead.work.station.Workstations.Loader());
         event.addListener(new com.aetherianartificer.townstead.work.OutputAppraisals.Loader());
@@ -2813,6 +2862,17 @@ public class Townstead {
                 com.aetherianartificer.townstead.emote.EmoteTriggerS2CPayload.TYPE,
                 com.aetherianartificer.townstead.emote.EmoteTriggerS2CPayload.STREAM_CODEC,
                 this::handleEmoteTriggerS2C
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.performance.NativePerformanceS2CPayload.TYPE,
+                com.aetherianartificer.townstead.performance.NativePerformanceS2CPayload.STREAM_CODEC,
+                this::handleNativePerformanceS2C
+        );
+        // Expression subsystem payloads.
+        registrar.playToClient(
+                com.aetherianartificer.townstead.expression.ExpressionCueS2CPayload.TYPE,
+                com.aetherianartificer.townstead.expression.ExpressionCueS2CPayload.STREAM_CODEC,
+                this::handleExpressionCueS2C
         );
         registrar.playToServer(
                 com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload.TYPE,
@@ -4425,6 +4485,26 @@ public class Townstead {
                 currentCareerTier
         );
     }
+
+    //? if neoforge {
+    private void handleNativePerformanceS2C(
+            com.aetherianartificer.townstead.performance.NativePerformanceS2CPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() ->
+                com.aetherianartificer.townstead.client.animation.nativeclip.NativePerformanceClientHandler.handle(payload));
+    }
+    //?}
+
+    //? if neoforge {
+    private void handleExpressionCueS2C(
+            com.aetherianartificer.townstead.expression.ExpressionCueS2CPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() ->
+                com.aetherianartificer.townstead.client.expression.ExpressionCueClientStore.accept(payload));
+    }
+    //?}
 
     /**
      * Refreshes the career tier shown by MCA's inspect panel after a server-side profession change.

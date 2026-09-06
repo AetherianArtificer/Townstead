@@ -29,12 +29,20 @@ public final class PerformanceMappings {
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/PerformanceMappings");
     private static volatile Map<ResourceLocation, List<Target>> mappings = Map.of();
 
-    public record Target(String provider, ResourceLocation performance, int priority, int order) {
+    public record Target(String provider, ResourceLocation performance, int priority, int order, Set<String> personalities) {
+        public Target(String provider, ResourceLocation performance, int priority, int order) {
+            this(provider, performance, priority, order, Set.of());
+        }
+        public boolean matchesPersonality(String personality) {
+            String key = personality == null ? "" : personality.toLowerCase(java.util.Locale.ROOT).replaceFirst("^mca:", "");
+            return personalities.isEmpty() || personalities.contains(key);
+        }
         public Target {
             if (provider == null || ResourceLocation.tryParse(provider) == null) {
                 throw new IllegalArgumentException("provider must be a resource id");
             }
             if (performance == null) throw new IllegalArgumentException("performance is required");
+            personalities = Set.copyOf(personalities);
         }
     }
 
@@ -55,11 +63,20 @@ public final class PerformanceMappings {
         for (JsonElement element : json.getAsJsonArray("targets")) {
             if (!element.isJsonObject()) throw new IllegalArgumentException("targets must contain objects");
             JsonObject target = element.getAsJsonObject();
-            requireOnly(target, "provider", "performance", "priority");
+            requireOnly(target, "provider", "performance", "priority", "personalities");
+            Set<String> personalities = new java.util.HashSet<>();
+            if (target.has("personalities")) {
+                for (JsonElement value : target.getAsJsonArray("personalities")) {
+                    if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()
+                            || value.getAsString().isBlank()) throw new IllegalArgumentException("personalities must contain names");
+                    personalities.add(value.getAsString().toLowerCase(java.util.Locale.ROOT).replaceFirst("^mca:", ""));
+                }
+                if (personalities.isEmpty()) throw new IllegalArgumentException("personalities must not be empty");
+            }
             ResourceLocation concrete = ResourceLocation.tryParse(GsonHelper.getAsString(target, "performance"));
             if (concrete == null) throw new IllegalArgumentException("target performance must be a resource id");
             out.add(new Target(GsonHelper.getAsString(target, "provider"), concrete,
-                    GsonHelper.getAsInt(target, "priority", 0), order++));
+                    GsonHelper.getAsInt(target, "priority", 0), order++, personalities));
         }
         if (out.isEmpty()) throw new IllegalArgumentException("targets must not be empty");
         out.sort(Comparator.comparingInt(Target::priority).reversed().thenComparingInt(Target::order));

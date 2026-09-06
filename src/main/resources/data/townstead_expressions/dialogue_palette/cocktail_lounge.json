@@ -1,0 +1,23 @@
+{
+  "intent": "social:cocktail_lounge",
+  "min_interval_ticks": 160,
+  "history_size": 12,
+  "lines": [
+    {"translation":"dialogue.townstead_expressions.cocktail.weather_clear.1","weight":2,"context":["weather:clear"]},
+    {"translation":"dialogue.townstead_expressions.cocktail.weather_rain.1","weight":2,"context":["weather:rain"]},
+    {"translation":"dialogue.townstead_expressions.cocktail.day.1","context":["time:day"]},
+    {"translation":"dialogue.townstead_expressions.cocktail.night.1","context":["time:night"]},
+    {"translation":"dialogue.townstead_expressions.cocktail.peppy.1","personality":["mca:peppy"]},
+    {"translation":"dialogue.townstead_expressions.cocktail.crabby.1","personality":["mca:crabby","mca:grumpy"]},
+    {"translation":"dialogue.townstead_expressions.cocktail.introverted.1","personality":["mca:introverted"]},
+    {"translation":"dialogue.townstead_expressions.cocktail.friend.1","relationship":["friend","family","partner"]},
+    {"translation":"dialogue.townstead_expressions.cocktail.stranger.1","relationship":["stranger"]},
+    {"translation":"dialogue.townstead_expressions.cocktail.general.1","weight":2},
+    {"translation":"dialogue.townstead_expressions.cocktail.general.2","weight":2},
+    {"translation":"dialogue.townstead_expressions.cocktail.general.3","weight":2},
+    {"translation":"dialogue.townstead_expressions.cocktail.general.4","weight":2},
+    {"translation":"dialogue.townstead_expressions.cocktail.general.5","weight":2},
+    {"translation":"dialogue.townstead_expressions.cocktail.general.6","weight":2},
+    {"translation":"dialogue.townstead_expressions.cocktail.general.7","weight":2}
+  ]
+}

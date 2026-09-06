@@ -1,9 +1,10 @@
 package net.minecraft.core;
 
-public class BlockPos {
+public class BlockPos extends Vec3i {
     private final long encoded;
 
     public BlockPos(long encoded) {
+        super((int) (encoded >> 38), (int) (encoded << 52 >> 52), (int) (encoded << 26 >> 38));
         this.encoded = encoded;
     }
 

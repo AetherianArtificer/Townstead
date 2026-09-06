@@ -57,6 +57,7 @@ public final class TownsteadClient {
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onGatherTooltipComponents);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onRenderNameTag);
+            NeoForge.EVENT_BUS.addListener(TownsteadClient::onRenderLivingPre);
             NeoForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             NeoForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPre);
@@ -65,6 +66,7 @@ public final class TownsteadClient {
             NeoForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbView::onComputeCameraAngles);
             hooksRegistered = true;
+            Townstead.LOGGER.info("[ClientPresentation] registered expression and animation render hooks");
         }
         //?} else if forge {
         /*if (!net.minecraftforge.fml.ModList.get().isLoaded("configured")) {
@@ -78,6 +80,7 @@ public final class TownsteadClient {
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onRenderNameTag);
+            MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onRenderLivingPre);
             MinecraftForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             MinecraftForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPre);
@@ -181,6 +184,8 @@ public final class TownsteadClient {
         clearClientStore("com.aetherianartificer.townstead.calendar.CalendarStampClientStore");
         clearClientStore("com.aetherianartificer.townstead.needs.ConsumableEffectsClientStore");
         clearClientStore("com.aetherianartificer.townstead.client.species.InvisFade");
+        clearClientStore("com.aetherianartificer.townstead.client.expression.ExpressionCueClientStore");
+        clearClientStore("com.aetherianartificer.townstead.client.animation.nativeclip.NativePlaybackRegistry");
     }
 
     /**
@@ -206,6 +211,20 @@ public final class TownsteadClient {
     }
     *///?}
 
+    // Expression cues belong to the living render lifecycle, not the optional name-tag lifecycle:
+    // unnamed mobs and custom-rig entities must render them too.
+    //? if neoforge {
+    private static void onRenderLivingPre(net.neoforged.neoforge.client.event.RenderLivingEvent.Pre<?, ?> event) {
+        com.aetherianartificer.townstead.client.expression.ExpressionCueRenderer.render(
+                event.getEntity(), event.getPoseStack(), event.getMultiBufferSource(), event.getPackedLight());
+    }
+    //?} else if forge {
+    /*private static void onRenderLivingPre(net.minecraftforge.client.event.RenderLivingEvent.Pre<?, ?> event) {
+        com.aetherianartificer.townstead.client.expression.ExpressionCueRenderer.render(
+                event.getEntity(), event.getPoseStack(), event.getMultiBufferSource(), event.getPackedLight());
+    }
+    *///?}
+
     private static void clearClientStore(String className) {
         try {
             Class<?> storeClass = Class.forName(className);
@@ -223,6 +242,7 @@ public final class TownsteadClient {
         tryWarmSpiritIndex();
         com.aetherianartificer.townstead.client.species.ClimbState.tick();
         com.aetherianartificer.townstead.client.species.InvisFade.tick();
+        com.aetherianartificer.townstead.client.expression.ExpressionCueClientStore.tick();
         com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge.ensureRegistered();
     }
     //?} else if forge {
@@ -233,6 +253,7 @@ public final class TownsteadClient {
         tryWarmSpiritIndex();
         com.aetherianartificer.townstead.client.species.ClimbState.tick();
         com.aetherianartificer.townstead.client.species.InvisFade.tick();
+        com.aetherianartificer.townstead.client.expression.ExpressionCueClientStore.tick();
         com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge.ensureRegistered();
     }
     *///?}

@@ -1,13 +1,32 @@
 {
-  "schema": "townstead:hangout_activity/v1",
+  "schema": "townstead:hangout_activity/v2",
   "mods": "herbalbrews",
   "kind": "drink",
   "minimum_participants": 2,
   "maximum_participants": 4,
   "duration_ticks": 600,
-  "roles": { "host": 1, "guest": 3 },
-  "postures": ["townstead:sit"],
-  "start_when": { "type": "pheno:thirst", "max": 15 },
+  "roles": {
+    "host": 1,
+    "guest": 3
+  },
+  "postures": [
+    "townstead:sit"
+  ],
+  "start_when": {
+    "type": "pheno:thirst",
+    "max": 15
+  },
+  "service": {
+    "courses": [
+      {
+        "id": "tea_service",
+        "kind": "drink",
+        "role": "barista",
+        "at_ticks": 160,
+        "lease_ticks": 100
+      }
+    ]
+  },
   "on_service_accepted": {
     "type": "pheno:performance",
     "performance": "townstead:tea_pour",
@@ -22,5 +41,9 @@
     "duration_ticks": 600,
     "priority": 10,
     "fallback": "stand"
+  },
+  "social_cues": {
+    "conversations": true,
+    "dialogue_interval_ticks": 240
   }
 }

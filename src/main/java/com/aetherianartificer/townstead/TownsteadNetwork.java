@@ -244,6 +244,15 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.emote.EmoteTriggerS2CPayload::write,
                 com.aetherianartificer.townstead.emote.EmoteTriggerS2CPayload::read,
                 TownsteadNetwork::handleEmoteTriggerS2C);
+        registerS2C(com.aetherianartificer.townstead.performance.NativePerformanceS2CPayload.class,
+                com.aetherianartificer.townstead.performance.NativePerformanceS2CPayload::write,
+                com.aetherianartificer.townstead.performance.NativePerformanceS2CPayload::read,
+                TownsteadNetwork::handleNativePerformanceS2C);
+        // Expression subsystem payloads.
+        registerS2C(com.aetherianartificer.townstead.expression.ExpressionCueS2CPayload.class,
+                com.aetherianartificer.townstead.expression.ExpressionCueS2CPayload::write,
+                com.aetherianartificer.townstead.expression.ExpressionCueS2CPayload::read,
+                TownsteadNetwork::handleExpressionCueS2C);
         registerC2S(com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload.class,
                 com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload::write,
                 com.aetherianartificer.townstead.emote.EmoteTriggerC2SPayload::read,
@@ -644,6 +653,18 @@ public final class TownsteadNetwork {
 
     private static void handleEmoteTriggerS2C(com.aetherianartificer.townstead.emote.EmoteTriggerS2CPayload payload) {
         com.aetherianartificer.townstead.client.animation.emote.EmoteClientHandler.handle(payload);
+    }
+
+    private static void handleNativePerformanceS2C(
+            com.aetherianartificer.townstead.performance.NativePerformanceS2CPayload payload) {
+        net.minecraft.client.Minecraft.getInstance().execute(() ->
+                com.aetherianartificer.townstead.client.animation.nativeclip.NativePerformanceClientHandler.handle(payload));
+    }
+
+    private static void handleExpressionCueS2C(
+            com.aetherianartificer.townstead.expression.ExpressionCueS2CPayload payload) {
+        net.minecraft.client.Minecraft.getInstance().execute(() ->
+                com.aetherianartificer.townstead.client.expression.ExpressionCueClientStore.accept(payload));
     }
 
     private static void handleEmoteTriggerC2S(

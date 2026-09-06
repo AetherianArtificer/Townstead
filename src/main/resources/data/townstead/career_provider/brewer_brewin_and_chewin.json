@@ -10,6 +10,7 @@
       "work": [
         {
           "type": "townstead_work:brew",
+          "access": "path",
           "workstations": ["brewinandchewin:keg"],
           "recipes": ["#townstead:brew_output"],
           "weight": 10

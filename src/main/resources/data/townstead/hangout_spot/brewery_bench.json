@@ -1,7 +1,7 @@
 {
   "schema": "townstead:hangout_spot/v1",
   "mods": ["brewery"],
-  "blocks": ["brewery:bench"],
+  "blocks": ["#townstead_hangouts:benches"],
   "posture": "townstead:sit",
   "capacity": 1,
   "canonical_offset": [0, 1, 0],

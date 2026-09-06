@@ -12,6 +12,19 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class PerformanceMappingsTest {
     @Test
+    void personalityVariantKeepsAnUnconditionalFallback() {
+        var targets = PerformanceMappings.parse(id("test:laugh"), JsonParser.parseString("""
+                {"schema":"townstead:performance_mapping/v1","targets":[
+                  {"provider":"test:native","performance":"test:demure","priority":20,"personalities":["introverted"]},
+                  {"provider":"test:native","performance":"test:laugh","priority":10}
+                ]}
+                """).getAsJsonObject());
+        org.junit.jupiter.api.Assertions.assertTrue(targets.get(0).matchesPersonality("MCA:INTROVERTED"));
+        org.junit.jupiter.api.Assertions.assertFalse(targets.get(0).matchesPersonality("playful"));
+        org.junit.jupiter.api.Assertions.assertTrue(targets.get(1).matchesPersonality("playful"));
+        org.junit.jupiter.api.Assertions.assertTrue(targets.get(1).matchesPersonality(null));
+    }
+    @Test
     void targetsUseExplicitPriorityThenAuthorOrder() {
         ResourceLocation semantic = id("test:toast");
         List<PerformanceMappings.Target> targets = PerformanceMappings.parse(semantic,

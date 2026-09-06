@@ -34,7 +34,6 @@ public final class AccountLedger {
      */
     public static void onRecorded(MinecraftServer server, ChronicleEventTemplate template,
                                   ChronicleEvent event, List<LivingEntity> knownBy) {
-        if (!event.newsworthy()) return;
         for (LivingEntity entity : knownBy) {
             String role = roleOf(event, entity.getUUID());
             learn(server, template, event, entity.getUUID(),
@@ -62,11 +61,20 @@ public final class AccountLedger {
                                 @Nullable String role, SpreadChannel channel,
                                 long sourceAccountId, float fidelity, DistortionOverlay overlay,
                                 long learnedDay) {
+        return learn(world, template, event, knower, applyImpacts, role, channel, sourceAccountId, fidelity, overlay, learnedDay, true);
+    }
+
+    /** Historical seeding records experience without pretending it was learned in the present. */
+    public static Account learn(ChronicleWorld world, ChronicleEventTemplate template,
+                                ChronicleEvent event, UUID knower, boolean applyImpacts,
+                                @Nullable String role, SpreadChannel channel,
+                                long sourceAccountId, float fidelity, DistortionOverlay overlay,
+                                long learnedDay, boolean notifyReactions) {
         long accountId = world.assignAccountId();
         Account account = new Account(accountId, event.eventId(), knower, channel.id(),
                 sourceAccountId, fidelity, learnedDay, overlay.toJson());
 
-        world.noteKnownStory(knower, new KnownStoriesCache.Entry(
+        if (event.newsworthy()) world.noteKnownStory(knower, new KnownStoriesCache.Entry(
                 event.eventId(), accountId, fidelity, learnedDay, event.templateId(),
                 event.worldDay(), event.villageId(), event.magnitude(), event.reach(), overlay));
         world.appendAccount(account);
@@ -74,6 +82,7 @@ public final class AccountLedger {
         if (applyImpacts) {
             applyImpacts(world, template, event, knower, role, fidelity, overlay, accountId, learnedDay);
         }
+        if (notifyReactions) world.onLearned(template, event, account, overlay);
         return account;
     }
 
@@ -110,8 +119,10 @@ public final class AccountLedger {
                     uuidOfRole(event, template.primaryRole().id()));
             if (knower.equals(otherParty)) otherParty = null;
             Map<String, String> params = overlay.applyToParams(event.params());
-            world.addOrReinforceMemory(knower, event.templateId().toString(), otherParty,
-                    today, memory.strength() * fidelity * overlay.magnitudeMult(), valence, params);
+            world.addEpisodicMemory(knower, "chronicle_account:" + accountId + ":memory",
+                    event.templateId().toString(), otherParty, today,
+                    memory.strength() * fidelity * overlay.magnitudeMult(), valence,
+                    event.templateId().toString(), params);
         }
     }
 

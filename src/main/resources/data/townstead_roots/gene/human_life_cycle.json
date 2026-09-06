@@ -13,7 +13,7 @@
     { "id": "toddler", "label": { "translate": "origin.townstead_roots.stage.toddler" }, "presents_as": "toddler", "days": 2 },
     { "id": "child",   "label": { "translate": "origin.townstead_roots.stage.child" },   "presents_as": "child",   "days": 9 },
     { "id": "teen",    "label": { "translate": "origin.townstead_roots.stage.teen" },    "presents_as": "teen",    "days": 5 },
-    { "id": "adult",   "label": { "translate": "origin.townstead_roots.stage.adult" },   "presents_as": "adult",   "days": 47 },
-    { "id": "senior",  "label": { "translate": "origin.townstead_roots.stage.senior" },  "presents_as": "senior",  "days": 25, "on_end": "stay" }
+    { "id": "adult",   "label": { "translate": "origin.townstead_roots.stage.adult" },   "presents_as": "adult",   "days": 47, "tags": ["townstead_lifecycle:adult", "townstead_lifecycle:can_consume_alcohol"] },
+    { "id": "senior",  "label": { "translate": "origin.townstead_roots.stage.senior" },  "presents_as": "senior",  "days": 25, "on_end": "stay", "tags": ["townstead_lifecycle:adult", "townstead_lifecycle:can_consume_alcohol"] }
   ]
 }

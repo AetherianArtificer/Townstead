@@ -1,0 +1,164 @@
+{
+  "schema": "townstead:conversation/v1",
+  "weight": 1,
+  "start": "open",
+  "turns": {
+    "open": {
+      "speaker": "initiator",
+      "lines": [
+        "dialogue.townstead_social.rain.open.1",
+        "dialogue.townstead_social.rain.open.2"
+      ],
+      "duration": "4s",
+      "gesture": {
+        "performance": "townstead:conversation_talk"
+      },
+      "listener": {
+        "performance": "townstead:conversation_listen"
+      },
+      "replies": [
+        "warm",
+        "cool"
+      ]
+    },
+    "warm": {
+      "speaker": "responder",
+      "lines": [
+        "dialogue.townstead_social.rain.warm.1",
+        "dialogue.townstead_social.rain.warm.2"
+      ],
+      "duration": "4s",
+      "gesture": {
+        "performance": "townstead:conversation_talk"
+      },
+      "listener": {
+        "performance": "townstead:conversation_listen"
+      },
+      "replies": [
+        "follow_warm"
+      ],
+      "personality_weights": {
+        "friendly": 2,
+        "sensitive": 2,
+        "peppy": 2,
+        "default": 1
+      },
+      "relationship_weights": {
+        "friend": 1.7,
+        "strained": 0.65,
+        "default": 1
+      }
+    },
+    "cool": {
+      "speaker": "responder",
+      "lines": [
+        "dialogue.townstead_social.rain.cool.1",
+        "dialogue.townstead_social.rain.cool.2"
+      ],
+      "duration": "4s",
+      "gesture": {
+        "performance": "townstead:reaction_shrug"
+      },
+      "listener": {
+        "performance": "townstead:conversation_listen"
+      },
+      "replies": [
+        "follow_cool"
+      ],
+      "personality_weights": {
+        "crabby": 2.5,
+        "grumpy": 2.5,
+        "gloomy": 1.4,
+        "default": 0.35
+      },
+      "relationship_weights": {
+        "friend": 0.4,
+        "strained": 2,
+        "default": 1
+      }
+    },
+    "follow_warm": {
+      "speaker": "initiator",
+      "lines": [
+        "dialogue.townstead_social.rain.follow_warm.1",
+        "dialogue.townstead_social.rain.follow_warm.2"
+      ],
+      "duration": "4s",
+      "gesture": {
+        "performance": "townstead:conversation_talk"
+      },
+      "listener": {
+        "performance": "townstead:conversation_listen"
+      },
+      "replies": [
+        "end_warm"
+      ]
+    },
+    "follow_cool": {
+      "speaker": "initiator",
+      "lines": [
+        "dialogue.townstead_social.rain.follow_cool.1",
+        "dialogue.townstead_social.rain.follow_cool.2"
+      ],
+      "duration": "4s",
+      "gesture": {
+        "performance": "townstead:conversation_talk"
+      },
+      "listener": {
+        "performance": "townstead:conversation_listen"
+      },
+      "replies": [
+        "end_cool"
+      ]
+    },
+    "end_warm": {
+      "speaker": "responder",
+      "lines": [
+        "dialogue.townstead_social.rain.end_warm.1",
+        "dialogue.townstead_social.rain.end_warm.2"
+      ],
+      "duration": "4s",
+      "gesture": {
+        "performance": "townstead:reaction_nod"
+      },
+      "listener": {
+        "performance": "townstead:conversation_listen"
+      },
+      "outcome": {
+        "memory": "townstead_social:pleasant_exchange",
+        "initiator_opinion": 2,
+        "responder_opinion": 2,
+        "initiator_relationship": [{ "quality": "townstead:comfort", "amount": 1 }],
+        "responder_relationship": [{ "quality": "townstead:comfort", "amount": 1 }],
+        "initiator_mood": 1,
+        "responder_mood": 1
+      }
+    },
+    "end_cool": {
+      "speaker": "responder",
+      "lines": [
+        "dialogue.townstead_social.rain.end_cool.1",
+        "dialogue.townstead_social.rain.end_cool.2"
+      ],
+      "duration": "4s",
+      "gesture": {
+        "performance": "townstead:kind_refusal"
+      },
+      "listener": {
+        "performance": "townstead:conversation_listen"
+      },
+      "outcome": {
+        "memory": "townstead_social:smalltalk",
+        "initiator_opinion": 0,
+        "responder_opinion": 0,
+        "initiator_relationship": [{ "quality": "townstead:familiarity", "amount": 1 }],
+        "responder_relationship": [{ "quality": "townstead:familiarity", "amount": 1 }],
+        "initiator_mood": 0,
+        "responder_mood": 0
+      }
+    }
+  },
+  "context": [
+    "weather:rain"
+  ]
+}

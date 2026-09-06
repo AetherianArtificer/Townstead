@@ -18,15 +18,49 @@ public final class ConditionContext {
 
     private final @Nullable LivingEntity entity;
     private final @Nullable PhenoSubject subject;
+    private final @Nullable LivingEntity other;
+    private final @Nullable LivingEntity origin;
+    private final @Nullable java.util.UUID otherId;
 
     public ConditionContext(LivingEntity entity) {
+        this(entity, null, entity);
+    }
+
+    public ConditionContext(LivingEntity entity, @Nullable LivingEntity other) {
+        this(entity, other, entity);
+    }
+
+    public ConditionContext(LivingEntity entity, @Nullable LivingEntity other, @Nullable LivingEntity origin) {
         this.entity = entity;
         this.subject = null;
+        this.other = other;
+        this.origin = origin;
+        this.otherId = other == null ? null : other.getUUID();
     }
 
     public ConditionContext(PhenoSubject subject) {
+        this(subject, null);
+    }
+
+    public ConditionContext(PhenoSubject subject, @Nullable java.util.UUID otherId) {
         this.entity = null;
         this.subject = subject;
+        this.other = null;
+        this.origin = null;
+        this.otherId = otherId;
+    }
+
+    public @Nullable LivingEntity other() { return other; }
+    public @Nullable LivingEntity origin() { return origin; }
+    public @Nullable java.util.UUID otherId() { return otherId; }
+
+    public static ConditionContext of(com.aetherianartificer.townstead.pheno.action.ActionContext context) {
+        return new ConditionContext(context.entity(), context.other(), context.origin());
+    }
+
+    public static ConditionContext of(com.aetherianartificer.townstead.pheno.selector.SelectorContext context) {
+        return context.subject() != null ? new ConditionContext(context.subject(), context.otherId())
+                : new ConditionContext(context.self(), context.other(), context.origin());
     }
 
     public @Nullable LivingEntity entity() {

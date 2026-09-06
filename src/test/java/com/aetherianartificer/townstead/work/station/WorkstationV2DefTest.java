@@ -118,6 +118,22 @@ class WorkstationV2DefTest {
     }
 
     @Test
+    void fluidRecipeSourceSurvivesTheV2CompatibilityView() {
+        WorkstationV2Def def = parse("""
+                {"schema":"townstead:workstation/v2","blocks":["example:keg"],
+                 "fluid_source":"townstead:example_keg"}
+                """);
+        assertNotNull(def);
+        assertEquals("townstead:example_keg", def.fluidSource());
+        WorkstationDef legacy = def.legacyView(java.util.Set.of(id("example:fermenting")));
+        assertTrue(legacy.fluidStation());
+        assertEquals("townstead:example_keg", legacy.fluidSource());
+        assertNull(parse("""
+                {"blocks":["example:keg"],"fluid_source":""}
+                """));
+    }
+
+    @Test
     void onlyExceptionalInventoryAndBehaviorFactsAreParsed() {
         WorkstationV2Def def = parse("""
                 {"schema":"townstead:workstation/v2","blocks":["example:pot"],
@@ -403,6 +419,20 @@ class WorkstationV2DefTest {
                 {"blocks":["example:wok"],
                  "collect":{"type":"pheno:use_block","secondary_use":"yes"}}
                 """));
+    }
+
+    @Test
+    void parsesFacingRelativeStaffStands() {
+        WorkstationV2Def def = parse("""
+                {"schema":"townstead:workstation/v2","blocks":["example:bar"],
+                 "stands":[[0,0,1],[-1,0,1],[1,0,1]],
+                 "stands_relative_to_facing":true}
+                """);
+        assertNotNull(def);
+        assertTrue(def.standsRelativeToFacing());
+        assertEquals(3, def.stands().size());
+        assertEquals(new net.minecraft.core.Vec3i(0, 0, 1), def.stands().get(0));
+        assertEquals(def.stands(), def.legacyView(java.util.Set.of()).stands());
     }
 
     @Test

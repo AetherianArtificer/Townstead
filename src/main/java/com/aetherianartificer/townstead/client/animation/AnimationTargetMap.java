@@ -61,7 +61,9 @@ public final class AnimationTargetMap<T extends LivingEntity> {
     }
 
     public Optional<ModelPart> resolve(String target) {
-        return Optional.ofNullable(targets.get(target));
+        // Emotecraft/Bedrock convention calls the humanoid body bone "torso" while
+        // Minecraft's model calls it "body". Native clips deliberately accept both.
+        return Optional.ofNullable(targets.get("torso".equals(target) ? "body" : target));
     }
 
     public List<ModelPart> bendCompanionsFor(String target) {

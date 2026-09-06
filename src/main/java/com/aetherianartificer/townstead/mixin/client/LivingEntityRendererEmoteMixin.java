@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.mixin.client;
 
 import com.aetherianartificer.townstead.client.animation.emote.EmoteBodyTransformSampler;
+import com.aetherianartificer.townstead.client.animation.nativeclip.BedrockRootMotion;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.world.entity.LivingEntity;
@@ -34,6 +35,13 @@ public abstract class LivingEntityRendererEmoteMixin {
             float scale,
             CallbackInfo ci
     ) {
+        BedrockRootMotion.apply(entity, poseStack, partialTick);
+        var recline = com.aetherianartificer.townstead.client.animation.ReclineAnimationSourceAdapter.profile(entity);
+        if (recline != null) {
+            poseStack.translate(0, 0.75D, 0);
+            poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(recline.angle()));
+            poseStack.translate(0, -0.75D, 0);
+        }
         if (entity instanceof Player) {
             // Emotecraft drives players natively (its own renderer mixin), so we only correct its body
             // transform when the player's rig limits body motion (scale/clamp), else leave it untouched.
@@ -52,6 +60,7 @@ public abstract class LivingEntityRendererEmoteMixin {
             float partialTick,
             CallbackInfo ci
     ) {
+        BedrockRootMotion.apply(entity, poseStack, partialTick);
         if (entity instanceof Player) {
             // Emotecraft drives players natively (its own renderer mixin), so we only correct its body
             // transform when the player's rig limits body motion (scale/clamp), else leave it untouched.

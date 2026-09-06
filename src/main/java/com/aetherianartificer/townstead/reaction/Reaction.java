@@ -19,9 +19,8 @@ import java.util.Optional;
 /**
  * One reaction definition loaded from a data pack JSON. Holds metadata,
  * gating thresholds, declarative triggers (kept as raw {@link JsonObject}
- * for the trigger layer to parse), and the binding list. Bindings are the
- * weighted animation candidates the dispatcher picks from when the
- * reaction fires.
+ * for the trigger layer to parse), and the outcome list. Outcomes are weighted
+ * bundles of optional animation, Pheno actions, sound, particles, and dialogue.
  */
 public record Reaction(
         ResourceLocation id,
@@ -87,22 +86,24 @@ public record Reaction(
 
     public static Reaction parse(ResourceLocation id, JsonObject json) {
         String schema = GsonHelper.getAsString(json, "schema", "");
-        boolean v2 = "townstead:reaction/v2".equals(schema);
-        if (!schema.isEmpty() && !v2) {
+        int schemaVersion = "townstead:reaction/v3".equals(schema) ? 3
+                : "townstead:reaction/v2".equals(schema) ? 2 : schema.isEmpty() ? 1 : -1;
+        if (schemaVersion < 0) {
             throw new IllegalArgumentException("Unknown reaction schema '" + schema + "'");
         }
+        boolean pheno = schemaVersion >= 2;
         Optional<String> displayName =
                 json.has("display_name") ? Optional.of(GsonHelper.getAsString(json, "display_name")) : Optional.empty();
         List<String> tags = ReactionConditions.parseStringArray(json, "tags");
-        int cooldownTicks = Math.max(0, duration(json, "cooldown", "cooldown_ticks", 100, v2));
-        float chance = clamp01(percent(json, "chance", 1.0F, v2));
-        int lockTicks = Math.max(0, duration(json, "lock", "lock_ticks", 0, v2));
+        int cooldownTicks = Math.max(0, duration(json, "cooldown", "cooldown_ticks", 100, pheno));
+        float chance = clamp01(percent(json, "chance", 1.0F, pheno));
+        int lockTicks = Math.max(0, duration(json, "lock", "lock_ticks", 0, pheno));
         ReactionConditions conditions = json.has("conditions") && json.get("conditions").isJsonObject()
                 ? ReactionConditions.fromJson(json.getAsJsonObject("conditions"))
                 : ReactionConditions.EMPTY;
         Optional<Condition> phenoCondition = Optional.empty();
         Optional<Action> phenoAction = Optional.empty();
-        if (v2 && json.has("when")) {
+        if (pheno && json.has("when")) {
             if (!json.get("when").isJsonObject()) {
                 throw new IllegalArgumentException("'when' must be a Pheno condition object");
             }
@@ -111,7 +112,7 @@ public record Reaction(
             if (parsed == null) throw new IllegalArgumentException("Invalid Pheno condition in 'when'");
             phenoCondition = Optional.of(parsed);
         }
-        if (v2 && json.has("do")) {
+        if (pheno && json.has("do")) {
             JsonElement normalized = PhenoNormalizer.normalizeAction(json.get("do"));
             Action parsed = Actions.parse(normalized);
             if (parsed == null) throw new IllegalArgumentException("Invalid Pheno action in 'do'");
@@ -130,12 +131,15 @@ public record Reaction(
         }
 
         List<ReactionBinding> bindings = new ArrayList<>();
-        String bindingField = v2 && json.has("choices") ? "choices" : "bindings";
+        String bindingField = pheno && json.has("choices") ? "choices" : "bindings";
         if (json.has(bindingField) && json.get(bindingField).isJsonArray()) {
             for (JsonElement e : json.getAsJsonArray(bindingField)) {
-                ReactionBinding b = ReactionBinding.parse(e, v2);
+                ReactionBinding b = ReactionBinding.parse(e, schemaVersion);
                 if (b != null) bindings.add(b);
             }
+        }
+        if (schemaVersion >= 3 && bindings.isEmpty() && phenoAction.isPresent()) {
+            bindings.add(ReactionBinding.actionOnly());
         }
         // No "empty bindings" warning here — merge contributions may
         // legitimately ship triggers-only or bindings-only fragments
