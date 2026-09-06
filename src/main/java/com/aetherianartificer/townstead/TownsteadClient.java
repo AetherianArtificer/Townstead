@@ -216,12 +216,12 @@ public final class TownsteadClient {
     //? if neoforge {
     private static void onRenderLivingPre(net.neoforged.neoforge.client.event.RenderLivingEvent.Pre<?, ?> event) {
         com.aetherianartificer.townstead.client.expression.ExpressionCueRenderer.render(
-                event.getEntity(), event.getPoseStack(), event.getMultiBufferSource(), event.getPackedLight());
+                event.getEntity(), event.getPoseStack(), event.getMultiBufferSource(), event.getPackedLight(), event.getPartialTick());
     }
     //?} else if forge {
     /*private static void onRenderLivingPre(net.minecraftforge.client.event.RenderLivingEvent.Pre<?, ?> event) {
         com.aetherianartificer.townstead.client.expression.ExpressionCueRenderer.render(
-                event.getEntity(), event.getPoseStack(), event.getMultiBufferSource(), event.getPackedLight());
+                event.getEntity(), event.getPoseStack(), event.getMultiBufferSource(), event.getPackedLight(), event.getPartialTick());
     }
     *///?}
 

@@ -1,1 +1,23 @@
-{"kind":"icon","texture":"townstead_expressions:textures/expression/delight.png","duration_ticks":38,"cooldown_ticks":100,"rise":0.7,"drift":0.05,"scale":0.42,"color":"#FFFFD65C","icon_burst":{"count":9,"spread":0.62,"vertical_spread":0.26,"stagger_ticks":3,"scale_variance":0.28},"particle_burst":{"type":"minecraft:happy_villager","count":5,"spread":0.32,"vertical_spread":0.2,"speed":0.02},"audience":"nearby","max_distance":48,"fallback_particle":"minecraft:happy_villager"}
+{
+  "kind": "icon",
+  "texture": "townstead_expressions:textures/expression/delight.png",
+  "duration_ticks": 40,
+  "cooldown_ticks": 100,
+  "rise": 0.38,
+  "drift": 0.025,
+  "scale": 0.72,
+  "color": "#FFFFFFFF",
+  "icon_burst": {
+    "count": 3,
+    "spread": 0.34,
+    "vertical_spread": 0.12,
+    "stagger_ticks": 5,
+    "scale_variance": 0.12
+  },
+  "particle_burst": {
+    "count": 0
+  },
+  "audience": "nearby",
+  "max_distance": 48,
+  "fallback_particle": "minecraft:happy_villager"
+}

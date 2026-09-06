@@ -18,31 +18,33 @@ import net.minecraft.world.entity.Entity;
 public final class ExpressionCueRenderer {
     private ExpressionCueRenderer() {}
 
-    public static void render(Entity entity, PoseStack pose, MultiBufferSource buffers, int packedLight) {
+    public static void render(Entity entity, PoseStack pose, MultiBufferSource buffers, int packedLight, float partialTick) {
         ExpressionCueClientStore.Active active = ExpressionCueClientStore.get(entity.getId());
         if (active == null) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || entity.distanceToSqr(mc.player) > 128d * 128d) return;
 
         if (active.kind() == ExpressionCue.Kind.ICON) {
-            renderIconBurst(entity, active, pose, buffers, packedLight, mc);
+            renderIconBurst(entity, active, pose, buffers, packedLight, mc, partialTick);
             return;
         }
-        renderTextBurst(entity, active, pose, buffers, packedLight, mc);
+        renderTextBurst(entity, active, pose, buffers, packedLight, mc, partialTick);
     }
 
     private static void renderIconBurst(Entity entity, ExpressionCueClientStore.Active active,
                                         PoseStack pose, MultiBufferSource buffers, int packedLight,
-                                        Minecraft mc) {
-        float age = active.ageTicks(0f);
+                                        Minecraft mc, float partialTick) {
+        float age = active.ageTicks(partialTick);
         int baseSeed = 31 * (31 * entity.getId() + active.cueId().hashCode())
                 + Long.hashCode(active.startTick());
         for (int index = 0; index < active.iconCount(); index++) {
             float localAge = age - (float) index * active.iconStaggerTicks();
             if (localAge < 0f || localAge > active.durationTicks()) continue;
             float progress = Math.max(0f, Math.min(1f, localAge / active.durationTicks()));
-            float fadeIn = Math.min(1f, localAge / 4f);
-            float fadeOut = Math.min(1f, (1f - progress) * 5f);
+            float entrance = Math.min(1f, localAge / 6f);
+            float fadeIn = entrance * entrance * (3f - 2f * entrance);
+            float exit = Math.min(1f, (active.durationTicks() - localAge) / 10f);
+            float fadeOut = exit * exit * (3f - 2f * exit);
             int color = fadedColor(active.color(), fadeIn * fadeOut);
 
             float angle = random01(baseSeed, index, 0) * (float) (Math.PI * 2d);
@@ -57,12 +59,13 @@ public final class ExpressionCueRenderer {
             float z = (float) Math.sin(angle) * outward * 0.65f
                     + (float) Math.sin(angle + Math.PI / 2d) * swirl;
             float startY = (random01(baseSeed, index, 2) - 0.5f) * active.iconVerticalSpread();
-            float bob = (float) Math.sin(progress * Math.PI + angle) * 0.06f;
+            float bob = (float) Math.sin(progress * Math.PI) * 0.025f;
             float variance = (random01(baseSeed, index, 3) * 2f - 1f) * active.iconScaleVariance();
-            float scale = active.scale() * (1f + variance) * (0.82f + 0.18f * (float) Math.sin(progress * Math.PI));
+            float pop = 1f - (float) Math.pow(1f - entrance, 3d);
+            float scale = active.scale() * (1f + variance) * (0.7f + 0.3f * pop);
 
             pose.pushPose();
-            pose.translate(x, entity.getBbHeight() + 0.38d + startY + active.rise() * progress + bob, z);
+            pose.translate(x, entity.getBbHeight() + 0.5d + startY + active.rise() * progress + bob, z);
             pose.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());
             float unit = 0.025f * scale;
             pose.scale(-unit, -unit, unit);
@@ -73,8 +76,8 @@ public final class ExpressionCueRenderer {
 
     private static void renderTextBurst(Entity entity, ExpressionCueClientStore.Active active,
                                         PoseStack pose, MultiBufferSource buffers, int packedLight,
-                                        Minecraft mc) {
-        float age = active.ageTicks(0f);
+                                        Minecraft mc, float partialTick) {
+        float age = active.ageTicks(partialTick);
         int baseSeed = 31 * (31 * entity.getId() + active.cueId().hashCode())
                 + Long.hashCode(active.startTick());
         for (int index = 0; index < active.textTranslations().size(); index++) {
@@ -134,7 +137,8 @@ public final class ExpressionCueRenderer {
                                    int packedLight, int color) {
         ResourceLocation id = DataPackLang.parseId(texture);
         if (id == null) return;
-        VertexConsumer vertices = buffers.getBuffer(RenderType.entityCutoutNoCull(id));
+        // Alpha blending is required for the entrance/exit envelope; cutout snaps at its threshold.
+        VertexConsumer vertices = buffers.getBuffer(RenderType.entityTranslucent(id));
         org.joml.Matrix4f matrix = pose.last().pose();
         // Expressions are UI language, not objects in the scene: keep them legible at night and
         // under roofs just as vanilla nameplates are. The billboard is emitted from the raw

@@ -68,7 +68,8 @@ public final class ExpressionCueClientStore {
         }
 
         public float ageTicks(float partialTick) {
-            return clientTicks() + partialTick - startTick;
+            // Subtract as longs first so an old world's game time cannot swallow fractional ticks.
+            return (clientTicks() - startTick) + partialTick;
         }
     }
 }

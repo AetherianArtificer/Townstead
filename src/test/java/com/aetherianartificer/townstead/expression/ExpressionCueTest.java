@@ -93,6 +93,43 @@ class ExpressionCueTest {
     }
 
     @Test
+    void illustratedCuesUseUntintedPixelArtWithoutVanillaParticleClouds() throws Exception {
+        var silhouettes = new java.util.HashSet<String>();
+        for (String name : List.of("idea", "delight", "surprise", "affection", "music", "approval")) {
+            try (var stream = getClass().getResourceAsStream(
+                    "/data/townstead_expressions/expression_cue/" + name + ".json")) {
+                assertNotNull(stream, name);
+                var json = JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject();
+                var cue = ExpressionCue.parse(id("townstead_expressions:" + name), json);
+                assertEquals(ExpressionCue.Kind.ICON, cue.kind(), name);
+                assertEquals(0xFFFFFFFF, cue.color(), name);
+                assertEquals(0, cue.particleBurst().count(), name);
+                assertTrue(cue.iconBurst().count() <= 3, name);
+                if (name.equals("affection")) {
+                    // Resolve the player's vanilla/resource-pack heart instead of bundling a copy.
+                    assertEquals("minecraft:textures/particle/heart.png", cue.content());
+                    continue;
+                }
+                var url = getClass().getResource("/assets/townstead_expressions/textures/expression/" + name + ".png");
+                assertNotNull(url, name);
+                var icon = ImageIO.read(url);
+                assertEquals(16, icon.getWidth(), name);
+                assertEquals(16, icon.getHeight(), name);
+                var pixels = icon.getRGB(0, 0, 16, 16, null, 0, 16);
+                assertTrue(Arrays.stream(pixels).anyMatch(pixel -> (pixel >>> 24) == 255), name);
+                for (int i = 0; i < 16; i++) {
+                    assertEquals(0, pixels[i] >>> 24, name);
+                    assertEquals(0, pixels[240 + i] >>> 24, name);
+                    assertEquals(0, pixels[16 * i] >>> 24, name);
+                    assertEquals(0, pixels[16 * i + 15] >>> 24, name);
+                }
+                assertTrue(silhouettes.add(Arrays.toString(Arrays.stream(pixels)
+                        .map(pixel -> pixel >>> 24).toArray())), name + " needs a distinct silhouette");
+            }
+        }
+    }
+
+    @Test
     void delightIsATransparentExpressionIconAndNotTheAutoSeedControl() throws Exception {
         var delightUrl = getClass().getResource(
                 "/assets/townstead_expressions/textures/expression/delight.png");

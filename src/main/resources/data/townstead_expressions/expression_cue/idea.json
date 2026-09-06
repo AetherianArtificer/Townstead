@@ -1,1 +1,19 @@
-{"kind":"icon","texture":"townstead_expressions:textures/expression/idea.png","duration_ticks":55,"cooldown_ticks":120,"rise":0.4,"scale":0.9,"color":"#FFFFFFFF","audience":"nearby","max_distance":48,"fallback_particle":"minecraft:electric_spark"}
+{
+  "kind": "icon",
+  "texture": "townstead_expressions:textures/expression/idea.png",
+  "duration_ticks": 50,
+  "cooldown_ticks": 120,
+  "rise": 0.24,
+  "scale": 1.1,
+  "color": "#FFFFFFFF",
+  "audience": "nearby",
+  "max_distance": 48,
+  "fallback_particle": "minecraft:electric_spark",
+  "drift": 0.025,
+  "particle_burst": {
+    "count": 0
+  },
+  "icon_burst": {
+    "count": 1
+  }
+}

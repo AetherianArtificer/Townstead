@@ -1,1 +1,19 @@
-{"kind":"text","translation":"expression.townstead_expressions.approval","duration_ticks":45,"cooldown_ticks":70,"rise":0.38,"scale":1.0,"color":"#FFA8F0A0","audience":"nearby","max_distance":44,"fallback_particle":"minecraft:happy_villager"}
+{
+  "kind": "icon",
+  "duration_ticks": 42,
+  "cooldown_ticks": 70,
+  "rise": 0.24,
+  "scale": 1.0,
+  "color": "#FFFFFFFF",
+  "audience": "nearby",
+  "max_distance": 44,
+  "fallback_particle": "minecraft:happy_villager",
+  "texture": "townstead_expressions:textures/expression/approval.png",
+  "drift": 0.025,
+  "particle_burst": {
+    "count": 0
+  },
+  "icon_burst": {
+    "count": 1
+  }
+}
