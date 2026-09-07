@@ -218,11 +218,14 @@ public final class ChronicleEmitter {
     }
 
     public static int resolveVillageId(LivingEntity actor) {
-        if (!(actor instanceof VillagerEntityMCA villager)) return ChronicleEvent.VILLAGE_NONE;
+        if (actor == null) return ChronicleEvent.VILLAGE_NONE;
         try {
-            Optional<Village> home = villager.getResidency().getHomeVillage();
-            if (home.isPresent()) return home.get().getId();
-            return Village.findNearest(villager).map(Village::getId)
+            if (actor instanceof VillagerEntityMCA villager) {
+                Optional<Village> home = villager.getResidency().getHomeVillage();
+                if (home.isPresent()) return home.get().getId();
+            }
+            // Players and other actors belong to the village they are standing in, if any.
+            return Village.findNearest(actor).filter(v -> v.isWithinBorder(actor)).map(Village::getId)
                     .orElse(ChronicleEvent.VILLAGE_NONE);
         } catch (Throwable t) {
             return ChronicleEvent.VILLAGE_NONE;

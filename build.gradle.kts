@@ -125,4 +125,19 @@ tasks.withType<ProcessResources> {
 }
 
 tasks.withType<JavaCompile> { options.encoding = "UTF-8" }
-tasks.withType<Test> { useJUnitPlatform() }
+tasks.withType<Test> {
+    useJUnitPlatform()
+    // ApiV1IsolationTest scans the compiled api/v1 classes for leaked internals.
+    systemProperty("townstead.classes", sourceSets.main.get().output.classesDirs.asPath)
+}
+
+// The public API alone, for third-party mods to compile against (compileOnly, never shipped).
+tasks.register<Jar>("apiJar") {
+    group = "build"
+    description = "Packages only com.aetherianartificer.townstead.api.v1 for consumers to compile against."
+    archiveBaseName.set("townstead-api")
+    archiveClassifier.set("v1")
+    from(sourceSets.main.get().output) { include("com/aetherianartificer/townstead/api/v1/**") }
+    from(sourceSets.main.get().allSource) { include("com/aetherianartificer/townstead/api/v1/**") }
+    dependsOn(tasks.named("classes"))
+}

@@ -115,6 +115,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ModConfigSpec.BooleanValue DEBUG_LOGGING;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> API_DENIED_WRITE_SOURCES;
     public static final ModConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ROOTS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
@@ -208,6 +209,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ForgeConfigSpec.BooleanValue DEBUG_LOGGING;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> API_DENIED_WRITE_SOURCES;
     public static final ForgeConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ROOTS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
@@ -621,6 +623,15 @@ public final class TownsteadConfig {
                 .define("debugLogging", false);
         b.pop();
 
+        // ── Public API ──
+        b.translation("townstead.configuration.api").push("api");
+        API_DENIED_WRITE_SOURCES = b
+                .translation("townstead.configuration.api.deniedWriteSources")
+                .comment("Mod namespaces whose writes through the Townstead API (need changes, XP awards, skills) are refused.",
+                         "Reads and events are never affected. Example: [\"mcaquests\"].")
+                .defineList("deniedWriteSources", Arrays.asList(), o -> o instanceof String);
+        b.pop();
+
         SERVER_SPEC = b.build();
 
         // ── Client Settings ──
@@ -818,6 +829,19 @@ public final class TownsteadConfig {
 
     public static boolean isVillagerFatigueEnabled() {
         return ENABLE_VILLAGER_FATIGUE.get();
+    }
+
+    /** Whether API writes attributed to {@code namespace} are refused. Never throws. */
+    public static boolean isApiSourceDenied(String namespace) {
+        if (namespace == null || API_DENIED_WRITE_SOURCES == null) return false;
+        try {
+            for (String denied : API_DENIED_WRITE_SOURCES.get()) {
+                if (namespace.equalsIgnoreCase(denied)) return true;
+            }
+        } catch (IllegalStateException e) {
+            return false;
+        }
+        return false;
     }
 
     public static boolean isVillagerTemperatureEnabled() {

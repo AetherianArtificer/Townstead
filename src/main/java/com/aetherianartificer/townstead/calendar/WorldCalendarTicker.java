@@ -159,6 +159,7 @@ public final class WorldCalendarTicker {
             com.aetherianartificer.townstead.root.LifeStageProgression.broadcastDailyUpdates(server);
             // Chronicle daily housekeeping: memory/sentiment decay + archive WAL checkpoint.
             com.aetherianartificer.townstead.chronicle.Chronicles.onDayRollover(server);
+            com.aetherianartificer.townstead.api.impl.v1.CalendarRollovers.onDayRollover(server, daysAdvanced);
         }
     }
 }

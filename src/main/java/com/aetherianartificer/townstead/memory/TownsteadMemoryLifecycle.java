@@ -31,6 +31,14 @@ public final class TownsteadMemoryLifecycle {
         long gameTime = overworld.getGameTime();
         if (gameTime % PURGE_INTERVAL_TICKS != 0L) return;
         purgeExpired(gameTime);
+        try {
+            com.aetherianartificer.townstead.village.VillageNeedBands.tick(server);
+            if (gameTime % (PURGE_INTERVAL_TICKS * 30L) == 0L) {
+                com.aetherianartificer.townstead.village.ResidentRegister.get(server).prune(server);
+            }
+        } catch (Throwable t) {
+            com.aetherianartificer.townstead.Townstead.LOGGER.debug("[ResidentRegister] tick failed: {}", t.toString());
+        }
     }
 
     public static void purgeExpired(long gameTime) {

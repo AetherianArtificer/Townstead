@@ -219,6 +219,39 @@ public class ChoicePanel {
         }
     }
 
+    /** The rows currently inside the panel's clip, in screen coordinates, for the client API. */
+    public List<com.aetherianartificer.townstead.api.v1.client.ChoiceRow> visibleRows() {
+        List<com.aetherianartificer.townstead.api.v1.client.ChoiceRow> rows = new ArrayList<>();
+        if (!isVisible()) return rows;
+        int entryY = y + PADDING - scrollOffset;
+        for (int i = 0; i < displayEntries.size() && i < entryHeights.size(); i++) {
+            int entryH = entryHeights.get(i);
+            if (entryY + entryH > y && entryY < y + height) {
+                DisplayEntry entry = displayEntries.get(i);
+                rows.add(new com.aetherianartificer.townstead.api.v1.client.ChoiceRow(i, x + PADDING, entryY,
+                        width - PADDING * 2, entryH, entry.text().getString(), i == selectedIndex,
+                        entry.isBack(), entry.isHub()));
+            }
+            entryY += entryH + ENTRY_SPACING;
+        }
+        return rows;
+    }
+
+    /** Moves the selection to {@code index} if it exists; the caller then runs the native selection. */
+    public boolean selectIndex(int index) {
+        if (index < 0 || index >= displayEntries.size()) return false;
+        selectedIndex = index;
+        hoveredIndex = index;
+        ensureSelectedVisible();
+        return true;
+    }
+
+    public int panelX() { return x; }
+    public int panelY() { return y; }
+    public int panelWidth() { return width; }
+    public int panelHeight() { return height; }
+    public float fadeAlpha() { return fadeAlpha; }
+
     /**
      * Handle a selection (click or Enter). Returns the result.
      */

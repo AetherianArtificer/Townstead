@@ -1401,6 +1401,7 @@ public class Townstead {
         event.enqueueWork(() -> {
             com.aetherianartificer.townstead.reaction.backend.ReactionBackends.register(
                     new com.aetherianartificer.townstead.reaction.backend.EmotecraftReactionBackend());
+            com.aetherianartificer.townstead.compat.otectus.OtectusBridge.init();
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
                     new com.aetherianartificer.townstead.reaction.trigger.types.GestureTriggerType());
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(

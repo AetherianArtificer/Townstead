@@ -353,6 +353,32 @@ public final class ChronicleDatabase implements ChronicleStore {
     }
 
     @Override
+    public CompletableFuture<List<ChronicleEvent>> byDayRange(long fromDay, long toDay, long beforeEventId, int limit) {
+        return readAsync(() -> {
+            MVMap<String, Long> index = require(eventsByDay);
+            long startDay = toDay;
+            long before = beforeEventId;
+            if (beforeEventId > 0) {
+                byte[] bytes = require(events).get(beforeEventId);
+                if (bytes != null) startDay = Math.min(toDay, decodeEvent(bytes).worldDay());
+            }
+            String floor = "d|" + sortableLong(fromDay) + "|";
+            String start = dayPrefix(startDay) + sortableLong(before <= 0 ? Long.MAX_VALUE : before - 1);
+            List<ChronicleEvent> result = new ArrayList<>();
+            int boundedLimit = clampLimit(limit);
+            Iterator<String> keys = index.keyIteratorReverse(start);
+            while (keys.hasNext() && result.size() < boundedLimit) {
+                String key = keys.next();
+                if (!key.startsWith("d|") || key.compareTo(floor) < 0) break;
+                Long eventId = index.get(key);
+                byte[] bytes = eventId == null ? null : require(events).get(eventId);
+                if (bytes != null) result.add(decodeEvent(bytes));
+            }
+            return result;
+        });
+    }
+
+    @Override
     public CompletableFuture<List<ChronicleEvent>> byArc(long arcId, int limit) {
         return readAsync(() -> eventsFromIndex(require(eventsByArc), arcPrefix(arcId), 0L, limit, false));
     }
@@ -406,12 +432,13 @@ public final class ChronicleDatabase implements ChronicleStore {
     }
 
     @Override
-    public CompletableFuture<List<KnownStory>> knownStories(UUID knower, int limit) {
+    public CompletableFuture<List<KnownStory>> knownStories(UUID knower, long beforeAccountId, int limit) {
         return readAsync(() -> {
             List<KnownStory> result = new ArrayList<>();
             String prefix = knowerPrefix(knower);
             MVMap<String, Long> knowerIndex = require(accountsByKnower);
-            Iterator<String> keys = knowerIndex.keyIteratorReverse(prefix + sortableLong(Long.MAX_VALUE));
+            Iterator<String> keys = knowerIndex.keyIteratorReverse(
+                    prefix + sortableLong(beforeAccountId <= 0 ? Long.MAX_VALUE : beforeAccountId - 1));
             int boundedLimit = clampLimit(limit);
             while (keys.hasNext() && result.size() < boundedLimit) {
                 String key = keys.next();
@@ -427,7 +454,8 @@ public final class ChronicleDatabase implements ChronicleStore {
                 if (!event.newsworthy()) continue;
                 result.add(new KnownStory(event.eventId(), account.accountId(), account.fidelity(),
                         account.learnedDay(), event.templateId().toString(), event.worldDay(),
-                        event.villageId(), event.magnitude(), event.reach(), account.overlayJson()));
+                        event.villageId(), event.magnitude(), event.reach(), account.overlayJson(),
+                        account.channel()));
             }
             return result;
         });

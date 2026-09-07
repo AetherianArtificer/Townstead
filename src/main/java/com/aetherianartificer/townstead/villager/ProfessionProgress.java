@@ -57,8 +57,15 @@ public final class ProfessionProgress {
     }
 
     public static GainResult addXp(ProfessionXpStore store, ResourceLocation careerId, int requested, long gameTime) {
+        return addXp(store, careerId, requested, gameTime, true);
+    }
+
+    /** {@code respectDailyCap} false ignores the track's daily allowance; the ceiling still holds. */
+    public static GainResult addXp(ProfessionXpStore store, ResourceLocation careerId, int requested, long gameTime,
+                                   boolean respectDailyCap) {
         careerId = canonical(careerId);
-        return addXp(store, careerId.toString(), ProfessionProgressions.spec(careerId), requested, gameTime);
+        return addXp(store, careerId.toString(), ProfessionProgressions.spec(careerId), requested, gameTime,
+                respectDailyCap);
     }
 
     /** Alias ids converge on their def's primary id so history never fragments per source mod. */
@@ -81,7 +88,7 @@ public final class ProfessionProgress {
     }
 
     private static GainResult addXp(ProfessionXpStore store, String professionId, ProgressionSpec spec,
-                                    int requested, long gameTime) {
+                                    int requested, long gameTime, boolean respectDailyCap) {
         int beforeTier = getTier(store, professionId, spec);
         if (requested <= 0) return new GainResult(0, beforeTier, beforeTier, false);
 
@@ -94,7 +101,7 @@ public final class ProfessionProgress {
             gainedToday = 0;
         }
 
-        int allowance = Math.max(0, spec.dailyXpCap() - gainedToday);
+        int allowance = respectDailyCap ? Math.max(0, spec.dailyXpCap() - gainedToday) : requested;
         int applied = Math.min(requested, allowance);
         if (applied <= 0) {
             store.setProfessionXp(professionId,

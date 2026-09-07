@@ -148,8 +148,8 @@ public final class ContextResolver {
         addReactionProximityTags(level, cache, tags);
         addCrowdAndAgeTags(cache, tags);
         addMcaRelationshipTags(villager, cache, tags);
-        addPlayerRelationshipTags(villager, cache, tags);
-        addPlayerHeldItemTags(cache, tags);
+        addPlayerRelationshipTags(villager, cache.nearbyPlayers(), tags);
+        addPlayerHeldItemTags(cache.nearbyPlayers(), tags);
         addThreatTags(level, villager, cache, tags);
         addProfessionStateTags(villager, tags);
         addBodyTemperatureTags(villager, tags);
@@ -318,10 +318,28 @@ public final class ContextResolver {
      * uses a look-vec dot product so any nearby player whose crosshair
      * is roughly on this villager surfaces the tag.
      */
-    private static void addPlayerRelationshipTags(VillagerEntityMCA villager, ContextScanCache cache, Set<String> tags) {
-        if (cache.nearbyPlayers().isEmpty()) return;
+    /**
+     * The tag set as one player sees it: the player-relationship and held-item tags are derived
+     * from {@code viewer} alone rather than from everyone within social range, so two players
+     * talking to the same villager each get their own answer.
+     */
+    public static Set<String> tagsFor(ServerLevel level, VillagerEntityMCA villager, net.minecraft.server.level.ServerPlayer viewer) {
+        Set<String> tags = tagsFor(level, villager);
+        if (viewer == null) return tags;
+        tags.removeIf(tag -> tag.startsWith("near_player_") || tag.equals("being_watched_by_player")
+                || tag.startsWith("player_holding"));
+        java.util.List<Player> viewers = viewer.level() == villager.level()
+                && viewer.distanceToSqr(villager) <= ContextScanCache.SOCIAL_RADIUS * ContextScanCache.SOCIAL_RADIUS
+                ? java.util.List.of(viewer) : java.util.List.of();
+        addPlayerRelationshipTags(villager, viewers, tags);
+        addPlayerHeldItemTags(viewers, tags);
+        return tags;
+    }
+
+    private static void addPlayerRelationshipTags(VillagerEntityMCA villager, java.util.List<Player> players, Set<String> tags) {
+        if (players.isEmpty()) return;
         Optional<EntityRelationship> villagerRel = EntityRelationship.of(villager);
-        for (Player player : cache.nearbyPlayers()) {
+        for (Player player : players) {
             try {
                 Memories memories = villager.getVillagerBrain().getMemoriesForPlayer(player);
                 int hearts = memories.getHearts();
@@ -357,8 +375,8 @@ public final class ContextResolver {
      * tag (e.g. {@code mypack:treats}) and react to it without writing
      * any Java.
      */
-    private static void addPlayerHeldItemTags(ContextScanCache cache, Set<String> tags) {
-        for (Player player : cache.nearbyPlayers()) {
+    private static void addPlayerHeldItemTags(java.util.List<Player> players, Set<String> tags) {
+        for (Player player : players) {
             ItemStack stack = player.getMainHandItem();
             if (stack.isEmpty()) continue;
             try {

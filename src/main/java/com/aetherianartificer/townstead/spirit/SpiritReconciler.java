@@ -42,10 +42,34 @@ public final class SpiritReconciler {
      */
     public static void seed(ServerLevel level, Village village) {
         if (level == null || village == null) return;
+        com.aetherianartificer.townstead.village.VillageWatchSavedData watch =
+                com.aetherianartificer.townstead.village.VillageWatchSavedData.get(level.getServer());
+        String key = com.aetherianartificer.townstead.village.VillageWatchSavedData.keyOf(level, village.getId());
+        if (watch.spirit(key) != null) {
+            // A previous session left its last readout; a change across the restart still fires.
+            reconcileVillage(level, village);
+            return;
+        }
         VillageSpiritAggregator.Snapshot snap = VillageSpiritAggregator.snapshotFor(village);
         SpiritReadout readout = VillageSpiritAggregator.readoutFor(snap.totals());
         VillageSpiritCache.put(level, village.getId(),
                 new VillageSpiritCache.Entry(snap.totals(), readout, snap.contributors()));
+        watch.putSpirit(key, mark(readout));
+    }
+
+    private static com.aetherianartificer.townstead.village.VillageWatchSavedData.SpiritMark mark(SpiritReadout readout) {
+        return new com.aetherianartificer.townstead.village.VillageWatchSavedData.SpiritMark(
+                readout.classification().name(), readout.tierIndex(), readout.primarySpiritId(), readout.secondarySpiritId());
+    }
+
+    private static SpiritReadout fromMark(com.aetherianartificer.townstead.village.VillageWatchSavedData.SpiritMark mark) {
+        SpiritReadout.Classification classification;
+        try {
+            classification = SpiritReadout.Classification.valueOf(mark.classification());
+        } catch (IllegalArgumentException e) {
+            classification = SpiritReadout.Classification.SETTLEMENT;
+        }
+        return new SpiritReadout(classification, mark.tierIndex(), mark.primary(), mark.secondary());
     }
 
     /**
@@ -62,13 +86,25 @@ public final class SpiritReconciler {
         VillageSpiritCache.Entry prev = VillageSpiritCache.get(level, village.getId());
         VillageSpiritCache.put(level, village.getId(),
                 new VillageSpiritCache.Entry(snap.totals(), newReadout, snap.contributors()));
-        if (prev == null) {
+        com.aetherianartificer.townstead.village.VillageWatchSavedData watch =
+                com.aetherianartificer.townstead.village.VillageWatchSavedData.get(level.getServer());
+        String key = com.aetherianartificer.townstead.village.VillageWatchSavedData.keyOf(level, village.getId());
+        SpiritReadout prevReadout = prev != null ? prev.readout() : null;
+        SpiritTotals prevTotals = prev != null ? prev.totals() : null;
+        if (prevReadout == null) {
+            com.aetherianartificer.townstead.village.VillageWatchSavedData.SpiritMark persisted = watch.spirit(key);
+            if (persisted != null) prevReadout = fromMark(persisted);
+        }
+        watch.putSpirit(key, mark(newReadout));
+        if (prevReadout == null) {
             return; // first observation, no event
         }
-        if (!newReadout.isStructuralChange(prev.readout())) {
+        if (!newReadout.isStructuralChange(prevReadout)) {
             return; // readout unchanged
         }
-        fireTierChange(level, village, prev.readout(), newReadout);
+        fireTierChange(level, village, prevReadout, newReadout);
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.spiritChanged(level, village,
+                prevTotals, prevReadout, snap.totals(), newReadout);
     }
 
     private static void fireTierChange(ServerLevel level, Village village,

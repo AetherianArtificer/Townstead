@@ -149,6 +149,12 @@ public class RpgDialogueScreen extends Screen {
         if (state == DialogueState.CLOSING) return;
         dialogueBox.render(graphics, font);
         choicePanel.render(graphics, font, mouseX, mouseY);
+        if (choicePanel.isVisible() && com.aetherianartificer.townstead.api.impl.v1.client.ChoicePanelPaintHooks.any()) {
+            com.aetherianartificer.townstead.api.impl.v1.client.ChoicePanelPaintHooks.fire(
+                    new com.aetherianartificer.townstead.api.v1.client.ChoicePanelPaint(this, graphics, font,
+                            choicePanel.panelX(), choicePanel.panelY(), choicePanel.panelWidth(),
+                            choicePanel.panelHeight(), choicePanel.fadeAlpha(), choicePanel.visibleRows()));
+        }
         renderHearts(graphics);
 
         if (debugEffects) {
@@ -468,6 +474,23 @@ public class RpgDialogueScreen extends Screen {
                 // Narrator not available on this platform
             }
         }
+    }
+
+    /** Client API: whether choices are showing. */
+    public boolean apiChoicesVisible() {
+        return state == DialogueState.CHOICES_VISIBLE && choicePanel.isVisible();
+    }
+
+    /** Client API: the visible choice rows. */
+    public List<com.aetherianartificer.townstead.api.v1.client.ChoiceRow> apiVisibleChoices() {
+        return apiChoicesVisible() ? choicePanel.visibleRows() : List.of();
+    }
+
+    /** Client API: select a row through the native hub, sub-menu and back routine. */
+    public boolean apiSelectChoice(int index) {
+        if (!apiChoicesVisible() || !choicePanel.selectIndex(index)) return false;
+        handleChoiceSelection();
+        return true;
     }
 
     private void handleChoiceSelection() {

@@ -113,6 +113,8 @@ public final class VillagerServerTickDispatcher {
                 com.aetherianartificer.townstead.chronicle.emit.PendingBirths.tick(villager));
         profile("villager.chronicle_marriage", () ->
                 com.aetherianartificer.townstead.chronicle.emit.MarriageWatcher.tick(villager, gameTime));
+        profile("villager.resident_register", () ->
+                com.aetherianartificer.townstead.village.ResidentRegister.onVillagerTick(villager, gameTime));
         profile("villager.chronicle_gossip", () ->
                 com.aetherianartificer.townstead.chronicle.knowledge.GossipTicker.tick(villager, gameTime));
         profile("villager.chronicle_mood", () ->
