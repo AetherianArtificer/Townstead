@@ -63,7 +63,7 @@ public final class Amenities {
                              Set<ResourceLocation> blockTags, @Nullable BlockCondition anchor,
                              @Nullable BlockCondition requires,
                              @Nullable BlockAction prepare, @Nullable BlockAction behavior,
-                             Action effect, NeedEffectProjection projection) {
+                             @Nullable Action effect, NeedEffectProjection projection, @Nullable String kind) {
         boolean matches(ResourceLocation blockId, BlockState state) {
             if (blocks.contains(blockId)) return true;
             for (ResourceLocation tag : blockTags) {
@@ -94,6 +94,11 @@ public final class Amenities {
 
     public record Candidate(@Nullable Definition definition, @Nullable WorldSource worldSource,
                             BlockPos pos) {
+        /** The amenity's kind ({@code hearth}, {@code cool_spot}, ...), or null for plain consumable amenities. */
+        public @Nullable String kind() {
+            return definition == null ? null : definition.kind();
+        }
+
         public boolean feeds(ServerLevel level) {
             return worldSource != null && worldSource.feeds(level, pos);
         }
@@ -224,6 +229,7 @@ public final class Amenities {
             definition.behavior().run(behavior);
             if (!behavior.succeeded()) return false;
         }
+        if (definition.effect() == null) return true;
         ActionContext effect = new ActionContext(villager);
         definition.effect().run(effect);
         return effect.succeeded();
@@ -282,7 +288,9 @@ public final class Amenities {
     }
 
     private static @Nullable Definition parse(ResourceLocation id, JsonObject json) {
-        if (!json.has("blocks") || !json.get("blocks").isJsonArray() || !json.has("effect")) return null;
+        String kind = json.has("kind") ? net.minecraft.util.GsonHelper.getAsString(json, "kind", "") : null;
+        if (kind != null && kind.isBlank()) return null;
+        if (!json.has("blocks") || !json.get("blocks").isJsonArray() || (!json.has("effect") && kind == null)) return null;
         Set<ResourceLocation> blocks = new LinkedHashSet<>();
         Set<ResourceLocation> tags = new LinkedHashSet<>();
         for (JsonElement element : json.getAsJsonArray("blocks")) {
@@ -302,9 +310,9 @@ public final class Amenities {
         if (json.has("prepare") && prepare == null) return null;
         BlockAction behavior = json.has("behavior") ? BlockActions.parse(json.get("behavior")) : null;
         if (json.has("behavior") && behavior == null) return null;
-        Action effect = Actions.parse(json.get("effect"));
-        if (effect == null) return null;
+        Action effect = json.has("effect") ? Actions.parse(json.get("effect")) : null;
+        if (json.has("effect") && effect == null) return null;
         return new Definition(id, Set.copyOf(blocks), Set.copyOf(tags), anchor, requires, prepare, behavior,
-                effect, NeedEffectProjection.project(json.get("effect")));
+                effect, NeedEffectProjection.project(json.get("effect")), kind);
     }
 }

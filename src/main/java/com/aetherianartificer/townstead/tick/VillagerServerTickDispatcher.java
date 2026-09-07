@@ -17,6 +17,7 @@ public final class VillagerServerTickDispatcher {
         // Clean up dead/removed entities
         if (!villager.isAlive() || villager.isRemoved()) {
             FatigueVillagerTicker.forget(villager);
+            TemperatureVillagerTicker.forget(villager.getId());
             WorkToolTicker.forget(villager);
             EmptyContainerDropoff.forget(villager);
             com.aetherianartificer.townstead.profession.ProfessionSites.forget(villager);
@@ -42,6 +43,7 @@ public final class VillagerServerTickDispatcher {
         HungerVillagerTicker.tick(villager);
         if (ThirstBridgeResolver.isActive()) ThirstVillagerTicker.tick(villager);
         FatigueVillagerTicker.tick(villager);
+        TemperatureVillagerTicker.tick(villager);
         EmptyContainerDropoff.tick(villager);
         ProfessionProgressMemoryTicker.tick(villager);
         GuardRestEnforcerTicker.tick(villager);
@@ -73,6 +75,7 @@ public final class VillagerServerTickDispatcher {
             profile("villager.thirst", () -> ThirstVillagerTicker.tick(villager));
         }
         profile("villager.fatigue", () -> FatigueVillagerTicker.tick(villager));
+        profile("villager.temperature", () -> TemperatureVillagerTicker.tick(villager));
         profile("villager.container_dropoff", () -> EmptyContainerDropoff.tick(villager));
         profile("villager.profession_memory", () -> ProfessionProgressMemoryTicker.tick(villager));
         profile("villager.guard_rest", () -> GuardRestEnforcerTicker.tick(villager));

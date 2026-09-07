@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:need_settings/v1",
+  "drying_seconds": 90,
+  "comfort_break_seconds": 30,
+  "biome_anchors": [
+    [
+      0.15,
+      0.0
+    ],
+    [
+      0.8,
+      20.0
+    ],
+    [
+      2.0,
+      38.0
+    ]
+  ],
+  "season_offsets": {
+    "spring": 0.0,
+    "summer": 6.0,
+    "autumn": -2.0,
+    "winter": -12.0
+  },
+  "altitude_blocks_per_degree": 15,
+  "rain_offset": -5.0,
+  "night_offset": -6.0,
+  "nether_celsius": 45.0,
+  "end_celsius": 5.0,
+  "source_radius": 7,
+  "heat_source_offset": 12.0,
+  "cooling_source_offset": -8.0,
+  "room_baseline": 18.0,
+  "insulation_max": 0.6,
+  "indoor_night_factor": 0.25,
+  "occupancy_per_villager": 0.4,
+  "occupancy_max": 3.0,
+  "room_size_reference": 64,
+  "room_heat_enabled": true,
+  "room_heat_capacity": 2.0,
+  "room_source_power": 1.5,
+  "room_wall_conductance": 0.07,
+  "room_insulated_conductance": 0.004,
+  "room_opening_conductance": 1.0
+}

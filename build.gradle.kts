@@ -50,7 +50,6 @@ dependencies {
     // MCA builds are handled via runtime-gated mixins (see TownsteadMixinPlugin).
     compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-7.7.36-beta.3+1.21.1.jar"))
     implementation(jarJar("io.github.llamalad7:mixinextras-neoforge:${property("mixin_extras_version")}")!!)
-    compileOnly("vazkii.patchouli:Patchouli:1.21.1-93-NEOFORGE") { isTransitive = false }
     // JEI plugin API (runtime optional; the plugin class is only loaded by JEI's scan)
     compileOnly("mezz.jei:jei-1.21.1-common-api:19.39.0.370")
     compileOnly("mezz.jei:jei-1.21.1-neoforge-api:19.39.0.370")

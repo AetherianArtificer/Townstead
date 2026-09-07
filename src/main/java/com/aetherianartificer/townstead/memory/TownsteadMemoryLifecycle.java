@@ -45,6 +45,9 @@ public final class TownsteadMemoryLifecycle {
     }
 
     public static void clearAll() {
+        com.aetherianartificer.townstead.temperature.BuildingClimate.clear();
+        com.aetherianartificer.townstead.compat.temperature.ColdSweatTemperatureBridge.INSTANCE.clearCache();
+        com.aetherianartificer.townstead.tick.TemperatureVillagerTicker.clear();
         com.aetherianartificer.townstead.dialogue.conversation.ConversationEngine.clear();
         TargetReachabilityCache.clearAll();
         NearbyStorageIndex.clearAll();

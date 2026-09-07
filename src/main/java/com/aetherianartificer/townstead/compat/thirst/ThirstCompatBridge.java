@@ -23,6 +23,10 @@ public interface ThirstCompatBridge {
     int quenched(ItemStack stack);
     int purity(ItemStack stack);
     float exhaustionBiomeModifier(Level level, BlockPos pos);
+    default float exhaustionBiomeModifier(Level level, BlockPos pos, ThermalHydrationContext thermal) {
+        return exhaustionBiomeModifier(level, pos);
+    }
+    default float thermalExhaustionPerTick(ThermalHydrationContext thermal) { return 0; }
     boolean extraHydrationToQuenched();
     PurityResult evaluatePurity(int purity, RandomSource random);
     ResourceLocation iconTexture();

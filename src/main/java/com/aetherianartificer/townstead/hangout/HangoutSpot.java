@@ -43,6 +43,12 @@ public record HangoutSpot(ResourceLocation id, Set<ResourceLocation> blocks,
         if (capacity < 1) throw new IllegalArgumentException("capacity must be positive");
     }
 
+    public static java.util.List<HangoutSpot> candidatesForBlock(java.util.Collection<HangoutSpot> definitions,
+                                                                 ResourceLocation block) {
+        var exact = definitions.stream().filter(definition -> definition.blocks().contains(block)).toList();
+        return exact.isEmpty() ? java.util.List.copyOf(definitions) : exact;
+    }
+
     /** Resolves linked cells; relative coordinates are [right, up, forward]. */
     public Set<BlockPos> linkedPositions(BlockState state, BlockPos anchor) {
         if (!facingRelativeLinkedOffsets) {

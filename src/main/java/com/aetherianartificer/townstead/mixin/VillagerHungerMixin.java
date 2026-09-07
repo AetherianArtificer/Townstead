@@ -17,6 +17,7 @@ import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.RefuelTask;
 import com.aetherianartificer.townstead.thirst.HydrateYoungTask;
 import com.aetherianartificer.townstead.thirst.ThirstData;
+import com.aetherianartificer.townstead.temperature.TemperatureData;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.google.common.collect.ImmutableList;
@@ -126,6 +127,7 @@ public abstract class VillagerHungerMixin extends Villager {
         coreBehaviors.add(Pair.of(64,
                 new com.aetherianartificer.townstead.work.producer.FinishCommittedProductionTask()));
         coreBehaviors.add(Pair.of(65, new SeekBedWhenFatiguedTask()));
+        coreBehaviors.add(Pair.of(66, new com.aetherianartificer.townstead.temperature.SeekThermalReliefTask()));
         // One unified refuel behavior handles both hunger and thirst (eat/drink to satiety).
         coreBehaviors.add(Pair.of(99, new RefuelTask()));
         coreBehaviors.add(Pair.of(110, new CareForYoungTask()));
@@ -173,6 +175,7 @@ public abstract class VillagerHungerMixin extends Villager {
         nbt.putFloat(HungerData.EDITOR_KEY_SATURATION, needs.saturation());
         nbt.putFloat(HungerData.EDITOR_KEY_EXHAUSTION, needs.hungerExhaustion());
         nbt.putInt(FatigueData.EDITOR_KEY_FATIGUE, needs.fatigue());
+        if (needs.hasBodyTemp()) nbt.putInt(TemperatureData.EDITOR_KEY_BODY_TEMPERATURE, needs.bodyTempTenths());
         if (ThirstBridgeResolver.isActive()) {
             nbt.putInt(ThirstData.EDITOR_KEY_THIRST, needs.thirst());
             nbt.putInt(ThirstData.EDITOR_KEY_QUENCHED, needs.quenched());
@@ -192,7 +195,8 @@ public abstract class VillagerHungerMixin extends Villager {
         boolean nbtHasThirst = nbt.contains(ThirstData.EDITOR_KEY_THIRST);
         boolean hasThirst = bridgeActive && nbtHasThirst;
         boolean hasFatigue = nbt.contains(FatigueData.EDITOR_KEY_FATIGUE);
-        if (!hasHunger && !hasThirst && !hasFatigue) return;
+        boolean hasBodyTemp = nbt.contains(TemperatureData.EDITOR_KEY_BODY_TEMPERATURE);
+        if (!hasHunger && !hasThirst && !hasFatigue && !hasBodyTemp) return;
         TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
 
         if (hasHunger) {
@@ -236,5 +240,16 @@ public abstract class VillagerHungerMixin extends Villager {
             }
         }
 
+        if (hasBodyTemp) {
+            needs.setBodyTempTenths(nbt.getInt(TemperatureData.EDITOR_KEY_BODY_TEMPERATURE));
+            if (!self.level().isClientSide) {
+                CompoundTag temperature = needs.temperatureTag();
+                //? if neoforge {
+                PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$temperatureSync(self, temperature));
+                //?} else if forge {
+                /*TownsteadNetwork.sendToTrackingEntity(self, Townstead.townstead$temperatureSync(self, temperature));
+                *///?}
+            }
+        }
     }
 }

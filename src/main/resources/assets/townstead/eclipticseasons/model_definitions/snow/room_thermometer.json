@@ -1,0 +1,86 @@
+{
+  "require": "eclipticseasons",
+  "replace": false,
+  "variants": {
+    "facing=north,temperature=freezing": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 0
+    },
+    "facing=east,temperature=freezing": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 90
+    },
+    "facing=south,temperature=freezing": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 180
+    },
+    "facing=west,temperature=freezing": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 270
+    },
+    "facing=north,temperature=cold": {
+      "model": "townstead:block/snow/cap_eccaeb1dd049",
+      "y": 0
+    },
+    "facing=east,temperature=cold": {
+      "model": "townstead:block/snow/cap_eccaeb1dd049",
+      "y": 90
+    },
+    "facing=south,temperature=cold": {
+      "model": "townstead:block/snow/cap_eccaeb1dd049",
+      "y": 180
+    },
+    "facing=west,temperature=cold": {
+      "model": "townstead:block/snow/cap_eccaeb1dd049",
+      "y": 270
+    },
+    "facing=north,temperature=mild": {
+      "model": "townstead:block/snow/cap_1efa0f65b72d",
+      "y": 0
+    },
+    "facing=east,temperature=mild": {
+      "model": "townstead:block/snow/cap_1efa0f65b72d",
+      "y": 90
+    },
+    "facing=south,temperature=mild": {
+      "model": "townstead:block/snow/cap_1efa0f65b72d",
+      "y": 180
+    },
+    "facing=west,temperature=mild": {
+      "model": "townstead:block/snow/cap_1efa0f65b72d",
+      "y": 270
+    },
+    "facing=north,temperature=warm": {
+      "model": "townstead:block/snow/cap_9253c36d7255",
+      "y": 0
+    },
+    "facing=east,temperature=warm": {
+      "model": "townstead:block/snow/cap_9253c36d7255",
+      "y": 90
+    },
+    "facing=south,temperature=warm": {
+      "model": "townstead:block/snow/cap_9253c36d7255",
+      "y": 180
+    },
+    "facing=west,temperature=warm": {
+      "model": "townstead:block/snow/cap_9253c36d7255",
+      "y": 270
+    },
+    "facing=north,temperature=hot": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 0
+    },
+    "facing=east,temperature=hot": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 90
+    },
+    "facing=south,temperature=hot": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 180
+    },
+    "facing=west,temperature=hot": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 270
+    }
+  }
+}

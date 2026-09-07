@@ -100,7 +100,9 @@ public final class TownsteadAPI {
                         needs.thirstExhaustion(),
                         needs.fatigue(),
                         needs.collapsed(),
-                        needs.gated()),
+                        needs.gated(),
+                        needs.bodyTempTenths(),
+                        needs.ambientTenths()),
                 mapStringString(life.carriedVariants()),
                 List.copyOf(life.expressedAlleles()),
                 mapResourceFloat(life.heritage().fractions())
@@ -128,7 +130,7 @@ public final class TownsteadAPI {
                 0f,
                 new TownsteadAgeSnapshot("", 0L, 0, false, false, false),
                 new TownsteadScheduleSnapshot("", "", false, false, 0, 6, 0, "", "", "", List.of(), List.of()),
-                new TownsteadNeedsSnapshot(0, 0f, 0f, 0, 0, 0f, 0, false, false),
+                new TownsteadNeedsSnapshot(0, 0f, 0f, 0, 0, 0f, 0, false, false, 0, 0),
                 Map.of(),
                 List.of(),
                 Map.of()

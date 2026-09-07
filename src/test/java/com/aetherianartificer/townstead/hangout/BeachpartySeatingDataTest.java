@@ -18,6 +18,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BeachpartySeatingDataTest {
     @Test
+    void nativeFurnitureCannotAlsoBecomeAGenericSeatAboveIt() throws Exception {
+        var nativeStool = spot("beachparty_palm_bar_stool");
+        var generic = spot("stair_seat");
+        var definitions = java.util.List.of(generic, nativeStool);
+        assertEquals(java.util.List.of(nativeStool), HangoutSpot.candidatesForBlock(definitions,
+                id("beachparty:palm_bar_stool")));
+        assertEquals(definitions, HangoutSpot.candidatesForBlock(definitions, id("minecraft:oak_stairs")));
+    }
+
+    @Test
     void nativeChairDefinitionsKeepExactBaseAnchorsAndTallHalfClaims() throws Exception {
         HangoutSpot beach = spot("beachparty_beach_chair");
         HangoutSpot stool = spot("beachparty_palm_bar_stool");

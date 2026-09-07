@@ -81,7 +81,6 @@ dependencies {
         jarJar.pin(this, property("h2_mvstore_version") as String)
     }
     compileOnly("dev.architectury:architectury-forge:9.2.14")
-    compileOnly(fg.deobf("vazkii.patchouli:Patchouli:1.20.1-85-FORGE:api"))
     // JEI plugin API (runtime optional; the plugin class is only loaded by JEI's scan)
     compileOnly(fg.deobf("mezz.jei:jei-1.20.1-common-api:15.20.0.135"))
     compileOnly(fg.deobf("mezz.jei:jei-1.20.1-forge-api:15.20.0.135"))
@@ -160,15 +159,6 @@ tasks.withType<ProcessResources> {
     // 1.20.1 recipe format uses "item" instead of "id" in results
     filesMatching("data/*/recipe/*.json") {
         filter { it.replace("\"id\":", "\"item\":") }
-    }
-    // 1.20.1 Patchouli: book id is stored as NBT on the result item, not a 1.21 data component
-    filesMatching("data/townstead/recipe/townstead_guide.json") {
-        filter {
-            it.replace(
-                Regex("""\"components\"\s*:\s*\{\s*\"patchouli:book\"\s*:\s*\"([^\"]+)\"\s*\}\s*,"""),
-                "\"nbt\": \"{\\\\\"patchouli:book\\\\\":\\\\\"$1\\\\\"}\","
-            )
-        }
     }
     // 1.20.1 recipe conditions use "conditions" key and "forge:mod_loaded" type
     filesMatching("data/*/recipe/*.json") {

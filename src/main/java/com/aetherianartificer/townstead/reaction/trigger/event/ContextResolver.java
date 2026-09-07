@@ -1,6 +1,10 @@
 package com.aetherianartificer.townstead.reaction.trigger.event;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.root.needs.NeedSuppression;
+import com.aetherianartificer.townstead.temperature.TemperatureData;
+import com.aetherianartificer.townstead.temperature.ThermalProfile;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.HungerData;
@@ -98,6 +102,9 @@ import java.util.UUID;
  * {@code pregnant}. Thresholds align with each Townstead system's own
  * conventions (FatigueData, HungerData, ThirstData).</p>
  *
+ * <p><b>Body temperature:</b> {@code body_cold} / {@code body_hot} at Cold / Hot
+ * severity or worse, relative to the villager's thermal profile.</p>
+ *
  * <p><b>Events:</b> {@code near_grave} — MCA tombstone within 16
  * blocks. Wedding / funeral / birthday tags are deferred until those
  * events have server-side state to query.</p>
@@ -145,12 +152,26 @@ public final class ContextResolver {
         addPlayerHeldItemTags(cache, tags);
         addThreatTags(level, villager, cache, tags);
         addProfessionStateTags(villager, tags);
+        addBodyTemperatureTags(villager, tags);
         addEventTags(level, villager, tags);
         addInteractionStateTags(level, villager, tags);
         if (MusicSourceProviders.anyMusicNear(level, pos, 12.0)) {
             tags.add("near_music");
         }
         return tags;
+    }
+
+    private static void addBodyTemperatureTags(VillagerEntityMCA villager, Set<String> tags) {
+        if (!TownsteadConfig.isVillagerTemperatureEnabled() || villager.isSleeping()) return;
+        TownsteadVillager.Needs needs = TownsteadVillagers.get(villager).needs();
+        if (!needs.hasBodyTemp() || NeedSuppression.suppressesTemperature(villager)) return;
+        ThermalProfile profile = ThermalProfile.of(villager);
+        if (profile.suppressed()) return;
+        TemperatureData.Tier tier = TemperatureData.tier(needs.bodyTempTenths(), profile);
+        if (tier.wantsRelief()) tags.add(tier.isCold() ? "body_cold" : "body_hot");
+        TemperatureData.Tier feeling = TemperatureData.Tier.values()[needs.thermalTier()];
+        if (feeling != TemperatureData.Tier.COMFORTABLE)
+            tags.add(feeling.isCold() ? "feeling_cold" : "feeling_hot");
     }
 
     /**

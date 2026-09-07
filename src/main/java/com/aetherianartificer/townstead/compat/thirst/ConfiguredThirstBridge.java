@@ -39,6 +39,12 @@ final class ConfiguredThirstBridge implements ThirstCompatBridge {
         return effect.hydrates() ? effect.lastingHydration() : delegate.quenched(stack);
     }
     @Override public int purity(ItemStack stack) { return delegate.purity(stack); }
+    @Override public float exhaustionBiomeModifier(Level level, BlockPos pos, ThermalHydrationContext thermal) {
+        return delegate.exhaustionBiomeModifier(level, pos, thermal);
+    }
+    @Override public float thermalExhaustionPerTick(ThermalHydrationContext thermal) {
+        return delegate.thermalExhaustionPerTick(thermal);
+    }
     @Override public float exhaustionBiomeModifier(Level level, BlockPos pos) { return delegate.exhaustionBiomeModifier(level, pos); }
     @Override public boolean extraHydrationToQuenched() { return delegate.extraHydrationToQuenched(); }
     @Override public PurityResult evaluatePurity(int purity, RandomSource random) { return delegate.evaluatePurity(purity, random); }

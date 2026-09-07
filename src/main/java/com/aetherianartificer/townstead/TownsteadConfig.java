@@ -88,6 +88,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
     public static final ModConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
+    public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.temperature.TemperatureData.Unit> TEMPERATURE_UNIT;
     public static final ModConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
     public static final ModConfigSpec.EnumValue<ResourceHudStack> RESOURCE_HUD_STACK;
     public static final ModConfigSpec.EnumValue<ResourceHudExitStyle> RESOURCE_HUD_EXIT_STYLE;
@@ -107,6 +108,8 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.DoubleValue SPIRIT_FONT_SCALE;
     public static final ModConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
+    public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_TEMPERATURE;
+    public static final ModConfigSpec.ConfigValue<String> PREFERRED_TEMPERATURE_BACKEND;
     public static final ModConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
@@ -178,6 +181,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ForgeConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
     public static final ForgeConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
+    public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.temperature.TemperatureData.Unit> TEMPERATURE_UNIT;
     public static final ForgeConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
     public static final ForgeConfigSpec.EnumValue<ResourceHudStack> RESOURCE_HUD_STACK;
     public static final ForgeConfigSpec.EnumValue<ResourceHudExitStyle> RESOURCE_HUD_EXIT_STYLE;
@@ -197,6 +201,8 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.DoubleValue SPIRIT_FONT_SCALE;
     public static final ForgeConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_TEMPERATURE;
+    public static final ForgeConfigSpec.ConfigValue<String> PREFERRED_TEMPERATURE_BACKEND;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
@@ -308,6 +314,20 @@ public final class TownsteadConfig {
             PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES = null;
             PREFERRED_THIRST_BACKEND = null;
         }
+        // ── Temperature ──
+        b.translation("townstead.configuration.needs.temperature").push("temperature");
+        ENABLE_VILLAGER_TEMPERATURE = b
+                .translation("townstead.configuration.needs.temperature.enableVillagerTemperature")
+                .comment("Enable villager body temperature. Villagers drift toward the climate at their own position, dress for it, and seek a hearth or shade when they cannot cope. Disable to keep every villager comfortable.")
+                .define("enableVillagerTemperature", true);
+        PREFERRED_TEMPERATURE_BACKEND = b
+                .translation("townstead.configuration.needs.temperature.preferredBackend")
+                .comment("Which mod reports the ambient temperature at a villager position.",
+                         "\"auto\" prefers Legendary Survival Overhaul, then Cold Sweat, then Tough As Nails, then the built-in climate model.",
+                         "Naming a mod pins it when installed; \"builtin\" ignores temperature mods entirely.")
+                // Arrays.asList, not List.of: correct() probes missing keys with null and List.of.contains(null) throws.
+                .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "cold_sweat", "tough_as_nails", "builtin"));
+        b.pop();
         // ── Fatigue ──
         b.translation("townstead.configuration.needs.fatigue").push("fatigue");
         ENABLE_VILLAGER_FATIGUE = b
@@ -625,6 +645,13 @@ public final class TownsteadConfig {
                 .define("useTownsteadCatalog", true);
         clientBuilder.pop();
 
+        clientBuilder.translation("townstead.configuration.needs_display").push("needs_display");
+        TEMPERATURE_UNIT = clientBuilder
+                .translation("townstead.configuration.needs_display.temperatureUnit")
+                .comment("Unit for villager temperature readouts. Everything is Celsius underneath; this only changes what is shown.")
+                .defineEnum("temperatureUnit", com.aetherianartificer.townstead.temperature.TemperatureData.Unit.CELSIUS);
+        clientBuilder.pop();
+
         clientBuilder.translation("townstead.configuration.resource_hud").push("resource_hud");
         RESOURCE_HUD_ANCHOR = clientBuilder
                 .translation("townstead.configuration.resource_hud.anchor")
@@ -791,6 +818,35 @@ public final class TownsteadConfig {
 
     public static boolean isVillagerFatigueEnabled() {
         return ENABLE_VILLAGER_FATIGUE.get();
+    }
+
+    public static boolean isVillagerTemperatureEnabled() {
+        if (ENABLE_VILLAGER_TEMPERATURE == null) return false;
+        try {
+            return ENABLE_VILLAGER_TEMPERATURE.get();
+        } catch (IllegalStateException e) {
+            return false;
+        }
+    }
+
+    /** Never throws: falls back to "auto" before the server config is loaded. */
+    public static String preferredTemperatureBackend() {
+        if (PREFERRED_TEMPERATURE_BACKEND == null) return "auto";
+        try {
+            return PREFERRED_TEMPERATURE_BACKEND.get();
+        } catch (IllegalStateException e) {
+            return "auto";
+        }
+    }
+
+    /** Client display unit for villager temperature readouts. */
+    public static boolean temperatureInFahrenheit() {
+        if (TEMPERATURE_UNIT == null) return false;
+        try {
+            return TEMPERATURE_UNIT.get() == com.aetherianartificer.townstead.temperature.TemperatureData.Unit.FAHRENHEIT;
+        } catch (IllegalStateException e) {
+            return false;
+        }
     }
 
     public static boolean isVillagerSleepDebugEnabled() {

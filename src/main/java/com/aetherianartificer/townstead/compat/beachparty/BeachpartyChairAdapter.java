@@ -40,9 +40,9 @@ public final class BeachpartyChairAdapter implements HangoutEmbodiment.PostureAd
         if (height == null) return null;
         if (occupied(level, base)) return HangoutEmbodiment.BLOCKED;
         EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getOptional(CHAIR).orElse(null);
-        if (type == null) return null;
+        if (type == null) return HangoutEmbodiment.BLOCKED;
         Entity chair = type.create(level);
-        if (chair == null) return null;
+        if (chair == null) return HangoutEmbodiment.BLOCKED;
         chair.moveTo(position.x, position.y, position.z, 0F, 0F);
         HangoutEmbodiment.markVisitAnchor(chair, visitId);
         if (!addNativeClaim(level, base, chair, villager.blockPosition())) {

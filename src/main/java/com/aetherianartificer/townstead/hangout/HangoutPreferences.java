@@ -24,6 +24,15 @@ final class HangoutPreferences {
         return matches == 0 ? 1D : sum / matches;
     }
 
+    static boolean usefulPartialApproach(double initialDistanceSquared, double remainingDistanceSquared, int verticalGap) {
+        return Math.abs(verticalGap) <= 1 && remainingDistanceSquared < initialDistanceSquared * 0.5;
+    }
+
+    static double thermalWeight(float currentLoad, float destinationLoad) {
+        if (!Float.isFinite(currentLoad) || !Float.isFinite(destinationLoad)) return 1;
+        return Math.max(0.15, Math.min(5, Math.exp((Math.abs(currentLoad) - Math.abs(destinationLoad)) / 6D)));
+    }
+
     private static Map<ResourceLocation, Double> profile(
             Map<String, Map<ResourceLocation, Double>> profiles, String personality) {
         if (personality != null) {

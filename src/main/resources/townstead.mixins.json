@@ -83,7 +83,13 @@
     "SlotResultGateMixin",
     "LivingEntityPhenoMixin",
     "AnimalPhenoMixin",
-    "FoodDataPhenoMixin"
+    "FoodDataPhenoMixin",
+    "RoomHeatBlockChangeMixin",
+    "compat.temperature.ColdSweatRoomPlayerMixin",
+    "compat.temperature.ColdSweatRoomQueryMixin",
+    "compat.temperature.LsoOutdoorBlocksMixin",
+    "compat.temperature.LsoRoomQueryMixin",
+    "compat.temperature.TanRoomQueryMixin"
   ],
   "client": [
     "compat.stardewhud.StardewHudDateMixin",

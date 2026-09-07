@@ -1,0 +1,18 @@
+{
+  "replace": false,
+  "values": [
+    "#minecraft:campfires",
+    "#townstead:kitchen/heat_sources",
+    "minecraft:furnace",
+    "minecraft:blast_furnace",
+    "minecraft:smoker",
+    "minecraft:magma_block",
+    "minecraft:lava",
+    "minecraft:fire",
+    "#townstead:thermal/compat_lit_heat_sources",
+    {
+      "id": "brewery:brew_oven",
+      "required": false
+    }
+  ]
+}

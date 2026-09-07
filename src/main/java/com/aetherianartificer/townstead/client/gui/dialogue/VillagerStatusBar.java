@@ -10,6 +10,8 @@ import com.aetherianartificer.townstead.hunger.HungerClientStore;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.thirst.ThirstClientStore;
 import com.aetherianartificer.townstead.thirst.ThirstData;
+import com.aetherianartificer.townstead.temperature.TemperatureClientStore;
+import com.aetherianartificer.townstead.temperature.TemperatureData;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -68,6 +70,12 @@ public class VillagerStatusBar {
         // Energy icon (conditional)
         if (TownsteadConfig.isVillagerFatigueEnabled()) {
             renderEnergyIcon(graphics, iconX, baseY);
+            iconX += ICON_SPACING;
+        }
+
+        if (temperatureShown()) {
+            com.aetherianartificer.townstead.client.gui.TemperatureIcons.draw(
+                    graphics, TemperatureClientStore.getTier(entityId), iconX, baseY, ICON_SIZE);
         }
     }
 
@@ -108,8 +116,22 @@ public class VillagerStatusBar {
                             Component.translatable(fatigueState.getTranslationKey()), energy)
                     .withStyle(Style.EMPTY.withColor(fatigueState.getColor()));
             graphics.renderTooltip(font, label, mouseX, mouseY);
+            return;
+        }
+        if (TownsteadConfig.isVillagerFatigueEnabled()) iconX += ICON_SPACING;
+
+        if (temperatureShown() && isHovering(mouseX, mouseY, iconX, baseY)) {
+            boolean fahrenheit = TownsteadConfig.temperatureInFahrenheit();
+            TemperatureData.Tier tier = TemperatureClientStore.getTier(entityId);
+            Component label = TemperatureClientStore.tooltip(entityId, fahrenheit);
+            graphics.renderTooltip(font, label, mouseX, mouseY);
         }
     }
+
+    private boolean temperatureShown() {
+        return TownsteadConfig.isVillagerTemperatureEnabled() && !ClientNeeds.suppresses(entityId, "temperature");
+    }
+
 
     private void renderHungerIcon(GuiGraphics graphics, int x, int y) {
         int hunger = HungerClientStore.get(entityId);

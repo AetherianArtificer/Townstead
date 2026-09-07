@@ -1,0 +1,84 @@
+{
+  "variants": {
+    "facing=north,temperature=freezing": {
+      "model": "townstead:block/room_thermometer_freezing",
+      "y": 0
+    },
+    "facing=east,temperature=freezing": {
+      "model": "townstead:block/room_thermometer_freezing",
+      "y": 90
+    },
+    "facing=south,temperature=freezing": {
+      "model": "townstead:block/room_thermometer_freezing",
+      "y": 180
+    },
+    "facing=west,temperature=freezing": {
+      "model": "townstead:block/room_thermometer_freezing",
+      "y": 270
+    },
+    "facing=north,temperature=cold": {
+      "model": "townstead:block/room_thermometer_cold",
+      "y": 0
+    },
+    "facing=east,temperature=cold": {
+      "model": "townstead:block/room_thermometer_cold",
+      "y": 90
+    },
+    "facing=south,temperature=cold": {
+      "model": "townstead:block/room_thermometer_cold",
+      "y": 180
+    },
+    "facing=west,temperature=cold": {
+      "model": "townstead:block/room_thermometer_cold",
+      "y": 270
+    },
+    "facing=north,temperature=mild": {
+      "model": "townstead:block/room_thermometer_mild",
+      "y": 0
+    },
+    "facing=east,temperature=mild": {
+      "model": "townstead:block/room_thermometer_mild",
+      "y": 90
+    },
+    "facing=south,temperature=mild": {
+      "model": "townstead:block/room_thermometer_mild",
+      "y": 180
+    },
+    "facing=west,temperature=mild": {
+      "model": "townstead:block/room_thermometer_mild",
+      "y": 270
+    },
+    "facing=north,temperature=warm": {
+      "model": "townstead:block/room_thermometer_warm",
+      "y": 0
+    },
+    "facing=east,temperature=warm": {
+      "model": "townstead:block/room_thermometer_warm",
+      "y": 90
+    },
+    "facing=south,temperature=warm": {
+      "model": "townstead:block/room_thermometer_warm",
+      "y": 180
+    },
+    "facing=west,temperature=warm": {
+      "model": "townstead:block/room_thermometer_warm",
+      "y": 270
+    },
+    "facing=north,temperature=hot": {
+      "model": "townstead:block/room_thermometer_hot",
+      "y": 0
+    },
+    "facing=east,temperature=hot": {
+      "model": "townstead:block/room_thermometer_hot",
+      "y": 90
+    },
+    "facing=south,temperature=hot": {
+      "model": "townstead:block/room_thermometer_hot",
+      "y": 180
+    },
+    "facing=west,temperature=hot": {
+      "model": "townstead:block/room_thermometer_hot",
+      "y": 270
+    }
+  }
+}

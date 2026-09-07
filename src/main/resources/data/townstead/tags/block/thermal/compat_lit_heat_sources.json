@@ -1,0 +1,89 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "farmersdelight:stove",
+      "required": false
+    },
+    {
+      "id": "farm_and_charm:stove",
+      "required": false
+    },
+    {
+      "id": "farm_and_charm:roaster",
+      "required": false
+    },
+    {
+      "id": "candlelight:cobblestone_stove",
+      "required": false
+    },
+    {
+      "id": "candlelight:sandstone_stove",
+      "required": false
+    },
+    {
+      "id": "candlelight:stone_bricks_stove",
+      "required": false
+    },
+    {
+      "id": "candlelight:deepslate_stove",
+      "required": false
+    },
+    {
+      "id": "candlelight:granite_stove",
+      "required": false
+    },
+    {
+      "id": "candlelight:end_stove",
+      "required": false
+    },
+    {
+      "id": "candlelight:mud_stove",
+      "required": false
+    },
+    {
+      "id": "candlelight:quartz_stove",
+      "required": false
+    },
+    {
+      "id": "candlelight:red_nether_bricks_stove",
+      "required": false
+    },
+    {
+      "id": "candlelight:basalt_stove",
+      "required": false
+    },
+    {
+      "id": "candlelight:bamboo_stove",
+      "required": false
+    },
+    {
+      "id": "herbalbrews:stove",
+      "required": false
+    },
+    {
+      "id": "kaleidoscope_cookery:stove",
+      "required": false
+    },
+    {
+      "id": "caupona:brick_kitchen_stove",
+      "required": false
+    },
+    {
+      "id": "caupona:mud_kitchen_stove",
+      "required": false
+    },
+    {
+      "id": "caupona:opus_incertum_kitchen_stove",
+      "required": false
+    },
+    {
+      "id": "caupona:opus_latericium_kitchen_stove",
+      "required": false
+    },
+    {
+      "id": "caupona:stone_brick_kitchen_stove",
+      "required": false
+    }
+  ]
+}
