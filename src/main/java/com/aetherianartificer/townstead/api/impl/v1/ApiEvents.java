@@ -6,6 +6,17 @@ import com.aetherianartificer.townstead.api.v1.event.BuildingRemovedEvent;
 import com.aetherianartificer.townstead.api.v1.event.BuildingUpgradedEvent;
 import com.aetherianartificer.townstead.api.v1.event.CalendarRolloverEvent;
 import com.aetherianartificer.townstead.api.v1.event.ChronicleEventRecordedEvent;
+import com.aetherianartificer.townstead.api.v1.event.ConversationHeldEvent;
+import com.aetherianartificer.townstead.api.v1.event.HangoutEndedEvent;
+import com.aetherianartificer.townstead.api.v1.event.HangoutStartedEvent;
+import com.aetherianartificer.townstead.api.v1.event.VillagerProfessionChangedEvent;
+import com.aetherianartificer.townstead.api.v1.event.VillagerRefueledEvent;
+import com.aetherianartificer.townstead.api.v1.event.VillagerVillageChangedEvent;
+import com.aetherianartificer.townstead.api.v1.event.WorkCompletedEvent;
+import com.aetherianartificer.townstead.api.v1.event.WorksiteRegisteredEvent;
+import com.aetherianartificer.townstead.api.v1.event.WorksiteRemovedEvent;
+import com.aetherianartificer.townstead.hangout.HangoutVisit;
+import com.aetherianartificer.townstead.work.site.Worksite;
 import com.aetherianartificer.townstead.api.v1.event.DialogueClosedEvent;
 import com.aetherianartificer.townstead.api.v1.event.DialogueOpenedEvent;
 import com.aetherianartificer.townstead.api.v1.event.Subscription;
@@ -215,6 +226,50 @@ public final class ApiEvents {
 
     public static void dialogueClosed(LivingEntity villager, ServerPlayer player, int heartDelta) {
         safe(() -> post(new DialogueClosedEvent(villager, villager.getUUID(), player, heartDelta)));
+    }
+
+    public static void workCompleted(LivingEntity worker, ResourceLocation professionId, String verb,
+                                     @Nullable ResourceLocation objectId, float magnitude, int appliedXp,
+                                     int tierBefore, int tierAfter) {
+        safe(() -> post(new WorkCompletedEvent(worker, worker.getUUID(), professionId.toString(), verb == null ? "" : verb,
+                Optional.ofNullable(objectId), magnitude, appliedXp, tierBefore, tierAfter)));
+    }
+
+    public static void professionChanged(LivingEntity villager, String before, String after) {
+        safe(() -> post(new VillagerProfessionChangedEvent(villager, villager.getUUID(), before == null ? "" : before,
+                after == null ? "" : after)));
+    }
+
+    public static void refueled(LivingEntity villager, ResourceLocation item, int hungerBefore, int hungerAfter,
+                                int thirstBefore, int thirstAfter, int fatigueBefore, int fatigueAfter) {
+        safe(() -> post(new VillagerRefueledEvent(villager, villager.getUUID(), item, hungerBefore, hungerAfter,
+                thirstBefore, thirstAfter, NeedScales.energyOf(fatigueBefore), NeedScales.energyOf(fatigueAfter))));
+    }
+
+    public static void conversationHeld(LivingEntity initiator, LivingEntity responder, ResourceLocation topic,
+                                        String outcome) {
+        safe(() -> post(new ConversationHeldEvent(initiator, initiator.getUUID(), responder, responder.getUUID(), topic,
+                outcome == null ? "" : outcome)));
+    }
+
+    public static void villageChanged(UUID uuid, String name, @Nullable VillageId before, VillageId after) {
+        safe(() -> post(new VillagerVillageChangedEvent(uuid, name == null ? "" : name, Optional.ofNullable(before), after)));
+    }
+
+    public static void hangoutStarted(LivingEntity villager, HangoutVisit visit) {
+        safe(() -> post(new HangoutStartedEvent(villager, villager.getUUID(), HangoutsImpl.snapshot(visit))));
+    }
+
+    public static void hangoutEnded(@Nullable LivingEntity villager, UUID uuid, HangoutVisit visit, boolean success) {
+        safe(() -> post(new HangoutEndedEvent(Optional.ofNullable(villager), uuid, HangoutsImpl.snapshot(visit), success)));
+    }
+
+    public static void worksiteRegistered(Worksite site) {
+        safe(() -> post(new WorksiteRegisteredEvent(ApiSupport.currentServer(), WorkImpl.snapshot(site))));
+    }
+
+    public static void worksiteRemoved(Worksite site) {
+        safe(() -> post(new WorksiteRemovedEvent(ApiSupport.currentServer(), WorkImpl.snapshot(site))));
     }
 
     /** True when anyone is listening at all; internals may skip expensive payload building otherwise. */

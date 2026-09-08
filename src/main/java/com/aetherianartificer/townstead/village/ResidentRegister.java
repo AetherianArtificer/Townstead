@@ -111,8 +111,14 @@ public final class ResidentRegister extends SavedData {
                 level.getGameTime(),
                 TownsteadCalendar.worldDay(server),
                 true);
-        entries.put(villager.getUUID(), entry);
+        Entry previous = entries.put(villager.getUUID(), entry);
         setDirty();
+        Optional<VillageId> after = entry.village();
+        // A villager seen for the first time is not moving; only a record that already existed can change village.
+        if (previous != null && after.isPresent() && !previous.village().equals(after)) {
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.villageChanged(villager.getUUID(), entry.name,
+                    previous.village().orElse(null), after.get());
+        }
     }
 
     public static void markDead(MinecraftServer server, UUID uuid) {

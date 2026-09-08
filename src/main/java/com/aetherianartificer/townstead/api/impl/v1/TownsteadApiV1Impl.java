@@ -3,6 +3,10 @@ package com.aetherianartificer.townstead.api.impl.v1;
 import com.aetherianartificer.townstead.api.v1.CalendarApi;
 import com.aetherianartificer.townstead.api.v1.ChroniclesApi;
 import com.aetherianartificer.townstead.api.v1.EventsApi;
+import com.aetherianartificer.townstead.api.v1.HangoutsApi;
+import com.aetherianartificer.townstead.api.v1.RegistriesApi;
+import com.aetherianartificer.townstead.api.v1.SchedulesApi;
+import com.aetherianartificer.townstead.api.v1.WorkApi;
 import com.aetherianartificer.townstead.api.v1.ProfessionsApi;
 import com.aetherianartificer.townstead.api.v1.SocialApi;
 import com.aetherianartificer.townstead.api.v1.TownsteadApiV1;
@@ -26,6 +30,10 @@ public final class TownsteadApiV1Impl implements TownsteadApiV1 {
     private final SocialApi social = new SocialImpl();
     private final ChroniclesApi chronicles = new ChroniclesImpl();
     private final EventsApi events = new EventsImpl();
+    private final WorkApi work = new WorkImpl();
+    private final HangoutsApi hangouts = new HangoutsImpl();
+    private final SchedulesApi schedules = new SchedulesImpl();
+    private final RegistriesApi registries = new RegistriesImpl();
 
     @Override
     public int getApiVersion() {
@@ -75,5 +83,25 @@ public final class TownsteadApiV1Impl implements TownsteadApiV1 {
     @Override
     public EventsApi events() {
         return events;
+    }
+
+    @Override
+    public WorkApi work() {
+        return work;
+    }
+
+    @Override
+    public HangoutsApi hangouts() {
+        return hangouts;
+    }
+
+    @Override
+    public SchedulesApi schedules() {
+        return schedules;
+    }
+
+    @Override
+    public RegistriesApi registries() {
+        return registries;
     }
 }

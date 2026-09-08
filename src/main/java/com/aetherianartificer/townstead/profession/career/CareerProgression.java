@@ -60,6 +60,8 @@ public final class CareerProgression {
             notifyComboUnlocks(worker, combosBefore);
         }
         ChronicleTaps.work(worker, chronicleVerb, objectId, paramName, magnitude, semanticParams);
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.workCompleted(worker, career, chronicleVerb, objectId,
+                magnitude, result.appliedXp(), result.tierBefore(), result.tierAfter());
         for (ResourceLocation acquired : CareerAcquisitions.acquireEligible(
                 worker, "self_discovery", affected)) {
             if (worker instanceof Player player) {

@@ -1,6 +1,8 @@
 package com.aetherianartificer.townstead.api.impl.v1;
 
 import com.aetherianartificer.townstead.api.v1.ProfessionsApi;
+import com.aetherianartificer.townstead.api.v1.model.CareerSnapshot;
+import com.aetherianartificer.townstead.profession.career.CareerProfile;
 import com.aetherianartificer.townstead.api.v1.model.ProfessionProgressSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.ProfessionSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.ProgressionTrackSnapshot;
@@ -95,6 +97,41 @@ final class ProfessionsImpl implements ProfessionsApi {
             ApiSupport.swallow("professions.progress", t);
             return Optional.empty();
         }
+    }
+
+    @Override
+    public Optional<CareerSnapshot> career(Entity entity) {
+        try {
+            CareerProfile profile = profile(entity);
+            ProfessionXpStore store = store(entity);
+            if (profile == null || store == null) return Optional.empty();
+            Set<String> history = new java.util.LinkedHashSet<>();
+            for (ResourceLocation id : profile.careerHistory()) history.add(id.toString());
+            Set<String> acquired = new java.util.LinkedHashSet<>();
+            for (ResourceLocation id : profile.acquiredCareers()) acquired.add(id.toString());
+            Set<String> discoveries = new java.util.LinkedHashSet<>();
+            for (ResourceLocation id : profile.discoveries()) discoveries.add(id.toString());
+            List<ProfessionProgressSnapshot> progress = new ArrayList<>();
+            Set<ResourceLocation> careers = new java.util.LinkedHashSet<>(profile.careerHistory());
+            if (profile.primaryVocation() != null) careers.add(profile.primaryVocation());
+            careers.addAll(profile.acquiredCareers());
+            for (ResourceLocation career : careers) {
+                progress(entity, career.toString()).ifPresent(progress::add);
+            }
+            return Optional.of(new CareerSnapshot(
+                    Optional.ofNullable(profile.primaryVocation()).map(ResourceLocation::toString), history, acquired,
+                    discoveries, profile.learnedChoices(), profile.activeBySkillGroup(), profile.lastVocationChangeDay(),
+                    progress));
+        } catch (Throwable t) {
+            ApiSupport.swallow("professions.career", t);
+            return Optional.empty();
+        }
+    }
+
+    static @Nullable CareerProfile profile(@Nullable Entity entity) {
+        if (entity instanceof VillagerEntityMCA villager) return TownsteadVillagers.get(villager).professionMemory().careerProfile();
+        if (entity instanceof Player player) return PlayerCareers.get(player);
+        return null;
     }
 
     @Override

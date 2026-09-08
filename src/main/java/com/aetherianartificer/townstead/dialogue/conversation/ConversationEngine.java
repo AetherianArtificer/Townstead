@@ -265,6 +265,8 @@ public final class ConversationEngine {
                 a.getVillagerBrain().modifyMoodValue(outcome.initiatorMood()); b.getVillagerBrain().modifyMoodValue(outcome.responderMood());
                 com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.conversation(a, b, session.topic().id(),
                         outcome.memory(), outcome.initiatorMemory(), outcome.responderMemory());
+                com.aetherianartificer.townstead.api.impl.v1.ApiEvents.conversationHeld(a, b, session.topic().id(),
+                        outcome.memory());
             }
         }
         if (TownsteadConfig.DEBUG_LOGGING.get()) Townstead.LOGGER.info("[Conversation] {} {} -> {}: {} {}",

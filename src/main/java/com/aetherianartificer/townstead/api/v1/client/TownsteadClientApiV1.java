@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.api.v1.event.Subscription;
 import net.minecraft.client.gui.screens.Screen;
 
 import java.util.List;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 /**
@@ -39,4 +40,20 @@ public interface TownsteadClientApiV1 {
 
     /** Called after Townstead paints its choice panel, with the rows it drew, so a mod can draw over them. */
     Subscription onChoicePanelPainted(Consumer<ChoicePanelPaint> painter);
+
+    /**
+     * Asks Townstead to number its choice rows, 1 to 9 top to bottom. Townstead draws them itself,
+     * in the panel's own hand and gutter, so numbered choices look native rather than stamped on;
+     * pair this with {@link #visibleChoices} and {@link #selectChoice} to act on a digit key.
+     *
+     * <p>{@code enabled} is read when the panel lays out, so a config toggle takes effect on the
+     * next choice list rather than mid-frame. Pass {@code null} to stop numbering. Last caller wins.
+     */
+    default void setChoiceNumbering(BooleanSupplier enabled) {
+    }
+
+    /** The constant form of {@link #setChoiceNumbering(BooleanSupplier)}. */
+    default void setChoiceNumbering(boolean numbered) {
+        setChoiceNumbering(numbered ? () -> true : null);
+    }
 }

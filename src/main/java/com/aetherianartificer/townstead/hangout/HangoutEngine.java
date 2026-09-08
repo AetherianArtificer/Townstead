@@ -178,6 +178,7 @@ public final class HangoutEngine {
                 BY_VISITOR.put(villager.getUUID(), visit.id());
                 ownTravelTarget(villager, visit.visitor().approach(), true);
                 traceVisitStart(villager, visit, venue.definition(), policy, now);
+                com.aetherianartificer.townstead.api.impl.v1.ApiEvents.hangoutStarted(villager, visit);
                 return;
             }
         }
@@ -559,6 +560,7 @@ public final class HangoutEngine {
         BY_VISITOR.remove(visitorId, visit.id());
         CLAIMS.release(visit.id());
         VISITS.remove(visit.id(), visit);
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.hangoutEnded(villager, visitorId, visit, success);
         HangoutPolicy policy = HangoutData.policies().get(visit.policy());
         if (policy != null) {
             COOLDOWNS.put(visitorId, now + (success

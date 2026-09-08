@@ -36,6 +36,21 @@ final class ApiSnapshots {
         NeedsSnapshot needs = villager != null
                 ? needs(TownsteadVillagers.get(villager).needs())
                 : emptyNeeds();
+        String professionId = legacy.professionId();
+        int tier = legacy.professionLevel();
+        int xp = legacy.professionXp();
+        if (villager == null && entity instanceof Player player) {
+            // Players practise careers too; the pre-v1 facade left these zero for them.
+            com.aetherianartificer.townstead.profession.career.CareerProfile profile =
+                    com.aetherianartificer.townstead.profession.career.PlayerCareers.get(player);
+            if (profile != null && profile.primaryVocation() != null) {
+                professionId = profile.primaryVocation().toString();
+                com.aetherianartificer.townstead.villager.ProfessionXpStore store =
+                        com.aetherianartificer.townstead.profession.career.PlayerCareers.xpStore(player);
+                tier = com.aetherianartificer.townstead.villager.ProfessionProgress.getTier(store, profile.primaryVocation());
+                xp = com.aetherianartificer.townstead.villager.ProfessionProgress.getXp(store, profile.primaryVocation());
+            }
+        }
         return new VillagerSnapshot(
                 entity.getUUID(),
                 legacy.name(),
@@ -51,10 +66,10 @@ final class ApiSnapshots {
                 legacy.ageless(),
                 legacy.senior(),
                 legacy.fertility(),
-                legacy.professionId(),
+                professionId,
                 legacy.professionPathId(),
-                legacy.professionLevel(),
-                legacy.professionXp(),
+                tier,
+                xp,
                 needs,
                 schedule(legacy.schedule()),
                 legacy.carriedVariants(),

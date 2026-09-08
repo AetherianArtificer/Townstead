@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.api.v1;
 
+import com.aetherianartificer.townstead.api.v1.model.CareerSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.ProfessionProgressSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.ProfessionSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.ProgressionTrackSnapshot;
@@ -30,6 +31,9 @@ public interface ProfessionsApi {
 
     /** Where an entity stands in one profession. Empty when the profession has no track. */
     Optional<ProfessionProgressSnapshot> progress(Entity entity, String professionId);
+
+    /** The entity's career profile, villager or player alike. Empty for anything without one. */
+    Optional<CareerSnapshot> career(Entity entity);
 
     Set<ResourceLocation> skillIds();
 

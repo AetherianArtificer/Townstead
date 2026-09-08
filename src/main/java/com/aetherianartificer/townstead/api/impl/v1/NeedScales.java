@@ -111,6 +111,11 @@ public final class NeedScales {
         return TownsteadConfig.isVillagerTemperatureEnabled();
     }
 
+    /** Energy is fatigue the other way up. */
+    public static int energyOf(int fatigue) {
+        return Math.max(0, Math.min(FatigueData.MAX_FATIGUE, FatigueData.MAX_FATIGUE - fatigue));
+    }
+
     private static String lower(String name) {
         return name.toLowerCase(Locale.ROOT);
     }

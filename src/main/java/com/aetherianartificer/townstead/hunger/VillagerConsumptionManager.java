@@ -152,6 +152,7 @@ public final class VillagerConsumptionManager {
         int beforeThirst = recipientNeeds.thirst();
         int beforeQuenched = recipientNeeds.quenched();
         int beforeFatigue = recipientNeeds.fatigue();
+        int beforeHunger = recipientNeeds.hunger();
         NeedEffectProjection configured = Consumables.projection(
                 stack, ConsumptionPolicy.Consumer.VILLAGER);
         boolean attributes = allows(policy, ConsumptionPolicy.EffectClass.ATTRIBUTE);
@@ -166,6 +167,12 @@ public final class VillagerConsumptionManager {
         changed |= applyThirstBenefits(recipient, stack, recipientNeeds, attributes, statuses);
         changed |= recipientNeeds.thirst() != beforeThirst || recipientNeeds.quenched() != beforeQuenched
                 || recipientNeeds.fatigue() != beforeFatigue;
+        if (changed || recipientNeeds.hunger() != beforeHunger) {
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.refueled(recipient,
+                    net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()),
+                    beforeHunger, recipientNeeds.hunger(), beforeThirst, recipientNeeds.thirst(),
+                    beforeFatigue, recipientNeeds.fatigue());
+        }
         return changed;
     }
 
@@ -190,8 +197,12 @@ public final class VillagerConsumptionManager {
         if (food == null) return;
         TownsteadVillager.Needs needs = TownsteadVillagers.get(villager).needs();
         float foodScale = com.aetherianartificer.townstead.root.hook.PhenoHooks.foodMultiplier(villager);
+        int hungerBefore = needs.hunger();
         needs.applyFood(food, foodScale);
         needs.setLastAteTime(villager.level().getGameTime());
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.refueled(villager,
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()),
+                hungerBefore, needs.hunger(), needs.thirst(), needs.thirst(), needs.fatigue(), needs.fatigue());
         NeedEffectProjection configured = Consumables.projection(
                 stack, ConsumptionPolicy.Consumer.VILLAGER);
         Consumables.apply(villager, stack);

@@ -109,6 +109,15 @@ final class ApiSupport {
         return null;
     }
 
+    /** The running server, or null outside a server session. */
+    static @Nullable MinecraftServer currentServer() {
+        //? if neoforge {
+        return net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+        //?} else if forge {
+        /*return net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        *///?}
+    }
+
     static long gameTime(Entity entity) {
         return entity.level() == null ? 0L : entity.level().getGameTime();
     }

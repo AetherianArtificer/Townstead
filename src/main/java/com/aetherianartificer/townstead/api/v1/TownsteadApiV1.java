@@ -13,6 +13,8 @@ package com.aetherianartificer.townstead.api.v1;
  *   <li>Frozen once shipped. Methods are added, never removed or re-signatured. New interface
  *       methods carry {@code default} bodies. Record components are appended, never renamed or
  *       reordered; a record's canonical constructor is not contract, only its accessors are.</li>
+ *   <li>Facades: villagers, villages, professions, calendar, social, chronicles, events, work,
+ *       hangouts, schedules, registries.</li>
  *   <li>{@link #getApiVersion()} changes only on a breaking change, which v1 never makes.
  *       {@link #getApiRevision()} increments on every additive change; {@code docs/API.md} lists
  *       what each revision added. Both read a private constant through a method so a compiler
@@ -59,4 +61,12 @@ public interface TownsteadApiV1 {
     ChroniclesApi chronicles();
 
     EventsApi events();
+
+    WorkApi work();
+
+    HangoutsApi hangouts();
+
+    SchedulesApi schedules();
+
+    RegistriesApi registries();
 }

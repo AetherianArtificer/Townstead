@@ -4,11 +4,13 @@ import com.aetherianartificer.townstead.api.v1.client.ChoicePanelPaint;
 import com.aetherianartificer.townstead.api.v1.client.ChoiceRow;
 import com.aetherianartificer.townstead.api.v1.client.TownsteadClientApiV1;
 import com.aetherianartificer.townstead.api.v1.event.Subscription;
+import com.aetherianartificer.townstead.client.gui.dialogue.ChoicePanel;
 import com.aetherianartificer.townstead.client.gui.dialogue.EmotionTagOverrides;
 import com.aetherianartificer.townstead.client.gui.dialogue.RpgDialogueScreen;
 import net.minecraft.client.gui.screens.Screen;
 
 import java.util.List;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 public final class TownsteadClientApiV1Impl implements TownsteadClientApiV1 {
@@ -48,5 +50,10 @@ public final class TownsteadClientApiV1Impl implements TownsteadClientApiV1 {
     @Override
     public Subscription onChoicePanelPainted(Consumer<ChoicePanelPaint> painter) {
         return ChoicePanelPaintHooks.subscribe(painter);
+    }
+
+    @Override
+    public void setChoiceNumbering(BooleanSupplier enabled) {
+        ChoicePanel.setNumberingRequest(enabled);
     }
 }
