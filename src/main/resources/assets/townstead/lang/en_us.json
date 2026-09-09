@@ -70,7 +70,7 @@
   "townstead.configuration.needs.thirst.preferKitchenStorageForEmptyBottles": "Kitchen Bottle Drop-Off",
   "townstead.configuration.needs.thirst.preferKitchenStorageForEmptyBottles.tooltip": "Prefer depositing empty bottles into kitchen storage after drinking.",
   "townstead.configuration.needs.thirst.preferredBackend": "Preferred Thirst Mod",
-  "townstead.configuration.needs.thirst.preferredBackend.tooltip": "Which thirst mod drives villager thirst when more than one is installed. Auto prefers Legendary Survival Overhaul, then Thirst Was Reclaimed or Thirst Was Taken.",
+  "townstead.configuration.needs.thirst.preferredBackend.tooltip": "Which thirst mod drives villager thirst when more than one is installed. Auto prefers Legendary Survival Overhaul, then Thirst Was Reclaimed or Thirst Was Taken, then Tough As Nails.",
   "townstead.configuration.needs.temperature": "Temperature",
   "townstead.configuration.needs.temperature.tooltip": "Villager body temperature, the climate backend, and hearth or shade seeking.",
   "townstead.configuration.needs.temperature.enableVillagerTemperature": "Enable Villager Temperature",
@@ -2034,5 +2034,13 @@
   "townstead.gossip.building_upgraded": "%1$s has been improving the %2$s, you know.",
   "townstead.gossip.spirit_tier_reached": "This place is becoming something, and %1$s had a hand in it.",
   "townstead.configuration.api": "Public API",
-  "townstead.configuration.api.deniedWriteSources": "Denied write sources"
+  "townstead.configuration.api.deniedWriteSources": "Denied write sources",
+  "buildingType.compat/toughasnails/climate_fuel_store": "Fuel Store",
+  "buildingType.compat/toughasnails/climate_fuel_store.description": "A dedicated storehouse where the village Climatologist keeps heating fuel ready for the colder days.",
+  "buildingType.compat.toughasnails.climate_fuel_store": "Fuel Store",
+  "buildingType.compat.toughasnails.climate_fuel_store.description": "A dedicated storehouse where the village Climatologist keeps heating fuel ready for the colder days.",
+  "buildingType.compat/toughasnails/climate_icehouse": "Icehouse",
+  "buildingType.compat/toughasnails/climate_icehouse.description": "A cool storehouse where the village Climatologist keeps ice and cooling supplies ready for the warmer days.",
+  "buildingType.compat.toughasnails.climate_icehouse": "Icehouse",
+  "buildingType.compat.toughasnails.climate_icehouse.description": "A cool storehouse where the village Climatologist keeps ice and cooling supplies ready for the warmer days."
 }

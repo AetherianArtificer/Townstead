@@ -57,7 +57,7 @@ public final class ProfessionSlotRules {
         if (def == null || def.jobSites().isEmpty()) return null;
         boolean anyBlock = false;
         for (var provider : def.jobSites()) {
-            if (provider instanceof com.aetherianartificer.townstead.profession.def.JobSiteProvider.Building) {
+            if (provider.ownsSeats()) {
                 return SlotPolicy.CUSTOM_BUILDING_SLOTS;
             }
             if (provider instanceof com.aetherianartificer.townstead.profession.def.JobSiteProvider.JobBlock) {

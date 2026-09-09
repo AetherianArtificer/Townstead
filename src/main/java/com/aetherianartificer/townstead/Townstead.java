@@ -447,6 +447,9 @@ public class Townstead {
         if (ModCompat.isLoaded("legendarysurvivaloverhaul")) {
             RECIPE_SERIALIZERS.register("purification_campfire", () -> PurificationCampfireRecipe.Serializer.INSTANCE);
         }
+        if (ModCompat.isLoaded("toughasnails")) {
+            RECIPE_SERIALIZERS.register("tan_water_purification", () -> com.aetherianartificer.townstead.compat.thirst.TanWaterPurificationRecipe.Serializer.INSTANCE);
+        }
         RECIPE_SERIALIZERS.register(modBus);
         modContainer.registerConfig(ModConfig.Type.SERVER, TownsteadConfig.SERVER_SPEC);
         townstead$registerClientConfigScreen(modContainer);
@@ -870,6 +873,9 @@ public class Townstead {
         CREATIVE_MODE_TABS.register(modBus);
         if (ModCompat.isLoaded("legendarysurvivaloverhaul")) {
             RECIPE_SERIALIZERS.register("purification_campfire", () -> PurificationCampfireRecipe.Serializer.INSTANCE);
+        }
+        if (ModCompat.isLoaded("toughasnails")) {
+            RECIPE_SERIALIZERS.register("tan_water_purification", () -> com.aetherianartificer.townstead.compat.thirst.TanWaterPurificationRecipe.Serializer.INSTANCE);
         }
         RECIPE_SERIALIZERS.register(modBus);
         ModContainer modContainer = net.minecraftforge.fml.ModLoadingContext.get().getActiveContainer();
@@ -2221,6 +2227,8 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.action.block.types.ExplodeBlockActionType());
         com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.block.types.ModifyBlockStateBlockActionType());
+        com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.block.types.InsertItemBlockActionType());
         com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.block.types.ExecuteCommandBlockActionType());
         com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(

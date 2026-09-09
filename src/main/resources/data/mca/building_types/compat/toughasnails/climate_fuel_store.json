@@ -1,0 +1,13 @@
+{
+  "color": "ffb16b38",
+  "visible": true,
+  "priority": 3,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 200,
+  "noBeds": true,
+  "blocks": {
+    "minecraft:coal_block": 1,
+    "#townstead:storage": 1
+  }
+}

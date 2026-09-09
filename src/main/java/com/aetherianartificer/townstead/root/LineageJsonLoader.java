@@ -60,7 +60,7 @@ public final class LineageJsonLoader extends SimpleJsonResourceReloadListener {
                 parsed.put(file, new Lineage(file, displayName, ancestry, demonym, backstory, genome, spawnBias,
                         culturalSpawnBias));
                 policies.put(file, PersonalityPolicies.parse(obj));
-                hairPolicies.put(file, com.aetherianartificer.townstead.root.appearance.HairPolicy.parse(obj));
+                hairPolicies.put(file, com.aetherianartificer.townstead.root.appearance.HairPolicy.parse(obj, lang));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse lineage {}: {}", file, ex.getMessage());
             }

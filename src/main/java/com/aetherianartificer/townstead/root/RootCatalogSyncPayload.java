@@ -291,6 +291,8 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         for (var color : colors) {
             buf.writeInt(color.rgb());
             buf.writeVarInt(color.weight());
+            buf.writeUtf(color.name());
+            buf.writeUtf(color.nameKey());
         }
     }
 
@@ -300,7 +302,7 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> colors = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             colors.add(new com.aetherianartificer.townstead.root.appearance.HairColorChoice(
-                    buf.readInt(), buf.readVarInt()));
+                    buf.readInt(), buf.readVarInt(), buf.readUtf(), buf.readUtf()));
         }
         return List.copyOf(colors);
     }
@@ -313,6 +315,8 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
             for (int stop : gradient.stops()) buf.writeInt(stop);
             buf.writeVarInt(gradient.weight());
             buf.writeEnum(gradient.space());
+            buf.writeUtf(gradient.name());
+            buf.writeUtf(gradient.nameKey());
         }
     }
 
@@ -326,7 +330,8 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
             for (int j = 0; j < stopCount; j++) stops.add(buf.readInt());
             gradients.add(new com.aetherianartificer.townstead.root.appearance.HairGradient(
                     stops, buf.readVarInt(),
-                    buf.readEnum(com.aetherianartificer.townstead.root.appearance.HairGradient.Space.class)));
+                    buf.readEnum(com.aetherianartificer.townstead.root.appearance.HairGradient.Space.class),
+                    buf.readUtf(), buf.readUtf()));
         }
         return List.copyOf(gradients);
     }

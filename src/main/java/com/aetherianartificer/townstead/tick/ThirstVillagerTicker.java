@@ -79,6 +79,7 @@ public final class ThirstVillagerTicker {
             return;
         }
 
+        ToughAsNailsEntityCompat.cleanseCanteens(self);
         long gameTime = level.getGameTime();
 
         if (gameTime >= state.nextBiomeModifierSampleTick) {
@@ -138,7 +139,7 @@ public final class ThirstVillagerTicker {
             needs.addThirstExhaustion(ThirstData.EXHAUSTION_AWAKE_BASELINE * biomeModifier * elapsedTicks);
         }
 
-        needs.addThirstExhaustion(bridge.thermalExhaustionPerTick(state.thermal) * elapsedTicks);
+        needs.addThirstExhaustion((bridge.thermalExhaustionPerTick(state.thermal) + ToughAsNailsEntityCompat.thirstExhaustion(self)) * elapsedTicks);
         thirstChanged |= needs.processThirstExhaustion();
         if (state.lastPassiveDrainGameTime < 0) state.lastPassiveDrainGameTime = elapsedTime;
         Activity currentActivity = currentScheduleActivity(self);

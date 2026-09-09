@@ -16,6 +16,36 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CareerProviderContributionsTest {
 
+    @Test
+    void tanAddsActualJuiceCraftingToCafeWork() throws Exception {
+        try (var stream = getClass().getResourceAsStream(
+                "/data/townstead/career_provider/barista_tough_as_nails.json")) {
+            org.junit.jupiter.api.Assertions.assertNotNull(stream);
+            JsonObject provider = JsonParser.parseReader(new java.io.InputStreamReader(
+                    stream, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+            assertEquals("toughasnails", provider.get("mods").getAsString());
+            provider.remove("mods"); // Exercise composition with the provider present.
+            Map<ResourceLocation, String> errors = new LinkedHashMap<>();
+            var plan = CareerProviderContributions.plan(Map.of(id("townstead:tan"), provider),
+                    Map.of(BEVERAGE, object("{}")), errors);
+            assertTrue(errors.isEmpty(), errors.toString());
+            JsonObject profession = object("{}");
+            plan.applyProfessions(Map.of(BEVERAGE, profession));
+            var task = profession.getAsJsonArray("work_tasks").get(0).getAsJsonObject();
+            assertEquals("townstead_work:craft", task.get("type").getAsString());
+            assertEquals("minecraft:crafting_table", task.getAsJsonArray("workstations").get(0).getAsString());
+            assertEquals("#townstead:compat/toughasnails/juices", task.getAsJsonArray("recipes").get(0).getAsString());
+            var tasks = profession.getAsJsonArray("work_tasks");
+            assertEquals(3, tasks.size());
+            var boiling = tasks.get(1).getAsJsonObject();
+            assertEquals("townstead:purification", boiling.getAsJsonArray("recipes").get(0).getAsString());
+            assertTrue(boiling.getAsJsonArray("workstations").asList().stream()
+                    .anyMatch(value -> value.getAsString().equals("#minecraft:campfires")));
+            assertEquals("toughasnails:water_purifier", tasks.get(2).getAsJsonObject()
+                    .getAsJsonArray("workstations").get(0).getAsString());
+        }
+    }
+
     private static final ResourceLocation BEVERAGE = id("townstead:beverage_artisan");
 
     @Test

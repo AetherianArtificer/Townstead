@@ -85,6 +85,12 @@ public final class TemperatureData {
 
     /** Ambient Celsius at the position from the selected backend, falling back to the built-in model on NaN. */
     public static float ambientCelsius(ServerLevel level, BlockPos pos) {
+        float ambient = unregulatedAmbientCelsius(level, pos);
+        return com.aetherianartificer.townstead.compat.temperature.ToughAsNailsTemperatureBridge.INSTANCE
+                .regulatedCelsius(level, pos, ambient);
+    }
+
+    private static float unregulatedAmbientCelsius(ServerLevel level, BlockPos pos) {
         var room = RoomHeat.at(level, pos);
         if (room.isPresent()) return (float) room.getAsDouble();
         AmbientTemperatureBridge bridge = TemperatureBridgeResolver.get();

@@ -21,16 +21,18 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
 /** A wall-mounted thermometer whose liquid level tracks the climate system. */
-public final class RoomThermometerBlock extends Block {
+public final class RoomThermometerBlock extends SnowCoatedBlock {
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final EnumProperty<ThermometerBand> TEMPERATURE =
             EnumProperty.create("temperature", ThermometerBand.class);
+    public static final IntegerProperty LEVEL = IntegerProperty.create("level", 0, ThermometerScale.MAX_LEVEL);
     private static final int REFRESH_TICKS = 100;
 
     private static final VoxelShape NORTH = Block.box(5, 0.5, 13.75, 11, 15.5, 16);
@@ -40,13 +42,14 @@ public final class RoomThermometerBlock extends Block {
 
     public RoomThermometerBlock(Properties properties) {
         super(properties);
-        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH)
-                .setValue(TEMPERATURE, ThermometerBand.MILD));
+        registerDefaultState(defaultBlockState().setValue(FACING, Direction.NORTH)
+                .setValue(TEMPERATURE, ThermometerBand.MILD).setValue(LEVEL, ThermometerScale.at(20)));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING, TEMPERATURE);
+        super.createBlockStateDefinition(builder);
+        builder.add(FACING, TEMPERATURE, LEVEL);
     }
 
     @Override
@@ -56,8 +59,9 @@ public final class RoomThermometerBlock extends Block {
         if (!face.getAxis().isHorizontal()) return null;
         BlockState state = defaultBlockState().setValue(FACING, face);
         if (context.getLevel() instanceof ServerLevel serverLevel) {
-            state = state.setValue(TEMPERATURE,
-                    ThermometerBand.at(TemperatureData.ambientCelsius(serverLevel, context.getClickedPos())));
+            float celsius = TemperatureData.ambientCelsius(serverLevel, context.getClickedPos());
+            state = state.setValue(TEMPERATURE, ThermometerBand.at(celsius))
+                    .setValue(LEVEL, ThermometerScale.at(celsius));
         }
         return state.canSurvive(context.getLevel(), context.getClickedPos()) ? state : null;
     }
@@ -80,8 +84,9 @@ public final class RoomThermometerBlock extends Block {
 
     private void updateDisplay(BlockState state, ServerLevel level, BlockPos pos, float celsius) {
         ThermometerBand band = state.getValue(TEMPERATURE).update(celsius);
-        if (band != state.getValue(TEMPERATURE)) {
-            level.setBlock(pos, state.setValue(TEMPERATURE, band), Block.UPDATE_CLIENTS);
+        int column = ThermometerScale.update(state.getValue(LEVEL), celsius);
+        if (band != state.getValue(TEMPERATURE) || column != state.getValue(LEVEL)) {
+            level.setBlock(pos, state.setValue(TEMPERATURE, band).setValue(LEVEL, column), Block.UPDATE_CLIENTS);
         }
     }
 

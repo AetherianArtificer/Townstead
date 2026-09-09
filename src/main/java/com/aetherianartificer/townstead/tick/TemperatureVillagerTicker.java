@@ -87,7 +87,11 @@ public final class TemperatureVillagerTicker {
         ThermalProfile profile = state.profile;
 
         // A climate:any root does not thermoregulate: pin the body at neutral so nothing fires.
-        if (state.suppressed) {
+        if (state.suppressed || com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat.climateClemency(self)) {
+            state.lastStepGameTime = gameTime;
+            state.lastMoodGameTime = gameTime;
+            state.lastComfortTick = gameTime;
+            state.nextAmbientSampleTick = gameTime;
             int neutral = profile.neutralTenths();
             if (needs.bodyTempTenths() != neutral) needs.setBodyTempTenths(neutral);
             needs.setSeekingRelief(false);
@@ -116,10 +120,11 @@ public final class TemperatureVillagerTicker {
         }
         float seconds = state.lastComfortTick < 0 ? 0.05f : Math.max(0, Math.min(1, (gameTime - state.lastComfortTick) / 20f));
         state.lastComfortTick = gameTime;
-        float ambientCelsius = TemperatureData.celsius(needs.ambientTenths());
+        ThermalProtection protection = state.clothing.plus(com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat.protection(self));
+        float ambientCelsius = com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat.internalAmbient(self, TemperatureData.celsius(needs.ambientTenths()));
         boolean immersed = self.isInWater();
         float targetLoad = ThermalComfort.load(ambientCelsius, immersed ? 1 : needs.thermalWetness(),
-                immersed, Math.max(0, activityHeat(self) * 10), state.clothing, profile);
+                immersed, Math.max(0, activityHeat(self) * 10), protection, profile);
         ThermalComfort.State comfort = ThermalComfort.update(new ThermalComfort.State(needs.thermalWetness(),
                 needs.comfortLoad(), needs.thermalStrainSeconds()), targetLoad, immersed,
                 level.isRainingAt(self.blockPosition()), ambientCelsius, seconds,
@@ -130,7 +135,7 @@ public final class TemperatureVillagerTicker {
         int steps = 0;
         while (gameTime - state.lastStepGameTime >= TemperatureData.ACCUMULATION_INTERVAL && steps < 100) {
             state.lastStepGameTime += TemperatureData.ACCUMULATION_INTERVAL;
-            changed |= step(self, needs, profile, state.clothing, state.drift);
+            changed |= step(self, needs, profile, protection, state.drift);
             steps++;
         }
 
@@ -168,7 +173,7 @@ public final class TemperatureVillagerTicker {
     /** One accumulation interval of drift toward the target. Returns true when the reading moved. */
     private static boolean step(VillagerEntityMCA self, TownsteadVillager.Needs needs, ThermalProfile profile, ThermalProtection protection,
                                 com.aetherianartificer.townstead.temperature.BodyTemperatureDrift drift) {
-        float ambient = TemperatureData.celsius(needs.ambientTenths());
+        float ambient = com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat.internalAmbient(self, TemperatureData.celsius(needs.ambientTenths()));
         ambient = protection.protectAmbient(ambient, TemperatureData.AMBIENT_REFERENCE);
         float clothing = protection.offset();
         float target;

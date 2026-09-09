@@ -1,0 +1,19 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "toughasnails"
+    }
+  ],
+  "type": "townstead:tan_water_purification",
+  "ingredient": [
+    { "item": "minecraft:potion" },
+    { "item": "toughasnails:dirty_water_bottle" }
+  ],
+  "result": {
+    "id": "toughasnails:purified_water_bottle",
+    "count": 1
+  },
+  "experience": 0,
+  "cookingtime": 100
+}

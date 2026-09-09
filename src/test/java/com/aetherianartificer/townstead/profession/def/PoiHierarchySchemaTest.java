@@ -79,6 +79,24 @@ class PoiHierarchySchemaTest {
     }
 
     @Test
+    void climatologistSeatsScaleByEightRegulatorsWithoutReplacingNativeProfession() {
+        ProfessionDef def = load("/data/toughasnails/profession/climatologist/profession.json",
+                "toughasnails:climatologist");
+        assertEquals(1, def.jobSites().size());
+        JobSiteProvider.JobBlock blocks = (JobSiteProvider.JobBlock) def.jobSites().get(0);
+        assertTrue(blocks.ownsSeats());
+        assertEquals(8, blocks.sitesPerWorker());
+        assertEquals(0, blocks.slotsForSites(0));
+        assertEquals(1, blocks.slotsForSites(1));
+        assertEquals(1, blocks.slotsForSites(8));
+        assertEquals(2, blocks.slotsForSites(9));
+        assertEquals(2, blocks.slotsForSites(16));
+        assertEquals(3, blocks.slotsForSites(17));
+        assertFalse(readResource("/data/toughasnails/profession/climatologist/work.json")
+                .get("register_profession").getAsBoolean());
+    }
+
+    @Test
     void shippedCookUsesItsTownsteadBuildingRatherThanChefsDelightAcquisition() {
         ProfessionDef cook = load("/data/townstead/profession/cook/profession.json", "townstead:cook");
         assertFalse(PoiHierarchy.hasAcquisitionHierarchy(cook),

@@ -7,6 +7,13 @@ import com.aetherianartificer.townstead.client.gui.root.RootPicker;
 import com.aetherianartificer.townstead.client.root.RootClientStore;
 import com.aetherianartificer.townstead.client.root.PreviewParticles;
 import net.minecraft.client.gui.GuiGraphics;
+import com.aetherianartificer.townstead.client.gui.character.HairBarWidget;
+import com.aetherianartificer.townstead.client.gui.character.HairSwatchWidget;
+import com.aetherianartificer.townstead.client.skin.RootHairPickerTexture;
+import com.aetherianartificer.townstead.root.appearance.HairColorChoice;
+import com.aetherianartificer.townstead.root.appearance.HairGradient;
+import com.aetherianartificer.townstead.root.appearance.HairSettings;
+import net.minecraft.client.gui.components.Tooltip;
 import com.aetherianartificer.townstead.client.skin.RootSkinPickerTexture;
 import com.aetherianartificer.townstead.client.skin.SkinTintRegistry;
 import com.aetherianartificer.townstead.client.species.RigModels;
@@ -82,6 +89,11 @@ public abstract class VillagerEditorRootMixin extends Screen {
     @Unique private String townstead$baseRootId = "";
     @Unique private boolean townstead$primed;
     @Unique private int townstead$target;
+    // Our policy-aware Hair page colour controls: the dimmed colormap for a genetic range, or the
+    // per-gradient shade bars plus exact-colour swatches for a fantasy palette.
+    @Unique private ColorPickerWidget townstead$hairPicker;
+    @Unique private final List<com.aetherianartificer.townstead.client.gui.character.HairBarWidget> townstead$hairBars = new ArrayList<>();
+    @Unique private final List<com.aetherianartificer.townstead.client.gui.character.HairSwatchWidget> townstead$hairSwatches = new ArrayList<>();
     // Per-gene widget refreshers: the randomize dice and the palette swatches change a
     // whole payload at once, so the gene's cycler label and sliders re-read it in place
     // (rebuilding the page would seed from the not-yet-resynced real target instead).
@@ -114,9 +126,7 @@ public abstract class VillagerEditorRootMixin extends Screen {
             int target = townstead$primed ? townstead$target
                     : villagerUUID.equals(playerUUID) ? RootSetC2SPayload.SELF
                     : townstead$resolveVillagerEntityId(villagerUUID);
-            CharacterEditorResolver.Resolved layout = CharacterEditorResolver.resolveOrDefault(
-                    com.aetherianartificer.townstead.client.root.RootCatalogClient.origin(RootClientStore.get(target)),
-                    townstead$expressedOf(target));
+            CharacterEditorResolver.Resolved layout = townstead$resolveLayout(target);
             if (layout != null && !townstead$customTabs(layout).isEmpty()) {
                 pages = townstead$insertAfter(pages, "head", TOWNSTEAD_LEGACY_PAGE);
             }
@@ -219,13 +229,54 @@ public abstract class VillagerEditorRootMixin extends Screen {
         return java.util.Set.of();
     }
 
+    /** The real character being edited, by raw target id (null when unresolvable). */
+    @Unique
+    private net.minecraft.world.entity.LivingEntity townstead$entityOf(int target) {
+        if (target == RootSetC2SPayload.SELF) return Minecraft.getInstance().player;
+        net.minecraft.client.multiplayer.ClientLevel level = Minecraft.getInstance().level;
+        return level != null && level.getEntity(target) instanceof net.minecraft.world.entity.LivingEntity living
+                ? living : null;
+    }
+
+    /** Whether MCA hair renders on the target at all: its resolved hair policy and its rig both allow it. */
+    @Unique
+    private boolean townstead$hairEnabledOf(int target) {
+        net.minecraft.world.entity.LivingEntity real = townstead$entityOf(target);
+        if (real == null) return true;
+        if (!RootClientStore.usesHair(real)) return false;
+        com.aetherianartificer.townstead.root.rig.RigDefinition rig =
+                RigModels.definition(RigModels.rigBaseFor(real));
+        return rig == null || rig.hair();
+    }
+
+    /** The target's Character layout, minus MCA's hair group when the character renders no hair. */
+    @Unique
+    private CharacterEditorResolver.Resolved townstead$resolveLayout(int target) {
+        CharacterEditorResolver.Resolved layout = CharacterEditorResolver.resolveOrDefault(
+                com.aetherianartificer.townstead.client.root.RootCatalogClient.origin(RootClientStore.get(target)),
+                townstead$expressedOf(target));
+        if (layout != null && !townstead$hairEnabledOf(target)) {
+            layout = layout.withoutNative(
+                    com.aetherianartificer.townstead.root.CharacterEditorLayout.NATIVE_HAIR);
+        }
+        return layout;
+    }
+
     // Leaving any page (or rebuilding one) drops an un-applied preview first, so a
     // browsed origin can't leak into another tab or get saved by MCA's Done.
     @Inject(method = "setPage", remap = false, at = @At("HEAD"))
     private void townstead$revertOnPageChange(String page, CallbackInfo ci) {
         townstead$revertPreview();
-        com.aetherianartificer.townstead.root.appearance.HairColors.clamp(
-                villager, RootClientStore.hairSettings(villager));
+        var settings = RootClientStore.hairSettings(villager);
+        com.aetherianartificer.townstead.root.appearance.HairColors.clamp(villager, settings);
+        // MCA flips into its HSV dye-slider mode at load whenever the character carries a hair
+        // dye. Under a policy the dye is ours to manage (a palette always has one, a genetic range
+        // never does), so those sliders would only fight the clamp; force the genetic layout,
+        // which the constrain hook then swaps for the policy-aware controls.
+        if (!settings.colorRanges().isEmpty() || RootHairPickerTexture.hasPalette(settings)) {
+            ((com.aetherianartificer.townstead.mixin.accessor.VillagerEditorScreenAccessor) (Object) this)
+                    .townstead$setHsvColoredHair(false);
+        }
     }
 
     // MCA's save path: revert an un-applied preview so Done won't commit it. Apply
@@ -274,9 +325,7 @@ public abstract class VillagerEditorRootMixin extends Screen {
         // fields ourselves. null = nothing of ours to edit, so MCA's native Character tab stays
         // untouched. Individual-first: the synthesized tabs enumerate the genes this character
         // actually expresses, so a bred hybrid edits its real mix, not the root archetype's.
-        CharacterEditorResolver.Resolved charLayout = CharacterEditorResolver.resolveOrDefault(
-                com.aetherianartificer.townstead.client.root.RootCatalogClient.origin(RootClientStore.get(townstead$target)),
-                townstead$expressedOfTarget());
+        CharacterEditorResolver.Resolved charLayout = townstead$resolveLayout(townstead$target);
         // On the new 1.21.1 editor the strip replaces MCA's subpage bar under its Character hub. On the
         // old editor (separate Body/Head top pages) the gene tabs get their own top-level Character page
         // instead (inserted by the getPages hook): jamming them into Head/Body overflowed a control-heavy
@@ -862,14 +911,32 @@ public abstract class VillagerEditorRootMixin extends Screen {
         com.aetherianartificer.townstead.root.rig.RigDefinition rig =
                 RigModels.definition(RigModels.rigBaseFor(villager));
         if ((rig == null || rig.hair()) && RootClientStore.usesHair(villager)) return;
+        // The whole hair section: mode toggle, random/select, the style cycler row, Advanced Hair,
+        // and the colour picker. (The character strip already drops the Hair tab for a hairless
+        // character; this covers the legacy layout and MCA's untouched native page.)
         java.util.Set<String> hairKeys = java.util.Set.of(
                 "gui.villager_editor.hair_hsv", "gui.villager_editor.hair_genetic",
                 "gui.villager_editor.randHair", "gui.villager_editor.selectHair",
+                "gui.villager_editor.advancedHair", "gui.villager_editor.hair_index",
                 "gui.villager_editor.prev", "gui.villager_editor.next");
+        int cyclerRowY = Integer.MIN_VALUE;
+        for (GuiEventListener child : children()) {
+            if (child instanceof net.minecraft.client.gui.components.AbstractWidget aw
+                    && "gui.villager_editor.hair_index".equals(townstead$widgetKey(aw))) cyclerRowY = aw.getY();
+        }
         for (GuiEventListener child : new ArrayList<>(children())) {
+            if (child instanceof ColorPickerWidget picker
+                    && !(child instanceof HorizontalColorPickerWidget)
+                    && RootHairPickerTexture.isHairPickerTexture(((ColorPickerWidgetAccessor) picker).townstead$getTexture())) {
+                removeWidget(picker);
+                continue;
+            }
             if (child instanceof net.minecraft.client.gui.components.AbstractWidget aw) {
                 String k = townstead$widgetKey(aw);   // null for non-translatable labels; Set.of throws on contains(null)
-                if (k != null && hairKeys.contains(k)) removeWidget(aw);
+                if (k != null && hairKeys.contains(k)) { removeWidget(aw); continue; }
+                // The cycler's arrows carry literal "<" / ">" labels; they share the index label's row.
+                String literal = aw.getMessage().getString();
+                if (aw.getY() == cyclerRowY && ("<".equals(literal) || ">".equals(literal))) removeWidget(aw);
             }
         }
     }
@@ -878,10 +945,21 @@ public abstract class VillagerEditorRootMixin extends Screen {
     @Unique
     private void townstead$constrainHairControls() {
         var settings = RootClientStore.hairSettings(villager);
+        townstead$hairPicker = null;
+        townstead$hairBars.clear();
+        townstead$hairSwatches.clear();
+        if (!settings.enabled()) return;   // hairless: trimInertHair emptied the page, nothing to constrain
         if (settings.colorRanges().isEmpty() && settings.colors().isEmpty() && settings.gradients().isEmpty()) return;
         java.util.List<net.minecraft.client.gui.components.AbstractWidget> remove = new ArrayList<>();
         net.minecraft.client.gui.components.AbstractWidget randomize = null;
+        ColorPickerWidget geneticPicker = null;
         for (GuiEventListener child : children()) {
+            if (child instanceof ColorPickerWidget picker
+                    && !(child instanceof HorizontalColorPickerWidget)
+                    && RootHairPickerTexture.isHairPickerTexture(((ColorPickerWidgetAccessor) picker).townstead$getTexture())) {
+                geneticPicker = picker;
+                continue;
+            }
             if (!(child instanceof net.minecraft.client.gui.components.AbstractWidget widget)) continue;
             String key = townstead$widgetKey(widget);
             if ("gui.villager_editor.hair_hsv".equals(key)
@@ -889,6 +967,7 @@ public abstract class VillagerEditorRootMixin extends Screen {
             if ("gui.villager_editor.randHair".equals(key)) randomize = widget;
         }
         remove.forEach(this::removeWidget);
+        if (geneticPicker != null) townstead$replaceHairPicker(geneticPicker, settings);
         if (randomize != null) {
             int x = randomize.getX();
             int y = randomize.getY();
@@ -896,10 +975,118 @@ public abstract class VillagerEditorRootMixin extends Screen {
             int h = randomize.getHeight();
             Component label = randomize.getMessage();
             removeWidget(randomize);
-            addRenderableWidget(new ButtonWidget(x, y, w, h, label, button ->
-                    com.aetherianartificer.townstead.root.appearance.HairColors.roll(
-                            villager, RootClientStore.hairSettings(villager), villager.getRandom())));
+            addRenderableWidget(new ButtonWidget(x, y, w, h, label, button -> {
+                // MCA's own style reroll first, then a policy-aware colour roll.
+                ((com.aetherianartificer.townstead.mixin.accessor.VillagerEditorScreenAccessor) (Object) this)
+                        .townstead$randomHairStyle();
+                com.aetherianartificer.townstead.root.appearance.HairColors.roll(
+                        villager, RootClientStore.hairSettings(villager), villager.getRandom());
+                townstead$syncHairPicker();
+            }));
         }
+    }
+
+    /**
+     * Swap MCA's genetic colormap picker for one that is WYSIWYG under the policy. MCA's picker
+     * writes eumelanin/pheomelanin, which a fantasy palette never renders (the dye wins) and a
+     * genetic range silently clamps back each frame, leaving the cursor on a colour the model
+     * never shows. A palette gets one band per authored entry driving the dye directly; a range
+     * keeps the colormap with forbidden cells dimmed and snaps the cursor to the clamped genes.
+     */
+    @Unique
+    private void townstead$replaceHairPicker(ColorPickerWidget mca,
+            com.aetherianartificer.townstead.root.appearance.HairSettings settings) {
+        int x = mca.getX();
+        int y = mca.getY();
+        int w = mca.getWidth();
+        int h = mca.getHeight();
+        removeWidget(mca);
+        com.aetherianartificer.townstead.root.appearance.HairColors.clamp(villager, settings);
+        if (RootHairPickerTexture.hasPalette(settings)) {
+            townstead$buildHairPalette(settings, x, y, w);
+            return;
+        }
+        Genetics genetics = villager.getGenetics();
+        townstead$hairPicker = new ColorPickerWidget(x, y, w, h,
+                genetics.getGene(Genetics.PHEOMELANIN), genetics.getGene(Genetics.EUMELANIN),
+                RootHairPickerTexture.forRanges(settings.colorRanges()),
+                (vx, vy) -> {
+                    genetics.setGene(Genetics.PHEOMELANIN, vx.floatValue());
+                    genetics.setGene(Genetics.EUMELANIN, vy.floatValue());
+                    com.aetherianartificer.townstead.root.appearance.HairColors.clamp(villager, settings);
+                    townstead$syncHairPicker();
+                });
+        addRenderableWidget(townstead$hairPicker);
+    }
+
+    /**
+     * A fantasy palette as stacked controls in the picker's slot: one shade bar per gradient
+     * (MCA's own 1-D picker over the gradient strip), then a row of exact-colour swatches.
+     * Dragging a bar or clicking a swatch sets the dye directly and marks that control current;
+     * only external changes (Random, opening) relocate the cursor from the rendered dye.
+     */
+    @Unique
+    private void townstead$buildHairPalette(HairSettings settings, int x, int y, int w) {
+        int barH = 15, gap = 5, swatch = 20;
+        int cy = y;
+        for (HairGradient gradient : settings.gradients()) {
+            HairBarWidget[] self = new HairBarWidget[1];
+            self[0] = new HairBarWidget(x, cy, w, barH, 0.5, RootHairPickerTexture.forGradient(gradient),
+                    (vx, vy) -> {
+                        villager.setHairDye(gradient.colorAt(vx.floatValue()));
+                        townstead$markHairCurrent(self[0]);
+                    });
+            Component gradientName = gradient.displayName();
+            if (gradientName != null) self[0].setTooltip(Tooltip.create(gradientName));
+            townstead$hairBars.add(self[0]);
+            addRenderableWidget(self[0]);
+            cy += barH + gap;
+        }
+        int sx = x;
+        for (HairColorChoice color : settings.colors()) {
+            if (sx + swatch > x + w) { sx = x; cy += swatch + gap; }
+            HairSwatchWidget[] self = new HairSwatchWidget[1];
+            self[0] = new HairSwatchWidget(sx, cy, swatch, color.argb(), () -> {
+                villager.setHairDye(color.argb());
+                townstead$markHairCurrent(self[0]);
+            });
+            Component colorName = color.displayName();
+            if (colorName != null) self[0].setTooltip(Tooltip.create(colorName));
+            townstead$hairSwatches.add(self[0]);
+            addRenderableWidget(self[0]);
+            sx += swatch + gap;
+        }
+        townstead$syncHairPicker();
+    }
+
+    /** Highlight exactly one palette control as holding the current dye. */
+    @Unique
+    private void townstead$markHairCurrent(net.minecraft.client.gui.components.AbstractWidget current) {
+        for (HairBarWidget bar : townstead$hairBars) bar.setCurrent(bar == current);
+        for (HairSwatchWidget s : townstead$hairSwatches) s.setCurrent(s == current);
+    }
+
+    /** Move our hair controls onto whatever the dummy currently renders. */
+    @Unique
+    private void townstead$syncHairPicker() {
+        var settings = RootClientStore.hairSettings(villager);
+        if (RootHairPickerTexture.hasPalette(settings)) {
+            RootHairPickerTexture.Pick pick = RootHairPickerTexture.locate(settings, villager.getHairDye());
+            net.minecraft.client.gui.components.AbstractWidget current = null;
+            if (pick.onGradient() && pick.gradient() < townstead$hairBars.size()) {
+                HairBarWidget bar = townstead$hairBars.get(pick.gradient());
+                bar.setValueX(pick.position());
+                current = bar;
+            } else if (pick.color() >= 0 && pick.color() < townstead$hairSwatches.size()) {
+                current = townstead$hairSwatches.get(pick.color());
+            }
+            townstead$markHairCurrent(current);
+            return;
+        }
+        ColorPickerWidget picker = townstead$hairPicker;
+        if (picker == null) return;
+        picker.setValueX(villager.getGenetics().getGene(Genetics.PHEOMELANIN));
+        picker.setValueY(villager.getGenetics().getGene(Genetics.EUMELANIN));
     }
 
     @Unique

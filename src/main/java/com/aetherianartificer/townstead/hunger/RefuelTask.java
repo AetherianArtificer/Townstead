@@ -238,6 +238,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
                 if (VillagerConsumptionManager.startConsuming(villager, stack, sessionSource)) {
                     ItemStack remainder = bridge != null ? bridge.onDrinkConsumed(stack) : ItemStack.EMPTY;
                     if (remainder.isEmpty()) stack.shrink(1);
+                    else if (remainder != stack) villager.getInventory().setItem(slot, remainder);
                 }
                 return;
             }

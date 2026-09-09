@@ -439,6 +439,9 @@ public final class WorkRecipeRegistry {
                 }
                 List<RecipeIngredient> inputs = extractIngredients(recipe);
                 if (inputs.isEmpty()) {
+                    inputs = ProjectedStationPlan.declaredInputs(RecipeProjections.project(recipeId, typeId, recipe));
+                }
+                if (inputs.isEmpty()) {
                     emptyInputs++;
                     continue;
                 }

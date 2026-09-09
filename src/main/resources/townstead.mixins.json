@@ -4,6 +4,8 @@
   "plugin": "com.aetherianartificer.townstead.TownsteadMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "compat.thirst.TanDrinkValuesMixin",
+    "compat.thirst.TanDrinkConsumptionMixin",
     "BabyItemInheritanceMixin",
     "BuildingMatchingMixin",
     "BuildingStackQuantityMixin",
@@ -94,6 +96,7 @@
     "compat.temperature.TanRoomQueryMixin"
   ],
   "client": [
+    "compat.thirst.TanDrinkTooltipMixin",
     "compat.stardewhud.StardewHudDateMixin",
     "compat.stardewhud.StardewHudSeasonMixin",
     "compat.jade.JadeNamespaceNameMixin",

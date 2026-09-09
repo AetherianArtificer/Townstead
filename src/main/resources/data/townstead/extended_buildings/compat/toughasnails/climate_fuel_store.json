@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "mods": "toughasnails",
+  "storage_roles": [
+    "townstead:heating_fuel"
+  ],
+  "catalog": {
+    "node_item": "minecraft:coal"
+  },
+  "spirit": {
+    "industrious": 5
+  }
+}

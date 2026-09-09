@@ -39,8 +39,37 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
     private Method getTemperatureAtPos;
     private Method isHeatingBlock;
     private Method isCoolingBlock;
+    private Method regulatorEffect;
 
     private ToughAsNailsTemperatureBridge() {}
+
+    /** Read TAN's flood-filled coverage from loaded block entities; never load chunks for a sample. */
+    public float regulatedCelsius(ServerLevel level, BlockPos pos, float ambient) {
+        if (!isActive() || regulatorEffect == null) return ambient;
+        int heating = 0, cooling = 0, neutral = 0;
+        for (int x = (pos.getX() - 20) >> 4; x <= (pos.getX() + 20) >> 4; x++) {
+            for (int z = (pos.getZ() - 20) >> 4; z <= (pos.getZ() + 20) >> 4; z++) {
+                var chunk = level.getChunkSource().getChunkNow(x, z);
+                if (chunk == null) continue;
+                for (var blockEntity : chunk.getBlockEntities().values()) {
+                    if (!regulatorEffect.getDeclaringClass().isInstance(blockEntity)) continue;
+                    BlockState state = blockEntity.getBlockState();
+                    if (state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.ENABLED)
+                            && !state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.ENABLED)) continue;
+                    try {
+                        switch (((Enum<?>) regulatorEffect.invoke(blockEntity, pos)).name()) {
+                            case "HEATING" -> heating++;
+                            case "COOLING" -> cooling++;
+                            case "NEUTRALIZING" -> neutral++;
+                        }
+                    } catch (ReflectiveOperationException e) {
+                        Townstead.LOGGER.debug("Unable to query TAN regulator at {}", blockEntity.getBlockPos(), e);
+                    }
+                }
+            }
+        }
+        return TanTemperaturePolicy.regulate(ambient, heating, cooling, neutral);
+    }
 
     @Override
     public String id() {
@@ -131,6 +160,12 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
             return;
         }
         registerProximityModifier(helper);
+        try {
+            regulatorEffect = Class.forName("toughasnails.block.entity.ThermoregulatorBlockEntity")
+                    .getMethod("getEffectAtPos", BlockPos.class);
+        } catch (ReflectiveOperationException e) {
+            Townstead.LOGGER.warn("Tough As Nails regulator coverage API unavailable", e);
+        }
     }
 
     /** Townstead's heat and cooling sources become Tough As Nails proximity blocks, so the player feels the villagers' hearth. */

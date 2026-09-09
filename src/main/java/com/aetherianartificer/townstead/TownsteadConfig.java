@@ -302,10 +302,10 @@ public final class TownsteadConfig {
             PREFERRED_THIRST_BACKEND = b
                     .translation("townstead.configuration.needs.thirst.preferredBackend")
                     .comment("Which thirst mod drives villager thirst when more than one is installed.",
-                             "\"auto\" prefers Legendary Survival Overhaul, then Thirst Was Reclaimed / Thirst Was Taken.",
-                             "\"legendary_survival_overhaul\" or \"thirst\" pins that backend, falling back to the other if it is not installed.")
+                             "\"auto\" prefers Legendary Survival Overhaul, then Thirst Was Reclaimed / Thirst Was Taken, then Tough As Nails.",
+                             "\"legendary_survival_overhaul\", \"thirst\" or \"tough_as_nails\" pins that backend, falling back to an installed backend.")
                     // Arrays.asList, not List.of: correct() probes missing keys with null and List.of.contains(null) throws.
-                    .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "thirst"));
+                    .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "thirst", "tough_as_nails"));
             b.pop();
         } else {
             ENABLE_SELF_INVENTORY_DRINKING = null;
@@ -784,7 +784,8 @@ public final class TownsteadConfig {
     }
 
     public static boolean isVillagerThirstEnabled() {
-        return ENABLE_VILLAGER_THIRST != null && ENABLE_VILLAGER_THIRST.get();
+        return ENABLE_VILLAGER_THIRST != null && ENABLE_VILLAGER_THIRST.get()
+                && com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver.isActive();
     }
 
     public static boolean isThirstLethalFallbackEnabled() {

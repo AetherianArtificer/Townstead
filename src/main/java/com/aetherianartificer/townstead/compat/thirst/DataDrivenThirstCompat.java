@@ -42,6 +42,21 @@ public final class DataDrivenThirstCompat {
 
     private DataDrivenThirstCompat() {}
 
+    /** TAN has tag-based lookups rather than a mutable consumable manager. */
+    public static NeedEffectProjection tanProjection(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return NeedEffectProjection.NONE;
+        Consumables.ResolvedEffect entry = resolved.get(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+        // Read the unmodified tags, never the patched TAN lookup (which would recurse).
+        return tanProjection(entry, entry != null && entry.fallback()
+                && ToughAsNailsThirstBridge.INSTANCE.itemRestoresThirst(stack));
+    }
+
+    static NeedEffectProjection tanProjection(Consumables.ResolvedEffect entry, boolean nativeDrink) {
+        if (entry == null || (entry.fallback() && nativeDrink))
+            return NeedEffectProjection.NONE;
+        return entry.projection();
+    }
+
     /** Installs the server's freshly reloaded definitions. */
     public static synchronized void refresh() {
         installResolved(Consumables.resolvedEffects());

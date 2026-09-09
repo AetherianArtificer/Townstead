@@ -81,6 +81,15 @@ public final class ProfessionCarriers {
             return current.carriers();
         }
         List<VillagerProfession> carriers = new ArrayList<>();
+        // A native career can itself declare grouped job blocks. Exclude its raw POI from
+        // vanilla hiring too, otherwise each regulator still creates an additional worker.
+        for (ProfessionDef def : defs.values()) {
+            if (!ProfessionAutoAssign.managesDefinition(def) || !ProfessionAutoAssign.enabled(def)) continue;
+            VillagerProfession profession = BuiltInRegistries.VILLAGER_PROFESSION
+                    .getOptional(def.id()).orElse(null);
+            if (profession != null && profession != VillagerProfession.NONE
+                    && profession.heldJobSite() != PoiType.NONE) carriers.add(profession);
+        }
         for (Map.Entry<ResourceLocation, ProfessionDefs.Resolution> entry
                 : ProfessionDefs.compatibility().entrySet()) {
             ProfessionDef def = carriedCareer(entry.getKey());

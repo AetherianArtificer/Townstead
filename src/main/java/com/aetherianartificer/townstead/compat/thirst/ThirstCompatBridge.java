@@ -16,6 +16,8 @@ public interface ThirstCompatBridge {
     int PURITY_PURIFIED = 3;
 
     boolean isActive();
+    /** Live backend toggle, separate from installation/API availability. */
+    default boolean isThirstEnabled() { return true; }
     boolean itemRestoresThirst(ItemStack stack);
     boolean isDrink(ItemStack stack);
     boolean isPurityWaterContainer(ItemStack stack);
@@ -32,6 +34,8 @@ public interface ThirstCompatBridge {
     ResourceLocation iconTexture();
 
     boolean supportsPurification();
+    /** Whether the shared boiling workflow can process this vessel. */
+    default boolean canBoil(ItemStack stack) { return isPurityWaterContainer(stack); }
 
     /**
      * The item an ordered purification line wears and counts, or null for the vanilla water

@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": [
+    "toughasnails"
+  ],
+  "items": [
+    "minecraft:potion"
+  ],
+  "transaction": {
+    "mode": "replace_with_pheno",
+    "accounting": "consume_one",
+    "consumers": [
+      "villager"
+    ],
+    "remainder": {
+      "mode": "native"
+    }
+  },
+  "effects": {
+    "type": "pheno:if_else",
+    "condition": {
+      "type": "pheno:chance",
+      "chance": 0.25
+    },
+    "if_action": {
+      "type": "pheno:apply_effect",
+      "effect": "toughasnails:thirst",
+      "duration": 600
+    }
+  }
+}

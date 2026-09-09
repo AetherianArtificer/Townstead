@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": [
+    "toughasnails"
+  ],
+  "items": [
+    "toughasnails:charc_os"
+  ],
+  "effects": {
+    "type": "pheno:apply_effect",
+    "effect": "toughasnails:internal_warmth",
+    "duration": 1200
+  },
+  "transaction": {
+    "mode": "replace_with_pheno",
+    "accounting": "consume_one",
+    "consumers": [
+      "villager"
+    ],
+    "remainder": {
+      "mode": "item",
+      "item": "minecraft:bowl",
+      "destination": "storage"
+    }
+  }
+}

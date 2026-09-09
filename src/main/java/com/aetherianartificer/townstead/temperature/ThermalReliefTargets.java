@@ -49,10 +49,22 @@ public final class ThermalReliefTargets {
         List<ReachableTargetSelector.Candidate<BlockPos>> amenities = new ArrayList<>();
         for (Amenities.Candidate candidate : Amenities.candidates(level, villager)) {
             if (!kind.equals(candidate.kind())) continue;
-            if (cold && !ThermalBlocks.isHeatSource(level, candidate.pos(), level.getBlockState(candidate.pos()))) continue;
-            amenities.add(new ReachableTargetSelector.Candidate<>(candidate.pos(), candidate.pos()));
+            // Stateful amenities declare their own availability (including machines with no heat-source tag).
+            if (cold && (candidate.definition() == null || candidate.definition().requires() == null)
+                    && !ThermalBlocks.isHeatSource(level, candidate.pos(), level.getBlockState(candidate.pos()))) continue;
+            if (candidate.definition() != null && candidate.definition().requires() != null) {
+                float current = TemperatureData.ambientCelsius(level, here);
+                BlockPos relief = ThermalBlocks.nearestStandable(level, candidate.pos(), 2, pos -> {
+                    float at = TemperatureData.ambientCelsius(level, pos);
+                    return cold ? at > current : at < current;
+                });
+                if (relief != null) amenities.add(new ReachableTargetSelector.Candidate<>(relief, relief));
+            } else {
+                BlockPos stand = ThermalBlocks.nearestStandable(level, candidate.pos(), 2, pos -> true);
+                if (stand != null) amenities.add(new ReachableTargetSelector.Candidate<>(stand, stand));
+            }
         }
-        BlockPos chosen = choose(level, villager, amenities);
+        BlockPos chosen = chooseStandPositions(level, villager, amenities);
         if (chosen != null) return new Target(chosen, kind);
 
         List<ReachableTargetSelector.Candidate<BlockPos>> sets = new ArrayList<>();
@@ -126,7 +138,12 @@ public final class ThermalReliefTargets {
             BlockPos stand = ThermalBlocks.nearestStandable(level, candidate.pos(), 2, pos -> true);
             if (stand != null) dry.add(new ReachableTargetSelector.Candidate<>(stand, stand));
         }
-        candidates = dry;
+        return chooseStandPositions(level, villager, dry);
+    }
+
+    private static @Nullable BlockPos chooseStandPositions(ServerLevel level, VillagerEntityMCA villager,
+            List<ReachableTargetSelector.Candidate<BlockPos>> candidates) {
+        if (candidates.isEmpty()) return null;
         return ReachableTargetSelector.chooseReachable(level, villager, candidates, CLOSE_ENOUGH, MAX_PATH_ATTEMPTS,
                 UNREACHABLE_TTL_TICKS, candidate -> villager.distanceToSqr(candidate.pos().getX() + 0.5,
                         candidate.pos().getY() + 0.5, candidate.pos().getZ() + 0.5));

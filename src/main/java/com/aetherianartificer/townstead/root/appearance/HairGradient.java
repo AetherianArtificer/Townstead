@@ -4,8 +4,12 @@ import net.minecraft.util.RandomSource;
 
 import java.util.List;
 
-/** A weighted, multi-stop RGB or HSV fantasy hair gradient. */
-public record HairGradient(List<Integer> stops, int weight, Space space) {
+/**
+ * A weighted, multi-stop RGB or HSV fantasy hair gradient, with an optional display name:
+ * {@code name} is the server-resolved string, {@code nameKey} its translate key (empty for a
+ * literal). Shown as the editor bar's tooltip.
+ */
+public record HairGradient(List<Integer> stops, int weight, Space space, String name, String nameKey) {
 
     public enum Space {
         RGB, HSV;
@@ -19,6 +23,23 @@ public record HairGradient(List<Integer> stops, int weight, Space space) {
         stops = stops == null ? List.of() : stops.stream().map(rgb -> rgb & 0xFFFFFF).toList();
         weight = Math.max(0, weight);
         space = space == null ? Space.HSV : space;
+        name = name == null ? "" : name;
+        nameKey = nameKey == null ? "" : nameKey;
+    }
+
+    public HairGradient(List<Integer> stops, int weight, Space space) {
+        this(stops, weight, space, "", "");
+    }
+
+    public HairGradient(List<Integer> stops, int weight, Space space, String name) {
+        this(stops, weight, space, name, "");
+    }
+
+    /** The display name for the editor, or null when the pack gave none. */
+    public net.minecraft.network.chat.Component displayName() {
+        if (name.isEmpty() && nameKey.isEmpty()) return null;
+        return nameKey.isEmpty() ? net.minecraft.network.chat.Component.literal(name)
+                : net.minecraft.network.chat.Component.translatableWithFallback(nameKey, name);
     }
 
     public int sample(RandomSource random) {

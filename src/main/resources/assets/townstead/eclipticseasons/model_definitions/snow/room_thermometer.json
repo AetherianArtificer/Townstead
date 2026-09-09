@@ -2,83 +2,307 @@
   "require": "eclipticseasons",
   "replace": false,
   "variants": {
-    "facing=north,temperature=freezing": {
+    "facing=north,level=0": {
       "model": "townstead:block/snow/cap_7b99ee633a65",
       "y": 0
     },
-    "facing=east,temperature=freezing": {
+    "facing=east,level=0": {
       "model": "townstead:block/snow/cap_7b99ee633a65",
       "y": 90
     },
-    "facing=south,temperature=freezing": {
+    "facing=south,level=0": {
       "model": "townstead:block/snow/cap_7b99ee633a65",
       "y": 180
     },
-    "facing=west,temperature=freezing": {
+    "facing=west,level=0": {
       "model": "townstead:block/snow/cap_7b99ee633a65",
       "y": 270
     },
-    "facing=north,temperature=cold": {
+    "facing=north,level=1": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 0
+    },
+    "facing=east,level=1": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 90
+    },
+    "facing=south,level=1": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 180
+    },
+    "facing=west,level=1": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 270
+    },
+    "facing=north,level=2": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 0
+    },
+    "facing=east,level=2": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 90
+    },
+    "facing=south,level=2": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 180
+    },
+    "facing=west,level=2": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 270
+    },
+    "facing=north,level=3": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 0
+    },
+    "facing=east,level=3": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 90
+    },
+    "facing=south,level=3": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 180
+    },
+    "facing=west,level=3": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 270
+    },
+    "facing=north,level=4": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 0
+    },
+    "facing=east,level=4": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 90
+    },
+    "facing=south,level=4": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 180
+    },
+    "facing=west,level=4": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 270
+    },
+    "facing=north,level=5": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 0
+    },
+    "facing=east,level=5": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 90
+    },
+    "facing=south,level=5": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 180
+    },
+    "facing=west,level=5": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 270
+    },
+    "facing=north,level=6": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 0
+    },
+    "facing=east,level=6": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 90
+    },
+    "facing=south,level=6": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 180
+    },
+    "facing=west,level=6": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 270
+    },
+    "facing=north,level=7": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 0
+    },
+    "facing=east,level=7": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 90
+    },
+    "facing=south,level=7": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 180
+    },
+    "facing=west,level=7": {
+      "model": "townstead:block/snow/cap_7b99ee633a65",
+      "y": 270
+    },
+    "facing=north,level=8": {
       "model": "townstead:block/snow/cap_eccaeb1dd049",
       "y": 0
     },
-    "facing=east,temperature=cold": {
+    "facing=east,level=8": {
       "model": "townstead:block/snow/cap_eccaeb1dd049",
       "y": 90
     },
-    "facing=south,temperature=cold": {
+    "facing=south,level=8": {
       "model": "townstead:block/snow/cap_eccaeb1dd049",
       "y": 180
     },
-    "facing=west,temperature=cold": {
+    "facing=west,level=8": {
       "model": "townstead:block/snow/cap_eccaeb1dd049",
       "y": 270
     },
-    "facing=north,temperature=mild": {
+    "facing=north,level=9": {
+      "model": "townstead:block/snow/cap_eccaeb1dd049",
+      "y": 0
+    },
+    "facing=east,level=9": {
+      "model": "townstead:block/snow/cap_eccaeb1dd049",
+      "y": 90
+    },
+    "facing=south,level=9": {
+      "model": "townstead:block/snow/cap_eccaeb1dd049",
+      "y": 180
+    },
+    "facing=west,level=9": {
+      "model": "townstead:block/snow/cap_eccaeb1dd049",
+      "y": 270
+    },
+    "facing=north,level=10": {
+      "model": "townstead:block/snow/cap_eccaeb1dd049",
+      "y": 0
+    },
+    "facing=east,level=10": {
+      "model": "townstead:block/snow/cap_eccaeb1dd049",
+      "y": 90
+    },
+    "facing=south,level=10": {
+      "model": "townstead:block/snow/cap_eccaeb1dd049",
+      "y": 180
+    },
+    "facing=west,level=10": {
+      "model": "townstead:block/snow/cap_eccaeb1dd049",
+      "y": 270
+    },
+    "facing=north,level=11": {
       "model": "townstead:block/snow/cap_1efa0f65b72d",
       "y": 0
     },
-    "facing=east,temperature=mild": {
+    "facing=east,level=11": {
       "model": "townstead:block/snow/cap_1efa0f65b72d",
       "y": 90
     },
-    "facing=south,temperature=mild": {
+    "facing=south,level=11": {
       "model": "townstead:block/snow/cap_1efa0f65b72d",
       "y": 180
     },
-    "facing=west,temperature=mild": {
+    "facing=west,level=11": {
       "model": "townstead:block/snow/cap_1efa0f65b72d",
       "y": 270
     },
-    "facing=north,temperature=warm": {
+    "facing=north,level=12": {
+      "model": "townstead:block/snow/cap_1efa0f65b72d",
+      "y": 0
+    },
+    "facing=east,level=12": {
+      "model": "townstead:block/snow/cap_1efa0f65b72d",
+      "y": 90
+    },
+    "facing=south,level=12": {
+      "model": "townstead:block/snow/cap_1efa0f65b72d",
+      "y": 180
+    },
+    "facing=west,level=12": {
+      "model": "townstead:block/snow/cap_1efa0f65b72d",
+      "y": 270
+    },
+    "facing=north,level=13": {
       "model": "townstead:block/snow/cap_9253c36d7255",
       "y": 0
     },
-    "facing=east,temperature=warm": {
+    "facing=east,level=13": {
       "model": "townstead:block/snow/cap_9253c36d7255",
       "y": 90
     },
-    "facing=south,temperature=warm": {
+    "facing=south,level=13": {
       "model": "townstead:block/snow/cap_9253c36d7255",
       "y": 180
     },
-    "facing=west,temperature=warm": {
+    "facing=west,level=13": {
       "model": "townstead:block/snow/cap_9253c36d7255",
       "y": 270
     },
-    "facing=north,temperature=hot": {
+    "facing=north,level=14": {
+      "model": "townstead:block/snow/cap_9253c36d7255",
+      "y": 0
+    },
+    "facing=east,level=14": {
+      "model": "townstead:block/snow/cap_9253c36d7255",
+      "y": 90
+    },
+    "facing=south,level=14": {
+      "model": "townstead:block/snow/cap_9253c36d7255",
+      "y": 180
+    },
+    "facing=west,level=14": {
+      "model": "townstead:block/snow/cap_9253c36d7255",
+      "y": 270
+    },
+    "facing=north,level=15": {
       "model": "townstead:block/snow/cap_c5fc51a007cb",
       "y": 0
     },
-    "facing=east,temperature=hot": {
+    "facing=east,level=15": {
       "model": "townstead:block/snow/cap_c5fc51a007cb",
       "y": 90
     },
-    "facing=south,temperature=hot": {
+    "facing=south,level=15": {
       "model": "townstead:block/snow/cap_c5fc51a007cb",
       "y": 180
     },
-    "facing=west,temperature=hot": {
+    "facing=west,level=15": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 270
+    },
+    "facing=north,level=16": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 0
+    },
+    "facing=east,level=16": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 90
+    },
+    "facing=south,level=16": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 180
+    },
+    "facing=west,level=16": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 270
+    },
+    "facing=north,level=17": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 0
+    },
+    "facing=east,level=17": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 90
+    },
+    "facing=south,level=17": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 180
+    },
+    "facing=west,level=17": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 270
+    },
+    "facing=north,level=18": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 0
+    },
+    "facing=east,level=18": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 90
+    },
+    "facing=south,level=18": {
+      "model": "townstead:block/snow/cap_c5fc51a007cb",
+      "y": 180
+    },
+    "facing=west,level=18": {
       "model": "townstead:block/snow/cap_c5fc51a007cb",
       "y": 270
     }

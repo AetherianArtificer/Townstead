@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:profession/v2",
+  "mods": [
+    "toughasnails"
+  ],
+  "display_name": {
+    "translate": "entity.minecraft.villager.toughasnails.climatologist"
+  },
+  "description": {
+    "text": "Keeps village thermoregulators supplied with heating and cooling fuel to maintain a balanced climate."
+  },
+  "icon": "toughasnails:thermoregulator",
+  "unlock_model": "experiential"
+}

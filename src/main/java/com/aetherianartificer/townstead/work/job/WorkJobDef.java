@@ -183,7 +183,18 @@ public record WorkJobDef(
                               @Nullable BlockCondition condition,
                               BlockAction action, Set<ResourceLocation> outputs,
                               int expectedCount, int xp,
-                              @Nullable ResourceLocation activity) {
+                              @Nullable ResourceLocation activity, List<String> sourceBuildings) {
+
+        public Interaction(@Nullable String item, @Nullable ItemCondition itemCondition,
+                           @Nullable BlockCondition condition, BlockAction action,
+                           Set<ResourceLocation> outputs, int expectedCount, int xp,
+                           @Nullable ResourceLocation activity) {
+            this(item, itemCondition, condition, action, outputs, expectedCount, xp, activity, List.of());
+        }
+
+        public boolean matchesSourceBuilding(String type) {
+            return matchesBuildingPattern(sourceBuildings, type);
+        }
 
         /** The interaction's more precise counter, or the Job's stable id for v3 compatibility. */
         public String activityKey(WorkJobDef job) {
@@ -417,8 +428,13 @@ public record WorkJobDef(
             if (xp < 1 || expectedCount < 1 || (item == null && !explicitAction)
                     || (!explicitAction && outputs.isEmpty())
                     || (json.has("activity") && activity == null)) return null;
+            List<String> sourceBuildings = strings(json.get("source_buildings"));
+            // An explicitly supplied restriction must never silently become unrestricted.
+            if (sourceBuildings == null || (json.has("source_buildings")
+                    && (item == null || sourceBuildings.isEmpty()
+                    || sourceBuildings.stream().anyMatch(String::isBlank)))) return null;
             interactions.add(new Interaction(item, itemCondition, condition, action,
-                    Set.copyOf(outputs), expectedCount, xp, activity));
+                    Set.copyOf(outputs), expectedCount, xp, activity, List.copyOf(sourceBuildings)));
         }
         return List.copyOf(interactions);
     }

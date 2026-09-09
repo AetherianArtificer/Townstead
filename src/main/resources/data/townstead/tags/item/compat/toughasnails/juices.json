@@ -1,0 +1,33 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "toughasnails:apple_juice",
+      "required": false
+    },
+    {
+      "id": "toughasnails:cactus_juice",
+      "required": false
+    },
+    {
+      "id": "toughasnails:chorus_fruit_juice",
+      "required": false
+    },
+    {
+      "id": "toughasnails:glow_berry_juice",
+      "required": false
+    },
+    {
+      "id": "toughasnails:melon_juice",
+      "required": false
+    },
+    {
+      "id": "toughasnails:pumpkin_juice",
+      "required": false
+    },
+    {
+      "id": "toughasnails:sweet_berry_juice",
+      "required": false
+    }
+  ]
+}

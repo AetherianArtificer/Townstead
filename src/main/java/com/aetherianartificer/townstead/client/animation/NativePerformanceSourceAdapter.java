@@ -6,6 +6,7 @@ import com.aetherianartificer.townstead.client.animation.nativeclip.NativeClipRe
 import com.aetherianartificer.townstead.client.animation.nativeclip.NativePlaybackRegistry;
 import com.aetherianartificer.townstead.client.animation.nativeclip.BedrockPerformanceClip;
 import com.aetherianartificer.townstead.client.animation.nativeclip.BedrockPerformanceSampler;
+import com.aetherianartificer.townstead.client.animation.nativeclip.NativeLocomotionPolicy;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -34,7 +35,8 @@ public final class NativePerformanceSourceAdapter implements AnimationSourceAdap
             BedrockPerformanceClip bedrock = NativeClipRegistry.getBedrock(playback.clip()).orElse(null);
             if (bedrock != null) {
                 List<AnimationTransform> sampled = BedrockPerformanceSampler.sample(bedrock,
-                        (now - playback.startedAt()) + partial, playback.expiresAt() - now - partial, hostTargets);
+                        (now - playback.startedAt()) + partial, playback.expiresAt() - now - partial, hostTargets,
+                        mounted ? 1F : NativeLocomotionPolicy.lowerBodyWeight(playback.clip(), context.limbDistance()));
                 for (AnimationTransform transform : sampled) {
                     boolean furnitureLegs = transform.target().endsWith("_leg")
                             && !clipName.equals("tap_foot") && !clipName.equals("stool_sit")

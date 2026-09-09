@@ -70,6 +70,8 @@ public record ExpressedGenesS2CPayload(int entityId, List<String> genes, boolean
         for (var color : hairColors) {
             buf.writeInt(color.rgb());
             buf.writeVarInt(color.weight());
+            buf.writeUtf(color.name());
+            buf.writeUtf(color.nameKey());
         }
         buf.writeVarInt(hairGradients.size());
         for (var gradient : hairGradients) {
@@ -77,6 +79,8 @@ public record ExpressedGenesS2CPayload(int entityId, List<String> genes, boolean
             for (int stop : gradient.stops()) buf.writeInt(stop);
             buf.writeVarInt(gradient.weight());
             buf.writeEnum(gradient.space());
+            buf.writeUtf(gradient.name());
+            buf.writeUtf(gradient.nameKey());
         }
     }
 
@@ -97,7 +101,7 @@ public record ExpressedGenesS2CPayload(int entityId, List<String> genes, boolean
         List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> colors = new ArrayList<>(colorCount);
         for (int i = 0; i < colorCount; i++) {
             colors.add(new com.aetherianartificer.townstead.root.appearance.HairColorChoice(
-                    buf.readInt(), buf.readVarInt()));
+                    buf.readInt(), buf.readVarInt(), buf.readUtf(), buf.readUtf()));
         }
         int gradientCount = buf.readVarInt();
         List<com.aetherianartificer.townstead.root.appearance.HairGradient> gradients = new ArrayList<>(gradientCount);
@@ -107,7 +111,8 @@ public record ExpressedGenesS2CPayload(int entityId, List<String> genes, boolean
             for (int j = 0; j < stopCount; j++) stops.add(buf.readInt());
             gradients.add(new com.aetherianartificer.townstead.root.appearance.HairGradient(
                     stops, buf.readVarInt(),
-                    buf.readEnum(com.aetherianartificer.townstead.root.appearance.HairGradient.Space.class)));
+                    buf.readEnum(com.aetherianartificer.townstead.root.appearance.HairGradient.Space.class),
+                    buf.readUtf(), buf.readUtf()));
         }
         return new ExpressedGenesS2CPayload(entityId, genes, hair, ranges, colors, gradients);
     }

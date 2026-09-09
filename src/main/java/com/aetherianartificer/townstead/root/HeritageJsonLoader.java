@@ -53,7 +53,7 @@ public final class HeritageJsonLoader extends SimpleJsonResourceReloadListener {
                     continue;
                 }
                 parsed.put(file, new HeritageProfile(file, displayName, demonym, backstory, priority, match));
-                hairPolicies.put(file, com.aetherianartificer.townstead.root.appearance.HairPolicy.parse(obj));
+                hairPolicies.put(file, com.aetherianartificer.townstead.root.appearance.HairPolicy.parse(obj, lang));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse heritage {}: {}", file, ex.getMessage());
             }

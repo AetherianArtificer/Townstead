@@ -43,6 +43,11 @@ public record HairPolicy(Boolean enabled, List<HairColorRange> colorRanges,
 
     /** Accepts either {@code "hair": false} or {@code "hair": {"enabled": false}}. */
     public static HairPolicy parse(JsonObject owner) {
+        return parse(owner, java.util.Map.of());
+    }
+
+    /** As {@link #parse(JsonObject)}, resolving colour {@code name} translate keys against the pack's lang sidecar. */
+    public static HairPolicy parse(JsonObject owner, java.util.Map<String, String> lang) {
         if (owner == null || !owner.has("hair")) return INHERIT;
         JsonElement value = owner.get("hair");
         if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isBoolean()) {
@@ -55,15 +60,29 @@ public record HairPolicy(Boolean enabled, List<HairColorRange> colorRanges,
                     && enabled.getAsJsonPrimitive().isBoolean()
                     ? enabled.getAsBoolean() : null;
             List<HairColorRange> ranges = parseRanges(object);
-            List<HairColorChoice> colors = parseColors(object);
-            List<HairGradient> gradients = parseGradients(object);
+            List<HairColorChoice> colors = parseColors(object, lang);
+            List<HairGradient> gradients = parseGradients(object, lang);
             return enabledValue == null && ranges.isEmpty() && colors.isEmpty() && gradients.isEmpty()
                     ? INHERIT : new HairPolicy(enabledValue, ranges, colors, gradients);
         }
         return INHERIT;
     }
 
-    private static List<HairGradient> parseGradients(JsonObject object) {
+    /**
+     * A colour {@code name}: a literal string, {@code {"text": …}}, or {@code {"translate": …}}
+     * resolved through the pack's lang sidecar like every other data-pack display string.
+     * Returns {resolved text, translate key}; the key is empty for a literal.
+     */
+    private static String[] parseName(JsonElement el, java.util.Map<String, String> lang) {
+        if (el == null || el.isJsonNull()) return new String[]{"", ""};
+        net.minecraft.network.chat.Component component =
+                com.aetherianartificer.townstead.data.DataPackLang.parseComponent(el, "", lang);
+        String key = component.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents tc
+                ? tc.getKey() : "";
+        return new String[]{component.getString(), key};
+    }
+
+    private static List<HairGradient> parseGradients(JsonObject object, java.util.Map<String, String> lang) {
         JsonElement raw = object.has("gradients") ? object.get("gradients") : object.get("color_gradients");
         if (raw == null || !raw.isJsonArray()) return List.of();
         List<HairGradient> gradients = new ArrayList<>();
@@ -86,18 +105,20 @@ public record HairPolicy(Boolean enabled, List<HairColorRange> colorRanges,
             if (stops.size() < 2) continue;
             int weight = positiveInt(gradient.get("weight"), 1);
             String space = stringValue(gradient, "space", "hsv");
-            gradients.add(new HairGradient(stops, weight, HairGradient.Space.parse(space)));
+            String[] name = parseName(gradient.get("name"), lang);
+            gradients.add(new HairGradient(stops, weight, HairGradient.Space.parse(space), name[0], name[1]));
         }
         return List.copyOf(gradients);
     }
 
-    private static List<HairColorChoice> parseColors(JsonObject object) {
+    private static List<HairColorChoice> parseColors(JsonObject object, java.util.Map<String, String> lang) {
         JsonElement raw = object.get("colors");
         if (raw == null || !raw.isJsonArray()) return List.of();
         List<HairColorChoice> colors = new ArrayList<>();
         for (JsonElement entry : raw.getAsJsonArray()) {
             String value = null;
             int weight = 1;
+            String[] name = {"", ""};
             if (entry.isJsonPrimitive() && entry.getAsJsonPrimitive().isString()) {
                 value = entry.getAsString();
             } else if (entry.isJsonObject()) {
@@ -106,9 +127,10 @@ public record HairPolicy(Boolean enabled, List<HairColorRange> colorRanges,
                     value = choice.get("color").getAsString();
                 }
                 weight = positiveInt(choice.get("weight"), 1);
+                name = parseName(choice.get("name"), lang);
             }
             Integer rgb = parseRgb(value);
-            if (rgb != null) colors.add(new HairColorChoice(rgb, weight));
+            if (rgb != null) colors.add(new HairColorChoice(rgb, weight, name[0], name[1]));
         }
         return List.copyOf(colors);
     }

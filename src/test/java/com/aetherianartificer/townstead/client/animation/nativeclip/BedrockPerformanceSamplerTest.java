@@ -11,6 +11,47 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class BedrockPerformanceSamplerTest {
     @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"shiver", "sweat", "cry", "laugh", "laugh_demure"})
+    void mobileReactionsReleaseLegsButKeepUpperBody(String name) throws Exception {
+        try (var stream = getClass().getResourceAsStream(
+                "/assets/townstead_performance/animations/townstead/" + name + ".animation.json")) {
+            assertNotNull(stream);
+            var clip = BedrockPerformanceClip.parse(JsonParser.parseReader(
+                    new java.io.InputStreamReader(stream, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject())
+                    .get("animation." + name);
+            var id = net.minecraft.resources.ResourceLocation.tryParse("townstead_performance:" + name);
+            var targets = targets();
+            targets.resolve("left_leg").orElseThrow().xRot = .6F;
+            targets.resolve("right_leg").orElseThrow().xRot = -.6F;
+            var standing = BedrockPerformanceSampler.sample(clip, 16, 100, targets,
+                    NativeLocomotionPolicy.lowerBodyWeight(id, 0));
+            var walking = BedrockPerformanceSampler.sample(clip, 16, 100, targets,
+                    NativeLocomotionPolicy.lowerBodyWeight(id, .2F));
+            assertFalse(walking.isEmpty());
+            assertTrue(walking.stream().noneMatch(t -> t.target().endsWith("_leg")));
+            assertEquals(standing.stream().filter(t -> !t.target().endsWith("_leg")).toList(), walking);
+            assertEquals(.6F, targets.resolve("left_leg").orElseThrow().xRot);
+            if (!name.equals("sweat")) {
+                assertTrue(standing.stream().anyMatch(t -> t.target().endsWith("_leg") && t.applyBend()));
+                var transitioning = BedrockPerformanceSampler.sample(clip, 16, 100, targets,
+                        NativeLocomotionPolicy.lowerBodyWeight(id, .05F));
+                var standingLeg = standing.stream().filter(t -> t.target().equals("left_leg") && t.xRot() != null).findFirst().orElseThrow();
+                var blendedLeg = transitioning.stream().filter(t -> t.target().equals("left_leg") && t.xRot() != null).findFirst().orElseThrow();
+                assertEquals((.6F + standingLeg.xRot()) / 2F, blendedLeg.xRot(), .0001F);
+            }
+        }
+    }
+
+    @Test void locomotionPolicyPreservesIntentionalFullBodyAndExternalClips() {
+        for (String name : List.of("stool_sit", "recline", "recline_lounger", "relaxed_lean", "tap_foot", "startled", "cheer_excited")) {
+            assertEquals(1F, NativeLocomotionPolicy.lowerBodyWeight(
+                    net.minecraft.resources.ResourceLocation.tryParse("townstead_performance:" + name), 1F));
+        }
+        assertEquals(1F, NativeLocomotionPolicy.lowerBodyWeight(
+                net.minecraft.resources.ResourceLocation.tryParse("custom:shiver"), 1F));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({
             "shiver,16,right,35,65,-8,76,1",
             "shiver,16,left,43,-65,8,82,-1",
