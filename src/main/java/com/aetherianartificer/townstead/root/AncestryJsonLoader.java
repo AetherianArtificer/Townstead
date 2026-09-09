@@ -37,6 +37,7 @@ public final class AncestryJsonLoader extends SimpleJsonResourceReloadListener {
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
         Map<ResourceLocation, Ancestry> parsed = new LinkedHashMap<>();
         Map<ResourceLocation, Personalities> policies = new LinkedHashMap<>();
+        Map<ResourceLocation, com.aetherianartificer.townstead.root.appearance.HairPolicy> hairPolicies = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
             String ctx = file.toString();
@@ -49,14 +50,18 @@ public final class AncestryJsonLoader extends SimpleJsonResourceReloadListener {
                 Component backstory = RootJsonParsing.backstory(obj, ctx, lang);
                 Genome genome = RootJsonParsing.genes(obj, ctx, LOGGER);
                 SpawnBias spawnBias = RootJsonParsing.spawnBias(obj, ctx, LOGGER);
-                parsed.put(file, new Ancestry(file, displayName, species, demonym, backstory, genome, spawnBias));
+                com.aetherianartificer.townstead.culture.CulturalSpawnBias culturalSpawnBias = com.aetherianartificer.townstead.culture.CulturalSpawnBias.parse(obj);
+                parsed.put(file, new Ancestry(file, displayName, species, demonym, backstory, genome, spawnBias,
+                        culturalSpawnBias));
                 policies.put(file, PersonalityPolicies.parse(obj));
+                hairPolicies.put(file, com.aetherianartificer.townstead.root.appearance.HairPolicy.parse(obj));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse ancestry {}: {}", file, ex.getMessage());
             }
         }
         AncestryRegistry.replaceAll(parsed);
         PersonalityPolicyRegistry.setAncestry(policies);
+        com.aetherianartificer.townstead.root.appearance.HairPolicyRegistry.setAncestry(hairPolicies);
         LOGGER.info("Loaded {} origin ancestries", parsed.size());
     }
 }

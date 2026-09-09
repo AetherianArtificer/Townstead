@@ -80,7 +80,10 @@ public class RpgDialogueScreen extends Screen {
     @Override
     protected void init() {
         dialogueBox.layout(width, height);
-        dialogueBox.setVillagerName(villager.asEntity().getDisplayName());
+        // The header names whoever you are talking to, so it shows their full name: the
+        // family name their culture gave them, not just the given name MCA tracks.
+        dialogueBox.setVillagerName(
+                com.aetherianartificer.townstead.client.naming.ClientNames.displayName(villager.asEntity()));
         choicePanel.layout(width, height, dialogueBox.getY());
 
         if (!initialized) {

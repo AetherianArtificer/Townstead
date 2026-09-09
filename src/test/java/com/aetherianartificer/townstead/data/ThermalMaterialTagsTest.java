@@ -6,10 +6,17 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 class ThermalMaterialTagsTest {
     private JsonArray values(String name) throws Exception {
-        try (var stream=getClass().getClassLoader().getResourceAsStream("data/townstead/tags/block/thermal/"+name+".json")) {
+        try (var stream=getClass().getClassLoader().getResourceAsStream("data/townstead/tags/" + blockTagDirectory() + "/thermal/"+name+".json")) {
             assertNotNull(stream);
             return JsonParser.parseReader(new InputStreamReader(stream,StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonArray("values");
         }
+    }
+    private String blockTagDirectory() {
+        //? if >=1.21 {
+        return "block";
+        //?} else {
+        /*return "blocks";
+        *///?}
     }
     @Test void commonWallsAreNotClassedAsPurposeBuiltInsulation() throws Exception {
         var insulation=values("insulating_blocks");

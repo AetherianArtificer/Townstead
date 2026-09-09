@@ -935,6 +935,13 @@ public final class TownsteadVillager {
         private int birthDay;
         private String rootId = "";
         private String personalityId = "";
+        // Civic culture, and the naming that follows from it. Cultural, never ethnic: inherited
+        // from the household, from the village, or rolled from the root's bias only for a founder
+        // who has neither. nameList is which of the culture's given-name lists this villager was
+        // named from, rolled once; familyName is the resolved surname. See naming/Naming.
+        private String culture = "";
+        private String nameList = "";
+        private String familyName = "";
         private int[] stageDays = EMPTY_INT_ARRAY;
         private int cycleFingerprint;
         private String currentStageId = "";
@@ -1032,6 +1039,40 @@ public final class TownsteadVillager {
 
         public void setPersonalityId(String id) {
             personalityId = id == null ? "" : id;
+            markDirty();
+        }
+
+        /**
+         * The civic culture this villager belongs to, empty until one is recorded. Held by people
+         * and communities, never by species: see
+         * {@link com.aetherianartificer.townstead.naming.Naming}.
+         */
+        public String culture() {
+            return culture;
+        }
+
+        public void setCulture(String id) {
+            culture = id == null ? "" : id;
+            markDirty();
+        }
+
+        /** Which of the culture's given-name lists named this villager, rolled once at naming. */
+        public String nameList() {
+            return nameList;
+        }
+
+        public void setNameList(String reference) {
+            nameList = reference == null ? "" : reference;
+            markDirty();
+        }
+
+        /** The resolved family name, empty when this villager's tradition gives none. */
+        public String familyName() {
+            return familyName;
+        }
+
+        public void setFamilyName(String name) {
+            familyName = name == null ? "" : name;
             markDirty();
         }
 
@@ -1215,6 +1256,9 @@ public final class TownsteadVillager {
             if (!personalityId.isEmpty()) {
                 tag.putString("personalityId", personalityId);
             }
+            if (!culture.isEmpty()) tag.putString("culture", culture);
+            if (!nameList.isEmpty()) tag.putString("nameList", nameList);
+            if (!familyName.isEmpty()) tag.putString("familyName", familyName);
             if (stageDays.length > 0) {
                 tag.putIntArray("stageDays", stageDays.clone());
             }
@@ -1259,6 +1303,9 @@ public final class TownsteadVillager {
             birthDay = tag.getInt("birthDay");
             rootId = tag.contains("rootId") ? tag.getString("rootId") : tag.getString("originId"); // legacy fallback
             personalityId = tag.getString("personalityId");
+            culture = tag.getString("culture");
+            nameList = tag.getString("nameList");
+            familyName = tag.getString("familyName");
             stageDays = tag.contains("stageDays") ? tag.getIntArray("stageDays") : EMPTY_INT_ARRAY;
             cycleFingerprint = tag.getInt("cycleFingerprint");
             currentStageId = tag.getString("currentStageId");

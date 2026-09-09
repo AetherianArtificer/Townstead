@@ -31,6 +31,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class VillagerFinalizeSpawnMixin {
 
     //? if neoforge {
+    @Inject(method = "finalizeSpawn", remap = false, at = @At("HEAD"), require = 1)
+    //?} else {
+    /*@Inject(method = "m_6518_", remap = false, at = @At("HEAD"), require = 1)
+    *///?}
+    private void townstead$deferInitialNaming(CallbackInfoReturnable<SpawnGroupData> cir) {
+        VillagerEntityMCA self = (VillagerEntityMCA) (Object) this;
+        if (!self.level().isClientSide) {
+            com.aetherianartificer.townstead.naming.SpawnNaming.begin(self);
+        }
+    }
+
+    //? if neoforge {
     @Inject(method = "finalizeSpawn", remap = false, at = @At("TAIL"), require = 1)
     //?} else {
     /*@Inject(method = "m_6518_", remap = false, at = @At("TAIL"), require = 1)
@@ -39,6 +51,7 @@ public abstract class VillagerFinalizeSpawnMixin {
         VillagerEntityMCA self = (VillagerEntityMCA) (Object) this;
         if (!self.level().isClientSide) {
             com.aetherianartificer.townstead.root.RootSpawnHandler.onTrueSpawn(self);
+            com.aetherianartificer.townstead.naming.SpawnNaming.complete(self);
         }
     }
 }

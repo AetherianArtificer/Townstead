@@ -20,6 +20,8 @@
     "compat.mca.FamilyTreeNodeGenderGuardMixin",
     "compat.mca.GetVillagerRequestEditorGuardMixin",
     "compat.mca.LazyFindPointOfInterestTaskCarrierMixin",
+    "compat.mca.NamesCitizenNationMixin",
+    "compat.mca.NamesRegisterInstallMixin",
     "compat.mca.PlayerSaveDataEditorGuardMixin",
     "compat.mca.PlayerSaveDataWelcomeMixin",
     "compat.mca.VillagerCommandHandlerInventoryMixin",

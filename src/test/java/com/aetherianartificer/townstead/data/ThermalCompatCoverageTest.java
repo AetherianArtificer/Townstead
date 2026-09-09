@@ -10,6 +10,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ThermalCompatCoverageTest {
     private JsonElement read(String path) throws Exception {
+        //? if forge {
+        /*path = path.replace("/tags/block/", "/tags/blocks/");
+        *///?}
         try (var stream = getClass().getClassLoader().getResourceAsStream("data/" + path)) {
             assertNotNull(stream, path);
             return JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8));

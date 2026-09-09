@@ -35,6 +35,10 @@ public abstract class HairLayerCoveredClothingMixin<T extends LivingEntity, M ex
                                                       boolean glowing,
                                                       CallbackInfo ci) {
         if (!(CommonVillagerModel.getVillager(entity) instanceof VillagerEntityMCA villager)) return;
+        if (!com.aetherianartificer.townstead.client.root.RootClientStore.usesHair(villager)) {
+            this.model.setAllVisible(false);
+            return;
+        }
         ClothingChoice.HairPolicy policy = ProfessionClothing.hairPolicy(villager);
         if (policy == ClothingChoice.HairPolicy.HIDDEN) {
             this.model.setAllVisible(false);

@@ -83,6 +83,10 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
             buf.writeFloat(e.rigScale());
             writeAnimations(buf, e.animations());
             buf.writeBoolean(e.breasts());
+            buf.writeBoolean(e.hair());
+            writeHairRanges(buf, e.hairColorRanges());
+            writeHairColors(buf, e.hairColors());
+            writeHairGradients(buf, e.hairGradients());
             buf.writeVarInt(e.stageRigs().size());
             for (String r : e.stageRigs()) buf.writeUtf(r == null ? "" : r);
             writeCharacterEditor(buf, e.characterEditor());
@@ -173,6 +177,10 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
             float rigScale = buf.readFloat();
             Animations animations = readAnimations(buf);
             boolean breasts = buf.readBoolean();
+            boolean hair = buf.readBoolean();
+            List<com.aetherianartificer.townstead.root.appearance.HairColorRange> hairRanges = readHairRanges(buf);
+            List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> hairColors = readHairColors(buf);
+            List<com.aetherianartificer.townstead.root.appearance.HairGradient> hairGradients = readHairGradients(buf);
             int stageRigCount = buf.readVarInt();
             List<String> stageRigs = new ArrayList<>(stageRigCount);
             for (int s = 0; s < stageRigCount; s++) stageRigs.add(buf.readUtf());
@@ -189,7 +197,8 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
                     inherited, ranges,
                     nameKey, singularKey, pluralKey, backstoryKey,
                     speciesNameKey, ancestryNameKey, lineageNameKey,
-                    rigBase, rigScale, animations, breasts, stageRigs, characterEditor, blocked));
+                    rigBase, rigScale, animations, breasts, hair, hairRanges, hairColors, hairGradients,
+                    stageRigs, characterEditor, blocked));
         }
         int m = buf.readVarInt();
         List<GeneCatalogEntry> genes = new ArrayList<>(m);
@@ -250,6 +259,76 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         List<String> entityGroups = new ArrayList<>(groupCount);
         for (int i = 0; i < groupCount; i++) entityGroups.add(buf.readUtf());
         return new RootCatalogSyncPayload(entries, genes, traits, rigs, entityGroups);
+    }
+
+    private static void writeHairRanges(FriendlyByteBuf buf,
+            List<com.aetherianartificer.townstead.root.appearance.HairColorRange> ranges) {
+        buf.writeVarInt(ranges.size());
+        for (var range : ranges) {
+            buf.writeFloat(range.darkness().min());
+            buf.writeFloat(range.darkness().max());
+            buf.writeFloat(range.redness().min());
+            buf.writeFloat(range.redness().max());
+            buf.writeVarInt(range.weight());
+        }
+    }
+
+    private static List<com.aetherianartificer.townstead.root.appearance.HairColorRange> readHairRanges(
+            FriendlyByteBuf buf) {
+        int count = buf.readVarInt();
+        List<com.aetherianartificer.townstead.root.appearance.HairColorRange> ranges = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            ranges.add(new com.aetherianartificer.townstead.root.appearance.HairColorRange(
+                    new GeneRange(buf.readFloat(), buf.readFloat()),
+                    new GeneRange(buf.readFloat(), buf.readFloat()), buf.readVarInt()));
+        }
+        return List.copyOf(ranges);
+    }
+
+    private static void writeHairColors(FriendlyByteBuf buf,
+            List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> colors) {
+        buf.writeVarInt(colors.size());
+        for (var color : colors) {
+            buf.writeInt(color.rgb());
+            buf.writeVarInt(color.weight());
+        }
+    }
+
+    private static List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> readHairColors(
+            FriendlyByteBuf buf) {
+        int count = buf.readVarInt();
+        List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> colors = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            colors.add(new com.aetherianartificer.townstead.root.appearance.HairColorChoice(
+                    buf.readInt(), buf.readVarInt()));
+        }
+        return List.copyOf(colors);
+    }
+
+    private static void writeHairGradients(FriendlyByteBuf buf,
+            List<com.aetherianartificer.townstead.root.appearance.HairGradient> gradients) {
+        buf.writeVarInt(gradients.size());
+        for (var gradient : gradients) {
+            buf.writeVarInt(gradient.stops().size());
+            for (int stop : gradient.stops()) buf.writeInt(stop);
+            buf.writeVarInt(gradient.weight());
+            buf.writeEnum(gradient.space());
+        }
+    }
+
+    private static List<com.aetherianartificer.townstead.root.appearance.HairGradient> readHairGradients(
+            FriendlyByteBuf buf) {
+        int count = buf.readVarInt();
+        List<com.aetherianartificer.townstead.root.appearance.HairGradient> gradients = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            int stopCount = buf.readVarInt();
+            List<Integer> stops = new ArrayList<>(stopCount);
+            for (int j = 0; j < stopCount; j++) stops.add(buf.readInt());
+            gradients.add(new com.aetherianartificer.townstead.root.appearance.HairGradient(
+                    stops, buf.readVarInt(),
+                    buf.readEnum(com.aetherianartificer.townstead.root.appearance.HairGradient.Space.class)));
+        }
+        return List.copyOf(gradients);
     }
 
     private static void writeChannels(FriendlyByteBuf buf, List<GeneCatalogEntry.Channel> channels) {

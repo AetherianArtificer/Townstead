@@ -50,10 +50,9 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
         int overlay = LivingEntityRenderer.getOverlayCoords(entity, 0);
         for (String geneId : orderedOverlayGenes(entity)) {
             GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
-            ResourceLocation texture = resolveTexture(textureFor(entity, gene));
-            if (texture == null) continue;
-            int color = resolveTint(entity, gene.skinOverlayTint());
-            draw(transform, provider, light, overlay, texture, color, visible, glowing);
+            Material material = materialFor(entity, gene);
+            if (material == null) continue;
+            draw(transform, provider, light, overlay, material.texture(), material.color(), visible, glowing);
         }
     }
 
@@ -126,6 +125,25 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
         return synced != null ? synced : DataPackLang.parseId(id);
     }
 
+    private record Material(ResourceLocation texture, int color) {}
+
+    /** Use vertex multiply for the default fast path; bake every richer blend through SkinBlend. */
+    private static Material materialFor(LivingEntity entity, GeneCatalogEntry gene) {
+        String textureId = textureFor(entity, gene);
+        ResourceLocation texture = resolveTexture(textureId);
+        if (texture == null) return null;
+        int color = resolveTint(entity, gene.skinOverlayTint());
+        int blend = gene.skinOverlayTintBlend();
+        float strength = gene.skinOverlayTintStrength();
+        if (blend != 0 || strength < 1f) {
+            int packed = com.aetherianartificer.townstead.client.skin.SkinBlend.pack(
+                    color & 0xFFFFFF, blend, strength);
+            ResourceLocation baked = AttachmentClient.blendedNamedTexture(textureId, packed);
+            if (baked != null) return new Material(baked, 0xFFFFFFFF);
+        }
+        return new Material(texture, color);
+    }
+
     /** The overlay's ARGB tint: flat hex, the bearer's skin tone, their hair colour, or white. */
     private static int resolveTint(LivingEntity entity, String spec) {
         if (spec == null || spec.isEmpty()) return 0xFFFFFFFF;
@@ -165,11 +183,10 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
         int layerIndex = 0;
         for (String geneId : orderedOverlayGenes(player)) {
             GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
-            ResourceLocation texture = resolveTexture(textureFor(player, gene));
-            if (texture == null) continue;
-            int color = resolveTint(player, gene.skinOverlayTint());
+            Material material = materialFor(player, gene);
+            if (material == null) continue;
             com.mojang.blaze3d.vertex.VertexConsumer buffer =
-                    buffers.getBuffer(RenderType.entityTranslucent(texture));
+                    buffers.getBuffer(RenderType.entityTranslucent(material.texture()));
 
             // Expand around the already-animated arm's own pivot. This keeps Fresh Player's exact
             // rotation/translation while moving the overlay a fraction of a texel off the base
@@ -190,12 +207,12 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
             try {
                 //? if neoforge {
                 arm.render(pose, buffer, light, OverlayTexture.NO_OVERLAY,
-                        0xFF000000 | (color & 0xFFFFFF));
+                        0xFF000000 | (material.color() & 0xFFFFFF));
                 //?} else {
                 /*arm.render(pose, buffer, light, OverlayTexture.NO_OVERLAY,
-                        ((color >> 16) & 0xFF) / 255f,
-                        ((color >> 8) & 0xFF) / 255f,
-                        (color & 0xFF) / 255f, 1f);
+                        ((material.color() >> 16) & 0xFF) / 255f,
+                        ((material.color() >> 8) & 0xFF) / 255f,
+                        (material.color() & 0xFF) / 255f, 1f);
                 *///?}
             } finally {
                 arm.xScale = xScale;

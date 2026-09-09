@@ -507,6 +507,10 @@ public class Townstead {
                 if (e.getEntity() instanceof VillagerEntityMCA villager) {
                     com.aetherianartificer.townstead.villager.TownsteadVillagerState.root(villager);
                     com.aetherianartificer.townstead.root.trait.TraitBridge.migrate(villager);
+                    // Names settle when a villager arrives, not on a timer: this is the
+                    // first moment their household and village are resolvable, and it is
+                    // also what hands the composed name to whatever else displays it.
+                    com.aetherianartificer.townstead.naming.VillagerNames.publish(villager);
                 }
             }
         });
@@ -841,6 +845,7 @@ public class Townstead {
                         TemperatureClientStore.clear();
                         com.aetherianartificer.townstead.client.animation.emote.EmotePlaybackRegistry.clear();
                         com.aetherianartificer.townstead.client.root.RootClientStore.clear();
+                        com.aetherianartificer.townstead.naming.NameClientStore.clear();
                         com.aetherianartificer.townstead.client.root.ResourceClientStore.clear();
                         com.aetherianartificer.townstead.client.root.OverlayClientStore.clear();
                 com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.clear();
@@ -927,6 +932,10 @@ public class Townstead {
                 if (e.getEntity() instanceof VillagerEntityMCA villager) {
                     com.aetherianartificer.townstead.villager.TownsteadVillagerState.root(villager);
                     com.aetherianartificer.townstead.root.trait.TraitBridge.migrate(villager);
+                    // Names settle when a villager arrives, not on a timer: this is the
+                    // first moment their household and village are resolvable, and it is
+                    // also what hands the composed name to whatever else displays it.
+                    com.aetherianartificer.townstead.naming.VillagerNames.publish(villager);
                 }
             }
         });
@@ -1130,6 +1139,7 @@ public class Townstead {
                         TemperatureClientStore.clear();
                         com.aetherianartificer.townstead.client.animation.emote.EmotePlaybackRegistry.clear();
                         com.aetherianartificer.townstead.client.root.RootClientStore.clear();
+                        com.aetherianartificer.townstead.naming.NameClientStore.clear();
                         com.aetherianartificer.townstead.client.root.ResourceClientStore.clear();
                         com.aetherianartificer.townstead.client.root.OverlayClientStore.clear();
                 com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.clear();
@@ -1320,6 +1330,15 @@ public class Townstead {
             com.aetherianartificer.townstead.work.station.WorkstationHazards.bootstrap();
             com.aetherianartificer.townstead.work.site.WorksiteBindings.bootstrap();
             com.aetherianartificer.townstead.compat.mca.McaRoomBinding.bootstrap();
+            com.aetherianartificer.townstead.compat.mcacapitals.CapitalsSurnameRegisters.bootstrap();
+            // Name sources register least-authoritative first: a later source overrides an
+            // earlier one part by part, so another mod's surname is a fallback and a Townstead
+            // culture that declares its own family-name rule wins.
+            com.aetherianartificer.townstead.compat.mcacapitals.CapitalsNameBridge.bootstrap();
+            com.aetherianartificer.townstead.naming.CultureNameSource.bootstrap();
+            // Townstead's own target, always registered: without it a family name is
+            // computed and never leaves the server, so no screen could ever draw it.
+            com.aetherianartificer.townstead.naming.NameSyncTarget.bootstrap();
             com.aetherianartificer.townstead.work.station.StationProtocols.bootstrap();
             com.aetherianartificer.townstead.compat.brewinandchewin.BrewinFluidRecipes.bootstrap();
             com.aetherianartificer.townstead.compat.caupona.CauponaFluidRecipes.bootstrap();
@@ -2258,6 +2277,12 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.root.LineageJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.RootJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.personality.PersonalityJsonLoader());
+        // Name lists load before traditions, and traditions before cultures, so each layer
+        // validates its references against the one below during the same reload.
+        event.addListener(new com.aetherianartificer.townstead.naming.NameListJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.naming.NamingTraditionJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.culture.CultureJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.compat.mcacapitals.CapitalsSurnameRegisters());
         event.addListener(new com.aetherianartificer.townstead.root.HeritageJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.chronotype.ChronotypeCatalogLoader());
         event.addListener(new com.aetherianartificer.townstead.root.gene.GeneJsonLoader());
@@ -2890,6 +2915,13 @@ public class Townstead {
                 this::handleTemperatureSync
         );
         registrar.playToClient(
+                com.aetherianartificer.townstead.naming.NameSyncPayload.TYPE,
+                com.aetherianartificer.townstead.naming.NameSyncPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.naming.NameClientStore.set(
+                                payload.entityId(), payload.familyName(), payload.culture(), payload.order()))
+        );
+        registrar.playToClient(
                 com.aetherianartificer.townstead.temperature.ThermometerReadingPayload.TYPE,
                 com.aetherianartificer.townstead.temperature.ThermometerReadingPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
@@ -3291,7 +3323,7 @@ public class Townstead {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer sp)) return;
             com.aetherianartificer.townstead.root.RootServerLogic.commitGenes(
-                    sp, payload.entityId(), payload.genes());
+                    sp, payload.entityId(), payload.genes(), payload.hairColor());
         });
     }
 
@@ -3381,7 +3413,8 @@ public class Townstead {
     ) {
         context.enqueueWork(() ->
                 com.aetherianartificer.townstead.client.root.RootClientStore.setExpressed(
-                        payload.entityId(), payload.genes()));
+                        payload.entityId(), payload.genes(), payload.hair(), payload.hairColorRanges(),
+                        payload.hairColors(), payload.hairGradients()));
     }
 
     private void handleResourceSync(
@@ -4491,6 +4524,7 @@ public class Townstead {
 
         if (!(event.getTarget() instanceof VillagerEntityMCA villager)) return;
 
+        com.aetherianartificer.townstead.naming.NameSyncTarget.syncToPlayer(sp, villager);
         com.aetherianartificer.townstead.tick.TemperatureVillagerTicker.tick(villager);
 
         // Make sure stage durations are rolled and a birth is stamped before the

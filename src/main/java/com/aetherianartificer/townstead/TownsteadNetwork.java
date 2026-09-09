@@ -97,6 +97,11 @@ public final class TownsteadNetwork {
     private static int nextId = 0;
 
     public static void register() {
+        registerS2C(com.aetherianartificer.townstead.naming.NameSyncPayload.class,
+                com.aetherianartificer.townstead.naming.NameSyncPayload::encode,
+                com.aetherianartificer.townstead.naming.NameSyncPayload::decode,
+                payload -> com.aetherianartificer.townstead.naming.NameClientStore.set(
+                        payload.entityId(), payload.familyName(), payload.culture(), payload.order()));
         // Server -> Client
         registerS2C(HungerSyncPayload.class, HungerSyncPayload::write, HungerSyncPayload::read,
                 TownsteadNetwork::handleHungerSync);
@@ -435,7 +440,7 @@ public final class TownsteadNetwork {
     private static void handleCommitRootGenes(
             com.aetherianartificer.townstead.root.CommitRootGenesC2SPayload payload, ServerPlayer sp) {
         com.aetherianartificer.townstead.root.RootServerLogic.commitGenes(
-                sp, payload.entityId(), payload.genes());
+                sp, payload.entityId(), payload.genes(), payload.hairColor());
     }
 
     private static void handleSetPersonality(
@@ -530,7 +535,9 @@ public final class TownsteadNetwork {
     }
 
     private static void handleExpressedGenesSync(com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload payload) {
-        com.aetherianartificer.townstead.client.root.RootClientStore.setExpressed(payload.entityId(), payload.genes());
+        com.aetherianartificer.townstead.client.root.RootClientStore.setExpressed(
+                payload.entityId(), payload.genes(), payload.hair(), payload.hairColorRanges(),
+                payload.hairColors(), payload.hairGradients());
     }
 
     private static void handleResourceSync(com.aetherianartificer.townstead.root.ability.ResourceSyncS2CPayload payload) {

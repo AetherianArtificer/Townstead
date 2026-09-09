@@ -174,6 +174,8 @@ public abstract class VillagerEditorRootMixin extends Screen {
     *///?}
     private void townstead$renderPreviewParticles(GuiGraphics context, int mouseX, int mouseY, float delta,
                                                   CallbackInfo ci) {
+        com.aetherianartificer.townstead.root.appearance.HairColors.clamp(
+                villager, RootClientStore.hairSettings(villager));
         int x = this.width / 2 - 175;
         int y = this.height / 2;
         PreviewParticles.render(context, villager, townstead$previewSubject(), x, y - 75, x + 175, y + 75);
@@ -222,6 +224,8 @@ public abstract class VillagerEditorRootMixin extends Screen {
     @Inject(method = "setPage", remap = false, at = @At("HEAD"))
     private void townstead$revertOnPageChange(String page, CallbackInfo ci) {
         townstead$revertPreview();
+        com.aetherianartificer.townstead.root.appearance.HairColors.clamp(
+                villager, RootClientStore.hairSettings(villager));
     }
 
     // MCA's save path: revert an un-applied preview so Done won't commit it. Apply
@@ -229,6 +233,8 @@ public abstract class VillagerEditorRootMixin extends Screen {
     @Inject(method = "syncVillagerData", remap = false, at = @At("HEAD"))
     private void townstead$revertOnSync(CallbackInfo ci) {
         townstead$revertPreview();
+        com.aetherianartificer.townstead.root.appearance.HairColors.clamp(
+                villager, RootClientStore.hairSettings(villager));
     }
 
     // Runs for the Destiny screen too: it routes its real pages through super.setPage,
@@ -323,6 +329,7 @@ public abstract class VillagerEditorRootMixin extends Screen {
         }
         if (McaEditorCompat.isHairPage(page)) {
             townstead$trimInertHair();
+            townstead$constrainHairControls();
         }
         if (McaEditorCompat.isFacePage(page) && !geneTabsOwnControls) {
             townstead$addFaceCyclers();
@@ -627,6 +634,10 @@ public abstract class VillagerEditorRootMixin extends Screen {
         // any of these by declaring a body-metric gene for it (apply runs after, so it wins).
         villager.getGenetics().randomize();
         RootGenes.apply(villager, ranges, villager.getRandom());
+        RootClientStore.setHair(villager.getId(), entry.hair(), entry.hairColorRanges(),
+                entry.hairColors(), entry.hairGradients());
+        com.aetherianartificer.townstead.root.appearance.HairColors.roll(villager,
+                RootClientStore.hairSettings(villager), villager.getRandom());
         RootClientStore.set(villager.getId(), entry.id());   // so the skin-tint layer paints the preview
         // Browsing previews the root's typical kit: drop the mirrored real expressed set so
         // the attachment layer falls back to this origin's grant list (restored on revert).
@@ -833,22 +844,24 @@ public abstract class VillagerEditorRootMixin extends Screen {
         net.minecraft.world.entity.LivingEntity real = townstead$previewSubject();
         if (real == null) return;
         RootClientStore.mirrorExpressed(real, villager.getId());
+        var hair = RootClientStore.hairSettings(real);
+        RootClientStore.setHair(villager.getId(), hair.enabled(), hair.colorRanges(), hair.colors(),
+                hair.gradients());
         if (real instanceof net.conczin.mca.entity.VillagerEntityMCA realMca) {
             villager.setAgeState(realMca.getAgeState());
         }
     }
 
     /**
-     * Drop the Head page's hair controls (selector, randomize, prev/next, HSV toggle) when this rig
-     * declares no MCA hair ({@code "hair": false}, the default for a custom rig — a skeleton has none).
-     * Base MCA villagers have no rig definition, so {@code rig == null} keeps their hair; a custom rig
-     * can opt back in with {@code "hair": true}. Also frees the room the face cyclers reuse.
+     * Drop the Head page's hair controls when either the rig or the resolved identity policy declares
+     * no MCA hair. Rig {@code "hair"} governs whether a custom model can wear the layer at all;
+     * species/ancestry/lineage/heritage {@code "hair"} governs whether this person does.
      */
     @Unique
     private void townstead$trimInertHair() {
         com.aetherianartificer.townstead.root.rig.RigDefinition rig =
                 RigModels.definition(RigModels.rigBaseFor(villager));
-        if (rig == null || rig.hair()) return;
+        if ((rig == null || rig.hair()) && RootClientStore.usesHair(villager)) return;
         java.util.Set<String> hairKeys = java.util.Set.of(
                 "gui.villager_editor.hair_hsv", "gui.villager_editor.hair_genetic",
                 "gui.villager_editor.randHair", "gui.villager_editor.selectHair",
@@ -858,6 +871,34 @@ public abstract class VillagerEditorRootMixin extends Screen {
                 String k = townstead$widgetKey(aw);   // null for non-translatable labels; Set.of throws on contains(null)
                 if (k != null && hairKeys.contains(k)) removeWidget(aw);
             }
+        }
+    }
+
+    /** Lock constrained populations to their authored color mode and make Random policy-aware. */
+    @Unique
+    private void townstead$constrainHairControls() {
+        var settings = RootClientStore.hairSettings(villager);
+        if (settings.colorRanges().isEmpty() && settings.colors().isEmpty() && settings.gradients().isEmpty()) return;
+        java.util.List<net.minecraft.client.gui.components.AbstractWidget> remove = new ArrayList<>();
+        net.minecraft.client.gui.components.AbstractWidget randomize = null;
+        for (GuiEventListener child : children()) {
+            if (!(child instanceof net.minecraft.client.gui.components.AbstractWidget widget)) continue;
+            String key = townstead$widgetKey(widget);
+            if ("gui.villager_editor.hair_hsv".equals(key)
+                    || "gui.villager_editor.hair_genetic".equals(key)) remove.add(widget);
+            if ("gui.villager_editor.randHair".equals(key)) randomize = widget;
+        }
+        remove.forEach(this::removeWidget);
+        if (randomize != null) {
+            int x = randomize.getX();
+            int y = randomize.getY();
+            int w = randomize.getWidth();
+            int h = randomize.getHeight();
+            Component label = randomize.getMessage();
+            removeWidget(randomize);
+            addRenderableWidget(new ButtonWidget(x, y, w, h, label, button ->
+                    com.aetherianartificer.townstead.root.appearance.HairColors.roll(
+                            villager, RootClientStore.hairSettings(villager), villager.getRandom())));
         }
     }
 
@@ -1632,10 +1673,12 @@ public abstract class VillagerEditorRootMixin extends Screen {
     private void townstead$sendCommitGenes(int target, float[] genes) {
         //? if neoforge {
         net.neoforged.neoforge.network.PacketDistributor.sendToServer(
-                new com.aetherianartificer.townstead.root.CommitRootGenesC2SPayload(target, genes));
+                new com.aetherianartificer.townstead.root.CommitRootGenesC2SPayload(
+                        target, genes, villager.getHairDye()));
         //?} else if forge {
         /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(
-                new com.aetherianartificer.townstead.root.CommitRootGenesC2SPayload(target, genes));
+                new com.aetherianartificer.townstead.root.CommitRootGenesC2SPayload(
+                        target, genes, villager.getHairDye()));
         *///?}
     }
 }

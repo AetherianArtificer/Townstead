@@ -144,13 +144,19 @@ public record GeneDisplay(Kind kind, float min, float max, String targetId, floa
      * colour, {@code skin}, or {@code hair}. A presence chip in the list.
      */
     public static GeneDisplay skinOverlay(String texture, String tint) {
-        return skinOverlay(texture, tint, 0);
+        return skinOverlay(texture, tint, 0, 0, 1f);
     }
 
     public static GeneDisplay skinOverlay(String texture, String tint, int order) {
+        return skinOverlay(texture, tint, order, 0, 1f);
+    }
+
+    public static GeneDisplay skinOverlay(String texture, String tint, int order,
+                                          int tintBlend, float tintStrength) {
         return new GeneDisplay(Kind.SKIN_OVERLAY, 0f, 1f,
                 (texture == null ? "" : texture) + ";" + (tint == null ? "" : tint)
-                        + ";" + order, 0f);
+                        + ";" + order + ";" + tintBlend + ";"
+                        + Math.max(0f, Math.min(1f, tintStrength)), 0f);
     }
 
     /**

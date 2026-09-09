@@ -121,6 +121,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_LINEAGES;
+    public static final ModConfigSpec.BooleanValue ENABLE_STABLE_NAMING_REGISTERS;
     public static final ModConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
     public static final ModConfigSpec.BooleanValue CALENDAR_REAL_CLOCK;
     public static final ModConfigSpec.DoubleValue AGING_SCALE;
@@ -215,6 +216,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_LINEAGES;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_STABLE_NAMING_REGISTERS;
     public static final ForgeConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
     public static final ForgeConfigSpec.BooleanValue CALENDAR_REAL_CLOCK;
     public static final ForgeConfigSpec.DoubleValue AGING_SCALE;
@@ -557,6 +559,17 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.roots.blockedLineages")
                 .comment("Lineage ids to disable. Blocks every root that selects a listed lineage.")
                 .defineListAllowEmpty("blockedLineages", List.of(), TownsteadConfig::isValidResourceLocationString);
+        b.pop();
+
+        // ── Naming ──
+        b.translation("townstead.configuration.naming").push("naming");
+        ENABLE_STABLE_NAMING_REGISTERS = b
+                .translation("townstead.configuration.naming.stableNamingRegisters")
+                .comment("Remember which naming tradition each villager and each map region uses.",
+                         "MCA re-derives it from a list of the loaded name buckets every time it is asked, so any mod",
+                         "or datapack that adds one re-rolls the naming of the whole world. Recording it stops that.",
+                         "Turning this off does not undo what has already been recorded.")
+                .define("stableNamingRegisters", true);
         b.pop();
 
         // ── Calendar ──

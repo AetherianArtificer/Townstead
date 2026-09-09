@@ -38,6 +38,12 @@ public abstract class PregnancyInheritanceMixin {
                 Heredity.parentOf(mother, child.getRandom()),
                 Heredity.parentOf(partner, child.getRandom()),
                 child.getRandom());
+        com.aetherianartificer.townstead.root.appearance.HairColors.inherit(child, mother, partner);
+        // Birth is the one moment both parents are certainly present, which is what a
+        // family name needs: a patronymic reads a parent's given name, an inherited name
+        // reads theirs. Settling it here also keeps siblings matching rather than each
+        // resolving separately later.
+        com.aetherianartificer.townstead.naming.VillagerNames.publish(child);
         // Chronicle tap fires on the child's first dispatched tick, once it has a position.
         com.aetherianartificer.townstead.chronicle.emit.PendingBirths.mark(child);
     }

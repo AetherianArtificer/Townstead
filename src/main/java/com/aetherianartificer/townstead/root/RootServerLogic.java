@@ -90,6 +90,9 @@ public final class RootServerLogic {
         if (changed || !state.life().hasGenotype()) {
             Heredity.seedFounder(state.life(), id, villager.getRandom());
         }
+        com.aetherianartificer.townstead.root.appearance.HairColors.clamp(villager,
+                com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(id,
+                        state.life().hasHeritage() ? state.life().heritage() : null));
         // Roll a personality from the new origin's allowlist (the natural-spawn path does this too).
         // Also fill one in when the villager has none yet, so re-applying an origin to a pre-existing
         // villager grants the personality it should have had.
@@ -115,7 +118,7 @@ public final class RootServerLogic {
      * whole stored MCA snapshot from stale editor-buffer keys — which erased player-set parent
      * names and broke gendered family dialogue on a root change.
      */
-    public static void commitGenes(ServerPlayer sp, int entityId, float[] genes) {
+    public static void commitGenes(ServerPlayer sp, int entityId, float[] genes, int hairColor) {
         if (genes == null || genes.length != RootGenes.geneCount()) return;
         float[] clamped = new float[genes.length];
         for (int i = 0; i < genes.length; i++) {
@@ -124,9 +127,17 @@ public final class RootServerLogic {
         }
 
         if (entityId == RootSetC2SPayload.SELF) {
+            ResourceLocation rootId = ResourceLocation.tryParse(PlayerRoot.getRootId(sp));
+            var hairSettings = com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(rootId,
+                    RootRegistry.seedHeritage(rootId == null ? RootRegistry.DEFAULT_ID : rootId));
+            clamped = com.aetherianartificer.townstead.root.appearance.HairColors.clampSnapshot(
+                    clamped, hairSettings);
             net.conczin.mca.server.world.data.PlayerSaveData data =
                     net.conczin.mca.server.world.data.PlayerSaveData.get(sp);
             net.minecraft.nbt.CompoundTag entityData = data.getEntityData();
+            entityData.putInt("HairColor",
+                    com.aetherianartificer.townstead.root.appearance.HairColors.clampDye(
+                            hairColor, hairSettings));
             RootGenes.writeToPlayerData(entityData, clamped);
             data.setEntityDataSet(true);
             data.setDirty();
@@ -146,7 +157,15 @@ public final class RootServerLogic {
 
         Entity entity = sp.serverLevel().getEntity(entityId);
         if (!(entity instanceof VillagerEntityMCA villager)) return;
+        var life = TownsteadVillagers.get(villager).life();
+        ResourceLocation rootId = ResourceLocation.tryParse(life.rootId());
+        var hairSettings = com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(rootId,
+                life.hasHeritage() ? life.heritage() : null);
+        clamped = com.aetherianartificer.townstead.root.appearance.HairColors.clampSnapshot(
+                clamped, hairSettings);
         RootGenes.restore(villager, clamped);
+        villager.setHairDye(com.aetherianartificer.townstead.root.appearance.HairColors.clampDye(
+                hairColor, hairSettings));
         // SIZE/WIDTH feed the hitbox; MCA's editor save refreshed it too.
         villager.refreshDimensions();
     }
