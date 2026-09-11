@@ -23,6 +23,7 @@ final class ConfiguredThirstBridge implements ThirstCompatBridge {
     }
 
     @Override public boolean isActive() { return delegate.isActive(); }
+    @Override public boolean isThirstEnabled() { return delegate.isThirstEnabled(); }
     @Override public boolean itemRestoresThirst(ItemStack stack) {
         return configured(stack).hydrates() || delegate.itemRestoresThirst(stack);
     }
@@ -39,11 +40,18 @@ final class ConfiguredThirstBridge implements ThirstCompatBridge {
         return effect.hydrates() ? effect.lastingHydration() : delegate.quenched(stack);
     }
     @Override public int purity(ItemStack stack) { return delegate.purity(stack); }
+    @Override public float exhaustionBiomeModifier(Level level, BlockPos pos, ThermalHydrationContext thermal) {
+        return delegate.exhaustionBiomeModifier(level, pos, thermal);
+    }
+    @Override public float thermalExhaustionPerTick(ThermalHydrationContext thermal) {
+        return delegate.thermalExhaustionPerTick(thermal);
+    }
     @Override public float exhaustionBiomeModifier(Level level, BlockPos pos) { return delegate.exhaustionBiomeModifier(level, pos); }
     @Override public boolean extraHydrationToQuenched() { return delegate.extraHydrationToQuenched(); }
     @Override public PurityResult evaluatePurity(int purity, RandomSource random) { return delegate.evaluatePurity(purity, random); }
     @Override public ResourceLocation iconTexture() { return delegate.iconTexture(); }
     @Override public boolean supportsPurification() { return delegate.supportsPurification(); }
+    @Override public boolean canBoil(ItemStack stack) { return delegate.canBoil(stack); }
     @Override public ResourceLocation purificationOutput() { return delegate.purificationOutput(); }
     @Override public void purifyResult(ItemStack input, ItemStack output) { delegate.purifyResult(input, output); }
     @Override public ItemStack onDrinkConsumed(ItemStack stack) { return delegate.onDrinkConsumed(stack); }

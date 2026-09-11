@@ -1,0 +1,25 @@
+{
+  "schema": "townstead:amenity/v1",
+  "mods": [
+    "toughasnails"
+  ],
+  "blocks": [
+    "toughasnails:thermoregulator"
+  ],
+  "kind": "cool_spot",
+  "requires": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "pheno:block_state",
+        "property": "enabled",
+        "value": "true"
+      },
+      {
+        "type": "pheno:block_state",
+        "property": "cooling",
+        "value": "true"
+      }
+    ]
+  }
+}

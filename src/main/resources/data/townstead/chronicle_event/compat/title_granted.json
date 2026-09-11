@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "reputation.title",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "reputation",
+    "key": "mcareputation:title_granted"
+  },
+  "reach": "village",
+  "news_value": 4.0,
+  "roles": [
+    {
+      "id": "player",
+      "kind": "player"
+    }
+  ],
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.compat.title_granted"
+    },
+    "params": [
+      "player",
+      "title"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "register_profession": true,
+  "poi": [
+    { "type": "townstead:building", "type_prefixes": [
+      "compat/toughasnails/climate_fuel_store", "compat.toughasnails.climate_fuel_store",
+      "compat/toughasnails/climate_icehouse", "compat.toughasnails.climate_icehouse"
+    ] }
+  ],
+  "tasks": [
+    {
+      "type": "townstead_work:maintain_climate",
+      "workstations": ["legendarysurvivaloverhaul:heater", "legendarysurvivaloverhaul:cooler"],
+      "scope": "village", "weight": 10,
+      "order": { "name": "Restock boilers and coolers", "icon": "legendarysurvivaloverhaul:heater" }
+    }
+  ],
+  "storage": { "preferred_roles": ["townstead:heating_fuel", "townstead:cooling_fuel"] }
+}

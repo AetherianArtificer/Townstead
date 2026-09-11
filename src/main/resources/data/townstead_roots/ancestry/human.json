@@ -12,6 +12,7 @@
     "townstead_roots:omnivore",
     "townstead_roots:water_drinker",
     "townstead_roots:human_chronotype",
-    "townstead_roots:human_life_cycle"
+    "townstead_roots:human_life_cycle",
+    "townstead_roots:human_thermal"
   ]
 }

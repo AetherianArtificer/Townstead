@@ -1,0 +1,5 @@
+{
+  "schema": "townstead:amenity/v1",
+  "kind": "cool_spot",
+  "blocks": ["#townstead:thermal/cooling_sources"]
+}

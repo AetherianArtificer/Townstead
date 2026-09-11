@@ -76,6 +76,23 @@ public final class CharacterEditorResolver {
             for (Tab t : tabs) if (t.pageId().equals(pageId)) return t;
             return null;
         }
+
+        /**
+         * This layout with one MCA-native group removed: a species or rig that renders no hair
+         * has nothing for MCA's hair page to edit, so the Hair tab disappears rather than
+         * showing trimmed-down controls. A tab left with no fields is dropped.
+         */
+        public Resolved withoutNative(String nativeGroup) {
+            List<Tab> kept = new ArrayList<>();
+            for (Tab t : tabs) {
+                List<Field> fields = new ArrayList<>();
+                for (Field f : t.fields()) {
+                    if (f.kind() != Field.Kind.NATIVE || !nativeGroup.equals(f.nativeGroup())) fields.add(f);
+                }
+                if (!fields.isEmpty()) kept.add(new Tab(t.pageId(), t.label(), fields));
+            }
+            return new Resolved(kept);
+        }
     }
 
     /**

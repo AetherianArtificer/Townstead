@@ -116,7 +116,7 @@ public class VillagerInventoryMenu extends AbstractContainerMenu {
         int curios = CuriosCompat.slotSpecs(villager).size();
         MenuProvider provider = new SimpleMenuProvider(
                 (id, inventory, p) -> new VillagerInventoryMenu(id, inventory, villager, curios),
-                villager.getDisplayName());
+                com.aetherianartificer.townstead.naming.VillagerNames.titleFor(villager));
         //? if neoforge {
         player.openMenu(provider, buf -> {
             buf.writeVarInt(villager.getId());

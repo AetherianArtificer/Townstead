@@ -72,6 +72,10 @@ import com.aetherianartificer.townstead.thirst.ThirstClientStore;
 import com.aetherianartificer.townstead.thirst.ThirstData;
 import com.aetherianartificer.townstead.thirst.ThirstSetPayload;
 import com.aetherianartificer.townstead.thirst.ThirstSyncPayload;
+import com.aetherianartificer.townstead.temperature.TemperatureClientStore;
+import com.aetherianartificer.townstead.temperature.TemperatureData;
+import com.aetherianartificer.townstead.temperature.TemperatureSetPayload;
+import com.aetherianartificer.townstead.temperature.TemperatureSyncPayload;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.interaction.gifts.GiftPredicate;
 //? if neoforge {
@@ -236,6 +240,20 @@ public class Townstead {
     public static final Supplier<Item> ROOM_OWNERSHIP_TAG_ITEM = ITEMS.register("room_ownership_tag",
             () -> new BlockItem(ROOM_OWNERSHIP_TAG.get(), new Item.Properties()));
 
+    public static final Supplier<Block> ROOM_THERMOMETER = BLOCKS.register("room_thermometer",
+            () -> new com.aetherianartificer.townstead.block.RoomThermometerBlock(
+                    BlockBehaviour.Properties.of().strength(0.5f).sound(SoundType.WOOD)
+                            .noCollission().noOcclusion()));
+
+    public static final Supplier<Item> ROOM_THERMOMETER_ITEM = ITEMS.register("room_thermometer",
+            () -> new BlockItem(ROOM_THERMOMETER.get(), new Item.Properties()));
+
+    public static final Supplier<Block> ROOM_THERMOSTAT = BLOCKS.register("room_thermostat",
+            () -> new com.aetherianartificer.townstead.block.RoomThermostatBlock(
+                    BlockBehaviour.Properties.of().strength(0.5f).sound(SoundType.WOOD).noCollission().noOcclusion()));
+    public static final Supplier<Item> ROOM_THERMOSTAT_ITEM = ITEMS.register("room_thermostat",
+            () -> new BlockItem(ROOM_THERMOSTAT.get(),new Item.Properties()));
+
     private static final String[] FIELD_POST_WOOD_VARIANTS = {
             "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove",
             "cherry", "bamboo", "crimson", "warped"
@@ -357,6 +375,8 @@ public class Townstead {
                                 output.accept(FIELD_POST_ITEM.get());
                                 output.accept(ORDER_SHEET_ITEM.get());
                                 output.accept(ROOM_OWNERSHIP_TAG_ITEM.get());
+                                output.accept(ROOM_THERMOMETER_ITEM.get());
+                                output.accept(ROOM_THERMOSTAT_ITEM.get());
                                 for (Supplier<Item> variant : FIELD_POST_VARIANT_ITEMS) {
                                     output.accept(variant.get());
                                 }
@@ -434,6 +454,9 @@ public class Townstead {
         if (ModCompat.isLoaded("legendarysurvivaloverhaul")) {
             RECIPE_SERIALIZERS.register("purification_campfire", () -> PurificationCampfireRecipe.Serializer.INSTANCE);
         }
+        if (ModCompat.isLoaded("toughasnails")) {
+            RECIPE_SERIALIZERS.register("tan_water_purification", () -> com.aetherianartificer.townstead.compat.thirst.TanWaterPurificationRecipe.Serializer.INSTANCE);
+        }
         RECIPE_SERIALIZERS.register(modBus);
         modContainer.registerConfig(ModConfig.Type.SERVER, TownsteadConfig.SERVER_SPEC);
         townstead$registerClientConfigScreen(modContainer);
@@ -469,6 +492,7 @@ public class Townstead {
                                 .orElse(null),
                         e.getEventPosition(), e.getCause()));
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> {
+            com.aetherianartificer.townstead.temperature.RoomHeat.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
             townstead$profile("server.village_startup_seed", () ->
                     com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer()));
@@ -493,6 +517,10 @@ public class Townstead {
                 if (e.getEntity() instanceof VillagerEntityMCA villager) {
                     com.aetherianartificer.townstead.villager.TownsteadVillagerState.root(villager);
                     com.aetherianartificer.townstead.root.trait.TraitBridge.migrate(villager);
+                    // Names settle when a villager arrives, not on a timer: this is the
+                    // first moment their household and village are resolvable, and it is
+                    // also what hands the composed name to whatever else displays it.
+                    com.aetherianartificer.townstead.naming.VillagerNames.publish(villager);
                 }
             }
         });
@@ -554,6 +582,8 @@ public class Townstead {
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
+                com.aetherianartificer.townstead.compat.temperature.ToughAsNailsTemperatureBridge.INSTANCE.isActive());
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
                 com.aetherianartificer.townstead.chronicle.Chronicles.onServerStarted(e.getServer()));
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppingEvent e) ->
@@ -822,8 +852,10 @@ public class Townstead {
             Class.forName("net.minecraft.client.Minecraft");
             NeoForge.EVENT_BUS.addListener(
                     (net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut e) -> {
+                        TemperatureClientStore.clear();
                         com.aetherianartificer.townstead.client.animation.emote.EmotePlaybackRegistry.clear();
                         com.aetherianartificer.townstead.client.root.RootClientStore.clear();
+                        com.aetherianartificer.townstead.naming.NameClientStore.clear();
                         com.aetherianartificer.townstead.client.root.ResourceClientStore.clear();
                         com.aetherianartificer.townstead.client.root.OverlayClientStore.clear();
                 com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.clear();
@@ -848,6 +880,9 @@ public class Townstead {
         CREATIVE_MODE_TABS.register(modBus);
         if (ModCompat.isLoaded("legendarysurvivaloverhaul")) {
             RECIPE_SERIALIZERS.register("purification_campfire", () -> PurificationCampfireRecipe.Serializer.INSTANCE);
+        }
+        if (ModCompat.isLoaded("toughasnails")) {
+            RECIPE_SERIALIZERS.register("tan_water_purification", () -> com.aetherianartificer.townstead.compat.thirst.TanWaterPurificationRecipe.Serializer.INSTANCE);
         }
         RECIPE_SERIALIZERS.register(modBus);
         ModContainer modContainer = net.minecraftforge.fml.ModLoadingContext.get().getActiveContainer();
@@ -884,6 +919,7 @@ public class Townstead {
                         e.getEventPosition(), e.getCause()));
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.TickEvent.ServerTickEvent e) -> {
             if (e.phase == net.minecraftforge.event.TickEvent.Phase.END) {
+                com.aetherianartificer.townstead.temperature.RoomHeat.tick(e.getServer());
                 com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
                 townstead$profile("server.village_startup_seed", () ->
                         com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer()));
@@ -909,6 +945,10 @@ public class Townstead {
                 if (e.getEntity() instanceof VillagerEntityMCA villager) {
                     com.aetherianartificer.townstead.villager.TownsteadVillagerState.root(villager);
                     com.aetherianartificer.townstead.root.trait.TraitBridge.migrate(villager);
+                    // Names settle when a villager arrives, not on a timer: this is the
+                    // first moment their household and village are resolvable, and it is
+                    // also what hands the composed name to whatever else displays it.
+                    com.aetherianartificer.townstead.naming.VillagerNames.publish(villager);
                 }
             }
         });
@@ -963,6 +1003,8 @@ public class Townstead {
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
+                com.aetherianartificer.townstead.compat.temperature.ToughAsNailsTemperatureBridge.INSTANCE.isActive());
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
                 com.aetherianartificer.townstead.chronicle.Chronicles.onServerStarted(e.getServer()));
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStoppingEvent e) ->
@@ -1107,8 +1149,10 @@ public class Townstead {
             Class.forName("net.minecraft.client.Minecraft");
             MinecraftForge.EVENT_BUS.addListener(
                     (net.minecraftforge.client.event.ClientPlayerNetworkEvent.LoggingOut e) -> {
+                        TemperatureClientStore.clear();
                         com.aetherianartificer.townstead.client.animation.emote.EmotePlaybackRegistry.clear();
                         com.aetherianartificer.townstead.client.root.RootClientStore.clear();
+                        com.aetherianartificer.townstead.naming.NameClientStore.clear();
                         com.aetherianartificer.townstead.client.root.ResourceClientStore.clear();
                         com.aetherianartificer.townstead.client.root.OverlayClientStore.clear();
                 com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.clear();
@@ -1299,6 +1343,15 @@ public class Townstead {
             com.aetherianartificer.townstead.work.station.WorkstationHazards.bootstrap();
             com.aetherianartificer.townstead.work.site.WorksiteBindings.bootstrap();
             com.aetherianartificer.townstead.compat.mca.McaRoomBinding.bootstrap();
+            com.aetherianartificer.townstead.compat.mcacapitals.CapitalsSurnameRegisters.bootstrap();
+            // Name sources register least-authoritative first: a later source overrides an
+            // earlier one part by part, so another mod's surname is a fallback and a Townstead
+            // culture that declares its own family-name rule wins.
+            com.aetherianartificer.townstead.compat.mcacapitals.CapitalsNameBridge.bootstrap();
+            com.aetherianartificer.townstead.naming.CultureNameSource.bootstrap();
+            // Townstead's own target, always registered: without it a family name is
+            // computed and never leaves the server, so no screen could ever draw it.
+            com.aetherianartificer.townstead.naming.NameSyncTarget.bootstrap();
             com.aetherianartificer.townstead.work.station.StationProtocols.bootstrap();
             com.aetherianartificer.townstead.compat.brewinandchewin.BrewinFluidRecipes.bootstrap();
             com.aetherianartificer.townstead.compat.caupona.CauponaFluidRecipes.bootstrap();
@@ -1380,6 +1433,7 @@ public class Townstead {
         event.enqueueWork(() -> {
             com.aetherianartificer.townstead.reaction.backend.ReactionBackends.register(
                     new com.aetherianartificer.townstead.reaction.backend.EmotecraftReactionBackend());
+            com.aetherianartificer.townstead.compat.otectus.OtectusBridge.init();
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
                     new com.aetherianartificer.townstead.reaction.trigger.types.GestureTriggerType());
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
@@ -1412,6 +1466,12 @@ public class Townstead {
                     new com.aetherianartificer.townstead.root.gene.types.DietGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.root.gene.types.HydrationGeneType());
+            com.aetherianartificer.townstead.root.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.root.gene.types.ThermalToleranceGeneType());
+            com.aetherianartificer.townstead.root.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.root.gene.types.InsulationGeneType());
+            com.aetherianartificer.townstead.root.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.root.gene.types.MetabolismGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.root.gene.types.ChronotypeGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
@@ -1661,6 +1721,21 @@ public class Townstead {
                         "pheno:xp_points", ctx -> ctx.entity() instanceof net.minecraft.world.entity.player.Player p ? p.totalExperience : Double.NaN),
                 new com.aetherianartificer.townstead.pheno.condition.types.NumericConditionType(
                         "pheno:max_health", ctx -> ctx.entity().getMaxHealth()),
+                new com.aetherianartificer.townstead.pheno.condition.types.NumericConditionType(
+                        "pheno:body_temperature", ctx -> {
+                            if (!(ctx.entity() instanceof VillagerEntityMCA villager)) return Double.NaN;
+                            if (ctx.level().isClientSide) return TemperatureData.celsius(TemperatureClientStore.getBodyTenths(villager.getId()));
+                            var needs = TownsteadVillagers.get(villager).needs();
+                            return needs.hasBodyTemp() ? TemperatureData.celsius(needs.bodyTempTenths()) : Double.NaN;
+                        }),
+                new com.aetherianartificer.townstead.pheno.condition.types.NumericConditionType(
+                        "pheno:ambient_temperature", ctx -> {
+                            if (ctx.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                                return TemperatureData.ambientCelsius(serverLevel, ctx.pos());
+                            }
+                            return ctx.entity() instanceof VillagerEntityMCA villager
+                                    ? TemperatureData.celsius(TemperatureClientStore.getAmbientTenths(villager.getId())) : Double.NaN;
+                        }),
         };
         for (var numeric : numerics) {
             com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(numeric);
@@ -1670,6 +1745,10 @@ public class Townstead {
         // Consolidated environment query (weather/exposure/time/biome/dimension/effects in one block)
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.EnvironmentConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.WetConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.NearObjectSetConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.TimeOfDayConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
@@ -2009,6 +2088,12 @@ public class Townstead {
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.EnergizeActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.AdjustBodyTemperatureActionType(
+                        com.aetherianartificer.townstead.pheno.action.types.AdjustBodyTemperatureActionType.WARM, true));
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.AdjustBodyTemperatureActionType(
+                        com.aetherianartificer.townstead.pheno.action.types.AdjustBodyTemperatureActionType.COOL, false));
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.FreezeActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.ExhaustActionType());
@@ -2150,6 +2235,8 @@ public class Townstead {
         com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.block.types.ModifyBlockStateBlockActionType());
         com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.block.types.InsertItemBlockActionType());
+        com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.block.types.ExecuteCommandBlockActionType());
         com.aetherianartificer.townstead.pheno.action.block.BlockActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.block.types.SpawnEntityBlockActionType());
@@ -2205,6 +2292,12 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.root.LineageJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.RootJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.personality.PersonalityJsonLoader());
+        // Name lists load before traditions, and traditions before cultures, so each layer
+        // validates its references against the one below during the same reload.
+        event.addListener(new com.aetherianartificer.townstead.naming.NameListJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.naming.NamingTraditionJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.culture.CultureJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.compat.mcacapitals.CapitalsSurnameRegisters());
         event.addListener(new com.aetherianartificer.townstead.root.HeritageJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.chronotype.ChronotypeCatalogLoader());
         event.addListener(new com.aetherianartificer.townstead.root.gene.GeneJsonLoader());
@@ -2229,6 +2322,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.chronicle.pregen.ChronicleWorkHistoryLoader());
         event.addListener(new com.aetherianartificer.townstead.needs.Consumables.Loader());
         event.addListener(new com.aetherianartificer.townstead.needs.Amenities.Loader());
+        event.addListener(new com.aetherianartificer.townstead.temperature.TemperatureSettings.Loader());
         event.addListener(new com.aetherianartificer.townstead.hangout.HangoutData.Loader());
         event.addListener(new com.aetherianartificer.townstead.performance.PerformanceMappings.Loader());
         event.addListener(new com.aetherianartificer.townstead.expression.ExpressionCues.Loader());
@@ -2830,6 +2924,43 @@ public class Townstead {
                 FatigueSetPayload.STREAM_CODEC,
                 this::handleFatigueSet
         );
+        registrar.playToClient(
+                TemperatureSyncPayload.TYPE,
+                TemperatureSyncPayload.STREAM_CODEC,
+                this::handleTemperatureSync
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.naming.NameSyncPayload.TYPE,
+                com.aetherianartificer.townstead.naming.NameSyncPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.naming.NameClientStore.set(
+                                payload.entityId(), payload.familyName(), payload.culture(), payload.order()))
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.temperature.ThermometerReadingPayload.TYPE,
+                com.aetherianartificer.townstead.temperature.ThermometerReadingPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.temperature.ThermometerClient.show(payload))
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.temperature.ThermostatRequestPayload.TYPE,
+                com.aetherianartificer.townstead.temperature.ThermostatRequestPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof net.minecraft.server.level.ServerPlayer player)
+                        com.aetherianartificer.townstead.temperature.ThermostatInteraction.handle(payload,player);
+                })
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.temperature.ThermostatSnapshotPayload.TYPE,
+                com.aetherianartificer.townstead.temperature.ThermostatSnapshotPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.client.gui.temperature.ThermostatScreen.accept(payload))
+        );
+        registrar.playToServer(
+                TemperatureSetPayload.TYPE,
+                TemperatureSetPayload.STREAM_CODEC,
+                this::handleTemperatureSet
+        );
         // Field Post
         registrar.playToServer(
                 FieldPostConfigSetPayload.TYPE,
@@ -3221,7 +3352,7 @@ public class Townstead {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer sp)) return;
             com.aetherianartificer.townstead.root.RootServerLogic.commitGenes(
-                    sp, payload.entityId(), payload.genes());
+                    sp, payload.entityId(), payload.genes(), payload.hairColor());
         });
     }
 
@@ -3311,7 +3442,8 @@ public class Townstead {
     ) {
         context.enqueueWork(() ->
                 com.aetherianartificer.townstead.client.root.RootClientStore.setExpressed(
-                        payload.entityId(), payload.genes()));
+                        payload.entityId(), payload.genes(), payload.hair(), payload.hairColorRanges(),
+                        payload.hairColors(), payload.hairGradients()));
     }
 
     private void handleResourceSync(
@@ -4323,6 +4455,29 @@ public class Townstead {
         });
     }
 
+    private void handleTemperatureSync(TemperatureSyncPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> TemperatureClientStore.set(
+                payload.entityId(), payload.bodyTenths(), payload.ambientTenths(), payload.flags()));
+    }
+
+    private void handleTemperatureSet(TemperatureSetPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            Entity entity = sp.serverLevel().getEntity(payload.entityId());
+            if (!(entity instanceof VillagerEntityMCA villager)) return;
+            TownsteadVillager state = TownsteadVillagers.get(villager);
+            if (payload.bodyTenths() == -1) {
+                PacketDistributor.sendToPlayer(sp, townstead$temperatureSync(villager, state.needs().temperatureTag()));
+                return;
+            }
+            state.needs().setBodyTempTenths(payload.bodyTenths());
+            TownsteadVillagers.flush(villager);
+            TemperatureSyncPayload sync = townstead$temperatureSync(villager, state.needs().temperatureTag());
+            PacketDistributor.sendToPlayer(sp, sync);
+            PacketDistributor.sendToPlayersTrackingEntity(villager, sync);
+        });
+    }
+
     private void handleFieldPostConfigSet(FieldPostConfigSetPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer sp)) return;
@@ -4398,6 +4553,9 @@ public class Townstead {
 
         if (!(event.getTarget() instanceof VillagerEntityMCA villager)) return;
 
+        com.aetherianartificer.townstead.naming.NameSyncTarget.syncToPlayer(sp, villager);
+        com.aetherianartificer.townstead.tick.TemperatureVillagerTicker.tick(villager);
+
         // Make sure stage durations are rolled and a birth is stamped before the
         // life sync below is built, so the client snapshot is never empty when the
         // player can reach the villager's editor.
@@ -4420,6 +4578,7 @@ public class Townstead {
         ));
         CompoundTag fatigue = state.needs().fatigueTag();
         PacketDistributor.sendToPlayer(sp, townstead$fatigueSync(villager, fatigue));
+        PacketDistributor.sendToPlayer(sp, townstead$temperatureSync(villager, state.needs().temperatureTag()));
         CompoundTag shift = state.schedule().toTag();
         if (ShiftData.hasCustomShifts(shift)) {
             PacketDistributor.sendToPlayer(sp, new ShiftSyncPayload(
@@ -4446,6 +4605,7 @@ public class Townstead {
         ));
         CompoundTag fatigue = state.needs().fatigueTag();
         TownsteadNetwork.sendToPlayer(sp, townstead$fatigueSync(villager, fatigue));
+        TownsteadNetwork.sendToPlayer(sp, townstead$temperatureSync(villager, state.needs().temperatureTag()));
         CompoundTag shift = state.schedule().toTag();
         if (ShiftData.hasCustomShifts(shift)) {
             TownsteadNetwork.sendToPlayer(sp, new ShiftSyncPayload(
@@ -4528,6 +4688,16 @@ public class Townstead {
                 ThirstData.getThirst(thirst),
                 ThirstData.getQuenched(thirst)
         );
+    }
+
+    public static TemperatureSyncPayload townstead$temperatureSync(VillagerEntityMCA villager, CompoundTag temperature) {
+        int body = TemperatureData.getBodyTemp(temperature);
+        int flags = TemperatureSyncPayload.flags(TemperatureData.isWet(temperature),
+                temperature.getBoolean("seekingRelief"), temperature.contains("tier") ? temperature.getInt("tier") : 3)
+                | ((temperature.contains("coreTier") ? Math.max(0, Math.min(6, temperature.getInt("coreTier"))) : 3) << 5);
+        return new TemperatureSyncPayload(villager.getId(),
+                body == Integer.MIN_VALUE ? TemperatureData.tenths(TemperatureData.DEFAULT_NEUTRAL) : body,
+                TemperatureData.getAmbient(temperature), flags);
     }
 
     public static FatigueSyncPayload townstead$fatigueSync(VillagerEntityMCA villager, CompoundTag fatigue) {

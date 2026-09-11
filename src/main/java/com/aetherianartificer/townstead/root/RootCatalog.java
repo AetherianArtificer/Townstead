@@ -68,6 +68,9 @@ public final class RootCatalog {
                 ranges.add(new RootCatalogEntry.GeneRangeView(r.getKey(), r.getValue().min(), r.getValue().max()));
             }
 
+            com.aetherianartificer.townstead.root.appearance.HairSettings hair =
+                    com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(
+                            origin.id(), RootRegistry.seedHeritage(origin.id()));
             origins.add(new RootCatalogEntry(
                     origin.id().toString(), name, singular, plural,
                     backstory != null ? backstory.getString() : "",
@@ -81,6 +84,7 @@ public final class RootCatalog {
                     spc != null ? spc.rig().scale() : Rig.VILLAGER.scale(),
                     spc != null ? spc.animations() : Animations.DEFAULT,
                     spc == null || spc.breasts(),
+                    hair.enabled(), hair.colorRanges(), hair.colors(), hair.gradients(),
                     stageRigsFor(origin.id()),
                     spc != null ? spc.characterEditor() : null,
                     RootBlocklist.isBlocked(origin.id())));

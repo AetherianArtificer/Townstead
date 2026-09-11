@@ -21,7 +21,8 @@ public final class BedrockRootMotion {
                     var playback = entry.getValue();
                     var clip = NativeClipRegistry.getBedrock(playback.clip()).orElse(null);
                     return clip != null && clip.bones().containsKey("root")
-                            && BedrockPerformanceSampler.blend(clip, now - playback.startedAt() + partialTick,
+                            && NativeLocomotionPolicy.lowerBodyWeight(playback.clip(), entity.walkAnimation.speed(partialTick)) > 0
+                            && BedrockPerformanceSampler.blend(clip, playback.elapsed(now, partialTick),
                             playback.expiresAt() - now - partialTick) > 0;
                 })
                 .max(Comparator.<Map.Entry<String, NativePlaybackRegistry.Playback>>comparingInt(e -> e.getValue().priority())
@@ -30,8 +31,10 @@ public final class BedrockRootMotion {
         var playback = owner.getValue();
         var clip = NativeClipRegistry.getBedrock(playback.clip()).orElse(null);
         if (clip == null) return;
-        float[] p = BedrockPerformanceSampler.rootTranslation(clip, now - playback.startedAt() + partialTick,
+        float[] p = BedrockPerformanceSampler.rootTranslation(clip, playback.elapsed(now, partialTick),
                 playback.expiresAt() - now - partialTick, false);
+        float lowerBodyWeight = NativeLocomotionPolicy.lowerBodyWeight(playback.clip(), entity.walkAnimation.speed(partialTick));
+        for (int axis = 0; axis < p.length; axis++) p[axis] *= lowerBodyWeight;
         var definition = RigModels.definition(RigModels.rigBaseFor(entity));
         var motion = definition == null || definition.emote() == null
                 ? RigDefinition.BodyMotion.FULL : definition.emote().bodyMotion();

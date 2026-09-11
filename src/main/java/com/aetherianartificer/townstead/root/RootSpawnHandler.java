@@ -61,6 +61,9 @@ public final class RootSpawnHandler {
         if (state.life().hasGenotype() || state.life().hasHeritage()) {
             ResourceLocation childRoot = ResourceLocation.tryParse(state.life().rootId());
             if (childRoot == null) childRoot = RootRegistry.DEFAULT_ID;
+            com.aetherianartificer.townstead.root.appearance.HairColors.clamp(villager,
+                    com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(
+                            childRoot, state.life().heritage()));
             assignPersonality(villager, state, childRoot);
             rollAndStoreStageDays(villager, state, childRoot);
             return;
@@ -84,6 +87,9 @@ public final class RootSpawnHandler {
             ResourceLocation mixedRoot = ResourceLocation.tryParse(state.life().rootId());
             assignPersonality(villager, state, mixedRoot == null ? RootRegistry.DEFAULT_ID : mixedRoot);
             RootGenes.apply(villager, blendBodyMetrics(mix), villager.getRandom());
+            com.aetherianartificer.townstead.root.appearance.HairColors.roll(villager,
+                    com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(
+                            mixedRoot, state.life().heritage()), villager.getRandom());
             rollBlendedTraitGenes(villager, mix);
             // Life cycle: roll once against the dominant root's cycle, exactly like a
             // bred child. A share-blended cycle can't be reconstructed on load, so it
@@ -109,6 +115,9 @@ public final class RootSpawnHandler {
                 villager.getRandom());
         rollTraitGenes(villager, state, rootId);
         Heredity.seedFounder(state.life(), rootId, villager.getRandom());
+        com.aetherianartificer.townstead.root.appearance.HairColors.roll(villager,
+                com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(
+                        rootId, state.life().heritage()), villager.getRandom());
         rollAndStoreStageDays(villager, state, rootId);
     }
 
@@ -187,6 +196,9 @@ public final class RootSpawnHandler {
             Heredity.migrateFounder(state.life(), rootId, villager.getRandom());
             MIGRATED_GENE_REVISION.put(villager, geneRevision);
         }
+        com.aetherianartificer.townstead.root.appearance.HairColors.clamp(villager,
+                com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(
+                        rootId, state.life().heritage()));
         LifeCycle cycle = RootRegistry.effectiveLifeCycle(rootId);
         // Re-roll when the stored stageDays don't match the current cycle — either a
         // different length (origin reassigned), a re-authored shape, or a changed

@@ -10,6 +10,16 @@ import java.nio.charset.StandardCharsets;
 import static org.junit.jupiter.api.Assertions.*;
 
 class BedrockPerformanceClipTest {
+    @Test void aSipPlaysOnceAndReleasesTheArmAfterward() throws Exception {
+        try (var stream = getClass().getResourceAsStream("/assets/townstead_performance/animations/townstead/sip.animation.json")) {
+            assertNotNull(stream);
+            var clip = BedrockPerformanceClip.parse(JsonParser.parseReader(
+                    new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject()).get("animation.sip");
+            assertEquals(BedrockPerformanceClip.Loop.ONCE, clip.loop());
+            assertEquals(0F, BedrockPerformanceSampler.blend(clip, clip.durationTicks() + 1, 500));
+        }
+    }
+
     @ParameterizedTest
     @CsvSource({"wave,32", "clap,48", "nod,20", "shrug,30", "cheer,40", "cheer_excited,40", "startled,30", "yawn,44", "shake_head,24", "point,30", "toast,28"})
     void loadsTheActualBlockbenchExport(String name, float duration) throws Exception {
@@ -29,7 +39,7 @@ class BedrockPerformanceClipTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"laugh,24", "laugh_demure,24", "beckon,32", "animated_story,48", "attentive,36", "eat,28", "recline,60", "recline_lounger,60", "relaxed_lean,48", "sip,34", "stool_sit,40", "tap_foot,16", "whisper,40", "ponder,48", "cry,40", "shiver,40", "sweat,60"})
+    @CsvSource({"laugh,24", "laugh_demure,24", "beckon,32", "animated_story,48", "attentive,36", "eat,28", "recline,60", "recline_lounger,60", "relaxed_lean,48", "stool_sit,40", "tap_foot,16", "whisper,40", "ponder,48", "cry,40", "shiver,40", "sweat,60"})
     void loadsLoopingExportsWithMatchingEndpointPoses(String name, float duration) throws Exception {
         try (var stream = getClass().getResourceAsStream("/assets/townstead_performance/animations/townstead/" + name + ".animation.json")) {
             assertNotNull(stream);

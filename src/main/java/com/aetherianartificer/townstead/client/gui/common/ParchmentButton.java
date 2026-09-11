@@ -14,6 +14,11 @@ import net.minecraft.network.chat.Component;
  */
 public class ParchmentButton extends Button {
 
+    private boolean selected;
+
+    /** Selection remains distinct from interaction availability. */
+    public void setSelected(boolean selected) { this.selected = selected; }
+
     private static final int FACE = 0xFFC9A96A;
     private static final int FACE_HOVER = 0xFFE0C089;
     private static final int FACE_OFF = 0xFFB5AC96;
@@ -35,15 +40,20 @@ public class ParchmentButton extends Button {
         int w = getWidth();
         int h = getHeight();
         boolean on = active;
-        boolean hot = on && isHovered();
+        boolean hot = on && (isHovered() || isFocused());
 
         g.fill(x + 1, y + 1, x + w + 1, y + h + 1, 0x30140F08);
-        g.fill(x, y, x + w, y + h, on ? (hot ? FACE_HOVER : FACE) : FACE_OFF);
+        g.fill(x, y, x + w, y + h, on ? (selected ? Palette.DESK : hot ? FACE_HOVER : FACE) : FACE_OFF);
         // Light from the top left, the same direction the frames and plaques are lit from.
         g.fill(x, y, x + w, y + 1, on ? EDGE_HI : EDGE_OFF_HI);
         g.fill(x, y, x + 1, y + h, on ? EDGE_HI : EDGE_OFF_HI);
         g.fill(x, y + h - 1, x + w, y + h, on ? EDGE_LO : EDGE_OFF_LO);
         g.fill(x + w - 1, y, x + w, y + h, on ? EDGE_LO : EDGE_OFF_LO);
+
+        if (on && isFocused()) Palette.drawOutline(g, x - 1, y - 1, x + w + 1, y + h + 1, Palette.BRASS_HOT);
+        if (selected) {
+            g.fill(x + 3, y + 4, x + 5, y + h - 4, on ? Palette.BRASS : INK_OFF);
+        }
 
         var font = Minecraft.getInstance().font;
         Component message = getMessage();
@@ -54,7 +64,7 @@ public class ParchmentButton extends Button {
             g.enableScissor(x + 4, y, x + w - 4, y + h);
         }
         g.drawString(font, message, x + (w - Math.min(textWidth, room)) / 2,
-                y + (h - font.lineHeight) / 2 + 1, on ? INK : INK_OFF, false);
+                y + (h - font.lineHeight) / 2 + 1, on ? (selected ? Palette.LABEL_LIGHT : INK) : INK_OFF, false);
         if (textWidth > room) {
             g.disableScissor();
         }

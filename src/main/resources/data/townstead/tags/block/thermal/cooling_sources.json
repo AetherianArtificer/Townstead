@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:water",
+    "#minecraft:ice",
+    "minecraft:snow_block",
+    "minecraft:powder_snow",
+    "minecraft:snow",
+    "minecraft:soul_fire",
+    "minecraft:soul_campfire"
+  ]
+}

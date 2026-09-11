@@ -44,9 +44,12 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class VillagerConsumptionManager {
 
-    private record Pending(ItemStack item, ItemStack previousMainHand, long finishTick, BlockPos source) {}
+    private record Pending(ItemStack item, ItemStack previousMainHand, long useAtTick,
+                           long finishTick, BlockPos source, boolean recreational, int sipSeed) {}
 
     private static final Map<Integer, Pending> PENDING = new ConcurrentHashMap<>();
+    private static final Map<Integer, Pending> HELD_EMPTIES = new ConcurrentHashMap<>();
+    private static final Map<Integer, Long> LAST_SIP_CUE = new ConcurrentHashMap<>();
 
     private VillagerConsumptionManager() {}
 
@@ -71,15 +74,58 @@ public final class VillagerConsumptionManager {
      * item was taken from so the leftover container can be returned there when it's finished.
      */
     public static boolean startConsuming(VillagerEntityMCA villager, ItemStack stack, BlockPos source) {
+        return startConsuming(villager, stack, source, 0);
+    }
+
+    public static boolean isHoldingServing(VillagerEntityMCA villager) {
+        return isConsuming(villager) || HELD_EMPTIES.containsKey(villager.getId());
+    }
+
+    /** A real reserved serving owns the hand; trade previews and work cleanup cannot replace it. */
+    public static boolean permitsMainHandChange(VillagerEntityMCA villager, ItemStack proposed) {
+        Pending pending = PENDING.get(villager.getId());
+        Pending empty = HELD_EMPTIES.get(villager.getId());
+        if (pending == null && empty == null) return true;
+        ItemStack expected = pending != null ? pending.item() : remainder(empty.item(), policy(empty.item()));
+        return ItemStack.matches(expected, proposed);
+    }
+
+    private static void returnHeldEmpty(VillagerEntityMCA villager) {
+        Pending empty = HELD_EMPTIES.remove(villager.getId());
+        if (empty == null) return;
+        villager.setItemInHand(InteractionHand.MAIN_HAND, empty.previousMainHand().copy());
+        returnRemainder(villager, empty.item(), empty.source());
+    }
+
+    /** Holds one serving between occasional sips, consuming it after 90 seconds or on departure. */
+    public static boolean startRecreationalDrink(VillagerEntityMCA villager, ItemStack stack, BlockPos source) {
+        return startConsuming(villager, stack, source, RecreationalDrinkTiming.HOLD_TICKS);
+    }
+
+    /** Finish the held serving when leaving, releasing the hand through normal consumption. */
+    public static void finishRecreationalDrink(VillagerEntityMCA villager) {
+        returnHeldEmpty(villager);
+        Pending pending = PENDING.get(villager.getId());
+        if (pending == null || !pending.recreational()) return;
+        PENDING.remove(villager.getId());
+        LAST_SIP_CUE.remove(villager.getId());
+        villager.stopUsingItem();
+        villager.setItemInHand(InteractionHand.MAIN_HAND, pending.previousMainHand().copy());
+        applyConsumption(villager, villager, pending.item(), TownsteadVillagers.get(villager).needs(), pending.source());
+    }
+
+    private static boolean startConsuming(VillagerEntityMCA villager, ItemStack stack, BlockPos source,
+                                          int holdTicks) {
         if (stack.isEmpty() || isConsuming(villager)) return false;
         if (!permitsManagedVillagerConsumption(stack)) return false;
-        if (!isConsumable(stack)) return false;
+        if (!isConsumable(stack) && !com.aetherianartificer.townstead.temperature.ThermalConsumables.hasEffects(stack, villager)) return false;
 
         //? if >=1.21 {
         ItemStack oneUnit = stack.copyWithCount(1);
         //?} else {
         /*ItemStack oneUnit = stack.copy(); oneUnit.setCount(1);
         *///?}
+        returnHeldEmpty(villager);
         ItemStack previousMainHand = villager.getMainHandItem().copy();
         //? if >=1.21 {
         int useDuration = oneUnit.getUseDuration(villager);
@@ -87,16 +133,20 @@ public final class VillagerConsumptionManager {
         /*int useDuration = oneUnit.getUseDuration();
         *///?}
         if (useDuration <= 0) useDuration = 32;
+        if (holdTicks > 0) useDuration = 48; // One final authored sip, without native item-use side effects.
 
+        long useAt = villager.level().getGameTime() + holdTicks;
         PENDING.put(villager.getId(),
-                new Pending(oneUnit.copy(), previousMainHand, villager.level().getGameTime() + useDuration, source));
+                new Pending(oneUnit.copy(), previousMainHand, useAt, useAt + useDuration, source,
+                        holdTicks > 0, villager.getRandom().nextInt()));
 
         villager.setItemInHand(InteractionHand.MAIN_HAND, oneUnit);
-        villager.startUsingItem(InteractionHand.MAIN_HAND);
+        if (holdTicks == 0) villager.startUsingItem(InteractionHand.MAIN_HAND);
         return true;
     }
 
     private static boolean isConsumable(ItemStack stack) {
+        if (stack.getUseAnimation() == net.minecraft.world.item.UseAnim.DRINK) return true;
         //? if >=1.21 {
         if (stack.get(DataComponents.FOOD) != null) return true;
         //?} else {
@@ -113,8 +163,27 @@ public final class VillagerConsumptionManager {
      */
     public static boolean tickAndFinalize(VillagerEntityMCA villager, TownsteadVillager.Needs needs) {
         Pending pending = PENDING.get(villager.getId());
-        if (pending == null) return false;
-        if (villager.isUsingItem()) return false;
+        if (pending == null) {
+            Pending empty = HELD_EMPTIES.get(villager.getId());
+            if (empty != null) maintainHand(villager, remainder(empty.item(), policy(empty.item())));
+            return false;
+        }
+        maintainHand(villager, pending.item());
+        long now = villager.level().getGameTime();
+        if (now < pending.useAtTick()) {
+            if (pending.recreational()) {
+                long elapsed = now - (pending.useAtTick() - RecreationalDrinkTiming.HOLD_TICKS);
+                if (RecreationalDrinkTiming.startsSip(elapsed, pending.sipSeed())) playSip(villager, now);
+            }
+            return false;
+        }
+        if (pending.recreational() && now < pending.finishTick()) {
+            if (!LAST_SIP_CUE.containsKey(villager.getId()) || LAST_SIP_CUE.get(villager.getId()) < pending.useAtTick()) {
+                playSip(villager, now);
+            }
+            return false;
+        }
+        if (!pending.recreational() && villager.isUsingItem()) return false;
 
         boolean completed = villager.level().getGameTime() >= pending.finishTick();
         if (!completed) {
@@ -125,8 +194,33 @@ public final class VillagerConsumptionManager {
         }
 
         PENDING.remove(villager.getId());
+        LAST_SIP_CUE.remove(villager.getId());
+        ItemStack empty = pending.recreational() ? remainder(pending.item(), policy(pending.item())) : ItemStack.EMPTY;
+        if (!empty.isEmpty()) {
+            HELD_EMPTIES.put(villager.getId(), pending);
+            villager.setItemInHand(InteractionHand.MAIN_HAND, empty);
+            return applyConsumption(villager, villager, pending.item(), needs, pending.source(), false);
+        }
         villager.setItemInHand(InteractionHand.MAIN_HAND, pending.previousMainHand().copy());
         return applyConsumption(villager, villager, pending.item(), needs, pending.source());
+    }
+
+    private static void maintainHand(VillagerEntityMCA villager, ItemStack expected) {
+        if (!ItemStack.matches(villager.getMainHandItem(), expected)) {
+            villager.setItemInHand(InteractionHand.MAIN_HAND, expected.copy());
+        }
+    }
+
+    private static void playSip(VillagerEntityMCA villager, long now) {
+        Long previous = LAST_SIP_CUE.put(villager.getId(), now);
+        if (previous != null && previous == now) return; // Multiple needs tickers share this lifecycle.
+        if (villager.level() instanceof ServerLevel level) {
+            com.aetherianartificer.townstead.performance.PerformanceProviders.play(level,
+                    new com.aetherianartificer.townstead.performance.PerformanceRequest(villager,
+                            net.minecraft.resources.ResourceLocation.tryParse("townstead_performance:sip"),
+                            "consumption", 48, 100,
+                            com.aetherianartificer.townstead.performance.PerformanceRequest.Fallback.NONE));
+        }
     }
 
     /**
@@ -145,13 +239,20 @@ public final class VillagerConsumptionManager {
     /** As above, returning the leftover container to {@code source} first when one was recorded. */
     public static boolean applyConsumption(VillagerEntityMCA holder, VillagerEntityMCA recipient,
                                            ItemStack stack, TownsteadVillager.Needs recipientNeeds, BlockPos source) {
+        return applyConsumption(holder, recipient, stack, recipientNeeds, source, true);
+    }
+
+    private static boolean applyConsumption(VillagerEntityMCA holder, VillagerEntityMCA recipient,
+                                           ItemStack stack, TownsteadVillager.Needs recipientNeeds, BlockPos source,
+                                           boolean returnContainer) {
         ConsumptionPolicy policy = policy(stack);
         if (policy != null && (!policy.permits(ConsumptionPolicy.Consumer.VILLAGER)
                 || policy.mode() != ConsumptionPolicy.Mode.REPLACE_WITH_PHENO)) return false;
-        returnRemainder(holder, stack, source, policy);
+        if (returnContainer) returnRemainder(holder, stack, source, policy);
         int beforeThirst = recipientNeeds.thirst();
         int beforeQuenched = recipientNeeds.quenched();
         int beforeFatigue = recipientNeeds.fatigue();
+        int beforeHunger = recipientNeeds.hunger();
         NeedEffectProjection configured = Consumables.projection(
                 stack, ConsumptionPolicy.Consumer.VILLAGER);
         boolean attributes = allows(policy, ConsumptionPolicy.EffectClass.ATTRIBUTE);
@@ -164,8 +265,17 @@ public final class VillagerConsumptionManager {
         boolean changed = applyFoodBenefits(recipient, stack, recipientNeeds, attributes,
                 statuses, teleport);
         changed |= applyThirstBenefits(recipient, stack, recipientNeeds, attributes, statuses);
+        if (statuses && configured.warmthTenths() == 0) {
+            com.aetherianartificer.townstead.temperature.ThermalConsumables.apply(recipient, stack);
+        }
         changed |= recipientNeeds.thirst() != beforeThirst || recipientNeeds.quenched() != beforeQuenched
                 || recipientNeeds.fatigue() != beforeFatigue;
+        if (changed || recipientNeeds.hunger() != beforeHunger) {
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.refueled(recipient,
+                    net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()),
+                    beforeHunger, recipientNeeds.hunger(), beforeThirst, recipientNeeds.thirst(),
+                    beforeFatigue, recipientNeeds.fatigue());
+        }
         return changed;
     }
 
@@ -180,6 +290,10 @@ public final class VillagerConsumptionManager {
     public static void creditUnmanagedFood(VillagerEntityMCA villager, ItemStack stack) {
         if (villager.level().isClientSide()) return;
         if (PENDING.containsKey(villager.getId())) return;
+        // Native temperature handlers are player-only, even when MCA finishes the food itself.
+        if (Consumables.projection(stack, ConsumptionPolicy.Consumer.VILLAGER).warmthTenths() == 0) {
+            com.aetherianartificer.townstead.temperature.ThermalConsumables.apply(villager, stack);
+        }
         if (!TownsteadConfig.isVillagerHungerEnabled()) return;
         if (NeedSuppression.suppressesHunger(villager)) return;
         //? if >=1.21 {
@@ -190,8 +304,12 @@ public final class VillagerConsumptionManager {
         if (food == null) return;
         TownsteadVillager.Needs needs = TownsteadVillagers.get(villager).needs();
         float foodScale = com.aetherianartificer.townstead.root.hook.PhenoHooks.foodMultiplier(villager);
+        int hungerBefore = needs.hunger();
         needs.applyFood(food, foodScale);
         needs.setLastAteTime(villager.level().getGameTime());
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.refueled(villager,
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()),
+                hungerBefore, needs.hunger(), needs.thirst(), needs.thirst(), needs.fatigue(), needs.fatigue());
         NeedEffectProjection configured = Consumables.projection(
                 stack, ConsumptionPolicy.Consumer.VILLAGER);
         Consumables.apply(villager, stack);

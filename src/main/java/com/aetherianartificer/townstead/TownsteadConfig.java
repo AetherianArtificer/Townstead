@@ -45,6 +45,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_CONTAINER_SOURCING;
     public static final ModConfigSpec.BooleanValue ENABLE_CONTAINER_THIRST_SOURCING;
     public static final ModConfigSpec.BooleanValue ENABLE_CROP_SOURCING;
+    public static final ModConfigSpec.BooleanValue PREFER_SERVED_FOOD;
     public static final ModConfigSpec.BooleanValue ENABLE_CHORUS_FRUIT_TELEPORT;
     public static final ModConfigSpec.BooleanValue ENABLE_EMPTY_CONTAINER_DROPOFF;
     public static final ModConfigSpec.BooleanValue ENABLE_CROP_THIRST_SOURCING;
@@ -88,6 +89,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
     public static final ModConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
+    public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.temperature.TemperatureData.Unit> TEMPERATURE_UNIT;
     public static final ModConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
     public static final ModConfigSpec.EnumValue<ResourceHudStack> RESOURCE_HUD_STACK;
     public static final ModConfigSpec.EnumValue<ResourceHudExitStyle> RESOURCE_HUD_EXIT_STYLE;
@@ -107,16 +109,20 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.DoubleValue SPIRIT_FONT_SCALE;
     public static final ModConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
+    public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_TEMPERATURE;
+    public static final ModConfigSpec.ConfigValue<String> PREFERRED_TEMPERATURE_BACKEND;
     public static final ModConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ModConfigSpec.BooleanValue DEBUG_LOGGING;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> API_DENIED_WRITE_SOURCES;
     public static final ModConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ROOTS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_LINEAGES;
+    public static final ModConfigSpec.BooleanValue ENABLE_STABLE_NAMING_REGISTERS;
     public static final ModConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
     public static final ModConfigSpec.BooleanValue CALENDAR_REAL_CLOCK;
     public static final ModConfigSpec.DoubleValue AGING_SCALE;
@@ -135,6 +141,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_CONTAINER_SOURCING;
     public static final ForgeConfigSpec.BooleanValue ENABLE_CONTAINER_THIRST_SOURCING;
     public static final ForgeConfigSpec.BooleanValue ENABLE_CROP_SOURCING;
+    public static final ForgeConfigSpec.BooleanValue PREFER_SERVED_FOOD;
     public static final ForgeConfigSpec.BooleanValue ENABLE_CHORUS_FRUIT_TELEPORT;
     public static final ForgeConfigSpec.BooleanValue ENABLE_EMPTY_CONTAINER_DROPOFF;
     public static final ForgeConfigSpec.BooleanValue ENABLE_CROP_THIRST_SOURCING;
@@ -178,6 +185,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ForgeConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
     public static final ForgeConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
+    public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.temperature.TemperatureData.Unit> TEMPERATURE_UNIT;
     public static final ForgeConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
     public static final ForgeConfigSpec.EnumValue<ResourceHudStack> RESOURCE_HUD_STACK;
     public static final ForgeConfigSpec.EnumValue<ResourceHudExitStyle> RESOURCE_HUD_EXIT_STYLE;
@@ -197,16 +205,20 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.DoubleValue SPIRIT_FONT_SCALE;
     public static final ForgeConfigSpec.BooleanValue ENABLE_TOWNSTEAD_COOK;
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_TEMPERATURE;
+    public static final ForgeConfigSpec.ConfigValue<String> PREFERRED_TEMPERATURE_BACKEND;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ForgeConfigSpec.BooleanValue DEBUG_LOGGING;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> API_DENIED_WRITE_SOURCES;
     public static final ForgeConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ROOTS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_LINEAGES;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_STABLE_NAMING_REGISTERS;
     public static final ForgeConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
     public static final ForgeConfigSpec.BooleanValue CALENDAR_REAL_CLOCK;
     public static final ForgeConfigSpec.DoubleValue AGING_SCALE;
@@ -246,6 +258,10 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.needs.hunger.enableCropSourcing")
                 .comment("Allow villagers to harvest mature crops for food as an emergency fallback. Disabled by default to avoid broad crop scans.")
                 .define("enableCropSourcing", false);
+        PREFER_SERVED_FOOD = b
+                .translation("townstead.configuration.needs.hunger.preferServedFood")
+                .comment("Rank plated meals and other served food alongside chests and dropped items, with a bonus, so a nearby laid table beats a far pantry. When false, villagers eat served food only once no stored or dropped food is reachable.")
+                .define("preferServedFood", true);
         ENABLE_CHORUS_FRUIT_TELEPORT = b
                 .translation("townstead.configuration.needs.hunger.enableChorusFruitTeleport")
                 .comment("Let villagers teleport when they eat chorus fruit, just like players do.")
@@ -292,10 +308,10 @@ public final class TownsteadConfig {
             PREFERRED_THIRST_BACKEND = b
                     .translation("townstead.configuration.needs.thirst.preferredBackend")
                     .comment("Which thirst mod drives villager thirst when more than one is installed.",
-                             "\"auto\" prefers Legendary Survival Overhaul, then Thirst Was Reclaimed / Thirst Was Taken.",
-                             "\"legendary_survival_overhaul\" or \"thirst\" pins that backend, falling back to the other if it is not installed.")
+                             "\"auto\" prefers Legendary Survival Overhaul, then Thirst Was Reclaimed / Thirst Was Taken, then Tough As Nails.",
+                             "\"legendary_survival_overhaul\", \"thirst\" or \"tough_as_nails\" pins that backend, falling back to an installed backend.")
                     // Arrays.asList, not List.of: correct() probes missing keys with null and List.of.contains(null) throws.
-                    .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "thirst"));
+                    .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "thirst", "tough_as_nails"));
             b.pop();
         } else {
             ENABLE_SELF_INVENTORY_DRINKING = null;
@@ -308,6 +324,20 @@ public final class TownsteadConfig {
             PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES = null;
             PREFERRED_THIRST_BACKEND = null;
         }
+        // ── Temperature ──
+        b.translation("townstead.configuration.needs.temperature").push("temperature");
+        ENABLE_VILLAGER_TEMPERATURE = b
+                .translation("townstead.configuration.needs.temperature.enableVillagerTemperature")
+                .comment("Enable villager body temperature. Villagers drift toward the climate at their own position, dress for it, and seek a hearth or shade when they cannot cope. Disable to keep every villager comfortable.")
+                .define("enableVillagerTemperature", true);
+        PREFERRED_TEMPERATURE_BACKEND = b
+                .translation("townstead.configuration.needs.temperature.preferredBackend")
+                .comment("Which mod reports the ambient temperature at a villager position.",
+                         "\"auto\" prefers Legendary Survival Overhaul, then Cold Sweat, then Tough As Nails, then the built-in climate model.",
+                         "Naming a mod pins it when installed; \"builtin\" ignores temperature mods entirely.")
+                // Arrays.asList, not List.of: correct() probes missing keys with null and List.of.contains(null) throws.
+                .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "cold_sweat", "tough_as_nails", "builtin"));
+        b.pop();
         // ── Fatigue ──
         b.translation("townstead.configuration.needs.fatigue").push("fatigue");
         ENABLE_VILLAGER_FATIGUE = b
@@ -537,6 +567,17 @@ public final class TownsteadConfig {
                 .defineListAllowEmpty("blockedLineages", List.of(), TownsteadConfig::isValidResourceLocationString);
         b.pop();
 
+        // ── Naming ──
+        b.translation("townstead.configuration.naming").push("naming");
+        ENABLE_STABLE_NAMING_REGISTERS = b
+                .translation("townstead.configuration.naming.stableNamingRegisters")
+                .comment("Remember which naming tradition each villager and each map region uses.",
+                         "MCA re-derives it from a list of the loaded name buckets every time it is asked, so any mod",
+                         "or datapack that adds one re-rolls the naming of the whole world. Recording it stops that.",
+                         "Turning this off does not undo what has already been recorded.")
+                .define("stableNamingRegisters", true);
+        b.pop();
+
         // ── Calendar ──
         b.translation("townstead.configuration.calendar").push("calendar");
         CALENDAR_PROFILE = b
@@ -601,6 +642,15 @@ public final class TownsteadConfig {
                 .define("debugLogging", false);
         b.pop();
 
+        // ── Public API ──
+        b.translation("townstead.configuration.api").push("api");
+        API_DENIED_WRITE_SOURCES = b
+                .translation("townstead.configuration.api.deniedWriteSources")
+                .comment("Mod namespaces whose writes through the Townstead API (need changes, XP awards, skills) are refused.",
+                         "Reads and events are never affected. Example: [\"mcaquests\"].")
+                .defineList("deniedWriteSources", Arrays.asList(), o -> o instanceof String);
+        b.pop();
+
         SERVER_SPEC = b.build();
 
         // ── Client Settings ──
@@ -623,6 +673,13 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.catalog.useTownsteadCatalog")
                 .comment("Use the Townstead extended catalog with kitchen building tiers. Disable to use MCA's original catalog.")
                 .define("useTownsteadCatalog", true);
+        clientBuilder.pop();
+
+        clientBuilder.translation("townstead.configuration.needs_display").push("needs_display");
+        TEMPERATURE_UNIT = clientBuilder
+                .translation("townstead.configuration.needs_display.temperatureUnit")
+                .comment("Unit for villager temperature readouts. Everything is Celsius underneath; this only changes what is shown.")
+                .defineEnum("temperatureUnit", com.aetherianartificer.townstead.temperature.TemperatureData.Unit.CELSIUS);
         clientBuilder.pop();
 
         clientBuilder.translation("townstead.configuration.resource_hud").push("resource_hud");
@@ -733,7 +790,8 @@ public final class TownsteadConfig {
     }
 
     public static boolean isVillagerThirstEnabled() {
-        return ENABLE_VILLAGER_THIRST != null && ENABLE_VILLAGER_THIRST.get();
+        return ENABLE_VILLAGER_THIRST != null && ENABLE_VILLAGER_THIRST.get()
+                && com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver.isActive();
     }
 
     public static boolean isThirstLethalFallbackEnabled() {
@@ -791,6 +849,48 @@ public final class TownsteadConfig {
 
     public static boolean isVillagerFatigueEnabled() {
         return ENABLE_VILLAGER_FATIGUE.get();
+    }
+
+    /** Whether API writes attributed to {@code namespace} are refused. Never throws. */
+    public static boolean isApiSourceDenied(String namespace) {
+        if (namespace == null || API_DENIED_WRITE_SOURCES == null) return false;
+        try {
+            for (String denied : API_DENIED_WRITE_SOURCES.get()) {
+                if (namespace.equalsIgnoreCase(denied)) return true;
+            }
+        } catch (IllegalStateException e) {
+            return false;
+        }
+        return false;
+    }
+
+    public static boolean isVillagerTemperatureEnabled() {
+        if (ENABLE_VILLAGER_TEMPERATURE == null) return false;
+        try {
+            return ENABLE_VILLAGER_TEMPERATURE.get();
+        } catch (IllegalStateException e) {
+            return false;
+        }
+    }
+
+    /** Never throws: falls back to "auto" before the server config is loaded. */
+    public static String preferredTemperatureBackend() {
+        if (PREFERRED_TEMPERATURE_BACKEND == null) return "auto";
+        try {
+            return PREFERRED_TEMPERATURE_BACKEND.get();
+        } catch (IllegalStateException e) {
+            return "auto";
+        }
+    }
+
+    /** Client display unit for villager temperature readouts. */
+    public static boolean temperatureInFahrenheit() {
+        if (TEMPERATURE_UNIT == null) return false;
+        try {
+            return TEMPERATURE_UNIT.get() == com.aetherianartificer.townstead.temperature.TemperatureData.Unit.FAHRENHEIT;
+        } catch (IllegalStateException e) {
+            return false;
+        }
     }
 
     public static boolean isVillagerSleepDebugEnabled() {

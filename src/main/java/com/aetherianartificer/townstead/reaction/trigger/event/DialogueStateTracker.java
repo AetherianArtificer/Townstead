@@ -44,6 +44,7 @@ public final class DialogueStateTracker {
         synchronized (LOCK) {
             BY_VILLAGER.put(villager, new State(player.getUUID(), gameTime, -1L, hearts));
         }
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.dialogueOpened(villager, player);
     }
 
     public static void onClose(LivingEntity villager, long gameTime) {
@@ -66,14 +67,17 @@ public final class DialogueStateTracker {
                     existing.heartsAtOpen));
         }
         int heartsNow = heartsWith(villager, player);
+        int heartDelta = 0;
         if (existing.heartsAtOpen != Integer.MIN_VALUE && heartsNow != Integer.MIN_VALUE) {
             int delta = heartsNow - existing.heartsAtOpen;
+            heartDelta = delta;
             SocialInteractionTracker.markHeartChange(villager, delta, gameTime);
             // A dialogue that clearly moved hearts is a chronicle-worthy social beat.
             if (Math.abs(delta) >= 3) {
                 com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.social(villager, player, delta > 0);
             }
         }
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.dialogueClosed(villager, player, heartDelta);
     }
 
     /** Active dialogue partner UUID, or {@code null} when not in dialogue. */

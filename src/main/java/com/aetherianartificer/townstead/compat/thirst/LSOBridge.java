@@ -41,15 +41,6 @@ public final class LSOBridge implements ThirstCompatBridge {
             new ResourceLocation("legendarysurvivaloverhaul", "textures/gui/overlay.png");
     *///?}
 
-    private static final float LSO_NORMAL_TEMP = 20.0f;
-    // Temperature is biome-derived and largely chunk-coherent. Sharing one
-    // sample per chunk across all villagers in that chunk avoids the
-    // per-villager reflection cost without changing user-visible behavior.
-    private static final long BIOME_MODIFIER_CACHE_TTL_TICKS = 100L;
-    private static final Map<Long, ChunkTempEntry> CHUNK_TEMP_CACHE = new ConcurrentHashMap<>();
-
-    private record ChunkTempEntry(float modifier, long expiresAtTick, String dimensionId) {}
-
     private boolean initialized;
     private boolean active;
 
@@ -69,6 +60,8 @@ public final class LSOBridge implements ThirstCompatBridge {
     private Class<?> canteenItemClass;
     // Config.Baked
     private Field thirstEnabledField;
+    private Field heatSecondaryEffectsField;
+    private Field heatThirstModifierField;
     // TemperatureUtil
     private Method getWorldTemperatureMethod;
     // HydrationEnum constants
@@ -163,39 +156,38 @@ public final class LSOBridge implements ThirstCompatBridge {
 
     @Override
     public float exhaustionBiomeModifier(Level level, BlockPos pos) {
-        if (level == null || pos == null) return 1.0f;
+        // LSO applies Heat Thirst at heat stroke, not an ambient biome multiplier.
+        return 1.0f;
+    }
+
+    @Override
+    public float thermalExhaustionPerTick(ThermalHydrationContext thermal) {
         initIfNeeded();
-        if (!active || getWorldTemperatureMethod == null) return 1.0f;
+        if (!active || !thermal.lsoHeatStroke() || heatSecondaryEffectsField == null || heatThirstModifierField == null) return 0;
+        try {
+            return ThermalHydrationContext.heatExhaustion(true, heatSecondaryEffectsField.getBoolean(null),
+                    ((Number) heatThirstModifierField.get(null)).doubleValue())
+                    // LSO spends one thirst point at 4 exhaustion; Townstead uses 20.
+                    * (com.aetherianartificer.townstead.thirst.ThirstData.EXHAUSTION_THRESHOLD / 4f);
+        } catch (ReflectiveOperationException | ClassCastException ignored) { return 0; }
+    }
 
-        if (level.dimensionType().ultraWarm()) return 3.0f;
+    /** True when LSO's world temperature query resolved, independent of its thirst toggle. */
+    public boolean canReadWorldTemperature() {
+        initIfNeeded();
+        return getWorldTemperatureMethod != null;
+    }
 
-        long chunkKey = (((long) (pos.getX() >> 4)) << 32) | ((pos.getZ() >> 4) & 0xFFFFFFFFL);
-        long gameTime = level.getGameTime();
-        String dimensionId = level.dimension().location().toString();
-        ChunkTempEntry cached = CHUNK_TEMP_CACHE.get(chunkKey);
-        if (cached != null && cached.expiresAtTick() > gameTime && cached.dimensionId().equals(dimensionId)) {
-            return cached.modifier();
-        }
-
-        float modifier = 1.0f;
+    /** LSO's world temperature at the position (0..40, degree-shaped), or {@code NaN} when unavailable. */
+    public float worldTemperature(Level level, BlockPos pos) {
+        initIfNeeded();
+        if (getWorldTemperatureMethod == null || level == null || pos == null) return Float.NaN;
         try {
             Object temp = getWorldTemperatureMethod.invoke(null, level, pos);
-            if (temp instanceof Number n) {
-                float t = n.floatValue();
-                // LSO temperature: 0-40, NORMAL=20
-                // Above normal: increase drain; below: decrease
-                float offset = t - LSO_NORMAL_TEMP;
-                if (offset > 0) {
-                    // Hot: up to 2x drain at temp 40
-                    modifier = 1.0f + (offset / LSO_NORMAL_TEMP);
-                } else {
-                    // Cold: down to 0.5x drain at temp 0
-                    modifier = Math.max(0.5f, 1.0f + (offset / (LSO_NORMAL_TEMP * 2)));
-                }
-            }
-        } catch (Exception ignored) {}
-        CHUNK_TEMP_CACHE.put(chunkKey, new ChunkTempEntry(modifier, gameTime + BIOME_MODIFIER_CACHE_TTL_TICKS, dimensionId));
-        return modifier;
+            return temp instanceof Number n ? n.floatValue() : Float.NaN;
+        } catch (Exception e) {
+            return Float.NaN;
+        }
     }
 
     @Override
@@ -418,6 +410,11 @@ public final class LSOBridge implements ThirstCompatBridge {
             try {
                 Class<?> configBaked = Class.forName("sfiomn.legendarysurvivaloverhaul.config.Config$Baked");
                 thirstEnabledField = configBaked.getField("thirstEnabled");
+                try {
+                    heatSecondaryEffectsField = configBaked.getField("heatTemperatureSecondaryEffects");
+                    heatThirstModifierField = configBaked.getField("heatThirstEffectModifier");
+                } catch (NoSuchFieldException ignored) { /* Older LSO versions omit this effect. */ }
+
             } catch (Exception ignored) {
                 thirstEnabledField = null;
             }

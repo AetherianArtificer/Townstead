@@ -6,6 +6,7 @@ import com.aetherianartificer.townstead.client.animation.nativeclip.NativeClipRe
 import com.aetherianartificer.townstead.client.animation.nativeclip.NativePlaybackRegistry;
 import com.aetherianartificer.townstead.client.animation.nativeclip.BedrockPerformanceClip;
 import com.aetherianartificer.townstead.client.animation.nativeclip.BedrockPerformanceSampler;
+import com.aetherianartificer.townstead.client.animation.nativeclip.NativeLocomotionPolicy;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -28,13 +29,19 @@ public final class NativePerformanceSourceAdapter implements AnimationSourceAdap
         AnimationTargetMap<?> hostTargets = AnimationTargetMap.forMcaModel(context.model());
         List<AnimationTransform> out = new ArrayList<>();
         for (NativePlaybackRegistry.Playback playback : active) {
+            if (now < playback.startedAt()) continue;
             boolean mounted = context.entity().isPassenger();
             String clipName = playback.clip().getPath();
+            if ((clipName.equals("sip") || clipName.equals("toast"))
+                    && (context.entity().getMainHandItem().isEmpty()
+                    || context.entity().getMainHandItem().getUseAnimation()
+                    != net.minecraft.world.item.UseAnim.DRINK)) continue;
             if (mounted && clipName.equals("relaxed_lean")) continue;
             BedrockPerformanceClip bedrock = NativeClipRegistry.getBedrock(playback.clip()).orElse(null);
             if (bedrock != null) {
                 List<AnimationTransform> sampled = BedrockPerformanceSampler.sample(bedrock,
-                        (now - playback.startedAt()) + partial, playback.expiresAt() - now - partial, hostTargets);
+                        playback.elapsed(now, partial), playback.expiresAt() - now - partial, hostTargets,
+                        mounted ? 1F : NativeLocomotionPolicy.lowerBodyWeight(playback.clip(), context.limbDistance()));
                 for (AnimationTransform transform : sampled) {
                     boolean furnitureLegs = transform.target().endsWith("_leg")
                             && !clipName.equals("tap_foot") && !clipName.equals("stool_sit")
@@ -45,7 +52,7 @@ public final class NativePerformanceSourceAdapter implements AnimationSourceAdap
             }
             ParsedEmote clip = NativeClipRegistry.get(playback.clip()).orElse(null);
             if (clip == null) continue; // A missing client resource is a safe no-animation fallback.
-            float elapsed = (now - playback.startedAt()) + partial;
+            float elapsed = playback.elapsed(now, partial);
             // A semantic beat may outlive a one-shot gesture (for example a 21-second cocktail
             // round using a 1.4-second toast). Holding the clip's last keyed bend for the whole
             // beat leaves an otherwise neutral arm permanently curled. Once a one-shot clip has

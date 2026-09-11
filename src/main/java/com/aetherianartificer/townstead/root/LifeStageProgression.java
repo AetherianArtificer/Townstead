@@ -417,7 +417,12 @@ public final class LifeStageProgression {
         if (resolved == null) return false;
 
         boolean wasSenior = life.isSenior();
+        String stageBefore = life.currentStageId();
         commit(life, resolved);
+        if (!stageBefore.equals(life.currentStageId())) {
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.lifeStageChanged(villager, stageBefore,
+                    life.currentStageId(), life.isSenior());
+        }
         boolean seniorChanged = wasSenior != life.isSenior();
         if (seniorChanged) {
             if (life.isSenior()) SeniorEffects.applySenior(villager);

@@ -70,6 +70,10 @@ public abstract class InteractScreenMixin extends Screen {
     private static final int FATIGUE_ICON_X = 70;
     private static final int FATIGUE_ICON_Y = 170;
     private static final int FATIGUE_ICON_SIZE = 24;
+    private static final int TEMPERATURE_ICON_X = 70;
+    private static final int TEMPERATURE_ICON_Y = 194;
+    private static final int TEMPERATURE_ICON_SIZE = 24;
+    private static final int TEMPERATURE_ICON_PX = 20;
     // The icon art is a glyph-tight 12px sprite; render it at 24px so it fills the same
     // footprint as MCA's own status icons (16px sprites drawn at 1.5x = 24px). 12 -> 24
     // is a clean 2x.
@@ -291,6 +295,14 @@ public abstract class InteractScreenMixin extends Screen {
                     .withStyle(Style.EMPTY.withColor(fatigueState.getColor()));
             context.renderTooltip(font, energyLabel, FATIGUE_ICON_X + 16, FATIGUE_ICON_Y + 20);
         }
+
+        if (townstead$temperatureShown() && townstead$isHoveringTemperatureIcon()) {
+            boolean fahrenheit = TownsteadConfig.temperatureInFahrenheit();
+            com.aetherianartificer.townstead.temperature.TemperatureData.Tier tier =
+                    com.aetherianartificer.townstead.temperature.TemperatureClientStore.getTier(entityId);
+            Component temperatureLabel = com.aetherianartificer.townstead.temperature.TemperatureClientStore.tooltip(entityId, fahrenheit);
+            context.renderTooltip(font, temperatureLabel, TEMPERATURE_ICON_X + 16, TEMPERATURE_ICON_Y + 20);
+        }
     }
 
     private static final int TRAITS_Y = 30 + 17 * 4; // 98
@@ -357,6 +369,14 @@ public abstract class InteractScreenMixin extends Screen {
             townstead$drawNeedIcon(context, energySprite, FATIGUE_ICON_X, FATIGUE_ICON_Y, ENERGY_ICON_PX);
         }
 
+        if (townstead$temperatureShown()) {
+            com.aetherianartificer.townstead.temperature.TemperatureData.Tier tier =
+                    com.aetherianartificer.townstead.temperature.TemperatureClientStore.getTier(villager.asEntity().getId());
+            int inset = (NEED_ICON_PX - TEMPERATURE_ICON_PX) / 2;
+            com.aetherianartificer.townstead.client.gui.TemperatureIcons.draw(context, tier,
+                    TEMPERATURE_ICON_X + inset, TEMPERATURE_ICON_Y + inset, TEMPERATURE_ICON_PX);
+        }
+
         ThirstCompatBridge bridge = ThirstBridgeResolver.get();
         if (bridge == null || !TownsteadConfig.isVillagerThirstEnabled()) return;
 
@@ -394,6 +414,21 @@ public abstract class InteractScreenMixin extends Screen {
 
     private boolean townstead$isHoveringThirstIcon() {
         return ((AbstractDynamicScreenAccessor) this).townstead$invokeHoveringOverIcon("thirst");
+    }
+
+    @Unique
+    private boolean townstead$temperatureShown() {
+        return TownsteadConfig.isVillagerTemperatureEnabled()
+                && !com.aetherianartificer.townstead.client.root.ClientNeeds.suppresses(villager.asEntity().getId(), "temperature");
+    }
+
+
+    private boolean townstead$isHoveringTemperatureIcon() {
+        if (minecraft == null) return false;
+        double mx = minecraft.mouseHandler.xpos() * width / minecraft.getWindow().getScreenWidth();
+        double my = minecraft.mouseHandler.ypos() * height / minecraft.getWindow().getScreenHeight();
+        return mx >= TEMPERATURE_ICON_X && mx <= TEMPERATURE_ICON_X + TEMPERATURE_ICON_SIZE
+                && my >= TEMPERATURE_ICON_Y && my <= TEMPERATURE_ICON_Y + TEMPERATURE_ICON_SIZE;
     }
 
     private boolean townstead$isHoveringFatigueIcon() {

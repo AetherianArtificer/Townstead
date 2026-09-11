@@ -50,7 +50,6 @@ dependencies {
     // MCA builds are handled via runtime-gated mixins (see TownsteadMixinPlugin).
     compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-7.7.36-beta.3+1.21.1.jar"))
     implementation(jarJar("io.github.llamalad7:mixinextras-neoforge:${property("mixin_extras_version")}")!!)
-    compileOnly("vazkii.patchouli:Patchouli:1.21.1-93-NEOFORGE") { isTransitive = false }
     // JEI plugin API (runtime optional; the plugin class is only loaded by JEI's scan)
     compileOnly("mezz.jei:jei-1.21.1-common-api:19.39.0.370")
     compileOnly("mezz.jei:jei-1.21.1-neoforge-api:19.39.0.370")
@@ -126,4 +125,19 @@ tasks.withType<ProcessResources> {
 }
 
 tasks.withType<JavaCompile> { options.encoding = "UTF-8" }
-tasks.withType<Test> { useJUnitPlatform() }
+tasks.withType<Test> {
+    useJUnitPlatform()
+    // ApiV1IsolationTest scans the compiled api/v1 classes for leaked internals.
+    systemProperty("townstead.classes", sourceSets.main.get().output.classesDirs.asPath)
+}
+
+// The public API alone, for third-party mods to compile against (compileOnly, never shipped).
+tasks.register<Jar>("apiJar") {
+    group = "build"
+    description = "Packages only com.aetherianartificer.townstead.api.v1 for consumers to compile against."
+    archiveBaseName.set("townstead-api")
+    archiveClassifier.set("v1")
+    from(sourceSets.main.get().output) { include("com/aetherianartificer/townstead/api/v1/**") }
+    from(sourceSets.main.get().allSource) { include("com/aetherianartificer/townstead/api/v1/**") }
+    dependsOn(tasks.named("classes"))
+}

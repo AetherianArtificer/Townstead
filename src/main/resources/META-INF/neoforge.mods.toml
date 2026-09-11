@@ -41,13 +41,6 @@ ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies.townstead]]
-modId = "patchouli"
-type = "required"
-versionRange = "[1.21.1-93,)"
-ordering = "AFTER"
-side = "BOTH"
-
-[[dependencies.townstead]]
 modId = "travelerstitles"
 type = "optional"
 versionRange = "[0,)"

@@ -130,6 +130,11 @@ public final class ThirstWasTakenBridge implements ThirstCompatBridge {
 
     @Override
     public float exhaustionBiomeModifier(Level level, BlockPos pos) {
+        return exhaustionBiomeModifier(level, pos, ThermalHydrationContext.NONE);
+    }
+
+    @Override
+    public float exhaustionBiomeModifier(Level level, BlockPos pos, ThermalHydrationContext thermal) {
         if (level == null || pos == null) return 1.0f;
         initIfNeeded();
         if (!active) return 1.0f;
@@ -150,15 +155,11 @@ public final class ThirstWasTakenBridge implements ThirstCompatBridge {
             temp /= 2.0f;
         }
 
-        float depletion = readConfigFloat("THIRST_DEPLETION_MODIFIER", FALLBACK_THIRST_DEPLETION_MODIFIER);
-        float modifier = depletion * (temp / Math.max(0.001f, humidity));
-        if (modifier < 1.0f) {
-            float offset = (1.0f - modifier) * MODIFIER_HARSHNESS;
-            modifier = 1.0f - offset;
-        }
+        // Cold Sweat replaces the biome temperature branch; it is not another multiplier.
+        if (thermal.coldSweat()) temp = thermal.signedBodyStress() / 100f;
 
-        if (!Float.isFinite(modifier)) return 1.0f;
-        return Math.max(0.0f, modifier);
+        float depletion = readConfigFloat("THIRST_DEPLETION_MODIFIER", FALLBACK_THIRST_DEPLETION_MODIFIER);
+        return ThermalHydrationContext.thirstModifier(temp, humidity, depletion, MODIFIER_HARSHNESS);
     }
 
     @Override

@@ -369,6 +369,12 @@ public final class AttachmentClient {
         return sha1 == null ? null : TEXTURES.get(sha1);
     }
 
+    /** Bake a named datapack texture with the shared skin blend pipeline. */
+    public static ResourceLocation blendedNamedTexture(String id, int packed) {
+        String sha1 = NAMED.get(id);
+        return sha1 == null ? null : blendedTexture(sha1, "", packed);
+    }
+
     /**
      * The raw PNG bytes behind a named datapack texture, for callers that need its PIXELS rather
      * than a bound texture (the eye-strip compositor). Null when it isn't a datapack texture or its

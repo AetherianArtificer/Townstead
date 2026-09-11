@@ -210,7 +210,11 @@ public final class FatigueVillagerTicker {
                 collapsedIterations++;
                 applyFatigueDelta(needs, state, FatigueData.RECOVERY_COLLAPSED);
                 FatigueData.tryAutoDrinkCoffee(self);
-                if (!needs.collapsed()) break;
+                if (!needs.collapsed()) {
+                    com.aetherianartificer.townstead.api.impl.v1.ApiEvents.recovered(self,
+                            FatigueData.MAX_FATIGUE - needs.fatigue());
+                    break;
+                }
             }
         } else {
             state.lastCollapsedGameTime = gameTime;
@@ -231,6 +235,8 @@ public final class FatigueVillagerTicker {
                 needs.setCollapsed(false);
                 needs.setGated(false);
                 changed = true;
+                com.aetherianartificer.townstead.api.impl.v1.ApiEvents.recovered(self,
+                        FatigueData.MAX_FATIGUE - currentFatigue);
                 if (TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
                     self.sendChatToAllAround("dialogue.chat.energy.recovered/"
                             + (1 + level.random.nextInt(4)));
@@ -242,6 +248,8 @@ public final class FatigueVillagerTicker {
                 needs.setCollapsed(true);
                 needs.setGated(true);
                 changed = true;
+                com.aetherianartificer.townstead.api.impl.v1.ApiEvents.collapsed(self,
+                        FatigueData.MAX_FATIGUE - currentFatigue);
                 if (TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
                     self.sendChatToAllAround("dialogue.chat.energy.collapsed/"
                             + (1 + level.random.nextInt(4)));

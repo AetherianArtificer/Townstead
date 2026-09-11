@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "mods": { "any": ["toughasnails", "legendarysurvivaloverhaul"] },
+  "storage_roles": [
+    "townstead:cooling_fuel"
+  ],
+  "catalog": {
+    "node_item": "minecraft:packed_ice"
+  },
+  "spirit": {
+    "industrious": 5
+  }
+}

@@ -9,8 +9,16 @@ import net.minecraft.util.GsonHelper;
  * Runtime still executes the complete action. Only unconditional arrays / pheno:and nodes are
  * projected, so conditional or dynamic effects never cause the AI to promise benefits it may not get.
  */
-public record NeedEffectProjection(int immediateHydration, int lastingHydration, int energy) {
-    public static final NeedEffectProjection NONE = new NeedEffectProjection(0, 0, 0);
+public record NeedEffectProjection(int immediateHydration, int lastingHydration, int energy, int warmthTenths) {
+    public static final NeedEffectProjection NONE = new NeedEffectProjection(0, 0, 0, 0);
+
+    public NeedEffectProjection(int immediateHydration, int lastingHydration, int energy) {
+        this(immediateHydration, lastingHydration, energy, 0);
+    }
+
+    /** Body-temperature change in Celsius tenths: positive warms, negative cools. */
+    public boolean warms() { return warmthTenths > 0; }
+    public boolean cools() { return warmthTenths < 0; }
 
     public boolean hydrates() { return immediateHydration > 0 || lastingHydration > 0; }
     public boolean energizes() { return energy > 0; }
@@ -18,7 +26,7 @@ public record NeedEffectProjection(int immediateHydration, int lastingHydration,
 
     public NeedEffectProjection plus(NeedEffectProjection other) {
         return new NeedEffectProjection(immediateHydration + other.immediateHydration,
-                lastingHydration + other.lastingHydration, energy + other.energy);
+                lastingHydration + other.lastingHydration, energy + other.energy, warmthTenths + other.warmthTenths);
     }
 
     public static NeedEffectProjection project(JsonElement element) {
@@ -38,8 +46,15 @@ public record NeedEffectProjection(int immediateHydration, int lastingHydration,
         if ("pheno:energize".equals(type)) {
             return new NeedEffectProjection(0, 0, constant(json.get("amount")));
         }
+        if ("pheno:warm".equals(type)) return new NeedEffectProjection(0, 0, 0, tenths(json.get("amount")));
+        if ("pheno:cool".equals(type)) return new NeedEffectProjection(0, 0, 0, -tenths(json.get("amount")));
         if ("pheno:and".equals(type)) return project(json.get("actions"));
         return NONE;
+    }
+
+    private static int tenths(JsonElement value) {
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) return 0;
+        return Math.max(0, (int) Math.round(value.getAsDouble() * 10.0));
     }
 
     private static int constant(JsonElement value) {

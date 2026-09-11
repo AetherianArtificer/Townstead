@@ -24,6 +24,10 @@ public final class RootClientStore {
     private static final Map<Integer, Set<String>> EXPRESSED = new ConcurrentHashMap<>();
     private static final Map<Integer, Map<String, String>> VARIANTS = new ConcurrentHashMap<>();
     private static final Map<Integer, Set<String>> TOGGLES = new ConcurrentHashMap<>();
+    private static final Map<Integer, Boolean> HAIR = new ConcurrentHashMap<>();
+    private static final Map<Integer, List<com.aetherianartificer.townstead.root.appearance.HairColorRange>> HAIR_COLORS = new ConcurrentHashMap<>();
+    private static final Map<Integer, List<com.aetherianartificer.townstead.root.appearance.HairColorChoice>> HAIR_PALETTES = new ConcurrentHashMap<>();
+    private static final Map<Integer, List<com.aetherianartificer.townstead.root.appearance.HairGradient>> HAIR_GRADIENTS = new ConcurrentHashMap<>();
 
     private RootClientStore() {}
 
@@ -87,7 +91,10 @@ public final class RootClientStore {
      * Store an entity's expressed alleles: gene ids (for the expressed set) and, for variant genes,
      * the rolled variant id keyed by gene id (so a per-entity skin-tone variant can be resolved).
      */
-    public static void setExpressed(int entityId, List<String> alleleEncodings) {
+    public static void setExpressed(int entityId, List<String> alleleEncodings, boolean hair,
+            List<com.aetherianartificer.townstead.root.appearance.HairColorRange> hairColors,
+            List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> hairPalette,
+            List<com.aetherianartificer.townstead.root.appearance.HairGradient> hairGradients) {
         Set<String> ids = ConcurrentHashMap.newKeySet();
         Map<String, String> variants = new ConcurrentHashMap<>();
         for (String encoded : alleleEncodings) {
@@ -102,6 +109,35 @@ public final class RootClientStore {
         }
         EXPRESSED.put(entityId, ids);
         VARIANTS.put(entityId, variants);
+        HAIR.put(entityId, hair);
+        HAIR_COLORS.put(entityId, List.copyOf(hairColors));
+        HAIR_PALETTES.put(entityId, List.copyOf(hairPalette));
+        HAIR_GRADIENTS.put(entityId, List.copyOf(hairGradients));
+    }
+
+    /** Whether MCA's native hair layer is enabled for this individual (true while unsynced). */
+    public static boolean usesHair(LivingEntity entity) {
+        return entity == null || HAIR.getOrDefault(entity.getId(), true);
+    }
+
+    /** Set a preview dummy's effective root policy before its realized per-entity sync exists. */
+    public static void setHair(int entityId, boolean enabled,
+            List<com.aetherianartificer.townstead.root.appearance.HairColorRange> colors,
+            List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> palette,
+            List<com.aetherianartificer.townstead.root.appearance.HairGradient> gradients) {
+        HAIR.put(entityId, enabled);
+        HAIR_COLORS.put(entityId, List.copyOf(colors));
+        HAIR_PALETTES.put(entityId, List.copyOf(palette));
+        HAIR_GRADIENTS.put(entityId, List.copyOf(gradients));
+    }
+
+    public static com.aetherianartificer.townstead.root.appearance.HairSettings hairSettings(LivingEntity entity) {
+        if (entity == null) return com.aetherianartificer.townstead.root.appearance.HairSettings.DEFAULT;
+        return new com.aetherianartificer.townstead.root.appearance.HairSettings(
+                HAIR.getOrDefault(entity.getId(), true),
+                HAIR_COLORS.getOrDefault(entity.getId(), List.of()),
+                HAIR_PALETTES.getOrDefault(entity.getId(), List.of()),
+                HAIR_GRADIENTS.getOrDefault(entity.getId(), List.of()));
     }
 
     /**
@@ -215,11 +251,19 @@ public final class RootClientStore {
         BY_ENTITY.remove(entityId);
         EXPRESSED.remove(entityId);
         TOGGLES.remove(entityId);
+        HAIR.remove(entityId);
+        HAIR_COLORS.remove(entityId);
+        HAIR_PALETTES.remove(entityId);
+        HAIR_GRADIENTS.remove(entityId);
     }
 
     public static void clear() {
         BY_ENTITY.clear();
         EXPRESSED.clear();
         TOGGLES.clear();
+        HAIR.clear();
+        HAIR_COLORS.clear();
+        HAIR_PALETTES.clear();
+        HAIR_GRADIENTS.clear();
     }
 }

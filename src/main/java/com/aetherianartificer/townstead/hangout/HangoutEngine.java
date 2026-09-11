@@ -176,8 +176,16 @@ public final class HangoutEngine {
                 }
                 VISITS.put(visit.id(), visit);
                 BY_VISITOR.put(villager.getUUID(), visit.id());
+                // A trade preview is a temporary prop, not owned inventory. Stop it through
+                // its own cleanup before reserving a genuine drink in that hand.
+                for (var behavior : villager.getBrain().getRunningBehaviors()) {
+                    if (behavior instanceof net.minecraft.world.entity.ai.behavior.ShowTradesToPlayer) {
+                        behavior.doStop(level, villager, now);
+                    }
+                }
                 ownTravelTarget(villager, visit.visitor().approach(), true);
                 traceVisitStart(villager, visit, venue.definition(), policy, now);
+                com.aetherianartificer.townstead.api.impl.v1.ApiEvents.hangoutStarted(villager, visit);
                 return;
             }
         }
@@ -217,21 +225,19 @@ public final class HangoutEngine {
 
         for (SpotCandidate spot : spots) {
             BlockState state = level.getBlockState(spot.anchor());
-            BlockPos approach = findApproach(level, villager, spot.anchor());
+            BlockPos approach = findApproach(level, villager, spot.anchor(), visitId, now);
             if (approach == null) {
-                diagnostics.add("unreachable furniture at " + spot.anchor().toShortString());
+                diagnostics.add("no free reachable approach at " + spot.anchor().toShortString());
                 continue;
             }
             for (int slot = 0; slot < spot.definition().capacity(); slot++) {
                 List<HangoutClaims.Key> requested = new ArrayList<>();
                 requested.add(visitorKey);
                 requested.add(venueSlot);
-                requested.add(new HangoutClaims.Key(dimension, "spot",
-                        venueKey + "/" + spot.anchor().asLong() + "#" + slot));
+                requested.add(HangoutClaims.seat(dimension, spot.anchor().asLong(), slot));
                 boolean linkedFree = true;
                 for (BlockPos linkedPos : spot.definition().linkedPositions(state, spot.anchor())) {
-                    HangoutClaims.Key linked = new HangoutClaims.Key(dimension, "linked_spot",
-                            venueKey + "/" + linkedPos.asLong());
+                    HangoutClaims.Key linked = HangoutClaims.seat(dimension, linkedPos.asLong(), 0);
                     if (!CLAIMS.available(linked, visitId, now)) {
                         linkedFree = false;
                         break;
@@ -240,7 +246,7 @@ public final class HangoutEngine {
                 }
                 if (!linkedFree) continue;
                 HangoutClaims.Key approachKey = new HangoutClaims.Key(
-                        dimension, "approach", venueKey + "/" + approach.asLong());
+                        dimension, "approach", Long.toString(approach.asLong()));
                 if (!CLAIMS.available(approachKey, visitId, now)) continue;
                 requested.add(approachKey);
                 if (!CLAIMS.tryClaimAll(visitId, requested, now, policy.leaseTicks())) continue;
@@ -306,7 +312,7 @@ public final class HangoutEngine {
                 HangoutEmbodiment.Handle handle = HangoutEmbodiment.enter(level, villager,
                         visit.visitor().spot(), visit.visitor().adapter(), visit.visitor().posture(),
                         visit.visitor().embodimentPosition(), visit.id());
-                if (HangoutEmbodiment.blocked(handle)) {
+                if (handle == null || HangoutEmbodiment.blocked(handle)) {
                     cleanupVisit(level, visit, false, "embodiment_refused", now);
                     return;
                 }
@@ -333,6 +339,7 @@ public final class HangoutEngine {
             HangoutBeat beat = beatId == null ? null : BEATS.get(beatId);
             if (beat == null && beatId != null) BY_BEAT_MEMBER.remove(villager.getUUID(), beatId);
             else if (beat != null) advanceBeat(level, beat, now);
+            HangoutDrinks.tick(level, villager, visit, venue, now);
         }
     }
 
@@ -553,6 +560,7 @@ public final class HangoutEngine {
 
         VillagerEntityMCA villager = villager(level, visitorId);
         if (villager != null) {
+            com.aetherianartificer.townstead.hunger.VillagerConsumptionManager.finishRecreationalDrink(villager);
             releaseTravelTarget(villager);
             if (visit.visitor().handle() != null) {
                 visit.visitor().handle().close(level, villager);
@@ -561,6 +569,7 @@ public final class HangoutEngine {
         BY_VISITOR.remove(visitorId, visit.id());
         CLAIMS.release(visit.id());
         VISITS.remove(visit.id(), visit);
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.hangoutEnded(villager, visitorId, visit, success);
         HangoutPolicy policy = HangoutData.policies().get(visit.policy());
         if (policy != null) {
             COOLDOWNS.put(visitorId, now + (success
@@ -752,15 +761,18 @@ public final class HangoutEngine {
         List<VenueCandidate> remaining = new ArrayList<>(discovered);
         List<VenueCandidate> ordered = new ArrayList<>(discovered.size());
         String personality = basePersonalityKey(villager);
+        Map<VenueCandidate, Double> weights = new LinkedHashMap<>();
+        for (VenueCandidate candidate : discovered)
+            weights.put(candidate, venueSelectionWeight(candidate, villager, policy, personality));
         while (!remaining.isEmpty()) {
             double total = 0D;
             for (VenueCandidate candidate : remaining) {
-                total += venueSelectionWeight(candidate, villager, policy, personality);
+                total += weights.get(candidate);
             }
             double roll = villager.getRandom().nextDouble() * total;
             int selected = remaining.size() - 1;
             for (int index = 0; index < remaining.size(); index++) {
-                roll -= venueSelectionWeight(remaining.get(index), villager, policy, personality);
+                roll -= weights.get(remaining.get(index));
                 if (roll < 0D) {
                     selected = index;
                     break;
@@ -777,7 +789,32 @@ public final class HangoutEngine {
                                                 String personality) {
         double blocks = Math.sqrt(candidate.anchor().distSqr(villager.blockPosition()));
         double distancePreference = 0.55D + 0.45D / (1D + blocks / 64D);
-        return HangoutPreferences.affinity(candidate.definition(), policy, personality) * distancePreference;
+        double thermal = 1;
+        if (TownsteadConfig.isVillagerTemperatureEnabled()
+                && !com.aetherianartificer.townstead.root.needs.NeedSuppression.suppressesTemperature(villager)) {
+            var needs = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).needs();
+            // Sample furniture, not a building center that may be inside a wall or on another floor.
+            float bestLoad = Float.POSITIVE_INFINITY;
+            int samples = 0;
+            for (SpotCandidate spot : candidate.spots()) {
+                if (!supportsAnyActivity(candidate.definition(), spot.definition().posture())) continue;
+                float load = destinationComfort((ServerLevel) villager.level(), villager, spot.anchor());
+                if (Math.abs(load) < Math.abs(bestLoad)) bestLoad = load;
+                if (++samples >= 4) break;
+            }
+            thermal = HangoutPreferences.thermalWeight(needs.comfortLoad(), bestLoad);
+        }
+        return HangoutPreferences.affinity(candidate.definition(), policy, personality) * distancePreference * thermal;
+    }
+
+    private static float destinationComfort(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
+        var needs = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).needs();
+        var profile = com.aetherianartificer.townstead.temperature.ThermalProfile.of(villager);
+        float ambient = com.aetherianartificer.townstead.temperature.TemperatureData.ambientCelsius(level, pos);
+        // Covered seats allow wet visitors to dry during the visit; exposed rain keeps soaking them.
+        float wetness = level.isRainingAt(pos.above()) ? 1 : level.canSeeSky(pos.above()) ? needs.thermalWetness() : 0;
+        return com.aetherianartificer.townstead.temperature.ThermalComfort.load(ambient, wetness, false, 0,
+                com.aetherianartificer.townstead.temperature.Insulation.clothingProtection(villager), profile);
     }
 
     private static String basePersonalityKey(VillagerEntityMCA villager) {
@@ -792,15 +829,15 @@ public final class HangoutEngine {
             if (!level.isLoaded(raw)) continue;
             BlockState state = level.getBlockState(raw);
             ResourceLocation block = BuiltInRegistries.BLOCK.getKey(state.getBlock());
-            List<HangoutSpot> definitions = new ArrayList<>(HangoutData.spots().values());
+            List<HangoutSpot> definitions = HangoutSpot.candidatesForBlock(HangoutData.spots().values(), block);
             // A broad compatibility tag must not steal a block from its native furniture adapter.
             // Exact authored definitions (for example Beachparty chairs) always get first refusal.
-            definitions.sort(Comparator.comparing(definition -> !definition.blocks().contains(block)));
             for (HangoutSpot definition : definitions) {
                 if (!matches(definition, block, state)) continue;
                 if (definition.availableWhen() != null && !definition.availableWhen().test(level, raw)) continue;
                 BlockPos anchor = raw.offset(definition.canonicalOffset()).immutable();
                 if (seen.add(anchor.asLong())) out.add(new SpotCandidate(definition, anchor));
+                break;
             }
         }
         return out;
@@ -840,7 +877,7 @@ public final class HangoutEngine {
     }
 
     private static @Nullable BlockPos findApproach(ServerLevel level, VillagerEntityMCA villager,
-                                                    BlockPos seat) {
+                                                    BlockPos seat, UUID visitId, long now) {
         List<BlockPos> candidates = new ArrayList<>();
         int[][] horizontal = {{1, 0}, {-1, 0}, {0, 1}, {0, -1},
                 {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
@@ -851,27 +888,39 @@ public final class HangoutEngine {
             }
         }
         candidates.sort(Comparator.comparingDouble(candidate -> distance(villager, candidate)));
-        BlockPos partial = null;
-        for (BlockPos candidate : candidates) {
-            if (distance(villager, candidate) <= ARRIVAL_DISTANCE_SQUARED) return candidate;
-            // Arrival accepts a resident within roughly one block of the reserved approach.
-            // Requiring the pathfinder to land on the exact block was stricter than embodiment
-            // and rejected otherwise usable seats at real, uneven village venues.
-            Path path = villager.getNavigation().createPath(candidate, 1);
-            if (path != null && path.canReach()) return candidate;
-            // A non-null partial path is still useful for a village-scale trip. The visit keeps
-            // the final approach as its authoritative target and recalculates every 40 ticks;
-            // after walking the partial path, the next path commonly reaches the remaining leg.
-            if (path != null && partial == null) partial = candidate;
-        }
-        return partial;
+        String dimension = level.dimension().location().toString();
+        return HangoutApproaches.select(candidates,
+                candidate -> CLAIMS.available(new HangoutClaims.Key(
+                        dimension, "approach", Long.toString(candidate.asLong())), visitId, now),
+                candidate -> {
+                    if (distance(villager, candidate) <= ARRIVAL_DISTANCE_SQUARED)
+                        return HangoutApproaches.Reachability.REACHABLE;
+                    // Arrival accepts a resident within roughly one block of the reserved approach.
+                    // Requiring the pathfinder to land on the exact block was stricter than embodiment
+                    // and rejected otherwise usable seats at real, uneven village venues.
+                    Path path = villager.getNavigation().createPath(candidate, 1);
+                    if (path != null && path.canReach()) return HangoutApproaches.Reachability.REACHABLE;
+                    // A non-null partial path is still useful for a village-scale trip. The visit keeps
+                    // the final approach as its authoritative target and recalculates every 40 ticks;
+                    // after walking the partial path, the next path commonly reaches the remaining leg.
+                    if (path != null && path.getEndNode() != null
+                            && usefulPartialApproach(villager.blockPosition(), candidate, path.getEndNode().asBlockPos()))
+                        return HangoutApproaches.Reachability.PARTIAL;
+                    return HangoutApproaches.Reachability.UNREACHABLE;
+                });
+    }
+
+    static boolean usefulPartialApproach(BlockPos start, BlockPos target, BlockPos end) {
+        // Do not reserve upstairs seats when the partial path stops on the floor below.
+        return HangoutPreferences.usefulPartialApproach(start.distSqr(target), end.distSqr(target),
+                end.getY() - target.getY());
     }
 
     private static boolean canOccupy(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
         if (!level.isLoaded(pos)) return false;
         BlockPos support = pos.below();
         if (level.getBlockState(support).getCollisionShape(level, support).isEmpty()
-                && !level.getFluidState(support).isSource()) return false;
+                || !level.getFluidState(pos).isEmpty() || !level.getFluidState(support).isEmpty()) return false;
         AABB moved = villager.getBoundingBox().move(
                 pos.getX() + 0.5D - villager.getX(), pos.getY() - villager.getY(),
                 pos.getZ() + 0.5D - villager.getZ());
@@ -894,6 +943,8 @@ public final class HangoutEngine {
 
     private static boolean safe(VillagerEntityMCA villager) {
         return villager.isAlive() && !villager.isRemoved() && !villager.isSleeping()
+                && !(TownsteadConfig.isVillagerTemperatureEnabled()
+                    && com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).needs().seekingRelief())
                 && !villager.getVillagerBrain().isPanicking() && !recentlyAttacked(villager);
     }
 

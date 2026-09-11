@@ -12,6 +12,8 @@
   "gene.townstead_roots.omnivore.desc": "Eats both plants and meat.",
   "gene.townstead_roots.water_drinker": "Drinks Water",
   "gene.townstead_roots.water_drinker.desc": "Hydrates on plain water.",
+  "gene.townstead_roots.human_thermal": "Warm-Blooded",
+  "gene.townstead_roots.human_thermal.desc": "Rests at 37.0 °C with a narrow comfort band. Works up warmth, loses it in the wet and the wind, and dresses for winter.",
   "chronotype.mix.diurnal": "Diurnal",
   "chronotype.mix.crepuscular": "Crepuscular",
   "chronotype.mix.nocturnal": "Nocturnal",

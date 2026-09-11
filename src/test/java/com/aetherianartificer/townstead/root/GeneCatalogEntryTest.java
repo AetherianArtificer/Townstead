@@ -39,5 +39,21 @@ class GeneCatalogEntryTest {
 
         assertEquals("skin", entry.skinOverlayTint());
         assertEquals(12, entry.skinOverlayOrder());
+        assertEquals(0, entry.skinOverlayTintBlend());
+        assertEquals(1f, entry.skinOverlayTintStrength());
+    }
+
+    @Test
+    void skinOverlayReadsPackedBlendAndStrength() {
+        GeneCatalogEntry entry = new GeneCatalogEntry(
+                "test:marks", "Marks", "", "appearance",
+                GeneDisplay.Kind.SKIN_OVERLAY.ordinal(), 0f, 1f,
+                "test:textures/overlay/basic.png;skin;12;3;0.65", 0f,
+                0, "", 1, List.of(), "", "", "", "", "", List.of(), List.of(), "");
+
+        assertEquals("skin", entry.skinOverlayTint());
+        assertEquals(12, entry.skinOverlayOrder());
+        assertEquals(3, entry.skinOverlayTintBlend());
+        assertEquals(0.65f, entry.skinOverlayTintStrength());
     }
 }

@@ -17,7 +17,7 @@
     "remainder": {
       "mode": "item",
       "item": "brewery:beer_mug",
-      "destination": "storage"
+      "destination": "source"
     },
     "effect_admission": {
       "default": "deny"

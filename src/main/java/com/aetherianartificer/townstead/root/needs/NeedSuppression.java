@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.root.LifeStage;
 import com.aetherianartificer.townstead.root.LifeStageProgression;
 import com.aetherianartificer.townstead.root.gene.types.DietGeneType;
 import com.aetherianartificer.townstead.root.gene.types.HydrationGeneType;
+import com.aetherianartificer.townstead.root.gene.types.ThermalToleranceGeneType;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -31,6 +32,15 @@ public final class NeedSuppression {
         if (stageHasNoNeeds(entity)) return true;
         for (HydrationGeneType.Instance gene : ExpressedGenes.instancesOf(entity, HydrationGeneType.Instance.class)) {
             if (gene.disablesThirst()) return true;
+        }
+        return false;
+    }
+
+    /** True for a {@code climate: any} root, which does not thermoregulate, or a stage with no needs. */
+    public static boolean suppressesTemperature(LivingEntity entity) {
+        if (stageHasNoNeeds(entity)) return true;
+        for (ThermalToleranceGeneType.Instance gene : ExpressedGenes.instancesOf(entity, ThermalToleranceGeneType.Instance.class)) {
+            if (gene.climateAny()) return true;
         }
         return false;
     }

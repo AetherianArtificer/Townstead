@@ -28,6 +28,11 @@ public class ChoicePanel {
     private static final int ENTRY_SPACING = 6;
     private static final int HIGHLIGHT_PAD = 3;
     private static final int INDICATOR_WIDTH = 10;
+    private static final int NUMBER_GAP = 3;
+    private static final int NUMBER_COLOR = 0x88FFFFFF;
+    private static final int MAX_NUMBERED = 9;
+    /** Right edge of the badge a mod paints for itself, measured from the panel edge. */
+    private static final int GUEST_BADGE_END = 18;
     private static final int GAP_ABOVE_DIALOGUE = 8;
     private static final int MIN_TOP_MARGIN = 10;
     private static final int BACK_COLOR = 0xFF8888AA;
@@ -40,6 +45,19 @@ public class ChoicePanel {
     private List<DisplayEntry> displayEntries = List.of();
 
     private boolean visible;
+    /**
+     * Set through the client API by a mod that wants numbered choices. Read when the panel lays
+     * out, so the gutter it needs is reserved before the text is wrapped into it.
+     */
+    private static volatile java.util.function.BooleanSupplier numberingRequest;
+
+    /** True while the rows carry numbers, with {@link #gutterWidth} widened to hold them. */
+    private boolean numbered;
+
+    /** True while a mod paints its own numbers here, so the text starts just past them. */
+    private boolean guestNumbered;
+    private int gutterWidth = INDICATOR_WIDTH;
+
     private int hoveredIndex = -1;
     private int selectedIndex = 0;
     private int scrollOffset = 0;
@@ -140,6 +158,21 @@ public class ChoicePanel {
         return visible && !displayEntries.isEmpty();
     }
 
+    /** @see com.aetherianartificer.townstead.api.v1.client.TownsteadClientApiV1#setChoiceNumbering */
+    public static void setNumberingRequest(java.util.function.BooleanSupplier request) {
+        numberingRequest = request;
+    }
+
+    private static boolean numberingRequested() {
+        java.util.function.BooleanSupplier request = numberingRequest;
+        if (request == null) return false;
+        try {
+            return request.getAsBoolean();
+        } catch (Throwable t) {
+            return false; // a mod's own toggle threw; unnumbered is the safe reading
+        }
+    }
+
     private static int aa(int argb, float alpha) {
         int origA = (argb >> 24) & 0xFF;
         return ((int) (origA * alpha) << 24) | (argb & 0x00FFFFFF);
@@ -157,11 +190,13 @@ public class ChoicePanel {
 
         int entryY = y + PADDING - scrollOffset;
         hoveredIndex = -1;
+        int visibleOrdinal = 0;
         for (int i = 0; i < displayEntries.size(); i++) {
             int entryH = entryHeights.get(i);
             int entryBottom = entryY + entryH;
 
             if (entryBottom > y && entryY < y + height) {
+                visibleOrdinal++;
                 boolean mouseHover = mouseX >= x && mouseX <= x + width
                         && mouseY >= Math.max(entryY, y) && mouseY < Math.min(entryBottom, y + height);
                 boolean highlighted = mouseHover || i == selectedIndex;
@@ -184,16 +219,25 @@ public class ChoicePanel {
                     textColor = highlighted ? HOVER_COLOR : NORMAL_COLOR;
                 }
 
-                if (highlighted) {
+                int gutterOffset = gutterWidth - INDICATOR_WIDTH;
+                if (numbered && visibleOrdinal <= MAX_NUMBERED) {
+                    // Centred on the row and dimmed until it is the live one, so the number reads as
+                    // a label on the choice rather than a widget beside it.
+                    int numberY = entryY + (entryH - LINE_HEIGHT) / 2;
+                    graphics.drawString(font, visibleOrdinal + ".", x + PADDING, numberY,
+                            highlighted ? HOVER_COLOR : NUMBER_COLOR);
+                }
+
+                if (highlighted && !guestNumbered) {
                     int indicatorY = entryY + (entryH - LINE_HEIGHT) / 2;
                     String indicator = "\u25B8";
-                    graphics.drawString(font, indicator, x + PADDING, indicatorY, HOVER_COLOR);
+                    graphics.drawString(font, indicator, x + PADDING + gutterOffset, indicatorY, HOVER_COLOR);
                 }
 
                 List<FormattedCharSequence> lines = wrappedEntries.get(i);
                 int lineY = entryY;
                 for (FormattedCharSequence line : lines) {
-                    graphics.drawString(font, line, x + PADDING + INDICATOR_WIDTH, lineY, textColor);
+                    graphics.drawString(font, line, x + PADDING + gutterWidth, lineY, textColor);
                     lineY += LINE_HEIGHT;
                 }
             }
@@ -218,6 +262,39 @@ public class ChoicePanel {
             }
         }
     }
+
+    /** The rows currently inside the panel's clip, in screen coordinates, for the client API. */
+    public List<com.aetherianartificer.townstead.api.v1.client.ChoiceRow> visibleRows() {
+        List<com.aetherianartificer.townstead.api.v1.client.ChoiceRow> rows = new ArrayList<>();
+        if (!isVisible()) return rows;
+        int entryY = y + PADDING - scrollOffset;
+        for (int i = 0; i < displayEntries.size() && i < entryHeights.size(); i++) {
+            int entryH = entryHeights.get(i);
+            if (entryY + entryH > y && entryY < y + height) {
+                DisplayEntry entry = displayEntries.get(i);
+                rows.add(new com.aetherianartificer.townstead.api.v1.client.ChoiceRow(i, x + PADDING, entryY,
+                        width - PADDING * 2, entryH, entry.text().getString(), i == selectedIndex,
+                        entry.isBack(), entry.isHub()));
+            }
+            entryY += entryH + ENTRY_SPACING;
+        }
+        return rows;
+    }
+
+    /** Moves the selection to {@code index} if it exists; the caller then runs the native selection. */
+    public boolean selectIndex(int index) {
+        if (index < 0 || index >= displayEntries.size()) return false;
+        selectedIndex = index;
+        hoveredIndex = index;
+        ensureSelectedVisible();
+        return true;
+    }
+
+    public int panelX() { return x; }
+    public int panelY() { return y; }
+    public int panelWidth() { return width; }
+    public int panelHeight() { return height; }
+    public float fadeAlpha() { return fadeAlpha; }
 
     /**
      * Handle a selection (click or Enter). Returns the result.
@@ -335,7 +412,15 @@ public class ChoicePanel {
     private void wrapEntries(Font font) {
         wrappedEntries.clear();
         entryHeights.clear();
-        int maxTextWidth = panelWidth - PADDING * 2 - INDICATOR_WIDTH;
+        // A mod that asks us to number wins; otherwise the text simply starts past the badges a
+        // mod paints for itself, with no caret column of ours in between.
+        numbered = numberingRequested();
+        guestNumbered = !numbered
+                && com.aetherianartificer.townstead.compat.otectus.ConversationsChoiceNumbering.numbersRows(this);
+        gutterWidth = guestNumbered
+                ? GUEST_BADGE_END + NUMBER_GAP - PADDING
+                : INDICATOR_WIDTH + (numbered ? font.width("9.") + NUMBER_GAP : 0);
+        int maxTextWidth = panelWidth - PADDING * 2 - gutterWidth;
         for (DisplayEntry entry : displayEntries) {
             List<FormattedCharSequence> lines = font.split(entry.text(), maxTextWidth);
             wrappedEntries.add(lines);

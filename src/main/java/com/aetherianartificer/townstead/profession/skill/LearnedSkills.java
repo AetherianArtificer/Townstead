@@ -74,6 +74,9 @@ public final class LearnedSkills {
         if (result.ok() && entity instanceof VillagerEntityMCA villager) {
             com.aetherianartificer.townstead.profession.ProfessionClothing.afterPathChange(villager);
         }
+        if (result.ok()) {
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.skillLearned(entity, SkillDefs.canonicalId(skillId), false);
+        }
         return result;
     }
 
@@ -86,6 +89,9 @@ public final class LearnedSkills {
         if (result.ok() && entity instanceof VillagerEntityMCA villager) {
             com.aetherianartificer.townstead.profession.ProfessionClothing.afterPathChange(villager);
         }
+        if (result.ok()) {
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.skillLearned(entity, SkillDefs.canonicalId(skillId), true);
+        }
         return result;
     }
 
@@ -94,7 +100,12 @@ public final class LearnedSkills {
     }
 
     public static ForgetResult forget(LivingEntity entity, ResourceLocation skillId) {
-        return forgetFrom(backing(entity), skillId);
+        ForgetResult result = forgetFrom(backing(entity), skillId);
+        if (result.ok()) {
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.skillForgotten(entity,
+                    SkillDefs.canonicalId(skillId), result.removed(), false);
+        }
+        return result;
     }
 
     public static ForgetResult forget(UUID uuid, ResourceLocation skillId) {
@@ -102,7 +113,12 @@ public final class LearnedSkills {
     }
 
     public static ForgetResult forceForget(LivingEntity entity, ResourceLocation skillId) {
-        return forceForgetFrom(backing(entity), skillId);
+        ForgetResult result = forceForgetFrom(backing(entity), skillId);
+        if (result.ok()) {
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.skillForgotten(entity,
+                    SkillDefs.canonicalId(skillId), result.removed(), true);
+        }
+        return result;
     }
 
     public static ForgetResult forceForget(UUID uuid, ResourceLocation skillId) {

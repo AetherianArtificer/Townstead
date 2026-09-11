@@ -41,7 +41,7 @@ import org.jetbrains.annotations.Nullable;
  * for flush-under mounts (the floor model flipped, hung beneath the block
  * above).
  */
-public class CalendarBlock extends Block implements SimpleWaterloggedBlock, EntityBlock {
+public class CalendarBlock extends SnowCoatedBlock implements SimpleWaterloggedBlock, EntityBlock {
     public static final EnumProperty<AttachFace> ATTACH_FACE = BlockStateProperties.ATTACH_FACE;
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
@@ -57,7 +57,7 @@ public class CalendarBlock extends Block implements SimpleWaterloggedBlock, Enti
 
     public CalendarBlock(Properties properties) {
         super(properties);
-        registerDefaultState(stateDefinition.any()
+        registerDefaultState(defaultBlockState()
                 .setValue(ATTACH_FACE, AttachFace.WALL)
                 .setValue(FACING, Direction.NORTH)
                 .setValue(WATERLOGGED, false));
@@ -65,6 +65,7 @@ public class CalendarBlock extends Block implements SimpleWaterloggedBlock, Enti
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        super.createBlockStateDefinition(builder);
         builder.add(ATTACH_FACE, FACING, WATERLOGGED);
     }
 

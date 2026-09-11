@@ -1,0 +1,51 @@
+{
+  "require": "eclipticseasons",
+  "replace": false,
+  "variants": {
+    "face=floor,facing=north": {
+      "model": "townstead:block/snow/cap_45fd642d0c86"
+    },
+    "face=floor,facing=east": {
+      "model": "townstead:block/snow/cap_45fd642d0c86",
+      "y": 90
+    },
+    "face=floor,facing=south": {
+      "model": "townstead:block/snow/cap_45fd642d0c86",
+      "y": 180
+    },
+    "face=floor,facing=west": {
+      "model": "townstead:block/snow/cap_45fd642d0c86",
+      "y": 270
+    },
+    "face=wall,facing=north": {
+      "model": "townstead:block/snow/cap_e805bea09140"
+    },
+    "face=wall,facing=east": {
+      "model": "townstead:block/snow/cap_e805bea09140",
+      "y": 90
+    },
+    "face=wall,facing=south": {
+      "model": "townstead:block/snow/cap_e805bea09140",
+      "y": 180
+    },
+    "face=wall,facing=west": {
+      "model": "townstead:block/snow/cap_e805bea09140",
+      "y": 270
+    },
+    "face=ceiling,facing=north": {
+      "model": "townstead:block/snow/cap_9d8b8aadf005"
+    },
+    "face=ceiling,facing=east": {
+      "model": "townstead:block/snow/cap_9d8b8aadf005",
+      "y": 90
+    },
+    "face=ceiling,facing=south": {
+      "model": "townstead:block/snow/cap_9d8b8aadf005",
+      "y": 180
+    },
+    "face=ceiling,facing=west": {
+      "model": "townstead:block/snow/cap_9d8b8aadf005",
+      "y": 270
+    }
+  }
+}
