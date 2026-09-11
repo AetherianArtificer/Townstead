@@ -24,6 +24,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
@@ -90,6 +91,9 @@ public final class Amenities {
         boolean feeds(ServerLevel level, BlockPos pos);
         boolean hydrates(ServerLevel level, BlockPos pos);
         boolean use(ServerLevel level, VillagerEntityMCA villager, BlockPos pos);
+
+        /** The item on offer at this position, so callers can score it against other sources. */
+        default ItemStack serving(ServerLevel level, BlockPos pos) { return ItemStack.EMPTY; }
     }
 
     public record Candidate(@Nullable Definition definition, @Nullable WorldSource worldSource,
@@ -101,6 +105,10 @@ public final class Amenities {
 
         public boolean feeds(ServerLevel level) {
             return worldSource != null && worldSource.feeds(level, pos);
+        }
+
+        public ItemStack serving(ServerLevel level) {
+            return worldSource == null ? ItemStack.EMPTY : worldSource.serving(level, pos);
         }
 
         public boolean hydrates(ServerLevel level) {

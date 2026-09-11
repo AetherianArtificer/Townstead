@@ -332,6 +332,7 @@ public final class HangoutEngine {
             HangoutBeat beat = beatId == null ? null : BEATS.get(beatId);
             if (beat == null && beatId != null) BY_BEAT_MEMBER.remove(villager.getUUID(), beatId);
             else if (beat != null) advanceBeat(level, beat, now);
+            HangoutDrinks.tick(level, villager, visit, venue, now);
         }
     }
 
@@ -552,6 +553,7 @@ public final class HangoutEngine {
 
         VillagerEntityMCA villager = villager(level, visitorId);
         if (villager != null) {
+            com.aetherianartificer.townstead.hunger.VillagerConsumptionManager.finishRecreationalDrink(villager);
             releaseTravelTarget(villager);
             if (visit.visitor().handle() != null) {
                 visit.visitor().handle().close(level, villager);

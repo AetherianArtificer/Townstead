@@ -1,7 +1,7 @@
 {
   "schema": "townstead:need_settings/v1",
   "drying_seconds": 90,
-  "comfort_break_seconds": 30,
+  "comfort_break_seconds": 90,
   "biome_anchors": [
     [
       0.15,
@@ -37,9 +37,63 @@
   "occupancy_max": 3.0,
   "room_size_reference": 64,
   "room_heat_enabled": true,
-  "room_heat_capacity": 2.0,
-  "room_source_power": 1.5,
-  "room_wall_conductance": 0.07,
-  "room_insulated_conductance": 0.004,
-  "room_opening_conductance": 1.0
+  "thermal_capacity_j_per_block_k": 2000.0,
+  "thermal_material_capacity_j_per_block_k": {
+    "insulation": 500.0,
+    "wood": 4000.0,
+    "earth": 16000.0,
+    "masonry": 12000.0,
+    "glass": 6000.0,
+    "metal": 16000.0,
+    "porous": 1000.0
+  },
+  "thermal_source_w_per_degree": 250.0,
+  "thermal_cooking_room_heat_fraction": 0.15,
+  "thermal_wall_w_per_face_k": 1.4,
+  "thermal_insulation_w_per_face_k": 0.08,
+  "thermal_opening_w_per_face_k": 30.0,
+  "thermal_time_scale": 20.0,
+  "thermal_air_changes_per_hour": 0.5,
+  "thermal_appliances": {
+    "legendarysurvivaloverhaul:heater": {
+      "room_power_w": 3750,
+      "radiant_degrees": 15,
+      "native_reference_degrees": 15
+    },
+    "legendarysurvivaloverhaul:cooler": {
+      "room_power_w": -3750,
+      "radiant_degrees": -15,
+      "native_reference_degrees": -15
+    },
+    "legendarysurvivaloverhaul:heater_top": {
+      "room_power_w": 0,
+      "radiant_degrees": 0,
+      "native_reference_degrees": 0
+    },
+    "minecraft:campfire": {
+      "room_power_w": 2500,
+      "radiant_degrees": 10,
+      "native_reference_degrees": 0
+    },
+    "minecraft:soul_campfire": {
+      "room_power_w": -2000,
+      "radiant_degrees": -8,
+      "native_reference_degrees": 0
+    },
+    "minecraft:furnace": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0
+    },
+    "minecraft:smoker": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0
+    },
+    "minecraft:blast_furnace": {
+      "room_power_w": 450,
+      "radiant_degrees": 12,
+      "native_reference_degrees": 0
+    }
+  }
 }

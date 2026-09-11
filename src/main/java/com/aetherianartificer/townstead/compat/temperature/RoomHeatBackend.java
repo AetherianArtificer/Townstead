@@ -36,7 +36,7 @@ public final class RoomHeatBackend {
         float value = BuiltinTemperatureBridge.baseCelsius(level, pos);
         if (level.isNight()) value += settings.nightOffset();
         if (level.isRainingAt(pos)) value += settings.rainOffset();
-        return value;
+        return EclipticClimate.reconcile(value, EclipticClimate.ceiling(level, pos));
     }
     public static double coldSweatPlayer(Level level, BlockPos pos, double original) {
         OptionalDouble room = room(level, pos);

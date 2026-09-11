@@ -20,9 +20,17 @@ class InsertItemBlockActionTypeTest {
         var type = new InsertItemBlockActionType();
         for (String json : new String[]{"{}", "{\"slot\":-1}", "{\"slot\":0,\"count\":0}",
                 "{\"slot\":0,\"limit\":0}", "{\"slot\":0,\"side\":\"invalid\"}",
+                "{\"slot\":0,\"inventory_limit\":0}",
                 "{\"slot\":0,\"item\":\"\"}"}) {
             assertNull(type.parse(JsonParser.parseString(json).getAsJsonObject()), json);
         }
         assertNotNull(type.parse(JsonParser.parseString("{\"slot\":0}").getAsJsonObject()));
+    }
+    @Test void machineWideReserveDoesNotAddFuelBesideAPlayerLoadedStack() {
+        assertEquals(1, InsertItemBlockActionType.remainingCapacity(0, 1));
+        assertEquals(0, InsertItemBlockActionType.remainingCapacity(1, 1));
+        assertEquals(0, InsertItemBlockActionType.remainingCapacity(64, 1));
+        assertEquals(0, InsertItemBlockActionType.remainingCapacity(Long.MAX_VALUE, 1));
+        assertEquals(3, InsertItemBlockActionType.remainingCapacity(2, 5));
     }
 }

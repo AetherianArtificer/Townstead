@@ -120,8 +120,9 @@ public final class TemperatureVillagerTicker {
         }
         float seconds = state.lastComfortTick < 0 ? 0.05f : Math.max(0, Math.min(1, (gameTime - state.lastComfortTick) / 20f));
         state.lastComfortTick = gameTime;
-        ThermalProtection protection = state.clothing.plus(com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat.protection(self));
-        float ambientCelsius = com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat.internalAmbient(self, TemperatureData.celsius(needs.ambientTenths()));
+        ThermalProtection protection = state.clothing.plus(com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat.protection(self))
+                .plus(com.aetherianartificer.townstead.compat.temperature.LsoEntityCompat.effects(self).protection());
+        float ambientCelsius = com.aetherianartificer.townstead.temperature.ThermalConsumables.internalAmbient(self, TemperatureData.celsius(needs.ambientTenths()));
         boolean immersed = self.isInWater();
         float targetLoad = ThermalComfort.load(ambientCelsius, immersed ? 1 : needs.thermalWetness(),
                 immersed, Math.max(0, activityHeat(self) * 10), protection, profile);
@@ -173,7 +174,7 @@ public final class TemperatureVillagerTicker {
     /** One accumulation interval of drift toward the target. Returns true when the reading moved. */
     private static boolean step(VillagerEntityMCA self, TownsteadVillager.Needs needs, ThermalProfile profile, ThermalProtection protection,
                                 com.aetherianartificer.townstead.temperature.BodyTemperatureDrift drift) {
-        float ambient = com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat.internalAmbient(self, TemperatureData.celsius(needs.ambientTenths()));
+        float ambient = com.aetherianartificer.townstead.temperature.ThermalConsumables.internalAmbient(self, TemperatureData.celsius(needs.ambientTenths()));
         ambient = protection.protectAmbient(ambient, TemperatureData.AMBIENT_REFERENCE);
         float clothing = protection.offset();
         float target;

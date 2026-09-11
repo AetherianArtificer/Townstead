@@ -12,12 +12,14 @@
     {
       "type": "townstead_work:maintain_climate",
       "workstations": [
-        "toughasnails:thermoregulator"
+        "toughasnails:thermoregulator",
+        "legendarysurvivaloverhaul:heater",
+        "legendarysurvivaloverhaul:cooler"
       ],
       "scope": "village",
       "weight": 10,
       "order": {
-        "name": "Maintain thermoregulators",
+        "name": "Maintain climate equipment",
         "icon": "toughasnails:thermoregulator"
       }
     }

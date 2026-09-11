@@ -33,6 +33,7 @@ public final class HangoutVisit {
     private long deadline;
     private long presentAt;
     private long nextBeatAt;
+    private long nextDrinkAt;
     private long lastTick = Long.MIN_VALUE;
     private String exitReason = "";
 
@@ -62,6 +63,8 @@ public final class HangoutVisit {
     public long deadline() { return deadline; }
     public long presentAt() { return presentAt; }
     public long nextBeatAt() { return nextBeatAt; }
+    long nextDrinkAt() { return nextDrinkAt; }
+    void deferDrink(long until) { nextDrinkAt = until; }
     public long lastTick() { return lastTick; }
     public String exitReason() { return exitReason; }
 
@@ -71,6 +74,7 @@ public final class HangoutVisit {
         presentAt = now;
         deadline = departure;
         nextBeatAt = now;
+        nextDrinkAt = now + 100;
     }
     void setHandle(HangoutEmbodiment.Handle handle) { visitor = visitor.withHandle(handle); }
     void deferBeat(long until) { nextBeatAt = until; }

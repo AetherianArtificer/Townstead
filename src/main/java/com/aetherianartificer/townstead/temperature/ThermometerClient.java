@@ -22,7 +22,7 @@ public final class ThermometerClient {
         player.displayClientMessage(Component.translatable("townstead.thermometer.reading", text), true);
     }
 
-    private static boolean fahrenheit(boolean coldSweat) {
+    public static boolean fahrenheit(boolean coldSweat) {
         if (coldSweat && ModCompat.isLoaded("cold_sweat")) {
             try {
                 if (!initialized) {
@@ -42,7 +42,7 @@ public final class ThermometerClient {
         return TownsteadConfig.temperatureInFahrenheit();
     }
 
-    static String format(float celsius, boolean fahrenheit) {
+    public static String format(float celsius, boolean fahrenheit) {
         return String.format(java.util.Locale.ROOT, "%.1f °%s",
                 fahrenheit ? celsius * 9d / 5d + 32d : (double) celsius, fahrenheit ? "F" : "C");
     }

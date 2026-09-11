@@ -200,6 +200,14 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.temperature.ThermometerReadingPayload::write,
                 com.aetherianartificer.townstead.temperature.ThermometerReadingPayload::read,
                 com.aetherianartificer.townstead.temperature.ThermometerClient::show);
+        registerS2C(com.aetherianartificer.townstead.temperature.ThermostatSnapshotPayload.class,
+                com.aetherianartificer.townstead.temperature.ThermostatSnapshotPayload::write,
+                com.aetherianartificer.townstead.temperature.ThermostatSnapshotPayload::read,
+                com.aetherianartificer.townstead.client.gui.temperature.ThermostatScreen::accept);
+        registerC2S(com.aetherianartificer.townstead.temperature.ThermostatRequestPayload.class,
+                com.aetherianartificer.townstead.temperature.ThermostatRequestPayload::write,
+                com.aetherianartificer.townstead.temperature.ThermostatRequestPayload::read,
+                com.aetherianartificer.townstead.temperature.ThermostatInteraction::handle);
         registerC2S(TemperatureSetPayload.class, TemperatureSetPayload::write, TemperatureSetPayload::read,
                 TownsteadNetwork::handleTemperatureSet);
 

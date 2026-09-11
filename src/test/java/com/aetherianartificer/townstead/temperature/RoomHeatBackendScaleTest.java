@@ -16,4 +16,14 @@ class RoomHeatBackendScaleTest {
         assertFalse(settings.roomHeatEnabled());
         assertTrue(settings.roomHeatCapacity()>0);
     }
+    @Test void legacyTuningIsConvertedAndExplicitUnitsTakePrecedence() {
+        var old = TemperatureSettings.parse(com.google.gson.JsonParser.parseString(
+                "{\"room_heat_capacity\":2,\"room_source_power\":1.5,\"room_wall_conductance\":0.07}").getAsJsonObject());
+        assertEquals(2000, old.roomHeatCapacity());
+        assertEquals(250, old.roomSourcePower(), 0.001);
+        assertEquals(1.4, old.roomWallConductance(), 0.001);
+        var explicit = TemperatureSettings.parse(com.google.gson.JsonParser.parseString(
+                "{\"thermal_source_w_per_degree\":300,\"room_source_power\":1.5}").getAsJsonObject());
+        assertEquals(300, explicit.roomSourcePower());
+    }
 }

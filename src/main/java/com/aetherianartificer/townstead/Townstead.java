@@ -248,6 +248,12 @@ public class Townstead {
     public static final Supplier<Item> ROOM_THERMOMETER_ITEM = ITEMS.register("room_thermometer",
             () -> new BlockItem(ROOM_THERMOMETER.get(), new Item.Properties()));
 
+    public static final Supplier<Block> ROOM_THERMOSTAT = BLOCKS.register("room_thermostat",
+            () -> new com.aetherianartificer.townstead.block.RoomThermostatBlock(
+                    BlockBehaviour.Properties.of().strength(0.5f).sound(SoundType.WOOD).noCollission().noOcclusion()));
+    public static final Supplier<Item> ROOM_THERMOSTAT_ITEM = ITEMS.register("room_thermostat",
+            () -> new BlockItem(ROOM_THERMOSTAT.get(),new Item.Properties()));
+
     private static final String[] FIELD_POST_WOOD_VARIANTS = {
             "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove",
             "cherry", "bamboo", "crimson", "warped"
@@ -370,6 +376,7 @@ public class Townstead {
                                 output.accept(ORDER_SHEET_ITEM.get());
                                 output.accept(ROOM_OWNERSHIP_TAG_ITEM.get());
                                 output.accept(ROOM_THERMOMETER_ITEM.get());
+                                output.accept(ROOM_THERMOSTAT_ITEM.get());
                                 for (Supplier<Item> variant : FIELD_POST_VARIANT_ITEMS) {
                                     output.accept(variant.get());
                                 }
@@ -2934,6 +2941,20 @@ public class Townstead {
                 com.aetherianartificer.townstead.temperature.ThermometerReadingPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
                         com.aetherianartificer.townstead.temperature.ThermometerClient.show(payload))
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.temperature.ThermostatRequestPayload.TYPE,
+                com.aetherianartificer.townstead.temperature.ThermostatRequestPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof net.minecraft.server.level.ServerPlayer player)
+                        com.aetherianartificer.townstead.temperature.ThermostatInteraction.handle(payload,player);
+                })
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.temperature.ThermostatSnapshotPayload.TYPE,
+                com.aetherianartificer.townstead.temperature.ThermostatSnapshotPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.client.gui.temperature.ThermostatScreen.accept(payload))
         );
         registrar.playToServer(
                 TemperatureSetPayload.TYPE,

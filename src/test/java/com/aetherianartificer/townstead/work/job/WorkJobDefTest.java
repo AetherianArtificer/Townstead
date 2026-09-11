@@ -12,6 +12,34 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class WorkJobDefTest {
     @Test
+    void lsoFuelReserveIsIndependentOfThermostatDemandAndUsesTheCorrectDepot() throws Exception {
+        registerProcedurePrimitives();
+        for (String kind : List.of("boilers", "coolers")) {
+            try (var stream = getClass().getResourceAsStream("/data/townstead/work_job/lso_" + kind + ".json")) {
+                assertNotNull(stream);
+                var json = JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject();
+                var def = WorkJobDef.parse(id("townstead:lso_" + kind), json);
+                assertNotNull(def);
+                var target = json.getAsJsonObject("target");
+                // A thermostat pausing the appliance must not abort an in-flight fuel delivery.
+                assertFalse(target.has("condition"));
+                assertEquals(1, target.getAsJsonArray("blocks").size());
+                assertFalse(target.getAsJsonArray("blocks").toString().contains("heater_top"));
+                var interaction = def.target().interactions().get(0);
+                String depot = kind.equals("boilers") ? "fuel_store" : "icehouse";
+                String wrong = kind.equals("boilers") ? "icehouse" : "fuel_store";
+                assertTrue(interaction.matchesSourceBuilding("compat/toughasnails/climate_" + depot));
+                assertTrue(interaction.matchesSourceBuilding("compat.toughasnails.climate_" + depot));
+                assertFalse(interaction.matchesSourceBuilding("compat/toughasnails/climate_" + wrong));
+                assertFalse(interaction.matchesSourceBuilding("house"));
+                var action = target.getAsJsonArray("interactions").get(0).getAsJsonObject().getAsJsonObject("action");
+                assertEquals(1, action.get("inventory_limit").getAsInt());
+                assertEquals(0, action.get("slot").getAsInt());
+                assertEquals("up", action.get("side").getAsString());
+            }
+        }
+    }
+    @Test
     void climatologistUsesSeparateExclusiveDepots() throws Exception {
         registerProcedurePrimitives();
         try (var stream = getClass().getResourceAsStream(

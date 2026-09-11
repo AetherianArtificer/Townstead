@@ -61,6 +61,8 @@ public final class BuiltinTemperatureBridge implements AmbientTemperatureBridge 
         if (sky && level.isRainingAt(pos)) celsius += s.rainOffset();
         if (level.isNight()) celsius += sky ? s.nightOffset() : s.nightOffset() * 0.5f;
 
+        celsius = EclipticClimate.reconcile(celsius, EclipticClimate.ceiling(level, pos));
+
         float sources = ThermalBlocks.sourceOffset(level, pos, s);
         sources += structureZone(level, pos);
         // Loose blocks and recognised structures add up, but a bonfire ring is not a furnace.

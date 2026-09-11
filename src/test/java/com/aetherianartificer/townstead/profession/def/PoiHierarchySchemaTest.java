@@ -95,6 +95,22 @@ class PoiHierarchySchemaTest {
         assertFalse(readResource("/data/toughasnails/profession/climatologist/work.json")
                 .get("register_profession").getAsBoolean());
     }
+    @Test
+    void lsoClimatologistUsesDepotsWithoutClaimingForeignPoiStatesOrDuplicatingTanCareer() {
+        var document = readResource("/data/townstead/profession/climatologist/profession.json");
+        var gate = document.get("mods");
+        assertEquals(true, com.aetherianartificer.townstead.data.ModGate.evaluate(gate, "legendarysurvivaloverhaul"::equals));
+        assertEquals(false, com.aetherianartificer.townstead.data.ModGate.evaluate(gate, ignored -> true));
+        assertEquals(false, com.aetherianartificer.townstead.data.ModGate.evaluate(gate, "toughasnails"::equals));
+        assertEquals(false, com.aetherianartificer.townstead.data.ModGate.evaluate(gate, ignored -> false));
+        ProfessionDef def = load("/data/townstead/profession/climatologist/profession.json", "townstead:climatologist");
+        assertEquals(1, def.jobSites().size());
+        var depot = (JobSiteProvider.Building) def.jobSites().get(0);
+        assertTrue(depot.matches("compat/toughasnails/climate_fuel_store"));
+        assertTrue(depot.matches("compat/toughasnails/climate_icehouse"));
+        assertFalse(depot.matches("house"));
+        assertTrue(readResource("/data/townstead/profession/climatologist/work.json").get("register_profession").getAsBoolean());
+    }
 
     @Test
     void shippedCookUsesItsTownsteadBuildingRatherThanChefsDelightAcquisition() {

@@ -101,7 +101,16 @@ public final class TemperatureData {
         return !Float.isFinite(value) ? AMBIENT_REFERENCE : value;
     }
 
-    /** The same shared region reading used by players and thermometers. */
+    /** A thermometer reads stored air, without a person's directional radiant exposure. */
+    public static float airCelsius(ServerLevel level, BlockPos pos) {
+        var air = RoomHeat.airAt(level, pos);
+        float value = air.isPresent() ? (float) air.getAsDouble()
+                : com.aetherianartificer.townstead.compat.temperature.RoomHeatBackend.outdoor(level, pos);
+        return com.aetherianartificer.townstead.compat.temperature.ToughAsNailsTemperatureBridge.INSTANCE
+                .regulatedCelsius(level, pos, value);
+    }
+
+    /** The operative environment used by players and villagers, before personal modifiers. */
     public static float ambientCelsiusFor(ServerLevel level, net.conczin.mca.entity.VillagerEntityMCA villager) {
         return ambientCelsius(level, villager.blockPosition());
     }

@@ -15,40 +15,13 @@ class RoomHeatBalanceTest {
         assertEquals(0.5, RoomHeatBalance.sourceShare(1, 2));
         assertEquals(0, RoomHeatBalance.sourceShare(0, 2));
     }
-    @Test void standingBesideAStoveFeelsHeatBeforeTheRoomWarms() {
-        assertEquals(5.5,RoomHeatBalance.localExposure(8.25,1),1e-10);
-        assertEquals(0,RoomHeatBalance.localExposure(8.25,36));
-        assertTrue(RoomHeatBalance.localExposure(8.25,1)>RoomHeatBalance.localExposure(8.25,4));
-        assertTrue(RoomHeatBalance.localExposure(-8,1)<0);
-        assertEquals(-1,RoomHeatBalance.advance(-1,84,24.75,0.6,-1,0));
-    }
-    @Test void stoveWarmthReachesAcrossRoomWithoutIncreasingBesideStoveExposure() {
-        assertEquals(8.25, RoomHeatBalance.localExposure(8.25,0), 1e-10);
-        assertEquals(5.5, RoomHeatBalance.localExposure(8.25,1), 1e-10);
-        assertTrue(RoomHeatBalance.localExposure(8.25,9) > 3);
-        assertTrue(RoomHeatBalance.localExposure(8.25,25) > 1);
-        double previous = Double.POSITIVE_INFINITY;
+    @Test void radiantExposureFallsWithDistanceForHeatingAndCooling() {
+        assertEquals(10, RoomHeatBalance.localExposure(10, 0));
+        assertTrue(RoomHeatBalance.localExposure(10, 1) > RoomHeatBalance.localExposure(10, 4));
+        assertEquals(0, RoomHeatBalance.localExposure(10, 36));
         for (double distance = 0; distance <= 7; distance += 0.05) {
-            double effect = RoomHeatBalance.localExposure(8.25,distance * distance);
-            assertTrue(effect >= 0 && effect <= previous);
-            previous = effect;
-        }
-        assertEquals(0, RoomHeatBalance.localExposure(8.25,49));
-        assertEquals(0, RoomHeatBalance.localExposure(-8,9), 1e-10);
-    }
-    @Test void coldRoomKeepsImmediateStoveReliefWhileWarmKitchenGetsLessExtraHeat() {
-        assertEquals(11, RoomHeatBalance.warmExposure(-1,11));
-        assertEquals(11, RoomHeatBalance.warmExposure(20,11));
-        assertTrue(30 + RoomHeatBalance.warmExposure(30,11) < 36);
-        assertTrue(RoomHeatBalance.warmExposure(40,11) > 0);
-        assertEquals(0, RoomHeatBalance.warmExposure(30,0));
-    }
-    @Test void hotterRoomStillFeelsHotterEvenAtMaximumLocalExposure() {
-        double previous = Double.NEGATIVE_INFINITY;
-        for (double air = 0; air < 60; air += 0.1) {
-            double feels = air + RoomHeatBalance.warmExposure(air,18);
-            assertTrue(feels > previous);
-            previous = feels;
+            assertEquals(-RoomHeatBalance.localExposure(10, distance * distance),
+                    RoomHeatBalance.localExposure(-10, distance * distance), 1e-10);
         }
     }
     @Test void heaterStabilizesWhenLossEqualsInput() {

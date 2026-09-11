@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:job/v3",
+  "mods": ["legendarysurvivaloverhaul"],
+  "task": "townstead_work:maintain_climate",
+  "type": "townstead:block_interaction",
+  "target": {
+    "buildings": ["*"],
+    "blocks": ["legendarysurvivaloverhaul:heater"],
+    "interactions": [
+      {
+        "item": "#townstead:thermal/lso_heating_fuel",
+        "action": {
+          "type": "pheno:insert_item", "item": "item", "side": "up", "slot": 0,
+          "count": 1, "limit": 1, "inventory_limit": 1, "reject_remainders": true
+        },
+        "activity": "townstead:climatologist_heating", "xp": 1,
+        "source_buildings": ["compat/toughasnails/climate_fuel_store", "compat.toughasnails.climate_fuel_store"]
+      }
+    ]
+  }
+}

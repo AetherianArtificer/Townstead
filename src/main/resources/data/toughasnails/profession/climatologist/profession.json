@@ -7,7 +7,7 @@
     "translate": "entity.minecraft.villager.toughasnails.climatologist"
   },
   "description": {
-    "text": "Keeps village thermoregulators supplied with heating and cooling fuel to maintain a balanced climate."
+    "text": "Keeps village climate equipment supplied with heating and cooling fuel, including compatible boilers and coolers."
   },
   "icon": "toughasnails:thermoregulator",
   "unlock_model": "experiential"

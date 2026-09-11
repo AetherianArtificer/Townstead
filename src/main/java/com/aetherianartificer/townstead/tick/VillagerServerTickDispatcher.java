@@ -28,6 +28,10 @@ public final class VillagerServerTickDispatcher {
             return;
         }
 
+        // Recreational drinking must finish even with hunger/thirst simulation disabled.
+        com.aetherianartificer.townstead.hunger.VillagerConsumptionManager.tickAndFinalize(villager,
+                com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).needs());
+
         if (!TownsteadProfiler.enabled()) {
             tickUnprofiled(villager, gameTime);
             return;

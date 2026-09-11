@@ -8,18 +8,26 @@ public final class RoomHeatBalance {
         if (roomFaces <= 0) return 0;
         return Math.min(1.0, roomFaces / (double) Math.max(1, exposedFaces));
     }
-    /** Heat reaches six blocks, preserving exposure within the first block and the stored heat budget. */
+    /** Visible-source exposure, smoothly cut off at six blocks; this is not stored heat. */
     public static double localExposure(double sourceEffect, double distanceSquared) {
-        double distance = Math.sqrt(Math.max(0, distanceSquared));
-        if (sourceEffect > 0 && distance > 1) {
-            distance = 1 + (distance - 1) * 2 / 5;
-        }
-        return sourceEffect * Math.max(0, 1 - distance / 3.0);
+        double d2 = Math.max(0, distanceSquared);
+        return sourceEffect * Math.max(0, (1 / (1 + d2) - 1.0 / 37) / (1 - 1.0 / 37));
     }
-    /** Gameplay tuning: keep cold-room relief, soften extra stove exposure once air is warm. */
-    public static double warmExposure(double roomTemperature, double localHeat) {
-        double warmRoom = Math.max(0, Math.min(1, (roomTemperature - 20) / 16));
-        return localHeat * (1 - 0.75 * warmRoom);
+
+    /** Background ventilation: air volume heat capacity is approximately 1200 J/m3/K. */
+    public static double ventilation(double volume, double airChangesPerHour) {
+        return volume * 1200 * airChangesPerHour / 3600;
+    }
+
+    /** Mod temperature contributions are authored strengths, converted once to effective watts. */
+    public static double sourcePower(double nativeDegrees, double wattsPerDegree, int faces, int exposedFaces) {
+        return nativeDegrees * wattsPerDegree * sourceShare(faces, exposedFaces);
+    }
+    /** Cooking strength describes local warmth, not the output of a dedicated space heater. */
+    public static double roomSourcePower(double nativeDegrees, double wattsPerDegree, int faces, int exposedFaces,
+                                         boolean cooking, double cookingFraction) {
+        return sourcePower(nativeDegrees, wattsPerDegree, faces, exposedFaces)
+                * (cooking && nativeDegrees > 0 ? cookingFraction : 1);
     }
     public static double advance(double temperature, double capacity, double power,
                                  double conductance, double reservoir, double seconds) {

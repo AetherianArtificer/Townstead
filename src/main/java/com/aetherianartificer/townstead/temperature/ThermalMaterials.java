@@ -21,11 +21,30 @@ public final class ThermalMaterials {
         /*return TagKey.create(Registries.BLOCK, new ResourceLocation("townstead", "thermal/" + path));
         *///?}
     }
-    public static double conductance(BlockState state, TemperatureSettings settings) {
-        Material material = state.is(ThermalBlocks.LEAKY_BLOCKS) ? Material.POROUS
+    public static Material material(BlockState state) {
+        return state.is(ThermalBlocks.LEAKY_BLOCKS) ? Material.POROUS
                 : state.is(ThermalBlocks.INSULATING_BLOCKS) ? Material.INSULATION
                 : state.is(METAL) ? Material.METAL : state.is(GLASS) ? Material.GLASS
-                : state.is(WOOD) ? Material.WOOD : state.is(EARTH) ? Material.EARTH : Material.MASONRY;
+                : state.is(WOOD) ? Material.WOOD : state.is(EARTH) ? Material.EARTH
+                // Sound is an explicit block property used by many furniture mods; tags always win.
+                : state.getSoundType() == SoundType.WOOD || state.getSoundType() == SoundType.BAMBOO_WOOD
+                    ? Material.WOOD : Material.MASONRY;
+    }
+    public static double surfaceCapacity(BlockState state, TemperatureSettings settings) {
+        double fraction = state.getBlock() instanceof DoorBlock || state.getBlock() instanceof TrapDoorBlock
+                || state.getBlock() instanceof IronBarsBlock ? 0.125
+                : state.hasProperty(BlockStateProperties.SLAB_TYPE) && state.getValue(BlockStateProperties.SLAB_TYPE) != SlabType.DOUBLE ? 0.5
+                : state.getBlock() instanceof StairBlock ? 0.75 : 1;
+        // Legacy face units; the network uses six shares for one physical block node.
+        return settings.materialHeatCapacity(material(state)) * fraction / 6;
+    }
+    public static boolean openAperture(BlockState state) {
+        return (state.getBlock() instanceof DoorBlock || state.getBlock() instanceof TrapDoorBlock
+                || state.getBlock() instanceof FenceGateBlock || material(state) == Material.GLASS)
+                && state.hasProperty(BlockStateProperties.OPEN) && state.getValue(BlockStateProperties.OPEN);
+    }
+    public static double conductance(BlockState state, TemperatureSettings settings) {
+        Material material = material(state);
         boolean aperture = state.getBlock() instanceof DoorBlock || state.getBlock() instanceof TrapDoorBlock
                 || state.getBlock() instanceof FenceGateBlock
                 || material == Material.GLASS && state.hasProperty(BlockStateProperties.OPEN);

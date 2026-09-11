@@ -114,6 +114,8 @@ public final class BlockConditions {
                     };
                 };
             }
+            case "redstone_powered":
+                return (level, pos) -> level.isLoaded(pos) && level.hasNeighborSignal(pos);
             case "exposed_to_sky":
                 return Level::canSeeSky;
             case "air":

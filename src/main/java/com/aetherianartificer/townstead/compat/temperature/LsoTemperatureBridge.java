@@ -32,6 +32,8 @@ public final class LsoTemperatureBridge implements AmbientTemperatureBridge {
     private Method getBlock;
     private Method matchesState;
     private Field blockTemperatureField;
+    private Object coatModifier;
+    private Method coatAttributes;
 
     private LsoTemperatureBridge() {}
 
@@ -57,15 +59,30 @@ public final class LsoTemperatureBridge implements AmbientTemperatureBridge {
         try {
             ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
             Object data = getItem.invoke(null, id);
-            if (data == null) return null;
-            // LSO offsets/resistances act on ambient; Townstead's flat offset acts on body.
-            return new ThermalProtection(temperatureField.getFloat(data)
-                    * com.aetherianartificer.townstead.temperature.TemperatureData.AMBIENT_PULL_PER_DEGREE,
-                    coldResistanceField.getFloat(data), heatResistanceField.getFloat(data),
-                    thermalResistanceField.getFloat(data));
+            ThermalProtection base = data == null ? ThermalProtection.NONE : protection(data);
+            ThermalProtection coat = ThermalProtection.NONE;
+            try {
+                if (coatAttributes != null) coat = protection(coatAttributes.invoke(coatModifier, stack));
+            } catch (ReflectiveOperationException | RuntimeException ignored) {
+                // A missing coat API must not discard the ordinary garment's protection.
+            }
+            return combineProtection(data != null, base, coat);
         } catch (Exception e) {
             return null;
         }
+    }
+
+    static ThermalProtection combineProtection(boolean knownItem, ThermalProtection base, ThermalProtection coat) {
+        // Unknown, unlined equipment must still reach other backends and Townstead tags.
+        return knownItem || !coat.equals(ThermalProtection.NONE) ? base.plus(coat) : null;
+    }
+
+    private ThermalProtection protection(Object data) throws IllegalAccessException {
+        if (data == null) return ThermalProtection.NONE;
+        return new ThermalProtection(temperatureField.getFloat(data)
+                * com.aetherianartificer.townstead.temperature.TemperatureData.AMBIENT_PULL_PER_DEGREE,
+                coldResistanceField.getFloat(data), heatResistanceField.getFloat(data),
+                thermalResistanceField.getFloat(data));
     }
 
     /** LSO uses the first matching state entry, in data order. */
@@ -106,6 +123,13 @@ public final class LsoTemperatureBridge implements AmbientTemperatureBridge {
         } catch (Exception e) {
             getItem = null;
             temperatureField = null;
+        }
+        try {
+            Class<?> registry = Class.forName("sfiomn.legendarysurvivaloverhaul.registry.TemperatureModifierRegistry");
+            coatModifier = ((java.util.function.Supplier<?>) registry.getField("COAT_ATTRIBUTE").get(null)).get();
+            coatAttributes = coatModifier.getClass().getMethod("getItemAttributes", ItemStack.class);
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+            coatAttributes = null;
         }
     }
 }

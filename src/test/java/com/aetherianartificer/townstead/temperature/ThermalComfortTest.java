@@ -15,7 +15,7 @@ class ThermalComfortTest {
     @Test void movementHelpsButDoesNotEraseColdWaterExposure() {
         assertTrue(load(15, 0, false, 2, ThermalProtection.NONE) > load(15, 0, false, 0, ThermalProtection.NONE));
         float swimming = load(12, 1, true, 2, ThermalProtection.NONE);
-        assertTrue(ThermalComfort.needsBreak(swimming, 0, 30));
+        assertTrue(ThermalComfort.needsBreak(swimming, 0, 30, true));
     }
     @Test void wetClothingLosesProtectionAndStaysWetOnLand() {
         var coat = new ThermalProtection(0.5f, 3, 0, 0);
@@ -55,5 +55,22 @@ class ThermalComfortTest {
         var coat = new ThermalProtection(1, 0, 0, 0);
         assertEquals(0, load(15, 0, false, 0, coat));
         assertTrue(load(30, 0, false, 0, coat) > load(30, 0, false, 0, ThermalProtection.NONE));
+    }
+    @Test void winterErrandDoesNotCauseImmediateRetreatButSustainedExposureDoes() {
+        var state = new ThermalComfort.State(0, 0, 0);
+        for (int second = 0; second < 20; second++) {
+            state = ThermalComfort.update(state, -20, false, false, 0, 1, 90, 90);
+            assertFalse(ThermalComfort.needsBreak(state.load(), state.strainSeconds(), 90));
+        }
+        for (int second = 0; second < 60; second++)
+            state = ThermalComfort.update(state, -20, false, false, 0, 1, 90, 90);
+        assertTrue(ThermalComfort.needsBreak(state.load(), state.strainSeconds(), 90));
+        assertFalse(ThermalComfort.recovered(0, 80, 90), "Brief warmth must not send an exhausted villager straight back out");
+        assertTrue(ThermalComfort.recovered(0, 0, 90));
+    }
+    @Test void extremeDryColdStillHasExposureTimeAndColdWaterRemainsImmediate() {
+        assertFalse(ThermalComfort.needsBreak(-40, 0, 90));
+        assertTrue(ThermalComfort.needsBreak(-40, 90, 90));
+        assertTrue(ThermalComfort.needsBreak(-20, 0, 90, true));
     }
 }

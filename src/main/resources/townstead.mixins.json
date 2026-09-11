@@ -20,6 +20,7 @@
     "compat.pizzadelight.PizzaStationResultSlotMixin",
     "compat.farmersdelight.StoveVillagerDamageMixin",
     "compat.mca.FamilyTreeNodeGenderGuardMixin",
+    "compat.mca.VillagerOpenedDoorMixin",
     "compat.mca.GetVillagerRequestEditorGuardMixin",
     "compat.mca.LazyFindPointOfInterestTaskCarrierMixin",
     "compat.mca.NamesCitizenNationMixin",
@@ -92,6 +93,7 @@
     "compat.temperature.ColdSweatRoomPlayerMixin",
     "compat.temperature.ColdSweatRoomQueryMixin",
     "compat.temperature.LsoOutdoorBlocksMixin",
+    "compat.temperature.LsoClimateMixin",
     "compat.temperature.LsoRoomQueryMixin",
     "compat.temperature.TanRoomQueryMixin"
   ],
@@ -149,6 +151,7 @@
     "client.BreastSwitchMixin",
     "client.ClothingLayerFallbackMixin",
     "client.HeldItemSuppressMixin",
+    "client.VillagerDrinkModelMixin",
     "client.HostArmorSuppressMixin",
     "client.CapeLayerWearableMixin",
     "client.ElytraLayerWearableMixin",

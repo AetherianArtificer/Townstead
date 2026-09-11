@@ -59,7 +59,7 @@ public final class RoomThermometerBlock extends SnowCoatedBlock {
         if (!face.getAxis().isHorizontal()) return null;
         BlockState state = defaultBlockState().setValue(FACING, face);
         if (context.getLevel() instanceof ServerLevel serverLevel) {
-            float celsius = TemperatureData.ambientCelsius(serverLevel, context.getClickedPos());
+            float celsius = TemperatureData.airCelsius(serverLevel, context.getClickedPos());
             state = state.setValue(TEMPERATURE, ThermometerBand.at(celsius))
                     .setValue(LEVEL, ThermometerScale.at(celsius));
         }
@@ -78,7 +78,7 @@ public final class RoomThermometerBlock extends SnowCoatedBlock {
 
     @Override
     public void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        updateDisplay(state, level, pos, TemperatureData.ambientCelsius(level, pos));
+        updateDisplay(state, level, pos, TemperatureData.airCelsius(level, pos));
         level.scheduleTick(pos, this, REFRESH_TICKS);
     }
 
@@ -128,7 +128,7 @@ public final class RoomThermometerBlock extends SnowCoatedBlock {
     *///?}
         if (level.isClientSide()) return InteractionResult.SUCCESS;
         if (level instanceof ServerLevel serverLevel) {
-            float celsius = TemperatureData.ambientCelsius(serverLevel, pos);
+            float celsius = TemperatureData.airCelsius(serverLevel, pos);
             updateDisplay(state, serverLevel, pos, celsius);
             var reading = new com.aetherianartificer.townstead.temperature.ThermometerReadingPayload(celsius,
                     com.aetherianartificer.townstead.compat.temperature.TemperatureBridgeResolver.get()

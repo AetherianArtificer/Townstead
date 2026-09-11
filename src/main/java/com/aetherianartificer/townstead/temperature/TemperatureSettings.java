@@ -45,8 +45,19 @@ public final class TemperatureSettings {
     private float occupancyMax = 3f;
     private int roomSizeReference = 64;
     private boolean roomHeatEnabled = true;
-    private float roomHeatCapacity = 2f, roomSourcePower = 1.5f;
-    private float roomWallConductance = 0.07f, roomInsulatedConductance = 0.004f, roomOpeningConductance = 1f;
+    // Effective air + contents mass, source calibration, and envelope transfer in explicit units.
+    private float roomHeatCapacity = 2000f, roomSourcePower = 250f;
+    private float roomWallConductance = 1.4f, roomInsulatedConductance = 0.08f, roomOpeningConductance = 30f;
+    private float thermalTimeScale = 20f, airChangesPerHour = 0.5f;
+    private float cookingRoomHeatFraction = 0.15f;
+    private final Map<com.aetherianartificer.townstead.temperature.ThermalConductance.Material, Float> materialCapacity =
+            new EnumMap<>(com.aetherianartificer.townstead.temperature.ThermalConductance.Material.class);
+    private final Map<String, ThermalAppliance> appliances = new java.util.LinkedHashMap<>();
+    public ThermalAppliance appliance(String id) { return appliances.get(id); }
+    public float materialHeatCapacity(ThermalConductance.Material material) { return materialCapacity.get(material); }
+    public float cookingRoomHeatFraction() { return cookingRoomHeatFraction; }
+    public float thermalTimeScale() { return thermalTimeScale; }
+    public float airChangesPerHour() { return airChangesPerHour; }
     public boolean roomHeatEnabled() { return roomHeatEnabled; }
     public float roomHeatCapacity() { return roomHeatCapacity; }
     public float roomSourcePower() { return roomSourcePower; }
@@ -54,9 +65,24 @@ public final class TemperatureSettings {
     public float roomInsulatedConductance() { return roomInsulatedConductance; }
     public float roomOpeningConductance() { return roomOpeningConductance; }
     private float dryingSeconds = 90;
-    private float comfortBreakSeconds = 30;
+    private float comfortBreakSeconds = 90;
 
     private TemperatureSettings() {
+        appliances.put("legendarysurvivaloverhaul:heater", new ThermalAppliance(3750, 15, 15));
+        appliances.put("legendarysurvivaloverhaul:cooler", new ThermalAppliance(-3750, -15, -15));
+        appliances.put("legendarysurvivaloverhaul:heater_top", new ThermalAppliance(0, 0, 0));
+        appliances.put("minecraft:campfire", new ThermalAppliance(2500, 10, 0));
+        appliances.put("minecraft:soul_campfire", new ThermalAppliance(-2000, -8, 0));
+        appliances.put("minecraft:furnace", new ThermalAppliance(300, 8, 0));
+        appliances.put("minecraft:smoker", new ThermalAppliance(300, 8, 0));
+        appliances.put("minecraft:blast_furnace", new ThermalAppliance(450, 12, 0));
+        materialCapacity.put(ThermalConductance.Material.INSULATION, 500f);
+        materialCapacity.put(ThermalConductance.Material.WOOD, 4000f);
+        materialCapacity.put(ThermalConductance.Material.EARTH, 16000f);
+        materialCapacity.put(ThermalConductance.Material.MASONRY, 12000f);
+        materialCapacity.put(ThermalConductance.Material.GLASS, 6000f);
+        materialCapacity.put(ThermalConductance.Material.METAL, 16000f);
+        materialCapacity.put(ThermalConductance.Material.POROUS, 1000f);
         seasonOffsets.put(Season.SPRING, 0f);
         seasonOffsets.put(Season.SUMMER, 6f);
         seasonOffsets.put(Season.AUTUMN, -2f);
@@ -108,7 +134,7 @@ public final class TemperatureSettings {
     static TemperatureSettings parse(JsonObject json) {
         TemperatureSettings s = new TemperatureSettings();
         s.dryingSeconds = Math.max(1, GsonHelper.getAsFloat(json, "drying_seconds", 90));
-        s.comfortBreakSeconds = Math.max(1, GsonHelper.getAsFloat(json, "comfort_break_seconds", 30));
+        s.comfortBreakSeconds = Math.max(1, GsonHelper.getAsFloat(json, "comfort_break_seconds", s.comfortBreakSeconds));
         if (json.has("biome_anchors") && json.get("biome_anchors").isJsonArray()) {
             JsonArray anchors = json.getAsJsonArray("biome_anchors");
             float[] biome = new float[anchors.size()];
@@ -148,12 +174,29 @@ public final class TemperatureSettings {
         s.occupancyMax = GsonHelper.getAsFloat(json, "occupancy_max", s.occupancyMax);
         s.roomSizeReference = Math.max(1, GsonHelper.getAsInt(json, "room_size_reference", s.roomSizeReference));
         s.roomHeatEnabled = GsonHelper.getAsBoolean(json, "room_heat_enabled", true);
-        s.roomHeatCapacity = positive(json, "room_heat_capacity", s.roomHeatCapacity);
-        s.roomSourcePower = positive(json, "room_source_power", s.roomSourcePower);
-        s.roomWallConductance = positive(json, "room_wall_conductance", s.roomWallConductance);
-        s.roomInsulatedConductance = positive(json, "room_insulated_conductance", s.roomInsulatedConductance);
-        s.roomOpeningConductance = positive(json, "room_opening_conductance", s.roomOpeningConductance);
+        s.roomHeatCapacity = calibrated(json, "thermal_capacity_j_per_block_k", "room_heat_capacity", 1000, s.roomHeatCapacity);
+        s.roomSourcePower = calibrated(json, "thermal_source_w_per_degree", "room_source_power", 250f / 1.5f, s.roomSourcePower);
+        s.roomWallConductance = calibrated(json, "thermal_wall_w_per_face_k", "room_wall_conductance", 20, s.roomWallConductance);
+        s.roomInsulatedConductance = calibrated(json, "thermal_insulation_w_per_face_k", "room_insulated_conductance", 20, s.roomInsulatedConductance);
+        s.roomOpeningConductance = calibrated(json, "thermal_opening_w_per_face_k", "room_opening_conductance", 30, s.roomOpeningConductance);
+        s.thermalTimeScale = positive(json, "thermal_time_scale", s.thermalTimeScale);
+        s.airChangesPerHour = positive(json, "thermal_air_changes_per_hour", s.airChangesPerHour);
+        s.cookingRoomHeatFraction = Math.min(1f, positive(json, "thermal_cooking_room_heat_fraction", s.cookingRoomHeatFraction));
+        if (json.has("thermal_material_capacity_j_per_block_k") && json.get("thermal_material_capacity_j_per_block_k").isJsonObject()) {
+            JsonObject capacities = json.getAsJsonObject("thermal_material_capacity_j_per_block_k");
+            for (var material : ThermalConductance.Material.values())
+                s.materialCapacity.put(material, positive(capacities, material.name().toLowerCase(java.util.Locale.ROOT), s.materialHeatCapacity(material)));
+        }
+        if (json.has("thermal_appliances")) {
+            for (var entry : json.getAsJsonObject("thermal_appliances").entrySet())
+                s.appliances.put(entry.getKey(), ThermalAppliance.parse(entry.getValue().getAsJsonObject()));
+        }
         return s;
+    }
+
+    private static float calibrated(JsonObject json, String key, String legacy, float scale, float fallback) {
+        return json.has(key) ? positive(json, key, fallback)
+                : json.has(legacy) ? positive(json, legacy, fallback / scale) * scale : fallback;
     }
 
     private static float positive(JsonObject json, String key, float fallback) {

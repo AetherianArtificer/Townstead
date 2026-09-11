@@ -1,4 +1,6 @@
 {
+  "career.townstead.climatologist": "Climatologist",
+  "career.townstead.climatologist.description": "Fetches supplies from the Fuel Store and Icehouse to keep village boilers and coolers stocked.",
   "career.townstead.beverage_artisan": "Beverage Artisan",
   "career.townstead.beverage_artisan.description": "A craftsperson of drinks, from everyday refreshments to specialist vintages.",
   "career.townstead.beverage_artisan.path.barista": "Barista",

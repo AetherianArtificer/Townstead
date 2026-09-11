@@ -26,18 +26,23 @@ class ThermalConductanceTest {
         assertEquals(rate(WOOD)*2,ThermalConductance.rate(WOOD,WALL,0.004,1,true,false,false));
         assertEquals(rate(GLASS)*2,ThermalConductance.rate(GLASS,WALL,0.004,1,true,false,false));
     }
-    @Test void savedKitchenTwoStoveBalanceIsUsableWithoutSpecialVentilation() {
-        // Exposed faces from MoreTest's small kitchen, excluding faces that face back into the same region.
-        double conductance=51*rate(WOOD)+12*rate(EARTH)+13*rate(MASONRY)
-                +2*ThermalConductance.rate(WOOD,WALL,0.004,1,false,true,false);
-        for (double outside : new double[]{-1, 6, 24}) {
-            double equilibrium=RoomHeatBalance.advance(outside,80,2*8.25*1.5,conductance,outside,10000);
-            double rise=equilibrium-outside;
-            assertTrue(rise>=5 && rise<=8, "Kitchen rise above " + outside + " C: " + rise);
-            assertTrue(RoomHeatBalance.advance(outside,80,3*8.25*1.5,conductance,outside,10000)>equilibrium);
-        }
-        double cooling=RoomHeatBalance.advance(43,80,2*8.25*1.5,conductance,24,180);
-        assertTrue(cooling<32, "Previously overheated kitchen should recover gradually even in summer");
+    @Test void twoCookingStovesWarmSmallKitchenWithoutRequiringSpecialVentilation() {
+        var settings = TemperatureSettings.get();
+        double conductance = 51*rate(WOOD)+12*rate(EARTH)+13*rate(MASONRY)
+                +2*ThermalConductance.rate(WOOD,WALL,0.004,1,false,true,false)
+                +RoomHeatBalance.ventilation(40, settings.airChangesPerHour());
+        double power = 2 * RoomHeatBalance.roomSourcePower(8.25, settings.roomSourcePower(), 1, 1,
+                true, settings.cookingRoomHeatFraction());
+        double equilibrium = 24 + power / conductance;
+        assertTrue(equilibrium >= 28 && equilibrium <= 33, "Normal cooking should produce a warm, usable kitchen: " + equilibrium);
+        double recovering = RoomHeatBalance.advance(60, 40*settings.roomHeatCapacity(), power,
+                conductance, 24, 120*settings.thermalTimeScale());
+        assertTrue(recovering < 35, "Previously overheated saves should cool under the corrected budget");
+        assertTrue(24 + power / (conductance + 4*settings.roomOpeningConductance()) < equilibrium);
+        assertEquals(24, RoomHeatBalance.advance(43, 40*settings.roomHeatCapacity(),
+                0, conductance, 24, 100000), 1e-6);
+        assertTrue(RoomHeatBalance.advance(equilibrium, 40*settings.roomHeatCapacity(),
+                power, conductance, 24, 60) >= equilibrium - 1e-8);
     }
     @Test void retainingHeatAlsoSlowsUnwantedSummerHeatGain() {
         assertTrue(RoomHeatBalance.advance(20,80,0,50*rate(INSULATION),35,60)

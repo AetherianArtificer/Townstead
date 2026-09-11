@@ -26,7 +26,9 @@ public final class ThermalComfort {
         if (immersed) load = targetLoad;
         boolean changedSide = Math.signum(load) != Math.signum(previous.load());
         float strain = changedSide ? 0 : previous.strainSeconds();
-        strain = Math.abs(load) >= 6 ? Math.min(breakSeconds, strain + seconds)
+        // Severity shortens tolerance, but ordinary winter air must never bypass exposure time.
+        float severity = Math.max(1, Math.min(3, Math.abs(load) / 12));
+        strain = Math.abs(load) >= 6 ? Math.min(breakSeconds, strain + seconds * severity)
                 : Math.max(0, strain - seconds * 2);
         return new State(wet, load, strain);
     }
@@ -60,6 +62,12 @@ public final class ThermalComfort {
     }
 
     public static boolean needsBreak(float load, float strain, float breakSeconds) {
-        return Math.abs(load) >= 12 || (Math.abs(load) >= 6 && strain >= breakSeconds);
+        return needsBreak(load, strain, breakSeconds, false);
+    }
+    public static boolean needsBreak(float load, float strain, float breakSeconds, boolean immersed) {
+        return immersed && Math.abs(load) >= 12 || Math.abs(load) >= 6 && strain >= breakSeconds;
+    }
+    public static boolean recovered(float load, float strain, float breakSeconds) {
+        return Math.abs(load) <= 2 && strain <= breakSeconds * 0.1f;
     }
 }

@@ -75,6 +75,12 @@ public final class PizzaDelightCompat {
         @Override public boolean hydrates(ServerLevel level, BlockPos pos) { return false; }
 
         @Override
+        public ItemStack serving(ServerLevel level, BlockPos pos) {
+            ItemStack slice = sliceAt(level, pos);
+            return slice == null ? ItemStack.EMPTY : slice;
+        }
+
+        @Override
         public boolean use(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
             ItemStack slice = sliceAt(level, pos);
             if (slice == null || !FoodSafety.isSafeNutritiousFood(slice, villager)) return false;

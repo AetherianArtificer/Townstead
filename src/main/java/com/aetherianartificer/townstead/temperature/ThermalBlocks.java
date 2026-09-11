@@ -21,6 +21,8 @@ import java.util.List;
  */
 public final class ThermalBlocks {
     //? if >=1.21 {
+    public static final TagKey<Block> COOKING_SOURCES = TagKey.create(Registries.BLOCK,
+            ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "thermal/cooking_sources"));
     public static final TagKey<Block> HEAT_SOURCES = TagKey.create(Registries.BLOCK,
             ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "thermal/heat_sources"));
     public static final TagKey<Block> COOLING_SOURCES = TagKey.create(Registries.BLOCK,
@@ -30,6 +32,9 @@ public final class ThermalBlocks {
     public static final TagKey<Block> LEAKY_BLOCKS = TagKey.create(Registries.BLOCK,
             ResourceLocation.fromNamespaceAndPath(Townstead.MOD_ID, "thermal/leaky_blocks"));
     //?} else {
+    /*public static final TagKey<Block> COOKING_SOURCES = TagKey.create(Registries.BLOCK,
+            new ResourceLocation(Townstead.MOD_ID, "thermal/cooking_sources"));
+    *///
     /*public static final TagKey<Block> HEAT_SOURCES = TagKey.create(Registries.BLOCK,
             new ResourceLocation(Townstead.MOD_ID, "thermal/heat_sources"));
     public static final TagKey<Block> COOLING_SOURCES = TagKey.create(Registries.BLOCK,
@@ -46,12 +51,19 @@ public final class ThermalBlocks {
     /** One mutually exclusive, state-aware source verdict; zero also means inactive. */
     public static int source(net.minecraft.world.level.Level level, BlockPos pos, BlockState state) {
         if (state.isAir()) return 0;
+        float opinion = moddedTemperature(level, pos, state);
+        if (Float.isFinite(opinion)) return opinion == 0f ? 0 : opinion > 0 ? 1 : -1;
+        return taggedSource(state);
+    }
+
+    /** Shared by room heat and relief searches, regardless of the selected ambient backend. */
+    public static float moddedTemperature(net.minecraft.world.level.Level level, BlockPos pos, BlockState state) {
         for (com.aetherianartificer.townstead.compat.temperature.AmbientTemperatureBridge bridge
                 : com.aetherianartificer.townstead.compat.temperature.TemperatureBridgeResolver.installed()) {
             float opinion = bridge.blockTemperatureCelsius(level, pos, state);
-            if (Float.isFinite(opinion)) return opinion == 0f ? 0 : opinion > 0 ? 1 : -1;
+            if (Float.isFinite(opinion)) return opinion;
         }
-        return taggedSource(state);
+        return Float.NaN;
     }
 
     /** Townstead tag fallback. Cooling wins overlapping tags (for example soul campfires). */

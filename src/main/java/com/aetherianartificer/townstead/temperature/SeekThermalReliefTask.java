@@ -50,7 +50,7 @@ public class SeekThermalReliefTask extends Behavior<VillagerEntityMCA> {
         TemperatureData.Tier tier = TemperatureData.Tier.values()[Math.min(6, Math.max(0, needs.thermalTier()))];
         TemperatureData.Tier core = TemperatureData.Tier.values()[needs.coreThermalTier()];
         if (!core.isCrisis() && !ThermalComfort.needsBreak(needs.comfortLoad(),
-                needs.thermalStrainSeconds(), TemperatureSettings.get().comfortBreakSeconds())) return false;
+                needs.thermalStrainSeconds(), TemperatureSettings.get().comfortBreakSeconds(), villager.isInWater())) return false;
         if (villager.getLastHurtByMob() != null || villager.getVillagerBrain().isPanicking()) return false;
         if (!VillagerSearchCadence.isDue(level, villager, SEARCH_CADENCE_KEY)) return false;
         // Gene lookups only once the cheap checks pass and the search cadence is due.
@@ -112,7 +112,8 @@ public class SeekThermalReliefTask extends Behavior<VillagerEntityMCA> {
         TownsteadVillager.Needs needs = TownsteadVillagers.get(villager).needs();
         if (seekingCold ? needs.comfortLoad() >= 6 : needs.comfortLoad() <= -6) return false;
         return !NeedSuppression.suppressesTemperature(villager)
-                && (Math.abs(needs.comfortLoad()) > 2 || !profile.comfortable(needs.bodyTempTenths()));
+                && (!ThermalComfort.recovered(needs.comfortLoad(), needs.thermalStrainSeconds(),
+                        TemperatureSettings.get().comfortBreakSeconds()) || !profile.comfortable(needs.bodyTempTenths()));
     }
 
     @Override

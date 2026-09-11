@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.temperature;
 
-/** Relative gameplay heat transfer rates, not real-world material conductivity units. */
+/** Effective face conductance in W/K with gameplay material ratios, not measured block properties. */
 public final class ThermalConductance {
     public enum Material { INSULATION, WOOD, EARTH, MASONRY, GLASS, METAL, POROUS }
     private ThermalConductance() {}
