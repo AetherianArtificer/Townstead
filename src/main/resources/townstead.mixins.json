@@ -4,6 +4,9 @@
   "plugin": "com.aetherianartificer.townstead.TownsteadMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "VillagerServingHandMixin",
+    "VillagerServingRecoveryMixin",
+    "HangoutTradePreviewMixin",
     "compat.thirst.TanDrinkValuesMixin",
     "compat.thirst.TanDrinkConsumptionMixin",
     "BabyItemInheritanceMixin",
@@ -151,7 +154,6 @@
     "client.BreastSwitchMixin",
     "client.ClothingLayerFallbackMixin",
     "client.HeldItemSuppressMixin",
-    "client.VillagerDrinkModelMixin",
     "client.HostArmorSuppressMixin",
     "client.CapeLayerWearableMixin",
     "client.ElytraLayerWearableMixin",

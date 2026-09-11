@@ -2,7 +2,6 @@ package com.aetherianartificer.townstead.hangout;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
-import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.aetherianartificer.townstead.hunger.VillagerConsumptionManager;
 import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
@@ -21,6 +20,11 @@ final class HangoutDrinks {
 
     static void tick(ServerLevel level, VillagerEntityMCA guest, HangoutVisit visit,
                      HangoutVenue venue, long now) {
+        if (VillagerConsumptionManager.isConsuming(guest)) {
+            // Leave time to hold the empty vessel before ordering another serving.
+            visit.deferDrink(now + 400);
+            return;
+        }
         if (!venue.amenities().contains("drink") || !guest.isPassenger()
                 || now < visit.nextDrinkAt() || VillagerConsumptionManager.isConsuming(guest)) return;
         // Empty venues are checked infrequently; a serving is followed by a full minute's pause.
@@ -50,12 +54,20 @@ final class HangoutDrinks {
                 });
         slots.sort(Comparator.comparingDouble(NearbyItemSources.ContainerSlot::distanceSqr));
         for (var slot : slots) {
-            if (slot.container() == null || slot.slot() >= slot.container().getContainerSize()
-                    || !isDrink(slot.container().getItem(slot.slot()))) continue;
+            if (!slot.isItemHandler() && (slot.container() == null
+                    || slot.slot() >= slot.container().getContainerSize()
+                    || !isDrink(slot.container().getItem(slot.slot())))) continue;
             ItemStack drink = NearbyItemSources.extractOne(level, slot);
             if (drink.isEmpty()) continue;
             // Recheck the live extraction: the cached inventory view can have changed.
             if (isDrink(drink) && VillagerConsumptionManager.startRecreationalDrink(guest, drink, slot.pos())) {
+                if (TownsteadConfig.DEBUG_LOGGING.get()) {
+                    com.aetherianartificer.townstead.Townstead.LOGGER.info(
+                            "[Hangouts] drink acquired guest={} item={} source={} handler={}",
+                            guest.getName().getString(),
+                            net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(drink.getItem()),
+                            slot.pos().toShortString(), slot.isItemHandler());
+                }
                 return true;
             }
             // A rejected serving remains a real item, including when the guest's inventory is full.
@@ -67,8 +79,7 @@ final class HangoutDrinks {
 
     private static boolean isDrink(ItemStack stack) {
         if (stack.isEmpty() || !VillagerConsumptionManager.permitsManagedVillagerConsumption(stack)) return false;
-        var bridge = ThirstBridgeResolver.get();
-        return stack.getUseAnimation() == UseAnim.DRINK
-                || bridge != null && bridge.itemRestoresThirst(stack);
+        // Hydrating foods/ingredients are not beverages (some compat bridges include plants).
+        return stack.getUseAnimation() == UseAnim.DRINK;
     }
 }

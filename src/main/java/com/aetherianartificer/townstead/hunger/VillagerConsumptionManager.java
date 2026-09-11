@@ -45,9 +45,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class VillagerConsumptionManager {
 
     private record Pending(ItemStack item, ItemStack previousMainHand, long useAtTick,
-                           long finishTick, BlockPos source, boolean recreational) {}
+                           long finishTick, BlockPos source, boolean recreational, int sipSeed) {}
 
     private static final Map<Integer, Pending> PENDING = new ConcurrentHashMap<>();
+    private static final Map<Integer, Pending> HELD_EMPTIES = new ConcurrentHashMap<>();
+    private static final Map<Integer, Long> LAST_SIP_CUE = new ConcurrentHashMap<>();
 
     private VillagerConsumptionManager() {}
 
@@ -75,21 +77,41 @@ public final class VillagerConsumptionManager {
         return startConsuming(villager, stack, source, 0);
     }
 
-    /** Holds one serving between occasional sips, consuming it after a minute or on departure. */
+    public static boolean isHoldingServing(VillagerEntityMCA villager) {
+        return isConsuming(villager) || HELD_EMPTIES.containsKey(villager.getId());
+    }
+
+    /** A real reserved serving owns the hand; trade previews and work cleanup cannot replace it. */
+    public static boolean permitsMainHandChange(VillagerEntityMCA villager, ItemStack proposed) {
+        Pending pending = PENDING.get(villager.getId());
+        Pending empty = HELD_EMPTIES.get(villager.getId());
+        if (pending == null && empty == null) return true;
+        ItemStack expected = pending != null ? pending.item() : remainder(empty.item(), policy(empty.item()));
+        return ItemStack.matches(expected, proposed);
+    }
+
+    private static void returnHeldEmpty(VillagerEntityMCA villager) {
+        Pending empty = HELD_EMPTIES.remove(villager.getId());
+        if (empty == null) return;
+        villager.setItemInHand(InteractionHand.MAIN_HAND, empty.previousMainHand().copy());
+        returnRemainder(villager, empty.item(), empty.source());
+    }
+
+    /** Holds one serving between occasional sips, consuming it after 90 seconds or on departure. */
     public static boolean startRecreationalDrink(VillagerEntityMCA villager, ItemStack stack, BlockPos source) {
         return startConsuming(villager, stack, source, RecreationalDrinkTiming.HOLD_TICKS);
     }
 
     /** Finish the held serving when leaving, releasing the hand through normal consumption. */
     public static void finishRecreationalDrink(VillagerEntityMCA villager) {
+        returnHeldEmpty(villager);
         Pending pending = PENDING.get(villager.getId());
         if (pending == null || !pending.recreational()) return;
-        long now = villager.level().getGameTime();
+        PENDING.remove(villager.getId());
+        LAST_SIP_CUE.remove(villager.getId());
         villager.stopUsingItem();
-        villager.setItemInHand(InteractionHand.MAIN_HAND, pending.item().copy());
-        PENDING.put(villager.getId(), new Pending(pending.item(), pending.previousMainHand(),
-                now, now + pending.finishTick() - pending.useAtTick(), pending.source(), false));
-        villager.startUsingItem(InteractionHand.MAIN_HAND);
+        villager.setItemInHand(InteractionHand.MAIN_HAND, pending.previousMainHand().copy());
+        applyConsumption(villager, villager, pending.item(), TownsteadVillagers.get(villager).needs(), pending.source());
     }
 
     private static boolean startConsuming(VillagerEntityMCA villager, ItemStack stack, BlockPos source,
@@ -103,6 +125,7 @@ public final class VillagerConsumptionManager {
         //?} else {
         /*ItemStack oneUnit = stack.copy(); oneUnit.setCount(1);
         *///?}
+        returnHeldEmpty(villager);
         ItemStack previousMainHand = villager.getMainHandItem().copy();
         //? if >=1.21 {
         int useDuration = oneUnit.getUseDuration(villager);
@@ -110,10 +133,12 @@ public final class VillagerConsumptionManager {
         /*int useDuration = oneUnit.getUseDuration();
         *///?}
         if (useDuration <= 0) useDuration = 32;
+        if (holdTicks > 0) useDuration = 48; // One final authored sip, without native item-use side effects.
 
         long useAt = villager.level().getGameTime() + holdTicks;
         PENDING.put(villager.getId(),
-                new Pending(oneUnit.copy(), previousMainHand, useAt, useAt + useDuration, source, holdTicks > 0));
+                new Pending(oneUnit.copy(), previousMainHand, useAt, useAt + useDuration, source,
+                        holdTicks > 0, villager.getRandom().nextInt()));
 
         villager.setItemInHand(InteractionHand.MAIN_HAND, oneUnit);
         if (holdTicks == 0) villager.startUsingItem(InteractionHand.MAIN_HAND);
@@ -138,22 +163,27 @@ public final class VillagerConsumptionManager {
      */
     public static boolean tickAndFinalize(VillagerEntityMCA villager, TownsteadVillager.Needs needs) {
         Pending pending = PENDING.get(villager.getId());
-        if (pending == null) return false;
+        if (pending == null) {
+            Pending empty = HELD_EMPTIES.get(villager.getId());
+            if (empty != null) maintainHand(villager, remainder(empty.item(), policy(empty.item())));
+            return false;
+        }
+        maintainHand(villager, pending.item());
         long now = villager.level().getGameTime();
         if (now < pending.useAtTick()) {
             if (pending.recreational()) {
                 long elapsed = now - (pending.useAtTick() - RecreationalDrinkTiming.HOLD_TICKS);
-                int useDuration = (int) (pending.finishTick() - pending.useAtTick());
-                if (RecreationalDrinkTiming.sipping(elapsed, useDuration)) {
-                    if (!villager.isUsingItem()) villager.startUsingItem(InteractionHand.MAIN_HAND);
-                } else if (villager.isUsingItem()) {
-                    // End the gesture before native finishUsingItem can consume this serving.
-                    villager.stopUsingItem();
-                }
+                if (RecreationalDrinkTiming.startsSip(elapsed, pending.sipSeed())) playSip(villager, now);
             }
             return false;
         }
-        if (villager.isUsingItem()) return false;
+        if (pending.recreational() && now < pending.finishTick()) {
+            if (!LAST_SIP_CUE.containsKey(villager.getId()) || LAST_SIP_CUE.get(villager.getId()) < pending.useAtTick()) {
+                playSip(villager, now);
+            }
+            return false;
+        }
+        if (!pending.recreational() && villager.isUsingItem()) return false;
 
         boolean completed = villager.level().getGameTime() >= pending.finishTick();
         if (!completed) {
@@ -164,8 +194,33 @@ public final class VillagerConsumptionManager {
         }
 
         PENDING.remove(villager.getId());
+        LAST_SIP_CUE.remove(villager.getId());
+        ItemStack empty = pending.recreational() ? remainder(pending.item(), policy(pending.item())) : ItemStack.EMPTY;
+        if (!empty.isEmpty()) {
+            HELD_EMPTIES.put(villager.getId(), pending);
+            villager.setItemInHand(InteractionHand.MAIN_HAND, empty);
+            return applyConsumption(villager, villager, pending.item(), needs, pending.source(), false);
+        }
         villager.setItemInHand(InteractionHand.MAIN_HAND, pending.previousMainHand().copy());
         return applyConsumption(villager, villager, pending.item(), needs, pending.source());
+    }
+
+    private static void maintainHand(VillagerEntityMCA villager, ItemStack expected) {
+        if (!ItemStack.matches(villager.getMainHandItem(), expected)) {
+            villager.setItemInHand(InteractionHand.MAIN_HAND, expected.copy());
+        }
+    }
+
+    private static void playSip(VillagerEntityMCA villager, long now) {
+        Long previous = LAST_SIP_CUE.put(villager.getId(), now);
+        if (previous != null && previous == now) return; // Multiple needs tickers share this lifecycle.
+        if (villager.level() instanceof ServerLevel level) {
+            com.aetherianartificer.townstead.performance.PerformanceProviders.play(level,
+                    new com.aetherianartificer.townstead.performance.PerformanceRequest(villager,
+                            net.minecraft.resources.ResourceLocation.tryParse("townstead_performance:sip"),
+                            "consumption", 48, 100,
+                            com.aetherianartificer.townstead.performance.PerformanceRequest.Fallback.NONE));
+        }
     }
 
     /**
@@ -184,10 +239,16 @@ public final class VillagerConsumptionManager {
     /** As above, returning the leftover container to {@code source} first when one was recorded. */
     public static boolean applyConsumption(VillagerEntityMCA holder, VillagerEntityMCA recipient,
                                            ItemStack stack, TownsteadVillager.Needs recipientNeeds, BlockPos source) {
+        return applyConsumption(holder, recipient, stack, recipientNeeds, source, true);
+    }
+
+    private static boolean applyConsumption(VillagerEntityMCA holder, VillagerEntityMCA recipient,
+                                           ItemStack stack, TownsteadVillager.Needs recipientNeeds, BlockPos source,
+                                           boolean returnContainer) {
         ConsumptionPolicy policy = policy(stack);
         if (policy != null && (!policy.permits(ConsumptionPolicy.Consumer.VILLAGER)
                 || policy.mode() != ConsumptionPolicy.Mode.REPLACE_WITH_PHENO)) return false;
-        returnRemainder(holder, stack, source, policy);
+        if (returnContainer) returnRemainder(holder, stack, source, policy);
         int beforeThirst = recipientNeeds.thirst();
         int beforeQuenched = recipientNeeds.quenched();
         int beforeFatigue = recipientNeeds.fatigue();

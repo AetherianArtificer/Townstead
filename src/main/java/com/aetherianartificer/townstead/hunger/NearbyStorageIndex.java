@@ -159,7 +159,7 @@ public final class NearbyStorageIndex {
                 if (!com.aetherianartificer.townstead.storage.RoomOwnershipAccess
                         .mayAccess((ServerLevel) villager.level(), villager, entry.pos())) continue;
                 NearbyItemSources.ContainerSlot bestInContainer = null;
-                for (SlotView slot : entry.containerSlots()) {
+                for (SlotView slot : entry.allSlots()) {
                     if (!matcher.test(slot.stack())) continue;
                     int score = scorer.applyAsInt(slot.stack());
                     double dist = villager.distanceToSqr(
@@ -171,11 +171,11 @@ public final class NearbyStorageIndex {
                         bestInContainer = new NearbyItemSources.ContainerSlot(
                                 slot.pos(),
                                 slot.container(),
-                                false,
+                                slot.itemHandler(),
                                 slot.slot(),
                                 score,
                                 dist,
-                                null
+                                slot.side()
                         );
                     }
                 }

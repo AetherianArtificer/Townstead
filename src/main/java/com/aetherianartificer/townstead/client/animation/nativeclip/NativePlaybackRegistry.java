@@ -7,7 +7,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** Active native clips, independently arbitrated per semantic channel. */
 public final class NativePlaybackRegistry {
-    public record Playback(ResourceLocation clip, long startedAt, long expiresAt, int priority) {}
+    public record Playback(ResourceLocation clip, long startedAt, long expiresAt, int priority, float speed) {
+        public Playback(ResourceLocation clip, long startedAt, long expiresAt, int priority) {
+            this(clip, startedAt, expiresAt, priority, 1F);
+        }
+        public float elapsed(long now, float partial) { return (now - startedAt + partial) * speed; }
+    }
     private record Key(int entityId, String channel) {}
     private static final ConcurrentHashMap<Key, Playback> ACTIVE = new ConcurrentHashMap<>();
     private NativePlaybackRegistry() {}

@@ -18,6 +18,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VineryBreweryPackDataTest {
+    @Test
+    void finishedBeerLeavesOneMugForReturnToItsSource() {
+        JsonObject drink = data("consumable/brewery_drink_villager.json");
+        JsonObject remainder = transaction(drink).getAsJsonObject("remainder");
+        assertEquals("consume_one", transaction(drink).get("accounting").getAsString());
+        assertEquals("item", remainder.get("mode").getAsString());
+        assertEquals("brewery:beer_mug", remainder.get("item").getAsString());
+        assertEquals("source", remainder.get("destination").getAsString());
+    }
+
     private static final Set<String> VINERY_BUILDING_BLOCKS = Set.of(
             "vinery:fermentation_barrel", "vinery:apple_press", "vinery:grapevine_pot",
             "vinery:storage_pot", "vinery:wine_box");

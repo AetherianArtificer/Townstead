@@ -74,7 +74,7 @@ public final class HangoutVisit {
         presentAt = now;
         deadline = departure;
         nextBeatAt = now;
-        nextDrinkAt = now + 100;
+        nextDrinkAt = now + 60 + Math.floorMod(id.hashCode(), 141);
     }
     void setHandle(HangoutEmbodiment.Handle handle) { visitor = visitor.withHandle(handle); }
     void deferBeat(long until) { nextBeatAt = until; }

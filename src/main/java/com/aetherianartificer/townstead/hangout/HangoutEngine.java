@@ -176,6 +176,13 @@ public final class HangoutEngine {
                 }
                 VISITS.put(visit.id(), visit);
                 BY_VISITOR.put(villager.getUUID(), visit.id());
+                // A trade preview is a temporary prop, not owned inventory. Stop it through
+                // its own cleanup before reserving a genuine drink in that hand.
+                for (var behavior : villager.getBrain().getRunningBehaviors()) {
+                    if (behavior instanceof net.minecraft.world.entity.ai.behavior.ShowTradesToPlayer) {
+                        behavior.doStop(level, villager, now);
+                    }
+                }
                 ownTravelTarget(villager, visit.visitor().approach(), true);
                 traceVisitStart(villager, visit, venue.definition(), policy, now);
                 com.aetherianartificer.townstead.api.impl.v1.ApiEvents.hangoutStarted(villager, visit);
