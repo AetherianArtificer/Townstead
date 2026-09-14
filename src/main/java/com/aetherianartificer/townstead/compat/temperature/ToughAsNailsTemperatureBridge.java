@@ -32,9 +32,11 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
     public static final ToughAsNailsTemperatureBridge INSTANCE = new ToughAsNailsTemperatureBridge();
 
     private static final float TAG_PIECE = 0.5f;
-    // A nudge with no stated duration still has to last long enough for TAN to evaluate the
-    // player at least once; ten seconds reads as "a moment ago I ate something hot".
+    // A nudge with no stated duration still needs to outlast TAN's step delay; ten seconds
+    // reads as "a moment ago I ate something hot".
     private static final int DEFAULT_INFLUENCE_TICKS = 200;
+    // toughasnails player_temperature_change_delay default.
+    private static final int DEFAULT_CHANGE_DELAY_TICKS = 125;
     private static final TagKey<Block> HEATING_BLOCKS = tag(Registries.BLOCK, "heating_blocks");
     private static final TagKey<Block> COOLING_BLOCKS = tag(Registries.BLOCK, "cooling_blocks");
     private static final TagKey<Item> HEATING_ARMOR = tag(Registries.ITEM, "heating_armor");
@@ -43,6 +45,8 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
     private boolean initialized;
     private boolean active;
     private boolean playerModifierRegistered;
+    private boolean changeDelayResolved;
+    private int changeDelay;
     private Method getTemperatureAtPos;
     private Method isHeatingBlock;
     private Method isCoolingBlock;
@@ -215,18 +219,38 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
     }
 
     /**
-     * The influence lives in {@link PlayerThermalOffsets}; the registered modifier reads it. TAN
-     * needs no instant path, so a duration-less nudge is given one tuning step's worth of time
-     * rather than being dropped.
+     * The influence lives in {@link PlayerThermalOffsets}; the registered modifier reads it.
+     *
+     * <p>TAN shifts the player one step at a time and then waits out
+     * {@code player_temperature_change_delay} before the next, so an influence shorter than that
+     * delay expires before the level has moved at all and reads as doing nothing. The duration is
+     * therefore held to at least that long: the alternative is an author writing a brief warming
+     * and seeing no effect whatsoever.</p>
      */
     @Override
     public boolean adjustPlayerBodyCelsius(Player player, float degrees, int durationTicks) {
         if (player == null || player.level().isClientSide || degrees == 0f) return false;
         initIfNeeded();
         if (!active || !playerModifierRegistered) return false;
-        PlayerThermalOffsets.set(player, degrees,
-                durationTicks > 0 ? durationTicks : DEFAULT_INFLUENCE_TICKS);
+        int requested = durationTicks > 0 ? durationTicks : DEFAULT_INFLUENCE_TICKS;
+        PlayerThermalOffsets.set(player, degrees, Math.max(requested, changeDelayTicks()));
         return true;
+    }
+
+    /** TAN's configured step delay, or its own default when the config cannot be read. */
+    private int changeDelayTicks() {
+        if (!changeDelayResolved) {
+            changeDelayResolved = true;
+            try {
+                Object config = Class.forName("toughasnails.init.ModConfig")
+                        .getField("temperature").get(null);
+                changeDelay = config.getClass().getField("playerTemperatureChangeDelay").getInt(config);
+            } catch (Exception ignored) {
+                changeDelay = DEFAULT_CHANGE_DELAY_TICKS;
+            }
+            if (changeDelay <= 0) changeDelay = DEFAULT_CHANGE_DELAY_TICKS;
+        }
+        return changeDelay;
     }
 
     /** Townstead's heat and cooling sources become Tough As Nails proximity blocks, so the player feels the villagers' hearth. */

@@ -22,6 +22,8 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     public static final ColdSweatTemperatureBridge INSTANCE = new ColdSweatTemperatureBridge();
 
     private static final double MC_UNIT_TO_CELSIUS = 25.0;
+    /** Marks the modifier as Townstead's, so a replace only ever displaces our own. */
+    private static final String INFLUENCE_MARKER = "townstead_influence";
 
     private boolean initialized;
     private boolean active;
@@ -32,11 +34,12 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     private Method addTemperature;
     private Object traitCore;
     private Object traitBase;
-    private Method replaceOrAddModifier;
+    private Method addModifier;
+    private Method getModifierNbt;
     private java.lang.reflect.Constructor<?> simpleModifier;
     private Method expires;
     private Object operationAdd;
-    private Object matcherSameClass;
+    private Object influencePlacement;
     private Method getBlockTemps;
     private Object defaultBlockTemp;
     private Method isValid;
@@ -178,14 +181,16 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
                 return false;
             }
         }
-        if (replaceOrAddModifier == null || simpleModifier == null
-                || operationAdd == null || traitBase == null || matcherSameClass == null) {
+        if (addModifier == null || simpleModifier == null || operationAdd == null
+                || traitBase == null || influencePlacement == null) {
             return false;
         }
         try {
             Object modifier = simpleModifier.newInstance(units, operationAdd);
+            ((net.minecraft.nbt.CompoundTag) getModifierNbt.invoke(modifier))
+                    .putBoolean(INFLUENCE_MARKER, true);
             expires.invoke(modifier, durationTicks);
-            replaceOrAddModifier.invoke(null, player, modifier, traitBase, matcherSameClass);
+            addModifier.invoke(null, player, modifier, traitBase, influencePlacement);
             return true;
         } catch (Exception ignored) {
             return false;
@@ -239,14 +244,16 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
                 if (name.equals("CORE")) traitCore = constant;
                 if (name.equals("BASE")) traitBase = constant;
             }
-            Class<?> matcher = Class.forName("com.momosoftworks.coldsweat.api.util.placement.Matcher");
-            replaceOrAddModifier = temperature.getMethod("replaceOrAddModifier",
-                    LivingEntity.class,
-                    Class.forName("com.momosoftworks.coldsweat.api.temperature.modifier.TempModifier"),
-                    trait, matcher);
-            for (Object constant : matcher.getEnumConstants()) {
-                if (((Enum<?>) constant).name().equals("SAME_CLASS")) matcherSameClass = constant;
-            }
+            Class<?> tempModifier = Class.forName(
+                    "com.momosoftworks.coldsweat.api.temperature.modifier.TempModifier");
+            Class<?> placement = Class.forName("com.momosoftworks.coldsweat.api.util.placement.Placement");
+            Class<?> mode = Class.forName("com.momosoftworks.coldsweat.api.util.placement.Mode");
+            Class<?> order = Class.forName("com.momosoftworks.coldsweat.api.util.placement.Order");
+            addModifier = temperature.getMethod("addModifier",
+                    LivingEntity.class, tempModifier, trait, placement);
+            getModifierNbt = tempModifier.getMethod("getNBT");
+            expires = tempModifier.getMethod("expires", int.class);
+
             Class<?> simple = Class.forName(
                     "com.momosoftworks.coldsweat.api.temperature.modifier.SimpleTempModifier");
             Class<?> operation = Class.forName(
@@ -255,8 +262,29 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
             for (Object constant : operation.getEnumConstants()) {
                 if (((Enum<?>) constant).name().equals("ADD")) operationAdd = constant;
             }
-            expires = Class.forName("com.momosoftworks.coldsweat.api.temperature.modifier.TempModifier")
-                    .getMethod("expires", int.class);
+
+            // Replace only a modifier Townstead placed. Matching on the class would also catch a
+            // datapack's cold_sweat:simple modifier, which is the same class and not ours to move;
+            // Cold Sweat never constructs one itself, it only registers the type for data to use.
+            Object modeReplace = null, orderFirst = null;
+            for (Object constant : mode.getEnumConstants()) {
+                if (((Enum<?>) constant).name().equals("REPLACE")) modeReplace = constant;
+            }
+            for (Object constant : order.getEnumConstants()) {
+                if (((Enum<?>) constant).name().equals("FIRST")) orderFirst = constant;
+            }
+            java.util.function.Predicate<Object> ours = candidate -> {
+                try {
+                    return ((net.minecraft.nbt.CompoundTag) getModifierNbt.invoke(candidate))
+                            .getBoolean(INFLUENCE_MARKER);
+                } catch (Exception ignored) {
+                    return false;
+                }
+            };
+            Object replaceOurs = placement.getMethod("of", mode, order, java.util.function.Predicate.class)
+                    .invoke(null, modeReplace, orderFirst, ours);
+            influencePlacement = placement.getMethod("orElse", placement)
+                    .invoke(replaceOurs, placement.getField("LAST").get(null));
         } catch (Exception ignored) {
             addTemperature = null;
             traitCore = null;
