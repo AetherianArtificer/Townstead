@@ -12,15 +12,15 @@ class ProjectedInputsTest {
                 Map.of(), Map.of(), null, List.of());
     }
     @Test void acceptsScalarInputWithoutVanillaIngredientList() {
-        var id = ResourceLocation.parse("test:dirty_water");
+        var id = ResourceLocation.tryParse("test:dirty_water");
         var result = ProjectedStationPlan.declaredInputs(view(true, id));
         assertEquals(1, result.size());
-        assertEquals(List.of(id), result.getFirst().itemIds());
-        assertEquals(1, result.getFirst().count());
+        assertEquals(List.of(id), result.get(0).itemIds());
+        assertEquals(1, result.get(0).count());
     }
     @Test void unresolvedInputRejectsWholeRecipeRatherThanMakingItFree() {
         assertTrue(ProjectedStationPlan.declaredInputs(view(true,
-                List.of(ResourceLocation.parse("test:water"), new Object()))).isEmpty());
-        assertTrue(ProjectedStationPlan.declaredInputs(view(false, ResourceLocation.parse("test:water"))).isEmpty());
+                List.of(ResourceLocation.tryParse("test:water"), new Object()))).isEmpty());
+        assertTrue(ProjectedStationPlan.declaredInputs(view(false, ResourceLocation.tryParse("test:water"))).isEmpty());
     }
 }

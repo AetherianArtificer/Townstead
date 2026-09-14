@@ -77,7 +77,7 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
     /** The gene ids the entity could paint from: its expressed set, else its origin's grant list. */
     private static Set<String> overlayGenes(LivingEntity entity) {
         Set<String> expressed = RootClientStore.expressedGenes(entity);
-        if (!expressed.isEmpty()) return expressed;
+        if (RootClientStore.hasExpressionSync(entity) || !expressed.isEmpty()) return expressed;
         String rootId = RootClientStore.resolve(entity);
         if (rootId.isEmpty()) return Set.of();
         RootCatalogEntry origin = RootCatalogClient.origin(rootId);

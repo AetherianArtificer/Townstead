@@ -25,6 +25,9 @@ public final class NativePerformanceSourceAdapter implements AnimationSourceAdap
                 NativePlaybackRegistry.forEntity(context.entity().getId(), now).values());
         active.sort(Comparator.comparingInt(NativePlaybackRegistry.Playback::priority));
         if (active.isEmpty()) return List.of();
+        if (NativePlaybackRegistry.hasCollapse(context.entity().getId(), now)) {
+            active.removeIf(p -> !com.aetherianartificer.townstead.performance.CollapseMotion.CLIP.equals(p.clip().toString()));
+        }
 
         AnimationTargetMap<?> hostTargets = AnimationTargetMap.forMcaModel(context.model());
         List<AnimationTransform> out = new ArrayList<>();

@@ -42,10 +42,6 @@ public final class OptionalBuildingRecognition {
 
     /** MCA floor-system v2's native external registration path. Absent on older MCA. */
     private static final Method PROCESS_EXTERNAL = findProcessExternal();
-    private static final Method ANALYZE_BUILDING = findMethod(VillageManager.class,
-            "analyzeBuildingAddition", BlockPos.class);
-    private static final Method ANALYZE_ROOM = findMethod(VillageManager.class,
-            "analyzeRoom", BlockPos.class);
     private static final Method VALIDATE_LEGACY = findMethod(Building.class,
             "validateBuilding", net.minecraft.world.level.Level.class, Set.class);
 
@@ -100,16 +96,17 @@ public final class OptionalBuildingRecognition {
      * outdoor second; this read-only probe prevents the fallback from stealing enclosed builds.
      */
     public static boolean roomCanHandle(VillageManager manager, BlockPos origin, String actionName) {
-        Method analyzer = "ADD_ROOM".equals(actionName) ? ANALYZE_ROOM : ANALYZE_BUILDING;
-        if (analyzer != null) {
-            try {
-                Object scan = analyzer.invoke(manager, origin);
-                Method result = scan.getClass().getMethod("result");
-                return successful(result.invoke(scan));
-            } catch (ReflectiveOperationException ex) {
-                Townstead.LOGGER.debug("[OptionalBuilding] MCA room probe failed: {}", ex.toString());
-            }
+        //? if >=1.21 {
+        try {
+            ServerLevel level = managerLevel(manager);
+            var scan = "ADD_ROOM".equals(actionName)
+                    ? com.aetherianartificer.townstead.compat.mca.McaRoomWorkflow.analyzeRoom(level, origin)
+                    : com.aetherianartificer.townstead.compat.mca.McaRoomWorkflow.analyzeBuildingAddition(level, origin);
+            return successful(scan.result());
+        } catch (ReflectiveOperationException | RuntimeException ex) {
+            Townstead.LOGGER.debug("[OptionalBuilding] MCA room probe failed: {}", ex.toString());
         }
+        //?}
 
         // Pre-floor-system MCA exposes the old read-only Building.validateBuilding scan instead.
         if (VALIDATE_LEGACY != null) {
@@ -211,7 +208,7 @@ public final class OptionalBuildingRecognition {
     private static Removed removeExisting(ServerLevel level, Existing existing) {
         Village village = existing.village();
         int id = existing.building().getId();
-        village.removeBuilding(id);
+        McaBuildings.remove(village, id);
         TownsteadVillageSavedData.get(level.getServer()).removeBuilding(level, village.getId(), id);
         village.calculateDimensions();
         village.markDirty();
@@ -263,7 +260,7 @@ public final class OptionalBuildingRecognition {
         int groupRadius = type.mergeRange() > 0 ? type.mergeRange() : 12;
         double groupRadiusSquared = (double) groupRadius * groupRadius;
 
-        Building probe = new Building(anchor, false);
+        Building probe = new Building(anchor);
         Map<ResourceLocation, List<BlockPos>> blocks = new LinkedHashMap<>();
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
@@ -318,9 +315,6 @@ public final class OptionalBuildingRecognition {
         Building replacement = McaBuildings.putSynthetic(existing.village(), id, toNbt(id, candidate));
         if (replacement == null) return;
         storeOverlay(level, existing.village(), id, candidate);
-        //? if >=1.21 {
-        replacement.setInheritanceEnabled(existing.building().isInheritanceEnabled());
-        //?}
         existing.village().calculateDimensions();
         existing.village().markDirty();
     }

@@ -17,6 +17,7 @@ public final class VillagerServerTickDispatcher {
         // Clean up dead/removed entities
         if (!villager.isAlive() || villager.isRemoved()) {
             FatigueVillagerTicker.forget(villager);
+            com.aetherianartificer.townstead.performance.CollapsePlayback.stop(villager);
             TemperatureVillagerTicker.forget(villager.getId());
             WorkToolTicker.forget(villager);
             EmptyContainerDropoff.forget(villager);
@@ -34,10 +35,12 @@ public final class VillagerServerTickDispatcher {
 
         if (!TownsteadProfiler.enabled()) {
             tickUnprofiled(villager, gameTime);
+            com.aetherianartificer.townstead.performance.CollapsePlayback.tick(villager);
             return;
         }
 
         tickProfiled(villager, gameTime);
+        com.aetherianartificer.townstead.performance.CollapsePlayback.tick(villager);
     }
 
     private static void tickUnprofiled(VillagerEntityMCA villager, long gameTime) {

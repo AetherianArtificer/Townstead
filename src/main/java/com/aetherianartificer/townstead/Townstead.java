@@ -445,6 +445,7 @@ public class Townstead {
         ATTACHMENTS.register(modBus);
         modBus.addListener(com.aetherianartificer.townstead.profession.ScannedProfessions::onRegister);
         BLOCKS.register(modBus);
+        com.aetherianartificer.townstead.fatigue.SleepParticles.TYPES.register(modBus);
         ITEMS.register(modBus);
         MOB_EFFECTS.register(modBus);
         POTIONS.register(modBus);
@@ -654,6 +655,7 @@ public class Townstead {
             com.aetherianartificer.townstead.root.ability.ActiveAbilities.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.ResourceValues.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.AbilityToggles.clear(e.getEntity().getUUID());
+            com.aetherianartificer.townstead.temperature.PlayerThermalOffsets.clear(e.getEntity());
             com.aetherianartificer.townstead.profession.skill.LearnedSkills.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.profession.career.PlayerCareers.invalidate(e.getEntity().getUUID());
             com.aetherianartificer.townstead.chronicle.net.ChronicleArchiveAccess.clear(e.getEntity().getUUID());
@@ -733,6 +735,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.pheno.state.EntityStates.tick(sp);
                 com.aetherianartificer.townstead.root.ability.ResourceValues.syncTo(sp);
                 com.aetherianartificer.townstead.root.fx.RootOverlays.syncTo(sp);
+                com.aetherianartificer.townstead.temperature.PlayerThermal.tick(sp);
             }
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent e) -> {
@@ -803,8 +806,10 @@ public class Townstead {
             com.aetherianartificer.townstead.root.trigger.GeneTriggers.onJump(e.getEntity());
             com.aetherianartificer.townstead.root.hook.PhenoHooks.jump(e.getEntity());
         });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerChangedDimensionEvent e) ->
+                com.aetherianartificer.townstead.root.trigger.GeneTriggers.onEnterDimension(e.getEntity(), e.getFrom()));
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent.Finish e) ->
-                com.aetherianartificer.townstead.root.trigger.GeneTriggers.onItemUse(e.getEntity()));
+                com.aetherianartificer.townstead.root.trigger.GeneTriggers.onItemUse(e.getEntity(), e.getItem()));
         // Players are never stopped from eating sapient flesh, but the chronicle records it.
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent.Finish e) ->
                 com.aetherianartificer.townstead.hunger.CannibalismPolicy.onFinishItem(e.getEntity(), e.getItem()));
@@ -872,6 +877,7 @@ public class Townstead {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
         modBus.addListener(com.aetherianartificer.townstead.profession.ScannedProfessions::onRegister);
         BLOCKS.register(modBus);
+        com.aetherianartificer.townstead.fatigue.SleepParticles.TYPES.register(modBus);
         ITEMS.register(modBus);
         MOB_EFFECTS.register(modBus);
         POTIONS.register(modBus);
@@ -1075,6 +1081,7 @@ public class Townstead {
             com.aetherianartificer.townstead.root.ability.ActiveAbilities.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.ResourceValues.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.AbilityToggles.clear(e.getEntity().getUUID());
+            com.aetherianartificer.townstead.temperature.PlayerThermalOffsets.clear(e.getEntity());
             com.aetherianartificer.townstead.profession.skill.LearnedSkills.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.profession.career.PlayerCareers.invalidate(e.getEntity().getUUID());
             com.aetherianartificer.townstead.chronicle.net.ChronicleArchiveAccess.clear(e.getEntity().getUUID());
@@ -1171,6 +1178,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.pheno.state.EntityStates.tick(sp);
                 com.aetherianartificer.townstead.root.ability.ResourceValues.syncTo(sp);
                 com.aetherianartificer.townstead.root.fx.RootOverlays.syncTo(sp);
+                com.aetherianartificer.townstead.temperature.PlayerThermal.tick(sp);
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingHurtEvent e) -> {
@@ -1245,8 +1253,10 @@ public class Townstead {
             com.aetherianartificer.townstead.root.trigger.GeneTriggers.onJump(e.getEntity());
             com.aetherianartificer.townstead.root.hook.PhenoHooks.jump(e.getEntity());
         });
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.PlayerEvent.PlayerChangedDimensionEvent e) ->
+                com.aetherianartificer.townstead.root.trigger.GeneTriggers.onEnterDimension(e.getEntity(), e.getFrom()));
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingEntityUseItemEvent.Finish e) ->
-                com.aetherianartificer.townstead.root.trigger.GeneTriggers.onItemUse(e.getEntity()));
+                com.aetherianartificer.townstead.root.trigger.GeneTriggers.onItemUse(e.getEntity(), e.getItem()));
         // Players are never stopped from eating sapient flesh, but the chronicle records it.
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingEntityUseItemEvent.Finish e) ->
                 com.aetherianartificer.townstead.hunger.CannibalismPolicy.onFinishItem(e.getEntity(), e.getItem()));
@@ -1548,6 +1558,8 @@ public class Townstead {
                     new com.aetherianartificer.townstead.root.gene.types.StuckImmunityGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.root.gene.types.EyesGeneType());
+            com.aetherianartificer.townstead.root.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.root.gene.types.AnimationsGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.root.gene.types.MouthGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
@@ -2713,7 +2725,7 @@ public class Townstead {
 
     //? if neoforge {
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar(MOD_ID).versioned("3");
+        var registrar = event.registrar(MOD_ID).versioned("4");
         boolean thirstAvailable = ThirstBridgeResolver.anyThirstModLoaded();
         registrar.playToClient(
                 HungerSyncPayload.TYPE,
@@ -4554,6 +4566,7 @@ public class Townstead {
         if (!(event.getTarget() instanceof VillagerEntityMCA villager)) return;
 
         com.aetherianartificer.townstead.naming.NameSyncTarget.syncToPlayer(sp, villager);
+        com.aetherianartificer.townstead.performance.CollapsePlayback.syncToWatcher(sp, villager);
         com.aetherianartificer.townstead.tick.TemperatureVillagerTicker.tick(villager);
 
         // Make sure stage durations are rolled and a birth is stamped before the

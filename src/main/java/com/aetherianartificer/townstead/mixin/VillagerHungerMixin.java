@@ -6,7 +6,7 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
 import com.aetherianartificer.townstead.fatigue.FatigueData;
-import com.aetherianartificer.townstead.fatigue.SeekBedWhenFatiguedTask;
+import com.aetherianartificer.townstead.fatigue.BorrowBedWhenFatiguedTask;
 import com.aetherianartificer.townstead.hunger.FishermanWorkTask;
 import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
@@ -126,7 +126,7 @@ public abstract class VillagerHungerMixin extends Villager {
         ArrayList<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>> coreBehaviors = new ArrayList<>();
         coreBehaviors.add(Pair.of(64,
                 new com.aetherianartificer.townstead.work.producer.FinishCommittedProductionTask()));
-        coreBehaviors.add(Pair.of(65, new SeekBedWhenFatiguedTask()));
+        coreBehaviors.add(Pair.of(65, new BorrowBedWhenFatiguedTask()));
         coreBehaviors.add(Pair.of(66, new com.aetherianartificer.townstead.temperature.SeekThermalReliefTask()));
         // One unified refuel behavior handles both hunger and thirst (eat/drink to satiety).
         coreBehaviors.add(Pair.of(99, new RefuelTask()));

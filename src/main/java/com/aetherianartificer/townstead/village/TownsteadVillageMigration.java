@@ -114,7 +114,7 @@ public final class TownsteadVillageMigration {
         BlockPos center = building.getCenter();
         CompoundTag tag = new CompoundTag();
         tag.putInt("id", id);
-        tag.putInt("size", building.getSize());
+        tag.putInt("size", com.aetherianartificer.townstead.compat.mca.McaBuildings.size(building));
         tag.putInt("pos0X", p0.getX());
         tag.putInt("pos0Y", p0.getY());
         tag.putInt("pos0Z", p0.getZ());

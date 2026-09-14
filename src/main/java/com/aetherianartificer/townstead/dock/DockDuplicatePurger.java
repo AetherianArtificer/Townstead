@@ -66,7 +66,7 @@ public final class DockDuplicatePurger {
             int keeperId = pickKeeper(group);
             for (Map.Entry<Integer, Building> e : group) {
                 if (e.getKey() == keeperId) continue;
-                village.removeBuilding(e.getKey());
+                com.aetherianartificer.townstead.compat.mca.McaBuildings.remove(village, e.getKey());
                 if (level != null) {
                     TownsteadVillageSavedData.get(level.getServer()).removeBuilding(level, village.getId(), e.getKey());
                 }

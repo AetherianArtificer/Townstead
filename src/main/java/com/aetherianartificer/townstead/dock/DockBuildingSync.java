@@ -197,7 +197,7 @@ public final class DockBuildingSync {
             }
         }
         for (int rid : toRemove) {
-            village.removeBuilding(rid);
+            com.aetherianartificer.townstead.compat.mca.McaBuildings.remove(village, rid);
             TownsteadVillageSavedData.get(level.getServer()).removeBuilding(level, village.getId(), rid);
         }
         return !toRemove.isEmpty();

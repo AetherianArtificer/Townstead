@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.compat.temperature;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.Level;
@@ -49,4 +50,24 @@ public interface AmbientTemperatureBridge {
     default float blockTemperatureCelsius(Level level, BlockPos pos, BlockState state) {
         return Float.NaN;
     }
+
+    /**
+     * Warms or cools a player by {@code degrees} Celsius, positive to warm, the player-side twin
+     * of a villager's {@code adjustBodyTemp}. {@code durationTicks} of zero is an instant nudge
+     * that the backend lets decay; above zero it is an influence held for that long and then
+     * dropped. Cold Sweat's own food handling makes the same split, choosing its {@code CORE}
+     * trait for an instant change and an expiring {@code BASE} modifier for a lasting one.
+     *
+     * <p>Returns false when the backend cannot express it at all, which is distinct from a nudge
+     * of zero.</p>
+     */
+    default boolean adjustPlayerBodyCelsius(Player player, float degrees, int durationTicks) {
+        return false;
+    }
+
+    /**
+     * Called once when a Townstead influence on this player runs out, so a backend holding its
+     * own copy can clear it. Backends whose temperature decays on its own need nothing here.
+     */
+    default void onThermalInfluenceEnded(Player player) {}
 }

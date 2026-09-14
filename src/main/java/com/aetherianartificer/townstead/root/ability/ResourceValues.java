@@ -65,6 +65,7 @@ public final class ResourceValues {
         int prev = get(entity, resourceId);
         int next = Math.max(instance.min(), Math.min(instance.max(), value));
         writeStored(entity, resourceId, next);
+        if (next != prev) Powers.invalidate(entity);
         if (next > prev && !instance.onReach().isEmpty()) {
             fireReach(entity, resourceId, instance, prev, next);
         }

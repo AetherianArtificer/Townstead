@@ -38,6 +38,9 @@ public final class TemperatureSettings {
     private int sourceRadius = 7;
     private float heatSourceOffset = 12f;
     private float coolingSourceOffset = -8f;
+    // Tough As Nails has no numeric temperature at all, only five steps from ICY to HOT, so a
+    // warming in degrees has to be quantised before it can shift the player's level.
+    private float celsiusPerTanStep = 8f;
     private float roomBaseline = 18f;
     private float insulationMax = 0.6f;
     private float indoorNightFactor = 0.25f;
@@ -119,6 +122,7 @@ public final class TemperatureSettings {
     public int sourceRadius() { return sourceRadius; }
     public float heatSourceOffset() { return heatSourceOffset; }
     public float coolingSourceOffset() { return coolingSourceOffset; }
+    public float celsiusPerTanStep() { return celsiusPerTanStep; }
     /** The mild indoor temperature a fully insulated room is pulled toward. */
     public float roomBaseline() { return roomBaseline; }
     /** How far a room whose shell is entirely insulating blocks moves toward the baseline (0..1). */
@@ -167,6 +171,7 @@ public final class TemperatureSettings {
         s.sourceRadius = Math.max(0, Math.min(12, GsonHelper.getAsInt(json, "source_radius", s.sourceRadius)));
         s.heatSourceOffset = GsonHelper.getAsFloat(json, "heat_source_offset", s.heatSourceOffset);
         s.coolingSourceOffset = GsonHelper.getAsFloat(json, "cooling_source_offset", s.coolingSourceOffset);
+        s.celsiusPerTanStep = Math.max(0.5f, GsonHelper.getAsFloat(json, "celsius_per_tan_step", s.celsiusPerTanStep));
         s.roomBaseline = GsonHelper.getAsFloat(json, "room_baseline", s.roomBaseline);
         s.insulationMax = Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(json, "insulation_max", s.insulationMax)));
         s.indoorNightFactor = Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(json, "indoor_night_factor", s.indoorNightFactor)));

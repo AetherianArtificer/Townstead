@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:reaction/v3",
+  "display_name": "Pass out from exhaustion",
+  "tags": ["need", "fatigue"],
+  "cooldown": "30s",
+  "chance": "100%",
+  "triggers": [],
+  "choices": [{
+    "allow_movement": false,
+    "do": {
+      "type": "pheno:performance",
+      "performance": "townstead_performance:fatigue_pass_out",
+      "channel": "reaction",
+      "duration_ticks": 104,
+      "priority": 1000,
+      "fallback": "stand"
+    }
+  }]
+}

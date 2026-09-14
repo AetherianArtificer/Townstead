@@ -60,6 +60,15 @@ public interface ThirstCompatBridge {
     /** Current player thirst, or NaN when the active compat cannot read it. */
     default double playerThirst(Player player) { return Double.NaN; }
 
+    /**
+     * Restores player thirst through the active backend, the write twin of
+     * {@link #playerThirst}. {@code immediate} raises the thirst bar itself and
+     * {@code lasting} the saturation-style reserve behind it, matching the two halves a
+     * villager's {@code applyDrink} takes. Returns false when the backend exposes no way
+     * to write, so a caller can tell "restored nothing" from "cannot restore".
+     */
+    default boolean restorePlayerThirst(Player player, int immediate, int lasting) { return false; }
+
     record PurityResult(boolean applyHydration, boolean sickness, boolean poison, int purity) {}
 
     record ThirstIconInfo(ResourceLocation texture, int u, int v, int texW, int texH) {}

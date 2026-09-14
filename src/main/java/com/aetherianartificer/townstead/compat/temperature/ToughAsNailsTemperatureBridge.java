@@ -3,6 +3,8 @@ package com.aetherianartificer.townstead.compat.temperature;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.temperature.ThermalBlocks;
+import com.aetherianartificer.townstead.temperature.PlayerThermalOffsets;
+import com.aetherianartificer.townstead.temperature.TemperatureSettings;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -15,6 +17,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.player.Player;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -29,6 +32,9 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
     public static final ToughAsNailsTemperatureBridge INSTANCE = new ToughAsNailsTemperatureBridge();
 
     private static final float TAG_PIECE = 0.5f;
+    // A nudge with no stated duration still has to last long enough for TAN to evaluate the
+    // player at least once; ten seconds reads as "a moment ago I ate something hot".
+    private static final int DEFAULT_INFLUENCE_TICKS = 200;
     private static final TagKey<Block> HEATING_BLOCKS = tag(Registries.BLOCK, "heating_blocks");
     private static final TagKey<Block> COOLING_BLOCKS = tag(Registries.BLOCK, "cooling_blocks");
     private static final TagKey<Item> HEATING_ARMOR = tag(Registries.ITEM, "heating_armor");
@@ -36,6 +42,7 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
 
     private boolean initialized;
     private boolean active;
+    private boolean playerModifierRegistered;
     private Method getTemperatureAtPos;
     private Method isHeatingBlock;
     private Method isCoolingBlock;
@@ -160,12 +167,66 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
             return;
         }
         registerProximityModifier(helper);
+        registerPlayerModifier(helper);
         try {
             regulatorEffect = Class.forName("toughasnails.block.entity.ThermoregulatorBlockEntity")
                     .getMethod("getEffectAtPos", BlockPos.class);
         } catch (ReflectiveOperationException e) {
             Townstead.LOGGER.warn("Tough As Nails regulator coverage API unavailable", e);
         }
+    }
+
+    /**
+     * TAN derives the player's level every evaluation rather than storing one, so a warming is
+     * expressed by answering its question differently while the influence lasts. The registered
+     * modifier is the only place an outside caller gets a say; writing the level directly would
+     * be recomputed away on the next tick.
+     */
+    private void registerPlayerModifier(Class<?> helper) {
+        try {
+            Class<?> modifier = Class.forName("toughasnails.api.temperature.IPlayerTemperatureModifier");
+            Class<?> level = Class.forName("toughasnails.api.temperature.TemperatureLevel");
+            Method increment = level.getMethod("increment", int.class);
+            Object proxy = Proxy.newProxyInstance(modifier.getClassLoader(), new Class<?>[] {modifier}, (self, method, args) -> {
+                if ("modify".equals(method.getName()) && args != null && args.length == 2
+                        && args[0] instanceof Player player) {
+                    float offset = PlayerThermalOffsets.get(player);
+                    if (offset == 0f) return args[1];
+                    int steps = Math.round(offset / TemperatureSettings.get().celsiusPerTanStep());
+                    // Anything the author meant as a nudge moves at least one step, or a
+                    // warming smaller than the step width would read as doing nothing.
+                    if (steps == 0) steps = offset > 0 ? 1 : -1;
+                    // increment clamps to the ICY..HOT range itself.
+                    return increment.invoke(args[1], steps);
+                }
+                return switch (method.getName()) {
+                    case "toString" -> "TownsteadThermalInfluence";
+                    case "hashCode" -> System.identityHashCode(self);
+                    case "equals" -> self == args[0];
+                    default -> null;
+                };
+            });
+            helper.getMethod("registerPlayerTemperatureModifier", modifier).invoke(null, proxy);
+            playerModifierRegistered = true;
+            Townstead.LOGGER.info("Registered Townstead thermal influences with Tough As Nails.");
+        } catch (Exception e) {
+            Townstead.LOGGER.debug("Tough As Nails player modifier hook not available: {}", e.toString());
+        }
+    }
+
+    /**
+     * The influence lives in {@link PlayerThermalOffsets}; the registered modifier reads it. TAN
+     * needs no instant path, so a duration-less nudge is given one tuning step's worth of time
+     * rather than being dropped.
+     */
+    @Override
+    public boolean adjustPlayerBodyCelsius(Player player, float degrees, int durationTicks) {
+        if (player == null || player.level().isClientSide || degrees == 0f) return false;
+        initIfNeeded();
+        if (!active || !playerModifierRegistered) return false;
+        PlayerThermalOffsets.set(player, degrees,
+                durationTicks > 0 ? durationTicks : DEFAULT_INFLUENCE_TICKS);
+        return true;
     }
 
     /** Townstead's heat and cooling sources become Tough As Nails proximity blocks, so the player feels the villagers' hearth. */

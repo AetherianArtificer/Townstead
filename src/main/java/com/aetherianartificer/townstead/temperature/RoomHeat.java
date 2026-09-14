@@ -438,10 +438,15 @@ public final class RoomHeat {
 
     static net.minecraft.world.level.ClipContext exposureRay(net.minecraft.world.phys.Vec3 start,
                                                             net.minecraft.world.phys.Vec3 end) {
-        // This environmental sample has no entity. The Entity overload dereferences its argument.
+        // Environmental sampling has no entity. 1.20.1 explicitly handles a null entity;
+        // newer versions expose the collision-context overload and dereference null entities.
         return new net.minecraft.world.level.ClipContext(start, end,
                 net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE,
+                //? if >=1.21 {
                 net.minecraft.world.phys.shapes.CollisionContext.empty());
+                //?} else {
+                /*(net.minecraft.world.entity.Entity) null);
+                *///?}
     }
 
     /** A field diagnostic: stored temperature, fluxes and expected equilibrium at current inputs. */

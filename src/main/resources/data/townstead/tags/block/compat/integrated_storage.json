@@ -1,0 +1,54 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "farmersdelight:basket", "required": false },
+
+    { "id": "bakery:cabinet", "required": false },
+    { "id": "bakery:drawer", "required": false },
+    { "id": "bakery:wall_cabinet", "required": false },
+
+    { "id": "beachparty:palm_cabinet", "required": false },
+
+    { "id": "brewery:cabinet", "required": false },
+    { "id": "brewery:drawer", "required": false },
+    { "id": "brewery:sideboard", "required": false },
+    { "id": "brewery:wall_cabinet", "required": false },
+
+    { "id": "candlelight:cabinet", "required": false },
+    { "id": "candlelight:drawer", "required": false },
+    { "id": "candlelight:sideboard", "required": false },
+    { "id": "candlelight:oak_cabinet", "required": false },
+    { "id": "candlelight:oak_drawer", "required": false },
+    { "id": "candlelight:spruce_cabinet", "required": false },
+    { "id": "candlelight:spruce_drawer", "required": false },
+    { "id": "candlelight:birch_cabinet", "required": false },
+    { "id": "candlelight:birch_drawer", "required": false },
+    { "id": "candlelight:jungle_cabinet", "required": false },
+    { "id": "candlelight:jungle_drawer", "required": false },
+    { "id": "candlelight:acacia_cabinet", "required": false },
+    { "id": "candlelight:acacia_drawer", "required": false },
+    { "id": "candlelight:dark_oak_cabinet", "required": false },
+    { "id": "candlelight:dark_oak_drawer", "required": false },
+    { "id": "candlelight:mangrove_cabinet", "required": false },
+    { "id": "candlelight:mangrove_drawer", "required": false },
+    { "id": "candlelight:cherry_cabinet", "required": false },
+    { "id": "candlelight:cherry_drawer", "required": false },
+    { "id": "candlelight:bamboo_cabinet", "required": false },
+    { "id": "candlelight:bamboo_drawer", "required": false },
+    { "id": "candlelight:crimson_cabinet", "required": false },
+    { "id": "candlelight:crimson_drawer", "required": false },
+    { "id": "candlelight:warped_cabinet", "required": false },
+    { "id": "candlelight:warped_drawer", "required": false },
+
+    { "id": "vinery:dark_cherry_cabinet", "required": false },
+    { "id": "vinery:dark_cherry_drawer", "required": false },
+    { "id": "vinery:dark_cherry_barrel", "required": false },
+    { "id": "vinery:storage_pot", "required": false },
+
+    { "id": "butchery:freezer", "required": false },
+
+    { "id": "kaleidoscope_tavern:bar_cabinet", "required": false },
+    { "id": "kaleidoscope_tavern:cellar_cabinet", "required": false },
+    { "id": "kaleidoscope_tavern:glass_bar_cabinet", "required": false }
+  ]
+}

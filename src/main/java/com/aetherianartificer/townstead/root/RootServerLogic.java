@@ -185,6 +185,28 @@ public final class RootServerLogic {
         Gene gene = GeneRegistry.byId(gid);
         if (gene == null) return RootSetC2SPayload.NONE;
         AllelePayload incoming = AllelePayload.parse(variantId);
+        if (GeneRegistry.isCompanion(gene.id())) {
+            Entity target = entityId == RootSetC2SPayload.SELF ? sp : sp.serverLevel().getEntity(entityId);
+            if (!(target instanceof LivingEntity living)) return RootSetC2SPayload.NONE;
+            Gene requested = gene;
+            List<Allele> inherited = Heredity.expressedAlleles(ExpressedGenes.genotypeOf(living));
+            gene = com.aetherianartificer.townstead.root.gene.GeneExpression.variantEditSource(requested,
+                    inherited, incoming.variant());
+            // Older editor builds could store the companion itself at the style locus.
+            // A subsequent edit restores the Root's source gene in that specific case.
+            if (gene == null && inherited.stream().anyMatch(a -> requested.id().equals(a.geneId()))) {
+                String root = target == sp ? PlayerRoot.getRootId(sp)
+                        : target instanceof VillagerEntityMCA v ? TownsteadVillagers.get(v).life().rootId() : "";
+                ResourceLocation rootId = DataPackLang.parseId(root);
+                if (rootId != null) {
+                    gene = com.aetherianartificer.townstead.root.gene.GeneExpression.variantEditSource(requested,
+                            RootRegistry.effectiveInheritedGenes(rootId).stream()
+                                    .map(g -> Allele.of(g.geneId(), null)).toList(), incoming.variant());
+                }
+            }
+            if (gene == null) return RootSetC2SPayload.NONE;
+            gid = gene.id();
+        }
         GeneInstance chosen = gene.instance();
         if (gene.hasVariants()) {
             GeneVariant match = null;

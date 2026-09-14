@@ -46,6 +46,12 @@ public final class ThirstWasTakenBridge implements ThirstCompatBridge {
     private Method getQuenchedMethod;
     private Method getPurityMethod;
     private Method getPlayerThirstMethod;
+    private Object playerThirstCapability;
+    private Method getCapabilityMethod;
+    private Method lazyOptionalOrElseMethod;
+    private Method thirstDataGetThirstMethod;
+    private Method thirstDataDrinkMethod;
+    private Method thirstDataUpdateMethod;
     private Class<?> commonConfigClass;
 
     private ThirstWasTakenBridge() {}
@@ -218,16 +224,51 @@ public final class ThirstWasTakenBridge implements ThirstCompatBridge {
         return new ThirstIconInfo(THIRST_ICONS, u, 0, 25, 9);
     }
 
+    /**
+     * TWT's {@code ThirstHelper} is item-only, so the static search finds nothing on a stock
+     * build and the capability is the real source. The search is kept ahead of it for forks that
+     * do add a player helper.
+     */
     @Override
     public double playerThirst(Player player) {
         if (player == null) return Double.NaN;
         initIfNeeded();
-        if (!active || getPlayerThirstMethod == null) return Double.NaN;
+        if (!active) return Double.NaN;
+        if (getPlayerThirstMethod != null) {
+            try {
+                Object value = getPlayerThirstMethod.invoke(null, player);
+                if (value instanceof Number n) return n.doubleValue();
+            } catch (Exception ignored) {}
+        }
+        if (thirstDataGetThirstMethod == null) return Double.NaN;
+        Object thirstData = thirstData(player);
+        if (thirstData == null) return Double.NaN;
         try {
-            Object value = getPlayerThirstMethod.invoke(null, player);
+            Object value = thirstDataGetThirstMethod.invoke(thirstData);
             if (value instanceof Number n) return n.doubleValue();
         } catch (Exception ignored) {}
         return Double.NaN;
+    }
+
+    /**
+     * TWT's own {@code drink} owns the clamping and the extra-hydration config; {@code
+     * updateThirstData} writes the persistent mirror and sends the sync packet.
+     */
+    @Override
+    public boolean restorePlayerThirst(Player player, int immediate, int lasting) {
+        if (player == null || player.level().isClientSide) return false;
+        if (immediate <= 0 && lasting <= 0) return false;
+        initIfNeeded();
+        if (!active || thirstDataDrinkMethod == null) return false;
+        Object thirstData = thirstData(player);
+        if (thirstData == null) return false;
+        try {
+            thirstDataDrinkMethod.invoke(thirstData, player, immediate, lasting);
+            if (thirstDataUpdateMethod != null) thirstDataUpdateMethod.invoke(thirstData, player);
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     private void initIfNeeded() {
@@ -254,6 +295,20 @@ public final class ThirstWasTakenBridge implements ThirstCompatBridge {
             getPurityMethod = thirstHelper.getMethod("getPurity", ItemStack.class);
             getPlayerThirstMethod = findPlayerThirstMethod(thirstHelper);
             try {
+                Class<?> iThirst = Class.forName("dev.ghen.thirst.foundation.common.capability.IThirst");
+                thirstDataGetThirstMethod = iThirst.getMethod("getThirst");
+                thirstDataDrinkMethod = iThirst.getMethod("drink", Player.class, int.class, int.class);
+                thirstDataUpdateMethod = iThirst.getMethod("updateThirstData", Player.class);
+                playerThirstCapability = Class
+                        .forName("dev.ghen.thirst.foundation.common.capability.ModCapabilities")
+                        .getField("PLAYER_THIRST").get(null);
+            } catch (Exception ignored) {
+                thirstDataGetThirstMethod = null;
+                thirstDataDrinkMethod = null;
+                thirstDataUpdateMethod = null;
+                playerThirstCapability = null;
+            }
+            try {
                 Class<?> waterPurity = Class.forName("dev.ghen.thirst.content.purity.WaterPurity");
                 isPurityWaterContainerMethod = waterPurity.getMethod("isWaterFilledContainer", ItemStack.class);
             } catch (Exception ignored) {
@@ -264,6 +319,29 @@ public final class ThirstWasTakenBridge implements ThirstCompatBridge {
         } catch (Exception e) {
             active = false;
             Townstead.LOGGER.warn("Failed to initialize Thirst Was Taken compatibility. Villager thirst integration disabled.", e);
+        }
+    }
+
+    /**
+     * TWT keeps player thirst on a Forge capability, not on {@code ThirstHelper}, whose player
+     * surface is item-only. Returns the player's {@code IThirst}, or null off Forge or before
+     * the capability is registered.
+     */
+    private Object thirstData(Player player) {
+        if (playerThirstCapability == null) return null;
+        try {
+            if (getCapabilityMethod == null) {
+                getCapabilityMethod = player.getClass().getMethod("getCapability",
+                        Class.forName("net.minecraftforge.common.capabilities.Capability"));
+            }
+            Object lazyOptional = getCapabilityMethod.invoke(player, playerThirstCapability);
+            if (lazyOptional == null) return null;
+            if (lazyOptionalOrElseMethod == null) {
+                lazyOptionalOrElseMethod = lazyOptional.getClass().getMethod("orElse", Object.class);
+            }
+            return lazyOptionalOrElseMethod.invoke(lazyOptional, (Object) null);
+        } catch (Exception ignored) {
+            return null;
         }
     }
 

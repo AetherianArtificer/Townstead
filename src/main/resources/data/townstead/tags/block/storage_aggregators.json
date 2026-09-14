@@ -4,6 +4,15 @@
     { "id": "sophisticatedstorage:controller", "required": false },
     { "id": "sophisticatedstorage:storage_io", "required": false },
     { "id": "sophisticatedstorage:storage_input", "required": false },
-    { "id": "sophisticatedstorage:storage_output", "required": false }
+    { "id": "sophisticatedstorage:storage_output", "required": false },
+    { "id": "functionalstorage:storage_controller", "required": false },
+    { "id": "functionalstorage:framed_storage_controller", "required": false },
+    { "id": "functionalstorage:controller_extension", "required": false },
+    { "id": "functionalstorage:framed_controller_extension", "required": false },
+    { "id": "functionalstorage:ender_drawer", "required": false },
+    { "id": "storagedrawers:controller", "required": false },
+    { "id": "storagedrawers:controller_io", "required": false },
+    { "id": "storagedrawers:framed_controller", "required": false },
+    { "id": "storagedrawers:framed_controller_io", "required": false }
   ]
 }

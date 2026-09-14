@@ -6,6 +6,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -97,9 +98,52 @@ public final class ToughAsNailsThirstBridge implements ThirstCompatBridge {
     @Override public ThirstIconInfo iconInfo(int thirst) { return new ThirstIconInfo(iconTexture(), thirst > 13 ? 36 : thirst > 6 ? 45 : 0, 32, 256, 256); }
     @Override public double playerThirst(Player player) {
         try {
-            Object data = Class.forName("toughasnails.api.thirst.ThirstHelper").getMethod("getThirst", Player.class).invoke(null, player);
+            Object data = thirstData(player);
+            if (data == null) return Double.NaN;
             return ((Number) Class.forName("toughasnails.api.thirst.IThirst").getMethod("getThirst").invoke(data)).doubleValue();
         } catch (ReflectiveOperationException e) { return Double.NaN; }
+    }
+
+    /**
+     * TAN's own {@code drink} takes a hydration <em>modifier</em> rather than a flat amount, so
+     * the two halves go on separately: {@code addThirst} already clamps to the twenty-point bar,
+     * while {@code addHydration} does not clamp at all and TAN's invariant is that hydration
+     * never exceeds the thirst bar behind it.
+     */
+    @Override public boolean restorePlayerThirst(Player player, int immediate, int lasting) {
+        if (player == null || player.level().isClientSide) return false;
+        if (immediate <= 0 && lasting <= 0) return false;
+        try {
+            Object data = thirstData(player);
+            if (data == null) return false;
+            Class<?> iThirst = Class.forName("toughasnails.api.thirst.IThirst");
+            if (immediate > 0) iThirst.getMethod("addThirst", int.class).invoke(data, immediate);
+            if (lasting > 0) {
+                float hydration = ((Number) iThirst.getMethod("getHydration").invoke(data)).floatValue();
+                int thirst = ((Number) iThirst.getMethod("getThirst").invoke(data)).intValue();
+                iThirst.getMethod("setHydration", float.class)
+                        .invoke(data, Math.min(hydration + lasting, (float) thirst));
+            }
+            syncThirst(player);
+            return true;
+        } catch (ReflectiveOperationException | ClassCastException e) { return false; }
+    }
+
+    /**
+     * TAN pushes thirst to the client from its own tick and on respawn, never on an outside
+     * write, so the bar would sit stale until the next tick without this.
+     */
+    private static void syncThirst(Player player) {
+        if (!(player instanceof ServerPlayer serverPlayer)) return;
+        try {
+            Class.forName("toughasnails.thirst.ThirstHandler")
+                    .getMethod("syncThirst", ServerPlayer.class).invoke(null, serverPlayer);
+        } catch (ReflectiveOperationException ignored) {}
+    }
+
+    private static Object thirstData(Player player) throws ReflectiveOperationException {
+        return Class.forName("toughasnails.api.thirst.ThirstHelper")
+                .getMethod("getThirst", Player.class).invoke(null, player);
     }
     private static boolean canteen(ItemStack stack) {
         for (Class<?> type = stack.getItem().getClass(); type != null; type = type.getSuperclass())

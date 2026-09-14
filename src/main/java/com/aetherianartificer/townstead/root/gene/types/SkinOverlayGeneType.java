@@ -32,6 +32,9 @@ import net.minecraft.util.GsonHelper;
  */
 public final class SkinOverlayGeneType implements GeneType {
 
+    @Override
+    public boolean conditionControlsExpression() { return true; }
+
     public static final String KEY = "townstead_roots:skin_overlay";
 
     public record Instance(String texture, String tint, int order, int tintBlend,

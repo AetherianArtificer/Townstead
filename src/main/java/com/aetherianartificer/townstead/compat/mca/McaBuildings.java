@@ -49,6 +49,37 @@ public final class McaBuildings {
         return GET_EXTERNAL_MAP != null;
     }
 
+    /**
+     * Removes a building by id from whichever map owns it. The floor system keeps rooms and
+     * external buildings in separate maps with separate removal calls; a room that is a
+     * structure's main room is refused by MCA and reported as {@code false}.
+     */
+    public static boolean remove(Village village, int id) {
+        if (village == null) return false;
+        //? if >=1.21 {
+        if (village.getExternalBuildingMap().containsKey(id)) return village.removeExternalBuilding(id);
+        boolean removed = village.removeRoom(id);
+        if (!removed && village.getBuildings().containsKey(id)) {
+            Townstead.LOGGER.debug("[McaBuildings] MCA refused to remove room {} (main room)", id);
+        }
+        return removed;
+        //?} else {
+        /*boolean present = village.getBuildings().containsKey(id);
+        village.removeBuilding(id);
+        return present;
+        *///?}
+    }
+
+    /** Footprint size in floor cells; the pre-floor generation stored the same count as {@code size}. */
+    public static int size(Building building) {
+        if (building == null) return 0;
+        //? if >=1.21 {
+        return (int) Math.min(Integer.MAX_VALUE, building.getFloorFootprintArea());
+        //?} else {
+        /*return building.getSize();
+        *///?}
+    }
+
     /** Every building of the village: functional rooms plus, on v2, external grouped sites. */
     public static Collection<Building> all(Village village) {
         Map<Integer, Building> rooms = village.getBuildings();

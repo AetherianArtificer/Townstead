@@ -8,7 +8,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import com.aetherianartificer.townstead.temperature.PlayerThermalOffsets;
 import com.aetherianartificer.townstead.temperature.ThermalProtection;
 
 import java.lang.reflect.Field;
@@ -23,6 +25,15 @@ import java.lang.reflect.Method;
 public final class LsoTemperatureBridge implements AmbientTemperatureBridge {
     public static final LsoTemperatureBridge INSTANCE = new LsoTemperatureBridge();
 
+    // LSO keys temperature modifiers by UUID and drops any existing one with the same key
+    // before adding, so a single stable id gives Townstead one slot it owns and can clear.
+    private static final java.util.UUID INFLUENCE_ID =
+            java.util.UUID.nameUUIDFromBytes(
+                    "townstead:thermal_influence".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    private static final int DEFAULT_INFLUENCE_TICKS = 200;
+
+    private boolean modifierInitialized;
+    private Method addTemperatureModifier;
     private boolean itemsInitialized;
     private Method getItem;
     private Field temperatureField;
@@ -102,6 +113,50 @@ public final class LsoTemperatureBridge implements AmbientTemperatureBridge {
         } catch (Exception e) {
             return Float.NaN;
         }
+    }
+
+    /**
+     * The offset is Townstead's to hold: LSO's modifier stays where it is put until something
+     * changes it, so the expiry is ours to run. Writing the same id again replaces the previous
+     * value, and a zero clears it.
+     */
+    @Override
+    public boolean adjustPlayerBodyCelsius(Player player, float degrees, int durationTicks) {
+        if (player == null || player.level().isClientSide || degrees == 0f) return false;
+        if (!isActive() || !resolveModifier()) return false;
+        PlayerThermalOffsets.set(player, degrees,
+                durationTicks > 0 ? durationTicks : DEFAULT_INFLUENCE_TICKS);
+        return applyOffset(player, degrees);
+    }
+
+    /** Clears LSO's copy of an influence that has run out. */
+    @Override
+    public void onThermalInfluenceEnded(Player player) {
+        if (resolveModifier()) applyOffset(player, 0f);
+    }
+
+    private boolean applyOffset(Player player, float degrees) {
+        try {
+            addTemperatureModifier.invoke(null, player, (double) degrees, INFLUENCE_ID);
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private synchronized boolean resolveModifier() {
+        if (!modifierInitialized) {
+            modifierInitialized = true;
+            try {
+                addTemperatureModifier = Class
+                        .forName("sfiomn.legendarysurvivaloverhaul.api.temperature.TemperatureUtil")
+                        .getMethod("addTemperatureModifier", Player.class, double.class,
+                                java.util.UUID.class);
+            } catch (Exception ignored) {
+                addTemperatureModifier = null;
+            }
+        }
+        return addTemperatureModifier != null;
     }
 
     private synchronized void initItemsIfNeeded() {

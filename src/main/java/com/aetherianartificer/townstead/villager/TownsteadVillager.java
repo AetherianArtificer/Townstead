@@ -161,6 +161,7 @@ public final class TownsteadVillager {
         private long emergencyBedPos = Long.MIN_VALUE;
         private String emergencyBedDim = null;
         private boolean emergencyBedPoiClaimed;
+        private boolean directEmergencyBed;
         private long savedHomePos = Long.MIN_VALUE;
         private String savedHomeDim = null;
 
@@ -623,10 +624,15 @@ public final class TownsteadVillager {
             return emergencyBedPoiClaimed;
         }
 
+        public boolean usesDirectEmergencyBed() {
+            return directEmergencyBed;
+        }
+
         public void setEmergencyBed(BlockPos pos) {
             emergencyBedPos = pos == null ? Long.MIN_VALUE : pos.asLong();
             emergencyBedDim = null;
             emergencyBedPoiClaimed = false;
+            directEmergencyBed = false;
             markDirty();
         }
 
@@ -634,6 +640,15 @@ public final class TownsteadVillager {
             emergencyBedPos = pos == null ? Long.MIN_VALUE : pos.pos().asLong();
             emergencyBedDim = pos == null ? null : pos.dimension().location().toString();
             emergencyBedPoiClaimed = pos != null && poiClaimed;
+            directEmergencyBed = false;
+            markDirty();
+        }
+
+        public void setBorrowedEmergencyBed(net.minecraft.core.GlobalPos pos) {
+            emergencyBedPos = pos == null ? Long.MIN_VALUE : pos.pos().asLong();
+            emergencyBedDim = pos == null ? null : pos.dimension().location().toString();
+            emergencyBedPoiClaimed = pos != null;
+            directEmergencyBed = pos != null;
             markDirty();
         }
 
@@ -641,6 +656,7 @@ public final class TownsteadVillager {
             emergencyBedPos = Long.MIN_VALUE;
             emergencyBedDim = null;
             emergencyBedPoiClaimed = false;
+            directEmergencyBed = false;
             markDirty();
         }
 
@@ -769,6 +785,7 @@ public final class TownsteadVillager {
             if (emergencyBedPos != Long.MIN_VALUE) tag.putLong("emergencyBedPos", emergencyBedPos);
             if (emergencyBedDim != null) tag.putString("emergencyBedDim", emergencyBedDim);
             if (emergencyBedPoiClaimed) tag.putBoolean("emergencyBedPoiClaimed", true);
+            if (directEmergencyBed) tag.putBoolean("directEmergencyBed", true);
             if (savedHomeDim != null) {
                 tag.putLong("savedHomePos", savedHomePos);
                 tag.putString("savedHomeDim", savedHomeDim);
@@ -789,6 +806,7 @@ public final class TownsteadVillager {
             emergencyBedPos = FatigueData.hasEmergencyBed(tag) ? FatigueData.getEmergencyBed(tag).asLong() : Long.MIN_VALUE;
             emergencyBedDim = tag.contains("emergencyBedDim") ? tag.getString("emergencyBedDim") : null;
             emergencyBedPoiClaimed = tag.getBoolean("emergencyBedPoiClaimed");
+            directEmergencyBed = tag.getBoolean("directEmergencyBed");
             if (FatigueData.hasSavedHome(tag)) {
                 net.minecraft.core.GlobalPos home = FatigueData.getSavedHome(tag);
                 savedHomeDim = home == null ? "" : home.dimension().location().toString();

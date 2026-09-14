@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import com.aetherianartificer.townstead.temperature.ThermalCache;
 
 import java.lang.reflect.Method;
@@ -28,6 +29,14 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     private Method convert;
     private Object unitsMc;
     private Object unitsC;
+    private Method addTemperature;
+    private Object traitCore;
+    private Object traitBase;
+    private Method replaceOrAddModifier;
+    private java.lang.reflect.Constructor<?> simpleModifier;
+    private Method expires;
+    private Object operationAdd;
+    private Object matcherSameClass;
     private Method getBlockTemps;
     private Object defaultBlockTemp;
     private Method isValid;
@@ -145,6 +154,55 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
         return listed ? (float) (total * MC_UNIT_TO_CELSIUS) : Float.NaN;
     }
 
+    /**
+     * Follows Cold Sweat's own food handling, which picks its trait by whether the effect lasts:
+     * an instant change goes on {@code CORE}, which decays back toward base by itself, and a
+     * lasting one becomes an expiring modifier on {@code BASE}. {@code Temperature.add} fires the
+     * change event and calls {@code updateTemperature}, so the sync and any veto are handled.
+     *
+     * <p>Cold Sweat expires the modifier itself, so nothing is held in
+     * {@link PlayerThermalOffsets} for this backend.</p>
+     */
+    @Override
+    public boolean adjustPlayerBodyCelsius(Player player, float degrees, int durationTicks) {
+        if (player == null || player.level().isClientSide || degrees == 0f) return false;
+        initIfNeeded();
+        if (!active) return false;
+        double units = toMcUnits(degrees);
+        if (durationTicks <= 0) {
+            if (addTemperature == null || traitCore == null) return false;
+            try {
+                addTemperature.invoke(null, player, traitCore, units);
+                return true;
+            } catch (Exception ignored) {
+                return false;
+            }
+        }
+        if (replaceOrAddModifier == null || simpleModifier == null
+                || operationAdd == null || traitBase == null || matcherSameClass == null) {
+            return false;
+        }
+        try {
+            Object modifier = simpleModifier.newInstance(units, operationAdd);
+            expires.invoke(modifier, durationTicks);
+            replaceOrAddModifier.invoke(null, player, modifier, traitBase, matcherSameClass);
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    /** Cold Sweat stores traits in its own unit; a delta converts unscaled by the zero point. */
+    private double toMcUnits(float celsius) {
+        if (convert != null && unitsC != null && unitsMc != null) {
+            try {
+                Object value = convert.invoke(null, (double) celsius, unitsC, unitsMc, false);
+                if (value instanceof Number n) return n.doubleValue();
+            } catch (Exception ignored) {}
+        }
+        return celsius / MC_UNIT_TO_CELSIUS;
+    }
+
     private synchronized void initIfNeeded() {
         if (initialized) return;
         initialized = true;
@@ -169,6 +227,39 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
             }
         } catch (Exception ignored) {
             convert = null;
+        }
+        try {
+            Class<?> temperature = Class.forName("com.momosoftworks.coldsweat.api.util.Temperature");
+            Class<?> trait = Class.forName("com.momosoftworks.coldsweat.api.util.Temperature$Trait");
+            addTemperature = temperature.getMethod("add", LivingEntity.class, trait, double.class);
+            // CORE is the body heat a meal or a fire changes; BODY is derived and not writable.
+            // BASE is what a lasting influence shifts, the trait CORE converges toward.
+            for (Object constant : trait.getEnumConstants()) {
+                String name = ((Enum<?>) constant).name();
+                if (name.equals("CORE")) traitCore = constant;
+                if (name.equals("BASE")) traitBase = constant;
+            }
+            Class<?> matcher = Class.forName("com.momosoftworks.coldsweat.api.util.placement.Matcher");
+            replaceOrAddModifier = temperature.getMethod("replaceOrAddModifier",
+                    LivingEntity.class,
+                    Class.forName("com.momosoftworks.coldsweat.api.temperature.modifier.TempModifier"),
+                    trait, matcher);
+            for (Object constant : matcher.getEnumConstants()) {
+                if (((Enum<?>) constant).name().equals("SAME_CLASS")) matcherSameClass = constant;
+            }
+            Class<?> simple = Class.forName(
+                    "com.momosoftworks.coldsweat.api.temperature.modifier.SimpleTempModifier");
+            Class<?> operation = Class.forName(
+                    "com.momosoftworks.coldsweat.api.temperature.modifier.SimpleTempModifier$Operation");
+            simpleModifier = simple.getConstructor(double.class, operation);
+            for (Object constant : operation.getEnumConstants()) {
+                if (((Enum<?>) constant).name().equals("ADD")) operationAdd = constant;
+            }
+            expires = Class.forName("com.momosoftworks.coldsweat.api.temperature.modifier.TempModifier")
+                    .getMethod("expires", int.class);
+        } catch (Exception ignored) {
+            addTemperature = null;
+            traitCore = null;
         }
         try {
             Class<?> registry = Class.forName("com.momosoftworks.coldsweat.api.registry.BlockTempRegistry");

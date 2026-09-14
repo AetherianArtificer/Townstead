@@ -61,6 +61,7 @@ public final class TownsteadMemoryLifecycle {
         NearbyStorageIndex.clearAll();
         VillageStorageIndex.clearAll();
         WorksiteStorageIndex.clearAll();
+        com.aetherianartificer.townstead.block.FieldPostIndex.clear();
         DockScanner.clearAll();
         DockLocationIndex.clear();
         DockBerthClaims.clearAll();

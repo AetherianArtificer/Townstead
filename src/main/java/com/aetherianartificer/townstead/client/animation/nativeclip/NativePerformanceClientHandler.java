@@ -41,11 +41,12 @@ public final class NativePerformanceClientHandler {
         // accepting it here avoids silently dropping the first gesture before the entity exists.
         long now = client.level.getGameTime();
         int seed = java.util.Objects.hash(payload.entityId(), payload.channel(), clip, now);
-        boolean vary = SocialPlaybackTiming.varies(payload.channel());
+        boolean vary = payload.startedAt() < 0 && SocialPlaybackTiming.varies(payload.channel());
         int delay = vary ? SocialPlaybackTiming.delay(seed, payload.durationTicks()) : 0;
         float speed = vary ? SocialPlaybackTiming.speed(seed) : 1F;
         NativePlaybackRegistry.put(payload.entityId(), payload.channel(),
-                new NativePlaybackRegistry.Playback(clip, now + delay, now + payload.durationTicks(), payload.priority(), speed));
+                new NativePlaybackRegistry.Playback(clip, payload.startedAt() < 0 ? now + delay : payload.startedAt(),
+                        now + payload.durationTicks(), payload.priority(), speed));
         if ("townstead_social_debug".equals(payload.channel())) {
             Townstead.LOGGER.info("[NativePerformance] client accepted {} for entity {} ({} ticks)",
                     clip, payload.entityId(), payload.durationTicks());

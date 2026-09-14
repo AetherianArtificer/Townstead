@@ -27,6 +27,7 @@
   "night_offset": -6.0,
   "nether_celsius": 45.0,
   "end_celsius": 5.0,
+  "celsius_per_tan_step": 8.0,
   "source_radius": 7,
   "heat_source_offset": 12.0,
   "cooling_source_offset": -8.0,

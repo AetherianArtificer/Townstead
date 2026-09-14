@@ -48,7 +48,7 @@ dependencies {
     // folder: signature drift between the compile jar and runtime jar compiles
     // cleanly but throws NoSuchMethodError in-game. APIs that only exist on other
     // MCA builds are handled via runtime-gated mixins (see TownsteadMixinPlugin).
-    compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-7.7.36-beta.3+1.21.1.jar"))
+    compileOnly(files("${rootProject.projectDir}/libs/mca-neoforge-1.21.1-20260914-SNAPSHOT.jar"))
     implementation(jarJar("io.github.llamalad7:mixinextras-neoforge:${property("mixin_extras_version")}")!!)
     // JEI plugin API (runtime optional; the plugin class is only loaded by JEI's scan)
     compileOnly("mezz.jei:jei-1.21.1-common-api:19.39.0.370")

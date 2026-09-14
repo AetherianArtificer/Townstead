@@ -139,11 +139,17 @@ public final class CharacterEditorResolver {
      * as a top-level page — for custom rigs whose species hide the human body group. No-op on an
      * empty tab list, so a plain MCA villager (nothing of ours took over) is left untouched.
      */
-    private static Resolved finish(List<Tab> tabs) {
+    static Resolved finish(List<Tab> tabs) {
         if (!tabs.isEmpty() && tabs.stream().noneMatch(t -> t.pageId().equals(mcaSubpage(CharacterEditorLayout.NATIVE_BODY)))) {
             tabs.add(new Tab(SIZE_PAGE, Component.translatable("townstead.editor.size"), List.of(Field.scale())));
         }
-        return new Resolved(tabs);
+        Resolved resolved = new Resolved(tabs);
+        // Custom eye sprites replace MCA's eyes; its native controls cannot edit these genes.
+        if (tabs.stream().flatMap(t -> t.fields().stream())
+                .anyMatch(f -> f.gene() != null && f.gene().isEyes())) {
+            resolved = resolved.withoutNative(CharacterEditorLayout.NATIVE_EYES);
+        }
+        return resolved;
     }
 
     private static Map<String, List<Field>> editableByCategory(RootCatalogEntry entry) {

@@ -171,7 +171,7 @@ public final class TownsteadAPI {
                     village.getId(),
                     com.aetherianartificer.townstead.compat.mca.McaBuildingCompat
                             .effectiveType(village, building),
-                    building.getSize(),
+                    com.aetherianartificer.townstead.compat.mca.McaBuildings.size(building),
                     center.getX(),
                     center.getY(),
                     center.getZ(),

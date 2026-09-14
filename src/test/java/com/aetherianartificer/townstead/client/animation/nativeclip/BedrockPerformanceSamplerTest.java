@@ -100,11 +100,20 @@ class BedrockPerformanceSamplerTest {
         assertTrue(BedrockPerformanceSampler.sample(hop,10,30,targets()).isEmpty());
     }
 
-    @Test void rejectsUnsupportedRootRotation() {
+    @Test void rejectsUnsupportedRootScale() {
         assertThrows(IllegalArgumentException.class, () -> BedrockPerformanceClip.parse(JsonParser.parseString("""
                 {"format_version":"1.8.0","animations":{"animation.bad":{
-                "animation_length":1,"bones":{"root":{"rotation":[10,0,0]}}}}}
+                "animation_length":1,"bones":{"root":{"scale":[2,2,2]}}}}}
                 """).getAsJsonObject()));
+    }
+
+    @Test void rootRotationIsParsedButNeverAppliedToIndividualLimbs() {
+        var clip = BedrockPerformanceClip.parse(JsonParser.parseString("""
+                {"format_version":"1.8.0","animations":{"animation.fall":{
+                "animation_length":1,"bones":{"root":{"rotation":[90,0,0]}}}}}
+                """).getAsJsonObject()).get("animation.fall");
+        assertArrayEquals(new float[]{90,0,0}, clip.bones().get("root").rotation().sample(10));
+        assertTrue(BedrockPerformanceSampler.sample(clip, 10, 20, targets()).isEmpty());
     }
 
     private AnimationTargetMap<?> targets() {

@@ -119,14 +119,14 @@ public final class McaBuildingDiscovery {
         Building room = village == null ? null : McaBuildingCompat.functionalRoomAt(level, village, source);
         Building.validationResult result;
         if (room != null) {
-            RegisteredRoomUpdate update = manager.analyzeRegisteredRoomUpdate(village, room.getId(), source);
+            RegisteredRoomUpdate update = McaRoomWorkflow.analyzeRegisteredRoomUpdate(level, village, room.getId(), source);
             if (update.result() != Building.validationResult.SUCCESS || update.isAmbiguous()) {
                 diagnostic("update", source, update.result(), update.playerMatchingTypes());
                 return;
             }
             result = manager.commitRegisteredRoomUpdate(update, null);
         } else if (village != null) {
-            BuildingScanResult addition = manager.analyzeRoom(source);
+            BuildingScanResult addition = McaRoomWorkflow.analyzeRoom(level, source);
             if (addition.result() == Building.validationResult.SUCCESS) {
                 if (addition.isAmbiguous()) {
                     diagnostic("add-room", source, addition.result(), addition.matchingTypes());

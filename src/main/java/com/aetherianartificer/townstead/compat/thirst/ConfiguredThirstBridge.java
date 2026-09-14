@@ -57,4 +57,7 @@ final class ConfiguredThirstBridge implements ThirstCompatBridge {
     @Override public ItemStack onDrinkConsumed(ItemStack stack) { return delegate.onDrinkConsumed(stack); }
     @Override public ThirstIconInfo iconInfo(int thirst) { return delegate.iconInfo(thirst); }
     @Override public double playerThirst(Player player) { return delegate.playerThirst(player); }
+    @Override public boolean restorePlayerThirst(Player player, int immediate, int lasting) {
+        return delegate.restorePlayerThirst(player, immediate, lasting);
+    }
 }

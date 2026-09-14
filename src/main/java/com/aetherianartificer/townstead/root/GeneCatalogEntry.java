@@ -154,6 +154,7 @@ public record GeneCatalogEntry(
     public String eyesTexture() { return eyesPart(0, ""); }
     public boolean eyesGlow() { return "1".equals(eyesPart(1, "0")); }
     public String eyesTint() { return eyesPart(3, ""); }
+    public String eyesVisibleHalf() { return eyesPart(4, "both"); }
 
     /** The head-front UV row the strip's top lands on, or {@code -1} for the vanilla eye baseline. */
     public int eyesRow() {

@@ -20,7 +20,14 @@ class DoorClosePolicyTest {
         assertEquals(FORGET, DoorClosePolicy.decide(1201, false, true, false, false));
     }
     @Test void mcaDoorHookMatchesTheDependencyMethodDescriptor() throws Exception {
-        try (var input = getClass().getResourceAsStream("/net/conczin/mca/entity/ai/brain/tasks/SmarterOpenDoorsTask.class")) {
+        // VillagerOpenedDoorMixin hooks MCA's toggleable-block seam: PathingBlockInteraction on the
+        // 1.21.1 line (MCA 7.7.37+), SmarterOpenDoorsTask on the pre-floor 1.20.1 line.
+        //? if >=1.21 {
+        String owner = "/net/conczin/mca/entity/ai/PathingBlockInteraction.class";
+        //?} else {
+        /*String owner = "/net/conczin/mca/entity/ai/brain/tasks/SmarterOpenDoorsTask.class";
+        *///?}
+        try (var input = getClass().getResourceAsStream(owner)) {
             assertNotNull(input);
             var type = new org.objectweb.asm.tree.ClassNode();
             new org.objectweb.asm.ClassReader(input).accept(type, org.objectweb.asm.ClassReader.SKIP_CODE);

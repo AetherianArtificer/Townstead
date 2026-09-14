@@ -89,7 +89,7 @@ public final class DockLocationIndex {
                 Math.max(p0.getX(), p1.getX()),
                 Math.max(p0.getY(), p1.getY()),
                 Math.max(p0.getZ(), p1.getZ()));
-        return new Dock(bounds, Math.max(1, building.getSize()), tier);
+        return new Dock(bounds, Math.max(1, com.aetherianartificer.townstead.compat.mca.McaBuildings.size(building)), tier);
     }
 
     private static int tierOf(String type) {

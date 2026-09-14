@@ -174,6 +174,21 @@ public final class RootClientStore {
      * encodings persisted in the entity's own snapshot when nothing is synced for its id (a
      * CarryOn-reconstructed villager), so its real attachments and hidden features still render.
      */
+    public static Set<String> appearanceGenes(LivingEntity entity) {
+        Set<String> expressed = expressedGenes(entity);
+        if (hasExpressionSync(entity) || !expressed.isEmpty() || entity == null || !expresses(entity))
+            return expressed;
+        var root = RootCatalogClient.origin(resolve(entity));
+        if (root == null) return Set.of();
+        Set<String> ids = new java.util.LinkedHashSet<>();
+        for (var inherited : root.inheritedGenes()) ids.add(inherited.geneId());
+        return ids;
+    }
+
+    public static boolean hasExpressionSync(LivingEntity entity) {
+        return entity != null && EXPRESSED.containsKey(entity.getId());
+    }
+
     public static Set<String> expressedGenes(LivingEntity entity) {
         if (entity == null || !expresses(entity)) return Set.of();
         Set<String> synced = EXPRESSED.get(entity.getId());

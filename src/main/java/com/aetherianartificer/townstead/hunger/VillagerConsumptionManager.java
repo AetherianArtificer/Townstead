@@ -81,7 +81,7 @@ public final class VillagerConsumptionManager {
         return isConsuming(villager) || HELD_EMPTIES.containsKey(villager.getId());
     }
 
-    /** A real reserved serving owns the hand; trade previews and work cleanup cannot replace it. */
+    /** A real reserved serving owns the hand; other AI props cannot replace it. */
     public static boolean permitsMainHandChange(VillagerEntityMCA villager, ItemStack proposed) {
         Pending pending = PENDING.get(villager.getId());
         Pending empty = HELD_EMPTIES.get(villager.getId());

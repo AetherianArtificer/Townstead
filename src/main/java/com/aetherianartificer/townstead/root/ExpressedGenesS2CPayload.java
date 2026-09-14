@@ -119,32 +119,19 @@ public record ExpressedGenesS2CPayload(int entityId, List<String> genes, boolean
 
     /** Build the payload for a living entity (villager or player), keyed by {@code entityId}. */
     public static ExpressedGenesS2CPayload forEntity(int entityId, LivingEntity entity) {
-        com.aetherianartificer.townstead.root.gene.Genotype genotype;
         Heritage heritage = null;
         ResourceLocation rootId = null;
         if (entity instanceof VillagerEntityMCA villager) {
             var life = TownsteadVillagers.get(villager).life();
-            genotype = life.genotype();
             if (life.hasHeritage()) heritage = life.heritage();
             rootId = ResourceLocation.tryParse(life.rootId());
         } else if (entity instanceof Player player) {
-            genotype = PlayerRoot.getGenotype(player);
             rootId = ResourceLocation.tryParse(PlayerRoot.getRootId(player));
             heritage = RootRegistry.seedHeritage(rootId == null ? RootRegistry.DEFAULT_ID : rootId);
-        } else {
-            genotype = new com.aetherianartificer.townstead.root.gene.Genotype();
         }
         List<String> genes = new ArrayList<>();
-        for (Allele allele : Heredity.expressedAlleles(genotype)) {
+        for (Allele allele : com.aetherianartificer.townstead.root.gene.GeneExpression.activeAlleles(entity)) {
             genes.add(Heredity.scaleByHeritage(allele, heritage).encode());
-            // Companions ride along their parent's expression server-side (GenePowerSource);
-            // mirror them here so client-resolved render genes (opacity, attachments granted
-            // as companions) see them too.
-            if (allele.geneId() == null) continue;
-            for (ResourceLocation companion
-                    : com.aetherianartificer.townstead.root.gene.GeneRegistry.companionsOf(allele.geneId())) {
-                genes.add(Allele.of(companion, null).encode());
-            }
         }
         var hair = com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(rootId, heritage);
         return new ExpressedGenesS2CPayload(entityId, genes, hair.enabled(), hair.colorRanges(),

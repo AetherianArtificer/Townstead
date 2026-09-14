@@ -173,7 +173,7 @@ public final class RootCatalog {
     private static String targetIdOf(Gene gene, GeneDisplay display) {
         if (display.targetId().isEmpty()
                 && gene.instance() instanceof com.aetherianartificer.townstead.root.gene.types.EyesGeneType.Instance eyes) {
-            return GeneDisplay.eyes("", eyes.glow(), eyes.row(), eyes.tint()).targetId();
+            return GeneDisplay.eyes("", eyes.glow(), eyes.row(), eyes.tint(), eyes.visibleHalf()).targetId();
         }
         if (display.targetId().isEmpty()
                 && gene.instance() instanceof com.aetherianartificer.townstead.root.gene.types.SkinOverlayGeneType.Instance overlay) {

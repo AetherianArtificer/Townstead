@@ -214,7 +214,7 @@ final class VillagesImpl implements VillagesApi {
         if (type == null) type = "";
         BlockPos p0 = building.getPos0();
         BlockPos p1 = building.getPos1();
-        return new BuildingSnapshot(id, building.getId(), type, family(type), tier(type), building.getSize(),
+        return new BuildingSnapshot(id, building.getId(), type, family(type), tier(type), McaBuildings.size(building),
                 building.getCenter(),
                 new BlockPos(Math.min(p0.getX(), p1.getX()), Math.min(p0.getY(), p1.getY()), Math.min(p0.getZ(), p1.getZ())),
                 new BlockPos(Math.max(p0.getX(), p1.getX()), Math.max(p0.getY(), p1.getY()), Math.max(p0.getZ(), p1.getZ())),

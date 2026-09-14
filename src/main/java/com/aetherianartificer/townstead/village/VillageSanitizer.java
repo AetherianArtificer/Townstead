@@ -64,7 +64,7 @@ public final class VillageSanitizer {
                     type, entry.getKey(), village.getId(), reason);
         }
         for (int id : toRemove) {
-            village.removeBuilding(id);
+            com.aetherianartificer.townstead.compat.mca.McaBuildings.remove(village, id);
             data.removeBuilding(level, village.getId(), id);
         }
         if (!toRemove.isEmpty()) {
@@ -114,7 +114,7 @@ public final class VillageSanitizer {
             if (present == 0) toRemove.add(entry.getKey());
         }
         for (int id : toRemove) {
-            village.removeBuilding(id);
+            com.aetherianartificer.townstead.compat.mca.McaBuildings.remove(village, id);
             data.removeBuilding(level, village.getId(), id);
             LOG.info("Removed demolished synthetic building {} from village {}", id, village.getId());
         }

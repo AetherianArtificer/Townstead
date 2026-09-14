@@ -56,6 +56,9 @@ public final class LSOBridge implements ThirstCompatBridge {
     private Method getCapacityTagMethod;
     private Method setCapacityTagMethod;
     private Method getPlayerThirstMethod;
+    // ThirstUtil.takeDrink(Player, int hydration, float saturation) — the same pair of fields
+    // LSO's own JsonThirstConsumable carries, and the path its drinking already takes.
+    private Method takeDrinkMethod;
     // CanteenItem
     private Class<?> canteenItemClass;
     // Config.Baked
@@ -316,6 +319,21 @@ public final class LSOBridge implements ThirstCompatBridge {
         return Double.NaN;
     }
 
+    /** {@code takeDrink} is the same entry LSO's own drinking uses, so it syncs and clamps. */
+    @Override
+    public boolean restorePlayerThirst(Player player, int immediate, int lasting) {
+        if (player == null || player.level().isClientSide) return false;
+        if (immediate <= 0 && lasting <= 0) return false;
+        initIfNeeded();
+        if (!active || takeDrinkMethod == null) return false;
+        try {
+            takeDrinkMethod.invoke(null, player, immediate, (float) lasting);
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     private static boolean isWaterPotion(ItemStack stack) {
         //? if >=1.21 {
         if (!stack.is(Items.POTION)) return false;
@@ -374,6 +392,11 @@ public final class LSOBridge implements ThirstCompatBridge {
             Class<?> thirstUtil = Class.forName("sfiomn.legendarysurvivaloverhaul.api.thirst.ThirstUtil");
             getHydrationEnumTagMethod = thirstUtil.getMethod("getHydrationEnumTag", ItemStack.class);
             getPlayerThirstMethod = findPlayerThirstMethod(thirstUtil);
+            try {
+                takeDrinkMethod = thirstUtil.getMethod("takeDrink", Player.class, int.class, float.class);
+            } catch (Exception ignored) {
+                takeDrinkMethod = null;
+            }
             try {
                 setHydrationEnumTagMethod = thirstUtil.getMethod("setHydrationEnumTag", ItemStack.class,
                         Class.forName("sfiomn.legendarysurvivaloverhaul.api.thirst.HydrationEnum"));

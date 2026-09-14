@@ -59,7 +59,11 @@ public final class VillagerDoorCleanup {
                 iterator.remove();
                 if (decision == DoorClosePolicy.Decision.CLOSE) {
                     if (state.getBlock() instanceof DoorBlock door) door.setOpen(null, level, state, pos, false);
-                    else net.conczin.mca.entity.ai.brain.tasks.SmarterOpenDoorsTask.setOpen(null, level, state, pos, false);
+                    //? if >=1.21 {
+                    else net.conczin.mca.entity.ai.PathingBlockInteraction.setOpen(null, level, state, pos, false);
+                    //?} else {
+                    /*else net.conczin.mca.entity.ai.brain.tasks.SmarterOpenDoorsTask.setOpen(null, level, state, pos, false);
+                    *///?}
                 }
             }
             deferred.forEach(entry -> queue.put(entry.getKey(), entry.getValue()));

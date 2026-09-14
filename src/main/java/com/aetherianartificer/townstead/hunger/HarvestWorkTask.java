@@ -1059,9 +1059,11 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return stack -> {
             if (stack == null || stack.isEmpty()) return false;
             boolean forced = townstead$isAlwaysStockOutput(stack);
-            if (endOfWork) return true;
             if (stack == keptFood && !forced) return false;
             if (stack.getItem() instanceof HoeItem) return false;
+            if (stack.getItem() instanceof net.minecraft.world.item.BoneMealItem) return false;
+            if (stack.is(Items.BUCKET) || stack.is(Items.WATER_BUCKET)) return false;
+            if (townstead$isHarvestTool(stack)) return false;
             return !townstead$isSeed(stack) || forced;
         };
     }
