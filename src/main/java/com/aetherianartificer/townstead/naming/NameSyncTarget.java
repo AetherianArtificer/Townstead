@@ -24,7 +24,8 @@ public final class NameSyncTarget {
     public static void syncToPlayer(net.minecraft.server.level.ServerPlayer player, VillagerEntityMCA villager) {
         NameParts parts = VillagerNames.parts(villager);
         NameSyncPayload payload = new NameSyncPayload(
-                villager.getId(), parts.family(), Naming.cultureOf(villager), parts.order());
+                villager.getId(), parts.family(), Naming.cultureOf(villager), parts.order(),
+                rule(villager), traditionOf(villager));
         //? if neoforge {
         PacketDistributor.sendToPlayer(player, payload);
         //?} else {
@@ -35,11 +36,24 @@ public final class NameSyncTarget {
     private static void send(VillagerEntityMCA villager, NameParts parts) {
         if (villager.level().isClientSide) return;
         NameSyncPayload payload = new NameSyncPayload(
-                villager.getId(), parts.family(), Naming.cultureOf(villager), parts.order());
+                villager.getId(), parts.family(), Naming.cultureOf(villager), parts.order(),
+                rule(villager), traditionOf(villager));
         //? if neoforge {
         PacketDistributor.sendToPlayersTrackingEntity(villager, payload);
         //?} else {
         /*com.aetherianartificer.townstead.TownsteadNetwork.sendToTrackingEntity(villager, payload);
         *///?}
+    }
+
+    /** The family-name rule this villager's tradition uses, or none when they have no tradition. */
+    static NamingTradition.FamilyType rule(VillagerEntityMCA villager) {
+        NamingTradition tradition = Naming.traditionOf(villager);
+        return tradition == null ? NamingTradition.FamilyType.NONE : tradition.family().type();
+    }
+
+    /** The id of the tradition this villager is named by, or empty. */
+    static String traditionOf(VillagerEntityMCA villager) {
+        NamingTradition tradition = Naming.traditionOf(villager);
+        return tradition == null ? "" : tradition.id().toString();
     }
 }

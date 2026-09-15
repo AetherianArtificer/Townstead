@@ -32,11 +32,36 @@ public final class NamePlate {
      */
     public static void render(Entity entity, Component content, Consumer<Component> sink) {
         if (!(entity instanceof VillagerEntityMCA villager)) return;
-        if (ModCompat.isLoaded(CAPITALS)) return;
 
-        String given = content == null ? "" : content.getString();
-        String full = NameClientStore.fullName(villager.getId(), given);
-        if (full.isEmpty() || full.equals(given)) return;
-        sink.accept(Component.literal(full));
+        // Capitals draws the nameplate when it is installed, and composes it itself from a title,
+        // the name, a court office and a guard order. It appends its surname to whatever it is
+        // handed and only recognises one already there when it sits at the end, so handing it a
+        // family-first name would give it "Sato Hiroshi Sato". Hand it the given name and let it
+        // compose: the surname it adds is the one Townstead already wrote into its identity.
+        if (ModCompat.isLoaded(CAPITALS)) {
+            String given = NameClientStore.styled(villager.getId(),
+                    content == null ? "" : content.getString(),
+                    com.aetherianartificer.townstead.naming.NameStyle.GIVEN);
+            if (!given.isEmpty() && content != null && !given.equals(content.getString())) {
+                sink.accept(Component.literal(given));
+            }
+            return;
+        }
+
+        // The name reaching here is already composed, because getDisplayName composes for every
+        // surface. This only applies the nameplate own style, which exists because a world full of
+        // family names reads as clutter to some players and as the whole point to others.
+        String drawn = content == null ? "" : content.getString();
+        String styled = NameClientStore.styled(villager.getId(), drawn, style());
+        if (styled.isEmpty() || styled.equals(drawn)) return;
+        sink.accept(Component.literal(styled));
+    }
+
+    private static com.aetherianartificer.townstead.naming.NameStyle style() {
+        try {
+            return com.aetherianartificer.townstead.TownsteadConfig.NAMEPLATE_NAME_STYLE.get();
+        } catch (Throwable ignored) {
+            return com.aetherianartificer.townstead.naming.NameStyle.FULL;
+        }
     }
 }

@@ -417,7 +417,7 @@ public class PosePickerScreen extends Screen {
     public static void open(VillagerLike<?> villager) {
         if (villager == null) return;
         Townstead.LOGGER.debug("Opening PosePickerScreen for {}",
-                villager.asEntity().getName().getString());
+                villager.asEntity().getDisplayName().getString());
         Minecraft.getInstance().setScreen(new PosePickerScreen(villager));
     }
 }

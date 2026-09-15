@@ -17,7 +17,7 @@ import java.util.Map;
  * tradition and Jon Ashmaw under another.</p>
  */
 public record NamingTradition(ResourceLocation id,
-                              List<GivenSource> given,
+                              List<SourceGroup> given,
                               Family family,
                               Order order) {
 
@@ -29,6 +29,47 @@ public record NamingTradition(ResourceLocation id,
 
     /** One weighted claim on a name list. A tradition may draw on several. */
     public record GivenSource(String list, float rate) {}
+
+    /**
+     * A set of sources tried together, and the second chance when they cannot be.
+     *
+     * <p>Groups are tried in order and the first usable one is drawn from, which is what lets a
+     * culture say "blend my names with the elven ones, and if that mod is not installed use mine
+     * alone" rather than silently becoming a differently weighted blend. Within a group the pick is
+     * weighted as always.</p>
+     *
+     * <p>{@link Requirement#ANY} is the default and keeps a group forgiving: whatever resolves is
+     * used and the rest drop out. {@link Requirement#ALL} makes a group all-or-nothing, for the case
+     * where a partial blend is not the thing the author asked for.</p>
+     */
+    public record SourceGroup(List<GivenSource> from, Requirement require) {
+
+        public enum Requirement { ANY, ALL }
+
+        public SourceGroup {
+            from = from == null ? List.of() : List.copyOf(from);
+            require = require == null ? Requirement.ANY : require;
+        }
+
+        /** A group of one, which is how a bare reference is read. */
+        public static SourceGroup of(String list) {
+            return new SourceGroup(List.of(new GivenSource(list, 1.0F)), Requirement.ANY);
+        }
+
+        /** Whether this group may be drawn from, given what currently resolves. */
+        public boolean satisfied(java.util.function.Predicate<String> usable) {
+            if (from.isEmpty()) return false;
+            for (GivenSource source : from) {
+                boolean ok = source.rate() > 0 && usable.test(source.list());
+                if (require == Requirement.ALL) {
+                    if (!ok) return false;
+                } else if (ok) {
+                    return true;
+                }
+            }
+            return require == Requirement.ALL;
+        }
+    }
 
     /** Which way round a full name reads. */
     public enum Order {
@@ -103,18 +144,33 @@ public record NamingTradition(ResourceLocation id,
     }
 
     /**
-     * The family-name rule. {@code list} supplies names for {@link FamilyType#INHERITED};
+     * The family-name rule. {@code lists} supplies names for {@link FamilyType#INHERITED};
      * {@code affixes} shape the derived types, keyed by the child's own gender.
+     *
+     * <p>Several weighted lists rather than one, so a culture can be a place people arrived at from
+     * more than one direction. A port town whose surnames are mostly local and sometimes foreign is
+     * two entries with different rates, and the given names stay whatever that culture speaks.</p>
      */
-    public record Family(FamilyType type, String list, Descent descent, Map<Gender, Affix> affixes) {
+    public record Family(FamilyType type, List<SourceGroup> lists, Descent descent,
+                         Map<Gender, Affix> affixes) {
 
-        public static final Family NONE = new Family(FamilyType.NONE, "", Descent.EITHER, Map.of());
+        public static final Family NONE =
+                new Family(FamilyType.NONE, List.<SourceGroup>of(), Descent.EITHER, Map.of());
 
         public Family {
             type = type == null ? FamilyType.NONE : type;
-            list = list == null ? "" : list;
+            lists = lists == null ? List.of() : List.copyOf(lists);
             descent = descent == null ? Descent.EITHER : descent;
             affixes = affixes == null ? Map.of() : Map.copyOf(affixes);
+        }
+
+        /** Convenience for the ordinary single-list case. */
+        public Family(FamilyType type, String list, Descent descent, Map<Gender, Affix> affixes) {
+            this(type,
+                 list == null || list.isBlank()
+                         ? List.<SourceGroup>of()
+                         : List.of(SourceGroup.of(list.trim())),
+                 descent, affixes);
         }
 
         /** The affix for a gender, falling back through the binary form to nothing at all. */

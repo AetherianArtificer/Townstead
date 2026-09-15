@@ -322,6 +322,37 @@ public abstract class InteractScreenMixin extends Screen {
         return y >= TRAITS_Y ? y + 17 : y;
     }
 
+    /**
+     * Puts the family name on the one tooltip that shows who this is.
+     *
+     * <p>MCA draws that line from {@code getName}, the villager's identity, rather than from
+     * {@code getDisplayName}, so the composed name never reaches it. Every tooltip on this screen
+     * goes through the same call, so the name is recognised by being the villager's name rather
+     * than by its position: a coordinate would drift the moment MCA reorders a line.</p>
+     */
+    //? if >=1.21 {
+    @ModifyArg(method = "drawTextPopups", remap = false,
+            at = @At(value = "INVOKE", remap = false,
+                    target = "Lnet/minecraft/client/gui/GuiGraphics;renderTooltip(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;II)V"),
+            index = 1)
+    //?} else {
+    /*@ModifyArg(method = "drawTextPopups", remap = false,
+            at = @At(value = "INVOKE", remap = false,
+                    target = "Lnet/minecraft/client/gui/GuiGraphics;m_280557_(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;II)V"),
+            index = 1)
+    *///?}
+    private Component townstead$composeNameTooltip(Component text) {
+        if (text == null || villager == null) return text;
+        try {
+            net.minecraft.world.entity.Entity entity = villager.asEntity();
+            if (!text.getString().equals(entity.getName().getString())) return text;
+            Component composed = entity.getDisplayName();
+            return composed == null ? text : composed;
+        } catch (Throwable ignored) {
+            return text;
+        }
+    }
+
     //? if >=1.21 {
     @ModifyArg(method = "drawTextPopups", remap = false,
             at = @At(value = "INVOKE", remap = false,

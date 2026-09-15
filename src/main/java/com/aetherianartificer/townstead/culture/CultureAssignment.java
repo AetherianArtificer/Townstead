@@ -24,14 +24,21 @@ import java.util.Optional;
  *
  * <p>So a Piglin born in a Japanese village is culturally Japanese and named accordingly. The bias
  * never gets consulted, because the bias exists only for people who came from nowhere.</p>
+ *
+ * <p>Most villagers end up with no culture at all, and that is the ordinary answer rather than a
+ * failure. A culture is something a community holds and a pack authors; how somebody is named is a
+ * separate axis that everybody has, settled by {@link
+ * com.aetherianartificer.townstead.naming.TraditionAssignment}. Collapsing the two would make a
+ * file named after a country the place somebody is expected to write down what its people
+ * believe.</p>
  */
 public final class CultureAssignment {
 
     private CultureAssignment() {}
 
     /**
-     * Settles this villager's culture if they have none, and returns it. Empty when no culture can
-     * be found at all, which is the normal answer in a world with none authored.
+     * Settles this villager's culture if they have none, and returns it. Empty whenever nothing has
+     * given them one, which is the normal answer in a world with no culture packs.
      */
     public static String ensure(ServerLevel level, VillagerEntityMCA villager) {
         String recorded = Naming.cultureOf(villager);

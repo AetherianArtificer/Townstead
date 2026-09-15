@@ -62,6 +62,23 @@ public record NameParts(String given,
                 : given + " " + family;
     }
 
+    /**
+     * A composed name with the family name taken back off, whichever end it sits on.
+     *
+     * <p>Needed because a surface is not always handed the raw given name. A nameplate is handed
+     * whatever every other mod has already decided to draw, so trimming back to the given name means
+     * removing a part rather than never adding it. Leaves a name that does not carry the family name
+     * exactly as it found it.</p>
+     */
+    public static String withoutFamily(String full, String family, NamingTradition.Order order) {
+        String name = full == null ? "" : full.trim();
+        String last = family == null ? "" : family.trim();
+        if (name.isEmpty() || last.isEmpty() || name.equals(last)) return name;
+        if (name.endsWith(" " + last)) return name.substring(0, name.length() - last.length() - 1).trim();
+        if (name.startsWith(last + " ")) return name.substring(last.length() + 1).trim();
+        return name;
+    }
+
     /** The full name with the title in front, for surfaces that show rank inline. */
     public Component titled() {
         Component name = Component.literal(fullName());

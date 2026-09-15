@@ -6,7 +6,8 @@ import com.aetherianartificer.townstead.data.TownsteadSchema;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.aetherianartificer.townstead.naming.NameList;
+import com.aetherianartificer.townstead.naming.FamilyNames;
+import com.aetherianartificer.townstead.naming.GivenNames;
 import com.aetherianartificer.townstead.naming.NameLists;
 import com.aetherianartificer.townstead.naming.NamingTradition;
 import com.aetherianartificer.townstead.naming.NamingTraditionJsonLoader;
@@ -65,7 +66,8 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
         Map<ResourceLocation, Culture> loaded = new LinkedHashMap<>();
         Map<ResourceLocation, NamingTradition> inlineTraditions = new LinkedHashMap<>();
-        Map<ResourceLocation, NameList> inlineLists = new LinkedHashMap<>();
+        Map<ResourceLocation, GivenNames> inlineGiven = new LinkedHashMap<>();
+        Map<ResourceLocation, FamilyNames> inlineFamily = new LinkedHashMap<>();
 
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
@@ -85,8 +87,11 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
                     NamingTradition inline = NamingTraditionJsonLoader.parse(file, written);
                     if (inline != null) {
                         inlineTraditions.put(file, inline);
-                        NameList names = NamingTraditionJsonLoader.inlineListOf(file, written);
-                        if (names != null) inlineLists.put(file, names);
+                        GivenNames names = NamingTraditionJsonLoader.inlineGivenOf(file, written);
+                        if (names != null) inlineGiven.put(file, names);
+                        FamilyNames surnames = NamingTraditionJsonLoader.inlineFamilyOf(
+                                file, GsonHelper.getAsJsonObject(written, "family", null));
+                        if (surnames != null) inlineFamily.put(file, surnames);
                         traditionId = file;
                     } else {
                         LOGGER.warn("Culture {} writes a naming tradition in place but it is unusable", file);
@@ -106,7 +111,8 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
             }
         }
 
-        NameLists.addInline(inlineLists);
+        NameLists.addInlineGiven(inlineGiven);
+        NameLists.addInlineFamily(inlineFamily);
         NamingTraditions.addInline(inlineTraditions);
         Cultures.replace(loaded);
         LOGGER.info("Loaded {} culture(s)", loaded.size());

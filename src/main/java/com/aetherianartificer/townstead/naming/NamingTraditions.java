@@ -65,9 +65,19 @@ public final class NamingTraditions {
         if (!Names.NAMES_MAP.containsKey(bucket)) return null;
         return new NamingTradition(
                 id,
-                List.of(new NamingTradition.GivenSource(id.toString(), 1.0F)),
+                List.of(NamingTradition.SourceGroup.of(id.toString())),
                 NamingTradition.Family.NONE,
                 NamingTradition.Order.GIVEN_FIRST);
+    }
+
+    /**
+     * Rolls one of a family rule's surname lists, weighted, skipping any that supplies no family
+     * names. Empty when none of them do, which is a culture referencing something absent rather
+     * than a culture without surnames.
+     */
+    public static String rollFamilyList(NamingTradition.Family family, RandomSource random) {
+        if (family == null) return "";
+        return roll(family.lists(), random, NameLists::hasFamily);
     }
 
     /**
@@ -77,20 +87,42 @@ public final class NamingTraditions {
      */
     public static String rollGivenList(NamingTradition tradition, RandomSource random) {
         if (tradition == null) return "";
+        return roll(tradition.given(), random, NameLists::hasGiven);
+    }
+
+    /**
+     * The first group that can be drawn from, then a weighted pick inside it.
+     *
+     * <p>Groups are a second chance, not a blend: a group whose requirement is not met is passed
+     * over whole rather than quietly shrinking to whatever part of it happens to be installed.</p>
+     */
+    private static String roll(List<NamingTradition.SourceGroup> groups, RandomSource random,
+                               java.util.function.Predicate<String> usable) {
+        for (NamingTradition.SourceGroup group : groups) {
+            if (!group.satisfied(usable)) continue;
+            String picked = within(group.from(), random, usable);
+            if (!picked.isEmpty()) return picked;
+        }
+        return "";
+    }
+
+    /** Weighted pick among the sources in one group that can actually supply what is asked for. */
+    private static String within(List<NamingTradition.GivenSource> sources, RandomSource random,
+                                 java.util.function.Predicate<String> usable) {
         float total = 0.0F;
-        for (NamingTradition.GivenSource source : tradition.given()) {
-            if (source.rate() > 0 && NameLists.hasGiven(source.list())) total += source.rate();
+        for (NamingTradition.GivenSource source : sources) {
+            if (source.rate() > 0 && usable.test(source.list())) total += source.rate();
         }
         if (total <= 0.0F) return "";
 
         float roll = random.nextFloat() * total;
-        for (NamingTradition.GivenSource source : tradition.given()) {
-            if (source.rate() <= 0 || !NameLists.hasGiven(source.list())) continue;
+        for (NamingTradition.GivenSource source : sources) {
+            if (source.rate() <= 0 || !usable.test(source.list())) continue;
             roll -= source.rate();
             if (roll <= 0.0F) return source.list();
         }
-        for (NamingTradition.GivenSource source : tradition.given()) {
-            if (NameLists.hasGiven(source.list())) return source.list();
+        for (NamingTradition.GivenSource source : sources) {
+            if (usable.test(source.list())) return source.list();
         }
         return "";
     }

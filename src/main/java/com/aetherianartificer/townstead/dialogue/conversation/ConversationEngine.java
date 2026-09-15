@@ -244,7 +244,7 @@ public final class ConversationEngine {
         VillagerEntityMCA a = find(level, session.initiator()), b = find(level, session.responder());
         if (outcome != null && !live.preview && a != null && b != null) {
             ConversationSavedData data = ConversationSavedData.get(level.getServer());
-            ConversationMemory.Completion completion = data.memory().completeDetailed(a.getUUID(), a.getName().getString(), b.getUUID(), b.getName().getString(),
+            ConversationMemory.Completion completion = data.memory().completeDetailed(a.getUUID(), a.getDisplayName().getString(), b.getUUID(), b.getDisplayName().getString(),
                     session.topic().id().toString(), outcome, now, false);
             data.setDirty();
             if (completion.rewarded()) {
@@ -256,12 +256,12 @@ public final class ConversationEngine {
                 applyConversationRelationships(social, b.getUUID(), a.getUUID(), outcome.responderRelationship(), completion.operationId(), session.topic().id(), today);
                 social.addEpisodicMemory(a.getUUID(), completion.operationId() + ":memory:initiator",
                         outcome.initiatorMemory(), b.getUUID(), today, session.topic().id().toString(),
-                        Map.of("topic", session.topic().id().toString(), "other_name", b.getName().getString()));
+                        Map.of("topic", session.topic().id().toString(), "other_name", b.getDisplayName().getString()));
                 social.addEpisodicMemory(b.getUUID(), completion.operationId() + ":memory:responder",
                         outcome.responderMemory(), a.getUUID(), today, session.topic().id().toString(),
-                        Map.of("topic", session.topic().id().toString(), "other_name", a.getName().getString()));
-                RelationshipService.recognizeFriendship(social, a.getUUID(), a.getName().getString(), b.getUUID(),
-                        b.getName().getString(), data.memory().view(a.getUUID(), b.getUUID(), now).meetings(), today);
+                        Map.of("topic", session.topic().id().toString(), "other_name", a.getDisplayName().getString()));
+                RelationshipService.recognizeFriendship(social, a.getUUID(), a.getDisplayName().getString(), b.getUUID(),
+                        b.getDisplayName().getString(), data.memory().view(a.getUUID(), b.getUUID(), now).meetings(), today);
                 a.getVillagerBrain().modifyMoodValue(outcome.initiatorMood()); b.getVillagerBrain().modifyMoodValue(outcome.responderMood());
                 com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.conversation(a, b, session.topic().id(),
                         outcome.memory(), outcome.initiatorMemory(), outcome.responderMemory());

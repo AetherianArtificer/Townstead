@@ -26,6 +26,7 @@
     "compat.mca.GetVillagerRequestEditorGuardMixin",
     "compat.mca.LazyFindPointOfInterestTaskCarrierMixin",
     "compat.mca.NamesCitizenNationMixin",
+    "compat.mca.VillagerDisplayNameMixin",
     "compat.mca.NamesRegisterInstallMixin",
     "compat.mca.PlayerSaveDataEditorGuardMixin",
     "compat.mca.PlayerSaveDataWelcomeMixin",

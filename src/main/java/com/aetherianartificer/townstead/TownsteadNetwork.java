@@ -101,7 +101,8 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.naming.NameSyncPayload::encode,
                 com.aetherianartificer.townstead.naming.NameSyncPayload::decode,
                 payload -> com.aetherianartificer.townstead.naming.NameClientStore.set(
-                        payload.entityId(), payload.familyName(), payload.culture(), payload.order()));
+                        payload.entityId(), payload.familyName(), payload.culture(),
+                        payload.order(), payload.familyType(), payload.tradition()));
         // Server -> Client
         registerS2C(HungerSyncPayload.class, HungerSyncPayload::write, HungerSyncPayload::read,
                 TownsteadNetwork::handleHungerSync);

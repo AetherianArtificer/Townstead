@@ -958,8 +958,10 @@ public final class TownsteadVillager {
         // who has neither. nameList is which of the culture's given-name lists this villager was
         // named from, rolled once; familyName is the resolved surname. See naming/Naming.
         private String culture = "";
+        private String namingTradition = "";
         private String nameList = "";
         private String familyName = "";
+        private boolean familyNameFixed;
         private int[] stageDays = EMPTY_INT_ARRAY;
         private int cycleFingerprint;
         private String currentStageId = "";
@@ -1074,6 +1076,20 @@ public final class TownsteadVillager {
             markDirty();
         }
 
+        /**
+         * How this villager's name is built, which is a separate question from what they believe.
+         * Everyone has one, taken from their region when they belong to no culture; a culture that
+         * declares a tradition of its own overrides it, so a family keeps its naming when it moves.
+         */
+        public String namingTradition() {
+            return namingTradition;
+        }
+
+        public void setNamingTradition(String id) {
+            namingTradition = id == null ? "" : id;
+            markDirty();
+        }
+
         /** Which of the culture's given-name lists named this villager, rolled once at naming. */
         public String nameList() {
             return nameList;
@@ -1091,6 +1107,21 @@ public final class TownsteadVillager {
 
         public void setFamilyName(String name) {
             familyName = name == null ? "" : name;
+            markDirty();
+        }
+
+        /**
+         * Whether a player set this family name by hand, in which case nothing derived may replace
+         * it. The same idea as MCA Capitals marking a surname a legal rename: a name somebody chose
+         * outranks a name a rule produced, so changing a villager's culture re-derives their name
+         * list but leaves the name they were given.
+         */
+        public boolean familyNameFixed() {
+            return familyNameFixed;
+        }
+
+        public void setFamilyNameFixed(boolean fixed) {
+            familyNameFixed = fixed;
             markDirty();
         }
 
@@ -1275,8 +1306,10 @@ public final class TownsteadVillager {
                 tag.putString("personalityId", personalityId);
             }
             if (!culture.isEmpty()) tag.putString("culture", culture);
+            if (!namingTradition.isEmpty()) tag.putString("namingTradition", namingTradition);
             if (!nameList.isEmpty()) tag.putString("nameList", nameList);
             if (!familyName.isEmpty()) tag.putString("familyName", familyName);
+            if (familyNameFixed) tag.putBoolean("familyNameFixed", true);
             if (stageDays.length > 0) {
                 tag.putIntArray("stageDays", stageDays.clone());
             }
@@ -1322,8 +1355,10 @@ public final class TownsteadVillager {
             rootId = tag.contains("rootId") ? tag.getString("rootId") : tag.getString("originId"); // legacy fallback
             personalityId = tag.getString("personalityId");
             culture = tag.getString("culture");
+            namingTradition = tag.getString("namingTradition");
             nameList = tag.getString("nameList");
             familyName = tag.getString("familyName");
+            familyNameFixed = tag.getBoolean("familyNameFixed");
             stageDays = tag.contains("stageDays") ? tag.getIntArray("stageDays") : EMPTY_INT_ARRAY;
             cycleFingerprint = tag.getInt("cycleFingerprint");
             currentStageId = tag.getString("currentStageId");

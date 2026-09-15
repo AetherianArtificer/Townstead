@@ -42,8 +42,37 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public final class NamingRegisters {
 
     private static final List<RegisterEvidence> EVIDENCE = new CopyOnWriteArrayList<>();
+    /** Set while Townstead is asking MCA to derive a register, so the mixin lets that call past. */
+    private static final ThreadLocal<Boolean> DERIVING = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     private NamingRegisters() {}
+
+    /**
+     * What MCA would call this villager's register, asked of MCA itself.
+     *
+     * <p>For the villagers who predate all of this: named long ago, so nothing is recorded to read
+     * and no name is ever picked for them again. Townstead answers {@code Names.getCitizenNation}
+     * from its own records, so asking it here would only be handed back the emptiness that prompted
+     * the question. The guard stands that answer down for the length of this one call, so MCA's own
+     * positional derivation runs and {@link #freeze} records what it said. The villager keeps the
+     * register they have always effectively had, and nobody is renamed.</p>
+     *
+     * <p>MCA's derivation writes a region entry into its own nationality data. That is the same
+     * write it would perform the next time it named anybody standing there.</p>
+     */
+    public static String deriveFromMca(VillagerEntityMCA villager) {
+        if (!enabled() || DERIVING.get()) return "";
+        DERIVING.set(Boolean.TRUE);
+        try {
+            String derived = Names.getCitizenNation(villager);
+            return usable(derived) ? derived : "";
+        } catch (Throwable ignored) {
+            // A villager MCA cannot place is one who simply keeps no register.
+            return "";
+        } finally {
+            DERIVING.set(Boolean.FALSE);
+        }
+    }
 
     /**
      * Registers an outside opinion on which register a villager belongs to, consulted in
@@ -61,18 +90,18 @@ public final class NamingRegisters {
     public static String resolve(Entity entity) {
         if (!enabled() || !(entity instanceof VillagerEntityMCA villager)) return "";
         if (!(villager.level() instanceof ServerLevel level)) return "";
-        if (SpawnNaming.pending(villager)) return "";
+        if (SpawnNaming.pending(villager) || DERIVING.get()) return "";
 
         String own = recorded(villager);
         if (usable(own)) return own;
 
-        // Naming is the moment a villager needs a culture, so settle one here if they have none:
-        // inherited from parents, then from their village, and only rolled from the root's bias for
-        // a founder who has neither.
+        // Naming is the moment a villager needs a tradition, so settle both axes here: a culture
+        // if anything gives them one, and then the tradition, which a culture may override and
+        // which otherwise comes from their region.
         com.aetherianartificer.townstead.culture.CultureAssignment.ensure(level, villager);
+        TraditionAssignment.ensure(level, villager);
 
-        // A villager who belongs to a culture is named the way that culture names people, and the
-        // list their tradition rolls is recorded so they keep one tradition for life.
+        // The list their tradition rolls is recorded so they keep one naming for life.
         String fromCulture = NameLists.givenKey(Naming.nameList(villager));
         if (usable(fromCulture)) {
             record(villager, fromCulture);

@@ -78,11 +78,22 @@ public final class Naming {
                 || tradition.family().type() == NamingTradition.FamilyType.NONE;
     }
 
-    /** The tradition this villager's culture uses, or null when neither resolves. */
+    /**
+     * The tradition this villager is named by, or null when none resolves.
+     *
+     * <p>A culture that declares one wins, so a Highhold family keeps its naming wherever it lives.
+     * Otherwise it is whatever was recorded for them, which for almost every villager is their
+     * region's. Nothing here consults a Root.</p>
+     */
     public static @Nullable NamingTradition traditionOf(VillagerEntityMCA villager) {
-        Culture culture = Cultures.get(TownsteadVillagers.get(villager).life().culture());
-        if (culture == null || !culture.hasNamingTradition()) return null;
-        return NamingTraditions.get(culture.namingTradition());
+        TownsteadVillager state = TownsteadVillagers.get(villager);
+
+        Culture culture = Cultures.get(state.life().culture());
+        if (culture != null && culture.hasNamingTradition()) {
+            NamingTradition declared = NamingTraditions.get(culture.namingTradition());
+            if (declared != null) return declared;
+        }
+        return NamingTraditions.get(ResourceLocation.tryParse(state.life().namingTradition()));
     }
 
     /**
@@ -107,11 +118,13 @@ public final class Naming {
         String fromParents = parentFamilyName(villager, family.descent());
         if (!fromParents.isEmpty()) return fromParents;
 
-        // An explicit list wins; otherwise the family names follow the given names, so a culture
-        // built on another mod's lists gets that mod's surnames without ever naming the mod. When
-        // neither is loaded there is simply no family name, which is how a pack that references
-        // something absent degrades instead of failing.
-        WeightedPool<String> pool = family.list().isEmpty() ? null : NameLists.family(family.list());
+        // An explicit list wins, rolled among the rule's weighted sources so a culture can draw
+        // surnames from more than one people; otherwise the family names follow the given names, so
+        // a culture built on another mod's lists gets that mod's surnames without ever naming the
+        // mod. When neither is loaded there is simply no family name, which is how a pack that
+        // references something absent degrades instead of failing.
+        String rolled = NamingTraditions.rollFamilyList(family, villager.getRandom());
+        WeightedPool<String> pool = rolled.isEmpty() ? null : NameLists.family(rolled);
         if (pool == null) pool = NameLists.family(TownsteadVillagers.get(villager).life().nameList());
         return pool == null ? "" : pool.pickOne();
     }

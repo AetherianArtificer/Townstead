@@ -68,7 +68,7 @@ public final class TownsteadAPI {
         }
         return new TownsteadVillagerSnapshot(
                 villager.getUUID().toString(),
-                villager.getName().getString(),
+                villager.getDisplayName().getString(),
                 villager.getType().toString(),
                 life.rootId(),
                 life.currentStageId(),

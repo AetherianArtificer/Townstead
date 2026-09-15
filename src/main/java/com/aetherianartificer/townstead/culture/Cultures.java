@@ -38,12 +38,13 @@ public final class Cultures {
         authored = cultures == null ? Map.of() : Map.copyOf(cultures);
     }
 
-    /** An authored culture wins; otherwise the implicit culture for a loaded MCA bucket. */
+    /**
+     * A culture by id, or null. Authored only: an MCA name bucket is a naming tradition and never a
+     * culture, because "named in the Japanese manner" says nothing about what anybody values, and a
+     * culture is where beliefs will live.
+     */
     public static @Nullable Culture get(@Nullable ResourceLocation id) {
-        if (id == null) return null;
-        Culture culture = authored.get(id);
-        if (culture != null) return culture;
-        return implicit(id);
+        return id == null ? null : authored.get(id);
     }
 
     public static @Nullable Culture get(@Nullable String id) {
@@ -59,32 +60,8 @@ public final class Cultures {
         return authored.keySet();
     }
 
-    /** Every culture that can currently be assigned, authored and implicit together. */
+    /** Every culture that can currently be assigned. */
     public static Set<ResourceLocation> allIds() {
-        Set<ResourceLocation> ids = new LinkedHashSet<>(authored.keySet());
-        for (String bucket : Names.NAMES_MAP.keySet()) {
-            ResourceLocation id = implicitId(bucket);
-            if (id != null) ids.add(id);
-        }
-        return ids;
-    }
-
-    /**
-     * The culture a name bucket implies, or null when the bucket is not loaded. Townstead's own
-     * name lists are namespaced and get no implicit culture: a pack that authors names is expected
-     * to author the culture that uses them.
-     */
-    private static @Nullable Culture implicit(ResourceLocation id) {
-        if (!IMPLICIT_NAMESPACE.equals(id.getNamespace())) return null;
-        if (!Names.NAMES_MAP.containsKey(id.getPath())) return null;
-        return new Culture(
-                id,
-                Component.translatable("townstead.culture." + IMPLICIT_NAMESPACE + "." + id.getPath()),
-                id);
-    }
-
-    private static @Nullable ResourceLocation implicitId(String bucket) {
-        if (bucket == null || bucket.isBlank() || bucket.indexOf(':') >= 0) return null;
-        return ResourceLocation.tryParse(IMPLICIT_NAMESPACE + ":" + bucket);
+        return new LinkedHashSet<>(authored.keySet());
     }
 }

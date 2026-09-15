@@ -2,7 +2,7 @@ package com.aetherianartificer.townstead.compat.mcacapitals;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.ModCompat;
-import com.aetherianartificer.townstead.naming.NameList;
+import com.aetherianartificer.townstead.naming.FamilyNames;
 import com.aetherianartificer.townstead.naming.NameLists;
 import com.aetherianartificer.townstead.naming.NamingRegisters;
 import com.google.gson.Gson;
@@ -68,7 +68,7 @@ public final class CapitalsSurnameRegisters extends SimpleJsonResourceReloadList
     private static volatile Map<String, String> byUniqueSurname = Map.of();
 
     /** Each bucket's surnames, so a tradition can draw family names from {@code mcacapitals:<bucket>}. */
-    private static volatile Map<String, NameList> byBucket = Map.of();
+    private static volatile Map<String, FamilyNames> byBucket = Map.of();
 
     public CapitalsSurnameRegisters() {
         super(GSON, "surnames/cultures");
@@ -82,7 +82,7 @@ public final class CapitalsSurnameRegisters extends SimpleJsonResourceReloadList
     public static void bootstrap() {
         if (!ModCompat.isLoaded(MOD_ID)) return;
         NamingRegisters.addEvidence(CapitalsSurnameRegisters::fingerprint);
-        NameLists.addProvider(MOD_ID, CapitalsSurnameRegisters::listFor);
+        NameLists.addFamilyProvider(MOD_ID, CapitalsSurnameRegisters::listFor);
     }
 
     /**
@@ -90,7 +90,7 @@ public final class CapitalsSurnameRegisters extends SimpleJsonResourceReloadList
      * the given names Capitals ships go into MCA's own namespace, where {@code mca:<bucket>} already
      * finds them and nothing can tell them from MCA's.
      */
-    private static @Nullable NameList listFor(String bucket) {
+    private static @Nullable FamilyNames listFor(String bucket) {
         return bucket == null ? null : byBucket.get(bucket.toLowerCase(Locale.ROOT));
     }
 
@@ -124,7 +124,7 @@ public final class CapitalsSurnameRegisters extends SimpleJsonResourceReloadList
 
         Map<String, String> owner = new HashMap<>();
         Set<String> shared = new HashSet<>();
-        Map<String, NameList> pools = new HashMap<>();
+        Map<String, FamilyNames> pools = new HashMap<>();
 
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
@@ -147,7 +147,7 @@ public final class CapitalsSurnameRegisters extends SimpleJsonResourceReloadList
             }
             if (any) {
                 ResourceLocation id = ResourceLocation.tryParse(MOD_ID + ":" + bucket);
-                if (id != null) pools.put(bucket, new NameList(id, Map.of(), pool));
+                if (id != null) pools.put(bucket, new FamilyNames(id, pool));
             }
         }
 

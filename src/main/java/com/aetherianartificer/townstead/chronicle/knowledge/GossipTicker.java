@@ -91,7 +91,7 @@ public final class GossipTicker {
         LivingEntity substitute = pickSubstituteCandidate(nearby, teller, listener, event);
         DistortionOverlay overlay = best.overlay.compound(bestTemplate, channel, level.random,
                 substitute == null ? null : substitute.getUUID(),
-                substitute == null ? null : substitute.getName().getString());
+                substitute == null ? null : substitute.getDisplayName().getString());
         float fidelity = Math.max(channel.fidelityFloor(),
                 best.fidelity * channel.fidelityFactor() * (0.9f + level.random.nextFloat() * 0.2f));
 

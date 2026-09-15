@@ -100,7 +100,7 @@ public final class ReputationDeeds {
             }
             if (subject != null) {
                 Object incidentSubject = OtectusReflect.callStatic(OtectusReflect.type(SUBJECT), "villager",
-                        subject.getUUID(), subject.getName().getString(), "subject");
+                        subject.getUUID(), subject.getDisplayName().getString(), "subject");
                 if (incidentSubject != null) OtectusReflect.call(builder, "subject", incidentSubject);
                 OtectusReflect.call(builder, "witness", (UUID) subject.getUUID());
             }

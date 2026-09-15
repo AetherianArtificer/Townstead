@@ -521,6 +521,12 @@ public class Townstead {
                     // Names settle when a villager arrives, not on a timer: this is the
                     // first moment their household and village are resolvable, and it is
                     // also what hands the composed name to whatever else displays it.
+                    // Both naming axes settle before the name is composed. Culture is the
+                    // sparse one and most villagers have none; the tradition is universal and
+                    // is what a surname is actually built from, so without it a villager who
+                    // predates this would publish an empty family name forever.
+                    com.aetherianartificer.townstead.culture.CultureAssignment.ensure(sl, villager);
+                    com.aetherianartificer.townstead.naming.TraditionAssignment.ensure(sl, villager);
                     com.aetherianartificer.townstead.naming.VillagerNames.publish(villager);
                 }
             }
@@ -688,6 +694,10 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.TownsteadQueryCommands.register(
+                                e.getDispatcher(), e.getBuildContext()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.NamingCommands.register(
                                 e.getDispatcher(), e.getBuildContext()));
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
@@ -954,6 +964,12 @@ public class Townstead {
                     // Names settle when a villager arrives, not on a timer: this is the
                     // first moment their household and village are resolvable, and it is
                     // also what hands the composed name to whatever else displays it.
+                    // Both naming axes settle before the name is composed. Culture is the
+                    // sparse one and most villagers have none; the tradition is universal and
+                    // is what a surname is actually built from, so without it a villager who
+                    // predates this would publish an empty family name forever.
+                    com.aetherianartificer.townstead.culture.CultureAssignment.ensure(sl, villager);
+                    com.aetherianartificer.townstead.naming.TraditionAssignment.ensure(sl, villager);
                     com.aetherianartificer.townstead.naming.VillagerNames.publish(villager);
                 }
             }
@@ -1114,6 +1130,10 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.TownsteadQueryCommands.register(
+                                e.getDispatcher(), e.getBuildContext()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.NamingCommands.register(
                                 e.getDispatcher(), e.getBuildContext()));
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
@@ -1362,6 +1382,9 @@ public class Townstead {
             // Townstead's own target, always registered: without it a family name is
             // computed and never leaves the server, so no screen could ever draw it.
             com.aetherianartificer.townstead.naming.NameSyncTarget.bootstrap();
+            // MCA family tree nodes keep their own name string and never read the villager, so the
+            // one screen actually about families needs the name written into it.
+            com.aetherianartificer.townstead.naming.FamilyTreeNameTarget.bootstrap();
             com.aetherianartificer.townstead.work.station.StationProtocols.bootstrap();
             com.aetherianartificer.townstead.compat.brewinandchewin.BrewinFluidRecipes.bootstrap();
             com.aetherianartificer.townstead.compat.caupona.CauponaFluidRecipes.bootstrap();
@@ -2306,7 +2329,8 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.root.personality.PersonalityJsonLoader());
         // Name lists load before traditions, and traditions before cultures, so each layer
         // validates its references against the one below during the same reload.
-        event.addListener(new com.aetherianartificer.townstead.naming.NameListJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.naming.GivenNameJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.naming.FamilyNameJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.naming.NamingTraditionJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.culture.CultureJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.compat.mcacapitals.CapitalsSurnameRegisters());
@@ -2946,7 +2970,8 @@ public class Townstead {
                 com.aetherianartificer.townstead.naming.NameSyncPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
                         com.aetherianartificer.townstead.naming.NameClientStore.set(
-                                payload.entityId(), payload.familyName(), payload.culture(), payload.order()))
+                                payload.entityId(), payload.familyName(), payload.culture(),
+                                payload.order(), payload.familyType(), payload.tradition()))
         );
         registrar.playToClient(
                 com.aetherianartificer.townstead.temperature.ThermometerReadingPayload.TYPE,

@@ -122,6 +122,8 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_LINEAGES;
+    public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.naming.NameStyle> NAME_STYLE;
+    public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.naming.NameStyle> NAMEPLATE_NAME_STYLE;
     public static final ModConfigSpec.BooleanValue ENABLE_STABLE_NAMING_REGISTERS;
     public static final ModConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
     public static final ModConfigSpec.BooleanValue CALENDAR_REAL_CLOCK;
@@ -218,6 +220,8 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_LINEAGES;
+    public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.naming.NameStyle> NAME_STYLE;
+    public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.naming.NameStyle> NAMEPLATE_NAME_STYLE;
     public static final ForgeConfigSpec.BooleanValue ENABLE_STABLE_NAMING_REGISTERS;
     public static final ForgeConfigSpec.ConfigValue<String> CALENDAR_PROFILE;
     public static final ForgeConfigSpec.BooleanValue CALENDAR_REAL_CLOCK;
@@ -569,6 +573,20 @@ public final class TownsteadConfig {
 
         // ── Naming ──
         b.translation("townstead.configuration.naming").push("naming");
+        NAME_STYLE = b
+                .translation("townstead.configuration.naming.nameStyle")
+                .comment("How much of a villager's name screens show by default.",
+                         "FULL: given and family name, in the order their naming tradition reads.",
+                         "GIVEN: the given name alone, as it was before family names existed.",
+                         "FAMILY: the family name alone.",
+                         "Surfaces Townstead owns may override this; screens from other mods use it as it stands.")
+                .defineEnum("nameStyle", com.aetherianartificer.townstead.naming.NameStyle.FULL);
+        NAMEPLATE_NAME_STYLE = b
+                .translation("townstead.configuration.naming.nameplateStyle")
+                .comment("How much of a villager's name the nameplate above their head shows.",
+                         "Separate from nameStyle because a world full of full names reads as clutter to some players",
+                         "and as the whole point to others.")
+                .defineEnum("nameplateStyle", com.aetherianartificer.townstead.naming.NameStyle.FULL);
         ENABLE_STABLE_NAMING_REGISTERS = b
                 .translation("townstead.configuration.naming.stableNamingRegisters")
                 .comment("Remember which naming tradition each villager and each map region uses.",

@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:naming_tradition/v1",
+  "given": "mca:portugal",
+  "family": {
+    "type": "inherited",
+    "list": "townstead_naming:portugal",
+    "descent": "father"
+  }
+}

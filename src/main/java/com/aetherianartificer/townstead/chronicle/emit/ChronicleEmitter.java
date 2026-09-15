@@ -110,9 +110,9 @@ public final class ChronicleEmitter {
         }
 
         Map<String, String> params = new HashMap<>(extraParams);
-        params.putIfAbsent(primaryRole, actor.getName().getString());
+        params.putIfAbsent(primaryRole, actor.getDisplayName().getString());
         if (other != null && secondRole != null) {
-            params.putIfAbsent(secondRole, other.getName().getString());
+            params.putIfAbsent(secondRole, other.getDisplayName().getString());
         }
 
         ChronicleEvent draft = new ChronicleEvent(
@@ -206,7 +206,7 @@ public final class ChronicleEmitter {
     }
 
     private static ChronicleRef refFor(LivingEntity entity) {
-        String name = entity.getName().getString();
+        String name = entity.getDisplayName().getString();
         if (entity instanceof ServerPlayer player) {
             return ChronicleRef.player(player.getUUID(), name);
         }

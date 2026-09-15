@@ -83,6 +83,16 @@ public final class TownsteadEditorCommitServer {
             lifeChanged = true;
         }
 
+        if (payload.hasFamilyName()) {
+            TownsteadVillager.Life life = state.life();
+            String typed = payload.familyName() == null ? "" : payload.familyName().trim();
+            life.setFamilyName(typed);
+            // A name somebody typed outranks a name a rule produced, so it is marked as chosen and
+            // nothing derived replaces it afterwards. Emptying the field hands the name back to the
+            // villager's tradition, which settles a new one the next time it is asked for.
+            life.setFamilyNameFixed(!typed.isEmpty());
+        }
+
         com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload lifeSync =
                 lifeChanged ? Townstead.townstead$lifeSync(villager, player) : null;
 
@@ -91,6 +101,11 @@ public final class TownsteadEditorCommitServer {
         // source of truth while loaded, but it is deliberately not persisted
         // by each individual setter.
         TownsteadVillagers.flush(villager);
+        // After the flush, so every surface that draws a name is told at once: the nameplate, the
+        // dialogue header, and MCA Capitals' identity where it is installed.
+        if (payload.hasFamilyName()) {
+            com.aetherianartificer.townstead.naming.VillagerNames.publish(villager);
+        }
         return new Result(villager, hungerSync, thirstSync, fatigueSync, lifeSync);
     }
 
