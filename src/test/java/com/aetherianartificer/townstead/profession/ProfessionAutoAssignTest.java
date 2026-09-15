@@ -18,6 +18,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ProfessionAutoAssignTest {
 
     @Test
+    void groupedNativeJobBlocksUseTheSeatAllocator() {
+        var blocks = Set.of(ResourceLocation.tryParse("toughasnails:thermoregulator"));
+        assertTrue(ProfessionAutoAssign.managesDefinition(def(
+                List.of(new JobSiteProvider.JobBlock(blocks, null, 8)), List.of())));
+        assertFalse(ProfessionAutoAssign.managesDefinition(def(
+                List.of(new JobSiteProvider.JobBlock(blocks, null, 1)), List.of())));
+    }
+
+    @Test
     void practicedBuildingDefinitionsAreDiscoveredWithoutHardcodedTaskIds() {
         assertTrue(ProfessionAutoAssign.managesDefinition(def(
                 List.of(new JobSiteProvider.Building(List.of("test:apiary"))), List.of())));

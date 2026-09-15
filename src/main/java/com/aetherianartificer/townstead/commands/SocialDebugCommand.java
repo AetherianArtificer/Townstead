@@ -36,7 +36,8 @@ public final class SocialDebugCommand {
     private static final List<String> NATIVE_CLIPS = List.of(
             "animated_story", "attentive", "beckon", "cheer", "cheer_excited", "clap", "cry", "eat", "laugh", "laugh_demure", "nod",
             "point", "ponder", "recline", "recline_lounger", "relaxed_lean", "shake_head", "shiver", "shrug", "sip", "startled", "sweat",
-            "stool_sit", "tap_foot", "toast", "wave", "whisper", "yawn");
+            "stool_sit", "tap_foot", "toast", "wave", "whisper", "yawn",
+            "fatigue_tired", "fatigue_yawn", "fatigue_pass_out");
 
     private SocialDebugCommand() {}
 

@@ -31,13 +31,14 @@ public final class TriggerGeneType implements GeneType {
     public static final String KEY = "pheno:trigger";
 
     public enum Trigger { WHEN_HURT, WHEN_ATTACK, WHEN_KILL, WHEN_DEATH, WHEN_LAND, WHEN_WAKE_UP,
-        WHEN_JUMP, WHEN_STRUCK_BY_LIGHTNING, WHEN_EQUIP, WHEN_ITEM_USE, PRESS }
+        WHEN_JUMP, WHEN_STRUCK_BY_LIGHTNING, WHEN_EQUIP, WHEN_ITEM_USE, WHEN_ENTER_DIMENSION, PRESS }
 
     public enum Target { SELF, OTHER }
 
     public record Instance(Trigger trigger, Target target, Action action, @Nullable Condition condition,
                            @Nullable com.aetherianartificer.townstead.pheno.condition.damage.DamageCondition damageCondition,
-                           @Nullable String key)
+                           @Nullable String key,
+                           @Nullable com.aetherianartificer.townstead.pheno.condition.item.ItemCondition itemCondition)
             implements GeneInstance {
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
@@ -64,7 +65,11 @@ public final class TriggerGeneType implements GeneType {
                         : null;
         // The keybind name is only meaningful for the press trigger.
         String key = trigger == Trigger.PRESS ? GsonHelper.getAsString(json, "key", "jump") : null;
-        return new Instance(trigger, target, action, condition, damageCondition, key);
+        var itemCondition = json.has("item_condition")
+                ? com.aetherianartificer.townstead.pheno.condition.item.ItemConditions.parse(json.get("item_condition"))
+                : null;
+        if (json.has("item_condition") && (itemCondition == null || trigger != Trigger.WHEN_ITEM_USE)) return null;
+        return new Instance(trigger, target, action, condition, damageCondition, key, itemCondition);
     }
 
     @Nullable
@@ -81,6 +86,7 @@ public final class TriggerGeneType implements GeneType {
                     Trigger.WHEN_STRUCK_BY_LIGHTNING;
             case "when_equip", "on_equip", "equip" -> Trigger.WHEN_EQUIP;
             case "when_item_use", "on_item_use", "item_use", "action_on_item_use" -> Trigger.WHEN_ITEM_USE;
+            case "when_enter_dimension", "on_enter_dimension" -> Trigger.WHEN_ENTER_DIMENSION;
             case "press", "key", "key_press" -> Trigger.PRESS;
             default -> null;
         };

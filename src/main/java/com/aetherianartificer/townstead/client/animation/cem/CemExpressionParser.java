@@ -156,7 +156,7 @@ final class CemExpressionParser {
             String method = identifier.toLowerCase(Locale.ROOT);
             if ("nbt".equals(method)) {
                 String query = readRawCallBody();
-                return context -> CemAnimationProgram.nbt(query, context);
+                return CemAnimationProgram.nbt(query);
             }
             List<CemExpression> args = new ArrayList<>();
             if (!peek(")")) {
@@ -165,6 +165,17 @@ final class CemExpressionParser {
                 } while (match(","));
             }
             expect(")");
+            // Branches may contain NBT reads; only evaluate the selected value.
+            if ("if".equals(method)) {
+                return context -> {
+                    for (int i = 0; i + 1 < args.size(); i += 2) {
+                        if (CemAnimationProgram.truthy(args.get(i).evaluate(context))) {
+                            return args.get(i + 1).evaluate(context);
+                        }
+                    }
+                    return args.size() % 2 == 1 ? args.get(args.size() - 1).evaluate(context) : 0.0D;
+                };
+            }
             return context -> {
                 List<Double> values = new ArrayList<>(args.size());
                 for (CemExpression arg : args) values.add(arg.evaluate(context));

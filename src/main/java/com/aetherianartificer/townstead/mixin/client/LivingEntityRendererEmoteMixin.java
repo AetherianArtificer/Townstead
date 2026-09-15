@@ -36,6 +36,8 @@ public abstract class LivingEntityRendererEmoteMixin {
             CallbackInfo ci
     ) {
         BedrockRootMotion.apply(entity, poseStack, partialTick);
+        if (com.aetherianartificer.townstead.client.animation.nativeclip.NativePlaybackRegistry
+                .hasCollapse(entity.getId(), entity.level().getGameTime())) return;
         var recline = com.aetherianartificer.townstead.client.animation.ReclineAnimationSourceAdapter.profile(entity);
         if (recline != null) {
             poseStack.translate(0, 0.75D, 0);
@@ -61,6 +63,8 @@ public abstract class LivingEntityRendererEmoteMixin {
             CallbackInfo ci
     ) {
         BedrockRootMotion.apply(entity, poseStack, partialTick);
+        if (com.aetherianartificer.townstead.client.animation.nativeclip.NativePlaybackRegistry
+                .hasCollapse(entity.getId(), entity.level().getGameTime())) return;
         if (entity instanceof Player) {
             // Emotecraft drives players natively (its own renderer mixin), so we only correct its body
             // transform when the player's rig limits body motion (scale/clamp), else leave it untouched.

@@ -50,6 +50,8 @@ public abstract class ReportBuildingMessageMixin {
     // constants directly throws NoSuchFieldError on whichever generation
     // dropped one, so match on the name instead and stay generation-agnostic.
     private static final Set<String> TOWNSTEAD$REMOVE_ACTIONS = Set.of("REMOVE", "REMOVE_ROOM");
+    /** Actions that only take buildings away; the reconciler must not detect docks after them. */
+    private static final Set<String> TOWNSTEAD$DESTRUCTIVE_ACTIONS = Set.of("REMOVE", "REMOVE_ROOM", "REMOVE_FLOOR");
     private static final String TOWNSTEAD$AUTO_SCAN = "AUTO_SCAN";
 
     /** Actions where the player may be standing on an open-air dock or in a pen. */
@@ -63,7 +65,7 @@ public abstract class ReportBuildingMessageMixin {
      */
     private static final Set<String> TOWNSTEAD$RECONCILE_ACTIONS =
             Set.of("ADD", "ADD_BUILDING", "ADD_ROOM", "ADD_FLOOR", "ADD_BASEMENT",
-                    "UPDATE_ROOM", "REMOVE", "REMOVE_ROOM", "FULL_SCAN", "AUTO_SCAN",
+                    "UPDATE_ROOM", "REMOVE", "REMOVE_ROOM", "REMOVE_FLOOR", "FULL_SCAN", "AUTO_SCAN",
                     "FORCE_TYPE", "SET_MAIN_ROOM", "SET_ROOM_INHERITANCE");
 
     //? if <1.21 {
@@ -285,7 +287,7 @@ public abstract class ReportBuildingMessageMixin {
                 .findNearestVillage(player)
                 .ifPresent(v -> {
                     com.aetherianartificer.townstead.compat.mca.BuildingReportReconciler.reconcile(
-                            level, player, v, !TOWNSTEAD$REMOVE_ACTIONS.contains(actName), TOWNSTEAD$LOG);
+                            level, player, v, !TOWNSTEAD$DESTRUCTIVE_ACTIONS.contains(actName), TOWNSTEAD$LOG);
                     // Floor-system MCA pushed its snapshot in the handler's
                     // finally, which runs before this hook — push again so
                     // the client sees the reconciled state.

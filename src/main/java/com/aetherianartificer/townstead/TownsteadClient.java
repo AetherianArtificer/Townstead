@@ -199,7 +199,10 @@ public final class TownsteadClient {
                 && net.minecraft.client.Minecraft.getInstance().player != null
                 && player.isInvisibleTo(net.minecraft.client.Minecraft.getInstance().player)) {
             event.setCanRender(net.neoforged.neoforge.common.util.TriState.FALSE);
+            return;
         }
+        com.aetherianartificer.townstead.client.naming.NamePlate.render(
+                event.getEntity(), event.getContent(), event::setContent);
     }
     //?} else if forge {
     /*private static void onRenderNameTag(net.minecraftforge.client.event.RenderNameTagEvent event) {
@@ -207,7 +210,10 @@ public final class TownsteadClient {
                 && net.minecraft.client.Minecraft.getInstance().player != null
                 && player.isInvisibleTo(net.minecraft.client.Minecraft.getInstance().player)) {
             event.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
+            return;
         }
+        com.aetherianartificer.townstead.client.naming.NamePlate.render(
+                event.getEntity(), event.getContent(), event::setContent);
     }
     *///?}
 

@@ -1,0 +1,30 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": [
+    "toughasnails"
+  ],
+  "blocks": [
+    "toughasnails:water_purifier"
+  ],
+  "inventory": {
+    "slots": {
+      "ingredients": [
+        0
+      ],
+      "catalysts": [
+        1
+      ],
+      "outputs": [
+        2
+      ]
+    }
+  },
+  "supplies": [
+    "minecraft:charcoal"
+  ],
+  "shift_end": "finish",
+  "recipe_layout": [
+    "ingredient",
+    "catalyst"
+  ]
+}

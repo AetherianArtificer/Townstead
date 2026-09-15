@@ -1,0 +1,30 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "crime.jailed",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "crime",
+    "key": "mcacrime:jailed"
+  },
+  "reach": "village",
+  "news_value": 4.0,
+  "roles": [
+    {
+      "id": "convict",
+      "kind": "player"
+    }
+  ],
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.compat.jailed"
+    },
+    "params": [
+      "convict"
+    ]
+  }
+}

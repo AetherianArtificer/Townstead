@@ -61,8 +61,8 @@ public final class SpeciesFace {
         RootCatalogEntry origin = RootCatalogClient.origin(rootId);
         if (origin == null) return;
         GeneCatalogEntry eyesGene = null, mouthGene = null, colorGene = null;
-        for (RootCatalogEntry.Inherited inh : origin.inheritedGenes()) {
-            GeneCatalogEntry g = RootCatalogClient.gene(inh.geneId());
+        for (String geneId : RootClientStore.appearanceGenes(entity)) {
+            GeneCatalogEntry g = RootCatalogClient.gene(geneId);
             if (g == null) continue;
             if (g.isEyes()) eyesGene = g;
             else if (g.isMouth()) mouthGene = g;

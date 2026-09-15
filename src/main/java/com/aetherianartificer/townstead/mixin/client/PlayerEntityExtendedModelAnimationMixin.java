@@ -34,8 +34,11 @@ public abstract class PlayerEntityExtendedModelAnimationMixin<T extends LivingEn
             float headPitch,
             CallbackInfo ci
     ) {
-        if (!EmoteReflection.isBendylibAvailable()) return;
         HumanoidModel<?> model = (HumanoidModel<?>) (Object) this;
+        // The MCA/EMF model variant can differ from the one PlayerRenderer primed.
+        // Set this before vanilla setupAnim so the body AND arms receive the crouch pose.
+        model.crouching = player.isCrouching();
+        if (!EmoteReflection.isBendylibAvailable()) return;
         EmoteReflection.attachBendMutator(model.body);
         EmoteReflection.attachBendMutator(model.leftArm);
         EmoteReflection.attachBendMutator(model.rightArm);

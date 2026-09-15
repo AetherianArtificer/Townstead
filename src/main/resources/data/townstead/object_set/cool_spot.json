@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:object_set/v1",
+  "anchor": ["#townstead:thermal/cooling_sources"],
+  "radius": 3,
+  "requires": {
+    "#townstead:masonry_materials": 4
+  },
+  "thermal": { "kind": "cooling", "offset": 8, "radius": 6 },
+  "icon": "minecraft:packed_ice"
+}

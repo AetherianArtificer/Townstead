@@ -58,10 +58,20 @@ public final class BuildingRecognitionTracker {
         Map<Integer, int[]> currentDockBounds = snapshotDockBounds(village);
         Map<Integer, String> prev = SNAPSHOT.get(key);
         Map<Integer, int[]> prevDockBounds = DOCK_BOUNDS.getOrDefault(key, Map.of());
+        com.aetherianartificer.townstead.village.VillageWatchSavedData watch =
+                com.aetherianartificer.townstead.village.VillageWatchSavedData.get(level.getServer());
+        if (prev == null) {
+            // Not seen this session: the persisted map lets a change across a restart still fire.
+            prev = watch.buildingTypes(key);
+        }
         if (prev == null) {
             SNAPSHOT.put(key, current);
             DOCK_BOUNDS.put(key, currentDockBounds);
+            watch.putBuildingTypes(key, current);
             return;
+        }
+        for (Map.Entry<Integer, String> e : prev.entrySet()) {
+            if (!current.containsKey(e.getKey())) fireRemoved(level, village, e.getKey(), e.getValue());
         }
         for (Map.Entry<Integer, String> e : current.entrySet()) {
             String prevType = prev.get(e.getKey());
@@ -78,6 +88,12 @@ public final class BuildingRecognitionTracker {
         }
         SNAPSHOT.put(key, current);
         DOCK_BOUNDS.put(key, currentDockBounds);
+        if (!current.equals(prev)) watch.putBuildingTypes(key, current);
+    }
+
+    private static void fireRemoved(ServerLevel level, Village village, int buildingId, String typeName) {
+        LOG.info("[Recognition] removed '{}' from village {}", typeName, village.getId());
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.buildingRemoved(level, village, buildingId, typeName);
     }
 
     private static Map<Integer, int[]> snapshotDockBounds(Village village) {
@@ -112,8 +128,17 @@ public final class BuildingRecognitionTracker {
     public static void seed(ServerLevel level, Village village) {
         if (level == null || village == null) return;
         String key = keyOf(level, village);
-        SNAPSHOT.put(key, snapshotCurrent(village));
+        com.aetherianartificer.townstead.village.VillageWatchSavedData watch =
+                com.aetherianartificer.townstead.village.VillageWatchSavedData.get(level.getServer());
+        if (watch.buildingTypes(key) != null) {
+            // A previous session left its last observation; diff against it so nothing is lost.
+            reconcile(level, village);
+            return;
+        }
+        Map<Integer, String> current = snapshotCurrent(village);
+        SNAPSHOT.put(key, current);
         DOCK_BOUNDS.put(key, snapshotDockBounds(village));
+        watch.putBuildingTypes(key, current);
     }
 
     private static String keyOf(ServerLevel level, Village village) {
@@ -131,6 +156,7 @@ public final class BuildingRecognitionTracker {
     private static void fireEstablished(ServerLevel level, Village village, int buildingId, String typeName) {
         Building building = com.aetherianartificer.townstead.compat.mca.McaBuildings.byId(village, buildingId);
         if (building == null) return;
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.buildingEstablished(level, village, buildingId, typeName);
         BuildingType bt = building.getBuildingType();
         RecognitionEffects.Tier effectTier = tierFor(typeName);
         BoundingBox bounds = boundsOf(building);
@@ -147,6 +173,7 @@ public final class BuildingRecognitionTracker {
                                      String prevType, String newType) {
         Building building = com.aetherianartificer.townstead.compat.mca.McaBuildings.byId(village, buildingId);
         if (building == null) return;
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.buildingUpgraded(level, village, buildingId, prevType, newType);
         BuildingType bt = building.getBuildingType();
         RecognitionEffects.Tier effectTier = tierFor(newType);
         BoundingBox bounds = boundsOf(building);

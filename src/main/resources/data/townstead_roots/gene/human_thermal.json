@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:gene/v2",
+  "type": "pheno:thermal_tolerance",
+  "display_name": { "translate": "gene.townstead_roots.human_thermal" },
+  "description": { "translate": "gene.townstead_roots.human_thermal.desc" },
+  "category": "Climate",
+  "dominance": "dominant",
+  "locus": "pheno:thermal_tolerance",
+  "neutral": 37.0,
+  "band": 0.5,
+  "cold": 1.0,
+  "heat": 1.0
+}

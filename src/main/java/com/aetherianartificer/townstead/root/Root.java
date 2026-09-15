@@ -25,6 +25,8 @@ public record Root(
         @Nullable Component backstory,
         Genome genome,
         SpawnBias spawnBias,
+        /** Which cultures this root's founders lean toward. A tendency, never a rule. */
+        com.aetherianartificer.townstead.culture.CulturalSpawnBias culturalSpawnBias,
         /**
          * The item tag this root's own body counts as ({@code kin_flesh}), so a predator root
          * never eats its own kind. Null means human, which is what every humanoid is without
@@ -41,5 +43,6 @@ public record Root(
     public Root {
         genome = genome == null ? Genome.EMPTY : genome;
         spawnBias = spawnBias == null ? SpawnBias.EMPTY : spawnBias;
+        culturalSpawnBias = culturalSpawnBias == null ? com.aetherianartificer.townstead.culture.CulturalSpawnBias.EMPTY : culturalSpawnBias;
     }
 }

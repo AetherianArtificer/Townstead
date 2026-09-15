@@ -29,6 +29,8 @@ public final class WorkTaskDeclarations {
      * tick), so it scans without allocating.
      */
     public static boolean permitsTask(VillagerEntityMCA villager, ResourceLocation... types) {
+        if (com.aetherianartificer.townstead.TownsteadConfig.isVillagerTemperatureEnabled()
+                && com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).needs().seekingRelief()) return false;
         ProfessionDef def = defOf(villager);
         if (def == null) return false;
         for (WorkTaskDef task : def.workTasks()) {

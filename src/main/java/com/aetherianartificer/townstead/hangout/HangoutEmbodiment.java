@@ -116,6 +116,11 @@ public final class HangoutEmbodiment {
             if (!(created instanceof ArmorStand seat)) return null;
             seat.setInvisible(true);
             seat.setNoGravity(true);
+            CompoundTag form = new CompoundTag();
+            seat.saveWithoutId(form);
+            form.putBoolean("Marker", true);
+            form.putBoolean("Small", true);
+            seat.load(form);
             markVisitAnchor(seat, visitId);
             seat.setPos(position.x, position.y, position.z);
             faceNearestTable(level, villager, seat, spot, position);

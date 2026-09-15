@@ -74,6 +74,23 @@ public final class RootGenes {
         return ORDERED.length;
     }
 
+    /** Read one MCA gene from a fixed-order editor snapshot; returns 0.5 for an invalid snapshot/type. */
+    public static float readSnapshot(float[] snapshot, Genetics.GeneType type) {
+        int index = indexOf(type);
+        return snapshot != null && index >= 0 && index < snapshot.length ? snapshot[index] : 0.5f;
+    }
+
+    /** Write one MCA gene in a fixed-order editor snapshot; no-op for an invalid snapshot/type. */
+    public static void writeSnapshot(float[] snapshot, Genetics.GeneType type, float value) {
+        int index = indexOf(type);
+        if (snapshot != null && index >= 0 && index < snapshot.length) snapshot[index] = value;
+    }
+
+    private static int indexOf(Genetics.GeneType type) {
+        for (int i = 0; i < ORDERED.length; i++) if (ORDERED[i] == type) return i;
+        return -1;
+    }
+
     /**
      * Write a {@link #snapshot}'s floats into a player's stored MCA data under MCA's own gene
      * keys (the keys the dummy's save would use), leaving every other key untouched; no-op on

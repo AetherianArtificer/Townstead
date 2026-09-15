@@ -33,7 +33,9 @@ public final class BuildingReportReconciler {
     }
 
     public static void reconcile(ServerLevel level, ServerPlayer player, Village village, boolean detectDock, Logger log) {
-        reconcile(level, player.blockPosition(), village, detectDock, log);
+        // The reporting player is who a resulting deed (a building raised, a spirit tier reached) belongs to.
+        com.aetherianartificer.townstead.compat.otectus.ReputationDeeds.withReporter(player,
+                () -> reconcile(level, player.blockPosition(), village, detectDock, log));
     }
 
     public static void reconcile(ServerLevel level, BlockPos source, Village village, boolean detectDock, Logger log) {

@@ -93,6 +93,7 @@ public final class Chronicles {
         BUFFER.add(event);
         ChronicleStore s = store;
         if (s != null) s.appendEvent(event);
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.chronicleRecorded(server, event);
         return event.eventId();
     }
 
@@ -143,6 +144,21 @@ public final class Chronicles {
         ChronicleStore s = store;
         return s == null ? CompletableFuture.completedFuture(List.of())
                 : s.byDay(worldDay, limit).exceptionally(t -> List.of());
+    }
+
+    public static CompletableFuture<List<ChronicleEvent>> byDayRange(long fromDay, long toDay, long beforeEventId,
+                                                                     int limit) {
+        ChronicleStore s = store;
+        return s == null ? CompletableFuture.completedFuture(List.of())
+                : s.byDayRange(fromDay, toDay, beforeEventId, limit).exceptionally(t -> List.of());
+    }
+
+    /** Belief side: what a knower has heard, newest first, paged by account id. */
+    public static CompletableFuture<List<ChronicleStore.KnownStory>> knownStories(UUID knower, long beforeAccountId,
+                                                                                  int limit) {
+        ChronicleStore s = store;
+        return s == null ? CompletableFuture.completedFuture(List.of())
+                : s.knownStories(knower, beforeAccountId, limit).exceptionally(t -> List.of());
     }
 
     public static CompletableFuture<List<ChronicleEvent>> byArc(long arcId, int limit) {

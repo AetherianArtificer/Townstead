@@ -168,6 +168,7 @@ public class WorksiteRegister extends SavedData {
         Worksite created = new Worksite(nextId++, key, name, villageId, gameTime, gameTime);
         sites.put(key, created);
         setDirty();
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.worksiteRegistered(created);
         return created;
     }
 
@@ -187,8 +188,11 @@ public class WorksiteRegister extends SavedData {
     }
 
     public boolean remove(@Nullable WorksiteKey key) {
-        if (key == null || sites.remove(key) == null) return false;
+        if (key == null) return false;
+        Worksite removed = sites.remove(key);
+        if (removed == null) return false;
         setDirty();
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.worksiteRemoved(removed);
         return true;
     }
 

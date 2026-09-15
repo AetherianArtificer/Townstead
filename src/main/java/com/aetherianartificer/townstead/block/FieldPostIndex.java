@@ -1,6 +1,8 @@
 package com.aetherianartificer.townstead.block;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import org.jetbrains.annotations.Nullable;
@@ -15,23 +17,24 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class FieldPostIndex {
     private FieldPostIndex() {}
 
-    // Keyed by dimension + position packed long for fast lookup
-    private static final Map<Long, FieldPostBlockEntity> INDEX = new ConcurrentHashMap<>();
+    // Server-side only. A structured key cannot collide the way XOR-combining two hashes can.
+    private static final Map<Key, FieldPostBlockEntity> INDEX = new ConcurrentHashMap<>();
 
-    private static long key(Level level, BlockPos pos) {
-        // Combine dimension hash with block pos long for uniqueness across dimensions
-        return pos.asLong() ^ ((long) level.dimension().location().hashCode() << 32);
+    private static Key key(Level level, BlockPos pos) {
+        return new Key(level.dimension().location(), pos.asLong());
     }
 
     public static void register(LevelAccessor level, BlockPos pos, FieldPostBlockEntity be) {
-        if (level instanceof Level l) {
-            INDEX.put(key(l, pos), be);
+        if (level instanceof ServerLevel serverLevel && be != null && !be.isRemoved()) {
+            INDEX.put(key(serverLevel, pos), be);
         }
     }
 
     public static void remove(LevelAccessor level, BlockPos pos) {
-        if (level instanceof Level l) {
-            INDEX.remove(key(l, pos));
+        // Client and integrated-server block entities share this static class. A client chunk
+        // unload must never evict the authoritative server entry.
+        if (level instanceof ServerLevel serverLevel) {
+            INDEX.remove(key(serverLevel, pos));
         }
     }
 
@@ -42,7 +45,7 @@ public final class FieldPostIndex {
      */
     public static void notifyConfigChanged(LevelAccessor level, BlockPos pos) {
         if (!(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) return;
-        FieldPostBlockEntity post = INDEX.get(key((Level) level, pos));
+        FieldPostBlockEntity post = INDEX.get(key(serverLevel, pos));
         int radius = post != null ? post.getRadius() : 32;
         // Invalidate snapshot caches for any farm anchor that could be covered by this post
         for (int dx = -radius; dx <= radius; dx += 16) {
@@ -59,6 +62,8 @@ public final class FieldPostIndex {
      */
     @Nullable
     public static FieldPostBlockEntity findBestForAnchor(Level level, BlockPos anchor) {
+        if (!(level instanceof ServerLevel)) return null;
+        purgeInvalid();
         FieldPostBlockEntity best = null;
         int bestPriority = -1;
         int bestDistSq = Integer.MAX_VALUE;
@@ -90,6 +95,8 @@ public final class FieldPostIndex {
      * Returns all Field Posts in the given level within radius of the given position.
      */
     public static java.util.List<FieldPostBlockEntity> findAllInRange(Level level, BlockPos center, int radius) {
+        if (!(level instanceof ServerLevel)) return java.util.List.of();
+        purgeInvalid();
         java.util.List<FieldPostBlockEntity> result = new java.util.ArrayList<>();
         for (FieldPostBlockEntity post : INDEX.values()) {
             if (post.isRemoved()) continue;
@@ -107,4 +114,18 @@ public final class FieldPostIndex {
     public static void clear() {
         INDEX.clear();
     }
+
+    public static int size() {
+        purgeInvalid();
+        return INDEX.size();
+    }
+
+    private static void purgeInvalid() {
+        INDEX.entrySet().removeIf(entry -> {
+            FieldPostBlockEntity post = entry.getValue();
+            return post == null || post.isRemoved() || !(post.getLevel() instanceof ServerLevel);
+        });
+    }
+
+    private record Key(ResourceLocation dimension, long position) {}
 }

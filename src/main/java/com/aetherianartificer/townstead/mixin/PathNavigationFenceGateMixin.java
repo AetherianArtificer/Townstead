@@ -86,8 +86,11 @@ public abstract class PathNavigationFenceGateMixin {
         this.townstead$level = level;
     }
 
+    // 1.21.1: MCA 7.7.37+ opens and closes fence gates itself (PathingBlockInteraction +
+    // SmarterOpenDoorsTask), so the three hooks below stay uninjected there. The 1.20.1 branch
+    // keeps them for the pre-floor MCA line.
     //? if >=1.21 {
-    @Inject(method = "followThePath", at = @At("RETURN"))
+    @Unique
     private void townstead$handleFenceGatesOnAdvance(CallbackInfo ci) {
     //?} else {
     /*@Inject(method = "m_7636_", remap = false, at = @At("RETURN"))
@@ -110,7 +113,7 @@ public abstract class PathNavigationFenceGateMixin {
     }
 
     //? if >=1.21 {
-    @Inject(method = "stop", at = @At("HEAD"))
+    @Unique
     private void townstead$resetOnNavStop(CallbackInfo ci) {
     //?} else {
     /*@Inject(method = "m_26573_", remap = false, at = @At("HEAD"))
@@ -128,7 +131,7 @@ public abstract class PathNavigationFenceGateMixin {
     // stop() land here; each closes the moment the villager is clear of it. Runs every
     // tick but early-outs on the (almost always) empty gate set.
     //? if >=1.21 {
-    @Inject(method = "tick", at = @At("TAIL"))
+    @Unique
     private void townstead$closePendingGates(CallbackInfo ci) {
     //?} else {
     /*@Inject(method = "m_7638_", remap = false, at = @At("TAIL"))

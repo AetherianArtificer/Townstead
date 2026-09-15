@@ -22,8 +22,8 @@ public final class Edibles {
     public static boolean tryEat(Player player, ItemStack stack, InteractionHand hand) {
         if (stack.isEmpty() || !player.canEat(false)) return false;
         ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        for (Gene gene : Heredity.expressedGenes(PlayerRoot.getGenotype(player))) {
-            if (!(gene.instance() instanceof EdibleGeneType.Instance instance)) continue;
+        for (var gene : com.aetherianartificer.townstead.pheno.power.Powers.active(player)) {
+            if (!(gene.component() instanceof EdibleGeneType.Instance instance)) continue;
             if (!instance.items().contains(itemId)) continue;
             player.getFoodData().eat(instance.nutrition(), instance.saturation());
             if (!player.getAbilities().instabuild) stack.shrink(1);

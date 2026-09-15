@@ -103,6 +103,18 @@ public record ProjectedStationPlan(boolean eligible, List<RecipeIngredient> mate
         return null;
     }
 
+    /** Data-declared inputs for recipes whose vanilla ingredient list is empty. */
+    static List<RecipeIngredient> declaredInputs(RecipeProjections.View view) {
+        if (!view.succeeded()) return List.of();
+        List<RecipeIngredient> result = new ArrayList<>();
+        for (Object entry : RecipeProjectionAccess.elements(view.value("inputs"))) {
+            RecipeIngredient converted = ingredient(entry);
+            if (converted == null) return List.of();
+            result.add(converted);
+        }
+        return RecipeIngredient.merge(result);
+    }
+
     private static RecipeIngredient item(Item item, int count) {
         return new RecipeIngredient(List.of(BuiltInRegistries.ITEM.getKey(item)), Math.max(1, count));
     }

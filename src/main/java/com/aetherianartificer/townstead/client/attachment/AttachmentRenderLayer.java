@@ -506,7 +506,7 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
     private static List<Expressed> resolve(LivingEntity entity) {
         List<Expressed> out = new ArrayList<>();
         Set<String> expressed = RootClientStore.expressedGenes(entity);
-        if (!expressed.isEmpty()) {
+        if (RootClientStore.hasExpressionSync(entity) || !expressed.isEmpty()) {
             for (String geneId : expressed) collect(entity, geneId, out);
             return out;
         }

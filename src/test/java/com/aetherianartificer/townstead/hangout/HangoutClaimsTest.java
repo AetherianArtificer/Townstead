@@ -11,6 +11,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class HangoutClaimsTest {
     @Test
+    void primaryAndLinkedSeatsInOverlappingVenuesShareOnePhysicalClaim() {
+        var ledger = new HangoutClaims();
+        var first = UUID.randomUUID();
+        var second = UUID.randomUUID();
+        var primary = HangoutClaims.seat("minecraft:overworld", 1234L, 0);
+        var linked = HangoutClaims.seat("minecraft:overworld", 1234L, 0);
+        assertTrue(ledger.tryClaimAll(first, List.of(key("venue", "cabana"), primary), 0, 100));
+        assertFalse(ledger.tryClaimAll(second, List.of(key("venue", "beach_club"), linked), 1, 100));
+        assertTrue(ledger.available(HangoutClaims.seat("minecraft:the_nether", 1234L, 0), second, 1));
+    }
+
+    @Test
     void linkedClaimsAreAtomicAndReleasedAsOneSession() {
         HangoutClaims ledger = new HangoutClaims();
         UUID first = UUID.randomUUID();

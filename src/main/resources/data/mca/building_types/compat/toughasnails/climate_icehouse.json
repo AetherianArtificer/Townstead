@@ -1,0 +1,13 @@
+{
+  "color": "ff86cddd",
+  "visible": true,
+  "priority": 3,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 200,
+  "noBeds": true,
+  "blocks": {
+    "minecraft:packed_ice": 1,
+    "#townstead:storage": 1
+  }
+}

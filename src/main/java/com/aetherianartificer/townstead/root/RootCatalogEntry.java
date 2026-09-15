@@ -42,6 +42,11 @@ public record RootCatalogEntry(
         Animations animations,
         // Whether this species' body shows breasts (false hides MCA's breast part for it).
         boolean breasts,
+        // Effective founder policy for MCA's native hair layer. Realized heritage may override it.
+        boolean hair,
+        List<com.aetherianartificer.townstead.root.appearance.HairColorRange> hairColorRanges,
+        List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> hairColors,
+        List<com.aetherianartificer.townstead.root.appearance.HairGradient> hairGradients,
         // Per-life-stage rig override, one entry per stage of this origin's effective life cycle (empty
         // string = species rig). Empty list when no stage overrides the rig. Lets a stage (e.g. "egg")
         // render a different model; the client renderer indexes it by the villager's current stage.

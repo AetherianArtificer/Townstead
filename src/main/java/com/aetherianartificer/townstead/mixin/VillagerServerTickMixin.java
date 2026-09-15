@@ -35,6 +35,7 @@ public abstract class VillagerServerTickMixin {
                 });
             }
             com.aetherianartificer.townstead.tick.FatigueVillagerTicker.preAiStep(villager);
+            com.aetherianartificer.townstead.performance.CollapsePlayback.beforeAi(villager);
         }
     }
 

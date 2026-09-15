@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead.client.gui.fieldpost;
 
 import com.aetherianartificer.townstead.block.CropDetection;
 import com.aetherianartificer.townstead.block.FieldPostBlockEntity;
+import com.aetherianartificer.townstead.block.OrderSheetBlock;
+import com.aetherianartificer.townstead.block.RoomThermometerBlock;
 import com.aetherianartificer.townstead.client.gui.common.CellTextures;
 import com.aetherianartificer.townstead.client.gui.common.FrameRenderer;
 import com.aetherianartificer.townstead.client.gui.common.PaletteList;
@@ -25,6 +27,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CampfireBlock;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.level.block.BushBlock;
@@ -1041,20 +1044,31 @@ public class FieldPostScreen extends Screen {
                 // Base color under the sprite for fallback
                 g.fill(cx, cy, cx + cs, cy + cs, 0xFF1E1E1E);
 
-                if (state != null && !state.isAir()) {
+                // Small objects use their complete item model, not a fragment of their atlas.
+                boolean objectIcon = state != null && (state.getBlock() instanceof RoomThermometerBlock
+                        || state.getBlock() instanceof CampfireBlock
+                        || state.getBlock() instanceof OrderSheetBlock);
+                BlockPos terrainPos = objectIcon && worldPos != null ? worldPos.below() : worldPos;
+                BlockState terrainState = objectIcon
+                        ? (terrainPos != null ? level.getBlockState(terrainPos) : null) : state;
+                // Stacked objects and wall-mounted objects without ground retain the neutral backing.
+                if (terrainState != null && !terrainState.isAir()
+                        && !(terrainState.getBlock() instanceof RoomThermometerBlock)
+                        && !(terrainState.getBlock() instanceof CampfireBlock)
+                        && !(terrainState.getBlock() instanceof OrderSheetBlock)) {
                     // Farmland: use known atlas texture directly (model lookup returns dirt particle)
-                    if (state.getBlock() instanceof FarmBlock) {
-                        boolean wet = state.getValue(FarmBlock.MOISTURE) > 0;
+                    if (terrainState.getBlock() instanceof FarmBlock) {
+                        boolean wet = terrainState.getValue(FarmBlock.MOISTURE) > 0;
                         CellTextures.blit(g, wet ? "minecraft:block/farmland_moist" : "minecraft:block/farmland", cx, cy, cs);
-                    } else if (state.getFluidState().is(Fluids.WATER)) {
+                    } else if (terrainState.getFluidState().is(Fluids.WATER)) {
                         // Water cell: use water texture with tint
                         CellTextures.blit(g, "minecraft:block/water_still", cx, cy, cs);
                         g.fill(cx, cy, cx + cs, cy + cs, 0x603F76E4);
                     } else {
                         net.minecraft.client.renderer.texture.TextureAtlasSprite sprite =
-                                BlockSpriteResolver.getTopSprite(state);
+                                BlockSpriteResolver.getTopSprite(terrainState);
                         if (sprite != null) {
-                            int tint = BlockSpriteResolver.getTint(state, level, worldPos);
+                            int tint = BlockSpriteResolver.getTint(terrainState, level, terrainPos);
                             float r = ((tint >> 16) & 0xFF) / 255f;
                             float gg = ((tint >> 8) & 0xFF) / 255f;
                             float b = (tint & 0xFF) / 255f;
@@ -1065,8 +1079,8 @@ public class FieldPostScreen extends Screen {
                     }
                 }
 
-                // Existing crop icon (centered in cell)
-                ItemStack icon = cropIcons[gz][gx];
+                // Existing crop or object icon, centered with padding at every zoom level.
+                ItemStack icon = objectIcon ? new ItemStack(state.getBlock()) : cropIcons[gz][gx];
                 if (icon != null && !icon.isEmpty()) {
                     g.pose().pushPose();
                     float scale = cs / 16.0f * 0.7f;

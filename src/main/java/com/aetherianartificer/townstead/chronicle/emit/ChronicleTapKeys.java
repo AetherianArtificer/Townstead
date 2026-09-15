@@ -13,6 +13,8 @@ public final class ChronicleTapKeys {
     // survival
     public static final String STARVING = "townstead:starving";
     public static final String CURED = "townstead:cured";
+    public static final String FREEZING = "townstead:freezing";
+    public static final String SWELTERING = "townstead:sweltering";
 
     private ChronicleTapKeys() {}
 }

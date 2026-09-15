@@ -36,6 +36,7 @@ public final class HeritageJsonLoader extends SimpleJsonResourceReloadListener {
                          ProfilerFiller profiler) {
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
         Map<ResourceLocation, HeritageProfile> parsed = new LinkedHashMap<>();
+        Map<ResourceLocation, com.aetherianartificer.townstead.root.appearance.HairPolicy> hairPolicies = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
             String ctx = file.toString();
@@ -52,11 +53,13 @@ public final class HeritageJsonLoader extends SimpleJsonResourceReloadListener {
                     continue;
                 }
                 parsed.put(file, new HeritageProfile(file, displayName, demonym, backstory, priority, match));
+                hairPolicies.put(file, com.aetherianartificer.townstead.root.appearance.HairPolicy.parse(obj, lang));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse heritage {}: {}", file, ex.getMessage());
             }
         }
         HeritageRegistry.replaceAll(parsed);
+        com.aetherianartificer.townstead.root.appearance.HairPolicyRegistry.setHeritage(hairPolicies);
         LOGGER.info("Loaded {} heritage profiles", parsed.size());
     }
 

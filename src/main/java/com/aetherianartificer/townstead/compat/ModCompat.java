@@ -30,7 +30,9 @@ public final class ModCompat {
      * when ANY listed mod is loaded. Other compat paths gate on the mod id in the path.
      */
     private static final Map<String, List<String>> ANY_PROVIDER_PREFIXES = Map.of(
-            "compat/farmersdelight/kitchen", KITCHEN_PROVIDERS);
+            "compat/farmersdelight/kitchen", KITCHEN_PROVIDERS,
+            "compat/toughasnails/climate_", List.of("toughasnails", "legendarysurvivaloverhaul"),
+            "compat.toughasnails.climate_", List.of("toughasnails", "legendarysurvivaloverhaul"));
 
     private ModCompat() {}
 
@@ -78,15 +80,20 @@ public final class ModCompat {
      * Use this to gate any compat-prefixed features (building types, patterns, etc.).
      */
     public static boolean isCompatAvailable(String path) {
+        List<String> providers = providersForCompat(path);
+        return providers.isEmpty() || providers.stream().anyMatch(ModCompat::isLoaded);
+    }
+
+    static List<String> providersForCompat(String path) {
         if (path != null) {
             for (Map.Entry<String, List<String>> entry : ANY_PROVIDER_PREFIXES.entrySet()) {
                 if (path.startsWith(entry.getKey())) {
-                    return entry.getValue().stream().anyMatch(ModCompat::isLoaded);
+                    return entry.getValue();
                 }
             }
         }
         String modId = extractCompatModId(path);
-        return modId == null || isLoaded(modId);
+        return modId == null ? List.of() : List.of(modId);
     }
 
     /**
@@ -94,14 +101,6 @@ public final class ModCompat {
      * provider instead of leaking the legacy mod id embedded in their stable building-type path.
      */
     public static List<String> loadedCompatProviders(String path) {
-        if (path != null) {
-            for (Map.Entry<String, List<String>> entry : ANY_PROVIDER_PREFIXES.entrySet()) {
-                if (path.startsWith(entry.getKey())) {
-                    return entry.getValue().stream().filter(ModCompat::isLoaded).collect(Collectors.toList());
-                }
-            }
-        }
-        String modId = extractCompatModId(path);
-        return modId != null && isLoaded(modId) ? List.of(modId) : List.of();
+        return providersForCompat(path).stream().filter(ModCompat::isLoaded).collect(Collectors.toList());
     }
 }

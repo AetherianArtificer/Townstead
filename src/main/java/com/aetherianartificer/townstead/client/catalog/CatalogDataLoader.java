@@ -73,6 +73,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
     }
 
     private static final List<GroupDef> GROUPS = new CopyOnWriteArrayList<>();
+    private static final Map<String, com.aetherianartificer.townstead.temperature.ThermalStructures.Spec> THERMAL_SPECS = new HashMap<>();
     private static final Map<String, BuildingOverride> OVERRIDES = new LinkedHashMap<>();
     /**
      * Building definitions seen by Townstead's own data scan. MCA normally mirrors the same
@@ -146,6 +147,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         Map<String, Set<ResourceLocation>> servingProductsByType = new HashMap<>();
         Map<String, BuildingEnclosurePolicies.Mode> enclosurePolicies = new HashMap<>();
         Map<String, Set<String>> dialogueTopicsByType = new HashMap<>();
+        THERMAL_SPECS.clear();
         scanLegacyBuildingTypes(resourceManager, blocksByType, priorityByType);
         scanSpiritCompanions(resourceManager);
         scanLegacyBuildingSpawn(resourceManager, spawnPolicies);
@@ -159,6 +161,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                 .replaceAll(recipeNamespacesByType);
         com.aetherianartificer.townstead.food.BuildingServingMenus.replaceAll(servingProductsByType);
         BuildingEnclosurePolicies.replaceAll(enclosurePolicies);
+        com.aetherianartificer.townstead.temperature.ThermalStructures.replaceAll(THERMAL_SPECS);
         com.aetherianartificer.townstead.work.feedback.BuildingDialogueTopics
                 .replaceAll(dialogueTopicsByType);
         // The icon-to-type index and node-item overrides are now both complete.
@@ -522,6 +525,12 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                                 CatalogDataLoader::requireNonBlankTopic);
                         if (!topics.isEmpty()) dialogueTopicsByType.put(buildingType, topics);
                     }
+                }
+                if (json.has("thermal") && json.get("thermal").isJsonObject()) {
+                    var spec = com.aetherianartificer.townstead.temperature.ThermalStructures.parse(
+                            buildingType, json.getAsJsonObject("thermal"));
+                    if (spec == null) throw new IllegalArgumentException("'thermal.kind' must be warming or cooling");
+                    THERMAL_SPECS.put(buildingType, spec);
                 }
                 if (json.has("enclosure")) {
                     JsonElement enclosure = json.get("enclosure");

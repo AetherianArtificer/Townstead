@@ -108,6 +108,7 @@ public final class ChronicleTaps {
         try {
             if (!(actor.level() instanceof ServerLevel level)) return;
             Chronicles.addCounter(level.getServer(), actor.getUUID(), key, 1);
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.crisis(actor, key);
             if (ChronicleTriggerIndex.isEmpty()) return;
             ChronicleEmitter.emit(level, new TriggerKey("survival", key), actor, 1.0f,
                     params == null ? Map.of() : params);
@@ -168,6 +169,9 @@ public final class ChronicleTaps {
     public static void death(LivingEntity deceased, @Nullable DamageSource source) {
         try {
             if (!(deceased.level() instanceof ServerLevel level)) return;
+            com.aetherianartificer.townstead.village.ResidentRegister.markDead(level.getServer(), deceased.getUUID());
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.died(deceased,
+                    source == null ? "" : source.getMsgId());
             if (ChronicleTriggerIndex.isEmpty()) return;
             Map<String, String> params = source == null ? Map.of() : Map.of("cause", source.getMsgId());
             ChronicleEmitter.emit(level, new TriggerKey("lifecycle", "townstead:death"),
@@ -180,13 +184,14 @@ public final class ChronicleTaps {
     public static void birth(LivingEntity baby) {
         try {
             if (!(baby.level() instanceof ServerLevel level)) return;
-            if (ChronicleTriggerIndex.isEmpty()) return;
             // Both the Pregnancy.createChild mixin and the spawn-site callers tap
             // births; the pair gate collapses them to one event per baby.
             if (!ChronicleRateLimiter.allowPair(level.getServer(),
                     baby.getUUID(), baby.getUUID(), "birth")) {
                 return;
             }
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.born(baby);
+            if (ChronicleTriggerIndex.isEmpty()) return;
             ChronicleEmitter.emit(level, new TriggerKey("lifecycle", "townstead:birth"),
                     baby, 1.0f, Map.of());
         } catch (Throwable t) {
@@ -198,11 +203,12 @@ public final class ChronicleTaps {
     public static void marriage(LivingEntity partner, @Nullable LivingEntity spouse) {
         try {
             if (!(partner.level() instanceof ServerLevel level)) return;
-            if (ChronicleTriggerIndex.isEmpty()) return;
             if (spouse != null && !ChronicleRateLimiter.allowPair(level.getServer(),
                     partner.getUUID(), spouse.getUUID(), "marriage")) {
                 return;
             }
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.married(partner, spouse);
+            if (ChronicleTriggerIndex.isEmpty()) return;
             ChronicleEmitter.emit(level, new TriggerKey("lifecycle", "townstead:marriage"),
                     partner, spouse, 1.0f, Map.of());
         } catch (Throwable t) {

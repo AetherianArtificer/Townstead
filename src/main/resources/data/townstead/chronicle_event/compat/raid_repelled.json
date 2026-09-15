@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "service.defence",
+  "weight": 10,
+  "rarity": "rare",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "reputation",
+    "key": "mcareputation:raid_repelled"
+  },
+  "reach": "village",
+  "news_value": 6.0,
+  "roles": [
+    {
+      "id": "hero",
+      "kind": "player"
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.compat.raid_repelled"
+    },
+    "params": [
+      "hero"
+    ]
+  },
+  "impact": {
+    "witness": {
+      "mood": 2.0,
+      "memory": {
+        "valence": 0.7,
+        "strength": 1.2
+      }
+    },
+    "on_learn": {
+      "mood": 1.0,
+      "memory": {
+        "valence": 0.6,
+        "strength": 0.8
+      }
+    }
+  }
+}

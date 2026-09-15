@@ -25,7 +25,7 @@ public final class HideFeatures {
     public static Set<String> hiddenGroups(LivingEntity entity) {
         Set<String> groups = new HashSet<>();
         Set<String> expressed = RootClientStore.expressedGenes(entity);
-        if (!expressed.isEmpty()) {
+        if (RootClientStore.hasExpressionSync(entity) || !expressed.isEmpty()) {
             for (String geneId : expressed) collect(RootCatalogClient.gene(geneId), groups);
             return groups;
         }

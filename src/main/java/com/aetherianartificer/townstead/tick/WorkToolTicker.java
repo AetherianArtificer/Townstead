@@ -33,6 +33,7 @@ public final class WorkToolTicker {
 
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
+        if (com.aetherianartificer.townstead.hunger.VillagerConsumptionManager.isHoldingServing(villager)) return;
         if ((villager.level().getGameTime() + villager.getId()) % CHECK_INTERVAL_TICKS != 0) return;
 
         Brain<?> brain = villager.getBrain();

@@ -30,6 +30,8 @@ public final class RootSkinTintProvider implements SkinTintProvider {
             if (gene != null && gene.isColor()) return packed(gene);
         }
 
+        if (RootClientStore.hasExpressionSync(entity)) return OptionalInt.empty();
+
         // Editor dummies and legacy entities may have only a root preview, with no expressed set.
         String rootId = RootClientStore.resolve(entity);
         if (rootId.isEmpty()) return OptionalInt.empty();

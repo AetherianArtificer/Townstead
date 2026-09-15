@@ -1,6 +1,10 @@
 package com.aetherianartificer.townstead.reaction.trigger.event;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.root.needs.NeedSuppression;
+import com.aetherianartificer.townstead.temperature.TemperatureData;
+import com.aetherianartificer.townstead.temperature.ThermalProfile;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.HungerData;
@@ -98,6 +102,9 @@ import java.util.UUID;
  * {@code pregnant}. Thresholds align with each Townstead system's own
  * conventions (FatigueData, HungerData, ThirstData).</p>
  *
+ * <p><b>Body temperature:</b> {@code body_cold} / {@code body_hot} at Cold / Hot
+ * severity or worse, relative to the villager's thermal profile.</p>
+ *
  * <p><b>Events:</b> {@code near_grave} — MCA tombstone within 16
  * blocks. Wedding / funeral / birthday tags are deferred until those
  * events have server-side state to query.</p>
@@ -141,16 +148,30 @@ public final class ContextResolver {
         addReactionProximityTags(level, cache, tags);
         addCrowdAndAgeTags(cache, tags);
         addMcaRelationshipTags(villager, cache, tags);
-        addPlayerRelationshipTags(villager, cache, tags);
-        addPlayerHeldItemTags(cache, tags);
+        addPlayerRelationshipTags(villager, cache.nearbyPlayers(), tags);
+        addPlayerHeldItemTags(cache.nearbyPlayers(), tags);
         addThreatTags(level, villager, cache, tags);
         addProfessionStateTags(villager, tags);
+        addBodyTemperatureTags(villager, tags);
         addEventTags(level, villager, tags);
         addInteractionStateTags(level, villager, tags);
         if (MusicSourceProviders.anyMusicNear(level, pos, 12.0)) {
             tags.add("near_music");
         }
         return tags;
+    }
+
+    private static void addBodyTemperatureTags(VillagerEntityMCA villager, Set<String> tags) {
+        if (!TownsteadConfig.isVillagerTemperatureEnabled() || villager.isSleeping()) return;
+        TownsteadVillager.Needs needs = TownsteadVillagers.get(villager).needs();
+        if (!needs.hasBodyTemp() || NeedSuppression.suppressesTemperature(villager)) return;
+        ThermalProfile profile = ThermalProfile.of(villager);
+        if (profile.suppressed()) return;
+        TemperatureData.Tier tier = TemperatureData.tier(needs.bodyTempTenths(), profile);
+        if (tier.wantsRelief()) tags.add(tier.isCold() ? "body_cold" : "body_hot");
+        TemperatureData.Tier feeling = TemperatureData.Tier.values()[needs.thermalTier()];
+        if (feeling != TemperatureData.Tier.COMFORTABLE)
+            tags.add(feeling.isCold() ? "feeling_cold" : "feeling_hot");
     }
 
     /**
@@ -297,10 +318,28 @@ public final class ContextResolver {
      * uses a look-vec dot product so any nearby player whose crosshair
      * is roughly on this villager surfaces the tag.
      */
-    private static void addPlayerRelationshipTags(VillagerEntityMCA villager, ContextScanCache cache, Set<String> tags) {
-        if (cache.nearbyPlayers().isEmpty()) return;
+    /**
+     * The tag set as one player sees it: the player-relationship and held-item tags are derived
+     * from {@code viewer} alone rather than from everyone within social range, so two players
+     * talking to the same villager each get their own answer.
+     */
+    public static Set<String> tagsFor(ServerLevel level, VillagerEntityMCA villager, net.minecraft.server.level.ServerPlayer viewer) {
+        Set<String> tags = tagsFor(level, villager);
+        if (viewer == null) return tags;
+        tags.removeIf(tag -> tag.startsWith("near_player_") || tag.equals("being_watched_by_player")
+                || tag.startsWith("player_holding"));
+        java.util.List<Player> viewers = viewer.level() == villager.level()
+                && viewer.distanceToSqr(villager) <= ContextScanCache.SOCIAL_RADIUS * ContextScanCache.SOCIAL_RADIUS
+                ? java.util.List.of(viewer) : java.util.List.of();
+        addPlayerRelationshipTags(villager, viewers, tags);
+        addPlayerHeldItemTags(viewers, tags);
+        return tags;
+    }
+
+    private static void addPlayerRelationshipTags(VillagerEntityMCA villager, java.util.List<Player> players, Set<String> tags) {
+        if (players.isEmpty()) return;
         Optional<EntityRelationship> villagerRel = EntityRelationship.of(villager);
-        for (Player player : cache.nearbyPlayers()) {
+        for (Player player : players) {
             try {
                 Memories memories = villager.getVillagerBrain().getMemoriesForPlayer(player);
                 int hearts = memories.getHearts();
@@ -336,8 +375,8 @@ public final class ContextResolver {
      * tag (e.g. {@code mypack:treats}) and react to it without writing
      * any Java.
      */
-    private static void addPlayerHeldItemTags(ContextScanCache cache, Set<String> tags) {
-        for (Player player : cache.nearbyPlayers()) {
+    private static void addPlayerHeldItemTags(java.util.List<Player> players, Set<String> tags) {
+        for (Player player : players) {
             ItemStack stack = player.getMainHandItem();
             if (stack.isEmpty()) continue;
             try {

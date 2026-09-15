@@ -17,6 +17,8 @@ public final class VillagerServerTickDispatcher {
         // Clean up dead/removed entities
         if (!villager.isAlive() || villager.isRemoved()) {
             FatigueVillagerTicker.forget(villager);
+            com.aetherianartificer.townstead.performance.CollapsePlayback.stop(villager);
+            TemperatureVillagerTicker.forget(villager.getId());
             WorkToolTicker.forget(villager);
             EmptyContainerDropoff.forget(villager);
             com.aetherianartificer.townstead.profession.ProfessionSites.forget(villager);
@@ -27,12 +29,18 @@ public final class VillagerServerTickDispatcher {
             return;
         }
 
+        // Recreational drinking must finish even with hunger/thirst simulation disabled.
+        com.aetherianartificer.townstead.hunger.VillagerConsumptionManager.tickAndFinalize(villager,
+                com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).needs());
+
         if (!TownsteadProfiler.enabled()) {
             tickUnprofiled(villager, gameTime);
+            com.aetherianartificer.townstead.performance.CollapsePlayback.tick(villager);
             return;
         }
 
         tickProfiled(villager, gameTime);
+        com.aetherianartificer.townstead.performance.CollapsePlayback.tick(villager);
     }
 
     private static void tickUnprofiled(VillagerEntityMCA villager, long gameTime) {
@@ -42,6 +50,7 @@ public final class VillagerServerTickDispatcher {
         HungerVillagerTicker.tick(villager);
         if (ThirstBridgeResolver.isActive()) ThirstVillagerTicker.tick(villager);
         FatigueVillagerTicker.tick(villager);
+        TemperatureVillagerTicker.tick(villager);
         EmptyContainerDropoff.tick(villager);
         ProfessionProgressMemoryTicker.tick(villager);
         GuardRestEnforcerTicker.tick(villager);
@@ -73,6 +82,7 @@ public final class VillagerServerTickDispatcher {
             profile("villager.thirst", () -> ThirstVillagerTicker.tick(villager));
         }
         profile("villager.fatigue", () -> FatigueVillagerTicker.tick(villager));
+        profile("villager.temperature", () -> TemperatureVillagerTicker.tick(villager));
         profile("villager.container_dropoff", () -> EmptyContainerDropoff.tick(villager));
         profile("villager.profession_memory", () -> ProfessionProgressMemoryTicker.tick(villager));
         profile("villager.guard_rest", () -> GuardRestEnforcerTicker.tick(villager));
@@ -110,6 +120,8 @@ public final class VillagerServerTickDispatcher {
                 com.aetherianartificer.townstead.chronicle.emit.PendingBirths.tick(villager));
         profile("villager.chronicle_marriage", () ->
                 com.aetherianartificer.townstead.chronicle.emit.MarriageWatcher.tick(villager, gameTime));
+        profile("villager.resident_register", () ->
+                com.aetherianartificer.townstead.village.ResidentRegister.onVillagerTick(villager, gameTime));
         profile("villager.chronicle_gossip", () ->
                 com.aetherianartificer.townstead.chronicle.knowledge.GossipTicker.tick(villager, gameTime));
         profile("villager.chronicle_mood", () ->

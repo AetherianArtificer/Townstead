@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": [
+    "toughasnails"
+  ],
+  "items": [
+    "toughasnails:apple_juice",
+    "toughasnails:cactus_juice",
+    "toughasnails:chorus_fruit_juice",
+    "toughasnails:glow_berry_juice",
+    "toughasnails:melon_juice",
+    "toughasnails:pumpkin_juice",
+    "toughasnails:purified_water_bottle",
+    "toughasnails:sweet_berry_juice"
+  ],
+  "transaction": {
+    "mode": "replace_with_pheno",
+    "accounting": "consume_one",
+    "consumers": [
+      "villager"
+    ],
+    "remainder": {
+      "mode": "item",
+      "item": "minecraft:glass_bottle",
+      "destination": "storage"
+    }
+  }
+}

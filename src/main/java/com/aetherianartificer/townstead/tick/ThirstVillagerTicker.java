@@ -7,6 +7,10 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 *///?}
 import com.aetherianartificer.townstead.compat.mca.McaRegistryCompat;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
+import com.aetherianartificer.townstead.compat.thirst.ThermalHydrationContext;
+import com.aetherianartificer.townstead.compat.temperature.*;
+import com.aetherianartificer.townstead.temperature.ThermalProfile;
+import com.aetherianartificer.townstead.temperature.TemperatureData;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.hunger.VillagerConsumptionManager;
 import com.aetherianartificer.townstead.root.needs.NeedSuppression;
@@ -75,18 +79,29 @@ public final class ThirstVillagerTicker {
             return;
         }
 
+        ToughAsNailsEntityCompat.cleanseCanteens(self);
         long gameTime = level.getGameTime();
 
         if (gameTime >= state.nextBiomeModifierSampleTick) {
-            state.biomeModifier = bridge.exhaustionBiomeModifier(level, self.blockPosition());
+            state.thermal = ThermalHydrationContext.NONE;
+            if (TownsteadConfig.isVillagerTemperatureEnabled() && needs.hasBodyTemp()
+                    && !NeedSuppression.suppressesTemperature(self)) {
+                ThermalProfile profile = ThermalProfile.of(self);
+                var backend = TemperatureBridgeResolver.get();
+                state.thermal = new ThermalHydrationContext(backend == ColdSweatTemperatureBridge.INSTANCE,
+                        ThermalHydrationContext.signedStress(TemperatureData.celsius(needs.bodyTempTenths()), profile.neutral(), profile.band()),
+                        backend == LsoTemperatureBridge.INSTANCE && profile.heat() > 0
+                                && needs.coreThermalTier() == TemperatureData.Tier.SWELTERING.ordinal());
+            }
+            state.biomeModifier = bridge.exhaustionBiomeModifier(level, self.blockPosition(), state.thermal);
             state.nextBiomeModifierSampleTick = gameTime + BIOME_MODIFIER_RESAMPLE_TICKS;
         }
         float biomeModifier = state.biomeModifier;
 
-        long dayTime = level.getDayTime();
-        if (state.lastDayTime < 0) state.lastDayTime = dayTime;
-        long dayTimeDelta = Math.max(0, dayTime - state.lastDayTime);
-        state.lastDayTime = dayTime;
+        long elapsedTime = gameTime;
+        if (state.lastGameTime < 0) state.lastGameTime = elapsedTime;
+        long elapsedTicks = Math.max(0, Math.min(20, elapsedTime - state.lastGameTime));
+        state.lastGameTime = elapsedTime;
 
         boolean thirstChanged = VillagerConsumptionManager.tickAndFinalize(self, needs);
 
@@ -97,48 +112,54 @@ public final class ThirstVillagerTicker {
             needs.setDrinkingMode(true);
         }
 
+        if (!state.positionInitialized) {
+            state.prevX = self.getX();
+            state.prevZ = self.getZ();
+            state.positionInitialized = true;
+        }
         double dx = self.getX() - state.prevX;
         double dz = self.getZ() - state.prevZ;
         double distSq = dx * dx + dz * dz;
         state.prevX = self.getX();
         state.prevZ = self.getZ();
-        if (distSq > 0.0025) {
+        if (distSq > 0.0025 && distSq < 64) {
             float dist = (float) Math.sqrt(distSq);
-            needs.addThirstExhaustion(dist * ThirstData.EXHAUSTION_MOVEMENT_PER_BLOCK * biomeModifier * dayTimeDelta);
+            needs.addThirstExhaustion(dist * ThirstData.EXHAUSTION_MOVEMENT_PER_BLOCK * biomeModifier);
         }
 
         VillagerBrain<?> brain = self.getVillagerBrain();
         Chore currentJob = brain.getCurrentJob();
         if (brain.isPanicking() || self.getLastHurtByMob() != null) {
-            needs.addThirstExhaustion(ThirstData.EXHAUSTION_COMBAT * biomeModifier * dayTimeDelta);
+            needs.addThirstExhaustion(ThirstData.EXHAUSTION_COMBAT * biomeModifier * elapsedTicks);
         } else if (currentJob != Chore.NONE) {
-            needs.addThirstExhaustion(ThirstData.EXHAUSTION_CHORE * biomeModifier * dayTimeDelta);
+            needs.addThirstExhaustion(ThirstData.EXHAUSTION_CHORE * biomeModifier * elapsedTicks);
         } else if (isGuardPatrolling(self)) {
-            needs.addThirstExhaustion(ThirstData.EXHAUSTION_GUARD_PATROL * biomeModifier * dayTimeDelta);
+            needs.addThirstExhaustion(ThirstData.EXHAUSTION_GUARD_PATROL * biomeModifier * elapsedTicks);
         } else if (!isResting(self)) {
-            needs.addThirstExhaustion(ThirstData.EXHAUSTION_AWAKE_BASELINE * biomeModifier * dayTimeDelta);
+            needs.addThirstExhaustion(ThirstData.EXHAUSTION_AWAKE_BASELINE * biomeModifier * elapsedTicks);
         }
 
+        needs.addThirstExhaustion((bridge.thermalExhaustionPerTick(state.thermal) + ToughAsNailsEntityCompat.thirstExhaustion(self)) * elapsedTicks);
         thirstChanged |= needs.processThirstExhaustion();
-        if (state.lastPassiveDrainDayTime < 0) state.lastPassiveDrainDayTime = dayTime;
+        if (state.lastPassiveDrainGameTime < 0) state.lastPassiveDrainGameTime = elapsedTime;
         Activity currentActivity = currentScheduleActivity(self);
         boolean resting = currentActivity == Activity.REST;
         if (resting) {
             // Keep tracking current while resting so wake-up doesn't cause burst drain
-            state.lastPassiveDrainDayTime = dayTime;
+            state.lastPassiveDrainGameTime = elapsedTime;
         } else {
             // Passive thirst drain only. Drinking is owned by RefuelTask now.
             int drainIterations = 0;
-            while (dayTime - state.lastPassiveDrainDayTime >= ThirstData.PASSIVE_DRAIN_INTERVAL && drainIterations < 100) {
-                state.lastPassiveDrainDayTime += ThirstData.PASSIVE_DRAIN_INTERVAL;
+            while (elapsedTime - state.lastPassiveDrainGameTime >= ThirstData.PASSIVE_DRAIN_INTERVAL && drainIterations < 100) {
+                state.lastPassiveDrainGameTime += ThirstData.PASSIVE_DRAIN_INTERVAL;
                 thirstChanged |= needs.passiveThirstDrain();
                 drainIterations++;
             }
         }
 
-        if (state.lastMoodDayTime < 0) state.lastMoodDayTime = dayTime;
-        if (dayTime - state.lastMoodDayTime >= ThirstData.MOOD_CHECK_INTERVAL) {
-            state.lastMoodDayTime = dayTime;
+        if (state.lastMoodGameTime < 0) state.lastMoodGameTime = elapsedTime;
+        if (elapsedTime - state.lastMoodGameTime >= ThirstData.MOOD_CHECK_INTERVAL) {
+            state.lastMoodGameTime = elapsedTime;
             int t = needs.thirst();
             ThirstData.ThirstState moodState = ThirstData.getState(t);
             float pressure = ThirstData.getMoodPressure(moodState);
@@ -249,14 +270,16 @@ public final class ThirstVillagerTicker {
     }
 
     private static final class TickState {
+        private boolean positionInitialized;
+        private ThermalHydrationContext thermal = ThermalHydrationContext.NONE;
         private double prevX;
         private double prevZ;
         private float biomeModifier = 1.0f;
         private long nextBiomeModifierSampleTick;
         private int lastSyncedThirst = -1;
         private int lastSyncedQuenched = -1;
-        private long lastDayTime = -1;
-        private long lastPassiveDrainDayTime = -1;
-        private long lastMoodDayTime = -1;
+        private long lastGameTime = -1;
+        private long lastPassiveDrainGameTime = -1;
+        private long lastMoodGameTime = -1;
     }
 }

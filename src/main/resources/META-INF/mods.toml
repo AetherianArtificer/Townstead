@@ -46,13 +46,6 @@ ordering = "NONE"
 side = "CLIENT"
 
 [[dependencies.townstead]]
-modId = "patchouli"
-mandatory = true
-versionRange = "[1.20.1-85,)"
-ordering = "AFTER"
-side = "BOTH"
-
-[[dependencies.townstead]]
 modId = "travelerstitles"
 mandatory = false
 versionRange = "[0,)"

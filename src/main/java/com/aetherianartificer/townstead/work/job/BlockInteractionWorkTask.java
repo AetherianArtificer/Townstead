@@ -64,6 +64,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
     /** Safe floor cell used to approach the target; never the station/counter block itself. */
     private @Nullable BlockPos targetStand;
     private @Nullable WorkJobDef.Interaction interaction;
+    private @Nullable WorkIngredients.PhysicalPull supplyPull;
     private @Nullable Order claimedOrder;
     private @Nullable Worksite claimedOrderSite;
     private @Nullable ResourceLocation claimedOutput;
@@ -164,6 +165,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         target = null;
         targetStand = null;
         interaction = null;
+        supplyPull = null;
         worksite = Set.of();
         deliveryItems = Set.of();
         rejectedStorage.clear();
@@ -203,6 +205,14 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
             break;
         }
         if (target == null) return;
+        if (!interaction.sourceBuildings().isEmpty()
+                && !hasMatching(level, target.pos(), villager.getInventory(), interaction)) {
+            supplyPull = depotPull(level, villager, target.pos(), interaction);
+            if (supplyPull == null) { target = null; return; }
+            targetStand = Stations.findStandingPosition(level, villager, supplyPull.source());
+            if (targetStand == null) { target = null; return; }
+            phase = Phase.FETCH;
+        }
         moveForCurrentPhase(villager, gameTime);
     }
 
@@ -219,7 +229,8 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
                 && target.task().allowsBlock(blockId(level, target.pos()))
                 && target.definition().ready(level, target.pos())
                 && interaction.ready(level, target.pos())
-                && hasMatching(level, target.pos(), villager.getInventory(), interaction);
+                && (phase == Phase.FETCH
+                    || hasMatching(level, target.pos(), villager.getInventory(), interaction));
     }
 
     @Override
@@ -229,6 +240,21 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
             return;
         }
         if (target == null || interaction == null) return;
+        if (phase == Phase.FETCH) {
+            if (supplyPull == null || !sourcePositions(villager, interaction)
+                    .contains(supplyPull.source().asLong())) { target = null; return; }
+            if (!approachWorkstation(level, villager, supplyPull.source(), gameTime)) return;
+            if (!level.isLoaded(supplyPull.source())
+                    || WorkIngredients.executePhysicalPull(level, villager, supplyPull).count() == 0) {
+                target = null;
+                return;
+            }
+            supplyPull = null;
+            targetStand = Stations.findStandingPosition(level, villager, target.pos());
+            phase = Phase.PREPARE;
+            moveForCurrentPhase(villager, gameTime);
+            return;
+        }
         renewRequirements(level, villager);
         if (phase == Phase.PREPARE) {
             tickPreparation(level, villager, gameTime);
@@ -260,6 +286,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
 
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        supplyPull = null;
         releaseAllRequirements(level, villager);
         releaseOrderClaim();
         target = null;
@@ -702,8 +729,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         for (WorkJobDef.Interaction option : target.interactions()) {
             if (!option.ready(level, pos)) continue;
             if (!option.requiresItem()) return true;
-            if (WorkIngredients.matchingToolAvailable(level, villager,
-                    stack -> option.matches(level, pos, stack), pos, extent)) return true;
+            if (interactionAvailable(level, villager, pos, extent, option, false)) return true;
         }
         return false;
     }
@@ -721,6 +747,10 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
             WorkJobDef.Interaction candidate, boolean gatherInput) {
         if (hasMatching(level, center, villager.getInventory(), candidate)) return true;
         if (!candidate.ready(level, center) || !candidate.requiresItem()) return false;
+        // Restricted inputs are carried from a real depot during FETCH, never remotely pulled.
+        if (!candidate.sourceBuildings().isEmpty()) {
+            return depotPull(level, villager, center, candidate) != null;
+        }
         if (!gatherInput) {
             return WorkIngredients.matchingToolAvailable(level, villager,
                     stack -> candidate.matches(level, center, stack), center, extent);
@@ -728,6 +758,34 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         StationSupplies.pullMatching(level, villager,
                 stack -> candidate.matches(level, center, stack), 1, center, extent);
         return hasMatching(level, center, villager.getInventory(), candidate);
+    }
+
+    private static Set<Long> sourcePositions(VillagerEntityMCA villager,
+                                              WorkJobDef.Interaction interaction) {
+        Set<Long> positions = new HashSet<>();
+        ProfessionCapacity.resolveVillage(villager).ifPresent(village -> {
+            for (var building : McaBuildings.all(village)) {
+                if (!building.isComplete() || !interaction.matchesSourceBuilding(building.getType())) continue;
+                // Registered furniture only: room flood-fills and nearby-container searches
+                // can cross into a neighbouring household. Depots explicitly require storage.
+                building.getBlockPosStream().forEach(pos -> positions.add(pos.asLong()));
+            }
+        });
+        return positions;
+    }
+
+    private static @Nullable WorkIngredients.PhysicalPull depotPull(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos target,
+            WorkJobDef.Interaction interaction) {
+        Set<Long> positions = sourcePositions(villager, interaction);
+        positions.removeIf(pos -> !level.isLoaded(BlockPos.of(pos)));
+        if (positions.isEmpty()) return null;
+        java.util.function.Predicate<ItemStack> matcher = stack -> interaction.matches(level, target, stack);
+        var slot = com.aetherianartificer.townstead.storage.WorksiteStorageIndex
+                .snapshot(level, villager, positions)
+                .findBestSlotAt(villager, matcher,
+                        com.aetherianartificer.townstead.storage.StorageUse.INGREDIENT, positions);
+        return slot == null ? null : new WorkIngredients.PhysicalPull(slot, matcher, 1, false, "depot supplies");
     }
 
     private boolean perform(ServerLevel level, VillagerEntityMCA villager,
@@ -888,7 +946,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
     private record Candidate(WorkJobDef job, WorkJobDef.BlockTarget definition,
                              WorkTaskDef task, BlockPos pos, Set<Long> extent) {}
 
-    private enum Phase { PREPARE, WORK, CLEANUP, DELIVER }
+    private enum Phase { FETCH, PREPARE, WORK, CLEANUP, DELIVER }
 
     private record RequirementSession(WorkJobDef.ManagedRequirement requirement, BlockPos source,
                                       @Nullable ManagedRequirementLeases.Key lease,

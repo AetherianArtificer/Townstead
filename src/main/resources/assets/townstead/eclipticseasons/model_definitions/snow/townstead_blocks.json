@@ -1,0 +1,21 @@
+{
+  "require": "eclipticseasons",
+  "replace": false,
+  "variants": {
+    "facing=north": {
+      "model": "townstead:block/snow/cap_a37ae255d25e"
+    },
+    "facing=east": {
+      "model": "townstead:block/snow/cap_a37ae255d25e",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "townstead:block/snow/cap_a37ae255d25e",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "townstead:block/snow/cap_a37ae255d25e",
+      "y": 270
+    }
+  }
+}

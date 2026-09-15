@@ -26,7 +26,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
 /** A small, UI-free place for one finished dish. */
-public final class ServingPlateBlock extends Block implements EntityBlock {
+public final class ServingPlateBlock extends SnowCoatedBlock implements EntityBlock {
     private static final VoxelShape SHAPE = Block.box(2, 0, 2, 14, 1.5, 14);
 
     public ServingPlateBlock(Properties properties) { super(properties); }

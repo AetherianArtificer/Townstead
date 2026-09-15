@@ -130,6 +130,9 @@ class ScannedProfessionsTest {
                 "a hybrid's building seat has no JOB_SITE and needs MCA retention");
         assertFalse(ScannedProfessions.townsteadManaged(poiOnly),
                 "ordinary POI professions remain vanilla/MCA-owned");
+        assertTrue(ScannedProfessions.townsteadManaged(obj("{ 'poi': ["
+                + "{ 'type': 'townstead:job_block', 'block': 'test:regulator', 'sites_per_worker': 8 }] }")),
+                "grouped workloads retain their seat without individual POI tickets");
     }
 
     @Test

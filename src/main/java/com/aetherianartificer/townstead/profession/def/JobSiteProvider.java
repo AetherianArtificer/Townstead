@@ -20,6 +20,11 @@ public interface JobSiteProvider {
 
     String typeKey();
 
+    /** Grouped workloads require seat-based hiring, just like building workplaces. */
+    default boolean ownsSeats() {
+        return this instanceof Building || this instanceof JobBlock block && block.sitesPerWorker() > 1;
+    }
+
     /**
      * A vanilla-style job-site block. The def's {@code poi} list is an ordered acquisition
      * hierarchy: the first entry is the primary surface, and a subordinate job-block entry may

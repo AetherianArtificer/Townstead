@@ -32,7 +32,7 @@ public final class McaBuildingCompat {
             ServerLevel level, Village village, BlockPos pos) {
         if (level == null || village == null || pos == null) return null;
         //? if >=1.21 {
-        return village.getFunctionalRoomAt(level, pos).orElse(null);
+        return village.findInteractionRoomAt(pos).orElse(null);
         //?} else {
         /*return village.getBuildingAt(pos).orElse(null);
         *///?}
@@ -146,10 +146,9 @@ public final class McaBuildingCompat {
     public static Set<Long> exactWorkArea(Building building) {
         if (building == null) return Set.of();
         //? if >=1.21 {
-        if (building.getFloorRegions().isEmpty()) return Set.of();
+        if (building.getFloorCells().isEmpty()) return Set.of();
         Set<Long> cells = new HashSet<>();
-        building.getFloorRegions().forEach(region ->
-                region.cells().forEach(pos -> cells.add(pos.asLong())));
+        building.getFloorCells().forEach(pos -> cells.add(pos.asLong()));
         building.getBlockPosStream().forEach(pos -> cells.add(pos.asLong()));
         return Set.copyOf(cells);
         //?} else {

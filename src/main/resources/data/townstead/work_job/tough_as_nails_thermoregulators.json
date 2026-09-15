@@ -1,0 +1,59 @@
+{
+  "schema": "townstead:job/v3",
+  "mods": [
+    "toughasnails"
+  ],
+  "task": "townstead_work:maintain_climate",
+  "type": "townstead:block_interaction",
+  "target": {
+    "buildings": [
+      "*"
+    ],
+    "blocks": [
+      "toughasnails:thermoregulator"
+    ],
+    "condition": {
+      "type": "pheno:block_state",
+      "property": "enabled",
+      "value": "true"
+    },
+    "interactions": [
+      {
+        "item": "#toughasnails:thermoregulator_cooling_fuel",
+        "action": {
+          "type": "pheno:insert_item",
+          "item": "item",
+          "side": "up",
+          "slot": 0,
+          "count": 1,
+          "limit": 1,
+          "reject_remainders": true
+        },
+        "activity": "townstead:climatologist_cooling",
+        "xp": 1,
+        "source_buildings": [
+          "compat/toughasnails/climate_icehouse",
+          "compat.toughasnails.climate_icehouse"
+        ]
+      },
+      {
+        "item": "#toughasnails:thermoregulator_heating_fuel",
+        "action": {
+          "type": "pheno:insert_item",
+          "item": "item",
+          "side": "up",
+          "slot": 1,
+          "count": 1,
+          "limit": 1,
+          "reject_remainders": true
+        },
+        "activity": "townstead:climatologist_heating",
+        "xp": 1,
+        "source_buildings": [
+          "compat/toughasnails/climate_fuel_store",
+          "compat.toughasnails.climate_fuel_store"
+        ]
+      }
+    ]
+  }
+}

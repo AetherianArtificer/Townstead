@@ -60,6 +60,8 @@ public final class CareerProgression {
             notifyComboUnlocks(worker, combosBefore);
         }
         ChronicleTaps.work(worker, chronicleVerb, objectId, paramName, magnitude, semanticParams);
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.workCompleted(worker, career, chronicleVerb, objectId,
+                magnitude, result.appliedXp(), result.tierBefore(), result.tierAfter());
         for (ResourceLocation acquired : CareerAcquisitions.acquireEligible(
                 worker, "self_discovery", affected)) {
             if (worker instanceof Player player) {
@@ -72,6 +74,30 @@ public final class CareerProgression {
         boolean tieredUp = gains.values().stream().anyMatch(ProfessionProgress.GainResult::tierUp);
         if (tieredUp && worker instanceof VillagerEntityMCA) {
             SkillPoints.autoSpend(worker, affected);
+        }
+        return result;
+    }
+
+    /**
+     * An award that is not work: the same XP path and tier-up bookkeeping as {@link #completeWork},
+     * minus the work-verb chronicle tap, since nothing was made. {@code respectDailyCap} false
+     * ignores the track's daily allowance. This is what the public API awards through.
+     */
+    public static ProfessionProgress.GainResult award(LivingEntity worker, ResourceLocation career, int amount,
+                                                      long gameTime, boolean respectDailyCap) {
+        career = ProfessionDefs.canonicalId(career);
+        ProfessionXpStore store = store(worker);
+        if (store == null) return new ProfessionProgress.GainResult(0, 1, 1, false);
+        setPrimaryIfAbsent(worker, career);
+        Set<ResourceLocation> combosBefore = comboIds(worker);
+        ProfessionProgress.GainResult result = ProfessionProgress.addXp(store, career, amount, gameTime, respectDailyCap);
+        syncMerchantLevel(worker, career, result);
+        Map<ResourceLocation, ProfessionProgress.GainResult> gains = new java.util.LinkedHashMap<>();
+        gains.put(career, result);
+        notifyTierUps(worker, gains);
+        if (result.tierUp()) {
+            notifyComboUnlocks(worker, combosBefore);
+            if (worker instanceof VillagerEntityMCA) SkillPoints.autoSpend(worker, Set.of(career));
         }
         return result;
     }
@@ -103,6 +129,8 @@ public final class CareerProgression {
         for (Map.Entry<ResourceLocation, ProfessionProgress.GainResult> entry : gains.entrySet()) {
             ProfessionProgress.GainResult gain = entry.getValue();
             if (!gain.tierUp()) continue;
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.tierChanged(worker, entry.getKey(),
+                    gain.tierBefore(), gain.tierAfter(), gain.appliedXp());
             ProfessionDef def = ProfessionDefs.byId(entry.getKey());
             if (def == null) continue;
             com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.work(worker,

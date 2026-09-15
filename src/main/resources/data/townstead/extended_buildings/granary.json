@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "minecraft:hay_block"
+  },
+  "storage_roles": ["townstead:agricultural"],
+  "spirit": {
+    "pastoral": 5,
+    "industrious": 2
+  }
+}

@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -189,6 +190,30 @@ public final class CemAnimationProgram {
         private final float partialTick;
         private final long frameCounter;
         private final Map<String, CemPartPose> baseline = new HashMap<>();
+        private final Map<String, NbtValue> nbtValues = new HashMap<>();
+        private CompoundTag savedNbt;
+        private boolean savedNbtLoaded;
+
+        private NbtValue nbtValue(String path) {
+            return nbtValues.computeIfAbsent(path, key -> livePlayerNbtValue(key, source.entity())
+                    .orElseGet(() -> {
+                        // All queries in this evaluation share one lazy snapshot. Never retain
+                        // it across frames: equipment and sleeping state can change immediately.
+                        if (!savedNbtLoaded) {
+                            savedNbtLoaded = true;
+                            try {
+                                CompoundTag snapshot = new CompoundTag();
+                                source.entity().saveWithoutId(snapshot);
+                                savedNbt = snapshot;
+                            } catch (RuntimeException ignored) {
+                                savedNbt = null;
+                            }
+                        }
+                        if (savedNbt == null) return NbtValue.MISSING;
+                        Tag tag = findNbtPath(savedNbt, key);
+                        return tag == null ? NbtValue.MISSING : NbtValue.ofTag(tag);
+                    }));
+        }
 
         CemEvaluationContext(AnimationSourceContext<T> source, CemVariableStore variables, double frameTime, float partialTick, long frameCounter) {
             this.source = source;
@@ -613,16 +638,30 @@ public final class CemAnimationProgram {
         };
     }
 
-    static double nbt(String query, CemEvaluationContext<?> context) {
+    static CemExpression nbt(String query) {
         String trimmed = query.trim();
         int comma = trimmed.indexOf(',');
         String path = (comma >= 0 ? trimmed.substring(0, comma) : trimmed).trim();
         String expected = comma >= 0 ? trimmed.substring(comma + 1).trim() : "";
 
-        NbtValue value = livePlayerNbtValue(path, context.source.entity()).orElseGet(() -> savedNbtValue(path, context.source.entity()));
-        if (!value.exists()) return bool(matchesMissing(expected));
-        if (expected.isEmpty()) return bool(value.truthy());
-        return bool(matchesNbtExpected(value, expected));
+        Predicate<NbtValue> matcher = nbtMatcher(expected);
+        return context -> {
+            NbtValue value = context.nbtValue(path);
+            if (!value.exists()) return bool(matchesMissing(expected));
+            if (expected.isEmpty()) return bool(value.truthy());
+            return bool(matcher.test(value));
+        };
+    }
+
+    private static Predicate<NbtValue> nbtMatcher(String expected) {
+        String normalized = expected.toLowerCase(Locale.ROOT);
+        for (String prefix : List.of("raw:iregex:", "raw:regex:", "iregex:", "regex:")) {
+            if (normalized.startsWith(prefix)) {
+                Predicate<String> matcher = regexMatcher(expected.substring(prefix.length()), prefix.contains("iregex"));
+                return value -> matcher.test(prefix.startsWith("raw:") ? value.raw() : value.string());
+            }
+        }
+        return value -> matchesNbtExpected(value, expected);
     }
 
     private static Optional<NbtValue> livePlayerNbtValue(String path, LivingEntity entity) {
@@ -632,21 +671,10 @@ public final class CemAnimationProgram {
             return Optional.of(NbtValue.ofBoolean(player.getAbilities().flying));
         }
         if ("selecteditem.id".equals(normalized)) {
-            if (player.getMainHandItem().isEmpty()) return Optional.empty();
+            if (player.getMainHandItem().isEmpty()) return Optional.of(NbtValue.MISSING);
             return Optional.of(NbtValue.ofString(BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).toString()));
         }
         return Optional.empty();
-    }
-
-    private static NbtValue savedNbtValue(String path, LivingEntity entity) {
-        try {
-            CompoundTag root = new CompoundTag();
-            entity.saveWithoutId(root);
-            Tag tag = findNbtPath(root, path);
-            return tag == null ? NbtValue.MISSING : NbtValue.ofTag(tag);
-        } catch (RuntimeException ignored) {
-            return NbtValue.MISSING;
-        }
     }
 
     private static Tag findNbtPath(CompoundTag root, String path) {
@@ -672,10 +700,6 @@ public final class CemAnimationProgram {
         if ("exists:false".equals(normalized)) return !value.exists();
         if ("true".equals(normalized)) return value.asBoolean();
         if ("false".equals(normalized)) return !value.asBoolean();
-        if (normalized.startsWith("raw:iregex:")) return matchesRegex(value.raw(), expected.substring("raw:iregex:".length()), true);
-        if (normalized.startsWith("raw:regex:")) return matchesRegex(value.raw(), expected.substring("raw:regex:".length()), false);
-        if (normalized.startsWith("iregex:")) return matchesRegex(value.string(), expected.substring("iregex:".length()), true);
-        if (normalized.startsWith("regex:")) return matchesRegex(value.string(), expected.substring("regex:".length()), false);
 
         Double expectedNumber = parseDoubleOrNull(expected);
         if (expectedNumber != null && value.number() != null) {
@@ -685,12 +709,15 @@ public final class CemAnimationProgram {
         return value.string().equals(expected) || value.string().equalsIgnoreCase(expected);
     }
 
-    private static boolean matchesRegex(String value, String regex, boolean caseInsensitive) {
+    static Predicate<String> regexMatcher(String regex, boolean caseInsensitive) {
         try {
             int flags = caseInsensitive ? Pattern.CASE_INSENSITIVE : 0;
-            return Pattern.compile(regex, flags).matcher(value).find();
+            Pattern pattern = Pattern.compile(regex, flags);
+            // ETF's NBT regex predicates match the entire value. Substring search
+            // retries leading .* at every offset when a large inventory fails to match.
+            return value -> pattern.matcher(value).matches();
         } catch (PatternSyntaxException ignored) {
-            return false;
+            return value -> false;
         }
     }
 

@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:naming_tradition/v1",
+  "given": "mca:iceland",
+  "family": {
+    "type": "patronymic",
+    "affix": {
+      "male": {
+        "suffix": "sson"
+      },
+      "female": {
+        "suffix": "sdottir"
+      },
+      "neutral": {
+        "suffix": "sbur"
+      }
+    }
+  }
+}

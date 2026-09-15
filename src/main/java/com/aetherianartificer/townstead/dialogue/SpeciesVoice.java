@@ -9,6 +9,8 @@ import com.aetherianartificer.townstead.root.personality.PersonalityResolver;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.conczin.mca.entity.ai.DialogueType;
+import net.conczin.mca.entity.ai.relationship.Personality;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
@@ -38,7 +40,7 @@ public final class SpeciesVoice {
     /** A species/origin-tree line for this phrase, or {@code null} to fall through to MCA's own. */
     public static MutableComponent line(VillagerEntityMCA villager, Player target, String phraseId, Object[] params) {
         if (phraseId == null || phraseId.isEmpty()) return null;
-        for (String voice : voiceChain(villager)) {
+        for (String voice : voiceChain(villager, target)) {
             String base = PREFIX + voice + "." + phraseId;
             String exact = DataPackLang.find(base, locale(target));
             if (exact != null) return format(exact, target, params);
@@ -64,13 +66,15 @@ public final class SpeciesVoice {
      * and addon-registered personalities extensible from data-pack language sidecars too; when no
      * sidecar line exists, MCA's resource-pack personality resolver remains the final fallback.
      */
-    private static List<String> voiceChain(VillagerEntityMCA villager) {
+    private static List<String> voiceChain(VillagerEntityMCA villager, Player target) {
         TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
         List<String> out = new ArrayList<>();
-        PersonalityDef personality = PersonalityResolver.def(life.personalityId());
-        if (personality != null) addFlat(out, personality.id());
-        addFlat(out, DataPackLang.parseId(McaPersonalityCompat.id(
-                villager.getVillagerBrain().getPersonality())));
+        if (!suppressPersonalityVoice(villager, target)) {
+            PersonalityDef personality = PersonalityResolver.def(life.personalityId());
+            if (personality != null) addFlat(out, personality.id());
+            addFlat(out, DataPackLang.parseId(McaPersonalityCompat.id(
+                    villager.getVillagerBrain().getPersonality())));
+        }
         ResourceLocation oid = DataPackLang.parseId(life.rootId());
         if (oid == null) return out;
         addFlat(out, oid);
@@ -81,6 +85,18 @@ public final class SpeciesVoice {
         }
         addFlat(out, RootRegistry.effectiveSpecies(oid));
         return out;
+    }
+
+    /**
+     * Parity with MCA's dialogue resolver: a flirty villager talking to the player who is its
+     * parent must not use flirty lines. MCA skips its personality prefix for the player-child
+     * dialogue types; the same rule applies to the personality voice tiers here.
+     */
+    private static boolean suppressPersonalityVoice(VillagerEntityMCA villager, Player target) {
+        if (target == null || villager.getVillagerBrain().getPersonality() != Personality.FLIRTY) return false;
+        DialogueType type = villager.getDialogueType(target);
+        return type == DialogueType.TODDLERP || type == DialogueType.CHILDP
+                || type == DialogueType.TEENP || type == DialogueType.ADULTP;
     }
 
     private static void addFlat(List<String> out, ResourceLocation id) {

@@ -57,6 +57,24 @@ public final class PhenoSchemas {
                 .field(of("condition", PhenoType.CONDITION))
                 .primaryChild("action").build());
 
+        NodeSchemas.register(NodeSchema.of("pheno:thermal_tolerance", NodeDomain.GENE)
+                .doc("Resting body temperature and comfort band; cold/heat scale the ambient pull. climate:any switches the need off.")
+                .field(of("neutral", PhenoType.FLOAT).doc("Resting body temperature in Celsius (default 37.0)."))
+                .field(of("band", PhenoType.FLOAT).doc("Comfortable half-width in Celsius (default 0.5)."))
+                .field(of("cold", PhenoType.FLOAT).doc("Cold sensitivity 0..2 (0 immune, 1 baseline)."))
+                .field(of("heat", PhenoType.FLOAT).doc("Heat sensitivity 0..2 (0 immune, 1 baseline)."))
+                .field(of("climate", PhenoType.STRING).doc("\"any\" disables thermoregulation entirely."))
+                .build());
+        NodeSchemas.register(NodeSchema.of("pheno:insulation", NodeDomain.GENE)
+                .doc("Innate clothing (fur, blubber, chitin) as a Celsius offset on the body target.")
+                .field(of("amount", PhenoType.FLOAT).doc("-1.5..1.5 degrees; positive warms."))
+                .field(of("sheds", PhenoType.BOOL).doc("Positive insulation stops hurting in the heat."))
+                .build());
+        NodeSchemas.register(NodeSchema.of("pheno:metabolism", NodeDomain.GENE)
+                .doc("endotherm (default) holds its neutral and warms with work; ectotherm follows the air and basks in the sun.")
+                .field(of("metabolism", PhenoType.STRING).doc("endotherm or ectotherm."))
+                .build());
+
         NodeSchemas.register(NodeSchema.of("pheno:active_ability", NodeDomain.GENE)
                 .doc("An action the holder triggers from an Root Ability key slot.")
                 .field(required("action", PhenoType.ACTION))
@@ -213,6 +231,14 @@ public final class PhenoSchemas {
         NodeSchemas.register(NodeSchema.of("pheno:energize", NodeDomain.ACTION)
                 .doc("Reduces a Townstead villager's fatigue.")
                 .field(of("amount", PhenoType.ANY).doc("Fatigue removed; number or Pheno value."))
+                .build());
+        NodeSchemas.register(NodeSchema.of("pheno:warm", NodeDomain.ACTION)
+                .doc("Raises a Townstead villager's body temperature: hot soup, mulled wine, a warm bath.")
+                .field(of("amount", PhenoType.ANY).doc("Degrees Celsius added; number or Pheno value."))
+                .build());
+        NodeSchemas.register(NodeSchema.of("pheno:cool", NodeDomain.ACTION)
+                .doc("Lowers a Townstead villager's body temperature: an iced drink, a swim.")
+                .field(of("amount", PhenoType.ANY).doc("Degrees Celsius removed; number or Pheno value."))
                 .build());
         NodeSchemas.register(NodeSchema.of("pheno:apply_effect", NodeDomain.ACTION)
                 .doc("Applies a status effect.")
@@ -426,6 +452,20 @@ public final class PhenoSchemas {
                 .field(of("biome", PhenoType.TAG_OR_ID).asList())
                 .field(of("dimension", PhenoType.ID).asList())
                 .field(of("effects", PhenoType.OBJECT)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:near_object_set", NodeDomain.CONDITION)
+                .doc("A recognised object set (a hearth, a cool spot) stands within radius of the entity.")
+                .field(of("set", PhenoType.ID).doc("Set definition id; omit for any set."))
+                .field(of("radius", PhenoType.INT)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:wet", NodeDomain.CONDITION)
+                .doc("True while the entity stands in water or under rain.").build());
+        NodeSchemas.register(NodeSchema.of("pheno:body_temperature", NodeDomain.CONDITION)
+                .doc("A Townstead villager's body temperature in degrees Celsius (37.0 is the human neutral).")
+                .field(of("min", PhenoType.FLOAT))
+                .field(of("max", PhenoType.FLOAT)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:ambient_temperature", NodeDomain.CONDITION)
+                .doc("The ambient temperature at the entity's position in degrees Celsius, from the active temperature backend.")
+                .field(of("min", PhenoType.FLOAT))
+                .field(of("max", PhenoType.FLOAT)).build());
 
         NodeSchemas.register(NodeSchema.of("pheno:building", NodeDomain.CONDITION)
                 .doc("Tests the Townstead/MCA building at the entity's position.")

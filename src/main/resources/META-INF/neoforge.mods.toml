@@ -34,16 +34,9 @@ side = "BOTH"
 [[dependencies.townstead]]
 modId = "mca"
 type = "required"
-# Accept the current release line and later MCA builds. The 1.21.1-SNAPSHOT dev build versions
-# below 7.x, so it needs its own ascending, non-overlapping range entry.
-versionRange = "[1.21.1-SNAPSHOT],[7.7.36-beta.3,)"
-ordering = "AFTER"
-side = "BOTH"
-
-[[dependencies.townstead]]
-modId = "patchouli"
-type = "required"
-versionRange = "[1.21.1-93,)"
+# Supported MCA: the 1.21.1-SNAPSHOT dev build and 7.7.37 or later. The SNAPSHOT version string
+# sorts below 7.x, so it needs its own ascending, non-overlapping range entry.
+versionRange = "[1.21.1-SNAPSHOT],[7.7.37,)"
 ordering = "AFTER"
 side = "BOTH"
 
