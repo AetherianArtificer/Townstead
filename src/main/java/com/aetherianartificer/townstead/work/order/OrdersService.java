@@ -260,7 +260,7 @@ public final class OrdersService {
     private static @Nullable Option optionFor(ResourceLocation product, List<Option> options) {
         if (product == null || options == null) return null;
         for (Option option : options) {
-            if (option != null && product.equals(option.product())) return option;
+            if (option != null && ModifiedProducts.sameOffer(option.product(), product)) return option;
         }
         return null;
     }
@@ -593,8 +593,12 @@ public final class OrdersService {
         if (slot < 0 || slot >= player.getInventory().getContainerSize()) return false;
         net.minecraft.world.item.ItemStack stack = player.getInventory().getItem(slot);
         if (stack.isEmpty()) return false;
-        ResourceLocation source = copySourceFor(output);
-        if (source == null || !source.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
+        var produce = commissionProduceFor(output);
+        if (produce == null) return false;
+        ResourceLocation stackItem = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        boolean modifies = produce.modifies() != null;
+        if (modifies ? !produce.admits(stack)
+                : produce.copies() == null || !produce.copies().equals(stackItem)) {
             return false;
         }
         //? if >=1.21 {
@@ -603,8 +607,14 @@ public final class OrdersService {
         //?} else {
         /*net.minecraft.nbt.CompoundTag tag = stack.save(new net.minecraft.nbt.CompoundTag());
         *///?}
-        Order order = new Order(output, Order.Mode.MAKE,
-                Math.min(Math.max(1, edit.amount()), MAX_TARGET));
+        // A modified workpiece comes back as itself: the line is for the piece, the product says
+        // what was sewn onto it, and one piece is one commission.
+        Order order = new Order(modifies ? stackItem : output, Order.Mode.MAKE,
+                modifies ? 1 : Math.min(Math.max(1, edit.amount()), MAX_TARGET));
+        if (modifies) {
+            order.setProduct(ModifiedProducts.key(produce.output(), stackItem),
+                    ModifiedProducts.label(produce.output(), stackItem));
+        }
         order.setWorkpiece(tag, stack.getHoverName().getString());
         player.getInventory().setItem(slot, net.minecraft.world.item.ItemStack.EMPTY);
         orders.add(order);
@@ -613,11 +623,12 @@ public final class OrdersService {
 
     /** The input a duplicating produce line copies for this output, from any loaded def. */
     @Nullable
-    private static ResourceLocation copySourceFor(ResourceLocation output) {
+    /** The produce line a commission for this output hands its workpiece to, copy or modify. */
+    private static com.aetherianartificer.townstead.work.station.WorkstationDef.Produce commissionProduceFor(ResourceLocation output) {
         for (var def : com.aetherianartificer.townstead.work.station.Workstations.all()) {
             for (var produce : def.produces()) {
-                if (produce.copies() != null && output.equals(produce.output())) {
-                    return produce.copies();
+                if ((produce.copies() != null || produce.modifies() != null) && output.equals(produce.output())) {
+                    return produce;
                 }
             }
         }

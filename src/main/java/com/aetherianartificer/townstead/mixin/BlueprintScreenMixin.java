@@ -1787,6 +1787,12 @@ public abstract class BlueprintScreenMixin extends Screen {
                 Component.translatable("gui.blueprint.professions"),
                 Component.empty(),
                 b -> setPage(TOWNSTEAD_PROFESSION_PAGE)));
+        addRenderableWidget(townstead$tooltipButton(
+                x, y + 44, 96, 20,
+                Component.translatable("gui.blueprint.wardrobe"),
+                Component.empty(),
+                b -> net.minecraft.client.Minecraft.getInstance().setScreen(
+                        new com.aetherianartificer.townstead.client.gui.wardrobe.WardrobeScreen((Screen) (Object) this))));
     }
 
     // =====================================================================

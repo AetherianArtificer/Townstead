@@ -19,6 +19,7 @@ public final class VillagerServerTickDispatcher {
             FatigueVillagerTicker.forget(villager);
             com.aetherianartificer.townstead.performance.CollapsePlayback.stop(villager);
             TemperatureVillagerTicker.forget(villager.getId());
+            WardrobeVillagerTicker.forget(villager.getId());
             WorkToolTicker.forget(villager);
             EmptyContainerDropoff.forget(villager);
             com.aetherianartificer.townstead.profession.ProfessionSites.forget(villager);
@@ -51,6 +52,7 @@ public final class VillagerServerTickDispatcher {
         if (ThirstBridgeResolver.isActive()) ThirstVillagerTicker.tick(villager);
         FatigueVillagerTicker.tick(villager);
         TemperatureVillagerTicker.tick(villager);
+        WardrobeVillagerTicker.tick(villager);
         EmptyContainerDropoff.tick(villager);
         ProfessionProgressMemoryTicker.tick(villager);
         GuardRestEnforcerTicker.tick(villager);
@@ -83,6 +85,7 @@ public final class VillagerServerTickDispatcher {
         }
         profile("villager.fatigue", () -> FatigueVillagerTicker.tick(villager));
         profile("villager.temperature", () -> TemperatureVillagerTicker.tick(villager));
+        profile("villager.wardrobe", () -> WardrobeVillagerTicker.tick(villager));
         profile("villager.container_dropoff", () -> EmptyContainerDropoff.tick(villager));
         profile("villager.profession_memory", () -> ProfessionProgressMemoryTicker.tick(villager));
         profile("villager.guard_rest", () -> GuardRestEnforcerTicker.tick(villager));

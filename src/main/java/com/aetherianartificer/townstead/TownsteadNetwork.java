@@ -235,6 +235,14 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleShiftWeekSet);
         registerS2C(WeekPlanSyncPayload.class, WeekPlanSyncPayload::write, WeekPlanSyncPayload::read,
                 TownsteadNetwork::handleWeekPlanSync);
+        registerS2C(com.aetherianartificer.townstead.clothing.wardrobe.WardrobeSyncPayload.class,
+                com.aetherianartificer.townstead.clothing.wardrobe.WardrobeSyncPayload::write,
+                com.aetherianartificer.townstead.clothing.wardrobe.WardrobeSyncPayload::read,
+                TownsteadNetwork::handleWardrobeSync);
+        registerC2S(com.aetherianartificer.townstead.clothing.wardrobe.WardrobeAssignPayload.class,
+                com.aetherianartificer.townstead.clothing.wardrobe.WardrobeAssignPayload::write,
+                com.aetherianartificer.townstead.clothing.wardrobe.WardrobeAssignPayload::read,
+                TownsteadNetwork::handleWardrobeAssign);
         registerC2S(WeekPlanSavePayload.class, WeekPlanSavePayload::write, WeekPlanSavePayload::read,
                 TownsteadNetwork::handleWeekPlanSave);
         registerC2S(WeekPlanDeletePayload.class, WeekPlanDeletePayload::write, WeekPlanDeletePayload::read,
@@ -1144,6 +1152,17 @@ public final class TownsteadNetwork {
 
     private static void handleWeekPlanSync(WeekPlanSyncPayload payload) {
         WeekPlanClientStore.set(payload.plans());
+    }
+
+    private static void handleWardrobeSync(com.aetherianartificer.townstead.clothing.wardrobe.WardrobeSyncPayload payload) {
+        com.aetherianartificer.townstead.clothing.wardrobe.WardrobeClientStore.set(payload);
+    }
+
+    private static void handleWardrobeAssign(com.aetherianartificer.townstead.clothing.wardrobe.WardrobeAssignPayload payload,
+                                             ServerPlayer sp) {
+        if (sp.getServer() == null) return;
+        com.aetherianartificer.townstead.clothing.wardrobe.WardrobeServer.apply(sp, payload);
+        sendToPlayer(sp, com.aetherianartificer.townstead.clothing.wardrobe.WardrobeServer.snapshot(sp.getServer()));
     }
 
     private static void handleWeekPlanSave(WeekPlanSavePayload payload, ServerPlayer sp) {

@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:recipe_projection/v1",
+  "mods": "legendarysurvivaloverhaul",
+  "recipe_types": ["legendarysurvivaloverhaul:sewing"],
+  "domain": "clothing.sewing",
+  "fields": {
+    "inputs": { "merge": ["getBase", "getAddition"], "operation": "list", "required": true },
+    "output": { "aliases": ["result"], "operation": "item_stack_id", "required": true },
+    "time": { "default": 60, "operation": "integer" },
+    "readiness": { "default": true, "operation": "boolean" }
+  }
+}

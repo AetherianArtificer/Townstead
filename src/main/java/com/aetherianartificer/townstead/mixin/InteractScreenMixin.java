@@ -174,6 +174,18 @@ public abstract class InteractScreenMixin extends Screen {
         }
     }
 
+    @Inject(method = "init", at = @At("TAIL"))
+    private void townstead$hideGiveHatWithoutHats(CallbackInfo ci) {
+        if (com.aetherianartificer.townstead.compat.hats.HatsCompat.present()) return;
+        for (GuiEventListener listener : this.children()) {
+            if (!(listener instanceof net.minecraft.client.gui.components.Button button)) continue;
+            if (!(button.getMessage().getContents() instanceof TranslatableContents tc)) continue;
+            if (!"gui.button.give_hat".equals(tc.getKey())) continue;
+            button.visible = false;
+            button.active = false;
+        }
+    }
+
     @Inject(method = "onClose", at = @At("HEAD"), cancellable = true)
     private void townstead$suppressCloseOnTransition(CallbackInfo ci) {
         if (townstead$transitioning) {

@@ -22,7 +22,16 @@ import org.jetbrains.annotations.Nullable;
  */
 public record Culture(ResourceLocation id,
                       Component displayName,
-                      @Nullable ResourceLocation namingTradition) {
+                      @Nullable ResourceLocation namingTradition,
+                      CultureClothing clothing) {
+
+    public Culture {
+        if (clothing == null) clothing = CultureClothing.NONE;
+    }
+
+    public Culture(ResourceLocation id, Component displayName, @Nullable ResourceLocation namingTradition) {
+        this(id, displayName, namingTradition, CultureClothing.NONE);
+    }
 
     public boolean hasNamingTradition() {
         return namingTradition != null;

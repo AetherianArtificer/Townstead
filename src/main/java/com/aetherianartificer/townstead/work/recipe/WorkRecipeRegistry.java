@@ -579,11 +579,25 @@ public final class WorkRecipeRegistry {
     public static @Nullable ResourceLocation recipeTypeId(DiscoveredRecipe recipe) {
         if (recipe == null || recipe.source() == null) return null;
         //? if >=1.21 {
-        RecipeType<?> type = recipe.source().value().getType();
+        return recipeTypeId(recipe.source().value());
         //?} else {
-        /*RecipeType<?> type = recipe.source().getType();
+        /*return recipeTypeId(recipe.source());
         *///?}
-        return recipeTypeId(type);
+    }
+
+    /**
+     * A recipe's type id, by the type first and by the serializer when the type is a private
+     * object the mod never registered. Legendary Survival Overhaul's sewing recipes answer
+     * {@code getType()} with their own {@code Type.INSTANCE} while the registry holds a separate
+     * {@code RecipeType.simple}, so the type alone has no id; the serializer is registered under
+     * the same name, as every mod that does this does.
+     */
+    public static @Nullable ResourceLocation recipeTypeId(net.minecraft.world.item.crafting.Recipe<?> recipe) {
+        if (recipe == null) return null;
+        ResourceLocation byType = recipeTypeId(recipe.getType());
+        if (byType != null) return byType;
+        ResourceLocation bySerializer = BuiltInRegistries.RECIPE_SERIALIZER.getKey(recipe.getSerializer());
+        return bySerializer == null || "minecraft".equals(bySerializer.getNamespace()) ? null : bySerializer;
     }
 
     /**
@@ -777,7 +791,7 @@ public final class WorkRecipeRegistry {
         }
         List<RecipeHolder<?>> matches = new ArrayList<>();
         for (RecipeHolder<?> holder : level.getRecipeManager().getRecipes()) {
-            if (typeId.equals(recipeTypeId(holder.value().getType()))) matches.add(holder);
+            if (typeId.equals(recipeTypeId(holder.value()))) matches.add(holder);
         }
         return List.copyOf(matches);
     }
@@ -794,7 +808,7 @@ public final class WorkRecipeRegistry {
         }
         List<Recipe<?>> matches = new ArrayList<>();
         for (Recipe<?> recipe : level.getRecipeManager().getRecipes()) {
-            if (typeId.equals(recipeTypeId(recipe.getType()))) matches.add(recipe);
+            if (typeId.equals(recipeTypeId(recipe))) matches.add(recipe);
         }
         return List.copyOf(matches);
     }

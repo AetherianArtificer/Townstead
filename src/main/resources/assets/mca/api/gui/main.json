@@ -90,5 +90,16 @@
     "notifyServer": false,
     "targetServer": false,
     "constraints": "!baby"
+  },
+  {
+    "identifier": "gui.button.give_hat",
+    "x": -90,
+    "y": 10,
+    "row": 7,
+    "width": 80,
+    "height": 20,
+    "notifyServer": true,
+    "targetServer": false,
+    "constraints": "!baby"
   }
 ]

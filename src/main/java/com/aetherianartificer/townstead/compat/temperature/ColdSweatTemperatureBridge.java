@@ -7,6 +7,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import com.aetherianartificer.townstead.temperature.ThermalProtection;
 import net.minecraft.world.entity.player.Player;
 import com.aetherianartificer.townstead.temperature.ThermalCache;
 
@@ -60,6 +62,14 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     public boolean isActive() {
         initIfNeeded();
         return active;
+    }
+
+    /** Cold Sweat's insulator registry, so every mod's Cold Sweat garment data reaches villagers. */
+    @Override
+    public ThermalProtection itemProtection(ItemStack stack) {
+        initIfNeeded();
+        if (!active) return null;
+        return ColdSweatInsulators.protection(stack);
     }
 
     @Override

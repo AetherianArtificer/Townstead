@@ -768,6 +768,7 @@ public class Townstead {
             }
             com.aetherianartificer.townstead.root.trigger.GeneTriggers.onDeath(e.getEntity(), e.getSource());
             com.aetherianartificer.townstead.root.loot.DeathLoot.onDeath(e.getEntity());
+            com.aetherianartificer.townstead.compat.wholecloth.WholeClothDrops.onDeath(e.getEntity(), e.getSource());
             if (!(e.getEntity() instanceof net.minecraft.world.entity.player.Player)) {
                 com.aetherianartificer.townstead.profession.skill.LearnedSkills.clear(e.getEntity().getUUID());
                 com.aetherianartificer.townstead.root.collection.CollectionValues.onDeath(e.getEntity());
@@ -1221,6 +1222,7 @@ public class Townstead {
             }
             com.aetherianartificer.townstead.root.trigger.GeneTriggers.onDeath(e.getEntity(), e.getSource());
             com.aetherianartificer.townstead.root.loot.DeathLoot.onDeath(e.getEntity());
+            com.aetherianartificer.townstead.compat.wholecloth.WholeClothDrops.onDeath(e.getEntity(), e.getSource());
             if (!(e.getEntity() instanceof net.minecraft.world.entity.player.Player)) {
                 com.aetherianartificer.townstead.profession.skill.LearnedSkills.clear(e.getEntity().getUUID());
                 com.aetherianartificer.townstead.root.collection.CollectionValues.onDeath(e.getEntity());
@@ -1389,7 +1391,14 @@ public class Townstead {
             com.aetherianartificer.townstead.compat.brewinandchewin.BrewinFluidRecipes.bootstrap();
             com.aetherianartificer.townstead.compat.caupona.CauponaFluidRecipes.bootstrap();
             com.aetherianartificer.townstead.compat.caupona.CauponaPotAdapter.bootstrap();
+            com.aetherianartificer.townstead.compat.lso.LsoCoats.bootstrap();
+            com.aetherianartificer.townstead.compat.lso.LsoSewingTableAdapter.bootstrap();
+            com.aetherianartificer.townstead.compat.hats.HatsCompat.bootstrap();
+            com.aetherianartificer.townstead.compat.weaversparadise.WeaversParadiseRecipes.bootstrap();
+            com.aetherianartificer.townstead.compat.weaversparadise.WeaversParadiseStationAdapter.bootstrap();
             com.aetherianartificer.townstead.work.order.RecipeOrderCatalog.bootstrap();
+            com.aetherianartificer.townstead.work.order.ClothingOrderCatalog.bootstrap();
+            com.aetherianartificer.townstead.clothing.ClothingOrderCategories.bootstrap();
             com.aetherianartificer.townstead.work.WorkActivities.bootstrap();
             com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.bootstrap();
             com.aetherianartificer.townstead.work.order.ActivityCatalog.bootstrap();
@@ -1786,6 +1795,14 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.condition.types.NearObjectSetConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.TimeOfDayConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.WeekdayConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.ShiftStateConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.VillageSpiritConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.SeasonConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.DimensionConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
@@ -2332,6 +2349,9 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.naming.GivenNameJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.naming.FamilyNameJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.naming.NamingTraditionJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.clothing.ClothingDefs.Loader());
+        event.addListener(new com.aetherianartificer.townstead.compat.clothing.LsoItemDataSource.Loader());
+        event.addListener(new com.aetherianartificer.townstead.clothing.policy.WardrobePolicies.Loader());
         event.addListener(new com.aetherianartificer.townstead.culture.CultureJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.compat.mcacapitals.CapitalsSurnameRegisters());
         event.addListener(new com.aetherianartificer.townstead.root.HeritageJsonLoader());
@@ -2914,6 +2934,16 @@ public class Townstead {
                 WeekPlanSyncPayload.TYPE,
                 WeekPlanSyncPayload.STREAM_CODEC,
                 this::handleWeekPlanSync
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.clothing.wardrobe.WardrobeSyncPayload.TYPE,
+                com.aetherianartificer.townstead.clothing.wardrobe.WardrobeSyncPayload.STREAM_CODEC,
+                this::handleWardrobeSync
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.clothing.wardrobe.WardrobeAssignPayload.TYPE,
+                com.aetherianartificer.townstead.clothing.wardrobe.WardrobeAssignPayload.STREAM_CODEC,
+                this::handleWardrobeAssign
         );
         registrar.playToServer(
                 WeekPlanSavePayload.TYPE,
@@ -4086,6 +4116,21 @@ public class Townstead {
 
     private void handleWeekPlanSync(WeekPlanSyncPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> WeekPlanClientStore.set(payload.plans()));
+    }
+
+    private void handleWardrobeSync(com.aetherianartificer.townstead.clothing.wardrobe.WardrobeSyncPayload payload,
+                                    IPayloadContext context) {
+        context.enqueueWork(() -> com.aetherianartificer.townstead.clothing.wardrobe.WardrobeClientStore.set(payload));
+    }
+
+    private void handleWardrobeAssign(com.aetherianartificer.townstead.clothing.wardrobe.WardrobeAssignPayload payload,
+                                      IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp) || sp.getServer() == null) return;
+            com.aetherianartificer.townstead.clothing.wardrobe.WardrobeServer.apply(sp, payload);
+            PacketDistributor.sendToPlayer(sp,
+                    com.aetherianartificer.townstead.clothing.wardrobe.WardrobeServer.snapshot(sp.getServer()));
+        });
     }
 
     private void handleWeekPlanSave(WeekPlanSavePayload payload, IPayloadContext context) {

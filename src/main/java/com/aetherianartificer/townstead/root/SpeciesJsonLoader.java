@@ -40,6 +40,7 @@ public final class SpeciesJsonLoader extends SimpleJsonResourceReloadListener {
         Map<ResourceLocation, Species> parsed = new LinkedHashMap<>();
         Map<ResourceLocation, Personalities> policies = new LinkedHashMap<>();
         Map<ResourceLocation, com.aetherianartificer.townstead.root.appearance.HairPolicy> hairPolicies = new LinkedHashMap<>();
+        Map<ResourceLocation, com.aetherianartificer.townstead.clothing.BodyClothing> bodyClothing = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
             try {
@@ -60,6 +61,7 @@ public final class SpeciesJsonLoader extends SimpleJsonResourceReloadListener {
                         characterEditor));
                 policies.put(file, PersonalityPolicies.parse(obj));
                 hairPolicies.put(file, com.aetherianartificer.townstead.root.appearance.HairPolicy.parse(obj, lang));
+                bodyClothing.put(file, com.aetherianartificer.townstead.clothing.BodyClothing.parse(obj));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse species {}: {}", file, ex.getMessage());
             }
@@ -67,6 +69,7 @@ public final class SpeciesJsonLoader extends SimpleJsonResourceReloadListener {
         SpeciesRegistry.replaceAll(parsed);
         PersonalityPolicyRegistry.setSpecies(policies);
         com.aetherianartificer.townstead.root.appearance.HairPolicyRegistry.setSpecies(hairPolicies);
+        com.aetherianartificer.townstead.clothing.BodyClothingRegistry.setSpecies(bodyClothing);
         LOGGER.info("Loaded {} origin species", parsed.size());
     }
 

@@ -105,7 +105,7 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
                     }
                 }
 
-                loaded.put(file, new Culture(file, displayName, traditionId));
+                loaded.put(file, new Culture(file, displayName, traditionId, CultureClothing.parse(root)));
             } catch (Exception exception) {
                 LOGGER.warn("Could not load culture {}", file, exception);
             }

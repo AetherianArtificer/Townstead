@@ -3,8 +3,13 @@ package com.aetherianartificer.townstead.work.order;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
+import java.util.function.Supplier;
 
 /**
  * The tag questions orders ask, kept in one place.
@@ -27,23 +32,50 @@ public final class OrderTags {
 
     private static @Nullable BiPredicate<ResourceLocation, ResourceLocation> resolver;
 
+    /**
+     * Categories an engine derives rather than a pack authors: the clothing engine answers "warm
+     * clothing" from every entry's thermal value, so a new mod's coat joins the category with no
+     * tag written. A derived category and a tag of the same id union.
+     */
+    private static final Map<ResourceLocation, Supplier<List<ResourceLocation>>> DERIVED = new ConcurrentHashMap<>();
+
     private OrderTags() {}
+
+    /** Registers a derived category. The supplier is asked on every question, so it must be cheap. */
+    public static void registerDerived(ResourceLocation tagId, Supplier<List<ResourceLocation>> members) {
+        if (tagId == null || members == null) return;
+        DERIVED.put(tagId, members);
+    }
+
+    static void clearDerived() {
+        DERIVED.clear();
+    }
 
     /** Whether this item id is a member of this item tag. */
     public static boolean contains(@Nullable ResourceLocation tagId, @Nullable ResourceLocation itemId) {
         if (tagId == null || itemId == null) return false;
+        Supplier<List<ResourceLocation>> derived = DERIVED.get(tagId);
+        if (derived != null && derived.get().contains(itemId)) return true;
         BiPredicate<ResourceLocation, ResourceLocation> active = resolver;
         return active != null ? active.test(tagId, itemId) : Registry.contains(tagId, itemId);
     }
 
-    /** The tag's member item ids, in tag order. */
+    /** The tag's member item ids, in tag order, derived members first. */
     public static List<ResourceLocation> members(@Nullable ResourceLocation tagId) {
-        return tagId == null ? List.of() : Registry.members(tagId);
+        if (tagId == null) return List.of();
+        Supplier<List<ResourceLocation>> derived = DERIVED.get(tagId);
+        if (derived == null) return resolver != null ? List.of() : Registry.members(tagId);
+        LinkedHashSet<ResourceLocation> out = new LinkedHashSet<>(derived.get());
+        if (resolver == null) out.addAll(Registry.members(tagId));
+        return new ArrayList<>(out);
     }
 
-    /** Every item tag declared as an orderable category. */
+    /** Every item tag declared as an orderable category, plus every derived one. */
     public static List<ResourceLocation> categories() {
-        return Registry.categories();
+        LinkedHashSet<ResourceLocation> out = new LinkedHashSet<>();
+        if (resolver == null) out.addAll(Registry.categories());
+        out.addAll(DERIVED.keySet());
+        return new ArrayList<>(out);
     }
 
     /** Whether an output may be offered or produced at all under the cannibalism settings. */

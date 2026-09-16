@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:workstation/v1",
+  "mods": "weaversparadise",
+  "type": "craft_surface",
+  "adapter": "townstead:weaversparadise_station",
+  "work_task": "townstead_work:craft",
+  "blocks": ["weaversparadise:spinning_jenny"],
+  "recipe_type": "weaversparadise:spinning_jenny",
+  "cook_time": 100,
+  "orderable": "all"
+}

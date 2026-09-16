@@ -39,6 +39,7 @@ public final class LineageJsonLoader extends SimpleJsonResourceReloadListener {
         Map<ResourceLocation, Lineage> parsed = new LinkedHashMap<>();
         Map<ResourceLocation, Personalities> policies = new LinkedHashMap<>();
         Map<ResourceLocation, com.aetherianartificer.townstead.root.appearance.HairPolicy> hairPolicies = new LinkedHashMap<>();
+        Map<ResourceLocation, com.aetherianartificer.townstead.clothing.BodyClothing> bodyClothing = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
             String ctx = file.toString();
@@ -61,6 +62,7 @@ public final class LineageJsonLoader extends SimpleJsonResourceReloadListener {
                         culturalSpawnBias));
                 policies.put(file, PersonalityPolicies.parse(obj));
                 hairPolicies.put(file, com.aetherianartificer.townstead.root.appearance.HairPolicy.parse(obj, lang));
+                bodyClothing.put(file, com.aetherianartificer.townstead.clothing.BodyClothing.parse(obj));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse lineage {}: {}", file, ex.getMessage());
             }
@@ -68,6 +70,7 @@ public final class LineageJsonLoader extends SimpleJsonResourceReloadListener {
         LineageRegistry.replaceAll(parsed);
         PersonalityPolicyRegistry.setLineage(policies);
         com.aetherianartificer.townstead.root.appearance.HairPolicyRegistry.setLineage(hairPolicies);
+        com.aetherianartificer.townstead.clothing.BodyClothingRegistry.setLineage(bodyClothing);
         LOGGER.info("Loaded {} Roots lineages", parsed.size());
     }
 }

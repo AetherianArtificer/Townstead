@@ -31,6 +31,7 @@
     "compat.mca.PlayerSaveDataEditorGuardMixin",
     "compat.mca.PlayerSaveDataWelcomeMixin",
     "compat.mca.VillagerCommandHandlerInventoryMixin",
+    "compat.mca.VillagerCommandHandlerHatGiftMixin",
     "compat.curios.CuriosEntitySlotsMixin",
     "compat.timekeeper.TimekeeperQueryProcMixin",
     "GetVillageRequestMixin",

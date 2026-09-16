@@ -65,8 +65,7 @@ public final class RecipeOrderCatalog implements WorksiteCatalogs.Catalog {
         if (declarations.isEmpty()) return List.of();
         String buildingType = WorksiteWork.buildingTypeOf(level, site);
 
-        Set<ResourceLocation> seen = new LinkedHashSet<>();
-        List<Option> out = new ArrayList<>();
+        Map<ResourceLocation, Option> out = new java.util.LinkedHashMap<>();
         for (StationType type : present) {
             for (DiscoveredRecipe recipe : recipesFor(level, type)) {
                 if (!BuildingRecipeScopes.allows(buildingType, recipe.id())) continue;
@@ -82,11 +81,11 @@ public final class RecipeOrderCatalog implements WorksiteCatalogs.Catalog {
                 if (!recipe.purification()
                         && !WorkOutputTags.allows(outputTag, recipe.output(),
                         station.orderable())) continue;
-                if (!seen.add(recipe.output())) continue;
-                out.add(StationCatalogs.optionFrom(recipe, type, station, onHand));
+                Option option = StationCatalogs.optionFrom(recipe, type, station, onHand);
+                out.merge(option.product(), option, Option::merge);
             }
         }
-        return out;
+        return new ArrayList<>(out.values());
     }
 
     private List<DiscoveredRecipe> recipesFor(ServerLevel level, StationType type) {

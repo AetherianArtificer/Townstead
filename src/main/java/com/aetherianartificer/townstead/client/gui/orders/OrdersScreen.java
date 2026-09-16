@@ -296,8 +296,7 @@ public class OrdersScreen extends Screen {
             if (option.activity() != jobsTab) continue;
             if (makeableOnly && !option.available()) continue;
             if (!query.isEmpty()
-                    && !nameOf(option.activity() || option.tag(), option.label(), option.output())
-                            .toLowerCase(Locale.ROOT).contains(query)) {
+                    && !nameOf(option).toLowerCase(Locale.ROOT).contains(query)) {
                 continue;
             }
             String group = option.activity() ? tr("townstead.orders.group.jobs")
@@ -321,7 +320,7 @@ public class OrdersScreen extends Screen {
                 if (catalogue.isCategoryCollapsed(group.getKey())) continue;
             }
             for (Option option : group.getValue()) {
-                String shown = nameOf(option.activity() || option.tag(), option.label(), option.output());
+                String shown = nameOf(option);
                 // A thing is shown as itself; a job has no item, so it borrows an icon; a category
                 // borrows one member's. Using the station icon for all of them is what stopped
                 // every food sprite from rendering.
@@ -610,7 +609,7 @@ public class OrdersScreen extends Screen {
         drawItem(g, iconFor(row), c.item + 1, body.y() + LINE1_Y + 1);
 
         int nameInk = satisfied ? Palette.LABEL_MID : Palette.CARD;
-        g.drawString(this.font, trim(nameOf(row.activity() || row.tag(), row.label(), row.output()), c.mainW), c.main, body.y() + 8,
+        g.drawString(this.font, trim(nameOf(row), c.mainW), c.main, body.y() + 8,
                 nameInk, false);
 
         if (!compact && row.want() > 0 && c.showMeter && !row.activity()) {
@@ -643,13 +642,15 @@ public class OrdersScreen extends Screen {
             g.drawString(this.font, trim(row.modeLabel(), compact ? mode.w() : mode.w() + 40),
                     mode.x(), mode.y() + 3,
                     Palette.LABEL_DIM, false);
+        } else if (modifyingCommission(row)) {
+            // One handed-over piece: there is no number and no mode to set, so nothing is drawn.
         } else {
             Controls.drawButton(g, this.font, mode, modeLabels()[row.mode().ordinal()],
                     false, mode.contains(mouseX, mouseY), true);
             tip(mode, mouseX, mouseY, modeTip(row.mode()));
         }
 
-        if (row.mode().hasTarget() && !row.activity()) {
+        if (row.mode().hasTarget() && !row.activity() && !modifyingCommission(row)) {
             Rect[] stepper = rowStepper(c, body, row);
             Controls.drawStepper(g, this.font, stepper, String.valueOf(row.target()), true,
                     hitIndex(stepper, mouseX, mouseY));
@@ -683,8 +684,7 @@ public class OrdersScreen extends Screen {
         }
         // Striking previews itself: the name is ruled through before anything is committed.
         if (strike.contains(mouseX, mouseY)) {
-            int nameW = Math.min(this.font.width(
-                    nameOf(row.activity() || row.tag(), row.label(), row.output())), c.mainW);
+            int nameW = Math.min(this.font.width(nameOf(row)), c.mainW);
             g.fill(c.main, body.y() + 12, c.main + nameW, body.y() + 13, Controls.Chip.BLOCKED.ink);
         }
         return height;
@@ -873,6 +873,31 @@ public class OrdersScreen extends Screen {
                 Controls.MARK, Controls.MARK);
     }
 
+    // ── Commissions ──
+
+    /** A modifying commission: the held piece comes back changed, so it is one piece, one line. */
+    private static boolean modifyingCommission(Option option) {
+        return option != null && option.commission()
+                && com.aetherianartificer.townstead.work.order.ModifiedProducts.isCommission(option.product());
+    }
+
+    private static boolean modifyingCommission(Row row) {
+        return row != null
+                && com.aetherianartificer.townstead.work.order.ModifiedProducts.isCommission(row.product());
+    }
+
+    private boolean draftCommission() {
+        Draft d = draft;
+        if (d == null || d.activity) return false;
+        Option option = optionFor(d.product);
+        return option != null && option.commission();
+    }
+
+    private boolean draftModifying() {
+        Draft d = draft;
+        return d != null && !d.activity && modifyingCommission(optionFor(d.product));
+    }
+
     // ── Composer ──
 
     private void drawComposer(GuiGraphics g, int mouseX, int mouseY) {
@@ -896,6 +921,17 @@ public class OrdersScreen extends Screen {
             // A job has no number and no scope. Saying so is more use than four dead buttons.
             g.drawString(this.font, Component.translatable("townstead.orders.job.list_order"),
                     x + INSET + 3, composerModeY() + 3, Palette.LABEL_DIM, false);
+        } else if (draftCommission()) {
+            // The held item is the order. A modifying commission has nothing to set; a copying
+            // one only asks how many copies to make from the piece.
+            g.drawString(this.font, Component.translatable(draftModifying()
+                            ? "townstead.orders.commission.one_piece" : "townstead.orders.commission.copies"),
+                    x + INSET + 3, composerModeY() + 3, Palette.LABEL_DIM, false);
+            if (!draftModifying()) {
+                Rect[] stepper = composerStepper();
+                Controls.drawStepper(g, this.font, stepper, String.valueOf(d.target), true,
+                        hitIndex(stepper, mouseX, mouseY));
+            }
         } else {
         Rect[] modes = composerModes();
         Controls.drawSegments(g, this.font, modes, modeLabels(), d.mode.ordinal(),
@@ -937,7 +973,7 @@ public class OrdersScreen extends Screen {
     /** Two rows of modes when four fully labelled segments do not fit the order pane. */
     private boolean composerModesWrapped() {
         Draft d = draft;
-        if (d == null || d.activity) return false;
+        if (d == null || d.activity || draftCommission()) return false;
         Rect[] probe = Controls.segmentLayout(this.font, 0, 0, modeLabels());
         return probe[probe.length - 1].right() > ordersWidth() - (INSET + 3) * 2;
     }
@@ -949,7 +985,7 @@ public class OrdersScreen extends Screen {
      */
     private boolean composerCramped() {
         Draft d = draft;
-        if (d == null || d.activity || !d.mode.hasTarget()) return false;
+        if (d == null || d.activity || !d.mode.hasTarget() || draftCommission()) return false;
         Rect[] scope = Controls.segmentLayout(this.font, 0, 0, scopeLabels());
         int left = INSET + 3 + Controls.stepperWidth(this.font, String.valueOf(d.target))
                 + 8 + scope[scope.length - 1].right();
@@ -1031,7 +1067,7 @@ public class OrdersScreen extends Screen {
         drawItem(g, iconFor(row), win.x() + DETAIL_PAD + 1, win.y() + 5);
         Rect back = detailsBack();
         Rect assignment = detailsAssignment(row);
-        String title = nameOf(row.activity() || row.tag(), row.label(), row.output());
+        String title = nameOf(row);
         int titleLeft = win.x() + DETAIL_PAD + Controls.SLOT + 5;
         int titleRight = (workPicker ? back.x() : assignment.x()) - 4;
         String shown = trim(title, Math.max(20, titleRight - titleLeft));
@@ -1272,13 +1308,14 @@ public class OrdersScreen extends Screen {
         Rect win = detailsWindow();
         int x = settingsLeft();
         int w = win.right() - DETAIL_PAD - x;
-        boolean hasTarget = row.mode().hasTarget();
+        boolean commission = modifyingCommission(row);
+        boolean hasTarget = row.mode().hasTarget() && !commission;
 
         Rect howMuch = new Rect(x, top, w, 50);
         Controls.drawBox(g, this.font, howMuch, tr("townstead.orders.settings.quantity"));
         Rect[] modes = detailsModes();
-        Controls.drawSegments(g, this.font, modes, modeLabels(), row.mode().ordinal(),
-                Controls.segmentAt(modes, mouseX, mouseY));
+        Controls.drawSegments(g, this.font, modes, modeLabels(), commission ? -1 : row.mode().ordinal(),
+                commission ? -1 : Controls.segmentAt(modes, mouseX, mouseY));
         Rect[] stepper = detailsStepper(row);
         Controls.drawStepper(g, this.font, stepper, String.valueOf(row.target()), hasTarget,
                 hitIndex(stepper, mouseX, mouseY));
@@ -1454,7 +1491,9 @@ public class OrdersScreen extends Screen {
     /** The catalogue entry for this output, which is where the recipe's own facts live. */
     private @Nullable Option optionFor(ResourceLocation product) {
         for (Option option : data.options()) {
-            if (option.product().equals(product)) return option;
+            if (com.aetherianartificer.townstead.work.order.ModifiedProducts.sameOffer(option.product(), product)) {
+                return option;
+            }
         }
         return null;
     }
@@ -1681,12 +1720,12 @@ public class OrdersScreen extends Screen {
                 setScroll = 0;
                 return true;
             }
-            if (!row.activity() && modeButton(c, body, row).contains(mx, my)) {
+            if (!row.activity() && !modifyingCommission(row) && modeButton(c, body, row).contains(mx, my)) {
                 send(OrderEditC2SPayload.of(site, OrderEditC2SPayload.Action.SET_MODE, i,
                         nextMode(row.mode()).name()));
                 return true;
             }
-            if (row.mode().hasTarget() && !row.activity()) {
+            if (row.mode().hasTarget() && !row.activity() && !modifyingCommission(row)) {
                 int arrow = hitIndex(rowStepper(c, body, row), mx, my);
                 if (stepFor(arrow) != 0) {
                     send(OrderEditC2SPayload.of(site, OrderEditC2SPayload.Action.SET_TARGET, i,
@@ -1702,18 +1741,18 @@ public class OrdersScreen extends Screen {
     private boolean clickComposer(double mx, double my, long site) {
         Draft d = draft;
         if (d == null) return false;
-        int mode = d.activity ? -1 : Controls.segmentAt(composerModes(), mx, my);
+        int mode = d.activity || draftCommission() ? -1 : Controls.segmentAt(composerModes(), mx, my);
         if (mode >= 0) {
             d.mode = Order.Mode.values()[mode];
             return true;
         }
-        if (!d.activity && d.mode.hasTarget()) {
+        if (!d.activity && d.mode.hasTarget() && !draftModifying()) {
             int arrow = hitIndex(composerStepper(), mx, my);
             if (stepFor(arrow) != 0) {
                 d.target = Math.max(0, d.target + stepFor(arrow));
                 return true;
             }
-            int scope = Controls.segmentAt(composerScope(), mx, my);
+            int scope = draftCommission() ? -1 : Controls.segmentAt(composerScope(), mx, my);
             if (scope >= 0) {
                 d.scope = Order.CountScope.values()[scope];
                 return true;
@@ -1799,13 +1838,13 @@ public class OrdersScreen extends Screen {
                 return true;
             }
         }
-        int mode = Controls.segmentAt(detailsModes(), mx, my);
+        int mode = modifyingCommission(row) ? -1 : Controls.segmentAt(detailsModes(), mx, my);
         if (mode >= 0) {
             send(OrderEditC2SPayload.of(site, OrderEditC2SPayload.Action.SET_MODE, detailsFor,
                     Order.Mode.values()[mode].name()));
             return true;
         }
-        if (row.mode().hasTarget()) {
+        if (row.mode().hasTarget() && !modifyingCommission(row)) {
             int arrow = hitIndex(detailsStepper(row), mx, my);
             if (stepFor(arrow) != 0) {
                 send(OrderEditC2SPayload.of(site, OrderEditC2SPayload.Action.SET_TARGET, detailsFor,
@@ -1974,6 +2013,25 @@ public class OrdersScreen extends Screen {
         // A non-empty label always wins: jobs and categories name themselves, and so do
         // commissions ("Copy Filled Map") and their lines ("Copy 'Village Map'").
         return !label.isEmpty() ? label : itemName(id);
+    }
+
+    /** An option's name in this client's locale: its key over the item's name, else its label. */
+    private static String nameOf(Option option) {
+        if (!option.labelKey().isEmpty()) {
+            return Component.translatableWithFallback(option.labelKey(), option.label(),
+                    itemName(option.output())).getString();
+        }
+        return nameOf(option.activity() || option.tag(), option.label(), option.output());
+    }
+
+    /** A line's name in this client's locale; a commissioned piece names itself from its parts. */
+    private static String nameOf(Row row) {
+        var parts = com.aetherianartificer.townstead.work.order.ModifiedProducts.decode(row.product());
+        if (parts != null && !parts.item().equals(parts.modifier())) {
+            return Component.translatable("townstead.orders.product.with",
+                    itemName(parts.item()), itemName(parts.modifier())).getString();
+        }
+        return nameOf(row.activity() || row.tag(), row.label(), row.output());
     }
 
     private static String itemName(ResourceLocation id) {
