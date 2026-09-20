@@ -8,10 +8,30 @@ public final class RoomHeatBalance {
         if (roomFaces <= 0) return 0;
         return Math.min(1.0, roomFaces / (double) Math.max(1, exposedFaces));
     }
-    /** Visible-source exposure, smoothly cut off at six blocks; this is not stored heat. */
+    /** Visible-source exposure, falling linearly to nothing at six blocks; this is not stored heat. */
     public static double localExposure(double sourceEffect, double distanceSquared) {
-        double d2 = Math.max(0, distanceSquared);
-        return sourceEffect * Math.max(0, (1 / (1 + d2) - 1.0 / 37) / (1 - 1.0 / 37));
+        double distance = Math.sqrt(Math.max(0, distanceSquared));
+        if (distance > 1) distance = 1 + (distance - 1) * 2 / 5;
+        return sourceEffect * Math.max(0, 1 - distance / 3.0);
+    }
+
+    /** The strongest visible source dominates; overlapping sources share a finite field of view. */
+    public static double combinedExposure(double total, double strongest) {
+        if (total <= 0 || strongest <= 0) return 0;
+        double extra = Math.max(0, total - strongest);
+        return strongest + strongest * .25 * -Math.expm1(-extra / strongest);
+    }
+
+    /** Outside air a burning source pulls through the room, in W/K. */
+    public static double draft(double watts, double maxRise) {
+        return watts > 0 && maxRise > 0 ? watts / maxRise : 0;
+    }
+
+    /** Cooling exchanges heat with a finite cold reservoir; it cannot remove energy forever. */
+    public record Cooling(double conductance, double reservoir) {}
+    public static Cooling cooling(double watts, double ambient, double maxDrop) {
+        double drop = Math.max(1, Math.abs(maxDrop));
+        return new Cooling(Math.max(0, -watts) / drop, ambient - drop);
     }
 
     /** Background ventilation: air volume heat capacity is approximately 1200 J/m3/K. */

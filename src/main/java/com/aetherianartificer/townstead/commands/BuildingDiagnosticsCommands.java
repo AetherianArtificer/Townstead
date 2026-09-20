@@ -83,7 +83,7 @@ public final class BuildingDiagnosticsCommands {
         RegisteredRoomUpdate update = McaRoomWorkflow.analyzeRegisteredRoomUpdate(
                 level, village, room.getId(), pos);
         report.append("\n").append(Component.translatable("townstead.command.building.update_analysis",
-                update.result().toString(), update.playerMatchingTypes().toString()));
+                update.result().toString(), update.matchingTypes().toString()));
         //?}
         source.sendSuccess(() -> report, false);
         return 1;

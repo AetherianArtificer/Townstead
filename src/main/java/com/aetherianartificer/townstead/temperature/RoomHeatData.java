@@ -90,6 +90,19 @@ public final class RoomHeatData extends SavedData {
             if (tag.contains(key + "temperature") && Double.isFinite(temperature))
                 data.solids.put(tag.getLong(key + "pos"), new Wall(tag.getString(key + "material"), temperature));
         }
+        // Old unlimited cold sources could poison the entire connected thermal network.
+        // This is a derived cache: rebuild it from local climate, not from impossible stored energy.
+        if (data.temperatures.values().stream().anyMatch(t -> t < -273.15)
+                || data.solids.values().stream().anyMatch(w -> w.temperature < -273.15)
+                || data.walls.values().stream().anyMatch(w -> w.temperature < -273.15)) {
+            com.mojang.logging.LogUtils.getLogger().warn(
+                    "Rebuilding invalid Townstead thermal cache: stored temperatures below absolute zero ({} rooms, {} solids)",
+                    data.temperatures.size(), data.solids.size());
+            data.temperatures.clear();
+            data.solids.clear();
+            data.walls.clear();
+            data.setDirty();
+        }
         return data;
     }
     //? if >=1.21 {

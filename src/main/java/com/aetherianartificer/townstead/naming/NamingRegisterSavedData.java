@@ -6,6 +6,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.LinkedHashMap;
@@ -31,11 +32,13 @@ public class NamingRegisterSavedData extends SavedData {
     private static final String KEY_VILLAGE_CULTURES = "villageCultures";
     private static final String K_REGION_ID = "region";
     private static final String K_VILLAGE_ID = "village";
+    private static final String K_DIMENSION = "dimension";
     private static final String K_REGISTER = "register";
+    private static final ResourceLocation OVERWORLD = ResourceLocation.tryParse("minecraft:overworld");
 
     private final Map<Integer, String> regions = new LinkedHashMap<>();
     private final Map<Integer, String> villages = new LinkedHashMap<>();
-    private final Map<Integer, String> villageCultures = new LinkedHashMap<>();
+    private final Map<VillageCultureKey, String> villageCultures = new LinkedHashMap<>();
 
     public NamingRegisterSavedData() {}
 
@@ -88,22 +91,35 @@ public class NamingRegisterSavedData extends SavedData {
     }
 
     /** The culture a village has settled into, or empty when it has none yet. */
-    public String villageCulture(int villageId) {
-        String value = villageCultures.get(villageId);
+    public String villageCulture(ResourceLocation dimension, int villageId) {
+        String value = villageCultures.get(new VillageCultureKey(dimension, villageId));
         return value == null ? "" : value;
     }
 
     /** Sets (or with a blank culture, clears) a village's culture. */
-    public void putVillageCulture(int villageId, String culture) {
-        String previous = villageCultures.get(villageId);
+    public void putVillageCulture(ResourceLocation dimension, int villageId, String culture) {
+        VillageCultureKey key = new VillageCultureKey(dimension, villageId);
+        String previous = villageCultures.get(key);
         if (culture == null || culture.isBlank()) {
             if (previous == null) return;
-            villageCultures.remove(villageId);
+            villageCultures.remove(key);
         } else {
             if (culture.equals(previous)) return;
-            villageCultures.put(villageId, culture);
+            villageCultures.put(key, culture);
         }
         setDirty();
+    }
+
+    /** Legacy source compatibility; pre-dimension entries always belonged to the Overworld. */
+    @Deprecated
+    public String villageCulture(int villageId) {
+        return villageCulture(OVERWORLD, villageId);
+    }
+
+    /** Legacy source compatibility; new callers must always provide the dimension. */
+    @Deprecated
+    public void putVillageCulture(int villageId, String culture) {
+        putVillageCulture(OVERWORLD, villageId, culture);
     }
 
     //? if >=1.21 {
@@ -114,7 +130,7 @@ public class NamingRegisterSavedData extends SavedData {
         NamingRegisterSavedData data = new NamingRegisterSavedData();
         readInto(tag, KEY_REGIONS, K_REGION_ID, data.regions);
         readInto(tag, KEY_VILLAGES, K_VILLAGE_ID, data.villages);
-        readInto(tag, KEY_VILLAGE_CULTURES, K_VILLAGE_ID, data.villageCultures);
+        readVillageCultures(tag, data.villageCultures);
         return data;
     }
 
@@ -129,6 +145,20 @@ public class NamingRegisterSavedData extends SavedData {
         }
     }
 
+    private static void readVillageCultures(CompoundTag tag, Map<VillageCultureKey, String> into) {
+        if (!tag.contains(KEY_VILLAGE_CULTURES, Tag.TAG_LIST)) return;
+        ListTag list = tag.getList(KEY_VILLAGE_CULTURES, Tag.TAG_COMPOUND);
+        for (int i = 0; i < list.size(); i++) {
+            CompoundTag entry = list.getCompound(i);
+            String culture = entry.getString(K_REGISTER);
+            if (culture.isBlank()) continue;
+            ResourceLocation dimension = entry.contains(K_DIMENSION, Tag.TAG_STRING)
+                    ? ResourceLocation.tryParse(entry.getString(K_DIMENSION)) : OVERWORLD;
+            if (dimension == null) continue;
+            into.put(new VillageCultureKey(dimension, entry.getInt(K_VILLAGE_ID)), culture);
+        }
+    }
+
     //? if >=1.21 {
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
@@ -138,7 +168,7 @@ public class NamingRegisterSavedData extends SavedData {
     *///?}
         tag.put(KEY_REGIONS, write(regions, K_REGION_ID));
         tag.put(KEY_VILLAGES, write(villages, K_VILLAGE_ID));
-        tag.put(KEY_VILLAGE_CULTURES, write(villageCultures, K_VILLAGE_ID));
+        tag.put(KEY_VILLAGE_CULTURES, writeVillageCultures(villageCultures));
         return tag;
     }
 
@@ -151,5 +181,23 @@ public class NamingRegisterSavedData extends SavedData {
             list.add(e);
         }
         return list;
+    }
+
+    private static ListTag writeVillageCultures(Map<VillageCultureKey, String> from) {
+        ListTag list = new ListTag();
+        for (Map.Entry<VillageCultureKey, String> entry : from.entrySet()) {
+            CompoundTag value = new CompoundTag();
+            value.putString(K_DIMENSION, entry.getKey().dimension().toString());
+            value.putInt(K_VILLAGE_ID, entry.getKey().villageId());
+            value.putString(K_REGISTER, entry.getValue());
+            list.add(value);
+        }
+        return list;
+    }
+
+    private record VillageCultureKey(ResourceLocation dimension, int villageId) {
+        private VillageCultureKey {
+            if (dimension == null) throw new IllegalArgumentException("Village culture dimension cannot be null");
+        }
     }
 }

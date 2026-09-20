@@ -27,9 +27,11 @@ import java.util.Map;
  *   "thermal": { "kind": "warming", "offset": 10, "radius": 6 },
  *   "icon": "minecraft:campfire"
  * }</pre>
+ * A definition may instead provide {@code variants}, each with its own anchor and requirements,
+ * so local material forms share one catalog identity.
  */
-public record ObjectSetDefinition(ResourceLocation id, List<Requirement> anchors, int radius,
-                                  List<Requirement> requires, @Nullable ThermalStructures.Spec thermal,
+public record ObjectSetDefinition(ResourceLocation id, List<Variant> variants, int radius,
+                                  @Nullable ThermalStructures.Spec thermal,
                                   @Nullable ResourceLocation icon) {
     public static final String SCHEMA = "townstead:object_set/v1";
     public static final int MAX_RADIUS = 6;
@@ -50,15 +52,40 @@ public record ObjectSetDefinition(ResourceLocation id, List<Requirement> anchors
         }
     }
 
+    /** One material form of the same logical set (for example a desert or taiga well). */
+    public record Variant(List<Requirement> anchors, List<Requirement> requires) {
+        public Variant {
+            anchors = List.copyOf(anchors);
+            requires = List.copyOf(requires);
+            if (anchors.isEmpty()) throw new IllegalArgumentException("variant anchors must not be empty");
+        }
+
+        boolean isAnchor(BlockState state) {
+            for (Requirement anchor : anchors) if (anchor.matches(state)) return true;
+            return false;
+        }
+    }
+
+    /** Flattened selectors are retained for catalog display and touch indexing. */
+    public List<Requirement> anchors() {
+        return variants.stream().flatMap(variant -> variant.anchors().stream()).distinct().toList();
+    }
+
+    public List<Requirement> requires() {
+        return variants.stream().flatMap(variant -> variant.requires().stream()).distinct().toList();
+    }
+
     public boolean isAnchor(BlockState state) {
-        for (Requirement anchor : anchors) if (anchor.matches(state)) return true;
+        for (Variant variant : variants) if (variant.isAnchor(state)) return true;
         return false;
     }
 
     /** True when the block could be part of this set at all, as anchor or member. */
     public boolean touches(BlockState state) {
         if (isAnchor(state)) return true;
-        for (Requirement requirement : requires) if (requirement.matches(state)) return true;
+        for (Variant variant : variants) {
+            for (Requirement requirement : variant.requires()) if (requirement.matches(state)) return true;
+        }
         return false;
     }
 
@@ -67,6 +94,30 @@ public record ObjectSetDefinition(ResourceLocation id, List<Requirement> anchors
     }
 
     public static @Nullable ObjectSetDefinition parse(ResourceLocation id, JsonObject json) {
+        List<Variant> variants = new ArrayList<>();
+        if (json.has("variants")) {
+            if (!json.get("variants").isJsonArray()) return null;
+            for (JsonElement element : json.getAsJsonArray("variants")) {
+                if (!element.isJsonObject()) return null;
+                Variant variant = parseVariant(element.getAsJsonObject());
+                if (variant == null) return null;
+                variants.add(variant);
+            }
+        } else {
+            Variant variant = parseVariant(json);
+            if (variant == null) return null;
+            variants.add(variant);
+        }
+        if (variants.isEmpty()) return null;
+
+        int radius = Math.max(1, Math.min(MAX_RADIUS, GsonHelper.getAsInt(json, "radius", 3)));
+        ThermalStructures.Spec thermal = json.has("thermal") && json.get("thermal").isJsonObject()
+                ? ThermalStructures.parse(id.toString(), json.getAsJsonObject("thermal")) : null;
+        ResourceLocation icon = json.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(json, "icon", "")) : null;
+        return new ObjectSetDefinition(id, List.copyOf(variants), radius, thermal, icon);
+    }
+
+    private static @Nullable Variant parseVariant(JsonObject json) {
         List<Requirement> anchors = new ArrayList<>();
         JsonElement anchorJson = json.get("anchor");
         if (anchorJson == null) return null;
@@ -83,8 +134,6 @@ public record ObjectSetDefinition(ResourceLocation id, List<Requirement> anchors
             }
         }
         if (anchors.isEmpty()) return null;
-
-        int radius = Math.max(1, Math.min(MAX_RADIUS, GsonHelper.getAsInt(json, "radius", 3)));
         List<Requirement> requires = new ArrayList<>();
         if (json.has("requires") && json.get("requires").isJsonObject()) {
             for (Map.Entry<String, JsonElement> entry : json.getAsJsonObject("requires").entrySet()) {
@@ -94,9 +143,6 @@ public record ObjectSetDefinition(ResourceLocation id, List<Requirement> anchors
                 requires.add(requirement);
             }
         }
-        ThermalStructures.Spec thermal = json.has("thermal") && json.get("thermal").isJsonObject()
-                ? ThermalStructures.parse(id.toString(), json.getAsJsonObject("thermal")) : null;
-        ResourceLocation icon = json.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(json, "icon", "")) : null;
-        return new ObjectSetDefinition(id, List.copyOf(anchors), radius, List.copyOf(requires), thermal, icon);
+        return new Variant(anchors, requires);
     }
 }

@@ -3,12 +3,18 @@ package com.aetherianartificer.townstead.temperature;
 import com.google.gson.JsonObject;
 import net.minecraft.util.GsonHelper;
 
-/** Authored gameplay output, independent of native ambient influence units. */
-public record ThermalAppliance(double watts, float radiantDegrees, float nativeReference) {
+/**
+ * Authored gameplay output, independent of native ambient influence units. A drafting source
+ * burns room air, so its heat also pulls outside air through the room.
+ */
+public record ThermalAppliance(double watts, float radiantDegrees, float nativeReference, boolean draft) {
     public ThermalAppliance {
         if (!Double.isFinite(watts) || !Float.isFinite(radiantDegrees) || !Float.isFinite(nativeReference)
                 || Math.abs(watts) > 1000000 || Math.abs(radiantDegrees) > 1000)
             throw new IllegalArgumentException("Invalid thermal appliance profile");
+    }
+    public ThermalAppliance(double watts, float radiantDegrees, float nativeReference) {
+        this(watts, radiantDegrees, nativeReference, true);
     }
     public record Output(double watts, float radiantDegrees, boolean estimated) {}
     public Output output(float nativeEffect, boolean active) {
@@ -21,6 +27,7 @@ public record ThermalAppliance(double watts, float radiantDegrees, float nativeR
     public static ThermalAppliance parse(JsonObject json) {
         return new ThermalAppliance(GsonHelper.getAsDouble(json, "room_power_w"),
                 GsonHelper.getAsFloat(json, "radiant_degrees", 0),
-                GsonHelper.getAsFloat(json, "native_reference_degrees", 0));
+                GsonHelper.getAsFloat(json, "native_reference_degrees", 0),
+                GsonHelper.getAsBoolean(json, "draft", true));
     }
 }

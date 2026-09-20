@@ -38,9 +38,19 @@ public final class OuterwearDoffDon {
 
     public static void tick(ServerLevel level, VillagerEntityMCA villager, Dwell dwell, long gameTime) {
         if (villager == null || dwell == null || villager.isBaby()) return;
+        if (!com.aetherianartificer.townstead.temperature.ThermalExposure.enabled(villager)) return;
+        // Personal exposure takes precedence over a universal indoor/outdoor threshold.
+        var exposure = com.aetherianartificer.townstead.temperature.ThermalExposure.at(level, villager, villager.blockPosition(), 0);
+        if (exposure.outfitCost() > ThermalDressing.MIN_GAIN) {
+            if (dwell.exposedSince < 0) dwell.exposedSince = gameTime;
+            if (gameTime - dwell.exposedSince >= DON_AFTER_TICKS && ThermalDressing.equipCarried(villager, exposure)) {
+                dwell.shelteredSince = -1;
+                return;
+            }
+        }
         boolean sheltered = villager.isSleeping() || Weather.sheltered(level, villager.blockPosition());
         if (sheltered) {
-            dwell.exposedSince = -1;
+            if (exposure.outfitCost() <= ThermalDressing.MIN_GAIN) dwell.exposedSince = -1;
             if (dwell.shelteredSince < 0) dwell.shelteredSince = gameTime;
             if (gameTime - dwell.shelteredSince >= DOFF_AFTER_TICKS) doff(villager);
             return;
@@ -67,6 +77,8 @@ public final class OuterwearDoffDon {
             if (!piece.isStack() || piece.layer() != ClothingLayer.OUTERWEAR) continue;
             if (piece.entry() == null || !piece.entry().isWarm()) continue;
             if (managed && DressDecision.ARMOR_SOURCE.equals(piece.source())) continue;
+            if (villager.level() instanceof ServerLevel level && !ThermalDressing.canRemove(villager, piece,
+                    com.aetherianartificer.townstead.temperature.ThermalExposure.at(level, villager, villager.blockPosition(), 0))) continue;
             ItemStack removed = DressTask.takeOff(villager, piece);
             if (removed.isEmpty()) continue;
             ItemStack leftover = villager.getInventory().addItem(removed);
@@ -76,26 +88,8 @@ public final class OuterwearDoffDon {
 
     /** The warmest carried outerwear goes back on when nothing warm is worn. */
     static void don(VillagerEntityMCA villager) {
-        for (WornPiece piece : ClothingSources.worn(villager)) {
-            if (piece.isStack() && piece.layer() == ClothingLayer.OUTERWEAR
-                    && piece.entry() != null && piece.entry().isWarm()) {
-                return;
-            }
-        }
-        ItemStack best = ItemStack.EMPTY;
-        float bestWarmth = 0f;
-        for (int i = 0; i < villager.getInventory().getContainerSize(); i++) {
-            ItemStack stack = villager.getInventory().getItem(i);
-            ClothingEntry entry = entryOf(villager, stack);
-            if (entry == null || entry.layer() != ClothingLayer.OUTERWEAR || !entry.isWarm()) continue;
-            float warmth = entry.thermal() == null ? 0f
-                    : entry.thermal().offset() + entry.thermal().coldResistance();
-            if (best.isEmpty() || warmth > bestWarmth) {
-                best = stack;
-                bestWarmth = warmth;
-            }
-        }
-        if (!best.isEmpty()) DressTask.wear(villager, best);
+        if (villager.level() instanceof ServerLevel level) ThermalDressing.equipCarried(villager,
+                com.aetherianartificer.townstead.temperature.ThermalExposure.at(level, villager, villager.blockPosition(), 0));
     }
 
     private static @Nullable ClothingEntry entryOf(VillagerEntityMCA villager, ItemStack stack) {

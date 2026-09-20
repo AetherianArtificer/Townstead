@@ -146,6 +146,20 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
         }
     }
 
+    /** Listed with any real effect; whether it applies here still depends on position. */
+    @Override
+    public boolean blockMayMatter(BlockState state) {
+        initIfNeeded();
+        if (!active || getBlockTemps == null) return false;
+        try {
+            if (!(getBlockTemps.invoke(null, state) instanceof java.util.Collection<?> collection)) return false;
+            for (Object effect : collection) if (effect != defaultBlockTemp) return true;
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     static float evaluateBlockEffects(java.util.Collection<?> collection, Object fallback,
                                       Method valid, Method temperature, Level level, BlockPos pos,
                                       BlockState state, java.util.concurrent.Callable<LivingEntity> entity) throws Exception {

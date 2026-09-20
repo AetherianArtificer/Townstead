@@ -42,7 +42,7 @@ public final class CultureAssignment {
      */
     public static String ensure(ServerLevel level, VillagerEntityMCA villager) {
         String recorded = Naming.cultureOf(villager);
-        if (Cultures.exists(recorded)) return recorded;
+        if (Cultures.exists(recorded)) return record(villager, recorded);
 
         Optional<String> inherited = Naming.cultureFromParents(villager);
         if (inherited.isPresent()) return record(villager, inherited.get());
@@ -64,7 +64,13 @@ public final class CultureAssignment {
         try {
             Optional<Village> home = villager.getResidency().getHomeVillage();
             if (home.isEmpty()) return "";
-            return NamingRegisterSavedData.get(level.getServer()).villageCulture(home.get().getId());
+            NamingRegisterSavedData data = NamingRegisterSavedData.get(level.getServer());
+            String stored = data.villageCulture(level.dimension().location(), home.get().getId());
+            String resolved = canonical(stored);
+            if (!stored.equals(resolved) && !resolved.isEmpty()) {
+                data.putVillageCulture(level.dimension().location(), home.get().getId(), resolved);
+            }
+            return resolved;
         } catch (Throwable ignored) {
             return "";
         }
@@ -72,7 +78,8 @@ public final class CultureAssignment {
 
     /** Assigns a village's culture outright, which is what a command or a datapack does. */
     public static void assignVillage(ServerLevel level, int villageId, String culture) {
-        NamingRegisterSavedData.get(level.getServer()).putVillageCulture(villageId, culture);
+        NamingRegisterSavedData.get(level.getServer())
+                .putVillageCulture(level.dimension().location(), villageId, canonical(culture));
     }
 
     /**
@@ -83,9 +90,10 @@ public final class CultureAssignment {
         try {
             Optional<Village> home = villager.getResidency().getHomeVillage();
             if (home.isEmpty()) return;
+            culture = canonical(culture);
             NamingRegisterSavedData data = NamingRegisterSavedData.get(level.getServer());
-            if (data.villageCulture(home.get().getId()).isEmpty()) {
-                data.putVillageCulture(home.get().getId(), culture);
+            if (data.villageCulture(level.dimension().location(), home.get().getId()).isEmpty()) {
+                data.putVillageCulture(level.dimension().location(), home.get().getId(), culture);
             }
         } catch (Throwable ignored) {
             // A village we cannot key is one that simply has no culture yet.
@@ -152,9 +160,16 @@ public final class CultureAssignment {
     }
 
     private static String record(VillagerEntityMCA villager, String culture) {
-        ResourceLocation id = ResourceLocation.tryParse(culture);
+        String resolved = canonical(culture);
+        ResourceLocation id = ResourceLocation.tryParse(resolved);
         if (id != null) Naming.recordCulture(villager, id);
-        return culture;
+        return resolved;
+    }
+
+    private static String canonical(String culture) {
+        ResourceLocation id = culture == null ? null : ResourceLocation.tryParse(culture);
+        ResourceLocation canonical = Cultures.canonicalId(id);
+        return canonical == null ? "" : canonical.toString();
     }
 
     /** The culture recorded on a villager, without settling one. */

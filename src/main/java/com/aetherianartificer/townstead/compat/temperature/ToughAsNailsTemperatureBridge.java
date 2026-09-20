@@ -147,6 +147,11 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
     }
 
     @Override
+    public boolean blockMayMatter(BlockState state) {
+        return isActive() && (state.is(HEATING_BLOCKS) || state.is(COOLING_BLOCKS));
+    }
+
+    @Override
     public float itemInsulationCelsius(ItemStack stack) {
         if (!isActive() || stack == null || stack.isEmpty()) return Float.NaN;
         if (stack.is(HEATING_ARMOR)) return TAG_PIECE;

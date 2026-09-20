@@ -19,11 +19,13 @@ class ThermalGameplayModelTest {
 
     @Test void campfireMakesSmallWoodenShelterUsefulWithinMinutes() {
         // A 5 x 5 x 3 volume has 110 boundary faces. LSO's campfire contributes +10.
-        double conductance = loss(75, 110, ThermalConductance.Material.WOOD);
+        double conductance = loss(75, 110, ThermalConductance.Material.WOOD)
+                + RoomHeatBalance.draft(2500, settings.fireMaxRise());
         double twoMinutes = heat(0, 0, 75, conductance, 10, 120);
         double fiveMinutes = heat(0, 0, 75, conductance, 10, 300);
-        assertTrue(twoMinutes >= 18 && twoMinutes <= 21, "Small shelter should warm within two minutes");
-        assertTrue(fiveMinutes >= 22 && fiveMinutes <= 25, "A modest fire should heat this reference shelter comfortably");
+        assertTrue(twoMinutes >= 11 && twoMinutes <= 13, "Small shelter should warm within two minutes");
+        assertTrue(fiveMinutes >= 12 && fiveMinutes <= 13, "Draft is included in the stored-air equilibrium");
+        assertTrue(fiveMinutes + RoomHeatBalance.localExposure(10, 1) >= 18, "A nearby recovery seat is comfortable even though the whole room is cooler");
         assertEquals(0, heat(0, 0, 75, conductance, 0, 300));
     }
 

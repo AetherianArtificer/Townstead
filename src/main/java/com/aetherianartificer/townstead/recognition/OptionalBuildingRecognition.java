@@ -1,11 +1,11 @@
 package com.aetherianartificer.townstead.recognition;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.compat.mca.BuildingCandidatePolicy;
 import com.aetherianartificer.townstead.compat.mca.McaBuildingNbt;
 import com.aetherianartificer.townstead.compat.mca.McaBuildingCompat;
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
 import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
-import com.aetherianartificer.townstead.village.TownsteadVillageSavedData;
 import net.conczin.mca.resources.BuildingTypes;
 import net.conczin.mca.resources.data.BuildingType;
 import net.conczin.mca.server.world.data.Building;
@@ -17,10 +17,15 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.LiquidBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.LevelChunkSection;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,10 +40,18 @@ import java.util.Set;
  * MCA's own {@link BuildingType} says belong to each open-air-capable type and lets MCA's own
  * {@link Building#matchesType(BuildingType)} decide completeness. No recipe, station, or mod id is
  * encoded here.</p>
+ *
+ * <p>An open-air building has no walls to bound it. A type that declares {@link SiteRequirements}
+ * is bounded by its own ground instead: the deck it stands on, the paddock its fences close. Only
+ * a type that describes no site falls back to {@code mergeRange}. Height is never limited, so a
+ * lantern on a mast belongs to the site below it however tall the mast is.</p>
  */
 public final class OptionalBuildingRecognition {
-    private static final int HORIZONTAL_RADIUS = 16;
-    private static final int VERTICAL_RADIUS = 6;
+    /** How far from the player the nearest block of a building may be. */
+    private static final int DISCOVERY_RADIUS = 16;
+    private static final int DEFAULT_REACH = 12;
+    /** Liquids are surroundings rather than furniture; only the nearest few are recorded. */
+    private static final int LIQUID_CAP = 64;
 
     /** MCA floor-system v2's native external registration path. Absent on older MCA. */
     private static final Method PROCESS_EXTERNAL = findProcessExternal();
@@ -61,12 +74,80 @@ public final class OptionalBuildingRecognition {
 
     public enum Registration { CREATED, EXISTING, FAILED }
 
+    /** Result of the explicit village-wide pass used by Blueprint's Refresh action. */
+    public record RefreshResult(int created, int refreshed) {}
+
     public record Removed(Village village, int buildingId) {}
 
     private record MatchedBlock(ResourceLocation id, Block block, BlockPos pos) {}
     private record Existing(Village village, Building building) {}
+    private record TypeEntry(String name, BuildingType type, int reach) {}
+    private record RoomBounds(Village village, Building room) {}
 
     private OptionalBuildingRecognition() {}
+
+    /**
+     * Discover every complete open-air site in the loaded part of a village. MCA's ordinary
+     * external-building action starts at the player's feet, which is useful while building but
+     * cannot import a naturally generated village. Refresh deliberately performs the wider pass.
+     */
+    public static RefreshResult reconcileVillage(ServerLevel level, Village village) {
+        if (level == null || village == null) {
+            return new RefreshResult(0, 0);
+        }
+        removeLegacyMeetingRecords(village);
+        if (BuildingEnclosurePolicies.snapshot().isEmpty()) return new RefreshResult(0, 0);
+
+        List<TypeEntry> types = new ArrayList<>();
+        int maxReach = 0;
+        for (Map.Entry<String, BuildingEnclosurePolicies.Mode> policy
+                : BuildingEnclosurePolicies.snapshot().entrySet()) {
+            if (!policy.getValue().allowsOpenAir()) continue;
+            if (CatalogDataLoader.isActiveSupersededBuildingType(policy.getKey())) continue;
+            BuildingType type = BuildingTypes.getInstance().getBuildingTypes().get(policy.getKey());
+            if (type == null) continue;
+            int reach = type.mergeRange() > 0 ? type.mergeRange() : DEFAULT_REACH;
+            types.add(new TypeEntry(policy.getKey(), type, reach));
+            maxReach = Math.max(maxReach, reach);
+        }
+        if (types.isEmpty()) return new RefreshResult(0, 0);
+        types.sort(Comparator.<TypeEntry>comparingInt(entry -> entry.type().priority()).reversed()
+                .thenComparingInt(entry -> -entry.type().getMinBlocks())
+                .thenComparing(TypeEntry::name));
+
+        BlockPos center = new BlockPos(village.getCenter().getX(), village.getCenter().getY(),
+                village.getCenter().getZ());
+        var box = village.getBox();
+        int villageReach = Math.max(Math.max(center.getX() - box.minX(), box.maxX() - center.getX()),
+                Math.max(center.getZ() - box.minZ(), box.maxZ() - center.getZ()));
+        int radius = Math.min(160, Math.max(48, villageReach + Math.max(24, maxReach)));
+        List<List<MatchedBlock>> visible = sweep(level, center, radius, types);
+        List<RoomBounds> rooms = registeredRooms(level, center);
+        Set<String> attempted = new HashSet<>();
+        Set<Long> claimed = new HashSet<>();
+        int created = 0;
+        int refreshed = 0;
+
+        for (int i = 0; i < types.size(); i++) {
+            TypeEntry entry = types.get(i);
+            List<MatchedBlock> matches = visible.get(i);
+            matches.sort(Comparator.comparingDouble(block -> block.pos().distSqr(center)));
+            for (MatchedBlock seed : matches) {
+                if (claimed.contains(seed.pos().asLong())) continue;
+                Candidate candidate = assemble(level, seed.pos(), entry, matches, rooms);
+                if (candidate == null) continue;
+                String key = candidate.typeName() + ':' + candidate.min().asLong() + ':' + candidate.max().asLong();
+                if (!attempted.add(key)) continue;
+                if (candidate.positions().stream().anyMatch(pos -> claimed.contains(pos.asLong()))) continue;
+                Registration registration = register(level, candidate);
+                if (registration == Registration.FAILED) continue;
+                candidate.positions().forEach(pos -> claimed.add(pos.asLong()));
+                if (registration == Registration.CREATED) created++;
+                else refreshed++;
+            }
+        }
+        return new RefreshResult(created, refreshed);
+    }
 
     /** Best complete optional/open-air building around the report position. */
     public static Optional<Candidate> find(ServerLevel level, BlockPos origin) {
@@ -74,14 +155,25 @@ public final class OptionalBuildingRecognition {
             return Optional.empty();
         }
 
-        List<Candidate> matches = new ArrayList<>();
+        List<TypeEntry> types = new ArrayList<>();
+        int maxReach = 0;
         for (Map.Entry<String, BuildingEnclosurePolicies.Mode> policy
                 : BuildingEnclosurePolicies.snapshot().entrySet()) {
             if (!policy.getValue().allowsOpenAir()) continue;
             if (CatalogDataLoader.isActiveSupersededBuildingType(policy.getKey())) continue;
             BuildingType type = BuildingTypes.getInstance().getBuildingTypes().get(policy.getKey());
             if (type == null) continue;
-            Candidate candidate = collect(level, origin, policy.getKey(), type);
+            int reach = type.mergeRange() > 0 ? type.mergeRange() : DEFAULT_REACH;
+            types.add(new TypeEntry(policy.getKey(), type, reach));
+            maxReach = Math.max(maxReach, reach);
+        }
+        if (types.isEmpty()) return Optional.empty();
+
+        List<List<MatchedBlock>> visible = sweep(level, origin, DISCOVERY_RADIUS + maxReach, types);
+        List<RoomBounds> rooms = registeredRooms(level, origin);
+        List<Candidate> matches = new ArrayList<>();
+        for (int i = 0; i < types.size(); i++) {
+            Candidate candidate = assemble(level, origin, types.get(i), visible.get(i), rooms);
             if (candidate != null) matches.add(candidate);
         }
         matches.sort(Comparator
@@ -159,7 +251,6 @@ public final class OptionalBuildingRecognition {
         Village host = village.get();
         int id = syntheticId(host, candidate);
         McaBuildings.putSynthetic(host, id, toNbt(id, candidate));
-        storeOverlay(level, host, id, candidate);
         host.calculateDimensions();
         host.markDirty();
         return Registration.CREATED;
@@ -209,7 +300,6 @@ public final class OptionalBuildingRecognition {
         Village village = existing.village();
         int id = existing.building().getId();
         McaBuildings.remove(village, id);
-        TownsteadVillageSavedData.get(level.getServer()).removeBuilding(level, village.getId(), id);
         village.calculateDimensions();
         village.markDirty();
         return new Removed(village, id);
@@ -227,54 +317,171 @@ public final class OptionalBuildingRecognition {
         return (double) dx * dx + (double) dy * dy + (double) dz * dz;
     }
 
-    private static Candidate collect(ServerLevel level, BlockPos origin, String typeName, BuildingType type) {
-        List<MatchedBlock> visible = new ArrayList<>();
+    /**
+     * One pass over the area for every candidate type. Sections whose palette holds nothing any
+     * type wants are skipped whole, which is what makes an unlimited height affordable: the
+     * terrain under a site and the air above it are never read block by block.
+     */
+    private static List<List<MatchedBlock>> sweep(
+            ServerLevel level, BlockPos origin, int radius, List<TypeEntry> types) {
+        List<List<MatchedBlock>> visible = new ArrayList<>();
+        for (int i = 0; i < types.size(); i++) visible.add(new ArrayList<>());
+        Map<BlockState, int[]> wantedBy = new HashMap<>();
+        java.util.function.Function<BlockState, int[]> wanted = state ->
+                wantedBy.computeIfAbsent(state, key -> typesMatching(types, key));
 
-        for (BlockPos mutable : BlockPos.betweenClosed(
-                origin.offset(-HORIZONTAL_RADIUS, -VERTICAL_RADIUS, -HORIZONTAL_RADIUS),
-                origin.offset(HORIZONTAL_RADIUS, VERTICAL_RADIUS, HORIZONTAL_RADIUS))) {
-            if (!level.hasChunkAt(mutable)) continue;
-            var state = level.getBlockState(mutable);
-            ResourceLocation id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock());
-            // MCA 7.7 keeps tags separate from the direct map and resolves them from the
-            // BlockState; that lookup also teaches getGroups() the concrete block -> tag
-            // mapping needed by the completeness check below. MCA 7.6 eagerly expands tags
-            // into getBlockToGroup(), so retain that generation's equivalent lookup.
-            //? if >=1.21 {
-            if (!type.matchesBlock(state)) continue;
-            //?} else {
-            /*if (!type.getBlockToGroup().containsKey(id)) continue;
-            *///?}
-            BlockPos pos = mutable.immutable();
-            visible.add(new MatchedBlock(id, state.getBlock(), pos));
+        int minX = origin.getX() - radius, maxX = origin.getX() + radius;
+        int minZ = origin.getZ() - radius, maxZ = origin.getZ() + radius;
+        for (int chunkX = minX >> 4; chunkX <= maxX >> 4; chunkX++) {
+            for (int chunkZ = minZ >> 4; chunkZ <= maxZ >> 4; chunkZ++) {
+                if (!level.hasChunk(chunkX, chunkZ)) continue;
+                LevelChunk chunk = level.getChunk(chunkX, chunkZ);
+                LevelChunkSection[] sections = chunk.getSections();
+                for (int index = 0; index < sections.length; index++) {
+                    LevelChunkSection section = sections[index];
+                    if (section == null || section.hasOnlyAir()
+                            || !section.maybeHas(state -> wanted.apply(state).length > 0)) continue;
+                    int baseY = chunk.getSectionYFromSectionIndex(index) << 4;
+                    for (int x = Math.max(minX, chunkX << 4); x <= Math.min(maxX, (chunkX << 4) + 15); x++) {
+                        for (int z = Math.max(minZ, chunkZ << 4); z <= Math.min(maxZ, (chunkZ << 4) + 15); z++) {
+                            for (int y = 0; y < 16; y++) {
+                                BlockState state = section.getBlockState(x & 15, y, z & 15);
+                                if (state.isAir()) continue;
+                                int[] owners = wanted.apply(state);
+                                if (owners.length == 0) continue;
+                                MatchedBlock matched = new MatchedBlock(
+                                        net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()),
+                                        state.getBlock(), new BlockPos(x, baseY + y, z));
+                                for (int owner : owners) visible.get(owner).add(matched);
+                            }
+                        }
+                    }
+                }
+            }
         }
+        return visible;
+    }
+
+    private static int[] typesMatching(List<TypeEntry> types, BlockState state) {
+        // MCA 7.7 keeps tags separate from the direct map and resolves them from the
+        // BlockState; that lookup also teaches getGroups() the concrete block -> tag
+        // mapping needed by the completeness check below. MCA 7.6 eagerly expands tags
+        // into getBlockToGroup(), so retain that generation's equivalent lookup.
+        //? if <1.21 {
+        /*ResourceLocation id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        *///?}
+        List<Integer> owners = new ArrayList<>();
+        for (int i = 0; i < types.size(); i++) {
+            //? if >=1.21 {
+            if (types.get(i).type().matchesBlock(state)) owners.add(i);
+            //?} else {
+            /*if (types.get(i).type().getBlockToGroup().containsKey(id)) owners.add(i);
+            *///?}
+        }
+        return owners.stream().mapToInt(Integer::intValue).toArray();
+    }
+
+    /** Rooms keep what is inside them; an open-air site never claims furniture through a wall. */
+    private static List<RoomBounds> registeredRooms(ServerLevel level, BlockPos origin) {
+        List<RoomBounds> rooms = new ArrayList<>();
+        Optional<Village> village = VillageManager.get(level)
+                .findNearestVillage(origin, Math.max(Village.MERGE_MARGIN, Village.PLAYER_BORDER_MARGIN));
+        if (village.isEmpty()) return rooms;
+        for (Building building : McaBuildings.all(village.get())) {
+            if (!McaBuildings.isOpenAirRecord(level, village.get(), building)) {
+                rooms.add(new RoomBounds(village.get(), building));
+            }
+        }
+        return rooms;
+    }
+
+    private static boolean insideRoom(ServerLevel level, List<RoomBounds> rooms, BlockPos pos) {
+        for (RoomBounds entry : rooms) {
+            BlockPos min = entry.room().getPos0();
+            BlockPos max = entry.room().getPos1();
+            if (pos.getX() < min.getX() || pos.getX() > max.getX()
+                    || pos.getY() < min.getY() || pos.getY() > max.getY()
+                    || pos.getZ() < min.getZ() || pos.getZ() > max.getZ()) continue;
+            if (McaBuildingCompat.contains(level, entry.village(), entry.room(), pos)) return true;
+        }
+        return false;
+    }
+
+    private static Candidate assemble(ServerLevel level, BlockPos origin, TypeEntry entry,
+                                      List<MatchedBlock> visible, List<RoomBounds> rooms) {
         if (visible.isEmpty()) return null;
+        BuildingType type = entry.type();
 
         // Discovery is intentionally generous so the player need not stand on a particular block,
         // but completeness is evaluated only inside this type's own grouping distance. Otherwise
         // two separate stands visible at opposite edges of the scan could satisfy one another's
         // requirements and be registered as a single phantom building.
+        long discoverySquared = (long) DISCOVERY_RADIUS * DISCOVERY_RADIUS;
         BlockPos anchor = visible.stream()
-                .min(Comparator.comparingDouble(block -> block.pos().distSqr(origin)))
-                .orElseThrow().pos();
-        int groupRadius = type.mergeRange() > 0 ? type.mergeRange() : 12;
-        double groupRadiusSquared = (double) groupRadius * groupRadius;
+                .filter(block -> horizontalDistSqr(block.pos(), origin) <= discoverySquared)
+                .filter(block -> !insideRoom(level, rooms, block.pos()))
+                .min(Comparator.<MatchedBlock, Boolean>comparing(block -> block.block() instanceof LiquidBlock)
+                        .thenComparingDouble(block -> block.pos().distSqr(origin)))
+                .map(MatchedBlock::pos).orElse(null);
+        if (anchor == null) return null;
+        // The site comes first where a type declares one: its cells, not a radius, decide which
+        // ingredients belong. A fence on the far side of the village is not part of this paddock
+        // however close the anchor happens to be.
+        Set<BlockPos> siteCells = Set.of();
+        if (!SiteRequirements.of(entry.name()).isEmpty()) {
+            SiteRequirements.Evaluation site = SiteRequirements.evaluate(
+                    level, entry.name(), List.of(origin, anchor), anchor, entry.reach());
+            if (site.verdict() != SiteRequirements.Verdict.SATISFIED) return null;
+            siteCells = site.cells();
+        }
+        Set<Long> footprint = SiteGeometry.columnsNear(
+                siteCells.stream().map(pos -> SiteGeometry.pack(pos.getX(), pos.getY(), pos.getZ())).toList(),
+                SiteRequirements.LINK);
+        long reachSquared = (long) entry.reach() * entry.reach();
+
+        List<MatchedBlock> kept = new ArrayList<>();
+        Map<ResourceLocation, List<MatchedBlock>> liquids = new LinkedHashMap<>();
+        for (MatchedBlock matched : visible) {
+            if (footprint.isEmpty()
+                    ? horizontalDistSqr(matched.pos(), anchor) > reachSquared
+                    : !footprint.contains(
+                            SiteGeometry.column(matched.pos().getX(), matched.pos().getZ()))) continue;
+            if (matched.block() instanceof LiquidBlock) {
+                liquids.computeIfAbsent(matched.id(), ignored -> new ArrayList<>()).add(matched);
+            } else if (!insideRoom(level, rooms, matched.pos())) {
+                kept.add(matched);
+            }
+        }
+        int liquidCap = Math.max(LIQUID_CAP, type.getMinBlocks());
+        for (List<MatchedBlock> sameLiquid : liquids.values()) {
+            sameLiquid.sort(Comparator.comparingDouble(block -> block.pos().distSqr(anchor)));
+            kept.addAll(sameLiquid.subList(0, Math.min(liquidCap, sameLiquid.size())));
+        }
 
         Building probe = new Building(anchor);
         Map<ResourceLocation, List<BlockPos>> blocks = new LinkedHashMap<>();
+        for (MatchedBlock matched : kept) {
+            probe.addBlock(matched.block(), matched.pos());
+            blocks.computeIfAbsent(matched.id(), ignored -> new ArrayList<>()).add(matched.pos());
+        }
+        if (blocks.isEmpty() || !matchesRequirements(type, probe.getBlocks())) return null;
+
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
-        for (MatchedBlock matched : visible) {
-            BlockPos pos = matched.pos();
-            if (pos.distSqr(anchor) > groupRadiusSquared) continue;
-            probe.addBlock(matched.block(), pos);
-            blocks.computeIfAbsent(matched.id(), ignored -> new ArrayList<>()).add(pos);
+        List<BlockPos> extent = new ArrayList<>(siteCells);
+        kept.forEach(matched -> extent.add(matched.pos()));
+        for (BlockPos pos : extent) {
             minX = Math.min(minX, pos.getX()); minY = Math.min(minY, pos.getY()); minZ = Math.min(minZ, pos.getZ());
             maxX = Math.max(maxX, pos.getX()); maxY = Math.max(maxY, pos.getY()); maxZ = Math.max(maxZ, pos.getZ());
         }
-        if (blocks.isEmpty() || !matchesRequirements(type, probe.getBlocks())) return null;
-        return new Candidate(typeName, type, blocks,
+        return new Candidate(entry.name(), type, blocks,
                 new BlockPos(minX, minY, minZ), new BlockPos(maxX, maxY, maxZ));
+    }
+
+    private static long horizontalDistSqr(BlockPos a, BlockPos b) {
+        long dx = a.getX() - b.getX();
+        long dz = a.getZ() - b.getZ();
+        return dx * dx + dz * dz;
     }
 
     private static Existing findExisting(ServerLevel level, Candidate candidate) {
@@ -283,7 +490,9 @@ public final class OptionalBuildingRecognition {
         BlockPos candidateCenter = center(candidate);
         for (Village village : VillageManager.get(level)) {
             for (Building building : McaBuildings.all(village)) {
-                if (!candidate.typeName().equals(building.getType())) continue;
+                // A landing that has grown into a wharf is the same place at a new tier.
+                if (!sameOpenAirSiteFamily(candidate.typeName(), building.getType())) continue;
+                if (!McaBuildings.isOpenAirRecord(level, village, building)) continue;
                 if (building.getBlockPosStream().anyMatch(pos -> positions.contains(pos.asLong()))) {
                     return new Existing(village, building);
                 }
@@ -296,6 +505,33 @@ public final class OptionalBuildingRecognition {
             }
         }
         return null;
+    }
+
+    private static boolean sameOpenAirSiteFamily(String first, String second) {
+        if (BuildingCandidatePolicy.sameTierFamily(first, second)) return true;
+        if (first == null || second == null) return false;
+        return ("stable".equals(first) && "pen".equals(second))
+                || ("pen".equals(first) && "stable".equals(second));
+    }
+
+    /**
+     * The first village import used biome-specific meeting ids and one overly broad surface tag.
+     * Refresh removes those obsolete synthetic records before recognizing the corrected conceptual
+     * types, so affected worlds heal without asking players to edit MCA's save data.
+     */
+    private static void removeLegacyMeetingRecords(Village village) {
+        List<Integer> stale = McaBuildings.all(village).stream()
+                .filter(building -> building.getType() != null
+                        && building.getType().startsWith("village_meeting_"))
+                .map(Building::getId)
+                .toList();
+        if (stale.isEmpty()) return;
+        boolean changed = false;
+        for (int id : stale) changed |= McaBuildings.remove(village, id);
+        if (changed) {
+            village.calculateDimensions();
+            village.markDirty();
+        }
     }
 
     private static boolean inside(Candidate candidate, BlockPos pos) {
@@ -314,26 +550,8 @@ public final class OptionalBuildingRecognition {
         int id = existing.building().getId();
         Building replacement = McaBuildings.putSynthetic(existing.village(), id, toNbt(id, candidate));
         if (replacement == null) return;
-        storeOverlay(level, existing.village(), id, candidate);
         existing.village().calculateDimensions();
         existing.village().markDirty();
-    }
-
-    private static void storeOverlay(
-            ServerLevel level, Village village, int id, Candidate candidate) {
-        Map<String, long[]> packed = new LinkedHashMap<>();
-        candidate.blocks().forEach((blockId, positions) -> {
-            long[] values = new long[positions.size()];
-            for (int i = 0; i < positions.size(); i++) values[i] = positions.get(i).asLong();
-            packed.put(blockId.toString(), values);
-        });
-        TownsteadVillageSavedData.get(level.getServer()).putBuilding(
-                level, village.getId(), id,
-                new TownsteadVillageSavedData.BuildingOverlay(
-                        "optional", candidate.typeName(),
-                        new int[] {candidate.min().getX(), candidate.min().getY(), candidate.min().getZ(),
-                                candidate.max().getX(), candidate.max().getY(), candidate.max().getZ()},
-                        packed));
     }
 
     /** MCA 7.6 and floor-system MCA expose the same group maps, but not the same matcher method. */

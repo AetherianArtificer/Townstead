@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.culture;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.data.DataPackLang;
+import com.aetherianartificer.townstead.data.LegacyIds;
 import com.aetherianartificer.townstead.data.TownsteadSchema;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -68,6 +69,7 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
         Map<ResourceLocation, NamingTradition> inlineTraditions = new LinkedHashMap<>();
         Map<ResourceLocation, GivenNames> inlineGiven = new LinkedHashMap<>();
         Map<ResourceLocation, FamilyNames> inlineFamily = new LinkedHashMap<>();
+        Map<ResourceLocation, ResourceLocation> legacyIds = new LinkedHashMap<>();
 
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
@@ -105,7 +107,25 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
                     }
                 }
 
-                loaded.put(file, new Culture(file, displayName, traditionId, CultureClothing.parse(root)));
+                String settlementNames = GsonHelper.getAsString(root, "settlement_names", "").trim();
+                ResourceLocation settlementNamesId = settlementNames.isEmpty()
+                        ? null : ResourceLocation.tryParse(settlementNames);
+                if (!settlementNames.isEmpty() && settlementNamesId == null) {
+                    LOGGER.warn("Culture {} names an unreadable settlement-name list '{}'", file, settlementNames);
+                }
+
+                var aliases = LegacyIds.parse(root, file);
+                for (ResourceLocation legacyId : aliases) {
+                    ResourceLocation previous = legacyIds.get(legacyId);
+                    if (previous != null && !previous.equals(file)) {
+                        throw new IllegalArgumentException("legacy id " + legacyId
+                                + " is already claimed by " + previous);
+                    }
+                }
+                loaded.put(file, new Culture(file, displayName, traditionId, settlementNamesId,
+                        CultureClothing.parse(root), root.has("faction_names")
+                                ? ResourceLocation.tryParse(GsonHelper.getAsString(root, "faction_names")) : null));
+                for (ResourceLocation legacyId : aliases) legacyIds.put(legacyId, file);
             } catch (Exception exception) {
                 LOGGER.warn("Could not load culture {}", file, exception);
             }
@@ -114,7 +134,14 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
         NameLists.addInlineGiven(inlineGiven);
         NameLists.addInlineFamily(inlineFamily);
         NamingTraditions.addInline(inlineTraditions);
-        Cultures.replace(loaded);
+        for (ResourceLocation canonical : loaded.keySet()) {
+            ResourceLocation claimant = legacyIds.remove(canonical);
+            if (claimant != null) {
+                LOGGER.warn("Culture {} cannot be a legacy id for {}; the canonical definition wins",
+                        canonical, claimant);
+            }
+        }
+        Cultures.replace(loaded, legacyIds);
         LOGGER.info("Loaded {} culture(s)", loaded.size());
     }
 

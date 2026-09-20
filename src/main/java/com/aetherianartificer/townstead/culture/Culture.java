@@ -23,14 +23,27 @@ import org.jetbrains.annotations.Nullable;
 public record Culture(ResourceLocation id,
                       Component displayName,
                       @Nullable ResourceLocation namingTradition,
-                      CultureClothing clothing) {
+                      @Nullable ResourceLocation settlementNames,
+                      CultureClothing clothing,
+                      @Nullable ResourceLocation factionNames) {
+
+    public Culture(ResourceLocation id, Component displayName, ResourceLocation namingTradition,
+                   ResourceLocation settlementNames, CultureClothing clothing) {
+        this(id, displayName, namingTradition, settlementNames, clothing, null);
+    }
 
     public Culture {
         if (clothing == null) clothing = CultureClothing.NONE;
     }
 
     public Culture(ResourceLocation id, Component displayName, @Nullable ResourceLocation namingTradition) {
-        this(id, displayName, namingTradition, CultureClothing.NONE);
+        this(id, displayName, namingTradition, null, CultureClothing.NONE);
+    }
+
+    public Culture(ResourceLocation id, Component displayName, @Nullable ResourceLocation namingTradition,
+                   CultureClothing clothing,
+                      @Nullable ResourceLocation factionNames) {
+        this(id, displayName, namingTradition, null, clothing);
     }
 
     public boolean hasNamingTradition() {

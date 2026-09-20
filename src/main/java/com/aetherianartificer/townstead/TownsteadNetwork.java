@@ -86,7 +86,7 @@ import java.util.function.Function;
 public final class TownsteadNetwork {
     private TownsteadNetwork() {}
 
-    private static final String PROTOCOL_VERSION = "8";
+    private static final String PROTOCOL_VERSION = "10";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(Townstead.MOD_ID, "main"),
             () -> PROTOCOL_VERSION,
@@ -200,11 +200,27 @@ public final class TownsteadNetwork {
         registerS2C(com.aetherianartificer.townstead.temperature.ThermometerReadingPayload.class,
                 com.aetherianartificer.townstead.temperature.ThermometerReadingPayload::write,
                 com.aetherianartificer.townstead.temperature.ThermometerReadingPayload::read,
-                com.aetherianartificer.townstead.temperature.ThermometerClient::show);
+                TownsteadNetwork::handleThermometerReading);
+        registerS2C(com.aetherianartificer.townstead.temperature.PlayerEnvironmentPayload.class,
+                com.aetherianartificer.townstead.temperature.PlayerEnvironmentPayload::write,
+                com.aetherianartificer.townstead.temperature.PlayerEnvironmentPayload::read,
+                TownsteadNetwork::handlePlayerEnvironment);
         registerS2C(com.aetherianartificer.townstead.temperature.ThermostatSnapshotPayload.class,
                 com.aetherianartificer.townstead.temperature.ThermostatSnapshotPayload::write,
                 com.aetherianartificer.townstead.temperature.ThermostatSnapshotPayload::read,
-                com.aetherianartificer.townstead.client.gui.temperature.ThermostatScreen::accept);
+                TownsteadNetwork::handleThermostatSnapshot);
+        registerS2C(com.aetherianartificer.townstead.politics.charter.CharterSnapshotS2CPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.politics.charter.CharterSnapshotS2CPayload::read,
+                TownsteadNetwork::handleCharterSnapshot);
+        registerS2C(com.aetherianartificer.townstead.politics.charter.CharterCeremonyS2CPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.politics.charter.CharterCeremonyS2CPayload::read,
+                TownsteadNetwork::handleCharterCeremony);
+        registerC2S(com.aetherianartificer.townstead.politics.charter.CharterActionC2SPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.politics.charter.CharterActionC2SPayload::read,
+                com.aetherianartificer.townstead.politics.charter.CharterBellService::handle);
         registerC2S(com.aetherianartificer.townstead.temperature.ThermostatRequestPayload.class,
                 com.aetherianartificer.townstead.temperature.ThermostatRequestPayload::write,
                 com.aetherianartificer.townstead.temperature.ThermostatRequestPayload::read,
@@ -373,7 +389,7 @@ public final class TownsteadNetwork {
         registerS2C(com.aetherianartificer.townstead.inventory.VillagerCurioRenderS2CPayload.class,
                 com.aetherianartificer.townstead.inventory.VillagerCurioRenderS2CPayload::write,
                 com.aetherianartificer.townstead.inventory.VillagerCurioRenderS2CPayload::read,
-                com.aetherianartificer.townstead.client.gui.inventory.VillagerCurioRenderClient::apply);
+                TownsteadNetwork::handleVillagerCurioRender);
         registerS2C(com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload.class,
                 com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload::write,
                 com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload::read,
@@ -438,6 +454,11 @@ public final class TownsteadNetwork {
 
     private static void handleHeritageSync(com.aetherianartificer.townstead.root.HeritageSyncPayload payload) {
         com.aetherianartificer.townstead.client.root.HeritageClientStore.setFrom(payload);
+    }
+
+    private static void handleVillagerCurioRender(
+            com.aetherianartificer.townstead.inventory.VillagerCurioRenderS2CPayload payload) {
+        com.aetherianartificer.townstead.client.gui.inventory.VillagerCurioRenderClient.apply(payload);
     }
 
     private static void handleSetGeneVariant(
@@ -957,6 +978,32 @@ public final class TownsteadNetwork {
 
     private static void handleTemperatureSync(TemperatureSyncPayload payload) {
         TemperatureClientStore.set(payload.entityId(), payload.bodyTenths(), payload.ambientTenths(), payload.flags());
+    }
+
+    // Keeps the client-only class out of the common registration method's constant pool bootstrap.
+    private static void handleThermometerReading(
+            com.aetherianartificer.townstead.temperature.ThermometerReadingPayload payload) {
+        com.aetherianartificer.townstead.temperature.ThermometerClient.show(payload);
+    }
+    private static void handlePlayerEnvironment(
+            com.aetherianartificer.townstead.temperature.PlayerEnvironmentPayload payload) {
+        com.aetherianartificer.townstead.temperature.PlayerEnvironmentClient.accept(payload);
+    }
+
+    // Keeps the Screen subclass from being resolved while a dedicated server registers packets.
+    private static void handleThermostatSnapshot(
+            com.aetherianartificer.townstead.temperature.ThermostatSnapshotPayload payload) {
+        com.aetherianartificer.townstead.client.gui.temperature.ThermostatScreen.accept(payload);
+    }
+
+    private static void handleCharterSnapshot(
+            com.aetherianartificer.townstead.politics.charter.CharterSnapshotS2CPayload payload) {
+        com.aetherianartificer.townstead.client.gui.charter.CharterScreen.accept(payload);
+    }
+
+    private static void handleCharterCeremony(
+            com.aetherianartificer.townstead.politics.charter.CharterCeremonyS2CPayload payload) {
+        com.aetherianartificer.townstead.client.gui.charter.CharterCeremonyClient.play(payload);
     }
 
     private static void handleTemperatureSet(TemperatureSetPayload payload, ServerPlayer sp) {

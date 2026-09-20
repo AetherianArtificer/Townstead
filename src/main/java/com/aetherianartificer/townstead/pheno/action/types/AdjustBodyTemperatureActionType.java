@@ -44,13 +44,15 @@ public final class AdjustBodyTemperatureActionType implements ActionType {
         int duration = Math.max(0, GsonHelper.getAsInt(json, "duration", 0));
         return ctx -> {
             float degrees = (float) amount.get(SelectorContext.of(ctx));
-            if (degrees <= 0f) return;
+            if (!Float.isFinite(degrees) || degrees <= 0f) return;
             if (ctx.entity() instanceof VillagerEntityMCA villager) {
                 if (!TownsteadConfig.isVillagerTemperatureEnabled()
                         || NeedSuppression.suppressesTemperature(villager)) return;
-                // A villager's own body temperature already decays toward ambient, so the
-                // instant change is the whole of it and duration has nothing to add.
-                TownsteadVillagers.get(villager).needs().adjustBodyTemp(TemperatureData.tenths(degrees * sign));
+                if (!com.aetherianartificer.townstead.temperature.ThermalExposure.enabled(villager)) return;
+                var needs = TownsteadVillagers.get(villager).needs();
+                if (!needs.hasBodyTemp()) needs.setBodyTempTenths(com.aetherianartificer.townstead.temperature.ThermalProfile.of(villager).neutralTenths());
+                if (duration > 0) com.aetherianartificer.townstead.temperature.ThermalConsumables.influence(villager, key, degrees * sign, duration);
+                else needs.adjustBodyTemp(TemperatureData.tenths(degrees * sign));
             } else if (ctx.entity() instanceof Player player) {
                 // Players have no Townstead temperature need; whichever mod owns theirs takes it.
                 AmbientTemperatureBridge bridge = TemperatureBridgeResolver.get();

@@ -46,6 +46,9 @@ public final class ThermalBlocks {
     *///?}
 
     private static final int VERTICAL_REACH = 2;
+    private static final java.util.Map<BlockState, Boolean> MAY_BE_SOURCE = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<BlockState, Boolean> MAY_AFFECT_ROOM = new java.util.concurrent.ConcurrentHashMap<>();
+    private static volatile int generation;
     private ThermalBlocks() {}
 
     /** One mutually exclusive, state-aware source verdict; zero also means inactive. */
@@ -97,34 +100,31 @@ public final class ThermalBlocks {
 
     /**
      * The warmth or chill the nearest sources within the configured radius add to the ambient at
-     * the position, with linear falloff. Both kinds can apply at once.
+     * the position, using the same visibility, falloff and overlap rules as room radiation.
      */
     public static float sourceOffset(ServerLevel level, BlockPos center, TemperatureSettings settings) {
         int radius = settings.sourceRadius();
         if (radius <= 0) return 0f;
-        double nearestHeat = Double.MAX_VALUE;
-        double nearestCool = Double.MAX_VALUE;
-        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        for (int dy = -VERTICAL_REACH; dy <= VERTICAL_REACH; dy++) {
-            for (int dx = -radius; dx <= radius; dx++) {
-                for (int dz = -radius; dz <= radius; dz++) {
-                    cursor.set(center.getX() + dx, center.getY() + dy, center.getZ() + dz);
-                    if (!level.isLoaded(cursor)) continue;
-                    BlockState state = level.getBlockState(cursor);
-                    double distSq = dx * dx + dy * dy + dz * dz;
-                    int source = source(level, cursor, state);
-                    if (source > 0) {
-                        if (distSq < nearestHeat) nearestHeat = distSq;
-                    } else if (source < 0 && distSq < nearestCool) {
-                        nearestCool = distSq;
-                    }
-                }
+        double[] sums = new double[4]; // heat sum/max, cooling sum/max
+        scan(level, center, radius, VERTICAL_REACH, () -> Double.MAX_VALUE, (pos, state) -> {
+            float nativeEffect = moddedTemperature(level, pos, state);
+            var profile = settings.appliance(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
+            float strength;
+            if (profile != null) strength = profile.output(nativeEffect,
+                    Float.isFinite(nativeEffect) ? nativeEffect != 0 : isActive(state)).radiantDegrees();
+            else {
+                int sign = taggedSource(state);
+                strength = Float.isFinite(nativeEffect) ? nativeEffect
+                        : sign > 0 ? settings.heatSourceOffset() : sign < 0 ? settings.coolingSourceOffset() : 0;
             }
-        }
-        float offset = 0f;
-        if (nearestHeat != Double.MAX_VALUE) offset += settings.heatSourceOffset() * falloff(nearestHeat, radius);
-        if (nearestCool != Double.MAX_VALUE) offset += settings.coolingSourceOffset() * falloff(nearestCool, radius);
-        return offset;
+            if (strength == 0 || !RoomHeat.visible(level, center, pos)) return;
+            double effect = RoomHeatBalance.localExposure(strength, center.distSqr(pos));
+            int i = effect > 0 ? 0 : 2;
+            sums[i] += Math.abs(effect);
+            sums[i + 1] = Math.max(sums[i + 1], Math.abs(effect));
+        });
+        return (float) (RoomHeatBalance.combinedExposure(sums[0], sums[1])
+                - RoomHeatBalance.combinedExposure(sums[2], sums[3]));
     }
 
     private static float falloff(double distSq, int radius) {
@@ -132,30 +132,105 @@ public final class ThermalBlocks {
         return (float) Math.max(0.0, 1.0 - dist / (radius + 1.0));
     }
 
+    /** Up to {@code limit} nearest sources of one kind within the radius, nearest first. */
+    public static List<BlockPos> nearest(ServerLevel level, BlockPos center, int radius, boolean heat, int limit) {
+        List<BlockPos> found = new ArrayList<>(limit + 1);
+        if (limit <= 0) return found;
+        Comparator<BlockPos> byDistance = Comparator.comparingDouble(pos -> pos.distSqr(center));
+        scan(level, center, radius, 4,
+                () -> found.size() < limit ? Double.MAX_VALUE : found.get(limit - 1).distSqr(center), (pos, state) -> {
+            if (found.size() == limit && pos.distSqr(center) >= found.get(limit - 1).distSqr(center)) return;
+            int source = source(level, pos, state);
+            if (heat ? source <= 0 : source >= 0) return;
+            BlockPos hit = pos.immutable();
+            int at = java.util.Collections.binarySearch(found, hit, byDistance);
+            found.add(at < 0 ? -at - 1 : at, hit);
+            if (found.size() > limit) found.remove(limit);
+        });
+        return found;
+    }
+
+    /** Whether the state could ever be a source; memoized, since states are few and scans are many. */
+    public static boolean mayBeSource(BlockState state) {
+        if (state.isAir()) return false;
+        Boolean known = MAY_BE_SOURCE.get(state);
+        if (known != null) return known;
+        boolean may = taggedSource(state) != 0;
+        if (!may) {
+            for (com.aetherianartificer.townstead.compat.temperature.AmbientTemperatureBridge bridge
+                    : com.aetherianartificer.townstead.compat.temperature.TemperatureBridgeResolver.installed()) {
+                if (bridge.blockMayMatter(state)) { may = true; break; }
+            }
+        }
+        MAY_BE_SOURCE.put(state, may);
+        return may;
+    }
+
+    /** Tags and backend block data change on reload. */
     /**
-     * Up to {@code limit} nearest sources of one kind within the radius, nearest first. A heat
-     * source may be required to be under cover, since a campfire in the snow is not a hearth.
+     * Whether room heat must look at this state every step: a possible source, an authored
+     * appliance, or a thermostat. Everything else in and around a room is skipped once.
      */
-    public static List<BlockPos> nearest(ServerLevel level, BlockPos center, int radius, boolean heat,
-                                         boolean requireSheltered, int limit) {
-        List<BlockPos> found = new ArrayList<>();
+    public static boolean mayAffectRoom(BlockState state) {
+        if (state.isAir()) return false;
+        Boolean known = MAY_AFFECT_ROOM.get(state);
+        if (known != null) return known;
+        boolean may = mayBeSource(state)
+                || state.getBlock() instanceof com.aetherianartificer.townstead.block.RoomThermostatBlock
+                || TemperatureSettings.get().appliance(
+                        net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString()) != null;
+        MAY_AFFECT_ROOM.put(state, may);
+        return may;
+    }
+
+    /** Bumped whenever cached per-state verdicts are dropped, so holders of derived data rebuild. */
+    public static int generation() {
+        return generation;
+    }
+
+    public static void clearCache() {
+        MAY_BE_SOURCE.clear();
+        MAY_AFFECT_ROOM.clear();
+        generation++;
+        ThermalSourceIndex.clear();
+    }
+
+    /**
+     * Loaded blocks in the box that may be sources. Uses the section index on the server thread;
+     * elsewhere, a direct scan that skips sections whose palette rules them out.
+     */
+    private static void scan(ServerLevel level, BlockPos center, int radius, int vertical,
+                             java.util.function.DoubleSupplier cutoff, ThermalSourceIndex.Visitor visitor) {
+        if (ThermalSourceIndex.forEach(level, center, radius, vertical, cutoff, visitor)) return;
+        int minX = center.getX() - radius, maxX = center.getX() + radius;
+        int minZ = center.getZ() - radius, maxZ = center.getZ() + radius;
+        int minY = Math.max(level.getMinBuildHeight(), center.getY() - vertical);
+        int maxY = Math.min(level.getMaxBuildHeight() - 1, center.getY() + vertical);
+        if (minY > maxY) return;
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        for (int dy = -4; dy <= 4; dy++) {
-            for (int dx = -radius; dx <= radius; dx++) {
-                for (int dz = -radius; dz <= radius; dz++) {
-                    cursor.set(center.getX() + dx, center.getY() + dy, center.getZ() + dz);
-                    if (!level.isLoaded(cursor)) continue;
-                    BlockState state = level.getBlockState(cursor);
-                    int source = source(level, cursor, state);
-                    boolean match = heat ? source > 0 : source < 0;
-                    if (!match) continue;
-                    if (requireSheltered && level.canSeeSky(cursor.above())) continue;
-                    found.add(cursor.immutable());
+        for (int cx = minX >> 4; cx <= maxX >> 4; cx++) {
+            for (int cz = minZ >> 4; cz <= maxZ >> 4; cz++) {
+                net.minecraft.world.level.chunk.LevelChunk chunk = level.getChunkSource().getChunkNow(cx, cz);
+                if (chunk == null) continue;
+                int x0 = Math.max(minX, cx << 4), x1 = Math.min(maxX, (cx << 4) + 15);
+                int z0 = Math.max(minZ, cz << 4), z1 = Math.min(maxZ, (cz << 4) + 15);
+                for (int sy = minY >> 4; sy <= maxY >> 4; sy++) {
+                    net.minecraft.world.level.chunk.LevelChunkSection section =
+                            chunk.getSection(level.getSectionIndexFromSectionY(sy));
+                    if (section.hasOnlyAir() || !section.maybeHas(ThermalBlocks::mayBeSource)) continue;
+                    int y0 = Math.max(minY, sy << 4), y1 = Math.min(maxY, (sy << 4) + 15);
+                    for (int y = y0; y <= y1; y++) {
+                        for (int x = x0; x <= x1; x++) {
+                            for (int z = z0; z <= z1; z++) {
+                                BlockState state = section.getBlockState(x & 15, y & 15, z & 15);
+                                if (!mayBeSource(state)) continue;
+                                visitor.visit(cursor.set(x, y, z), state);
+                            }
+                        }
+                    }
                 }
             }
         }
-        found.sort(Comparator.comparingDouble(pos -> pos.distSqr(center)));
-        return found.size() > limit ? new ArrayList<>(found.subList(0, limit)) : found;
     }
 
     /** A standable block near the centre that matches the test, nearest first, or null. */
@@ -170,11 +245,14 @@ public final class ThermalBlocks {
                     cursor.set(center.getX() + dx, center.getY() + dy, center.getZ() + dz);
                     if (!level.isLoaded(cursor)) continue;
                     double distSq = dx * dx + dy * dy + dz * dz;
-                    if (distSq >= bestDist || distSq < 1) continue;
-                    if (!level.getBlockState(cursor.above()).isAir()
+                    if (distSq >= bestDist) continue;
+                    if (!level.getBlockState(cursor.above()).getCollisionShape(level, cursor.above()).isEmpty()
+                            || !level.getFluidState(cursor).isEmpty() || !level.getFluidState(cursor.above()).isEmpty()
                             || isHeatSource(level, cursor.below(), level.getBlockState(cursor.below()))
-                            || !level.getBlockState(cursor).isAir()
-                            || !level.getBlockState(cursor.below()).isSolidRender(level, cursor.below())) continue;
+                            || !level.getBlockState(cursor).getCollisionShape(level, cursor).isEmpty()
+                            || !level.getBlockState(cursor.below()).isFaceSturdy(level, cursor.below(), net.minecraft.core.Direction.UP)
+                            || level.getBlockState(cursor).is(net.minecraft.tags.BlockTags.FIRE)
+                            || besideHazard(level, cursor)) continue;
                     if (!test.test(cursor)) continue;
                     best = cursor.immutable();
                     bestDist = distSq;
@@ -182,5 +260,15 @@ public final class ThermalBlocks {
             }
         }
         return best;
+    }
+
+    /** Lava or open flame beside the feet, where a shove or a misstep burns. */
+    private static boolean besideHazard(ServerLevel level, BlockPos feet) {
+        for (net.minecraft.core.Direction direction : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+            BlockState side = level.getBlockState(feet.relative(direction));
+            if (side.is(net.minecraft.tags.BlockTags.FIRE)
+                    || side.getFluidState().is(net.minecraft.tags.FluidTags.LAVA)) return true;
+        }
+        return false;
     }
 }

@@ -24,5 +24,13 @@ class ThermalApplianceTest {
         assertFalse(profile.output(15,true).estimated());
         assertThrows(IllegalArgumentException.class,()->new ThermalAppliance(Double.NaN,3,15));
     }
+    @Test void firesDraftByDefaultAndControlledHeatersOptOut() {
+        assertTrue(ThermalAppliance.parse(JsonParser.parseString("{\"room_power_w\":2500}").getAsJsonObject()).draft());
+        assertFalse(ThermalAppliance.parse(JsonParser.parseString("{\"room_power_w\":2500,\"draft\":false}").getAsJsonObject()).draft());
+        var settings=TemperatureSettings.parse(JsonParser.parseString("{}").getAsJsonObject());
+        assertTrue(settings.appliance("minecraft:campfire").draft());
+        assertFalse(settings.appliance("legendarysurvivaloverhaul:heater").draft());
+        assertEquals(25,settings.fireMaxRise());
+    }
 }
 

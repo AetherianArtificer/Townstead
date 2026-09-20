@@ -352,8 +352,9 @@ public final class LifeStageProgression {
     }
 
     /**
-     * Fabricate a birth life-day that places a villager mid-way through the stage
-     * matching {@code state}, using their rolled {@code stageDays}. Replaces the
+     * Fabricate a birth life-day that places a villager inside the stage matching
+     * {@code state}, at a per-villager position, using their rolled {@code stageDays}
+     * (a fixed mid-stage point gave every spawned adult the same apparent age). Replaces the
      * old human-decade heuristic, which would land spawned adults past death now
      * that a whole cycle spans only a few game-years. Returns "today" if the
      * cycle/stageDays aren't ready (caller still marks a birth so display works).
@@ -374,8 +375,18 @@ public final class LifeStageProgression {
         }
         int[] days = life.stageDays();
         long before = LifeStageResolver.cumulativeDaysBefore(days, index);
-        long within = Math.max(1, days[index]) / 2L; // mid-stage → a stable, sensible starting age
+        long within = (long) (Math.max(1, days[index]) * fabricatedStageFraction(villager));
         return today - (before + within);
+    }
+
+    /**
+     * Position within the fabricated stage, 0.05..0.85. Seeded by UUID so a re-fabrication
+     * lands on the same age, and kept off both edges so nobody spawns a day from a transition.
+     */
+    private static float fabricatedStageFraction(VillagerEntityMCA villager) {
+        java.util.UUID id = villager.getUUID();
+        java.util.Random rng = new java.util.Random(id.getMostSignificantBits() ^ id.getLeastSignificantBits());
+        return 0.05f + rng.nextFloat() * 0.80f;
     }
 
     private static void commit(TownsteadVillager.Life life, LifeStageResolver.Resolved resolved) {
@@ -594,7 +605,8 @@ public final class LifeStageProgression {
             for (Entity entity : level.getAllEntities()) {
                 if (!(entity instanceof VillagerEntityMCA villager)) continue;
                 TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
-                if (!life.isSenior()) continue;
+                // Seniors for the hair lerp; the young so client day counts (Jade growth line) stay current.
+                if (!life.isSenior() && villager.getAgeState() == AgeState.ADULT) continue;
                 VillagerLifeSyncPayload payload = Townstead.townstead$lifeSync(villager);
                 if (payload == null) continue;
                 //? if neoforge {

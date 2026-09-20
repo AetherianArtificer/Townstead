@@ -132,7 +132,7 @@ class HangoutDataTest {
         assertTrue(HangoutData.venueContractViolation(venue, java.util.Map.of(round.id(), round))
                 .contains("undeclared staff role"));
 
-        HangoutVenue staffed = new HangoutVenue(venue.id(), venue.buildings(), venue.capacity(),
+        HangoutVenue staffed = new HangoutVenue(venue.id(), venue.buildings(), venue.objectSets(), venue.capacity(),
                 venue.activities(), venue.tags(), venue.amenities(),
                 java.util.Map.of("bartender", ignored -> true), null, null);
         assertNull(HangoutData.venueContractViolation(staffed, java.util.Map.of(round.id(), round)));

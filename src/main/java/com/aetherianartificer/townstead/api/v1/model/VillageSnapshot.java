@@ -1,8 +1,10 @@
 package com.aetherianartificer.townstead.api.v1.model;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -20,9 +22,11 @@ public record VillageSnapshot(
         List<UUID> residents,
         long establishedWorldDay,
         boolean playerFounded,
-        int buildingCount
+        int buildingCount,
+        Optional<ResourceLocation> culture
 ) {
     public VillageSnapshot {
         residents = residents == null ? List.of() : List.copyOf(residents);
+        culture = culture == null ? Optional.empty() : culture;
     }
 }

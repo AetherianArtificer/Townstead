@@ -235,10 +235,12 @@ public final class PhenoSchemas {
         NodeSchemas.register(NodeSchema.of("pheno:warm", NodeDomain.ACTION)
                 .doc("Raises a Townstead villager's body temperature: hot soup, mulled wine, a warm bath.")
                 .field(of("amount", PhenoType.ANY).doc("Degrees Celsius added; number or Pheno value."))
+                .field(of("duration", PhenoType.DURATION).doc("Zero edits core instantly; positive ticks apply a non-stacking ambient warming influence for that duration."))
                 .build());
         NodeSchemas.register(NodeSchema.of("pheno:cool", NodeDomain.ACTION)
                 .doc("Lowers a Townstead villager's body temperature: an iced drink, a swim.")
                 .field(of("amount", PhenoType.ANY).doc("Degrees Celsius removed; number or Pheno value."))
+                .field(of("duration", PhenoType.DURATION).doc("Zero edits core instantly; positive ticks apply a non-stacking ambient cooling influence for that duration."))
                 .build());
         NodeSchemas.register(NodeSchema.of("pheno:apply_effect", NodeDomain.ACTION)
                 .doc("Applies a status effect.")
@@ -456,8 +458,16 @@ public final class PhenoSchemas {
                 .doc("A recognised object set (a hearth, a cool spot) stands within radius of the entity.")
                 .field(of("set", PhenoType.ID).doc("Set definition id; omit for any set."))
                 .field(of("radius", PhenoType.INT)).build());
+        for (var query : java.util.Map.of(
+                "thermal_stress", "Server villager core deviation in species comfort bands: negative cold, positive hot.",
+                "thermal_wetness", "Server villager retained wetness from 0 (dry) to 1 (soaked), including drying after rain.",
+                "thermal_load", "Server villager personal exposure in Celsius-equivalent degrees relative to comfort.",
+                "thermal_strain", "Server villager seconds of continuous exposure outside the comfort zone.",
+                "thermal_trend", "Server villager predicted direction: -1 cooling, 0 steady, 1 warming.").entrySet())
+            NodeSchemas.register(NodeSchema.of("pheno:" + query.getKey(), NodeDomain.CONDITION)
+                    .doc(query.getValue()).field(of("min", PhenoType.FLOAT)).field(of("max", PhenoType.FLOAT)).build());
         NodeSchemas.register(NodeSchema.of("pheno:wet", NodeDomain.CONDITION)
-                .doc("True while the entity stands in water or under rain.").build());
+                .doc("True in water/rain, and while a villager remains wet during drying.").build());
         NodeSchemas.register(NodeSchema.of("pheno:body_temperature", NodeDomain.CONDITION)
                 .doc("A Townstead villager's body temperature in degrees Celsius (37.0 is the human neutral).")
                 .field(of("min", PhenoType.FLOAT))

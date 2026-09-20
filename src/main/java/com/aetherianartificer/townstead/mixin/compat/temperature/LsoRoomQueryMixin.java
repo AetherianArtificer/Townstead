@@ -12,14 +12,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class LsoRoomQueryMixin {
     @Inject(method = "getWorldTemperature", at = @At("HEAD"), cancellable = true, remap = false, require = 0)
     private void townstead$room(Level level, BlockPos pos, CallbackInfoReturnable<Float> cir) {
-        var room = RoomHeatBackend.room(level, pos);
+        var room = RoomHeatBackend.environment(level, pos);
         if (room.isPresent()) cir.setReturnValue((float) room.getAsDouble());
     }
     // Replace the environmental sum before LSO applies player effects and dynamic resistance.
     @Redirect(method = "getPlayerTargetTemperature", at = @At(value = "INVOKE",
             target = "Lsfiomn/legendarysurvivaloverhaul/api/temperature/ModifierBase;getWorldInfluence(Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;)F"), remap = false, require = 0)
     private float townstead$environment(@Coerce Object modifier, Player player, Level level, BlockPos pos) {
-        var room = RoomHeatBackend.room(level, pos);
+        var room = RoomHeatBackend.environment(level, pos);
         if (room.isPresent()) return modifier.getClass().getSimpleName().equals("BiomeModifier") ? (float) room.getAsDouble() : 0f;
         try {
             return ((Number) modifier.getClass().getMethod("getWorldInfluence", Player.class, Level.class, BlockPos.class)

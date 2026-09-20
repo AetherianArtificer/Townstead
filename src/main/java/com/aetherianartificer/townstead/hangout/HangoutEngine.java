@@ -7,6 +7,8 @@ import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import com.aetherianartificer.townstead.dialogue.contextual.DialogueDirector;
 import com.aetherianartificer.townstead.expression.ExpressionService;
 import com.aetherianartificer.townstead.needs.Amenities;
+import com.aetherianartificer.townstead.objectset.ObjectSetInstance;
+import com.aetherianartificer.townstead.objectset.ObjectSetSavedData;
 import com.aetherianartificer.townstead.performance.PerformanceHandle;
 import com.aetherianartificer.townstead.performance.PerformanceProviders;
 import com.aetherianartificer.townstead.performance.PerformanceRequest;
@@ -70,7 +72,7 @@ public final class HangoutEngine {
     private static final Map<UUID, Long> COOLDOWNS = new ConcurrentHashMap<>();
     private static final Map<UUID, Long> LAST_DIAGNOSTIC = new ConcurrentHashMap<>();
 
-    private record VenueCandidate(HangoutVenue definition, Village village, Building building,
+    private record VenueCandidate(HangoutVenue definition, Village village, int siteId,
                                   BlockPos anchor, List<SpotCandidate> spots) {}
     private record SpotCandidate(HangoutSpot definition, BlockPos anchor) {}
 
@@ -163,7 +165,7 @@ public final class HangoutEngine {
                     rejection = "venue " + venue.definition().id() + " rejected admission_when";
                     continue;
                 }
-                if (isVenueStaff(level, venue.definition(), venue.building().getId(), villager)) {
+                if (isVenueStaff(level, venue.definition(), venue.siteId(), villager)) {
                     rejection = villager.getName().getString() + " is staff at " + venue.definition().id();
                     continue;
                 }
@@ -191,7 +193,7 @@ public final class HangoutEngine {
         UUID visitId = UUID.randomUUID();
         String dimension = level.dimension().location().toString();
         String venueKey = venue.definition().id() + "/" + venue.village().getId()
-                + "/" + venue.building().getId();
+                + "/" + venue.siteId();
         HangoutClaims.Key venueSlot = null;
         for (int slot = 0; slot < venue.definition().capacity(); slot++) {
             HangoutClaims.Key candidate = new HangoutClaims.Key(dimension, "venue", venueKey + "#" + slot);
@@ -249,7 +251,7 @@ public final class HangoutEngine {
                         spot.definition().embodimentPosition(state, spot.anchor()),
                         spot.definition().rest(), null);
                 return new HangoutVisit(visitId, level.dimension().location(), venue.definition().id(),
-                        venue.building().getId(), policy.id(), venue.anchor(), visitor,
+                        venue.siteId(), policy.id(), venue.anchor(), visitor,
                         now, arrivalDeadline(villager, approach, policy, now));
             }
         }
@@ -731,9 +733,22 @@ public final class HangoutEngine {
                 if (!building.isComplete() || !venue.buildings().contains(building.getType())) continue;
                 BlockPos center = building.getCenter();
                 if (center == null || center.distSqr(villager.blockPosition()) > (double) radius * radius) continue;
-                List<SpotCandidate> spots = scanSpots(level, building);
-                if (!spots.isEmpty()) out.add(new VenueCandidate(venue, village, building,
+                List<SpotCandidate> spots = scanSpots(level,
+                        (Iterable<BlockPos>) building.getBlockPosStream()::iterator);
+                if (!spots.isEmpty()) out.add(new VenueCandidate(venue, village, building.getId(),
                         center.immutable(), spots));
+            }
+            if (!venue.objectSets().isEmpty()) {
+                for (ObjectSetInstance set : ObjectSetSavedData.get(level)
+                        .within(villager.blockPosition(), radius)) {
+                    if (!venue.objectSets().contains(set.setId())) continue;
+                    // Object-set venue spots belong to the assembly as a whole. Scanning every
+                    // repeated water/member block would manufacture dozens of seats around one well.
+                    List<SpotCandidate> spots = scanSpots(level, List.of(set.anchor()));
+                    if (!spots.isEmpty()) out.add(new VenueCandidate(venue, village,
+                            31 * set.setId().hashCode() + set.anchor().hashCode(),
+                            set.anchor(), spots));
+                }
             }
         }
         out.sort(Comparator.comparingDouble(candidate ->
@@ -795,19 +810,17 @@ public final class HangoutEngine {
                 if (Math.abs(load) < Math.abs(bestLoad)) bestLoad = load;
                 if (++samples >= 4) break;
             }
-            thermal = HangoutPreferences.thermalWeight(needs.comfortLoad(), bestLoad);
+            // Only discomfort beyond the comfort zone steers the choice, as it does the body.
+            float zone = com.aetherianartificer.townstead.temperature.TemperatureSettings.get().comfortZone();
+            thermal = HangoutPreferences.thermalWeight(
+                    com.aetherianartificer.townstead.temperature.BodyHeat.excess(needs.comfortLoad(), zone),
+                    com.aetherianartificer.townstead.temperature.BodyHeat.excess(bestLoad, zone));
         }
         return HangoutPreferences.affinity(candidate.definition(), policy, personality) * distancePreference * thermal;
     }
 
     private static float destinationComfort(ServerLevel level, VillagerEntityMCA villager, BlockPos pos) {
-        var needs = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).needs();
-        var profile = com.aetherianartificer.townstead.temperature.ThermalProfile.of(villager);
-        float ambient = com.aetherianartificer.townstead.temperature.TemperatureData.ambientCelsius(level, pos);
-        // Covered seats allow wet visitors to dry during the visit; exposed rain keeps soaking them.
-        float wetness = level.isRainingAt(pos.above()) ? 1 : level.canSeeSky(pos.above()) ? needs.thermalWetness() : 0;
-        return com.aetherianartificer.townstead.temperature.ThermalComfort.load(ambient, wetness, false, 0,
-                com.aetherianartificer.townstead.temperature.Insulation.clothingProtection(villager), profile);
+        return com.aetherianartificer.townstead.temperature.ThermalExposure.at(level, villager, pos, 0).load();
     }
 
     private static String basePersonalityKey(VillagerEntityMCA villager) {
@@ -815,10 +828,10 @@ public final class HangoutEngine {
                 .toLowerCase(Locale.ROOT);
     }
 
-    private static List<SpotCandidate> scanSpots(ServerLevel level, Building building) {
+    private static List<SpotCandidate> scanSpots(ServerLevel level, Iterable<BlockPos> footprint) {
         List<SpotCandidate> out = new ArrayList<>();
         Set<Long> seen = new LinkedHashSet<>();
-        for (BlockPos raw : (Iterable<BlockPos>) building.getBlockPosStream()::iterator) {
+        for (BlockPos raw : footprint) {
             if (!level.isLoaded(raw)) continue;
             BlockState state = level.getBlockState(raw);
             ResourceLocation block = BuiltInRegistries.BLOCK.getKey(state.getBlock());
@@ -830,7 +843,6 @@ public final class HangoutEngine {
                 if (definition.availableWhen() != null && !definition.availableWhen().test(level, raw)) continue;
                 BlockPos anchor = raw.offset(definition.canonicalOffset()).immutable();
                 if (seen.add(anchor.asLong())) out.add(new SpotCandidate(definition, anchor));
-                break;
             }
         }
         return out;

@@ -65,8 +65,10 @@ public final class ShepherdPenScanner {
     public static Pick pickShearable(ServerLevel level, VillagerEntityMCA villager) {
         Pick best = null;
         double bestDsq = Double.MAX_VALUE;
+        Village village = resolveVillage(villager).orElse(null);
+        if (village == null) return null;
         for (Building pen : pens(level, villager)) {
-            for (Sheep sheep : sheepIn(level, pen)) {
+            for (Sheep sheep : sheepIn(level, village, pen)) {
                 if (!isShearable(sheep)) continue;
                 double dsq = sheep.distanceToSqr(villager);
                 if (dsq < bestDsq) {
@@ -82,14 +84,16 @@ public final class ShepherdPenScanner {
         return sheep.isAlive() && !sheep.isBaby() && !sheep.isSheared() && sheep.readyForShearing();
     }
 
-    private static List<Sheep> sheepIn(ServerLevel level, Building pen) {
+    private static List<Sheep> sheepIn(ServerLevel level, Village village, Building pen) {
         BlockPos p0 = pen.getPos0();
         BlockPos p1 = pen.getPos1();
         if (p0 == null || p1 == null) return Collections.emptyList();
         AABB box = new AABB(
                 Math.min(p0.getX(), p1.getX()), Math.min(p0.getY(), p1.getY()), Math.min(p0.getZ(), p1.getZ()),
                 Math.max(p0.getX(), p1.getX()) + 1, Math.max(p0.getY(), p1.getY()) + 1, Math.max(p0.getZ(), p1.getZ()) + 1);
-        return level.getEntitiesOfClass(Sheep.class, box, s -> pen.containsPos(s.blockPosition()));
+        // A pen may be a room or an open-air site; MCA's own containsPos only knows the first.
+        return level.getEntitiesOfClass(Sheep.class, box, s -> com.aetherianartificer.townstead.compat.mca
+                .McaBuildingCompat.contains(level, village, pen, s.blockPosition()));
     }
 
     private static Optional<Village> resolveVillage(VillagerEntityMCA villager) {

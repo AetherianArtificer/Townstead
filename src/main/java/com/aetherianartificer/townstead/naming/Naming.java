@@ -184,6 +184,28 @@ public final class Naming {
         TownsteadVillagers.flush(villager);
     }
 
+    /**
+     * Gives a newly constructed founder its authored culture before its real name is chosen.
+     *
+     * <p>{@link net.conczin.mca.entity.VillagerFactory} may provisionally name an entity while it
+     * is being built. That geographic choice is valuable for ordinary unprofiled villagers, but
+     * it is not a birth fact yet: a debug/founding profile already knows the founder's culture.
+     * This method is intentionally for brand-new, unadded entities only. It clears the provisional
+     * naming facts so {@link SpawnNaming#complete(VillagerEntityMCA)} can settle them from the
+     * culture during {@code finalizeSpawn}; it must never be used to rewrite an existing person.</p>
+     */
+    public static void prepareFounder(VillagerEntityMCA villager, @Nullable ResourceLocation culture) {
+        if (villager == null || culture == null || Cultures.get(culture) == null) return;
+        TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
+        life.setCulture(culture.toString());
+        life.setNamingTradition("");
+        life.setNameList("");
+        life.setFamilyName("");
+        life.setFamilyNameFixed(false);
+        villager.setCustomName(null);
+        TownsteadVillagers.flush(villager);
+    }
+
     /** The culture recorded on a villager, or empty. */
     public static String cultureOf(VillagerEntityMCA villager) {
         return TownsteadVillagers.get(villager).life().culture();

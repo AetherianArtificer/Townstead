@@ -1,0 +1,5 @@
+{
+  "color": "ffc98b49", "visible": true, "priority": 13, "icon": false, "iconU": 249, "iconV": 213,
+  "margin": 6, "mergeRange": 16,
+  "blocks": {"minecraft:bell": 1, "#townstead:pavilion_frames": 8, "#townstead:pavilion_roof_details": 4}
+}

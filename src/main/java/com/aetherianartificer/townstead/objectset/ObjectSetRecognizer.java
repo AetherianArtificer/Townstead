@@ -12,7 +12,9 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Recognises sets as blocks land and forgets them as blocks go. Placement: every definition the
@@ -22,6 +24,62 @@ import java.util.List;
  */
 public final class ObjectSetRecognizer {
     private ObjectSetRecognizer() {}
+
+    /** Import naturally generated object sets when the player refreshes a village. */
+    public static int reconcileVillage(ServerLevel level, net.conczin.mca.server.world.data.Village village) {
+        if (level == null || village == null || ObjectSets.isEmpty()) return 0;
+        BlockPos center = new BlockPos(village.getCenter().getX(), village.getCenter().getY(),
+                village.getCenter().getZ());
+        var box = village.getBox();
+        int villageReach = Math.max(Math.max(center.getX() - box.minX(), box.maxX() - center.getX()),
+                Math.max(center.getZ() - box.minZ(), box.maxZ() - center.getZ()));
+        int radius = Math.min(160, Math.max(48, villageReach + 24));
+        int minX = center.getX() - radius, maxX = center.getX() + radius;
+        int minZ = center.getZ() - radius, maxZ = center.getZ() + radius;
+        ObjectSetSavedData data = ObjectSetSavedData.get(level);
+        Set<Long> live = new HashSet<>();
+        int added = 0;
+
+        for (int chunkX = minX >> 4; chunkX <= maxX >> 4; chunkX++) {
+            for (int chunkZ = minZ >> 4; chunkZ <= maxZ >> 4; chunkZ++) {
+                if (!level.hasChunk(chunkX, chunkZ)) continue;
+                var chunk = level.getChunk(chunkX, chunkZ);
+                var sections = chunk.getSections();
+                for (int index = 0; index < sections.length; index++) {
+                    var section = sections[index];
+                    if (section == null || section.hasOnlyAir()) continue;
+                    int baseY = chunk.getSectionYFromSectionIndex(index) << 4;
+                    for (int x = Math.max(minX, chunkX << 4); x <= Math.min(maxX, (chunkX << 4) + 15); x++) {
+                        for (int z = Math.max(minZ, chunkZ << 4); z <= Math.min(maxZ, (chunkZ << 4) + 15); z++) {
+                            for (int y = 0; y < 16; y++) {
+                                BlockState state = section.getBlockState(x & 15, y, z & 15);
+                                if (state.isAir()) continue;
+                                BlockPos anchor = new BlockPos(x, baseY + y, z);
+                                for (ObjectSetDefinition definition : ObjectSets.all()) {
+                                    if (!definition.isAnchor(state)) continue;
+                                    ObjectSetInstance instance = evaluate(level, definition, anchor, null);
+                                    if (instance == null) continue;
+                                    if (duplicatesNearby(data, definition, instance)) continue;
+                                    live.add(anchor.asLong());
+                                    ObjectSetInstance old = data.at(anchor);
+                                    if (old == null || !old.equals(instance)) {
+                                        data.put(instance);
+                                        if (old == null) added++;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        for (ObjectSetInstance instance : data.within(center, radius * 2)) {
+            BlockPos anchor = instance.anchor();
+            if (anchor.getX() < minX || anchor.getX() > maxX || anchor.getZ() < minZ || anchor.getZ() > maxZ) continue;
+            if (level.isLoaded(anchor) && !live.contains(anchor.asLong())) data.remove(anchor);
+        }
+        return added;
+    }
 
     public static void onPlaced(ServerLevel level, BlockPos pos, BlockState placed, @Nullable Entity by) {
         if (ObjectSets.isEmpty()) return;
@@ -33,10 +91,27 @@ public final class ObjectSetRecognizer {
                 if (data.at(anchor) != null) continue;
                 ObjectSetInstance instance = evaluate(level, definition, anchor, null);
                 if (instance == null) continue;
+                if (duplicatesNearby(data, definition, instance)) continue;
                 data.put(instance);
                 celebrate(level, definition, instance, by);
             }
         }
+    }
+
+    /** Multi-anchor assemblies (a four-lantern post or a haystack) are one set, not four. */
+    private static boolean duplicatesNearby(ObjectSetSavedData data, ObjectSetDefinition definition,
+                                            ObjectSetInstance candidate) {
+        Set<Long> members = new HashSet<>();
+        candidate.members().forEach(pos -> members.add(pos.asLong()));
+        for (ObjectSetInstance existing : data.within(candidate.anchor(), definition.radius() * 2)) {
+            if (!existing.setId().equals(candidate.setId())) continue;
+            if (existing.anchor().equals(candidate.anchor())) return false;
+            if (members.contains(existing.anchor().asLong())
+                    || existing.members().stream().anyMatch(pos -> members.contains(pos.asLong()))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static void onRemoved(ServerLevel level, BlockPos pos, BlockState removed, @Nullable Entity by) {
@@ -79,7 +154,19 @@ public final class ObjectSetRecognizer {
         if (!level.isLoaded(anchor) || anchor.equals(ignore)) return null;
         if (!definition.isAnchor(level.getBlockState(anchor))) return null;
         int r = definition.radius();
-        int n = definition.requires().size();
+        for (ObjectSetDefinition.Variant variant : definition.variants()) {
+            ObjectSetInstance instance = evaluateVariant(level, definition, variant, anchor, ignore);
+            if (instance != null) return instance;
+        }
+        return null;
+    }
+
+    private static @Nullable ObjectSetInstance evaluateVariant(ServerLevel level, ObjectSetDefinition definition,
+                                                                ObjectSetDefinition.Variant variant,
+                                                                BlockPos anchor, @Nullable BlockPos ignore) {
+        if (!variant.isAnchor(level.getBlockState(anchor))) return null;
+        int r = definition.radius();
+        int n = variant.requires().size();
         int[] found = new int[n];
         List<List<BlockPos>> matched = new ArrayList<>(n);
         for (int i = 0; i < n; i++) matched.add(new ArrayList<>());
@@ -91,7 +178,7 @@ public final class ObjectSetRecognizer {
                     if (cursor.equals(anchor) || cursor.equals(ignore)) continue;
                     BlockState state = level.getBlockState(cursor);
                     for (int i = 0; i < n; i++) {
-                        ObjectSetDefinition.Requirement requirement = definition.requires().get(i);
+                        ObjectSetDefinition.Requirement requirement = variant.requires().get(i);
                         if (found[i] < requirement.count() && requirement.matches(state)) {
                             found[i]++;
                             matched.get(i).add(cursor.immutable());
@@ -102,7 +189,7 @@ public final class ObjectSetRecognizer {
             }
         }
         for (int i = 0; i < n; i++) {
-            if (found[i] < definition.requires().get(i).count()) return null;
+            if (found[i] < variant.requires().get(i).count()) return null;
         }
         List<BlockPos> members = new ArrayList<>();
         for (List<BlockPos> group : matched) members.addAll(group);

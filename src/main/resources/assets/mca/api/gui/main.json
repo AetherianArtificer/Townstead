@@ -92,13 +92,13 @@
     "constraints": "!baby"
   },
   {
-    "identifier": "gui.button.give_hat",
+    "identifier": "gui.button.townstead_dress",
     "x": -90,
     "y": 10,
     "row": 7,
     "width": 80,
     "height": 20,
-    "notifyServer": true,
+    "notifyServer": false,
     "targetServer": false,
     "constraints": "!baby"
   }

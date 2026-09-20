@@ -109,7 +109,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
         return thirstOn() && needs.thirst() <= ThirstData.ADEQUATE_THRESHOLD;
     }
 
-    private static boolean emergency(TownsteadVillager.Needs needs) {
+    public static boolean emergency(TownsteadVillager.Needs needs) {
         return (hungerOn() && needs.hunger() <= HungerData.EMERGENCY_THRESHOLD)
                 || (thirstOn() && needs.thirst() <= ThirstData.EMERGENCY_THRESHOLD);
     }
@@ -129,6 +129,8 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (!hungerOn() && !thirstOn()) return false;
         if (VillagerConsumptionManager.isConsuming(villager)) return false;
+        if (!com.aetherianartificer.townstead.temperature.ThermalCare.owner(villager).isEmpty()
+                && !emergency(TownsteadVillagers.get(villager).needs())) return false;
         boolean resting = resting(villager);
         if (resting && villager.isSleeping()) return false;
         if (villager.getLastHurtByMob() != null) return false;
@@ -207,7 +209,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
                             doStop(level, villager, gameTime);
                             return;
                         }
-                        ConsumableTargetClaims.releaseAll(villager.getUUID());
+                        ConsumableTargetClaims.releaseCategory(villager.getUUID(), CLAIM_CATEGORY);
                     }
                     phase = Phase.CONSUME;
                 }
@@ -260,6 +262,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (villager.getLastHurtByMob() != null) return false;
         TownsteadVillager.Needs needs = TownsteadVillagers.get(villager).needs();
+        if (!com.aetherianartificer.townstead.temperature.ThermalCare.owner(villager).isEmpty() && !emergency(needs)) return false;
         if (resting(villager)) {
             if (villager.isSleeping()) return false;
             if (!wantsDrink(needs)) return false;
@@ -277,7 +280,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
         targetContainerSlot = null;
         targetAmenity = null;
         sessionSource = null;
-        ConsumableTargetClaims.releaseAll(villager.getUUID());
+        ConsumableTargetClaims.releaseCategory(villager.getUUID(), CLAIM_CATEGORY);
         cooldown = REFRACTORY_TICKS;
         VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, cooldown, 40);
     }

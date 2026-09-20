@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.profession.career.PlayerFishingEvents;
 import com.aetherianartificer.townstead.compat.starcatcher.StarcatcherCompat;
 import com.aetherianartificer.townstead.dock.Dock;
 import com.aetherianartificer.townstead.dock.DockBerthClaims;
@@ -902,10 +903,12 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
         List<ItemStack> loot = rollCatch(level, villager, hook, rod, rodCopy, origin);
         townstead$depositFishingLoot(level, villager, loot);
+        awardCatch(villager, loot, gameTime);
 
         if (townstead$dockDoubleCatchTriggers(level)) {
             List<ItemStack> bonus = rollCatch(level, villager, hook, rod, rodCopy, origin);
             townstead$depositFishingLoot(level, villager, bonus);
+            awardCatch(villager, bonus, gameTime);
             if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
                 LOGGER.info("[Fisherman] wharf double-catch (tier {}) yielded {} extra item(s)",
                         currentDock.tier(), bonus.size());
@@ -929,6 +932,15 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
         nextCastReadyTick = gameTime + CAST_COOLDOWN_TICKS;
         enterPhase(Phase.IDLE, gameTime);
+    }
+
+    /** Every reel that lands something is one catch on the Fisherman career record. */
+    private static void awardCatch(VillagerEntityMCA villager, List<ItemStack> loot, long gameTime) {
+        if (loot == null || loot.isEmpty()) return;
+        com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
+                villager, com.aetherianartificer.townstead.profession.career.Careers.FISHERMAN,
+                PlayerFishingEvents.XP_CATCH, gameTime, "townstead:fished", null, null,
+                PlayerFishingEvents.XP_CATCH);
     }
 
     private void tickReturnToBarrel(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -1536,7 +1548,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                 villager, PROFESSION, "dock_first_use", level.getGameTime())) return;
         villager.getLongTermMemory().remember(MEMORY_FIRST_DOCK_USE);
         // Small, personal ack effect on the villager — MAJOR/GRAND are reserved
-        // for structural dock milestones and fire from DockScanner instead.
+        // for structural dock milestones and fire from building recognition instead.
         RecognitionEffects.play(level, villager.position().add(0, 1.0, 0),
                 RecognitionEffects.Tier.MINOR);
     }

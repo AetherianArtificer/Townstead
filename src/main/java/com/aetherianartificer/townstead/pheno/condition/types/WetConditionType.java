@@ -5,7 +5,7 @@ import com.aetherianartificer.townstead.pheno.condition.ConditionType;
 import com.aetherianartificer.townstead.temperature.TemperatureData;
 import com.google.gson.JsonObject;
 
-/** True while the entity stands in water or under rain: Townstead's own wetness, shared with the temperature need. */
+/** True in water/rain and while a Townstead villager is still drying. */
 public final class WetConditionType implements ConditionType {
     public static final String KEY = "pheno:wet";
 

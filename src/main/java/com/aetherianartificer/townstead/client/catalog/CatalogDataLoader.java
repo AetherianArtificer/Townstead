@@ -5,10 +5,10 @@ import com.aetherianartificer.townstead.compat.BuildingIconResolver;
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.data.ModGate;
 import com.aetherianartificer.townstead.data.TownsteadSchema;
-import com.aetherianartificer.townstead.enclosure.EnclosureTypeIndex;
 import com.aetherianartificer.townstead.root.building.BuildingSpawnPolicies;
 import com.aetherianartificer.townstead.root.building.BuildingSpawnPolicy;
 import com.aetherianartificer.townstead.recognition.BuildingEnclosurePolicies;
+import com.aetherianartificer.townstead.recognition.SiteRequirements;
 import com.aetherianartificer.townstead.spirit.BuildingSpiritIndex;
 import com.aetherianartificer.townstead.spirit.SpiritRegistry;
 import com.google.gson.Gson;
@@ -109,7 +109,6 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         SCANNED_BUILDING_TYPES.clear();
         THEME = Theme.DEFAULT;
         BuildingSpiritIndex.clear();
-        EnclosureTypeIndex.clear();
         BuildingIconResolver.beginBuildingTypeReload();
 
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
@@ -136,23 +135,21 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         }
 
         // Legacy sources first, then the canonical extended_buildings last so it wins on conflict.
-        // blocks/priority of every building_type are cached so an extended_buildings enclosure block
-        // (which derives perimeter/interior from the MCA blocks map) can resolve them cross-file.
-        Map<String, Map<String, Integer>> blocksByType = new HashMap<>();
-        Map<String, Integer> priorityByType = new HashMap<>();
         Map<String, BuildingSpawnPolicy> spawnPolicies = new HashMap<>();
         Map<String, List<ResourceLocation>> workersByType = new HashMap<>();
         Map<String, Set<ResourceLocation>> storageRolesByType = new HashMap<>();
         Map<String, Set<String>> recipeNamespacesByType = new HashMap<>();
         Map<String, Set<ResourceLocation>> servingProductsByType = new HashMap<>();
         Map<String, BuildingEnclosurePolicies.Mode> enclosurePolicies = new HashMap<>();
+        Map<String, List<SiteRequirements.Requirement>> siteRequirements = new HashMap<>();
         Map<String, Set<String>> dialogueTopicsByType = new HashMap<>();
         THERMAL_SPECS.clear();
-        scanLegacyBuildingTypes(resourceManager, blocksByType, priorityByType);
+        scanLegacyBuildingTypes(resourceManager, enclosurePolicies);
         scanSpiritCompanions(resourceManager);
         scanLegacyBuildingSpawn(resourceManager, spawnPolicies);
-        scanExtendedBuildings(resourceManager, blocksByType, priorityByType, spawnPolicies, workersByType,
-                storageRolesByType, recipeNamespacesByType, enclosurePolicies, dialogueTopicsByType);
+        scanExtendedBuildings(resourceManager, spawnPolicies, workersByType,
+                storageRolesByType, recipeNamespacesByType, enclosurePolicies, siteRequirements,
+                dialogueTopicsByType);
         scanServingMenus(resourceManager, servingProductsByType);
         BuildingSpawnPolicies.replaceAll(spawnPolicies);
         com.aetherianartificer.townstead.work.site.BuildingWorkforceIndex.replaceAll(workersByType);
@@ -161,12 +158,14 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                 .replaceAll(recipeNamespacesByType);
         com.aetherianartificer.townstead.food.BuildingServingMenus.replaceAll(servingProductsByType);
         BuildingEnclosurePolicies.replaceAll(enclosurePolicies);
+        SiteRequirements.replaceAll(siteRequirements);
         com.aetherianartificer.townstead.temperature.ThermalStructures.replaceAll(THERMAL_SPECS);
         com.aetherianartificer.townstead.work.feedback.BuildingDialogueTopics
                 .replaceAll(dialogueTopicsByType);
         // The icon-to-type index and node-item overrides are now both complete.
         // Clear any negative result cached while parallel reload listeners ran.
         BuildingIconResolver.invalidate();
+        RequirementNameResolver.invalidate();
         com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.invalidateSignatures();
         DATA_THEME = THEME;
         CLIENT_THEME_RESOURCE_MANAGER = null;
@@ -297,7 +296,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
     }
 
     private static void scanLegacyBuildingTypes(ResourceManager resourceManager,
-            Map<String, Map<String, Integer>> blocksByType, Map<String, Integer> priorityByType) {
+            Map<String, BuildingEnclosurePolicies.Mode> enclosurePolicies) {
         Map<ResourceLocation, Resource> resources = resourceManager.listResources("building_types",
                 id -> id.getPath().endsWith(".json"));
         for (Map.Entry<ResourceLocation, Resource> entry : resources.entrySet()) {
@@ -317,10 +316,6 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                     // MCA 1.20 exposes these coordinates after applying its atlas scale factors.
                     BuildingIconResolver.registerBuildingTypeIcon(buildingType, iconU * 20, iconV * 60);
                 }
-                // Cache every type's blocks + priority so an extended_buildings enclosure block can
-                // derive its perimeter/interior from the MCA building definition without re-reading.
-                blocksByType.put(buildingType, readBlocks(json, location));
-                priorityByType.put(buildingType, GsonHelper.getAsInt(json, "priority", 0));
                 // Legacy inline townstead* fields (deprecated; extended_buildings is canonical and
                 // overrides these). Kept so MCA building_types from older packs still feed our systems.
                 if (json.has("townsteadNodeItem")) {
@@ -334,58 +329,15 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                     Map<String, Integer> spirit = parseSpiritMap(json.getAsJsonObject("townsteadSpirit"), location);
                     if (!spirit.isEmpty()) BuildingSpiritIndex.put(buildingType, spirit);
                 }
+                // Older packs marked fenced pens with this key. They are ordinary open-air
+                // buildings now.
                 if (json.has("townsteadEnclosure")) {
-                    JsonElement marker = json.get("townsteadEnclosure");
-                    int minInterior = 4;
-                    int maxInterior = 1024;
-                    if (marker != null && marker.isJsonObject()) {
-                        minInterior = GsonHelper.getAsInt(marker.getAsJsonObject(), "minInterior", minInterior);
-                        maxInterior = GsonHelper.getAsInt(marker.getAsJsonObject(), "maxInterior", maxInterior);
-                    }
-                    registerEnclosure(buildingType, readBlocks(json, location),
-                            GsonHelper.getAsInt(json, "priority", 0), minInterior, maxInterior);
+                    enclosurePolicies.put(buildingType, BuildingEnclosurePolicies.Mode.OPTIONAL);
                 }
             } catch (Exception ex) {
                 LOGGER.debug("Skipped legacy building_type scan for '{}': {}", location, ex.getMessage());
             }
         }
-    }
-
-    /** Read a building's {@code blocks} requirement map ({@code blockId -> count}), or empty. */
-    private static Map<String, Integer> readBlocks(JsonObject json, ResourceLocation source) {
-        Map<String, Integer> blocks = new HashMap<>();
-        if (json.has("blocks") && json.get("blocks").isJsonObject()) {
-            for (Map.Entry<String, JsonElement> e : json.getAsJsonObject("blocks").entrySet()) {
-                try {
-                    blocks.put(e.getKey(), e.getValue().getAsInt());
-                } catch (Exception ex) {
-                    LOGGER.warn("Invalid block count for '{}' in {}: {}", e.getKey(), source, ex.getMessage());
-                }
-            }
-        }
-        return blocks;
-    }
-
-    /**
-     * Register an enclosure type with {@link EnclosureTypeIndex}. Perimeter and interior requirements
-     * are derived from the building's {@code blocks} map: fences / fence-gates / walls become perimeter
-     * requirements, everything else becomes interior signatures that drive classification.
-     */
-    private static void registerEnclosure(String buildingType, Map<String, Integer> blocks,
-            int priority, int minInterior, int maxInterior) {
-        if (blocks.isEmpty()) {
-            // No blocks map means the MCA building type isn't loaded; a spec with zero
-            // requirements would classify every enclosure as this type.
-            LOGGER.warn("Skipped enclosure type '{}': building type has no blocks map", buildingType);
-            return;
-        }
-        EnclosureTypeIndex.Spec spec = EnclosureTypeIndex.parseSpec(
-                buildingType, priority, blocks, minInterior, maxInterior);
-        EnclosureTypeIndex.register(spec);
-        LOGGER.info("Registered enclosure type '{}' priority={} interior={}..{} fences>={} gates>={} walls>={} signatures={}",
-                buildingType, priority, minInterior, maxInterior,
-                spec.fencesRequired(), spec.fenceGatesRequired(), spec.wallsRequired(),
-                spec.interiorSignatures().size());
     }
 
     /**
@@ -446,17 +398,17 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
      * data in one file, keyed by MCA building-type id, so MCA's own {@code building_types} JSON stays
      * vanilla. Blocks: {@code catalog} (node_item/hide), {@code spirit}, {@code spawn}; the concise
      * {@code enclosure} string selects required/optional/none physical enclosure, and
-     * {@code dialogue.topics} declares the village-life subjects this place makes available. The legacy object
-     * form of {@code enclosure} remains the fenced-area classifier and derives perimeter/interior
-     * from the MCA {@code blocks} map cached in {@code blocksByType}.
+     * {@code dialogue.topics} declares the village-life subjects this place makes available. {@code requires}
+     * lists the {@link SiteRequirements} an open-air site must satisfy. The legacy object form of
+     * {@code enclosure} (the old fenced-pen classifier) reads as {@code optional}.
      */
     private static void scanExtendedBuildings(ResourceManager resourceManager,
-            Map<String, Map<String, Integer>> blocksByType, Map<String, Integer> priorityByType,
             Map<String, BuildingSpawnPolicy> spawnPolicies,
             Map<String, List<ResourceLocation>> workersByType,
             Map<String, Set<ResourceLocation>> storageRolesByType,
             Map<String, Set<String>> recipeNamespacesByType,
             Map<String, BuildingEnclosurePolicies.Mode> enclosurePolicies,
+            Map<String, List<SiteRequirements.Requirement>> siteRequirements,
             Map<String, Set<String>> dialogueTopicsByType) {
         Map<ResourceLocation, Resource> resources = resourceManager.listResources("extended_buildings",
                 id -> id.getPath().endsWith(".json"));
@@ -541,16 +493,15 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                             enclosurePolicies.put(buildingType, mode);
                         }
                     } else if (enclosure.isJsonObject()) {
-                        // Legacy fenced-enclosure classifier. Its object shape remains supported;
-                        // the new physical-form policy is intentionally the concise string form.
-                        JsonObject enc = enclosure.getAsJsonObject();
-                        Map<String, Integer> blocks = blocksByType.getOrDefault(buildingType, Map.of());
-                        registerEnclosure(buildingType, blocks, priorityByType.getOrDefault(buildingType, 0),
-                                GsonHelper.getAsInt(enc, "minInterior", 4),
-                                GsonHelper.getAsInt(enc, "maxInterior", 1024));
+                        // The old fenced-pen classifier. Pens are ordinary open-air buildings now.
+                        enclosurePolicies.put(buildingType, BuildingEnclosurePolicies.Mode.OPTIONAL);
                     } else {
                         throw new IllegalArgumentException("'enclosure' must be a policy string or an object");
                     }
+                }
+                if (json.has("requires")) {
+                    siteRequirements.put(buildingType, SiteRequirements.parse(
+                            GsonHelper.getAsJsonArray(json, "requires")));
                 }
             } catch (Exception ex) {
                 LOGGER.warn("Rejected extended_buildings entry '{}': {}", location, ex.getMessage());
@@ -732,7 +683,9 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         THEME = payload.theme();
         CLIENT_THEME_RESOURCE_MANAGER = null;
         BuildingSpiritIndex.replaceAll(payload.spirits());
+        ObjectSetCatalogClientStore.replaceAll(payload.objectSets());
         BuildingIconResolver.invalidate();
+        RequirementNameResolver.invalidate();
         com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.invalidateSignatures();
     }
 

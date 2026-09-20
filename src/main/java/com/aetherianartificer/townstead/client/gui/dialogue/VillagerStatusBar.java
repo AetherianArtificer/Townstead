@@ -124,7 +124,7 @@ public class VillagerStatusBar {
             boolean fahrenheit = TownsteadConfig.temperatureInFahrenheit();
             TemperatureData.Tier tier = TemperatureClientStore.getTier(entityId);
             Component label = TemperatureClientStore.tooltip(entityId, fahrenheit);
-            graphics.renderTooltip(font, label, mouseX, mouseY);
+            graphics.renderTooltip(font, font.split(label, Math.min(220, Math.max(80, graphics.guiWidth() - 32))), mouseX, mouseY);
         }
     }
 

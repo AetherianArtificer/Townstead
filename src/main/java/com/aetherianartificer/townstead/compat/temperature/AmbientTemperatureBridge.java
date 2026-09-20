@@ -52,6 +52,15 @@ public interface AmbientTemperatureBridge {
     }
 
     /**
+     * Whether {@link #blockTemperatureCelsius} could ever be nonzero for this state, from the state
+     * alone. Scans memoize it per state and skip whole chunk sections whose palette rules it out,
+     * so any bridge that overrides {@code blockTemperatureCelsius} must override this too.
+     */
+    default boolean blockMayMatter(BlockState state) {
+        return false;
+    }
+
+    /**
      * Warms or cools a player by {@code degrees} Celsius, positive to warm, the player-side twin
      * of a villager's {@code adjustBodyTemp}. {@code durationTicks} of zero is an instant nudge
      * that the backend lets decay; above zero it is an influence held for that long and then

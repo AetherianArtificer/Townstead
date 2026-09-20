@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:organization_role/v1",
+  "display": {
+    "name": {
+      "translate": "organization_role.townstead.faction_leader"
+    },
+    "description": {
+      "translate": "organization_role.townstead.faction_leader.description"
+    }
+  },
+  "capabilities": [
+    "townstead:govern_polity",
+    "townstead:edit_heraldry",
+    "townstead:invite_member",
+    "townstead:review_membership_requests",
+    "townstead:view_member_information",
+    "townstead:manage_members",
+    "townstead:assign_roles"
+  ],
+  "visibility": "public"
+}

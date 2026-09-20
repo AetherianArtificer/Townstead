@@ -5,7 +5,7 @@ plugins {
 
 val mcaNamespace = "forge.net.conczin.mca"
 val mcaArtifact = "minecraft-comes-alive"
-val mcaVersion = "7.7.1-alpha.3+1.20.1-universal"
+val mcaVersion = "7.7.1-beta.2+1.20.1-universal"
 
 stonecutter {
     const("neoforge", false)
@@ -86,6 +86,8 @@ dependencies {
     compileOnly(fg.deobf("mezz.jei:jei-1.20.1-forge-api:15.20.0.135"))
     // Curios (runtime optional): everything Curios-shaped lives in compat.curios behind ModCompat.
     compileOnly(fg.deobf("curse.maven:curios-309927:6418456"))
+    // Jade plugin API (runtime optional; the plugin class is only loaded by Jade's scan)
+    compileOnly(fg.deobf("curse.maven:jade-324717:6271651"))
     // No Sponge Mixin annotation processor: this build ships no refmap (targets
     // are hand-written SRG with remap=false). MixinExtras' own processor is kept
     // only because its supported ForgeGradle setup requires it.
@@ -94,6 +96,22 @@ dependencies {
     // Pheno unit tests touch Minecraft types; surface the main compile classpath to tests.
     testImplementation(files(sourceSets.main.get().compileClasspath))
 }
+
+// Real-Minecraft-class tests; see the neoforge script.
+testing {
+    suites {
+        val integrationTest by registering(JvmTestSuite::class) {
+            useJUnitJupiter()
+            dependencies {
+                implementation(platform("org.junit:junit-bom:5.10.2"))
+                implementation(files(sourceSets.main.get().compileClasspath))
+                implementation(sourceSets.main.get().output)
+            }
+            targets.all { testTask.configure { shouldRunAfter(tasks.test) } }
+        }
+    }
+}
+tasks.check { dependsOn(testing.suites.named("integrationTest")) }
 
 // Offline Chronicles harness; see the neoforge script for why it is not in src/test.
 val sim by sourceSets.creating {

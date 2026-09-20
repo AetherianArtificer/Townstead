@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:organization_kind/v1",
+  "display": {
+    "name": {
+      "translate": "organization_kind.townstead.village_council"
+    },
+    "description": {
+      "translate": "organization_kind.townstead.village_council.description"
+    }
+  },
+  "tags": [
+    "townstead:political",
+    "townstead:government",
+    "townstead:generated"
+  ],
+  "membership_policy": "townstead:appointed_council",
+  "roles": [
+    {
+      "role": "townstead:presiding_councilor",
+      "min": 1,
+      "max": 1
+    },
+    {
+      "role": "townstead:councilor",
+      "min": 2,
+      "max": 8
+    }
+  ],
+  "founding": {
+    "procedure": "townstead:generated_village_government",
+    "eligibility": {
+      "type": "pheno:constant",
+      "value": true
+    }
+  },
+  "presentation": {
+    "emblem_pool": "townstead:village",
+    "charter_style": "townstead:civic",
+    "faction_name_patterns": [
+      "{name} Commune",
+      "Commonwealth of {name}",
+      "{name} Community"
+    ]
+  }
+}

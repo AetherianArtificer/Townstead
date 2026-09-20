@@ -21,7 +21,8 @@ public final class RoomOwnershipAccess {
     private RoomOwnershipAccess() {}
 
     /**
-     * A room deed overrides a whole-building deed; otherwise rooms inherit their structure's deed.
+     * A room deed overrides a whole-building deed; otherwise rooms inherit their MCA logical
+     * building's deed, including attached physical structures.
      * Open/private is independent of the list of named people, so a private deed with no names is
      * residents-only. Players are intentionally not intercepted here—the deed governs villager
      * automation rather than becoming a multiplayer claim system.

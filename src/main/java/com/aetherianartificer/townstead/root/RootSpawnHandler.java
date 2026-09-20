@@ -78,9 +78,15 @@ public final class RootSpawnHandler {
         // clashes with the resident majority (so a hostile species never spawns into a peaceful town)
         // and honor any spawner building's authored origin policy. Outside a village, no constraint.
         VillageSpawnContext village = VillageSpawnContext.resolve(villager);
-        RootSelector.Selection selection = village.active()
-                ? RootSelector.select(villager.level(), villager.blockPosition(), villager.getRandom(), village::allows)
-                : RootSelector.select(villager.level(), villager.blockPosition(), villager.getRandom());
+        java.util.function.ToDoubleFunction<ResourceLocation> foundingWeight =
+                villager.level() instanceof net.minecraft.server.level.ServerLevel server
+                        ? com.aetherianartificer.townstead.politics.founding.FoundingPopulationWeights
+                                .at(server, villager.blockPosition())
+                        : ignored -> 1.0D;
+        java.util.function.Predicate<ResourceLocation> allowed = village.active()
+                ? village::allows : ignored -> true;
+        RootSelector.Selection selection = RootSelector.select(villager.level(), villager.blockPosition(),
+                villager.getRandom(), allowed, foundingWeight);
         if (selection.isMixed()) {
             List<RootSelector.Weighted> mix = selection.mix();
             Heredity.seedMixedFounder(state.life(), mix, villager.getRandom());

@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:organization_role/v1",
+  "display": {
+    "name": { "translate": "organization_role.townstead.member" },
+    "description": { "translate": "organization_role.townstead.member.description" }
+  },
+  "capabilities": [
+    "townstead:view_member_information"
+  ],
+  "visibility": "public"
+}

@@ -52,8 +52,8 @@ public final class ClothingOrderCategories {
         List<ClothingEntry> entries = ClothingDefs.entries();
         if (entries != cachedFor) {
             clothing = items(entries, entry -> true);
-            warm = items(entries, ClothingEntry::isWarm);
-            cool = items(entries, ClothingEntry::isCool);
+            warm = thermalItems(entries, ClothingEntry::isWarm);
+            cool = thermalItems(entries, ClothingEntry::isCool);
             headwear = items(entries, entry -> entry.slot() == ClothingChannel.HEAD);
             accessories = items(entries, entry -> entry.layer() == ClothingLayer.ACCESSORY);
             cachedFor = entries;
@@ -64,6 +64,20 @@ public final class ClothingOrderCategories {
     private record Holder(List<ResourceLocation> clothing, List<ResourceLocation> warm,
                           List<ResourceLocation> cool, List<ResourceLocation> headwear,
                           List<ResourceLocation> accessories) {}
+
+    private static List<ResourceLocation> thermalItems(List<ClothingEntry> entries, Predicate<ClothingEntry> test) {
+        var out = new LinkedHashSet<ResourceLocation>();
+        for (var entry : entries) {
+            if (entry.isSkin()) continue;
+            for (var id : items(List.of(entry), e -> true)) {
+                if (!BuiltInRegistries.ITEM.containsKey(id)) continue;
+                var stack = new net.minecraft.world.item.ItemStack(BuiltInRegistries.ITEM.get(id));
+                if (test.test(entry.withThermal(com.aetherianartificer.townstead.temperature.Insulation.resolve(stack, entry.thermal()))))
+                    out.add(id);
+            }
+        }
+        return new ArrayList<>(out);
+    }
 
     /** Item ids of every stack entry the test admits, tag entries expanded through the registry. */
     static List<ResourceLocation> items(List<ClothingEntry> entries, Predicate<ClothingEntry> test) {

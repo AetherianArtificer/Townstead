@@ -86,7 +86,15 @@ public final class PlayerWorkHooks {
         //?} else {
         /*food = stack.getItem().isEdible();
         *///?}
-        if (food) onCookingCompleted(player, stack, stack.getCount(), "furnace");
+        if (food) {
+            onCookingCompleted(player, stack, stack.getCount(), "furnace");
+            return;
+        }
+        ResourceLocation station = PlayerWorkEvents.furnaceStation(player.containerMenu);
+        if (station != null) {
+            PlayerWorkEvents.creditStation(player, PlayerWorkEvents.SMELTING_TYPES, station, stack,
+                    PlayerWorkEvents.XP_STATION);
+        }
     }
 
     /**

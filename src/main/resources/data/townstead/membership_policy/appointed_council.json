@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:membership_policy/v1",
+  "admission": {
+    "procedure": "townstead:appointment",
+    "request_kind": "townstead:appointment_offer",
+    "eligibility": {
+      "type": "pheno:constant",
+      "value": true
+    },
+    "decision": {
+      "procedure": "townstead:role_approval",
+      "role": "townstead:presiding_councilor",
+      "approvals": 1
+    },
+    "initial_roles": [
+      "townstead:councilor"
+    ]
+  },
+  "departure": {
+    "procedure": "townstead:notice",
+    "request_kind": "townstead:resignation_notice",
+    "notice_days": 1
+  }
+}

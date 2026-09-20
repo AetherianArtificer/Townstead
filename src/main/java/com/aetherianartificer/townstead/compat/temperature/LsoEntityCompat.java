@@ -27,7 +27,7 @@ public final class LsoEntityCompat {
         return new Effects(offset, protection);
     }
 
-    static Effects effect(String path, int amplifier) {
+    public static Effects effect(String path, int amplifier) {
         float level = Math.max(0, (float) amplifier + 1);
         return switch (path) {
             case "hot_food", "hot_drink" -> new Effects(level, ThermalProtection.NONE);

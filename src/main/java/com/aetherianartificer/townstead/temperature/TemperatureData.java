@@ -18,8 +18,6 @@ public final class TemperatureData {
     public static final int MOOD_CHECK_INTERVAL = 2400;
     public static final long AMBIENT_SAMPLE_TICKS = 200L;
 
-    /** Fraction of the gap to the target body temperature closed per accumulation interval. */
-    public static final float RATE = (float) (1 - Math.pow(0.75, ACCUMULATION_INTERVAL / 500d));
     /** Ambient reference: a body rests at its neutral in a 20 degree room. */
     public static final float AMBIENT_REFERENCE = 20f;
     public static final float AMBIENT_PULL_PER_DEGREE = 0.1f;
@@ -27,10 +25,7 @@ public final class TemperatureData {
     public static final float ACTIVITY_MEET = 0f;
     public static final float ACTIVITY_IDLE = -0.2f;
     public static final float ACTIVITY_COMBAT = 0.6f;
-    public static final float WETNESS_COLD = -0.8f;
     public static final float CLOTHING_CLAMP = 1.5f;
-    /** Degrees above the reference over which worn clothing stops counting. */
-    public static final float CLOTHING_FADE_DEGREES = 5f;
     public static final float SLEEP_COLD_FACTOR = 0.5f;
     public static final float ECTOTHERM_FOLLOW = 0.5f;
 
@@ -90,6 +85,43 @@ public final class TemperatureData {
                 .regulatedCelsius(level, pos, ambient);
     }
 
+    /**
+     * A villager's last open-air backend reading, reused while it stands on the same block and
+     * nothing that reading depends on can have changed: nearby sources, cover, weather, and a
+     * short age limit for time of day. Rooms are never reused; their reading is already cheap.
+     */
+    public static final class OutdoorMemo {
+        private static final int REACH = 20, VERTICAL = 16, MAX_AGE_TICKS = 600;
+        private long pos = Long.MIN_VALUE, stamp, sampledAt;
+        private boolean sky, raining, thundering;
+        private float value;
+    }
+
+    public static float ambientCelsius(ServerLevel level, BlockPos pos, OutdoorMemo memo) {
+        var room = RoomHeat.at(level, pos);
+        float ambient;
+        if (room.isPresent()) {
+            ambient = (float) room.getAsDouble();
+        } else {
+            long now = level.getGameTime();
+            long stamp = ThermalSourceIndex.stamp(level, pos, OutdoorMemo.REACH, OutdoorMemo.VERTICAL);
+            boolean sky = level.canSeeSky(pos.above());
+            boolean raining = level.isRaining(), thundering = level.isThundering();
+            if (stamp != Long.MIN_VALUE && memo.pos == pos.asLong() && memo.stamp == stamp && memo.sky == sky
+                    && memo.raining == raining && memo.thundering == thundering
+                    && now - memo.sampledAt < OutdoorMemo.MAX_AGE_TICKS) {
+                ambient = memo.value;
+            } else {
+                ambient = unregulatedAmbientCelsius(level, pos);
+                memo.pos = stamp == Long.MIN_VALUE ? Long.MIN_VALUE : pos.asLong();
+                memo.stamp = stamp; memo.sampledAt = now; memo.value = ambient;
+                memo.sky = sky; memo.raining = raining; memo.thundering = thundering;
+            }
+        }
+        return com.aetherianartificer.townstead.compat.temperature.ToughAsNailsTemperatureBridge.INSTANCE
+                .regulatedCelsius(level, pos, ambient);
+    }
+
     private static float unregulatedAmbientCelsius(ServerLevel level, BlockPos pos) {
         var room = RoomHeat.at(level, pos);
         if (room.isPresent()) return (float) room.getAsDouble();
@@ -117,7 +149,8 @@ public final class TemperatureData {
 
     /** Rain on the skin or standing in water. Townstead's own check: no temperature mod tracks villagers. */
     public static boolean isWet(LivingEntity entity) {
-        return entity.isInWaterOrRain();
+        return entity.isInWaterOrRain() || entity instanceof net.conczin.mca.entity.VillagerEntityMCA villager
+                && com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).needs().thermalWetness() > .01f;
     }
 
     public static Tier tier(int bodyTenths, ThermalProfile profile) {

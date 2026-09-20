@@ -149,6 +149,8 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private Button townstead$catalogBackButton;
     @Unique
+    private Button townstead$catalogModeButton;
+    @Unique
     private Controls.Rect townstead$catalogPinRect;
     @Unique
     private Button townstead$catalogZoomInButton;
@@ -165,6 +167,10 @@ public abstract class BlueprintScreenMixin extends Screen {
     private List<BuildingType> townstead$catalogEntries = List.of();
     @Unique
     private int townstead$catalogSelected = 0;
+    @Unique
+    private int townstead$objectSetSelected = 0;
+    @Unique
+    private boolean townstead$objectSetMode = false;
     @Unique
     private final List<NodeData> townstead$catalogNodes = new ArrayList<>();
     @Unique
@@ -379,6 +385,7 @@ public abstract class BlueprintScreenMixin extends Screen {
             townstead$catalogDragging = false;
             townstead$catalogDragArmed = false;
             townstead$catalogBackButton = null;
+            townstead$catalogModeButton = null;
             townstead$catalogPinRect = null;
             townstead$catalogZoomInButton = null;
             townstead$catalogZoomOutButton = null;
@@ -462,6 +469,12 @@ public abstract class BlueprintScreenMixin extends Screen {
                     townstead$lastDragY = mouseY;
                 }
             }
+        }
+
+        if (townstead$objectSetMode) {
+            townstead$renderObjectSetCatalog(context, mouseX, mouseY, theme, windowX, windowY,
+                    graphX, graphY, graphW, graphH, graphRight, detailsX, detailsY, detailsRight, detailsBottom);
+            return;
         }
 
         context.enableScissor(graphX, graphY, graphRight, insideBottom);
@@ -650,11 +663,12 @@ public abstract class BlueprintScreenMixin extends Screen {
             RequirementRow row = allRequirements.get(i);
             int rowIndex = i - start;
             int rowY = needsListTop + (rowIndex * rowHeight);
-            ItemStack ingredientIcon = townstead$resolveRequirementIcon(row.id(), ticker, i);
+            com.aetherianartificer.townstead.client.catalog.RequirementIcon ingredientIcon =
+                    townstead$resolveRequirementIcon(row.id(), ticker, i);
             if (!ingredientIcon.isEmpty()) {
                 context.pose().pushPose();
                 context.pose().scale(0.75f, 0.75f, 1.0f);
-                context.renderItem(ingredientIcon, (int) Math.round((detailsTextX + 1) / 0.75f),
+                ingredientIcon.render(context, (int) Math.round((detailsTextX + 1) / 0.75f),
                         (int) Math.round((rowY - 2) / 0.75f));
                 context.pose().popPose();
             }
@@ -810,9 +824,16 @@ public abstract class BlueprintScreenMixin extends Screen {
         townstead$dragStartY = mouseY;
         townstead$lastDragX = mouseX;
         townstead$lastDragY = mouseY;
-        int clickedIndex = townstead$findCatalogNodeAt(mouseX, mouseY, insideX, insideY);
-        if (clickedIndex >= 0 && clickedIndex != townstead$catalogSelected)
-            townstead$catalogSelected = clickedIndex;
+        int clickedIndex;
+        if (townstead$objectSetMode) {
+            clickedIndex = townstead$findObjectSetNodeAt(mouseX, mouseY, insideX, insideY);
+            if (clickedIndex >= 0) townstead$objectSetSelected = clickedIndex;
+        } else {
+            clickedIndex = townstead$findCatalogNodeAt(mouseX, mouseY, insideX, insideY);
+            if (clickedIndex >= 0 && clickedIndex != townstead$catalogSelected) {
+                townstead$catalogSelected = clickedIndex;
+            }
+        }
         cir.setReturnValue(true);
         cir.cancel();
     }
@@ -938,6 +959,22 @@ public abstract class BlueprintScreenMixin extends Screen {
                 14,
                 Component.translatable("townstead.gui.back"),
                 b -> setPage(townstead$catalogReturnPage)));
+        townstead$catalogModeButton = addRenderableWidget(new ButtonWidget(
+                windowX + 44,
+                windowY + 2,
+                72,
+                14,
+                Component.translatable(townstead$objectSetMode
+                        ? "townstead.object_sets.buildings_button" : "townstead.object_sets.button"),
+                b -> {
+                    townstead$objectSetMode = !townstead$objectSetMode;
+                    townstead$catalogPanX = 0;
+                    townstead$catalogPanY = 0;
+                    townstead$catalogZoom = 1;
+                    townstead$catalogPinRect = null;
+                    b.setMessage(Component.translatable(townstead$objectSetMode
+                            ? "townstead.object_sets.buildings_button" : "townstead.object_sets.button"));
+                }));
         townstead$catalogZoomOutButton = addRenderableWidget(new ButtonWidget(
                 windowX + ADV_WINDOW_W - 40,
                 windowY + 2,
@@ -1440,6 +1477,135 @@ public abstract class BlueprintScreenMixin extends Screen {
     }
 
     @Unique
+    private void townstead$renderObjectSetCatalog(
+            GuiGraphics context, int mouseX, int mouseY,
+            com.aetherianartificer.townstead.client.catalog.CatalogDataLoader.Theme theme,
+            int windowX, int windowY, int graphX, int graphY, int graphW, int graphH,
+            int graphRight, int detailsX, int detailsY, int detailsRight, int detailsBottom) {
+        List<com.aetherianartificer.townstead.client.catalog.CatalogSyncS2CPayload.ObjectSetSummary> entries =
+                com.aetherianartificer.townstead.client.catalog.ObjectSetCatalogClientStore.entries();
+        townstead$catalogPinRect = null;
+        if (townstead$catalogNeedsPrevButton != null) {
+            townstead$catalogNeedsPrevButton.visible = false;
+            townstead$catalogNeedsPrevButton.active = false;
+        }
+        if (townstead$catalogNeedsNextButton != null) {
+            townstead$catalogNeedsNextButton.visible = false;
+            townstead$catalogNeedsNextButton.active = false;
+        }
+
+        context.enableScissor(graphX, graphY, graphRight, graphY + graphH);
+        context.fill(graphX, graphY, graphRight, graphY + graphH, theme.graphBackgroundColor());
+        if (theme.showGrid()) townstead$drawCatalogGrid(context, graphX, graphY, graphW, graphH, theme.gridColor());
+        for (int index = 0; index < entries.size(); index++) {
+            var entry = entries.get(index);
+            int worldX = 24 + (index % 4) * 56;
+            int worldY = 24 + (index / 4) * 42;
+            int x = graphX + (int) Math.round((worldX + townstead$catalogPanX) * townstead$catalogZoom);
+            int y = graphY + (int) Math.round((worldY + townstead$catalogPanY) * townstead$catalogZoom);
+            int size = Math.max(16, (int) Math.round(26 * townstead$catalogZoom));
+            boolean hovered = mouseX >= x && mouseX <= x + size && mouseY >= y && mouseY <= y + size;
+            boolean selected = index == townstead$objectSetSelected;
+            boolean recognized = entry.recognized() > 0;
+            int border = recognized
+                    ? (selected ? theme.builtNodeSelectedBorderColor()
+                    : hovered ? theme.builtNodeHoverBorderColor() : theme.builtNodeBorderColor())
+                    : (selected ? theme.nodeSelectedBorderColor()
+                    : hovered ? theme.nodeHoverBorderColor() : theme.nodeBorderColor());
+            int fill = recognized
+                    ? (selected ? theme.builtNodeSelectedFillColor()
+                    : hovered ? theme.builtNodeHoverFillColor() : theme.builtNodeFillColor())
+                    : (selected ? theme.nodeSelectedFillColor()
+                    : hovered ? theme.nodeHoverFillColor() : theme.nodeFillColor());
+            context.fill(x - 1, y - 1, x + size + 1, y + size + 1, border);
+            context.fill(x, y, x + size, y + size, fill);
+            Item item = BuiltInRegistries.ITEM.get(entry.icon());
+            ItemStack stack = item == null ? ItemStack.EMPTY : new ItemStack(item);
+            if (!stack.isEmpty()) {
+                context.pose().pushPose();
+                float scale = Math.max(0.6f, size / 20.0f);
+                context.pose().translate(x + size / 2.0f, y + size / 2.0f, 0);
+                context.pose().scale(scale, scale, 1);
+                context.renderItem(stack, -8, -8);
+                context.pose().popPose();
+            }
+        }
+        context.disableScissor();
+
+        context.fill(detailsX, detailsY, detailsRight, detailsBottom, theme.detailsBackgroundColor());
+        context.fill(detailsX, detailsY, detailsRight, detailsY + 1, theme.borderColor());
+        context.fill(detailsX, detailsBottom - 1, detailsRight, detailsBottom, theme.borderColor());
+        context.fill(detailsX, detailsY, detailsX + 1, detailsBottom, theme.borderColor());
+        context.fill(detailsRight - 1, detailsY, detailsRight, detailsBottom, theme.borderColor());
+        context.drawCenteredString(this.font, Component.translatable("townstead.object_sets.title"),
+                windowX + ADV_WINDOW_W / 2, windowY + 6, 0xFFFFFF);
+
+        if (entries.isEmpty()) {
+            context.drawWordWrap(this.font, Component.translatable("townstead.object_sets.empty"),
+                    detailsX + 5, detailsY + 6, CATALOG_DETAILS_W - 10, 0xB8AA94);
+            return;
+        }
+        townstead$objectSetSelected = Math.max(0, Math.min(townstead$objectSetSelected, entries.size() - 1));
+        var selected = entries.get(townstead$objectSetSelected);
+        int x = detailsX + 5;
+        int y = detailsY + 5;
+        int textW = CATALOG_DETAILS_W - 10;
+        String stem = "object_set." + selected.id().getNamespace() + "."
+                + selected.id().getPath().replace('/', '.');
+        Component name = Component.translatable(stem);
+        context.drawWordWrap(this.font, name, x, y, textW, 0xFFFFFF);
+        y += Math.max(this.font.lineHeight + 3, this.font.split(name, textW).size() * this.font.lineHeight + 3);
+        context.drawString(this.font, Component.translatable("townstead.object_sets.status",
+                selected.recognized(), selected.radius()), x, y, 0xE3D18A, false);
+        y += this.font.lineHeight + 5;
+        Component description = Component.translatable(stem + ".description");
+        context.pose().pushPose();
+        context.pose().scale(0.85f, 0.85f, 1);
+        context.drawWordWrap(this.font, description, (int) (x / 0.85f), (int) (y / 0.85f),
+                (int) (textW / 0.85f), 0xBEB4A3);
+        context.pose().popPose();
+        y += this.font.split(description, (int) (textW / 0.85f)).size() * 8 + 8;
+        context.drawString(this.font, Component.translatable("townstead.configuration.needs"), x, y, 0xD0D0D0, false);
+        y += this.font.lineHeight + 3;
+        context.enableScissor(detailsX + 2, y, detailsRight - 2, detailsBottom - 2);
+        for (String ingredient : selected.ingredients()) {
+            context.pose().pushPose();
+            context.pose().scale(0.72f, 0.72f, 1);
+            context.drawString(this.font, Component.literal(townstead$objectSetIngredientLabel(ingredient)),
+                    (int) (x / 0.72f), (int) (y / 0.72f), 0xD1C1A6, false);
+            context.pose().popPose();
+            y += 10;
+        }
+        context.disableScissor();
+    }
+
+    @Unique
+    private String townstead$objectSetIngredientLabel(String raw) {
+        if (raw.startsWith("—")) return raw;
+        int separator = raw.indexOf(" ×");
+        String selector = separator < 0 ? raw : raw.substring(0, separator);
+        String suffix = separator < 0 ? "" : raw.substring(separator);
+        boolean tag = selector.startsWith("#");
+        ResourceLocation id = ResourceLocation.tryParse(tag ? selector.substring(1) : selector);
+        if (id == null) return raw;
+        return com.aetherianartificer.townstead.client.catalog.RequirementNameResolver.displayName(id) + suffix;
+    }
+
+    @Unique
+    private int townstead$findObjectSetNodeAt(double mouseX, double mouseY, int insideX, int insideY) {
+        int count = com.aetherianartificer.townstead.client.catalog.ObjectSetCatalogClientStore.entries().size();
+        for (int index = count - 1; index >= 0; index--) {
+            int worldX = 24 + (index % 4) * 56;
+            int worldY = 24 + (index / 4) * 42;
+            int x = insideX + (int) Math.round((worldX + townstead$catalogPanX) * townstead$catalogZoom);
+            int y = insideY + (int) Math.round((worldY + townstead$catalogPanY) * townstead$catalogZoom);
+            int size = Math.max(16, (int) Math.round(26 * townstead$catalogZoom));
+            if (mouseX >= x && mouseX <= x + size && mouseY >= y && mouseY <= y + size) return index;
+        }
+        return -1;
+    }
+
+    @Unique
     private int townstead$findCatalogNodeAt(double mouseX, double mouseY, int insideX, int insideY) {
         for (int i = townstead$catalogNodes.size() - 1; i >= 0; i--) {
             NodeData node = townstead$catalogNodes.get(i);
@@ -1680,15 +1846,18 @@ public abstract class BlueprintScreenMixin extends Screen {
      * member currently shown, and the collective tag name stays on the hover tooltip.
      */
     @Unique
-    private String townstead$requirementRowName(RequirementRow row, ItemStack shown) {
-        return com.aetherianartificer.townstead.client.catalog.RequirementNameResolver
-                .displayName(row.id(), shown);
+    private String townstead$requirementRowName(RequirementRow row,
+            com.aetherianartificer.townstead.client.catalog.RequirementIcon shown) {
+        return shown.label().isEmpty()
+                ? com.aetherianartificer.townstead.client.catalog.RequirementNameResolver.displayName(row.id())
+                : shown.label();
     }
 
     @Unique
-    private ItemStack townstead$resolveRequirementIcon(ResourceLocation id, long ticker, int salt) {
+    private com.aetherianartificer.townstead.client.catalog.RequirementIcon
+            townstead$resolveRequirementIcon(ResourceLocation id, long ticker, int salt) {
         return com.aetherianartificer.townstead.client.catalog.RequirementNameResolver
-                .displayStack(id, ticker, salt);
+                .displayIcon(id, ticker, salt);
     }
 
     @Unique

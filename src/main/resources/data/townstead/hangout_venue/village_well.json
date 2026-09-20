@@ -1,0 +1,8 @@
+{
+  "schema":"townstead:hangout_venue/v2",
+  "object_sets":["townstead:well"],
+  "capacity":5,
+  "activities":["townstead:village_meeting_conversation"],
+  "tags":["townstead_hangouts:quiet","townstead_hangouts:social","townstead_hangouts:rustic","townstead_hangouts:outdoors"],
+  "amenities":["conversation","water"]
+}

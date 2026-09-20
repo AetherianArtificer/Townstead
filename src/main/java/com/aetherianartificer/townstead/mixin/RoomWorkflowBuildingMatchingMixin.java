@@ -29,7 +29,7 @@ public abstract class RoomWorkflowBuildingMatchingMixin {
         if (permitted.equals(scan.matchingTypes())) return;
         cir.setReturnValue(new BuildingScanResult(
                 scan.result(), scan.source(), scan.building(), permitted, scan.village(),
-                scan.pendingStructure(), scan.pendingFloorRefresh()));
+                scan.pendingStructure()));
     }
     //?}
 }

@@ -15,7 +15,46 @@ import com.aetherianartificer.townstead.block.RoomThermostatBlock;
 /** Read-only thermal diagnostics and permission-gated thermostat configuration. */
 public final class ThermalDiagnosticsCommand {
     private ThermalDiagnosticsCommand() {}
+    private static void describeVillager(CommandSourceStack source, net.conczin.mca.entity.VillagerEntityMCA villager) {
+        var needs = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).needs();
+        var exposure = com.aetherianartificer.townstead.temperature.ThermalExposure.at(source.getLevel(), villager,
+                villager.blockPosition(), com.aetherianartificer.townstead.temperature.ThermalExposure.activity(villager));
+        float body = TemperatureData.celsius(needs.bodyTempTenths());
+        var forecast = exposure.forecast(body, 120);
+        var work = com.aetherianartificer.townstead.clothing.dress.ThermalDressing.exposure(source.getLevel(), villager);
+        String text = String.format(java.util.Locale.ROOT,
+                "%s [%s]: enabled=%s; core %.1f C -> %.1f C (120s %.1f C); neutral %.1f +/-%.1f; air %.1f C; felt %.1f C; wet %.0f%%; protection %s; owner=%s; reason=%s; work target %.1f C",
+                villager.getName().getString(), TemperatureBridgeResolver.get().id(),
+                com.aetherianartificer.townstead.temperature.ThermalExposure.enabled(villager),
+                body, exposure.target(), forecast.body(), exposure.profile().neutral(), exposure.profile().band(),
+                TemperatureData.airCelsius(source.getLevel(), villager.blockPosition()), exposure.ambient(), exposure.wetness() * 100,
+                exposure.protection(), com.aetherianartificer.townstead.temperature.ThermalCare.owner(villager),
+                needs.reliefDebug(), work.target());
+        source.sendSuccess(() -> Component.literal(text), false);
+        var worn = com.aetherianartificer.townstead.clothing.ClothingSources.worn(villager);
+        source.sendSuccess(() -> Component.literal("Worn: " + worn.stream().map(p -> p.entry() == null ? p.source()
+                : p.entry().id().toString()).collect(java.util.stream.Collectors.joining(", "))), false);
+    }
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        dispatcher.register(Commands.literal("townstead").then(Commands.literal("thermal")
+                .then(Commands.literal("villager").then(Commands.argument("target", net.minecraft.commands.arguments.EntityArgument.entity())
+                        .executes(context -> {
+                            var entity = net.minecraft.commands.arguments.EntityArgument.getEntity(context, "target");
+                            if (!(entity instanceof net.conczin.mca.entity.VillagerEntityMCA villager)) {
+                                context.getSource().sendFailure(Component.literal("Select a Townstead/MCA villager."));
+                                return 0;
+                            }
+                            describeVillager(context.getSource(), villager);
+                            return 1;
+                        })))
+                .then(Commands.literal("nearby").executes(context -> {
+                    var source = context.getSource();
+                    var villagers = source.getLevel().getEntitiesOfClass(net.conczin.mca.entity.VillagerEntityMCA.class,
+                            new net.minecraft.world.phys.AABB(BlockPos.containing(source.getPosition())).inflate(32));
+                    source.sendSuccess(() -> Component.literal("Thermal survey: " + villagers.size() + " loaded villagers within 32 blocks."), false);
+                    villagers.stream().limit(16).forEach(villager -> describeVillager(source, villager));
+                    return villagers.size();
+                }))));
         var configure = Commands.literal("thermostat").requires(source -> source.hasPermission(2));
         var position = Commands.argument("position", BlockPosArgument.blockPos());
         for (var mode : RoomThermostatBlock.Mode.values()) {

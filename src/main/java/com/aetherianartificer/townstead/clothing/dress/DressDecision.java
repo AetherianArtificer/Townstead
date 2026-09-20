@@ -71,7 +71,7 @@ public final class DressDecision {
             movable.add(piece);
         }
 
-        if (plan == null || plan.isEmpty()) {
+        if (plan == null || plan.isEmpty() || tier != null && tier != TemperatureData.Tier.COMFORTABLE) {
             fallback(actions, movable, tier);
             return actions;
         }
@@ -98,14 +98,14 @@ public final class DressDecision {
             if (met) continue;
             boolean required = rule.requirement() == WardrobePolicy.Requirement.REQUIRED;
             // Off shift a preference is acted on; on shift only a requirement is.
-            if (required || !onShift) actions.add(Action.fetch(layer, rule.selector(), required));
+            if (required || !onShift || tier != null && tier.isCrisis()) actions.add(Action.fetch(layer, rule.selector(), required));
         }
         actions.sort((a, b) -> Boolean.compare(b.required(), a.required()));
         return actions;
     }
 
     private static void fallback(List<Action> actions, List<WornPiece> movable, @Nullable TemperatureData.Tier tier) {
-        if (tier == null || !tier.wantsRelief()) return;
+        if (tier == null || tier == TemperatureData.Tier.COMFORTABLE) return;
         if (tier.isCold()) {
             for (WornPiece piece : movable) {
                 if (piece.layer() == ClothingLayer.OUTERWEAR && piece.entry() != null && piece.entry().isWarm()) return;

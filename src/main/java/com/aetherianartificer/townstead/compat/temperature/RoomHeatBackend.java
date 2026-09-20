@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 /** Recursion-safe boundary between the shared simulation and backend environmental queries. */
 public final class RoomHeatBackend {
     private static final ThreadLocal<Integer> MODE = ThreadLocal.withInitial(() -> 0);
+    private static final ThermalCache<ServerLevel, Long, Double> ENVIRONMENT = new ThermalCache<>(1, 2048);
     private RoomHeatBackend() {}
     public static boolean bypassed() { return MODE.get() != 0; }
     public static boolean outdoorSampling() { return MODE.get() == 2; }
@@ -20,6 +21,17 @@ public final class RoomHeatBackend {
     public static OptionalDouble room(Level level, BlockPos pos) {
         return level instanceof ServerLevel server && !bypassed() ? RoomHeat.at(server, pos) : OptionalDouble.empty();
     }
+    /** LSO players and world queries share the same climate and local source exposure. */
+    public static OptionalDouble environment(Level level, BlockPos pos) {
+        if (!(level instanceof ServerLevel server) || bypassed() || !TemperatureSettings.get().roomHeatEnabled())
+            return OptionalDouble.empty();
+        return OptionalDouble.of(ENVIRONMENT.get(server, pos.asLong(), server.getGameTime(), () -> {
+            var room = RoomHeat.at(server, pos);
+            return room.isPresent() ? room.getAsDouble() : (double) outdoor(server, pos)
+                    + ThermalBlocks.sourceOffset(server, pos, TemperatureSettings.get());
+        }));
+    }
+    public static void clear() { ENVIRONMENT.clear(); }
     public static float outdoor(ServerLevel level, BlockPos pos) {
         return sample(2, () -> {
             var backend = TemperatureBridgeResolver.get();
@@ -28,7 +40,8 @@ public final class RoomHeatBackend {
             else if (backend == ToughAsNailsTemperatureBridge.INSTANCE) value = ToughAsNailsTemperatureBridge.INSTANCE.outdoorCelsius(level, pos);
             else if (backend == BuiltinTemperatureBridge.INSTANCE) value = builtinOutdoor(level, pos);
             else value = backend.ambientCelsius(level, pos);
-            return Float.isFinite(value) ? value : builtinOutdoor(level, pos);
+            return EclipticClimate.reconcile(Float.isFinite(value) ? value : builtinOutdoor(level, pos),
+                    EclipticClimate.ceiling(level, pos));
         });
     }
     private static float builtinOutdoor(ServerLevel level, BlockPos pos) {

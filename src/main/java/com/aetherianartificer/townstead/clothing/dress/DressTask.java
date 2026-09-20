@@ -70,6 +70,7 @@ public class DressTask extends Behavior<VillagerEntityMCA> {
     private BlockPos target;
     private ItemStack carried = ItemStack.EMPTY;
     private long lastReassert;
+    private com.aetherianartificer.townstead.temperature.ThermalExposure thermalPlan;
 
     public DressTask() {
         super(ImmutableMap.of(
@@ -80,10 +81,46 @@ public class DressTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
-        if (villager.isSleeping() || villager.isBaby()) return false;
+        if (com.aetherianartificer.townstead.temperature.ThermalCare.interrupted(villager) || villager.isBaby()) return false;
         if (villager.getLastHurtByMob() != null || villager.getVillagerBrain().isPanicking()) return false;
-        if (villager.getBrain().getMemory(MemoryModuleType.WALK_TARGET).isPresent()) return false;
+        if (com.aetherianartificer.townstead.hunger.VillagerConsumptionManager.isConsuming(villager)) return false;
+        if (!com.aetherianartificer.townstead.temperature.ThermalCare.available(villager, "dress")) return false;
         if (!VillagerSearchCadence.isDue(level, villager, SEARCH_CADENCE_KEY)) return false;
+
+        thermalPlan = null;
+        if (com.aetherianartificer.townstead.temperature.ThermalExposure.enabled(villager)) {
+            var exposure = ThermalDressing.exposure(level, villager);
+            if (ThermalDressing.shedHarmfulLayer(villager, exposure) || ThermalDressing.equipCarried(villager, exposure)) {
+                VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, 100, 20);
+                return false;
+            }
+            if (exposure.outfitCost() > ThermalDressing.MIN_GAIN) {
+                java.util.List<com.aetherianartificer.townstead.work.ReachableTargetSelector.Candidate<NearbyItemSources.ContainerSlot>> slots = new ArrayList<>();
+                NearbyItemSources.collectMatchingSlots(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                        stack -> ThermalDressing.gain(villager, stack, exposure) > ThermalDressing.MIN_GAIN,
+                        stack -> Math.round(ThermalDressing.gain(villager, stack, exposure) * 1000), villager.blockPosition(),
+                        slot -> {
+                            if (!com.aetherianartificer.townstead.hunger.ConsumableTargetClaims.isClaimedByOtherSlot(
+                                    level, villager.getUUID(), "clothing", slot))
+                                slots.add(new com.aetherianartificer.townstead.work.ReachableTargetSelector.Candidate<>(slot, slot.pos()));
+                        });
+                var best = com.aetherianartificer.townstead.work.ReachableTargetSelector.chooseReachable(level, villager,
+                        slots, CLOSE_ENOUGH, 4, 200, candidate -> -candidate.value().score() + Math.sqrt(candidate.value().distanceSqr()));
+                if (best != null && com.aetherianartificer.townstead.hunger.ConsumableTargetClaims.tryClaimSlot(
+                        level, villager.getUUID(), "clothing", best, level.getGameTime() + MAX_DURATION + 20)) {
+                    thermalPlan = exposure;
+                    phase = Phase.FETCH; source = best; target = best.pos(); carried = ItemStack.EMPTY;
+                    return true;
+                }
+                if (!"relief".equals(com.aetherianartificer.townstead.temperature.ThermalCare.owner(villager)))
+                    TownsteadVillagers.get(villager).needs().setReliefDebug("no_wearable_protection");
+            }
+        }
+        if ("relief".equals(com.aetherianartificer.townstead.temperature.ThermalCare.owner(villager))) return false;
+        if (villager.getBrain().getMemory(MemoryModuleType.WALK_TARGET).isPresent()) {
+            VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, SEARCH_RETRY_TICKS, 40);
+            return false;
+        }
 
         TownsteadVillager.Needs needs = TownsteadVillagers.get(villager).needs();
         TemperatureData.Tier tier = null;
@@ -124,6 +161,8 @@ public class DressTask extends Behavior<VillagerEntityMCA> {
                 stack -> {
                     ClothingEntry entry = ClothingDefs.forStack(level, stack);
                     if (entry == null || entry.layer() != candidate.layer()) return false;
+                    if (com.aetherianartificer.townstead.temperature.ThermalExposure.enabled(villager)
+                            && !ThermalDressing.safeToWear(villager, stack, ThermalDressing.exposure(level, villager))) return false;
                     return ClothingSelectors.admits(candidate.selector(), entry, culture, fitted);
                 },
                 stack -> {
@@ -132,7 +171,8 @@ public class DressTask extends Behavior<VillagerEntityMCA> {
                     if (thermal == null) return 1;
                     return 1 + Math.round(Math.abs(thermal.offset() + thermal.coldResistance() + thermal.heatResistance()) * 10);
                 });
-        if (slot == null) return false;
+        if (slot == null || !com.aetherianartificer.townstead.hunger.ConsumableTargetClaims.tryClaimSlot(
+                level, villager.getUUID(), "clothing", slot, level.getGameTime() + MAX_DURATION + 20)) return false;
         phase = Phase.FETCH;
         action = candidate;
         source = slot;
@@ -144,6 +184,10 @@ public class DressTask extends Behavior<VillagerEntityMCA> {
     private boolean beginStow(ServerLevel level, VillagerEntityMCA villager, DressDecision.Action candidate) {
         WornPiece piece = candidate.piece();
         if (piece == null || !piece.isStack()) return false;
+        if (!ClothingSources.CARRIED_SOURCE.equals(piece.source())
+                && com.aetherianartificer.townstead.temperature.ThermalExposure.enabled(villager)
+                && !ThermalDressing.canRemove(villager, piece,
+                com.aetherianartificer.townstead.temperature.ThermalExposure.at(level, villager, villager.blockPosition(), 0))) return false;
         ItemStack removed;
         if (ClothingSources.CARRIED_SOURCE.equals(piece.source())) {
             // Already in the pockets: nothing to take off, only somewhere to put it.
@@ -167,12 +211,14 @@ public class DressTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         lastReassert = gameTime - REASSERT_TICKS;
+        com.aetherianartificer.townstead.temperature.ThermalCare.hold(villager, "dress");
         TownsteadVillagers.get(villager).needs().setReliefDebug(phase == Phase.FETCH ? "dress_fetch" : "dress_stow");
         if (target != null) walk(villager);
     }
 
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        com.aetherianartificer.townstead.temperature.ThermalCare.hold(villager, "dress");
         if (target == null) {
             // Nothing to walk to: a stow with no shelf keeps the piece in the villager's pockets.
             finish(level, villager);
@@ -193,9 +239,16 @@ public class DressTask extends Behavior<VillagerEntityMCA> {
     }
 
     private void fetchAndWear(ServerLevel level, VillagerEntityMCA villager) {
-        ItemStack stack = NearbyItemSources.extractOne(level, source);
+        var exposure = ThermalDressing.exposure(level, villager);
+        ItemStack stack = NearbyItemSources.extractOneFor(level, villager, source, item -> {
+            if (thermalPlan != null) return ThermalDressing.gain(villager, item, exposure) > ThermalDressing.MIN_GAIN;
+            var entry = ClothingDefs.forStack(level, item);
+            return entry != null && entry.layer() == action.layer()
+                    && (!com.aetherianartificer.townstead.temperature.ThermalExposure.enabled(villager)
+                    || ThermalDressing.safeToWear(villager, item, exposure));
+        });
         if (stack == null || stack.isEmpty()) return;
-        if (!wear(villager, stack)) {
+        if (!(thermalPlan != null ? ThermalDressing.equip(villager, stack, ThermalDressing.exposure(level, villager)) : wear(villager, stack))) {
             // Nothing free to wear it in: put it straight back rather than carry it around.
             if (!NearbyItemSources.insertIntoNearbyStorage(level, villager, stack, SEARCH_RADIUS, VERTICAL_RADIUS,
                     source.pos(), StorageUse.OUTPUT)) {
@@ -215,21 +268,28 @@ public class DressTask extends Behavior<VillagerEntityMCA> {
     static boolean wear(VillagerEntityMCA villager, ItemStack stack) {
         if (CuriosCompat.equipFirstFree(villager, stack)) {
             stack.shrink(1);
+            com.aetherianartificer.townstead.tick.TemperatureVillagerTicker.invalidateEquipment(villager);
             return true;
         }
         if (armourManaged(villager)) return false;
         ClothingEntry entry = ClothingDefs.forStack(villager.level(), stack);
+        var itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (itemId.getNamespace().equals("legendarysurvivaloverhaul") && itemId.getPath().contains("coat")) return false;
         EquipmentSlot slot = armorSlot(entry == null ? null : entry.slot());
         if (slot == null || !villager.getItemBySlot(slot).isEmpty()) return false;
         villager.setItemSlot(slot, stack.split(1));
+        com.aetherianartificer.townstead.tick.TemperatureVillagerTicker.invalidateEquipment(villager);
         return true;
     }
 
     static ItemStack takeOff(VillagerEntityMCA villager, WornPiece piece) {
+        com.aetherianartificer.townstead.tick.TemperatureVillagerTicker.invalidateEquipment(villager);
         ItemStack worn = piece.stack();
         if (worn == null || worn.isEmpty()) return ItemStack.EMPTY;
+        if (com.aetherianartificer.townstead.inventory.AssignedArmor.protects(villager, worn)) return ItemStack.EMPTY;
         ItemStack[] removed = {ItemStack.EMPTY};
         if (DressDecision.ARMOR_SOURCE.equals(piece.source())) {
+            if (ThermalDressing.bound(worn)) return ItemStack.EMPTY;
             for (EquipmentSlot slot : new EquipmentSlot[] {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
                 if (villager.getItemBySlot(slot) == worn) {
                     removed[0] = worn.copy();
@@ -274,6 +334,8 @@ public class DressTask extends Behavior<VillagerEntityMCA> {
     }
 
     private void finish(ServerLevel level, VillagerEntityMCA villager) {
+        if (source != null) com.aetherianartificer.townstead.hunger.ConsumableTargetClaims.releaseSlot(
+                level, villager.getUUID(), "clothing", source);
         target = null;
         source = null;
         carried = ItemStack.EMPTY;
@@ -282,14 +344,15 @@ public class DressTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (villager.isSleeping() || villager.getLastHurtByMob() != null || villager.getVillagerBrain().isPanicking()) return false;
+        if (com.aetherianartificer.townstead.temperature.ThermalCare.interrupted(villager)) return false;
         return target != null && level.isLoaded(target);
     }
 
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         finish(level, villager);
-        TownsteadVillagers.get(villager).needs().setReliefDebug("none");
+        com.aetherianartificer.townstead.temperature.ThermalCare.release(villager, "dress");
+        TownsteadVillagers.get(villager).needs().setReliefDebug("wardrobe_checked");
         VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, REFRACTORY_TICKS, 40);
     }
 

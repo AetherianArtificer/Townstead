@@ -45,10 +45,13 @@ public final class ToughAsNailsEntityCompat {
         return enchantment != null && EnchantmentHelper.getItemEnchantmentLevel(enchantment, stack) > 0;
         *///?}
     }
-    public static ThermalProtection protection(LivingEntity entity) {
+    public static ThermalProtection equipmentProtection(LivingEntity entity) {
         for (ItemStack stack : entity.getArmorSlots())
             if (enchanted(entity, stack, "thermal_tuning")) return new ThermalProtection(0, 0, 0, 10000);
-        return effect(entity, "ice_resistance") != null ? new ThermalProtection(0, 10000, 0, 0) : ThermalProtection.NONE;
+        return ThermalProtection.NONE;
+    }
+    public static ThermalProtection protection(LivingEntity entity) {
+        return equipmentProtection(entity).plus(effect(entity, "ice_resistance") != null ? new ThermalProtection(0, 10000, 0, 0) : ThermalProtection.NONE);
     }
     public static void cleanseCanteens(net.conczin.mca.entity.VillagerEntityMCA villager) {
         if (!ModCompat.isLoaded("toughasnails") || villager.tickCount % 20 != 0) return;

@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:organization_kind/v1",
+  "display": {
+    "name": { "translate": "organization_kind.townstead.guild" },
+    "description": { "translate": "organization_kind.townstead.guild.description" }
+  },
+  "tags": [
+    "townstead:economic",
+    "townstead:nonexclusive",
+    "townstead:player_creatable"
+  ],
+  "membership_policy": "townstead:open",
+  "roles": [
+    { "role": "townstead:founder", "min": 1, "max": 1, "founder": true },
+    { "role": "townstead:officer", "max": 8 },
+    { "role": "townstead:member" }
+  ],
+  "founding": {
+    "procedure": "townstead:charter",
+    "eligibility": {
+      "type": "pheno:constant",
+      "value": true
+    }
+  },
+  "presentation": {
+    "emblem_pool": "townstead:guild",
+    "charter_style": "townstead:ledger"
+  }
+}

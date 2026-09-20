@@ -121,7 +121,7 @@ public final class McaBuildingDiscovery {
         if (room != null) {
             RegisteredRoomUpdate update = McaRoomWorkflow.analyzeRegisteredRoomUpdate(level, village, room.getId(), source);
             if (update.result() != Building.validationResult.SUCCESS || update.isAmbiguous()) {
-                diagnostic("update", source, update.result(), update.playerMatchingTypes());
+                diagnostic("update", source, update.result(), update.matchingTypes());
                 return;
             }
             result = manager.commitRegisteredRoomUpdate(update, null);
@@ -147,7 +147,7 @@ public final class McaBuildingDiscovery {
             diagnostic("commit", source, result, java.util.List.of());
             return;
         }
-        BuildingReportReconciler.reconcileNearest(level, source, false, Townstead.LOGGER);
+        BuildingReportReconciler.reconcileNearest(level, source, Townstead.LOGGER);
         //?}
     }
 

@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:membership_policy/v1",
+  "admission": {
+    "procedure": "townstead:application",
+    "request_kind": "townstead:membership_application",
+    "decision": {
+      "procedure": "townstead:role_approval",
+      "role": "townstead:faction_leader",
+      "approvals": 1
+    },
+    "initial_roles": [
+      "townstead:member"
+    ]
+  },
+  "departure": {
+    "procedure": "townstead:free_resignation"
+  }
+}

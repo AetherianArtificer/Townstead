@@ -9,6 +9,7 @@ import com.aetherianartificer.townstead.api.v1.model.VillageSnapshot;
 import com.aetherianartificer.townstead.calendar.WorldCalendarSavedData;
 import com.aetherianartificer.townstead.compat.mca.McaBuildingCompat;
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
+import com.aetherianartificer.townstead.naming.NamingRegisterSavedData;
 import com.aetherianartificer.townstead.spirit.SpiritReadout;
 import com.aetherianartificer.townstead.spirit.SpiritRegistry;
 import com.aetherianartificer.townstead.spirit.SpiritTotals;
@@ -180,9 +181,14 @@ final class VillagesImpl implements VillagesApi {
             established = birth.worldDay();
             playerFounded = birth.playerFounded();
         }
+        String cultureValue = NamingRegisterSavedData.get(level.getServer())
+                .villageCulture(level.dimension().location(), village.getId());
+        net.minecraft.resources.ResourceLocation culture = cultureValue.isBlank()
+                ? null : net.minecraft.resources.ResourceLocation.tryParse(cultureValue);
         return new VillageSnapshot(id, village.getName(), new BlockPos(center),
                 new BlockPos(box.minX(), box.minY(), box.minZ()), new BlockPos(box.maxX(), box.maxY(), box.maxZ()),
-                residents.size(), loaded, residents, established, playerFounded, McaBuildings.all(village).size());
+                residents.size(), loaded, residents, established, playerFounded, McaBuildings.all(village).size(),
+                Optional.ofNullable(culture));
     }
 
     static SpiritSnapshot spirit(ServerLevel level, Village village) {

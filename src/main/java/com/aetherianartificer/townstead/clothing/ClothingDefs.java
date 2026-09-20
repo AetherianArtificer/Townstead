@@ -116,7 +116,8 @@ public final class ClothingDefs {
     public static @Nullable ClothingEntry forStack(@Nullable Level level, ItemStack stack) {
         if (stack == null || stack.isEmpty()) return null;
         for (ClothingEntry entry : ENTRIES) {
-            if (entry.matches(level, stack)) return entry;
+            if (entry.matches(level, stack)) return entry.withThermal(
+                    com.aetherianartificer.townstead.temperature.Insulation.resolve(stack, entry.thermal()));
         }
         return ClothingThermal.syntheticStackEntry(stack);
     }

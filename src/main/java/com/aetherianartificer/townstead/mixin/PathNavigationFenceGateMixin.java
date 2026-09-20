@@ -5,6 +5,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.level.Level;
@@ -80,15 +81,23 @@ public abstract class PathNavigationFenceGateMixin {
     @Unique
     private static final double TOWNSTEAD_STANDING_IN_DISTANCE_SQ = 1.5 * 1.5;
 
-    @Inject(method = "<init>", at = @At("TAIL"))
+    // 1.21.1: MCA 7.7.37+ owns fence gates end to end — MCAWalkNodeEvaluator classifies them
+    // as walkable and rejects stepping onto closed ones, SmarterOpenDoorsTask opens every gate
+    // in the villager's body clearance and closes it behind them, and both honour MCA's
+    // villagersInteractWithFenceGates config. Every hook in this class stays uninjected there
+    // so nothing of ours can override that config. The 1.20.1 branch keeps them for the
+    // pre-floor MCA line, which has none of it.
+    //? if >=1.21 {
+    @Unique
     private void townstead$captureNavigationContext(Mob mob, Level level, CallbackInfo ci) {
+    //?} else {
+    /*@Inject(method = "<init>", at = @At("TAIL"))
+    private void townstead$captureNavigationContext(Mob mob, Level level, CallbackInfo ci) {
+    *///?}
         this.townstead$mob = mob;
         this.townstead$level = level;
     }
 
-    // 1.21.1: MCA 7.7.37+ opens and closes fence gates itself (PathingBlockInteraction +
-    // SmarterOpenDoorsTask), so the three hooks below stay uninjected there. The 1.20.1 branch
-    // keeps them for the pre-floor MCA line.
     //? if >=1.21 {
     @Unique
     private void townstead$handleFenceGatesOnAdvance(CallbackInfo ci) {
@@ -107,9 +116,25 @@ public abstract class PathNavigationFenceGateMixin {
 
         Node prev = p.getPreviousNode();
         Node next = p.getNextNode();
-        if (prev != null) townstead$openIfFenceGate(serverLevel, prev.asBlockPos());
-        if (next != null) townstead$openIfFenceGate(serverLevel, next.asBlockPos());
+        if (prev != null) townstead$openGatesInBodyClearance(serverLevel, prev.asBlockPos());
+        if (next != null) townstead$openGatesInBodyClearance(serverLevel, next.asBlockPos());
         townstead$closeFarGates(serverLevel, prev, next);
+    }
+
+    /**
+     * A path node names the villager's feet, but a gate anywhere in the column they occupy
+     * blocks them. Opening the whole body clearance matters more here than it does for a
+     * vanilla-sized villager: Townstead's size genes and non-humanoid rigs produce villagers
+     * over two blocks tall, whose head would otherwise walk into a closed upper gate.
+     */
+    @Unique
+    private void townstead$openGatesInBodyClearance(ServerLevel serverLevel, BlockPos pathPos) {
+        Mob mob = townstead$mob();
+        if (mob == null) return;
+        int bodyHeightBlocks = Math.max(1, Mth.ceil(mob.getBbHeight()));
+        for (int offset = 0; offset < bodyHeightBlocks; offset++) {
+            townstead$openIfFenceGate(serverLevel, pathPos.above(offset));
+        }
     }
 
     //? if >=1.21 {

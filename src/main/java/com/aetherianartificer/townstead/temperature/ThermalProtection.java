@@ -9,6 +9,11 @@ public record ThermalProtection(float offset, float coldResistance, float heatRe
                 heatResistance + other.heatResistance, thermalResistance + other.thermalResistance);
     }
 
+    public ThermalProtection minus(ThermalProtection other) {
+        return new ThermalProtection(offset - other.offset, coldResistance - other.coldResistance,
+                heatResistance - other.heatResistance, thermalResistance - other.thermalResistance);
+    }
+
     /** Resistance moves ambient toward neutral, and cannot push it past neutral. */
     public float protectAmbient(float ambient, float neutral) {
         float gap = ambient - neutral;

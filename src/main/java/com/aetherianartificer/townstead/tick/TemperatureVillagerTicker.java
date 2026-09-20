@@ -11,6 +11,8 @@ import com.aetherianartificer.townstead.root.needs.NeedSuppression;
 import com.aetherianartificer.townstead.temperature.Insulation;
 import com.aetherianartificer.townstead.temperature.TemperatureData;
 import com.aetherianartificer.townstead.temperature.ThermalProfile;
+import com.aetherianartificer.townstead.temperature.BodyHeat;
+import com.aetherianartificer.townstead.temperature.ThermalBreakGrace;
 import com.aetherianartificer.townstead.temperature.ThermalProtection;
 import com.aetherianartificer.townstead.temperature.ThermalComfort;
 import com.aetherianartificer.townstead.temperature.TemperatureSettings;
@@ -60,6 +62,16 @@ public final class TemperatureVillagerTicker {
         STATE.remove(entityId);
     }
 
+    public static boolean thermalBreakReady(VillagerEntityMCA villager, TemperatureData.Tier core) {
+        var state = STATE.get(villager.getId());
+        return core.isCrisis() || state != null && state.breakGrace.allowsBreak(core);
+    }
+
+    public static void invalidateEquipment(VillagerEntityMCA villager) {
+        var state = STATE.get(villager.getId());
+        if (state != null) state.nextClothingSampleTick = 0;
+    }
+
     public static void tick(VillagerEntityMCA self) {
         if (!(self.level() instanceof ServerLevel level)) return;
         if (!TownsteadConfig.isVillagerTemperatureEnabled()) {
@@ -73,6 +85,7 @@ public final class TemperatureVillagerTicker {
         TickState state = STATE.computeIfAbsent(self.getId(), id -> new TickState());
         TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
         long gameTime = level.getGameTime();
+        com.aetherianartificer.townstead.temperature.ThermalCare.owner(self);
         if (state.lastComfortTick < 0) needs.setSeekingRelief(false);
 
         if (state.profile == null || gameTime >= state.profileExpiresAt) {
@@ -99,6 +112,7 @@ public final class TemperatureVillagerTicker {
             needs.setThermalTier(3);
             needs.setCoreThermalTier(3);
             needs.setThermalCrisis(false);
+            state.breakGrace.update(TemperatureData.Tier.COMFORTABLE, 0);
             restoreWaterCost(self, state);
             removeSpeedModifier(self);
             syncIfChanged(self, needs, state, false);
@@ -108,41 +122,49 @@ public final class TemperatureVillagerTicker {
         if (!needs.hasBodyTemp()) needs.setBodyTempTenths(profile.neutralTenths());
 
         boolean changed = false;
-        if (gameTime >= state.nextAmbientSampleTick) {
+        if (gameTime >= state.nextAmbientSampleTick
+                || gameTime >= state.nextAmbientSampleTick - TemperatureData.AMBIENT_SAMPLE_TICKS + 20
+                && (state.lastAmbientPosition != self.blockPosition().asLong() || needs.seekingRelief())) {
             state.nextAmbientSampleTick = gameTime + TemperatureData.AMBIENT_SAMPLE_TICKS;
+            state.lastAmbientPosition = self.blockPosition().asLong();
             // Half-degree steps: enough for the body model, and far fewer change-gated syncs as the villager walks.
-            int ambient = TemperatureData.quantiseAmbient(TemperatureData.ambientCelsiusFor(level, self));
+            int ambient = TemperatureData.quantiseAmbient(TemperatureData.ambientCelsius(level, self.blockPosition(), state.outdoor));
             if (ambient != needs.ambientTenths()) { needs.setAmbientTenths(ambient); changed = true; }
         }
         if (gameTime >= state.nextClothingSampleTick) {
-            state.clothing = Insulation.clothingProtection(self);
+            // Worn gear changes slowly; its enchantment lookups need not run every tick.
+            state.clothing = Insulation.clothingProtection(self)
+                    .plus(com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat.protection(self));
             state.nextClothingSampleTick = gameTime + TemperatureData.AMBIENT_SAMPLE_TICKS;
         }
         float seconds = state.lastComfortTick < 0 ? 0.05f : Math.max(0, Math.min(1, (gameTime - state.lastComfortTick) / 20f));
         state.lastComfortTick = gameTime;
-        ThermalProtection protection = state.clothing.plus(com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat.protection(self))
-                .plus(com.aetherianartificer.townstead.compat.temperature.LsoEntityCompat.effects(self).protection());
+        ThermalProtection protection = state.clothing.plus(com.aetherianartificer.townstead.compat.temperature.LsoEntityCompat.effects(self).protection());
         float ambientCelsius = com.aetherianartificer.townstead.temperature.ThermalConsumables.internalAmbient(self, TemperatureData.celsius(needs.ambientTenths()));
         boolean immersed = self.isInWater();
-        float targetLoad = ThermalComfort.load(ambientCelsius, immersed ? 1 : needs.thermalWetness(),
-                immersed, Math.max(0, activityHeat(self) * 10), protection, profile);
+        float load = ThermalComfort.load(ambientCelsius, immersed ? 1 : needs.thermalWetness(),
+                immersed, com.aetherianartificer.townstead.temperature.ThermalExposure.activity(self), protection, profile);
         ThermalComfort.State comfort = ThermalComfort.update(new ThermalComfort.State(needs.thermalWetness(),
-                needs.comfortLoad(), needs.thermalStrainSeconds()), targetLoad, immersed,
+                needs.comfortLoad(), needs.thermalStrainSeconds()), load, immersed,
                 level.isRainingAt(self.blockPosition()), ambientCelsius, seconds,
-                TemperatureSettings.get().dryingSeconds(), TemperatureSettings.get().comfortBreakSeconds());
-        needs.setThermalComfort(comfort.wetness(), comfort.load(), comfort.strainSeconds());
+                TemperatureSettings.get().dryingSeconds());
+        float strain = Math.abs(BodyHeat.excess(load, TemperatureSettings.get().comfortZone())) > 0
+                ? needs.thermalStrainSeconds() + seconds : 0;
+        needs.setThermalComfort(comfort.wetness(), comfort.load(), Math.min(600, strain));
 
         if (state.lastStepGameTime < 0) state.lastStepGameTime = gameTime;
         int steps = 0;
         while (gameTime - state.lastStepGameTime >= TemperatureData.ACCUMULATION_INTERVAL && steps < 100) {
             state.lastStepGameTime += TemperatureData.ACCUMULATION_INTERVAL;
-            changed |= step(self, needs, profile, protection, state.drift);
+            changed |= step(self, needs, profile, load, ambientCelsius, state.drift);
             steps++;
         }
 
+        // The body is the one source of truth: feeling, mood, speed and relief all read it.
         TemperatureData.Tier coreTier = TemperatureData.tier(needs.bodyTempTenths(), profile);
+        state.breakGrace.update(coreTier, seconds);
         needs.setCoreThermalTier(coreTier.ordinal());
-        TemperatureData.Tier tier = ThermalComfort.tier(needs.comfortLoad());
+        TemperatureData.Tier tier = coreTier;
         if (tier.ordinal() != needs.thermalTier()) needs.setThermalTier(tier.ordinal());
         updateWaterCost(self, state, profile, ambientCelsius);
 
@@ -172,33 +194,13 @@ public final class TemperatureVillagerTicker {
     }
 
     /** One accumulation interval of drift toward the target. Returns true when the reading moved. */
-    private static boolean step(VillagerEntityMCA self, TownsteadVillager.Needs needs, ThermalProfile profile, ThermalProtection protection,
-                                com.aetherianartificer.townstead.temperature.BodyTemperatureDrift drift) {
-        float ambient = com.aetherianartificer.townstead.temperature.ThermalConsumables.internalAmbient(self, TemperatureData.celsius(needs.ambientTenths()));
-        ambient = protection.protectAmbient(ambient, TemperatureData.AMBIENT_REFERENCE);
-        float clothing = protection.offset();
-        float target;
-        if (profile.ectotherm()) {
-            target = profile.neutral() + (ambient - profile.neutral()) * TemperatureData.ECTOTHERM_FOLLOW;
-        } else {
-            float pull = (ambient - TemperatureData.AMBIENT_REFERENCE) * TemperatureData.AMBIENT_PULL_PER_DEGREE;
-            pull *= pull < 0 ? profile.cold() : profile.heat();
-            target = profile.neutral() + pull + activityHeat(self);
-        }
-        if (needs.wet()) target += TemperatureData.WETNESS_COLD * profile.cold();
-        if (self.isSleeping() && target < profile.neutral()) {
-            target = profile.neutral() + (target - profile.neutral()) * TemperatureData.SLEEP_COLD_FACTOR;
-        }
-        boolean hotSide = ambient > TemperatureData.AMBIENT_REFERENCE;
-        float innate = profile.insulation();
-        if (innate > 0 && hotSide && profile.sheds()) innate = 0f;
-        // Worn clothing is opened or set aside as the day warms: full effect at 20 C, none by 25 C. Leather is everyday wear.
-        float clothingScale = hotSide ? Math.max(0f, 1f - (ambient - TemperatureData.AMBIENT_REFERENCE) / TemperatureData.CLOTHING_FADE_DEGREES) : 1f;
-        float offset = innate + Math.max(0f, clothing) * clothingScale + Math.min(0f, clothing);
-        offset = Math.max(-TemperatureData.CLOTHING_CLAMP, Math.min(TemperatureData.CLOTHING_CLAMP, offset));
-        target += offset;
-
-        int nextTenths = drift.step(needs.bodyTempTenths(), target, TemperatureData.RATE);
+    private static boolean step(VillagerEntityMCA self, TownsteadVillager.Needs needs, ThermalProfile profile, float load,
+                                float ambient, com.aetherianartificer.townstead.temperature.BodyTemperatureDrift drift) {
+        var settings = TemperatureSettings.get();
+        float target = BodyHeat.target(load, settings.comfortZone(), profile, self.isSleeping());
+        double rate = BodyHeat.rate(TemperatureData.celsius(needs.bodyTempTenths()), target, profile.neutral(),
+                TemperatureData.ACCUMULATION_INTERVAL / 20d, settings.bodyResponseSeconds(), settings.bodyRecoverySeconds());
+        int nextTenths = drift.step(needs.bodyTempTenths(), target, rate);
         if (nextTenths == needs.bodyTempTenths()) return false;
         needs.setBodyTempTenths(nextTenths);
         return true;
@@ -263,7 +265,9 @@ public final class TemperatureVillagerTicker {
     private static void syncIfChanged(VillagerEntityMCA self, TownsteadVillager.Needs needs, TickState state, boolean force) {
         int body = needs.bodyTempTenths();
         int ambient = needs.ambientTenths();
-        int flags = needs.temperatureFlags();
+        int flags = needs.temperatureFlags() | com.aetherianartificer.townstead.temperature.ThermalStatus.flags(
+                TemperatureData.celsius(body), BodyHeat.target(needs.comfortLoad(), TemperatureSettings.get().comfortZone(),
+                        state.profile, self.isSleeping()), needs.reliefDebug());
         if (!force && body == state.lastSyncedBody && ambient == state.lastSyncedAmbient && flags == state.lastSyncedFlags) return;
         state.lastSyncedBody = body;
         state.lastSyncedAmbient = ambient;
@@ -313,6 +317,7 @@ public final class TemperatureVillagerTicker {
     }
 
     private static final class TickState {
+        private final ThermalBreakGrace breakGrace = new ThermalBreakGrace();
         private long lastComfortTick = -1;
         private boolean aquatic;
         private boolean waterCostRaised;
@@ -324,6 +329,8 @@ public final class TemperatureVillagerTicker {
         private boolean suppressed;
         private long profileExpiresAt;
         private long nextAmbientSampleTick;
+        private long lastAmbientPosition = Long.MIN_VALUE;
+        private final TemperatureData.OutdoorMemo outdoor = new TemperatureData.OutdoorMemo();
         private long nextClothingSampleTick;
         private long lastStepGameTime = -1;
         private long lastMoodGameTime = -1;

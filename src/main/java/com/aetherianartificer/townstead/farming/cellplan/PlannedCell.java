@@ -10,14 +10,22 @@ import net.minecraft.core.BlockPos;
  * @param cropPos         soilPos.above()
  * @param desiredSoil     FARMLAND or RICH_SOIL (NONE/PROTECTED cells aren't emitted)
  * @param seedAssignment  seed item registry id, {@link SeedAssignment#AUTO}, or {@link SeedAssignment#NONE}
+ * @param trellis         packed {@link TrellisSpec} for TRELLIS cells, 0 otherwise
  */
 public record PlannedCell(
         BlockPos soilPos,
         BlockPos cropPos,
         SoilType desiredSoil,
-        String seedAssignment
+        String seedAssignment,
+        int trellis
 ) {
-    public PlannedCell(BlockPos soilPos, SoilType desiredSoil, String seedAssignment) {
-        this(soilPos.immutable(), soilPos.above().immutable(), desiredSoil, seedAssignment);
+    public PlannedCell(BlockPos soilPos, BlockPos cropPos, SoilType desiredSoil, String seedAssignment) {
+        this(soilPos, cropPos, desiredSoil, seedAssignment, 0);
     }
+
+    public PlannedCell(BlockPos soilPos, SoilType desiredSoil, String seedAssignment) {
+        this(soilPos.immutable(), soilPos.above().immutable(), desiredSoil, seedAssignment, 0);
+    }
+
+    public TrellisSpec trellisSpec() { return TrellisSpec.unpack(trellis); }
 }

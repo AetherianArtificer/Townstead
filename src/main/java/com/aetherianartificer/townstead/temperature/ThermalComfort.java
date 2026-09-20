@@ -1,9 +1,10 @@
 package com.aetherianartificer.townstead.temperature;
 
-/** Villager behavior model, separate from the backend climate and the slow core simulation. */
+/** How the surroundings feel, and how wet the villager is. The body itself is {@link BodyHeat}. */
 public final class ThermalComfort {
     private ThermalComfort() {}
 
+    /** Persisted feel: wetness, and the latest environment load for display and hangout choice. */
     public record State(float wetness, float load, float strainSeconds) {
         public static State read(net.minecraft.nbt.CompoundTag tag) {
             return new State(tag.contains("wetness") ? tag.getFloat("wetness") : tag.getBoolean("wet") ? 1 : 0,
@@ -16,24 +17,17 @@ public final class ThermalComfort {
         }
     }
 
-    public static State update(State previous, float targetLoad, boolean immersed, boolean raining,
-                               float ambient, float seconds, float dryingSeconds, float breakSeconds) {
+    /** Wetness soaks in rain or water and dries faster in warm air; the load is taken as felt now. */
+    public static State update(State previous, float load, boolean immersed, boolean raining,
+                               float ambient, float seconds, float dryingSeconds) {
         float wet = previous.wetness();
         if (immersed) wet = 1;
         else if (raining) wet = Math.min(1, wet + seconds / 30f);
         else wet = Math.max(0, wet - seconds / dryingSeconds * Math.max(0.25f, Math.min(2, ambient / 20f)));
-        float load = previous.load() + (targetLoad - previous.load()) * (1 - (float) Math.exp(-seconds / 5f));
-        if (immersed) load = targetLoad;
-        boolean changedSide = Math.signum(load) != Math.signum(previous.load());
-        float strain = changedSide ? 0 : previous.strainSeconds();
-        // Severity shortens tolerance, but ordinary winter air must never bypass exposure time.
-        float severity = Math.max(1, Math.min(3, Math.abs(load) / 12));
-        strain = Math.abs(load) >= 6 ? Math.min(breakSeconds, strain + seconds * severity)
-                : Math.max(0, strain - seconds * 2);
-        return new State(wet, load, strain);
+        return new State(wet, load, 0);
     }
 
-    /** Temperature-equivalent behavioral load. It is not a measured skin/body temperature. */
+    /** Temperature-equivalent environment load: ambient after clothing, genes, wetness, water and activity, less 20. */
     public static float load(float ambient, float wetness, boolean immersed, float activityWarmth,
                              ThermalProtection clothing, ThermalProfile profile) {
         float retained = 1 - 0.75f * wetness;
@@ -45,29 +39,11 @@ public final class ThermalComfort {
                 / TemperatureData.AMBIENT_PULL_PER_DEGREE;
         if (insulation > 0) {
             if (gap < 0) gap = Math.min(0, gap + insulation);
-            else if (!profile.sheds()) gap += insulation * 0.35f;
+            else if (!profile.sheds()) gap += insulation * 0.35f * Math.min(1f, gap / 6f);
         } else gap += insulation;
         float water = immersed ? Math.max(0, 20 - ambient) * 0.75f : 0;
         gap += activityWarmth - wetness * 8 - water;
         float sensitivity = gap < 0 ? profile.cold() : profile.heat();
         return sensitivity == 0 ? 0 : gap * sensitivity;
-    }
-
-    public static TemperatureData.Tier tier(float load) {
-        if (Math.abs(load) <= 2) return TemperatureData.Tier.COMFORTABLE;
-        if (load < 0) return load > -6 ? TemperatureData.Tier.CHILLY
-                : load > -12 ? TemperatureData.Tier.COLD : TemperatureData.Tier.FREEZING;
-        return load < 6 ? TemperatureData.Tier.WARM
-                : load < 12 ? TemperatureData.Tier.HOT : TemperatureData.Tier.SWELTERING;
-    }
-
-    public static boolean needsBreak(float load, float strain, float breakSeconds) {
-        return needsBreak(load, strain, breakSeconds, false);
-    }
-    public static boolean needsBreak(float load, float strain, float breakSeconds, boolean immersed) {
-        return immersed && Math.abs(load) >= 12 || Math.abs(load) >= 6 && strain >= breakSeconds;
-    }
-    public static boolean recovered(float load, float strain, float breakSeconds) {
-        return Math.abs(load) <= 2 && strain <= breakSeconds * 0.1f;
     }
 }

@@ -24,6 +24,22 @@ class RoomHeatBalanceTest {
                     RoomHeatBalance.localExposure(-10, distance * distance), 1e-10);
         }
     }
+    @Test void nearbyFireStillWarmsAFewBlocksAway() {
+        assertEquals(10 * (1 - 1.4 / 3), RoomHeatBalance.localExposure(10, 4), 1e-10);
+        assertTrue(RoomHeatBalance.localExposure(10, 9) > 3.5);
+    }
+    @Test void fireDraftBoundsTheRiseOfASealedRoom() {
+        for (double watts : new double[] {500, 2500, 25000}) {
+            double g = 11 + RoomHeatBalance.draft(watts, 25);
+            double rise = RoomHeatBalance.advance(-10, 128000, watts, g, -10, 1e9) + 10;
+            assertTrue(rise < 25, "Fires alone must not lift a room past the draft limit: " + rise);
+        }
+        assertEquals(0, RoomHeatBalance.draft(-2000, 25));
+        assertEquals(0, RoomHeatBalance.draft(2500, 0));
+        double one = RoomHeatBalance.advance(-10, 128000, 2500, 11 + RoomHeatBalance.draft(2500, 25), -10, 1e9);
+        double two = RoomHeatBalance.advance(-10, 128000, 5000, 11 + RoomHeatBalance.draft(5000, 25), -10, 1e9);
+        assertTrue(two > one && two - one < one + 10, "A second fire helps, but less than the first");
+    }
     @Test void heaterStabilizesWhenLossEqualsInput() {
         double t = 10;
         for (int i=0; i<10000; i++) t = RoomHeatBalance.advance(t, 128, 12, 1, 10, 1);

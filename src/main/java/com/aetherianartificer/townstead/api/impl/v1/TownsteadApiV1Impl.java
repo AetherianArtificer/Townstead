@@ -8,6 +8,7 @@ import com.aetherianartificer.townstead.api.v1.RegistriesApi;
 import com.aetherianartificer.townstead.api.v1.SchedulesApi;
 import com.aetherianartificer.townstead.api.v1.WorkApi;
 import com.aetherianartificer.townstead.api.v1.ProfessionsApi;
+import com.aetherianartificer.townstead.api.v1.PoliticsApi;
 import com.aetherianartificer.townstead.api.v1.SocialApi;
 import com.aetherianartificer.townstead.api.v1.TownsteadApiV1;
 import com.aetherianartificer.townstead.api.v1.VillagersApi;
@@ -21,7 +22,7 @@ import com.aetherianartificer.townstead.api.v1.VillagesApi;
  */
 public final class TownsteadApiV1Impl implements TownsteadApiV1 {
     private static final int API_VERSION = 1;
-    private static final int API_REVISION = 1;
+    private static final int API_REVISION = 4;
 
     private final VillagersApi villagers = new VillagersImpl();
     private final VillagesApi villages = new VillagesImpl();
@@ -34,6 +35,7 @@ public final class TownsteadApiV1Impl implements TownsteadApiV1 {
     private final HangoutsApi hangouts = new HangoutsImpl();
     private final SchedulesApi schedules = new SchedulesImpl();
     private final RegistriesApi registries = new RegistriesImpl();
+    private final PoliticsApi politics = new PoliticsImpl();
 
     @Override
     public int getApiVersion() {
@@ -103,5 +105,10 @@ public final class TownsteadApiV1Impl implements TownsteadApiV1 {
     @Override
     public RegistriesApi registries() {
         return registries;
+    }
+
+    @Override
+    public PoliticsApi politics() {
+        return politics;
     }
 }

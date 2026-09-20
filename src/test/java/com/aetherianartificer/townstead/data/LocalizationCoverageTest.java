@@ -77,6 +77,23 @@ class LocalizationCoverageTest {
     }
 
     @Test
+    void everyBundledObjectSetCatalogEntryHasARealNameAndDescription() {
+        JsonObject english = resource("assets/townstead/lang/en_us.json");
+        Path objectSetRoot = resourcePath("data/townstead/object_set");
+        try (var files = Files.walk(objectSetRoot)) {
+            for (Path path : files.filter(Files::isRegularFile)
+                    .filter(file -> file.getFileName().toString().endsWith(".json")).toList()) {
+                String id = objectSetRoot.relativize(path).toString().replace('\\', '/');
+                id = id.substring(0, id.length() - ".json".length()).replace('/', '.');
+                assertNonBlankEnglish(english, "object_set.townstead." + id, id);
+                assertNonBlankEnglish(english, "object_set.townstead." + id + ".description", id);
+            }
+        } catch (IOException exception) {
+            throw new AssertionError("failed to enumerate bundled object sets", exception);
+        }
+    }
+
+    @Test
     void everyBundledCareerAndSkillIdentityUsesSyncedTranslationKeys() {
         JsonObject client = resource("assets/townstead/lang/en_us.json");
         JsonObject synced = resource("data/townstead/lang/en_us.json");

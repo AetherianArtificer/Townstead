@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:organization_kind/v1",
+  "display": {
+    "name": {
+      "translate": "organization_kind.townstead.player_faction"
+    },
+    "description": {
+      "translate": "organization_kind.townstead.player_faction.description"
+    }
+  },
+  "tags": [
+    "townstead:political",
+    "townstead:government"
+  ],
+  "membership_policy": "townstead:player_faction",
+  "roles": [
+    {
+      "role": "townstead:faction_leader",
+      "min": 1,
+      "max": 1,
+      "founder": true
+    },
+    {
+      "role": "townstead:member"
+    }
+  ],
+  "founding": {
+    "procedure": "townstead:charter"
+  },
+  "presentation": {
+    "faction_name_patterns": [
+      "{name}"
+    ]
+  }
+}

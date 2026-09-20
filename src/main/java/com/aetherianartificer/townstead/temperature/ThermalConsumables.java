@@ -25,6 +25,97 @@ public final class ThermalConsumables {
     public record Status(String effect, String opposite, int amplifier, int duration) {}
     private ThermalConsumables() {}
 
+    /** A timed Pheno influence is ambient Celsius, replacing the same action instead of stacking. */
+    public static void influence(LivingEntity entity, String key, float degrees, int ticks) {
+        write(entity, TimedTemperatureEffects.add(read(entity).stream().filter(e -> !e.key().equals(key)).toList(),
+                key, degrees * TemperatureData.AMBIENT_PULL_PER_DEGREE, ticks, 1, entity.level().getGameTime()));
+    }
+
+    public static boolean hasInfluence(LivingEntity entity, float ambientDegrees) {
+        float active = TimedTemperatureEffects.offset(read(entity), entity.level().getGameTime())
+                / TemperatureData.AMBIENT_PULL_PER_DEGREE;
+        return Math.signum(active) == Math.signum(ambientDegrees) && Math.abs(active) >= Math.abs(ambientDegrees);
+    }
+
+    public static ThermalBenefit preview(VillagerEntityMCA villager, ItemStack stack) {
+        if (stack.isEmpty()) return ThermalBenefit.NONE;
+        var configured = com.aetherianartificer.townstead.needs.Consumables.projection(stack,
+                com.aetherianartificer.townstead.food.ConsumptionPolicy.Consumer.VILLAGER);
+        if (configured.thermal()) {
+            float ambient = configured.influenceTenths() / 10f;
+            float active = TimedTemperatureEffects.offset(read(villager), villager.level().getGameTime())
+                    / TemperatureData.AMBIENT_PULL_PER_DEGREE;
+            if (ambient != 0 && Math.signum(active) == Math.signum(ambient) && Math.abs(active) >= Math.abs(ambient))
+                return new ThermalBenefit(configured.warmthTenths() / 10f, 0, ThermalProtection.NONE, 0);
+            return ThermalBenefit.of(configured);
+        }
+        List<Status> statuses = new ArrayList<>();
+        for (var effect : potionEffects(stack)) {
+            //? if >=1.21 {
+            var key = BuiltInRegistries.MOB_EFFECT.getKey(effect.getEffect().value());
+            //?} else {
+            /*var key = BuiltInRegistries.MOB_EFFECT.getKey(effect.getEffect());
+            *///?}
+            if (key != null) statuses.add(new Status(key.toString(), "", effect.getAmplifier(), effect.getDuration()));
+        }
+        var lso = LsoConsumables.effects(stack);
+        statuses.addAll(lso);
+        if (!statuses.isEmpty()) {
+            float ambient = 0; int ticks = 0;
+            ThermalProtection protection = ThermalProtection.NONE;
+            for (var status : statuses) {
+                if (activeStatus(villager, status)) continue;
+                var key = id(status.effect());
+                if (key.getNamespace().equals("legendarysurvivaloverhaul")) {
+                    var effect = LsoEntityCompat.effect(key.getPath(), status.amplifier());
+                    ambient += effect.ambientOffset(); protection = protection.plus(effect.protection());
+                } else if (key.getNamespace().equals("toughasnails")) {
+                    float current = TemperatureData.celsius(TownsteadVillagers.get(villager).needs().ambientTenths());
+                    if (key.getPath().equals("internal_warmth") || key.getPath().equals("internal_chill"))
+                        ambient += TanTemperaturePolicy.internal(current, key.getPath().equals("internal_warmth"),
+                                key.getPath().equals("internal_chill")) - current;
+                    else if (key.getPath().equals("ice_resistance")) protection = protection.plus(new ThermalProtection(0, 10000, 0, 0));
+                    else if (key.getPath().equals("climate_clemency")) protection = protection.plus(new ThermalProtection(0, 0, 0, 10000));
+                }
+                ticks = Math.max(ticks, status.duration());
+            }
+            return new ThermalBenefit(0, ambient, protection, ticks);
+        }
+        var cs = ColdSweatConsumables.effects(stack, villager);
+        if (!cs.isEmpty()) {
+            float instant = 0, influence = 0; int ticks = 0;
+            for (var effect : cs) {
+                if (effect.duration() <= 0) instant += effect.bodyDegrees();
+                else { influence += effect.bodyDegrees(); ticks = Math.max(ticks, effect.duration()); }
+            }
+            float active = TimedTemperatureEffects.offset(read(villager), villager.level().getGameTime());
+            if (Math.signum(active) == Math.signum(influence) && Math.abs(active) >= Math.abs(influence)) influence = 0;
+            return new ThermalBenefit(instant, influence / TemperatureData.AMBIENT_PULL_PER_DEGREE, ThermalProtection.NONE, ticks);
+        }
+        if (ModCompat.isLoaded("toughasnails")) for (String sign : List.of("heating", "cooling")) {
+            boolean warm = sign.equals("heating");
+            if (stack.is(TagKey.create(Registries.ITEM, id("toughasnails:" + sign + "_consumed_items")))
+                    && !activeStatus(villager, new Status("toughasnails:internal_" + (warm ? "warmth" : "chill"), "", 0, tanDuration()))) {
+                float current = TemperatureData.celsius(TownsteadVillagers.get(villager).needs().ambientTenths());
+                return new ThermalBenefit(0, TanTemperaturePolicy.internal(current, warm, !warm) - current, ThermalProtection.NONE, tanDuration());
+            }
+        }
+        return ThermalBenefit.NONE;
+    }
+
+    private static boolean activeStatus(LivingEntity entity, Status status) {
+        for (var effect : entity.getActiveEffects()) {
+            //? if >=1.21 {
+            var key = BuiltInRegistries.MOB_EFFECT.getKey(effect.getEffect().value());
+            //?} else {
+            /*var key = BuiltInRegistries.MOB_EFFECT.getKey(effect.getEffect());
+            *///?}
+            if (key != null && key.toString().equals(status.effect()) && effect.getAmplifier() >= status.amplifier()
+                    && effect.getDuration() > 100) return true;
+        }
+        return false;
+    }
+
     public static void apply(VillagerEntityMCA recipient, ItemStack stack) {
         if (recipient.level().isClientSide() || !TownsteadConfig.isVillagerTemperatureEnabled()
                 || NeedSuppression.suppressesTemperature(recipient) || stack.isEmpty()) return;

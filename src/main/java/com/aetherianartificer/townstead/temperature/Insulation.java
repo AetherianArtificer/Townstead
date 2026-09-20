@@ -69,14 +69,20 @@ public final class Insulation {
      */
     public static ThermalProtection itemProtection(@Nullable Level level, ItemStack stack, @Nullable ClothingEntry entry) {
         if (stack == null || stack.isEmpty()) return ThermalProtection.NONE;
+        ClothingEntry declared = entry != null ? entry : ClothingDefs.documented(level, stack);
+        return resolve(stack, declared == null ? null : declared.thermal());
+    }
+
+    /** Shared by wardrobe selection and physiology; never calls back into clothing resolution. */
+    public static ThermalProtection resolve(ItemStack stack, @Nullable ThermalProtection declared) {
+        if (stack == null || stack.isEmpty()) return ThermalProtection.NONE;
         for (AmbientTemperatureBridge bridge : TemperatureBridgeResolver.installed()) {
             ThermalProtection protection = bridge.itemProtection(stack);
             if (protection != null) return protection;
         }
         ThermalProtection provided = ClothingThermal.fromProviders(stack);
         if (provided != null) return provided;
-        ClothingEntry resolved = entry != null ? entry : ClothingDefs.forStack(level, stack);
-        if (resolved != null && resolved.thermal() != null) return resolved.thermal();
+        if (declared != null) return declared;
         ThermalProtection tagged = taggedProtection(stack);
         return tagged != null ? tagged : ThermalProtection.NONE;
     }

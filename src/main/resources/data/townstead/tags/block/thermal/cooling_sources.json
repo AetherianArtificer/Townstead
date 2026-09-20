@@ -1,7 +1,6 @@
 {
   "replace": false,
   "values": [
-    "minecraft:water",
     "#minecraft:ice",
     "minecraft:snow_block",
     "minecraft:powder_snow",

@@ -10,6 +10,12 @@ import java.util.List;
  */
 public interface RegistriesApi {
 
+    /** Civic culture ids, added in API revision 4. */
+    default List<ResourceLocation> cultureIds() { return List.of(); }
+
+    /** Settlement founding profile ids, added in API revision 4. */
+    default List<ResourceLocation> foundingProfileIds() { return List.of(); }
+
     List<ResourceLocation> rootIds();
 
     List<ResourceLocation> geneIds();

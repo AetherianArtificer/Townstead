@@ -48,12 +48,18 @@ public final class TemperatureClientStore {
 
     public static net.minecraft.network.chat.Component tooltip(int entityId, boolean fahrenheit) {
         var tier = getTier(entityId);
-        var label = net.minecraft.network.chat.Component.translatable("townstead.temperature.icon.tooltip",
-                TemperatureData.format(getBodyTenths(entityId), fahrenheit),
-                net.minecraft.network.chat.Component.translatable(tier.getTranslationKey()),
-                TemperatureData.format(getAmbientTenths(entityId), fahrenheit));
+        var label = net.minecraft.network.chat.Component.translatable(tier.getTranslationKey());
         if (isWet(entityId)) label.append(net.minecraft.network.chat.Component.translatable("townstead.temperature.wet"));
-        if (isSeekingRelief(entityId)) label.append(net.minecraft.network.chat.Component.translatable("townstead.temperature.relief"));
+        int[] state = STATE.get(entityId);
+        if (state != null) {
+            label.append(net.minecraft.network.chat.Component.translatable(
+                    "townstead.temperature.tooltip.trend." + ThermalStatus.trend(state[2])));
+        }
+        label.append("\n").append(net.minecraft.network.chat.Component.translatable("townstead.temperature.tooltip.readings",
+                TemperatureData.format(getBodyTenths(entityId), fahrenheit),
+                TemperatureData.format(getAmbientTenths(entityId), fahrenheit)));
+        if (isSeekingRelief(entityId)) label.append("\n").append(
+                net.minecraft.network.chat.Component.translatable("townstead.temperature.tooltip.break"));
         var core = getCoreTier(entityId);
         if (core.wantsRelief()) label.append(net.minecraft.network.chat.Component.translatable(
                 core.isCold() ? "townstead.temperature.core_cold" : "townstead.temperature.core_hot"));
@@ -77,5 +83,6 @@ public final class TemperatureClientStore {
 
     public static void clear() {
         STATE.clear();
+        PlayerEnvironmentClient.clear();
     }
 }

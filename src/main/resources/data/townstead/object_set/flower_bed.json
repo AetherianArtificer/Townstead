@@ -1,0 +1,7 @@
+{
+  "schema":"townstead:object_set/v1",
+  "anchor":"#minecraft:small_flowers",
+  "radius":3,
+  "requires":{"#minecraft:wooden_trapdoors":4},
+  "icon":"minecraft:poppy"
+}

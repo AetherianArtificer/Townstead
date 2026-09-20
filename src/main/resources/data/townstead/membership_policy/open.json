@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:membership_policy/v1",
+  "admission": {
+    "procedure": "townstead:open_admission",
+    "eligibility": {
+      "type": "pheno:constant",
+      "value": true
+    },
+    "initial_roles": [
+      "townstead:member"
+    ]
+  },
+  "departure": {
+    "procedure": "townstead:free_resignation"
+  }
+}

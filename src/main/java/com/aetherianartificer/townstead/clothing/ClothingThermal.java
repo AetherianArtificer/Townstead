@@ -52,7 +52,6 @@ public final class ClothingThermal {
         return null;
     }
 
-    private static final Map<ResourceLocation, Optional<ClothingEntry>> SYNTHETIC_STACKS = new ConcurrentHashMap<>();
 
     /** Curios slot tags, most specific first, so a stack's channel can be read without a slot. */
     private static final String[] CURIO_SLOT_TAGS = {"head", "hat", "necklace", "choker_trinket", "back", "cape",
@@ -61,7 +60,6 @@ public final class ClothingThermal {
 
     /** Drops cached synthetic stack entries; every reload of documents or provider data calls it. */
     public static void invalidate() {
-        SYNTHETIC_STACKS.clear();
     }
 
     /**
@@ -75,10 +73,10 @@ public final class ClothingThermal {
         if (stack == null || stack.isEmpty()) return null;
         ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (itemId == null) return null;
-        return SYNTHETIC_STACKS.computeIfAbsent(itemId, id -> {
-            ThermalProtection thermal = fromProviders(stack);
-            if (thermal == null) thermal = com.aetherianartificer.townstead.temperature.Insulation.taggedProtection(stack);
-            if (thermal == null || thermal.equals(ThermalProtection.NONE)) return Optional.empty();
+        // Protection can depend on lining/components, not just item id. Do not cache stack opinions.
+        ResourceLocation id = itemId;
+            ThermalProtection thermal = com.aetherianartificer.townstead.temperature.Insulation.resolve(stack, null);
+            if (thermal.equals(ThermalProtection.NONE)) return null;
             boolean armor = stack.getItem() instanceof ArmorItem;
             ClothingChannel channel = null;
             if (armor) {
@@ -92,8 +90,7 @@ public final class ClothingThermal {
                     }
                 }
             }
-            return Optional.ofNullable(syntheticStackEntry(id, thermal, channel, armor));
-        }).orElse(null);
+            return syntheticStackEntry(id, thermal, channel, armor);
     }
 
     /** The pure part of {@link #syntheticStackEntry(ItemStack)}. */

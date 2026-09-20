@@ -25,17 +25,20 @@ import java.util.Set;
  * <p>Built once per blueprint rebuild, not per tick. Provides O(1) lookups for the farmer AI.</p>
  */
 public final class ResolvedCellPlan implements CellPlanView {
-    public static final ResolvedCellPlan EMPTY = new ResolvedCellPlan(Map.of(), Map.of(), Set.of(), 0L);
+    public static final ResolvedCellPlan EMPTY = new ResolvedCellPlan(Map.of(), Map.of(), Map.of(), Set.of(), 0L);
 
     private final Map<Long, String> seedByPos;        // resolved 3D pos.asLong() → seed ID / AUTO / NONE
     private final Map<Long, SoilType> soilByPos;      // resolved 3D pos.asLong() → SoilType
+    private final Map<Long, Integer> trellisBySoilPos; // resolved soil pos.asLong() → packed TrellisSpec
     private final Set<Long> protectedPositions;
     private final long signature;
 
     private ResolvedCellPlan(Map<Long, String> seedByPos, Map<Long, SoilType> soilByPos,
+                              Map<Long, Integer> trellisBySoilPos,
                               Set<Long> protectedPositions, long signature) {
         this.seedByPos = seedByPos;
         this.soilByPos = soilByPos;
+        this.trellisBySoilPos = trellisBySoilPos;
         this.protectedPositions = protectedPositions;
         this.signature = signature;
     }
@@ -50,6 +53,7 @@ public final class ResolvedCellPlan implements CellPlanView {
 
         Map<Long, String> seedByPos = new HashMap<>();
         Map<Long, SoilType> soilByPos = new HashMap<>();
+        Map<Long, Integer> trellisBySoilPos = new HashMap<>();
         Set<Long> protectedPositions = new HashSet<>();
 
         // Resolve each XZ key to a 3D crop position (one above the ground).
@@ -61,6 +65,10 @@ public final class ResolvedCellPlan implements CellPlanView {
             if (cropPos == null) continue;
             BlockPos soilPos = (type == SoilType.WATER) ? cropPos : cropPos.below();
             soilByPos.put(soilPos.asLong(), type);
+            if (type == SoilType.TRELLIS) {
+                trellisBySoilPos.put(soilPos.asLong(),
+                        plan.trellisPlan().getOrDefault(xzKey, TrellisSpec.DEFAULT.pack()));
+            }
             if (type == SoilType.PROTECTED) {
                 protectedPositions.add(cropPos.asLong());
                 protectedPositions.add(soilPos.asLong());
@@ -83,7 +91,7 @@ public final class ResolvedCellPlan implements CellPlanView {
             }
         }
 
-        return new ResolvedCellPlan(seedByPos, soilByPos, protectedPositions, plan.signature());
+        return new ResolvedCellPlan(seedByPos, soilByPos, trellisBySoilPos, protectedPositions, plan.signature());
     }
 
     private static final int Y_SCAN_RANGE = 16;
@@ -215,7 +223,8 @@ public final class ResolvedCellPlan implements CellPlanView {
             // No explicit seed painted → don't plant. Soil-only paint means "prep the ground, leave it empty".
             if (seed == null) seed = SeedAssignment.NONE;
 
-            out.add(new PlannedCell(soilPos, cropPos, desiredSoil, seed));
+            out.add(new PlannedCell(soilPos, cropPos, desiredSoil, seed,
+                    trellisBySoilPos.getOrDefault(entry.getKey(), 0)));
         }
         return out;
     }

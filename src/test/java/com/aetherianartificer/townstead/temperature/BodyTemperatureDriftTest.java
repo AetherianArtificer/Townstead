@@ -5,13 +5,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class BodyTemperatureDriftTest {
     @Test
-    void frequentUpdatesPreserveExistingLongTermRate() {
+    void oneTimeConstantClosesMostOfTheGap() {
         BodyTemperatureDrift drift = new BodyTemperatureDrift();
         int body = 370;
-        for (int ticks = 0; ticks < 500; ticks += TemperatureData.ACCUMULATION_INTERVAL) {
-            body = drift.step(body, 35, TemperatureData.RATE);
-        }
-        assertEquals(365, body);
+        for (int second = 0; second < 480; second++) body = drift.step(body, 35, 1 - Math.exp(-1 / 480d));
+        assertEquals(357, body);
     }
 
     @Test

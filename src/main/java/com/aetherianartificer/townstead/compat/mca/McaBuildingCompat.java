@@ -162,28 +162,29 @@ public final class McaBuildingCompat {
         return source == null ? building.getCenter() : source;
     }
 
-    /** Whether this functional room belongs to a structure containing another room. */
+    /** Whether this functional room belongs to an MCA logical building containing another room. */
     public static boolean hasWholeBuildingScope(Village village, Building building) {
         if (village == null || building == null) return false;
         //? if >=1.21 {
         if (!building.isFunctionalRoom()) return false;
-        var structure = village.getStructureFor(building);
-        if (structure.isEmpty()) return false;
-        int structureId = structure.get().getId();
-        return village.getRooms().filter(room -> room.getStructureId() == structureId)
+        int logicalBuildingId = village.getLogicalBuildingId(building.getStructureId());
+        if (logicalBuildingId < 0) return false;
+        return village.getRooms()
+                .filter(room -> village.getLogicalBuildingId(room.getStructureId()) == logicalBuildingId)
                 .limit(2).count() > 1;
         //?} else {
         /*return false;
         *///?}
     }
 
-    /** Whether two functional rooms are floors/parts of the same MCA structure. */
+    /** Whether two functional rooms are parts of the same MCA logical building. */
     public static boolean sameWholeBuilding(Village village, Building first, Building second) {
         if (village == null || first == null || second == null) return false;
         //? if >=1.21 {
         if (!first.isFunctionalRoom() || !second.isFunctionalRoom()) return false;
-        var structure = village.getStructureFor(first);
-        return structure.isPresent() && second.getStructureId() == structure.get().getId();
+        int firstLogicalBuildingId = village.getLogicalBuildingId(first.getStructureId());
+        return firstLogicalBuildingId >= 0
+                && firstLogicalBuildingId == village.getLogicalBuildingId(second.getStructureId());
         //?} else {
         /*return first.getId() == second.getId();
         *///?}

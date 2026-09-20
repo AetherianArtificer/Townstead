@@ -4,9 +4,6 @@ import com.aetherianartificer.townstead.work.producer.ProducerStationClaims;
 import com.aetherianartificer.townstead.storage.WorksiteStorageIndex;
 import com.aetherianartificer.townstead.dock.DockBerthClaims;
 import com.aetherianartificer.townstead.dock.DockLocationIndex;
-import com.aetherianartificer.townstead.dock.DockScanner;
-import com.aetherianartificer.townstead.dock.DockSuppression;
-import com.aetherianartificer.townstead.enclosure.EnclosureSuppression;
 import com.aetherianartificer.townstead.hunger.NearbyStorageIndex;
 import com.aetherianartificer.townstead.hunger.TargetReachabilityCache;
 import com.aetherianartificer.townstead.spirit.VillageSpiritCache;
@@ -46,7 +43,6 @@ public final class TownsteadMemoryLifecycle {
         NearbyStorageIndex.purgeExpired(gameTime);
         VillageStorageIndex.purgeExpired(gameTime);
         WorksiteStorageIndex.purgeExpired(gameTime);
-        DockScanner.purgeExpired(gameTime);
         DockBerthClaims.purgeExpired(gameTime);
         ProducerStationClaims.purgeExpired(gameTime);
         TownsteadVillagers.purgeExpired(gameTime, VILLAGER_STATE_IDLE_TICKS);
@@ -62,11 +58,8 @@ public final class TownsteadMemoryLifecycle {
         VillageStorageIndex.clearAll();
         WorksiteStorageIndex.clearAll();
         com.aetherianartificer.townstead.block.FieldPostIndex.clear();
-        DockScanner.clearAll();
         DockLocationIndex.clear();
         DockBerthClaims.clearAll();
-        DockSuppression.clearAll();
-        EnclosureSuppression.clearAll();
         ProducerStationClaims.clearAll();
         TownsteadVillagers.clearAll();
         VillageAiBudget.clear();
@@ -86,12 +79,9 @@ public final class TownsteadMemoryLifecycle {
             int nearbyStorageSnapshots,
             int villageStorageSnapshots,
             int kitchenStorageSnapshots,
-            int dockScanCache,
             int dockIndexedVillages,
             int dockIndexedDocks,
             int dockBerthGroups,
-            int dockSuppressions,
-            int enclosureSuppressions,
             int producerStationClaims,
             int villagerStates,
             int dirtyVillagerStates,
@@ -104,12 +94,9 @@ public final class TownsteadMemoryLifecycle {
                 NearbyStorageIndex.snapshotCount(),
                 VillageStorageIndex.snapshotCount(),
                 WorksiteStorageIndex.snapshotCount(),
-                DockScanner.cacheSize(),
                 DockLocationIndex.villageCount(),
                 DockLocationIndex.dockCount(),
                 DockBerthClaims.claimGroupCount(),
-                DockSuppression.entryCount(),
-                EnclosureSuppression.entryCount(),
                 ProducerStationClaims.size(),
                 TownsteadVillagers.size(),
                 TownsteadVillagers.dirtyCount(),

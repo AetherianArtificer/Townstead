@@ -106,6 +106,7 @@ public abstract class InteractScreenMixin extends Screen {
     private void townstead$interceptTalkButton(MCAButton button, CallbackInfo ci) {
         String id = button.identifier();
         if (timeSinceLastClick <= 2) return;
+        if (townstead$openDress(id, ci)) return;
         if ("gui.button.talk".equals(id)) {
             ci.cancel();
             townstead$transitioning = true;
@@ -121,6 +122,7 @@ public abstract class InteractScreenMixin extends Screen {
     private void townstead$interceptTalkButton(Button button, CallbackInfo ci) {
         String id = button.identifier();
         if (timeSinceLastClick <= 2) return;
+        if (townstead$openDress(id, ci)) return;
         if ("gui.button.talk".equals(id)) {
             ci.cancel();
             townstead$transitioning = true;
@@ -174,16 +176,15 @@ public abstract class InteractScreenMixin extends Screen {
         }
     }
 
-    @Inject(method = "init", at = @At("TAIL"))
-    private void townstead$hideGiveHatWithoutHats(CallbackInfo ci) {
-        if (com.aetherianartificer.townstead.compat.hats.HatsCompat.present()) return;
-        for (GuiEventListener listener : this.children()) {
-            if (!(listener instanceof net.minecraft.client.gui.components.Button button)) continue;
-            if (!(button.getMessage().getContents() instanceof TranslatableContents tc)) continue;
-            if (!"gui.button.give_hat".equals(tc.getKey())) continue;
-            button.visible = false;
-            button.active = false;
+    @Unique
+    private boolean townstead$openDress(String id, CallbackInfo ci) {
+        if (!"gui.button.townstead_dress".equals(id)) return false;
+        ci.cancel();
+        if (com.aetherianartificer.townstead.compat.hats.HatsCompat.present()) {
+            timeSinceLastClick = 0;
+            ((net.conczin.mca.client.gui.AbstractDynamicScreen) (Object) this).setLayout("townstead_dress");
         }
+        return true;
     }
 
     @Inject(method = "onClose", at = @At("HEAD"), cancellable = true)
@@ -313,7 +314,8 @@ public abstract class InteractScreenMixin extends Screen {
             com.aetherianartificer.townstead.temperature.TemperatureData.Tier tier =
                     com.aetherianartificer.townstead.temperature.TemperatureClientStore.getTier(entityId);
             Component temperatureLabel = com.aetherianartificer.townstead.temperature.TemperatureClientStore.tooltip(entityId, fahrenheit);
-            context.renderTooltip(font, temperatureLabel, TEMPERATURE_ICON_X + 16, TEMPERATURE_ICON_Y + 20);
+            context.renderTooltip(font, font.split(temperatureLabel, Math.min(220, Math.max(80, width - 32))),
+                    TEMPERATURE_ICON_X + 16, TEMPERATURE_ICON_Y + 20);
         }
     }
 

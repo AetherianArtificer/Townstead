@@ -115,6 +115,13 @@ public final class LsoTemperatureBridge implements AmbientTemperatureBridge {
         }
     }
 
+    /** LSO block entries depend on the state alone. */
+    @Override
+    public boolean blockMayMatter(BlockState state) {
+        float opinion = blockTemperatureCelsius(null, null, state);
+        return Float.isFinite(opinion) && opinion != 0f;
+    }
+
     /**
      * The offset is Townstead's to hold: LSO's modifier stays where it is put until something
      * changes it, so the expiry is ours to run. Writing the same id again replaces the previous

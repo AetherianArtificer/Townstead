@@ -53,12 +53,15 @@ public final class TemperatureSettings {
     private float roomWallConductance = 1.4f, roomInsulatedConductance = 0.08f, roomOpeningConductance = 30f;
     private float thermalTimeScale = 20f, airChangesPerHour = 0.5f;
     private float cookingRoomHeatFraction = 0.15f;
+    // A drafting source adds watts / rise W/K of outside air, so fires alone never lift a room past it.
+    private float fireMaxRise = 25f;
     private final Map<com.aetherianartificer.townstead.temperature.ThermalConductance.Material, Float> materialCapacity =
             new EnumMap<>(com.aetherianartificer.townstead.temperature.ThermalConductance.Material.class);
     private final Map<String, ThermalAppliance> appliances = new java.util.LinkedHashMap<>();
     public ThermalAppliance appliance(String id) { return appliances.get(id); }
     public float materialHeatCapacity(ThermalConductance.Material material) { return materialCapacity.get(material); }
     public float cookingRoomHeatFraction() { return cookingRoomHeatFraction; }
+    public float fireMaxRise() { return fireMaxRise; }
     public float thermalTimeScale() { return thermalTimeScale; }
     public float airChangesPerHour() { return airChangesPerHour; }
     public boolean roomHeatEnabled() { return roomHeatEnabled; }
@@ -68,13 +71,17 @@ public final class TemperatureSettings {
     public float roomInsulatedConductance() { return roomInsulatedConductance; }
     public float roomOpeningConductance() { return roomOpeningConductance; }
     private float dryingSeconds = 90;
-    private float comfortBreakSeconds = 90;
+    // Effective temperatures within this many degrees of 20 C leave the body alone.
+    private float comfortZone = 6f;
+    // Time constant of the body's drift toward what its surroundings would settle it at.
+    private float bodyResponseSeconds = 480f;
+    private float bodyRecoverySeconds = 120f;
 
     private TemperatureSettings() {
-        appliances.put("legendarysurvivaloverhaul:heater", new ThermalAppliance(3750, 15, 15));
+        appliances.put("legendarysurvivaloverhaul:heater", new ThermalAppliance(3750, 15, 15, false));
         appliances.put("legendarysurvivaloverhaul:cooler", new ThermalAppliance(-3750, -15, -15));
         appliances.put("legendarysurvivaloverhaul:heater_top", new ThermalAppliance(0, 0, 0));
-        appliances.put("minecraft:campfire", new ThermalAppliance(2500, 10, 0));
+        appliances.put("minecraft:campfire", new ThermalAppliance(2500, 30, 0));
         appliances.put("minecraft:soul_campfire", new ThermalAppliance(-2000, -8, 0));
         appliances.put("minecraft:furnace", new ThermalAppliance(300, 8, 0));
         appliances.put("minecraft:smoker", new ThermalAppliance(300, 8, 0));
@@ -133,12 +140,16 @@ public final class TemperatureSettings {
     /** Interior air volume at which one hearth heats a room by its full offset. */
     public int roomSizeReference() { return roomSizeReference; }
     public float dryingSeconds() { return dryingSeconds; }
-    public float comfortBreakSeconds() { return comfortBreakSeconds; }
+    public float comfortZone() { return comfortZone; }
+    public float bodyResponseSeconds() { return bodyResponseSeconds; }
+    public float bodyRecoverySeconds() { return bodyRecoverySeconds; }
 
     static TemperatureSettings parse(JsonObject json) {
         TemperatureSettings s = new TemperatureSettings();
         s.dryingSeconds = Math.max(1, GsonHelper.getAsFloat(json, "drying_seconds", 90));
-        s.comfortBreakSeconds = Math.max(1, GsonHelper.getAsFloat(json, "comfort_break_seconds", s.comfortBreakSeconds));
+        s.comfortZone = Math.max(0f, GsonHelper.getAsFloat(json, "comfort_zone_c", s.comfortZone));
+        s.bodyResponseSeconds = positive(json, "body_response_seconds", s.bodyResponseSeconds);
+        s.bodyRecoverySeconds = positive(json, "body_recovery_seconds", s.bodyRecoverySeconds);
         if (json.has("biome_anchors") && json.get("biome_anchors").isJsonArray()) {
             JsonArray anchors = json.getAsJsonArray("biome_anchors");
             float[] biome = new float[anchors.size()];
@@ -187,6 +198,7 @@ public final class TemperatureSettings {
         s.thermalTimeScale = positive(json, "thermal_time_scale", s.thermalTimeScale);
         s.airChangesPerHour = positive(json, "thermal_air_changes_per_hour", s.airChangesPerHour);
         s.cookingRoomHeatFraction = Math.min(1f, positive(json, "thermal_cooking_room_heat_fraction", s.cookingRoomHeatFraction));
+        s.fireMaxRise = positive(json, "thermal_fire_max_rise_c", s.fireMaxRise);
         if (json.has("thermal_material_capacity_j_per_block_k") && json.get("thermal_material_capacity_j_per_block_k").isJsonObject()) {
             JsonObject capacities = json.getAsJsonObject("thermal_material_capacity_j_per_block_k");
             for (var material : ThermalConductance.Material.values())
@@ -231,6 +243,8 @@ public final class TemperatureSettings {
         @Override
         protected void apply(Optional<JsonObject> prepared, ResourceManager manager, ProfilerFiller profiler) {
             BuildingClimate.clear();
+            ThermalBlocks.clearCache();
+            ThermalReliefTargets.clearCache();
             com.aetherianartificer.townstead.compat.temperature.ColdSweatTemperatureBridge.INSTANCE.clearCache();
             if (prepared.isEmpty()) {
                 CURRENT = new TemperatureSettings();

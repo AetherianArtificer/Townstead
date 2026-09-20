@@ -111,15 +111,17 @@ class StorageResourceContractTest {
 
     @Test
     void structuralTagsComposeBroadMaterialFamilies() {
-        JsonObject dock = resource("/data/townstead/tags/block/dock_surfaces.json");
-        for (String selector : new String[]{
-                "#minecraft:planks", "#minecraft:slabs", "#minecraft:stairs",
-                "#minecraft:wooden_trapdoors", "#townstead:masonry_materials"}) {
-            assertTrue(dock.getAsJsonArray("values").asList().stream()
-                    .anyMatch(value -> selector.equals(value.getAsString())), selector);
+        // A dock's deck may be any material: the recipe names the furniture and the liquid,
+        // and the deck is recognised by standing over that liquid.
+        for (int tier = 1; tier <= 3; tier++) {
+            JsonObject recipe = resource("/data/mca/building_types/dock_l" + tier + ".json");
+            assertTrue(recipe.getAsJsonObject("blocks").has("#townstead:liquids"), "dock_l" + tier);
+            assertTrue(recipe.getAsJsonObject("blocks").keySet().stream()
+                    .noneMatch(key -> key.contains("surfaces") || key.contains("planks")), "dock_l" + tier);
+            JsonObject extended = resource("/data/townstead/extended_buildings/dock_l" + tier + ".json");
+            assertTrue(extended.getAsJsonArray("requires").get(0).getAsJsonObject()
+                    .has("surface_over"), "dock_l" + tier);
         }
-        assertTrue(dock.getAsJsonArray("values").size() <= 6,
-                "dock surfaces must not return to a hand-maintained block catalogue");
 
         JsonObject oven = resource("/data/townstead/tags/block/pizzeria/oven_masonry.json");
         assertTrue(oven.getAsJsonArray("values").asList().stream()

@@ -27,6 +27,16 @@ import java.util.function.Function;
 final class RegistriesImpl implements RegistriesApi {
 
     @Override
+    public List<ResourceLocation> cultureIds() {
+        return com.aetherianartificer.townstead.culture.Cultures.allIds().stream().sorted().toList();
+    }
+
+    @Override
+    public List<ResourceLocation> foundingProfileIds() {
+        return com.aetherianartificer.townstead.politics.founding.FoundingProfiles.ids().stream().sorted().toList();
+    }
+
+    @Override
     public List<ResourceLocation> rootIds() {
         return map(RootRegistry.all(), Root::id, "registries.rootIds");
     }

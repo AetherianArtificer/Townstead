@@ -121,7 +121,7 @@ public final class ClothingSources {
         @Override
         public void collect(LivingEntity entity, Consumer<WornPiece> out) {
             if (!CuriosCompat.present()) return;
-            CuriosCompat.forEachWornVisible(entity, (slotId, stack) -> {
+            CuriosCompat.forEachEquipped(entity, (slotId, stack) -> {
                 if (stack == null || stack.isEmpty()) return;
                 ClothingEntry entry = ClothingDefs.forStack(entity.level(), stack);
                 ClothingChannel channel = entry != null && entry.slot() != ClothingChannel.ALL

@@ -20,6 +20,17 @@ public final class PlayerThermal {
     public static void tick(Player player) {
         if (player == null || player.level().isClientSide) return;
         if ((player.level().getGameTime() + player.getId()) % INTERVAL != 0) return;
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer
+                && TemperatureBridgeResolver.get() == com.aetherianartificer.townstead.compat.temperature.LsoTemperatureBridge.INSTANCE
+                && TemperatureSettings.get().roomHeatEnabled()) {
+            var reading = new PlayerEnvironmentPayload(player.level().dimension().location(), player.getId(),
+                    TemperatureData.ambientCelsius(serverPlayer.serverLevel(), player.blockPosition()));
+            //? if neoforge {
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(serverPlayer, reading);
+            //?} else {
+            /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(serverPlayer, reading);
+            *///?}
+        }
         if (!PlayerThermalOffsets.expireIfDue(player)) return;
         AmbientTemperatureBridge bridge = TemperatureBridgeResolver.get();
         if (bridge != null) bridge.onThermalInfluenceEnded(player);

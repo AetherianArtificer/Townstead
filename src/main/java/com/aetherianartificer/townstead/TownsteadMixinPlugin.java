@@ -110,9 +110,8 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
         if (mixinClassName.endsWith("BlueprintScreenLegacyIconMixin")) {
             return !hasWidgetUtils();
         }
-        // Legacy MCA only. On the floor-system build the payload bloat is already
-        // prevented at the source (BuildingTypeSyntheticBlockMixin stops houses
-        // recording their walls) and the decode-cap raise
+        // Legacy MCA only. On the floor-system build no building type lists generic
+        // structural material, so houses do not record their walls, and the decode-cap raise
         // (GetVillageResponseLargePacketMixin) covers any legacy save data, so the
         // slimmer is unnecessary there — and keeping it off that version avoids the
         // wire-rewrite touching the block geometry the new map renderer reads.

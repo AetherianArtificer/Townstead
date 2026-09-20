@@ -137,7 +137,7 @@ public final class NamingCommands {
             return 0;
         }
         String culture = NamingRegisterSavedData.get(level.getServer())
-                .villageCulture(village.get().getId());
+                .villageCulture(level.dimension().location(), village.get().getId());
         line(source, "command.townstead.naming.village.culture",
                 village.get().getName(), culture.isEmpty() ? "-" : culture);
         return 1;

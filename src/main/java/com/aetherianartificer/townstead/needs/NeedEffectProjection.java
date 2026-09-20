@@ -9,16 +9,22 @@ import net.minecraft.util.GsonHelper;
  * Runtime still executes the complete action. Only unconditional arrays / pheno:and nodes are
  * projected, so conditional or dynamic effects never cause the AI to promise benefits it may not get.
  */
-public record NeedEffectProjection(int immediateHydration, int lastingHydration, int energy, int warmthTenths) {
+public record NeedEffectProjection(int immediateHydration, int lastingHydration, int energy, int warmthTenths,
+                                   int influenceTenths, int influenceTicks) {
     public static final NeedEffectProjection NONE = new NeedEffectProjection(0, 0, 0, 0);
 
     public NeedEffectProjection(int immediateHydration, int lastingHydration, int energy) {
         this(immediateHydration, lastingHydration, energy, 0);
     }
 
+    public NeedEffectProjection(int immediateHydration, int lastingHydration, int energy, int warmthTenths) {
+        this(immediateHydration, lastingHydration, energy, warmthTenths, 0, 0);
+    }
+    public boolean thermal() { return warmthTenths != 0 || influenceTenths != 0 || influenceTicks > 0; }
+
     /** Body-temperature change in Celsius tenths: positive warms, negative cools. */
-    public boolean warms() { return warmthTenths > 0; }
-    public boolean cools() { return warmthTenths < 0; }
+    public boolean warms() { return warmthTenths > 0 || influenceTenths > 0; }
+    public boolean cools() { return warmthTenths < 0 || influenceTenths < 0; }
 
     public boolean hydrates() { return immediateHydration > 0 || lastingHydration > 0; }
     public boolean energizes() { return energy > 0; }
@@ -26,7 +32,12 @@ public record NeedEffectProjection(int immediateHydration, int lastingHydration,
 
     public NeedEffectProjection plus(NeedEffectProjection other) {
         return new NeedEffectProjection(immediateHydration + other.immediateHydration,
-                lastingHydration + other.lastingHydration, energy + other.energy, warmthTenths + other.warmthTenths);
+                lastingHydration + other.lastingHydration, energy + other.energy, warmthTenths + other.warmthTenths,
+                other.influenceTicks == 0 ? influenceTenths : influenceTicks == 0 ? other.influenceTenths
+                        : Integer.signum(influenceTenths) == Integer.signum(other.influenceTenths) ? other.influenceTenths : 0,
+                other.influenceTicks == 0 ? influenceTicks : influenceTicks == 0 ? other.influenceTicks
+                        : Integer.signum(influenceTenths) == Integer.signum(other.influenceTenths) ? other.influenceTicks
+                        : Math.min(influenceTicks, other.influenceTicks));
     }
 
     public static NeedEffectProjection project(JsonElement element) {
@@ -46,19 +57,25 @@ public record NeedEffectProjection(int immediateHydration, int lastingHydration,
         if ("pheno:energize".equals(type)) {
             return new NeedEffectProjection(0, 0, constant(json.get("amount")));
         }
-        if ("pheno:warm".equals(type)) return new NeedEffectProjection(0, 0, 0, tenths(json.get("amount")));
-        if ("pheno:cool".equals(type)) return new NeedEffectProjection(0, 0, 0, -tenths(json.get("amount")));
+        if ("pheno:warm".equals(type) || "pheno:cool".equals(type)) {
+            int amount = tenths(json.get("amount")) * ("pheno:warm".equals(type) ? 1 : -1);
+            int duration = Math.max(0, constant(json.get("duration")));
+            return duration == 0 ? new NeedEffectProjection(0, 0, 0, amount)
+                    : new NeedEffectProjection(0, 0, 0, 0, amount, duration);
+        }
         if ("pheno:and".equals(type)) return project(json.get("actions"));
         return NONE;
     }
 
     private static int tenths(JsonElement value) {
         if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) return 0;
-        return Math.max(0, (int) Math.round(value.getAsDouble() * 10.0));
+        double amount = value.getAsDouble();
+        return !Double.isFinite(amount) ? 0 : (int) Math.max(0, Math.min(Integer.MAX_VALUE, Math.round(amount * 10.0)));
     }
 
     private static int constant(JsonElement value) {
         if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) return 0;
-        return Math.max(0, (int) Math.round(value.getAsDouble()));
+        double amount = value.getAsDouble();
+        return !Double.isFinite(amount) ? 0 : (int) Math.max(0, Math.min(Integer.MAX_VALUE, Math.round(amount)));
     }
 }

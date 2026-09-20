@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.client.animation;
 
 import com.aetherianartificer.townstead.client.animation.cem.CemAnimationProgram;
 import com.aetherianartificer.townstead.client.species.RigModels;
+import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.data.DataPackLang;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
@@ -9,7 +10,6 @@ import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.world.entity.LivingEntity;
 
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -118,25 +118,10 @@ public final class EmfAnimationSourceAdapter implements AnimationSourceAdapter {
         return null;
     }
 
-    private static boolean hasEmfAnimationApi() {
-        try {
-            Class.forName("traben.entity_model_features.EMFAnimationApi");
-            return true;
-        } catch (ClassNotFoundException ignored) {
-            return false;
-        }
-    }
-
     private static boolean isEmfLoaded() {
-        try {
-            Class<?> modListClass = Class.forName("net.neoforged.fml.ModList");
-            Method get = modListClass.getMethod("get");
-            Object modList = get.invoke(null);
-            Method isLoaded = modListClass.getMethod("isLoaded", String.class);
-            return Boolean.TRUE.equals(isLoaded.invoke(modList, "entity_model_features"));
-        } catch (ReflectiveOperationException ignored) {
-            return hasEmfAnimationApi();
-        }
+        // ModCompat selects the correct loader at build time and caches the result.
+        // Probing NeoForge reflectively here threw on every rendered Forge entity.
+        return ModCompat.isLoaded("entity_model_features");
     }
 
 }

@@ -14,6 +14,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ClothingEntryTest {
 
+    @Test void generalResistanceQualifiesForBothProtectiveWardrobes() {
+        var entry = ClothingEntry.parse(id("test:gear"), 0, json("{\"item\":\"test:coat\"}"));
+        var resolved = entry.withThermal(new com.aetherianartificer.townstead.temperature.ThermalProtection(0, 0, 0, 8));
+        assertTrue(resolved.isWarm());
+        assertTrue(resolved.isCool());
+        assertEquals(entry.id(), resolved.id());
+    }
+
+    @Test void resolvedProtectionDoesNotBreakAuthoredBodySetMembership() {
+        var entry = ClothingEntry.parse(id("test:gear"), 0, json("{\"item\":\"test:coat\",\"material\":[\"wool\"]}"));
+        var resolved = entry.withThermal(new com.aetherianartificer.townstead.temperature.ThermalProtection(.5f, 3, 0, 0));
+        var selector = new com.aetherianartificer.townstead.clothing.policy.WardrobePolicy.Selector(null, false, true, null, null);
+        assertTrue(com.aetherianartificer.townstead.clothing.dress.ClothingSelectors.admits(selector, resolved,
+                com.aetherianartificer.townstead.culture.CultureClothing.NONE, java.util.List.of(entry)));
+        assertEquals(entry.materials(), resolved.materials());
+    }
+
     static ResourceLocation id(String s) {
         return com.aetherianartificer.townstead.data.DataPackLang.parseId(s);
     }

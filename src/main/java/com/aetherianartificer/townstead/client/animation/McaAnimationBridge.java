@@ -69,6 +69,7 @@ public final class McaAnimationBridge {
 
     /** Drop cached CEM programs so the next render reloads from the current pack stack. */
     public static void onResourcesReloaded() {
+        AnimationTargetMap.clearCache();
         EmfCompat.register();
         EMF_ADAPTER.invalidate();
         EmoteReflection.invalidate();
@@ -207,6 +208,7 @@ public final class McaAnimationBridge {
         BendStateRegistry.clearEntity(entity.getUUID());
 
         boolean anyAvailable = false;
+        boolean diagnostics = com.aetherianartificer.townstead.TownsteadConfig.DEBUG_LOGGING.get();
         for (AnimationSourceAdapter source : SOURCES) {
             if (source == EMOTE_ADAPTER
                     && com.aetherianartificer.townstead.client.animation.nativeclip.NativePlaybackRegistry
@@ -216,14 +218,18 @@ public final class McaAnimationBridge {
             if (!source.isAvailable()) continue;
             anyAvailable = true;
             List<AnimationTransform> transforms = source.collectTransforms(context);
-            McaModelPartApplier.ApplyStats stats = McaModelPartApplier.applyWithStats(source.id(), targets, transforms);
+            if (diagnostics) {
+                var stats = McaModelPartApplier.applyWithStats(source.id(), targets, transforms);
+                logDiagnostic(entity, model, source.id(), transforms, stats);
+            } else {
+                McaModelPartApplier.apply(source.id(), targets, transforms);
+            }
             for (AnimationTransform t : transforms) {
                 if (t.applyBend() && t.bend() != null && t.bendDirection() != null) {
                     BendStateRegistry.put(entity.getUUID(), t.target(),
                             t.bendDirection(), t.bend());
                 }
             }
-            logDiagnostic(entity, model, source.id(), transforms, stats);
         }
 
         syncMcaDependentParts(model, breasts, localOffsetX, localOffsetY, localOffsetZ);

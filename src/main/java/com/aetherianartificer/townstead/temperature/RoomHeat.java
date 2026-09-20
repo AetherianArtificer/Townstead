@@ -18,13 +18,15 @@ public final class RoomHeat {
         ThermalRegionScan.Region shape;
         long anchor, lastTick, lastUsed;
         double temperature;
-        double power, conductance, reservoir, capacity;
+        double power, draft, conductance, reservoir, capacity;
+        double coolingConductance, coolingPotential;
         double wallCapacity, wallTemperature, airToWalls, externalLoss;
         int unresolved;
         List<String> sourceDetails = new ArrayList<>();
         List<String> controls = new ArrayList<>();
         boolean dirty, solved;
         Map<Long, Integer> sourceCells;
+        int sourceGeneration;
         Map<BlockPos, Float> localSources = new HashMap<>();
         Map<Long, ThermalRegionScan.Kind> boundaryKinds = new HashMap<>();
         Set<BlockPos> chunkSamples = new HashSet<>();
@@ -169,28 +171,33 @@ public final class RoomHeat {
         return ThermalRegionScan.Kind.INTERIOR;
     }
 
-    public static void changed(ServerLevel level, BlockPos pos) {
+    /**
+     * Runs on every server block change, so it returns early wherever no room is watching.
+     * Stored heat elsewhere is checked against its material when a room next reads it.
+     */
+    public static void changed(ServerLevel level, BlockPos pos, BlockState state) {
         if (!level.getServer().isSameThread()) return;
+        World world = WORLDS.get(level);
+        if (world == null) return;
+        // Only a new barrier can enclose space that was open; clearing opens nothing new.
+        if (!world.misses.isEmpty() && (state.getBlock() instanceof DoorBlock || state.getBlock() instanceof TrapDoorBlock
+                || !state.getCollisionShape(level, pos).isEmpty())) world.misses.clear();
+        Set<Region> watched = world.watchers.get(pos.asLong());
+        if (watched == null) return;
         // Preserve lit/open changes, but never resurrect stored heat when a block is replaced.
         var stored = RoomHeatData.get(level);
-        String material = wallIdentity(level.getBlockState(pos));
+        String material = wallIdentity(state);
         stored.retainSolidMaterial(pos.asLong(), material);
         for (Direction direction : Direction.values())
             stored.retainWallMaterial(new ThermalRegionScan.Face(pos.relative(direction).asLong(), pos.asLong()), material);
-        World world = WORLDS.get(level);
-        if (world == null) return;
-        Set<Region> watched = world.watchers.get(pos.asLong());
-        if (watched != null) {
-            ThermalRegionScan.Kind current = kind(level, pos);
-            for (Region region : watched) {
-                ThermalRegionScan.Kind previous = region.shape.cells().contains(pos.asLong())
-                        ? ThermalRegionScan.Kind.INTERIOR : region.boundaryKinds.get(pos.asLong());
-                if (previous != current) region.dirty = true;
-                // Lit/open flags and material swaps change heat flow, not the air region.
-                region.sourceCells = null;
-            }
+        ThermalRegionScan.Kind current = kind(level, pos);
+        for (Region region : watched) {
+            ThermalRegionScan.Kind previous = region.shape.cells().contains(pos.asLong())
+                    ? ThermalRegionScan.Kind.INTERIOR : region.boundaryKinds.get(pos.asLong());
+            if (previous != current) region.dirty = true;
+            // Lit/open flags and material swaps change heat flow, not the air region.
+            region.sourceCells = null;
         }
-        world.misses.clear();
     }
 
     public static void tick(MinecraftServer server) {
@@ -279,9 +286,11 @@ public final class RoomHeat {
             r.capacity = r.shape.cells().size()*settings.roomHeatCapacity();
             r.reservoir = ambient; r.unresolved = 0;
             r.power = sourcePower(level,r,states);
+            double ventilation = RoomHeatBalance.ventilation(r.shape.cells().size(),settings.airChangesPerHour())+r.draft;
+            double boundary = ventilation + r.coolingConductance;
+            double reservoir = boundary > 0 ? (ventilation*ambient+r.coolingPotential)/boundary : ambient;
             build.rooms.put(r,build.nodes.size());
-            build.nodes.add(new ThermalNetwork.Node(r.capacity,r.temperature,r.power,
-                    RoomHeatBalance.ventilation(r.shape.cells().size(),settings.airChangesPerHour()),ambient));
+            build.nodes.add(new ThermalNetwork.Node(r.capacity,r.temperature,r.power,boundary,reservoir));
         }
         for (Region r : regions) {
             for (var face : r.shape.faces()) {
@@ -343,7 +352,7 @@ public final class RoomHeat {
             r.solved = true;
             r.wallTemperature = r.wallCapacity = r.airToWalls = 0;
             r.conductance = build.nodes.get(index).outsideConductance();
-            r.externalLoss = r.conductance*(r.temperature-r.reservoir);
+            r.externalLoss = r.conductance*(r.temperature-build.nodes.get(index).outside());
             for (var link : build.links) {
                 int other = link.a() == index ? link.b() : link.b() == index ? link.a() : -1;
                 if (other < 0) continue;
@@ -362,14 +371,18 @@ public final class RoomHeat {
 
     private static double sourcePower(ServerLevel level, Region r, Map<Long,BlockState> states) {
         var settings = TemperatureSettings.get();
-        if (r.sourceCells == null) {
+        if (r.sourceCells == null || r.sourceGeneration != ThermalBlocks.generation()) {
+            // Block changes in watched cells reset this, so the per-state filter stays exact.
             r.sourceCells = new TreeMap<>();
+            r.sourceGeneration = ThermalBlocks.generation();
             for (long cell : r.shape.cells())
-                if (!level.getBlockState(BlockPos.of(cell)).isAir()) r.sourceCells.put(cell,6);
+                if (ThermalBlocks.mayAffectRoom(level.getBlockState(BlockPos.of(cell)))) r.sourceCells.put(cell,6);
             for (var face : r.shape.faces())
-                if (!level.getBlockState(BlockPos.of(face.outside())).isAir()) r.sourceCells.merge(face.outside(),1,Integer::sum);
+                if (ThermalBlocks.mayAffectRoom(level.getBlockState(BlockPos.of(face.outside())))) r.sourceCells.merge(face.outside(),1,Integer::sum);
         }
         double power = 0;
+        r.draft = 0;
+        r.coolingConductance = r.coolingPotential = 0;
         r.localSources.clear(); r.sourceDetails.clear(); r.controls.clear();
         for (var entry : r.sourceCells.entrySet()) {
             BlockPos pos = BlockPos.of(entry.getKey());
@@ -402,25 +415,33 @@ public final class RoomHeat {
             }
             double share = r.shape.cells().contains(pos.asLong()) ? 1 : RoomHeatBalance.sourceShare(entry.getValue(),exposed);
             double watts = output.watts()*share;
-            power += watts;
+            if (watts < 0) {
+                var cooling = RoomHeatBalance.cooling(watts, r.reservoir,
+                        profile == null ? Math.abs(output.radiantDegrees()) : settings.fireMaxRise());
+                r.coolingConductance += cooling.conductance();
+                r.coolingPotential += cooling.conductance()*cooling.reservoir();
+            } else power += watts;
+            if (profile == null || profile.draft()) r.draft += RoomHeatBalance.draft(watts, settings.fireMaxRise());
             if (watts != 0 || profile != null && (profile.watts() != 0 || profile.radiantDegrees() != 0))
-                r.sourceDetails.add(id+" at "+pos.toShortString()+": "+Math.round(watts)+" W; "
+                r.sourceDetails.add(id+" at "+pos.toShortString()+": "+Math.round(watts)+" W"+(watts < 0 ? " nominal, bounded cooling" : "")+"; "
                         +(output.estimated() ? "estimated native/tag fallback" : "explicit profile")+"; native "+nativeEffect);
         }
         return power;
     }
     /** Operative warmth near a source is distinct from the region's stored air temperature. */
     private static double experienced(ServerLevel level, Region room, BlockPos position) {
-        double heat = 0, cool = 0;
+        double heat = 0, cool = 0, strongestHeat = 0, strongestCool = 0;
         for (var source : room.localSources.entrySet()) {
             double effect = RoomHeatBalance.localExposure(source.getValue(), position.distSqr(source.getKey()));
             if (effect == 0 || !visible(level, position, source.getKey())) continue;
-            if (effect > 0) heat += effect; else cool += effect;
+            if (effect > 0) { heat += effect; strongestHeat = Math.max(strongestHeat, effect); }
+            else { cool -= effect; strongestCool = Math.max(strongestCool, -effect); }
         }
-        return room.temperature + heat + cool;
+        return room.temperature + RoomHeatBalance.combinedExposure(heat, strongestHeat)
+                - RoomHeatBalance.combinedExposure(cool, strongestCool);
     }
 
-    private static boolean visible(ServerLevel level, BlockPos observer, BlockPos source) {
+    public static boolean visible(ServerLevel level, BlockPos observer, BlockPos source) {
         var start = net.minecraft.world.phys.Vec3.atCenterOf(observer);
         var end = net.minecraft.world.phys.Vec3.atCenterOf(source);
         int steps = Math.max(1, (int) Math.ceil(start.distanceTo(end) * 2));
@@ -457,10 +478,10 @@ public final class RoomHeat {
         Region r = world.cells.get(pos.asLong());
         if (r == null) return Optional.empty();
         return Optional.of(String.format(java.util.Locale.ROOT,
-                "Air %.1f C; operative %.1f C; outside %.1f C; volume %d; input %.0f W; air-to-network %.0f W; ventilation loss %.0f W; adjacent mean %.1f C; unresolved faces %d. Network: %s; supplied %.1f J; escaped %.1f J; balance error %.6f J. Sources: %s. Controllers: %s",
-                r.temperature,experienced(level,r,pos),r.reservoir,r.shape.cells().size(),r.power,r.airToWalls,
+                "Air %.1f C; operative %.1f C; outside %.1f C; volume %d; input %.0f W; fire draft %.0f W/K; air-to-network %.0f W; ventilation loss %.0f W; adjacent mean %.1f C; unresolved faces %d. Network: %s; supplied %.1f J; escaped %.1f J; balance error %.6f J. Sources: %s. Controllers: %s",
+                r.temperature,experienced(level,r,pos),r.reservoir,r.shape.cells().size(),r.power,r.draft,r.airToWalls,
                 r.externalLoss,r.wallTemperature,r.unresolved,world.status,world.supplied,world.escaped,world.energyError,
                 String.join(" | ",r.sourceDetails),String.join(" | ",r.controls)));
     }
-    public static void clear() { WORLDS.clear(); }
+    public static void clear() { WORLDS.clear(); RoomHeatBackend.clear(); }
 }

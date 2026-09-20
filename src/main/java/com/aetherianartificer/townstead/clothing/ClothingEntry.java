@@ -60,11 +60,16 @@ public record ClothingEntry(ResourceLocation id,
     }
 
     public boolean isWarm() {
-        return thermal != null && (thermal.offset() > 0 || thermal.coldResistance() > 0);
+        return thermal != null && (thermal.offset() > 0 || thermal.coldResistance() > 0 || thermal.thermalResistance() > 0);
     }
 
     public boolean isCool() {
-        return thermal != null && (thermal.offset() < 0 || thermal.heatResistance() > 0);
+        return thermal != null && (thermal.offset() < 0 || thermal.heatResistance() > 0 || thermal.thermalResistance() > 0);
+    }
+
+    public ClothingEntry withThermal(ThermalProtection protection) {
+        return new ClothingEntry(id, item, tag, skin, stack, layer, slot, protection,
+                materials, occasions, spirits, hair);
     }
 
     /** Whether this entry describes the stack. Skin entries never match a stack. */

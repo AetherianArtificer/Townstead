@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.compat.mca;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.mixin.accessor.VillageBuildingMapsAccessor;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.minecraft.nbt.CompoundTag;
@@ -104,6 +105,19 @@ public final class McaBuildings {
         return out;
     }
 
+    /**
+     * Whether this record is the open-air form of a building rather than an MCA room. On v2 that
+     * is membership of the external map; before the split, Townstead's overlay marks it.
+     */
+    public static boolean isOpenAirRecord(ServerLevel level, Village village, Building building) {
+        if (village == null || building == null) return false;
+        Map<Integer, Building> external = externalMap(village);
+        if (external != null) return external.containsKey(building.getId());
+        // Before the external split there is one map, so the type's own policy is the only signal.
+        return com.aetherianartificer.townstead.recognition.BuildingEnclosurePolicies
+                .modeOf(building.getType()).allowsOpenAir();
+    }
+
     public static @Nullable Building byId(Village village, int id) {
         Building room = village.getBuildings().get(id);
         if (room != null) return room;
@@ -112,30 +126,23 @@ public final class McaBuildings {
     }
 
     /**
-     * Containment for external sites. MCA-native sites retain MCA's center/margin semantics;
-     * Townstead-owned synthetics use the exact geometry stored in Townstead's overlay.
+     * Containment for an open-air site. MCA's own {@code containsPos} reduces an external
+     * building to a sphere around its centre, which is wrong for anything long: most of a wharf
+     * falls outside it. Its recorded footprint is the honest answer, grown a little vertically so
+     * standing on the deck counts.
      */
     public static boolean contains(
             ServerLevel level, Village village, Building building, BlockPos pos) {
-        if (level == null || village == null || building == null || pos == null) return false;
-        var record = com.aetherianartificer.townstead.village.TownsteadVillageSavedData
-                .get(level.getServer()).getRecord(level, village.getId());
-        var overlay = record == null ? null : record.buildings().get(building.getId());
-        if (overlay == null || overlay.bounds().length != 6) {
-            if (com.aetherianartificer.townstead.recognition.BuildingEnclosurePolicies
-                    .modeOf(building.getType()).allowsOpenAir()) {
-                BlockPos min = building.getPos0();
-                BlockPos max = building.getPos1();
-                return pos.getX() >= min.getX() && pos.getX() <= max.getX()
-                        && pos.getY() >= min.getY() - 1 && pos.getY() <= max.getY() + 2
-                        && pos.getZ() >= min.getZ() && pos.getZ() <= max.getZ();
-            }
+        if (village == null || building == null || pos == null) return false;
+        if (!com.aetherianartificer.townstead.recognition.BuildingEnclosurePolicies
+                .modeOf(building.getType()).allowsOpenAir()) {
             return building.containsPos(pos);
         }
-
-        // Docks can be L-shaped. Their complete surface columns are persisted, so the pure
-        // geometry policy does not turn the bounding rectangle's water/gaps into part of a dock.
-        return SyntheticBuildingGeometry.contains(overlay, pos);
+        BlockPos min = building.getPos0();
+        BlockPos max = building.getPos1();
+        return pos.getX() >= min.getX() && pos.getX() <= max.getX()
+                && pos.getY() >= min.getY() - 1 && pos.getY() <= max.getY() + 2
+                && pos.getZ() >= min.getZ() && pos.getZ() <= max.getZ();
     }
 
     /**
@@ -150,15 +157,30 @@ public final class McaBuildings {
                 Building external = (Building) EXTERNAL_NBT_CTOR.newInstance(nbt);
                 Map<Integer, Building> map = externalMap(village);
                 if (map != null) {
-                    // Old worlds saved synthetics in the rooms list and v2's migrator turned
-                    // them into Rooms; evict the stale copy so the id resolves to the external.
-                    village.getBuildings().remove(id);
-                    map.put(id, external);
+                    // Old worlds saved synthetics in the rooms list and v2's migrator could turn
+                    // them into Rooms. Remove their migrated Structure as well as the room; merely
+                    // deleting the map entry leaves an orphan Structure/logical-building behind.
+                    VillageBuildingMapsAccessor maps = (VillageBuildingMapsAccessor) (Object) village;
+                    Building staleRoom = village.getBuildings().get(id);
+                    //? if >=1.21 {
+                    if (staleRoom != null && village.getStructure(staleRoom.getStructureId()).isPresent()) {
+                        village.removeStructure(staleRoom.getStructureId());
+                    } else {
+                        maps.townstead$getBuildingMap().remove(id);
+                    }
+                    //?} else {
+                    /*maps.townstead$getBuildingMap().remove(id);
+                    *///?}
+                    //? if >=1.21 {
+                    maps.townstead$getExternalBuildingMap().put(id, external);
+                    //?} else {
+                    /*map.put(id, external);
+                    *///?}
                     return external;
                 }
             }
             Building building = new Building(nbt);
-            village.getBuildings().put(id, building);
+            ((VillageBuildingMapsAccessor) (Object) village).townstead$getBuildingMap().put(id, building);
             return building;
         } catch (ReflectiveOperationException e) {
             Townstead.LOGGER.warn("[McaBuildings] failed to register synthetic building {}: {}", id, e.toString());

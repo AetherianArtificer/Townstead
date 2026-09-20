@@ -11,6 +11,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.NumericTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
@@ -45,25 +46,30 @@ import java.util.regex.PatternSyntaxException;
 
 public final class CemAnimationProgram {
     private final List<CemAssignment> assignments;
+    private final CemVariableStore.Layout layout;
+    private final CemInputPlan<CemEvaluationContext<?>> inputs;
     private final Map<UUID, EntityVariables> entityVariables = new HashMap<>();
     private long lastVariablePruneTick;
 
-    private CemAnimationProgram(List<CemAssignment> assignments) {
+    private CemAnimationProgram(List<CemAssignment> assignments, CemVariableStore.Layout layout) {
+        this.layout = layout;
         this.assignments = assignments;
+        this.inputs = CemEvaluationContext.createInputPlan(layout);
     }
 
     public static Optional<CemAnimationProgram> load(ResourceLocation entryPoint) {
         try {
             List<CemAssignment> assignments = new ArrayList<>();
             Set<ResourceLocation> visited = new HashSet<>();
-            loadResource(entryPoint, assignments, visited);
+            CemVariableStore.Layout layout = new CemVariableStore.Layout();
+            loadResource(entryPoint, assignments, visited, layout);
             if (assignments.isEmpty()) return Optional.empty();
             Townstead.LOGGER.info(
                     "[AnimationBridge] loaded CEM program location={} assignments={} targets={}",
                     entryPoint,
                     assignments.size(),
                     targetSummary(assignments));
-            return Optional.of(new CemAnimationProgram(assignments));
+            return Optional.of(new CemAnimationProgram(assignments, layout));
         } catch (Exception e) {
             Townstead.LOGGER.warn("[AnimationBridge] failed to load CEM program location={}", entryPoint, e);
             return Optional.empty();
@@ -74,7 +80,7 @@ public final class CemAnimationProgram {
         T entity = source.entity();
         long gameTime = entity.level().getGameTime();
         pruneEntityVariables(gameTime);
-        EntityVariables entityState = entityVariables.computeIfAbsent(entity.getUUID(), ignored -> new EntityVariables());
+        EntityVariables entityState = entityVariables.computeIfAbsent(entity.getUUID(), ignored -> new EntityVariables(layout));
         entityState.lastSeenTick = gameTime;
         long nowMillis = Util.getMillis();
         double frameTime = entityState.lastEvalMillis == 0L
@@ -85,11 +91,11 @@ public final class CemAnimationProgram {
         float partialTick = (float) Mth.clamp(source.animationProgress() - entity.tickCount, 0.0D, 1.0D);
         CemVariableStore variables = entityState.variables;
         variables.clearAssignments();
-        CemEvaluationContext<T> context = new CemEvaluationContext<>(source, variables, frameTime, partialTick, entityState.frameCounter);
+        CemEvaluationContext<T> context = new CemEvaluationContext<>(source, variables, frameTime, partialTick, entityState.frameCounter, inputs);
         for (CemAssignment assignment : assignments) {
             double value = assignment.expression().evaluate(context);
             if (Double.isFinite(value)) {
-                context.assign(assignment.target(), value);
+                context.assign(assignment.slot(), value);
             }
         }
         return context.transforms();
@@ -104,7 +110,8 @@ public final class CemAnimationProgram {
     private static void loadResource(
             ResourceLocation location,
             List<CemAssignment> assignments,
-            Set<ResourceLocation> visited
+            Set<ResourceLocation> visited,
+            CemVariableStore.Layout layout
     ) throws Exception {
         if (!visited.add(location)) return;
         Minecraft client = Minecraft.getInstance();
@@ -125,13 +132,13 @@ public final class CemAnimationProgram {
                 JsonObject model = element.getAsJsonObject();
                 if (model.has("model")) {
                     String child = model.get("model").getAsString();
-                    loadResource(sibling(location, child), assignments, visited);
+                    loadResource(sibling(location, child), assignments, visited, layout);
                 }
-                readAnimations(model, assignments);
+                readAnimations(model, assignments, layout);
             }
         }
 
-        readAnimations(root, assignments);
+        readAnimations(root, assignments, layout);
     }
 
     private static ResourceLocation sibling(ResourceLocation base, String child) {
@@ -145,7 +152,7 @@ public final class CemAnimationProgram {
         *///?}
     }
 
-    private static void readAnimations(JsonObject object, List<CemAssignment> assignments) {
+    private static void readAnimations(JsonObject object, List<CemAssignment> assignments, CemVariableStore.Layout layout) {
         if (!object.has("animations") || !object.get("animations").isJsonArray()) return;
         for (JsonElement animationElement : object.getAsJsonArray("animations")) {
             if (!animationElement.isJsonObject()) continue;
@@ -153,7 +160,7 @@ public final class CemAnimationProgram {
             for (String key : animation.keySet()) {
                 String expression = animation.get(key).getAsString();
                 try {
-                    assignments.add(new CemAssignment(key, CemExpressionParser.parse(expression)));
+                    assignments.add(new CemAssignment(key, layout.slot(key), CemExpressionParser.parse(expression, layout)));
                 } catch (RuntimeException e) {
                     Townstead.LOGGER.debug(
                             "[AnimationBridge] skipped unsupported CEM expression target={} expr={}",
@@ -174,10 +181,14 @@ public final class CemAnimationProgram {
         return targets.stream().sorted().toList().toString();
     }
 
-    private record CemAssignment(String target, CemExpression expression) {}
+    private record CemAssignment(String target, int slot, CemExpression expression) {}
 
     private static final class EntityVariables {
-        private final CemVariableStore variables = new CemVariableStore();
+        private final CemVariableStore variables;
+
+        private EntityVariables(CemVariableStore.Layout layout) {
+            variables = new CemVariableStore(layout);
+        }
         private long lastSeenTick;
         private long lastEvalMillis;
         private long frameCounter;
@@ -189,13 +200,12 @@ public final class CemAnimationProgram {
         private final double frameTime;
         private final float partialTick;
         private final long frameCounter;
-        private final Map<String, CemPartPose> baseline = new HashMap<>();
         private final Map<String, NbtValue> nbtValues = new HashMap<>();
         private CompoundTag savedNbt;
         private boolean savedNbtLoaded;
 
         private NbtValue nbtValue(String path) {
-            return nbtValues.computeIfAbsent(path, key -> livePlayerNbtValue(key, source.entity())
+            return nbtValues.computeIfAbsent(path, key -> liveNbtValue(key, source.entity())
                     .orElseGet(() -> {
                         // All queries in this evaluation share one lazy snapshot. Never retain
                         // it across frames: equipment and sleeping state can change immediately.
@@ -215,29 +225,26 @@ public final class CemAnimationProgram {
                     }));
         }
 
-        CemEvaluationContext(AnimationSourceContext<T> source, CemVariableStore variables, double frameTime, float partialTick, long frameCounter) {
+        CemEvaluationContext(AnimationSourceContext<T> source, CemVariableStore variables, double frameTime, float partialTick, long frameCounter,
+                             CemInputPlan<CemEvaluationContext<?>> inputs) {
             this.source = source;
             this.variables = variables;
             this.frameTime = frameTime;
             this.partialTick = partialTick;
             this.frameCounter = frameCounter;
-            seedRenderVariables();
-            seedModelPart("root", source.model().body);
-            seedModelPart("head", source.model().head);
-            seedModelPart("headwear", source.model().hat);
-            seedModelPart("body", source.model().body);
-            seedModelPart("right_arm", source.model().rightArm);
-            seedModelPart("left_arm", source.model().leftArm);
-            seedModelPart("right_leg", source.model().rightLeg);
-            seedModelPart("left_leg", source.model().leftLeg);
+            inputs.seed(this, variables);
         }
 
         double value(String key) {
             return variables.get(key);
         }
 
-        void assign(String key, double value) {
-            variables.set(key, value);
+        double value(int slot) {
+            return variables.get(slot);
+        }
+
+        void assign(int slot, double value) {
+            variables.set(slot, value);
         }
 
         List<AnimationTransform> transforms() {
@@ -251,118 +258,129 @@ public final class CemAnimationProgram {
             return transforms;
         }
 
-        private void seedRenderVariables() {
-            T entity = source.entity();
-            float animationProgress = source.animationProgress();
-            variables.seed("age", animationProgress);
-            variables.seed("time", animationProgress);
-            variables.seed("frame_time", frameTime);
-            variables.seed("frame_counter", frameCounter);
-            variables.seed("limb_swing", source.parameters().limbAngle());
-            variables.seed("limb_speed", source.parameters().limbDistance());
-            variables.seed("head_yaw", source.parameters().headYaw());
-            variables.seed("head_pitch", source.headPitch());
-            MovementInput movement = MovementInput.from(entity);
-            variables.seed("move_forward", movement.forward());
-            variables.seed("move_strafing", movement.strafing());
-            variables.seed("rot_x", Math.toRadians(source.headPitch()));
-            variables.seed("rot_y", Math.toRadians(source.parameters().headYaw()));
-            variables.seed("player_rot_x", Math.toRadians(source.headPitch()));
-            variables.seed("player_rot_y", Math.toRadians(source.parameters().headYaw()));
-            double posX = Mth.lerp(partialTick, entity.xOld, entity.getX());
-            double posY = Mth.lerp(partialTick, entity.yOld, entity.getY());
-            double posZ = Mth.lerp(partialTick, entity.zOld, entity.getZ());
-            variables.seed("pos_x", posX);
-            variables.seed("pos_y", posY);
-            variables.seed("pos_z", posZ);
-            variables.seed("player_pos_x", posX);
-            variables.seed("player_pos_y", posY);
-            variables.seed("player_pos_z", posZ);
-            variables.seed("health", entity.getHealth());
-            variables.seed("hurt_time", Mth.lerp(partialTick, (float) Math.max(0, entity.hurtTime - 1), (float) entity.hurtTime));
-            variables.seed("death_time", entity.deathTime);
-            variables.seed("max_health", entity.getMaxHealth());
-            variables.seed("distance", distanceFromClientPlayer(entity, partialTick));
-            variables.seed("height_above_ground", heightAboveGround(entity));
-            FluidDepth fluidDepth = FluidDepth.from(entity);
-            variables.seed("fluid_depth", fluidDepth.total());
-            variables.seed("fluid_depth_down", fluidDepth.down());
-            variables.seed("fluid_depth_up", fluidDepth.up());
-            CemDimension dimension = CemDimension.from(entity);
-            variables.seed("dimension", dimension.value());
-            variables.seed("dimension_overworld", dimension == CemDimension.OVERWORLD ? 1.0D : 0.0D);
-            variables.seed("dimension_nether", dimension == CemDimension.NETHER ? 1.0D : 0.0D);
-            variables.seed("dimension_end", dimension == CemDimension.END ? 1.0D : 0.0D);
-            HumanoidArm mainArm = entity.getMainArm();
-            boolean rightHanded = mainArm == HumanoidArm.RIGHT;
-            int angerTime = angerTime(entity);
-            variables.seed("anger_time", angerTime);
-            variables.seed("anger_time_start", angerTime > 0 ? angerTime : 0.0D);
-            variables.seed("is_aggressive", angerTime > 0 || entity instanceof Mob mob && mob.getTarget() != null ? 1.0D : 0.0D);
-            variables.seed("is_alive", entity.isAlive() ? 1.0D : 0.0D);
-            variables.seed("is_burning", entity.isOnFire() ? 1.0D : 0.0D);
-            variables.seed("is_child", entity.isBaby() ? 1.0D : 0.0D);
-            variables.seed("is_glowing", entity.isCurrentlyGlowing() ? 1.0D : 0.0D);
-            variables.seed("is_jumping", entity.getDeltaMovement().y > 0.05D ? 1.0D : 0.0D);
-            variables.seed("is_in_hand", 0.0D);
-            variables.seed("is_in_item_frame", 0.0D);
-            variables.seed("is_in_ground", 0.0D);
-            variables.seed("is_riding", entity.isPassenger() ? 1.0D : 0.0D);
-            variables.seed("is_ridden", entity.isVehicle() ? 1.0D : 0.0D);
-            variables.seed("is_gliding", entity.isFallFlying() ? 1.0D : 0.0D);
-            variables.seed("is_flying", entity instanceof Player player && player.getAbilities().flying ? 1.0D : 0.0D);
-            variables.seed("is_on_ground", entity.onGround() ? 1.0D : 0.0D);
-            variables.seed("is_on_head", 0.0D);
-            variables.seed("is_on_shoulder", 0.0D);
-            variables.seed("is_in_water", entity.isInWater() ? 1.0D : 0.0D);
-            variables.seed("is_in_lava", entity.isInLava() ? 1.0D : 0.0D);
-            variables.seed("is_invisible", entity.isInvisible() ? 1.0D : 0.0D);
-            variables.seed("is_sprinting", entity.isSprinting() ? 1.0D : 0.0D);
-            variables.seed("is_swimming", entity.isSwimming() ? 1.0D : 0.0D);
-            variables.seed("is_sitting", entity.isPassenger() || entity.getPose() == net.minecraft.world.entity.Pose.SITTING ? 1.0D : 0.0D);
-            variables.seed("is_sneaking", entity.isCrouching() ? 1.0D : 0.0D);
-            variables.seed("is_tamed", 0.0D);
-            variables.seed("is_wet", entity.isInWaterRainOrBubble() ? 1.0D : 0.0D);
-            variables.seed("is_crawling", entity.isVisuallyCrawling() ? 1.0D : 0.0D);
-            variables.seed("is_climbing", entity.onClimbable() ? 1.0D : 0.0D);
-            variables.seed("is_hurt", entity.hurtTime > 0 ? 1.0D : 0.0D);
-            variables.seed("is_in_gui", 0.0D);
-            variables.seed("is_first_person_hand", 0.0D);
-            variables.seed("is_using_item", entity.isUsingItem() ? 1.0D : 0.0D);
-            variables.seed("is_blocking", entity.isBlocking() ? 1.0D : 0.0D);
-            variables.seed("is_right_handed", rightHanded ? 1.0D : 0.0D);
-            variables.seed("is_swinging_right_arm", entity.swinging && rightHanded ? 1.0D : 0.0D);
-            variables.seed("is_swinging_left_arm", entity.swinging && !rightHanded ? 1.0D : 0.0D);
-            variables.seed("is_holding_item_right", (rightHanded ? entity.getMainHandItem() : entity.getOffhandItem()).isEmpty() ? 0.0D : 1.0D);
-            variables.seed("is_holding_item_left", (rightHanded ? entity.getOffhandItem() : entity.getMainHandItem()).isEmpty() ? 0.0D : 1.0D);
-            variables.seed("is_paused", Minecraft.getInstance().isPaused() ? 1.0D : 0.0D);
-            variables.seed("is_hovered", Minecraft.getInstance().crosshairPickEntity == entity ? 1.0D : 0.0D);
-            variables.seed("swing_progress", entity.getAttackAnim(partialTick));
-            variables.seed("rule_index", 1.0D);
-            variables.seed("id", Math.abs(entity.getUUID().hashCode()));
-            variables.seed("pi", Math.PI);
+        private static CemInputPlan<CemEvaluationContext<?>> createInputPlan(CemVariableStore.Layout layout) {
+            var inputs = new CemInputPlan.Builder<CemEvaluationContext<?>>(layout);
+            inputs.add("age", context -> context.source.animationProgress());
+            inputs.add("time", context -> context.source.animationProgress());
+            inputs.add("frame_time", context -> context.frameTime);
+            inputs.add("frame_counter", context -> context.frameCounter);
+            inputs.add("limb_swing", context -> context.source.parameters().limbAngle());
+            inputs.add("limb_speed", context -> context.source.parameters().limbDistance());
+            inputs.add("head_yaw", context -> context.source.parameters().headYaw());
+            inputs.add("head_pitch", context -> context.source.headPitch());
+            inputs.add("move_forward", context -> context.movement().forward());
+            inputs.add("move_strafing", context -> context.movement().strafing());
+            inputs.add("rot_x", context -> Math.toRadians(context.source.headPitch()));
+            inputs.add("rot_y", context -> Math.toRadians(context.source.parameters().headYaw()));
+            inputs.add("player_rot_x", context -> Math.toRadians(context.source.headPitch()));
+            inputs.add("player_rot_y", context -> Math.toRadians(context.source.parameters().headYaw()));
+            inputs.add("pos_x", context -> Mth.lerp(context.partialTick, context.source.entity().xOld, context.source.entity().getX()));
+            inputs.add("pos_y", context -> Mth.lerp(context.partialTick, context.source.entity().yOld, context.source.entity().getY()));
+            inputs.add("pos_z", context -> Mth.lerp(context.partialTick, context.source.entity().zOld, context.source.entity().getZ()));
+            inputs.add("player_pos_x", context -> Mth.lerp(context.partialTick, context.source.entity().xOld, context.source.entity().getX()));
+            inputs.add("player_pos_y", context -> Mth.lerp(context.partialTick, context.source.entity().yOld, context.source.entity().getY()));
+            inputs.add("player_pos_z", context -> Mth.lerp(context.partialTick, context.source.entity().zOld, context.source.entity().getZ()));
+            inputs.add("health", context -> context.source.entity().getHealth());
+            inputs.add("hurt_time", context -> Mth.lerp(context.partialTick, (float) Math.max(0, context.source.entity().hurtTime - 1), (float) context.source.entity().hurtTime));
+            inputs.add("death_time", context -> context.source.entity().deathTime);
+            inputs.add("max_health", context -> context.source.entity().getMaxHealth());
+            inputs.add("distance", context -> distanceFromClientPlayer(context.source.entity(), context.partialTick));
+            inputs.add("height_above_ground", context -> heightAboveGround(context.source.entity()));
+            inputs.add("fluid_depth", context -> context.fluidDepth().total());
+            inputs.add("fluid_depth_down", context -> context.fluidDepth().down());
+            inputs.add("fluid_depth_up", context -> context.fluidDepth().up());
+            inputs.add("dimension", context -> context.dimension().value());
+            inputs.add("dimension_overworld", context -> context.dimension() == CemDimension.OVERWORLD ? 1.0D : 0.0D);
+            inputs.add("dimension_nether", context -> context.dimension() == CemDimension.NETHER ? 1.0D : 0.0D);
+            inputs.add("dimension_end", context -> context.dimension() == CemDimension.END ? 1.0D : 0.0D);
+            inputs.add("anger_time", context -> angerTime(context.source.entity()));
+            inputs.add("anger_time_start", context -> angerTime(context.source.entity()) > 0 ? angerTime(context.source.entity()) : 0.0D);
+            inputs.add("is_aggressive", context -> angerTime(context.source.entity()) > 0 || context.source.entity() instanceof Mob mob && mob.getTarget() != null ? 1.0D : 0.0D);
+            inputs.add("is_alive", context -> context.source.entity().isAlive() ? 1.0D : 0.0D);
+            inputs.add("is_burning", context -> context.source.entity().isOnFire() ? 1.0D : 0.0D);
+            inputs.add("is_child", context -> context.source.entity().isBaby() ? 1.0D : 0.0D);
+            inputs.add("is_glowing", context -> context.source.entity().isCurrentlyGlowing() ? 1.0D : 0.0D);
+            inputs.add("is_jumping", context -> context.source.entity().getDeltaMovement().y > 0.05D ? 1.0D : 0.0D);
+            inputs.add("is_in_hand", context -> 0.0D);
+            inputs.add("is_in_item_frame", context -> 0.0D);
+            inputs.add("is_in_ground", context -> 0.0D);
+            inputs.add("is_riding", context -> context.source.entity().isPassenger() ? 1.0D : 0.0D);
+            inputs.add("is_ridden", context -> context.source.entity().isVehicle() ? 1.0D : 0.0D);
+            inputs.add("is_gliding", context -> context.source.entity().isFallFlying() ? 1.0D : 0.0D);
+            inputs.add("is_flying", context -> context.source.entity() instanceof Player player && player.getAbilities().flying ? 1.0D : 0.0D);
+            inputs.add("is_on_ground", context -> context.source.entity().onGround() ? 1.0D : 0.0D);
+            inputs.add("is_on_head", context -> 0.0D);
+            inputs.add("is_on_shoulder", context -> 0.0D);
+            inputs.add("is_in_water", context -> context.source.entity().isInWater() ? 1.0D : 0.0D);
+            inputs.add("is_in_lava", context -> context.source.entity().isInLava() ? 1.0D : 0.0D);
+            inputs.add("is_invisible", context -> context.source.entity().isInvisible() ? 1.0D : 0.0D);
+            inputs.add("is_sprinting", context -> context.source.entity().isSprinting() ? 1.0D : 0.0D);
+            inputs.add("is_swimming", context -> context.source.entity().isSwimming() ? 1.0D : 0.0D);
+            inputs.add("is_sitting", context -> context.source.entity().isPassenger() || context.source.entity().getPose() == net.minecraft.world.entity.Pose.SITTING ? 1.0D : 0.0D);
+            inputs.add("is_sneaking", context -> context.source.entity().isCrouching() ? 1.0D : 0.0D);
+            inputs.add("is_tamed", context -> 0.0D);
+            inputs.add("is_wet", context -> context.source.entity().isInWaterRainOrBubble() ? 1.0D : 0.0D);
+            inputs.add("is_crawling", context -> context.source.entity().isVisuallyCrawling() ? 1.0D : 0.0D);
+            inputs.add("is_climbing", context -> context.source.entity().onClimbable() ? 1.0D : 0.0D);
+            inputs.add("is_hurt", context -> context.source.entity().hurtTime > 0 ? 1.0D : 0.0D);
+            inputs.add("is_in_gui", context -> 0.0D);
+            inputs.add("is_first_person_hand", context -> 0.0D);
+            inputs.add("is_using_item", context -> context.source.entity().isUsingItem() ? 1.0D : 0.0D);
+            inputs.add("is_blocking", context -> context.source.entity().isBlocking() ? 1.0D : 0.0D);
+            inputs.add("is_right_handed", context -> (context.source.entity().getMainArm() == HumanoidArm.RIGHT) ? 1.0D : 0.0D);
+            inputs.add("is_swinging_right_arm", context -> context.source.entity().swinging && (context.source.entity().getMainArm() == HumanoidArm.RIGHT) ? 1.0D : 0.0D);
+            inputs.add("is_swinging_left_arm", context -> context.source.entity().swinging && !(context.source.entity().getMainArm() == HumanoidArm.RIGHT) ? 1.0D : 0.0D);
+            inputs.add("is_holding_item_right", context -> ((context.source.entity().getMainArm() == HumanoidArm.RIGHT) ? context.source.entity().getMainHandItem() : context.source.entity().getOffhandItem()).isEmpty() ? 0.0D : 1.0D);
+            inputs.add("is_holding_item_left", context -> ((context.source.entity().getMainArm() == HumanoidArm.RIGHT) ? context.source.entity().getOffhandItem() : context.source.entity().getMainHandItem()).isEmpty() ? 0.0D : 1.0D);
+            inputs.add("is_paused", context -> Minecraft.getInstance().isPaused() ? 1.0D : 0.0D);
+            inputs.add("is_hovered", context -> Minecraft.getInstance().crosshairPickEntity == context.source.entity() ? 1.0D : 0.0D);
+            inputs.add("swing_progress", context -> context.source.entity().getAttackAnim(context.partialTick));
+            inputs.add("rule_index", context -> 1.0D);
+            inputs.add("id", context -> Math.abs(context.source.entity().getUUID().hashCode()));
+            inputs.add("pi", context -> Math.PI);
+            addModelInputs(inputs, "root", context -> context.source.model().body);
+            addModelInputs(inputs, "head", context -> context.source.model().head);
+            addModelInputs(inputs, "headwear", context -> context.source.model().hat);
+            addModelInputs(inputs, "body", context -> context.source.model().body);
+            addModelInputs(inputs, "right_arm", context -> context.source.model().rightArm);
+            addModelInputs(inputs, "left_arm", context -> context.source.model().leftArm);
+            addModelInputs(inputs, "right_leg", context -> context.source.model().rightLeg);
+            addModelInputs(inputs, "left_leg", context -> context.source.model().leftLeg);
+            return inputs.build();
         }
 
-        private void seedModelPart(String name, ModelPart part) {
-            variables.seed(name + ".rx", part.xRot);
-            variables.seed(name + ".ry", part.yRot);
-            variables.seed(name + ".rz", part.zRot);
-            variables.seed(name + ".tx", part.x);
-            variables.seed(name + ".ty", part.y);
-            variables.seed(name + ".tz", part.z);
-            variables.seed(name + ".sx", part.xScale);
-            variables.seed(name + ".sy", part.yScale);
-            variables.seed(name + ".sz", part.zScale);
-            baseline.put(name, new CemPartPose(
-                    part.xRot,
-                    part.yRot,
-                    part.zRot,
-                    part.x,
-                    part.y,
-                    part.z,
-                    part.xScale,
-                    part.yScale,
-                    part.zScale));
+        // Shared calculations are lazy and live only for this evaluation, never across frames.
+        private MovementInput movement;
+        private FluidDepth fluidDepth;
+        private CemDimension dimension;
+
+        private MovementInput movement() {
+            if (movement == null) movement = MovementInput.from(source.entity());
+            return movement;
+        }
+
+        private FluidDepth fluidDepth() {
+            if (fluidDepth == null) fluidDepth = FluidDepth.from(source.entity());
+            return fluidDepth;
+        }
+
+        private CemDimension dimension() {
+            if (dimension == null) dimension = CemDimension.from(source.entity());
+            return dimension;
+        }
+
+        private static void addModelInputs(CemInputPlan.Builder<CemEvaluationContext<?>> inputs,
+                                           String name,
+                                           java.util.function.Function<CemEvaluationContext<?>, ModelPart> part) {
+            inputs.add(name + ".rx", context -> part.apply(context).xRot);
+            inputs.add(name + ".ry", context -> part.apply(context).yRot);
+            inputs.add(name + ".rz", context -> part.apply(context).zRot);
+            inputs.add(name + ".tx", context -> part.apply(context).x);
+            inputs.add(name + ".ty", context -> part.apply(context).y);
+            inputs.add(name + ".tz", context -> part.apply(context).z);
+            inputs.add(name + ".sx", context -> part.apply(context).xScale);
+            inputs.add(name + ".sy", context -> part.apply(context).yScale);
+            inputs.add(name + ".sz", context -> part.apply(context).zScale);
         }
 
         private void collectTransform(List<AnimationTransform> transforms, String target) {
@@ -542,51 +560,139 @@ public final class CemAnimationProgram {
         }
     }
 
-    private record CemPartPose(
-            float xRot,
-            float yRot,
-            float zRot,
-            float x,
-            float y,
-            float z,
-            float xScale,
-            float yScale,
-            float zScale
-    ) {
-        private static final CemPartPose ZERO = new CemPartPose(
-                0.0F, 0.0F, 0.0F,
-                0.0F, 0.0F, 0.0F,
-                1.0F, 1.0F, 1.0F);
+    /** Resolve function dispatch at pack load and keep common math entirely primitive. */
+    static CemExpression compileMethod(String name, List<CemExpression> args) {
+        if (args.size() == 1) {
+            java.util.function.DoubleUnaryOperator function = switch (name) {
+                case "sin" -> x -> Math.sin(x);
+                case "cos" -> x -> Math.cos(x);
+                case "tan" -> x -> Math.tan(x);
+                case "asin" -> x -> Math.asin(x);
+                case "acos" -> x -> Math.acos(x);
+                case "atan" -> x -> Math.atan(x);
+                case "sqrt" -> x -> Math.sqrt(Math.max(0.0D, x));
+                case "abs" -> x -> Math.abs(x);
+                case "frac" -> x -> x - Math.floor(x);
+                case "log" -> x -> Math.log(x);
+                case "signum" -> x -> Math.signum(x);
+                case "floor" -> x -> Math.floor(x);
+                case "ceil" -> x -> Math.ceil(x);
+                case "round" -> x -> Math.round(x);
+                case "exp" -> x -> Math.exp(x);
+                case "torad" -> x -> Math.toRadians(x);
+                case "todeg" -> x -> Math.toDegrees(x);
+                case "wrapdeg" -> x -> Math.toDegrees(wrapRad(Math.toRadians(x)));
+                case "wraprad" -> x -> wrapRad(x);
+                default -> null;
+            };
+            if (function != null) {
+                CemExpression x = args.get(0);
+                return context -> function.applyAsDouble(x.evaluate(context));
+            }
+        } else if (args.size() == 2) {
+            java.util.function.DoubleBinaryOperator function = switch (name) {
+                case "atan2" -> (x, y) -> Math.atan2(x, y);
+                case "pow" -> (x, y) -> Math.pow(x, y);
+                case "fmod" -> (x, y) -> fmod(x, y);
+                case "degdiff" -> (x, y) -> Math.toDegrees(wrapRad(Math.toRadians(x - y)));
+                case "raddiff" -> (x, y) -> wrapRad(x - y);
+                default -> null;
+            };
+            if (function != null) {
+                CemExpression x = args.get(0), y = args.get(1);
+                return context -> function.applyAsDouble(x.evaluate(context), y.evaluate(context));
+            }
+        } else if (args.size() == 3) {
+            TernaryFunction function = switch (name) {
+                case "lerp" -> (x, y, z) -> y + x * (z - y);
+                case "easeinexpo" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInExpo);
+                case "easeinquad" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInQuad);
+                case "easeinquart" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInQuart);
+                case "easeinsine" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInSine);
+                case "easeinbounce" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInBounce);
+                case "easeincubic" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInCubic);
+                case "easeinquint" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInQuint);
+                case "easeincirc" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInCirc);
+                case "easeinelastic" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInElastic);
+                case "easeinback" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInBack);
+                case "easeoutexpo" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeOutExpo);
+                case "easeoutquad" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeOutQuad);
+                case "easeoutquart" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeOutQuart);
+                case "easeoutsine" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeOutSine);
+                case "easeoutbounce" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeOutBounce);
+                case "easeoutcubic" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeOutCubic);
+                case "easeoutquint" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeOutQuint);
+                case "easeoutcirc" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeOutCirc);
+                case "easeoutelastic" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeOutElastic);
+                case "easeoutback" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeOutBack);
+                case "easeinoutexpo" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInOutExpo);
+                case "easeinoutquad" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInOutQuad);
+                case "easeinoutquart" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInOutQuart);
+                case "easeinoutsine" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInOutSine);
+                case "easeinoutbounce" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInOutBounce);
+                case "easeinoutcubic" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInOutCubic);
+                case "easeinoutquint" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInOutQuint);
+                case "easeinoutcirc" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInOutCirc);
+                case "easeinoutelastic" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInOutElastic);
+                case "easeinoutback" -> (x, y, z) -> ease(x, y, z, CemAnimationProgram::easeInOutBack);
+                case "clamp" -> (x, y, z) -> Math.max(y, Math.min(z, x));
+                case "between" -> (x, y, z) -> bool(x >= y && x <= z);
+                default -> null;
+            };
+            if (function != null) {
+                CemExpression x = args.get(0), y = args.get(1), z = args.get(2);
+                return context -> function.apply(x.evaluate(context), y.evaluate(context), z.evaluate(context));
+            }
+        }
+        // Uncommon and variable-arity functions retain their evaluation order and semantics.
+        CemExpression[] arguments = args.toArray(CemExpression[]::new);
+        return context -> {
+            double[] values = new double[arguments.length];
+            for (int i = 0; i < arguments.length; i++) values[i] = arguments[i].evaluate(context);
+            return method(name, values, context);
+        };
     }
 
-    static double method(String name, List<Double> args, CemEvaluationContext<?> context) {
+    @FunctionalInterface
+    private interface TernaryFunction {
+        double apply(double x, double y, double z);
+    }
+
+    private static double extreme(double[] args, boolean min) {
+        if (args.length == 0) return 0.0D;
+        double result = args[0];
+        for (int i = 1; i < args.length; i++) result = min ? Math.min(result, args[i]) : Math.max(result, args[i]);
+        return result;
+    }
+
+    static double method(String name, double[] args, CemEvaluationContext<?> context) {
         String key = name.toLowerCase(Locale.ROOT);
         return switch (key) {
-            case "sin" -> Math.sin(args.get(0));
-            case "cos" -> Math.cos(args.get(0));
-            case "tan" -> Math.tan(args.get(0));
-            case "asin" -> Math.asin(args.get(0));
-            case "acos" -> Math.acos(args.get(0));
-            case "atan" -> Math.atan(args.get(0));
-            case "atan2" -> Math.atan2(args.get(0), args.get(1));
-            case "sqrt" -> Math.sqrt(Math.max(0.0D, args.get(0)));
-            case "abs" -> Math.abs(args.get(0));
-            case "frac" -> args.get(0) - Math.floor(args.get(0));
-            case "log" -> Math.log(args.get(0));
-            case "signum" -> Math.signum(args.get(0));
-            case "floor" -> Math.floor(args.get(0));
-            case "ceil" -> Math.ceil(args.get(0));
-            case "round" -> Math.round(args.get(0));
-            case "exp" -> Math.exp(args.get(0));
-            case "pow" -> Math.pow(args.get(0), args.get(1));
-            case "fmod" -> fmod(args.get(0), args.get(1));
-            case "lerp" -> args.get(1) + args.get(0) * (args.get(2) - args.get(1));
+            case "sin" -> Math.sin(args[0]);
+            case "cos" -> Math.cos(args[0]);
+            case "tan" -> Math.tan(args[0]);
+            case "asin" -> Math.asin(args[0]);
+            case "acos" -> Math.acos(args[0]);
+            case "atan" -> Math.atan(args[0]);
+            case "atan2" -> Math.atan2(args[0], args[1]);
+            case "sqrt" -> Math.sqrt(Math.max(0.0D, args[0]));
+            case "abs" -> Math.abs(args[0]);
+            case "frac" -> args[0] - Math.floor(args[0]);
+            case "log" -> Math.log(args[0]);
+            case "signum" -> Math.signum(args[0]);
+            case "floor" -> Math.floor(args[0]);
+            case "ceil" -> Math.ceil(args[0]);
+            case "round" -> Math.round(args[0]);
+            case "exp" -> Math.exp(args[0]);
+            case "pow" -> Math.pow(args[0], args[1]);
+            case "fmod" -> fmod(args[0], args[1]);
+            case "lerp" -> args[1] + args[0] * (args[2] - args[1]);
             case "keyframe" -> keyframe(args, false);
             case "keyframeloop" -> keyframe(args, true);
-            case "catmullrom" -> catmullRom(args.get(0), args.get(1), args.get(2), args.get(3), args.get(4));
-            case "hermite" -> hermite(args.get(0), args.get(1), args.get(2), args.get(3), args.get(4));
-            case "cubicbezier" -> cubicBezier(args.get(0), args.get(1), args.get(2), args.get(3), args.get(4));
-            case "quadbezier" -> quadBezier(args.get(0), args.get(1), args.get(2), args.get(3));
+            case "catmullrom" -> catmullRom(args[0], args[1], args[2], args[3], args[4]);
+            case "hermite" -> hermite(args[0], args[1], args[2], args[3], args[4]);
+            case "cubicbezier" -> cubicBezier(args[0], args[1], args[2], args[3], args[4]);
+            case "quadbezier" -> quadBezier(args[0], args[1], args[2], args[3]);
             case "easeinexpo" -> ease(args, CemAnimationProgram::easeInExpo);
             case "easeinquad" -> ease(args, CemAnimationProgram::easeInQuad);
             case "easeinquart" -> ease(args, CemAnimationProgram::easeInQuart);
@@ -617,22 +723,22 @@ public final class CemAnimationProgram {
             case "easeinoutcirc" -> ease(args, CemAnimationProgram::easeInOutCirc);
             case "easeinoutelastic" -> ease(args, CemAnimationProgram::easeInOutElastic);
             case "easeinoutback" -> ease(args, CemAnimationProgram::easeInOutBack);
-            case "min" -> args.stream().mapToDouble(Double::doubleValue).min().orElse(0.0D);
-            case "max" -> args.stream().mapToDouble(Double::doubleValue).max().orElse(0.0D);
-            case "clamp" -> Math.max(args.get(1), Math.min(args.get(2), args.get(0)));
-            case "torad" -> Math.toRadians(args.get(0));
-            case "todeg" -> Math.toDegrees(args.get(0));
-            case "wrapdeg" -> Math.toDegrees(wrapRad(Math.toRadians(args.get(0))));
-            case "wraprad" -> wrapRad(args.get(0));
-            case "degdiff" -> Math.toDegrees(wrapRad(Math.toRadians(args.get(0) - args.get(1))));
-            case "raddiff" -> wrapRad(args.get(0) - args.get(1));
-            case "random" -> random(args.isEmpty() ? context.value("frame_counter") : args.get(0));
-            case "between" -> bool(args.get(0) >= args.get(1) && args.get(0) <= args.get(2));
+            case "min" -> extreme(args, true);
+            case "max" -> extreme(args, false);
+            case "clamp" -> Math.max(args[1], Math.min(args[2], args[0]));
+            case "torad" -> Math.toRadians(args[0]);
+            case "todeg" -> Math.toDegrees(args[0]);
+            case "wrapdeg" -> Math.toDegrees(wrapRad(Math.toRadians(args[0])));
+            case "wraprad" -> wrapRad(args[0]);
+            case "degdiff" -> Math.toDegrees(wrapRad(Math.toRadians(args[0] - args[1])));
+            case "raddiff" -> wrapRad(args[0] - args[1]);
+            case "random" -> random((args.length == 0) ? context.value("frame_counter") : args[0]);
+            case "between" -> bool(args[0] >= args[1] && args[0] <= args[2]);
             case "in" -> bool(in(args));
-            case "equals" -> bool(args.size() >= 2 && Math.abs(args.get(0) - args.get(1)) < 0.00001D);
+            case "equals" -> bool(args.length >= 2 && Math.abs(args[0] - args[1]) < 0.00001D);
             case "if" -> conditional(args);
-            case "print", "printb" -> args.isEmpty() ? 0.0D : args.get(args.size() - 1);
-            case "catch" -> args.isEmpty() ? 0.0D : (Double.isFinite(args.get(0)) ? args.get(0) : args.size() > 1 ? args.get(1) : 0.0D);
+            case "print", "printb" -> (args.length == 0) ? 0.0D : args[args.length - 1];
+            case "catch" -> (args.length == 0) ? 0.0D : (Double.isFinite(args[0]) ? args[0] : args.length > 1 ? args[1] : 0.0D);
             case "nbt" -> 0.0D;
             default -> 0.0D;
         };
@@ -664,7 +770,13 @@ public final class CemAnimationProgram {
         return value -> matchesNbtExpected(value, expected);
     }
 
-    private static Optional<NbtValue> livePlayerNbtValue(String path, LivingEntity entity) {
+    private static Optional<NbtValue> liveNbtValue(String path, LivingEntity entity) {
+        // Fresh Animations checks SleepingX even on awake villagers. Saving the whole
+        // entity for this also serializes trades, brains and every Forge capability.
+        if (isSleepingCoordinate(path)) {
+            Tag coordinate = sleepingCoordinate(path, entity.getSleepingPos());
+            return Optional.of(coordinate == null ? NbtValue.MISSING : NbtValue.ofTag(coordinate));
+        }
         if (!(entity instanceof Player player)) return Optional.empty();
         String normalized = path.toLowerCase(Locale.ROOT);
         if ("abilities.flying".equals(normalized)) {
@@ -675,6 +787,22 @@ public final class CemAnimationProgram {
             return Optional.of(NbtValue.ofString(BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()).toString()));
         }
         return Optional.empty();
+    }
+
+    private static boolean isSleepingCoordinate(String path) {
+        return "SleepingX".equals(path) || "SleepingY".equals(path) || "SleepingZ".equals(path);
+    }
+
+    /** Same optional integer tags that LivingEntity writes, without an entity save. */
+    static Tag sleepingCoordinate(String path, Optional<BlockPos> sleepingPos) {
+        if (sleepingPos.isEmpty()) return null;
+        BlockPos pos = sleepingPos.get();
+        return switch (path) {
+            case "SleepingX" -> IntTag.valueOf(pos.getX());
+            case "SleepingY" -> IntTag.valueOf(pos.getY());
+            case "SleepingZ" -> IntTag.valueOf(pos.getZ());
+            default -> null;
+        };
     }
 
     private static Tag findNbtPath(CompoundTag root, String path) {
@@ -764,18 +892,18 @@ public final class CemAnimationProgram {
         }
     }
 
-    private static double keyframe(List<Double> args, boolean loop) {
-        if (args.size() < 2) return 0.0D;
-        int keyframes = args.size() - 1;
-        double frame = args.get(0);
-        if (keyframes == 1) return args.get(1);
+    private static double keyframe(double[] args, boolean loop) {
+        if (args.length < 2) return 0.0D;
+        int keyframes = args.length - 1;
+        double frame = args[0];
+        if (keyframes == 1) return args[1];
 
         if (loop) {
             frame = fmod(frame, keyframes);
         } else if (frame <= 0.0D) {
-            return args.get(1);
+            return args[1];
         } else if (frame >= keyframes - 1) {
-            return args.get(args.size() - 1);
+            return args[args.length - 1];
         }
 
         int index = Mth.clamp((int) Math.floor(frame), 0, keyframes - 1);
@@ -785,10 +913,10 @@ public final class CemAnimationProgram {
         double t = frame - Math.floor(frame);
         return catmullRom(
                 t,
-                args.get(index + 1),
-                args.get(next + 1),
-                args.get(previous + 1),
-                args.get(afterNext + 1));
+                args[index + 1],
+                args[next + 1],
+                args[previous + 1],
+                args[afterNext + 1]);
     }
 
     private static int fmodIndex(int value, int divisor) {
@@ -838,8 +966,12 @@ public final class CemAnimationProgram {
         return x + t * (y - x);
     }
 
-    private static double ease(List<Double> args, Easing easing) {
-        return lerp(easing.value(Mth.clamp(args.get(0), 0.0D, 1.0D)), args.get(1), args.get(2));
+    private static double ease(double[] args, Easing easing) {
+        return ease(args[0], args[1], args[2], easing);
+    }
+
+    private static double ease(double t, double start, double end, Easing easing) {
+        return lerp(easing.value(Mth.clamp(t, 0.0D, 1.0D)), start, end);
     }
 
     private static double easeInExpo(double t) {
@@ -1011,18 +1143,18 @@ public final class CemAnimationProgram {
         return result;
     }
 
-    private static double conditional(List<Double> args) {
-        for (int i = 0; i + 1 < args.size(); i += 2) {
-            if (truthy(args.get(i))) return args.get(i + 1);
+    private static double conditional(double[] args) {
+        for (int i = 0; i + 1 < args.length; i += 2) {
+            if (truthy(args[i])) return args[i + 1];
         }
-        return args.size() % 2 == 1 ? args.get(args.size() - 1) : 0.0D;
+        return args.length % 2 == 1 ? args[args.length - 1] : 0.0D;
     }
 
-    private static boolean in(List<Double> args) {
-        if (args.isEmpty()) return false;
-        double value = args.get(0);
-        for (int i = 1; i < args.size(); i++) {
-            if (Math.abs(value - args.get(i)) < 0.00001D) return true;
+    private static boolean in(double[] args) {
+        if ((args.length == 0)) return false;
+        double value = args[0];
+        for (int i = 1; i < args.length; i++) {
+            if (Math.abs(value - args[i]) < 0.00001D) return true;
         }
         return false;
     }

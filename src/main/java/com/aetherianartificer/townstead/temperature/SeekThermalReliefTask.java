@@ -14,12 +14,17 @@ import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 
-/** Takes a relief break for accumulated discomfort or a core crisis, including during work. */
+/**
+ * Takes a relief break for Cold/Hot or worse, including during work, and yields once
+ * the body is comfortable or mildly affected and safely recovering. Freezing water is left at once.
+ */
 public class SeekThermalReliefTask extends Behavior<VillagerEntityMCA> {
     private static final String SEARCH_CADENCE_KEY = "thermal_relief";
     private static final float WALK_SPEED = 0.6f;
     private static final int CLOSE_ENOUGH = 0;
-    private static final int MAX_DURATION = 2400;
+    // Recovering from a cold or hot body takes minutes; the break must allow it.
+    private static final int MAX_DURATION = 9600;
+    private static final float FREEZING_WATER_LOAD = -12f;
     private static final int REFRACTORY_TICKS = 600;
     private static final int SEARCH_RETRY_TICKS = 600;
     private static final int REASSERT_TICKS = 40;
@@ -29,6 +34,11 @@ public class SeekThermalReliefTask extends Behavior<VillagerEntityMCA> {
     private boolean arrived;
     private boolean seekingCold;
     private long lastReassert;
+    private long lastReview, progressAt;
+    private float progressBody;
+    private final java.util.Set<BlockPos> failed = new java.util.HashSet<>();
+    private double closestDistance;
+    private long walkingProgressAt;
 
     public SeekThermalReliefTask() {
         super(ImmutableMap.of(
@@ -43,33 +53,41 @@ public class SeekThermalReliefTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
-        if (!enabled() || villager.isSleeping() || villager.isBaby()) return false;
-        // Comfort drives early breaks; core crisis can always trigger one.
+        if (!enabled() || ThermalCare.interrupted(villager) || villager.isBaby()
+                || !ThermalCare.available(villager, "relief")) return false;
         TownsteadVillager.Needs needs = TownsteadVillagers.get(villager).needs();
         if (!needs.hasBodyTemp()) return false;
-        TemperatureData.Tier tier = TemperatureData.Tier.values()[Math.min(6, Math.max(0, needs.thermalTier()))];
         TemperatureData.Tier core = TemperatureData.Tier.values()[needs.coreThermalTier()];
-        if (!core.isCrisis() && !ThermalComfort.needsBreak(needs.comfortLoad(),
-                needs.thermalStrainSeconds(), TemperatureSettings.get().comfortBreakSeconds(), villager.isInWater())) return false;
+        boolean freezingWater = villager.isInWater() && needs.comfortLoad() <= FREEZING_WATER_LOAD;
+        if (core == TemperatureData.Tier.COMFORTABLE && !freezingWater) return false;
         if (villager.getLastHurtByMob() != null || villager.getVillagerBrain().isPanicking()) return false;
         if (!VillagerSearchCadence.isDue(level, villager, SEARCH_CADENCE_KEY)) return false;
         // Gene lookups only once the cheap checks pass and the search cadence is due.
-        if (NeedSuppression.suppressesTemperature(villager)) return false;
+        if (!ThermalExposure.enabled(villager)) return false;
         profile = ThermalProfile.of(villager);
+        if (!freezingWater && !ThermalCare.needsBreak(villager,
+                ThermalExposure.at(level, villager, villager.blockPosition(), ThermalExposure.activity(villager)))) return false;
 
-        seekingCold = core.isCrisis() ? core.isCold() : tier.isCold();
-        target = ThermalReliefTargets.find(level, villager, seekingCold, profile.ectotherm());
+        seekingCold = core == TemperatureData.Tier.COMFORTABLE ? freezingWater : core.isCold();
+        failed.clear();
+        target = ThermalReliefTargets.find(level, villager, seekingCold, profile);
         if (target == null) {
             VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, SEARCH_RETRY_TICKS, 200);
-            needs.setReliefDebug("none_found");
+            needs.setReliefDebug("no_effective_relief");
             return false;
         }
-        return true;
+        return com.aetherianartificer.townstead.hunger.ConsumableTargetClaims.tryClaimPos(level, villager.getUUID(),
+                ThermalReliefTargets.CLAIM, target.pos(), level.getGameTime() + 200);
     }
 
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         arrived = false;
+        closestDistance = Double.MAX_VALUE;
+        walkingProgressAt = gameTime;
+        lastReview = progressAt = gameTime;
+        progressBody = Math.abs(BodyHeat.deviation(TownsteadVillagers.get(villager).needs().bodyTempTenths(), profile));
+        ThermalCare.hold(villager, "relief");
         lastReassert = gameTime - REASSERT_TICKS;
         TownsteadVillager.Needs needs = TownsteadVillagers.get(villager).needs();
         needs.setSeekingRelief(true);
@@ -80,55 +98,96 @@ public class SeekThermalReliefTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (target == null) return;
-        BlockPos pos = target.pos();
-        double distSq = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-        if (!arrived && !villager.isInWater() && distSq <= (CLOSE_ENOUGH + 1) * (CLOSE_ENOUGH + 1)) {
-            arrived = true;
-            villager.getNavigation().stop();
-            if ("dry_land".equals(target.description())) {
-                ThermalReliefTargets.Target next = ThermalReliefTargets.find(level, villager, true, profile.ectotherm());
-                if (next != null && !next.pos().equals(pos)) {
-                    target = next;
-                    arrived = false;
-                    TownsteadVillagers.get(villager).needs().setReliefDebug(next.description());
-                    walk(villager);
-                    return;
-                }
+        ThermalCare.hold(villager, "relief");
+        com.aetherianartificer.townstead.hunger.ConsumableTargetClaims.tryClaimPos(level, villager.getUUID(),
+                ThermalReliefTargets.CLAIM, target.pos(), gameTime + 200);
+        if (gameTime - lastReview >= 100) {
+            lastReview = gameTime;
+            float deviation = Math.abs(BodyHeat.deviation(TownsteadVillagers.get(villager).needs().bodyTempTenths(), profile));
+            if (deviation < progressBody - .04f) { progressBody = deviation; progressAt = gameTime; }
+            boolean stalled = arrived && gameTime - progressAt > 900 || !arrived && gameTime - walkingProgressAt > 600;
+            boolean invalid = !"dry_land".equals(target.description()) && !"safer_refuge".equals(target.description())
+                    && !ThermalReliefTargets.useful(level, villager, target.pos());
+            if (stalled || invalid) {
+                failed.add(target.pos());
+                replan(level, villager, gameTime);
+                if (target == null) return;
             }
         }
+        BlockPos pos = target.pos();
+        double distSq = villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+        boolean atTarget = villager.blockPosition().equals(pos) && !villager.isInWater();
+        if (distSq < closestDistance - 1) { closestDistance = distSq; walkingProgressAt = gameTime; }
+        if (!arrived && atTarget) {
+            arrived = true;
+            progressAt = gameTime;
+            villager.getNavigation().stop();
+            if ("dry_land".equals(target.description())) {
+                replan(level, villager, gameTime);
+                return;
+            }
+        }
+        // Ordinary idle/work behaviors can replace WALK_TARGET every tick. Hold the actual
+        // evaluated tile while recovering instead of allowing a two-block wander out of its heat.
+        if (arrived && atTarget) {
+            villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+            villager.getNavigation().stop();
+        } else walk(villager);
         if (gameTime - lastReassert >= REASSERT_TICKS) {
             lastReassert = gameTime;
-            if (!arrived || distSq > (CLOSE_ENOUGH + 2) * (CLOSE_ENOUGH + 2)) walk(villager);
-            else villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET,
+            villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET,
                     new net.minecraft.world.entity.ai.behavior.BlockPosTracker(pos));
         }
     }
 
     @Override
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!enabled() || target == null || villager.isSleeping() || !level.isLoaded(target.pos())
+        if (!"relief".equals(ThermalCare.owner(villager))) return false;
+        if (!enabled() || target == null || ThermalCare.interrupted(villager) || !level.isLoaded(target.pos())
                 || !level.getFluidState(target.pos()).isEmpty()) return false;
         if (villager.getLastHurtByMob() != null || villager.getVillagerBrain().isPanicking()) return false;
+        if (!ThermalExposure.enabled(villager)) return false;
         TownsteadVillager.Needs needs = TownsteadVillagers.get(villager).needs();
-        if (seekingCold ? needs.comfortLoad() >= 6 : needs.comfortLoad() <= -6) return false;
-        return !NeedSuppression.suppressesTemperature(villager)
-                && (!ThermalComfort.recovered(needs.comfortLoad(), needs.thermalStrainSeconds(),
-                        TemperatureSettings.get().comfortBreakSeconds()) || !profile.comfortable(needs.bodyTempTenths()));
+        if (villager.isInWater() && seekingCold) return true;
+        return !recoveryComplete(needs);
+    }
+
+    private boolean recoveryComplete(TownsteadVillager.Needs needs) {
+        return BodyHeat.reliefComplete(TemperatureData.celsius(needs.bodyTempTenths()),
+                BodyHeat.target(needs.comfortLoad(), TemperatureSettings.get().comfortZone(), profile, false), profile);
     }
 
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         TownsteadVillager.Needs needs = TownsteadVillagers.get(villager).needs();
-        needs.setSeekingRelief(false);
-        needs.setReliefDebug("none");
+        boolean ownsWalk = "relief".equals(ThermalCare.owner(villager));
+        ThermalCare.release(villager, "relief");
+        if (target != null) com.aetherianartificer.townstead.hunger.ConsumableTargetClaims.releasePos(level,
+                villager.getUUID(), ThermalReliefTargets.CLAIM, target.pos());
+        if (recoveryComplete(needs)) needs.setReliefDebug("recovered");
         target = null;
         arrived = false;
-        villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+        if (ownsWalk) villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
         VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, REFRACTORY_TICKS, 40);
     }
 
     private void walk(VillagerEntityMCA villager) {
         BehaviorUtils.setWalkAndLookTargetMemories(villager, target.pos(), WALK_SPEED, CLOSE_ENOUGH);
+    }
+
+    private void replan(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (target != null) com.aetherianartificer.townstead.hunger.ConsumableTargetClaims.releasePos(level,
+                villager.getUUID(), ThermalReliefTargets.CLAIM, target.pos());
+        target = ThermalReliefTargets.find(level, villager, seekingCold, profile, failed);
+        arrived = false;
+        closestDistance = Double.MAX_VALUE;
+        walkingProgressAt = gameTime;
+        progressAt = gameTime;
+        progressBody = Math.abs(BodyHeat.deviation(TownsteadVillagers.get(villager).needs().bodyTempTenths(), profile));
+        if (target != null && !com.aetherianartificer.townstead.hunger.ConsumableTargetClaims.tryClaimPos(level,
+                villager.getUUID(), ThermalReliefTargets.CLAIM, target.pos(), gameTime + 200)) target = null;
+        TownsteadVillagers.get(villager).needs().setReliefDebug(target == null ? "no_effective_relief" : target.description());
+        if (target != null) walk(villager);
     }
 
 }

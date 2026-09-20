@@ -1,0 +1,7 @@
+{
+  "schema":"townstead:object_set/v1",
+  "anchor":"minecraft:hay_block",
+  "radius":3,
+  "requires":{"minecraft:hay_block":2},
+  "icon":"minecraft:hay_block"
+}

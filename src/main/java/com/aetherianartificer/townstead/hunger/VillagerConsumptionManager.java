@@ -265,7 +265,7 @@ public final class VillagerConsumptionManager {
         boolean changed = applyFoodBenefits(recipient, stack, recipientNeeds, attributes,
                 statuses, teleport);
         changed |= applyThirstBenefits(recipient, stack, recipientNeeds, attributes, statuses);
-        if (statuses && configured.warmthTenths() == 0) {
+        if (statuses && !configured.thermal()) {
             com.aetherianartificer.townstead.temperature.ThermalConsumables.apply(recipient, stack);
         }
         changed |= recipientNeeds.thirst() != beforeThirst || recipientNeeds.quenched() != beforeQuenched
@@ -291,7 +291,7 @@ public final class VillagerConsumptionManager {
         if (villager.level().isClientSide()) return;
         if (PENDING.containsKey(villager.getId())) return;
         // Native temperature handlers are player-only, even when MCA finishes the food itself.
-        if (Consumables.projection(stack, ConsumptionPolicy.Consumer.VILLAGER).warmthTenths() == 0) {
+        if (!Consumables.projection(stack, ConsumptionPolicy.Consumer.VILLAGER).thermal()) {
             com.aetherianartificer.townstead.temperature.ThermalConsumables.apply(villager, stack);
         }
         if (!TownsteadConfig.isVillagerHungerEnabled()) return;

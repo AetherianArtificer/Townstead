@@ -103,6 +103,22 @@ public final class NearbyStorageIndex {
     }
 
     record Snapshot(List<Entry> entries, long expiresAt) {
+        @Nullable NearbyItemSources.ContainerSlot revalidate(VillagerEntityMCA villager,
+                NearbyItemSources.ContainerSlot expected, Predicate<ItemStack> matcher) {
+            for (Entry entry : entries) {
+                if (!entry.pos().equals(expected.pos()) || roleRank(entry.roles(), StorageUse.INGREDIENT) == Integer.MAX_VALUE
+                        || !com.aetherianartificer.townstead.storage.RoomOwnershipAccess
+                        .mayAccess((ServerLevel) villager.level(), villager, entry.pos())) continue;
+                for (SlotView slot : entry.allSlots()) {
+                    if (slot.slot() == expected.slot() && slot.itemHandler() == expected.isItemHandler()
+                            && java.util.Objects.equals(slot.side(), expected.side()) && matcher.test(slot.stack()))
+                        return new NearbyItemSources.ContainerSlot(slot.pos(), slot.container(), slot.itemHandler(),
+                                slot.slot(), expected.score(), expected.distanceSqr(), slot.side());
+                }
+            }
+            return null;
+        }
+
         boolean validAt(long gameTime) {
             return gameTime <= expiresAt;
         }

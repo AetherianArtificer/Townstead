@@ -18,16 +18,20 @@ public final class ClothingSelectors {
                                  CultureClothing culture, List<ClothingEntry> fitted) {
         if (selector == null) return false;
         if (selector.skin() != null) return false;
-        if (selector.set() != null) return entry != null && ClothingDefs.members(selector.set()).contains(entry);
+        if (selector.set() != null) return contains(ClothingDefs.members(selector.set()), entry);
         if (selector.cultureSets()) {
             if (entry == null || culture == null) return false;
             for (ResourceLocation setId : culture.sets()) {
-                if (ClothingDefs.members(setId).contains(entry)) return true;
+                if (contains(ClothingDefs.members(setId), entry)) return true;
             }
             return false;
         }
-        if (selector.bodySets()) return entry != null && fitted != null && fitted.contains(entry);
+        if (selector.bodySets()) return contains(fitted, entry);
         if (selector.query() == null || selector.query().isEmpty()) return true;
         return entry != null && selector.query().test(entry);
+    }
+
+    private static boolean contains(List<ClothingEntry> entries, @Nullable ClothingEntry entry) {
+        return entry != null && entries != null && entries.stream().anyMatch(e -> e.id().equals(entry.id()));
     }
 }

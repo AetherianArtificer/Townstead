@@ -31,11 +31,18 @@ public final class Cultures {
     public static final String ANY = "any";
 
     private static volatile Map<ResourceLocation, Culture> authored = Map.of();
+    private static volatile Map<ResourceLocation, ResourceLocation> legacyIds = Map.of();
 
     private Cultures() {}
 
     public static void replace(Map<ResourceLocation, Culture> cultures) {
+        replace(cultures, Map.of());
+    }
+
+    public static void replace(Map<ResourceLocation, Culture> cultures,
+                               Map<ResourceLocation, ResourceLocation> aliases) {
         authored = cultures == null ? Map.of() : Map.copyOf(cultures);
+        legacyIds = aliases == null ? Map.of() : Map.copyOf(aliases);
     }
 
     /**
@@ -44,7 +51,17 @@ public final class Cultures {
      * culture is where beliefs will live.
      */
     public static @Nullable Culture get(@Nullable ResourceLocation id) {
-        return id == null ? null : authored.get(id);
+        if (id == null) return null;
+        Culture direct = authored.get(id);
+        if (direct != null) return direct;
+        ResourceLocation canonical = legacyIds.get(id);
+        return canonical == null ? null : authored.get(canonical);
+    }
+
+    /** Canonical id for a live or legacy culture reference, or the input when unresolved. */
+    public static @Nullable ResourceLocation canonicalId(@Nullable ResourceLocation id) {
+        if (id == null || authored.containsKey(id)) return id;
+        return legacyIds.getOrDefault(id, id);
     }
 
     public static @Nullable Culture get(@Nullable String id) {

@@ -82,9 +82,12 @@ public class VillagerInventoryScreen extends AbstractContainerScreen<VillagerInv
         if (hoveredSlot == null || hoveredSlot.hasItem()) return;
         if (hoveredSlot instanceof CurioSlot curio) {
             graphics.renderTooltip(font, slotName(curio.slotId()), mouseX, mouseY);
+        } else if (hoveredSlot instanceof VillagerInventoryMenu.ArmorSlot) {
+            graphics.renderTooltip(font, font.split(
+                    Component.translatable("gui.townstead.villager_inventory.armor_assignment"), 220), mouseX, mouseY);
         } else if (hoveredSlot instanceof VillagerInventoryMenu.LockedSlot locked && locked.mirrorsEquipment()) {
             graphics.renderTooltip(font,
-                    Component.translatable("gui.townstead.villager_inventory.equipment_managed"), mouseX, mouseY);
+                    Component.translatable("gui.townstead.villager_inventory.offhand_managed"), mouseX, mouseY);
         }
     }
 

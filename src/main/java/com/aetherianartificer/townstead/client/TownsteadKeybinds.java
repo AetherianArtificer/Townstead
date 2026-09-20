@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.client;
 
 import com.aetherianartificer.townstead.client.gui.dialogue.RpgDialogueScreen;
+import com.aetherianartificer.townstead.client.gui.quest.QuestLedgerScreen;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.VillagerLike;
@@ -64,6 +65,13 @@ public final class TownsteadKeybinds {
      * sixteen unbound entries in the Controls screen to serve a layer most players will drive with
      * the dial anyway.</p>
      */
+    public static final KeyMapping QUEST_LEDGER = new KeyMapping(
+            "townstead.key.quest_ledger",
+            InputConstants.Type.KEYSYM,
+            InputConstants.KEY_L,
+            "townstead.key.category"
+    );
+
     public static final int ABILITY_KEYS = 8;
     public static final KeyMapping[] ABILITIES = new KeyMapping[ABILITY_KEYS];
 
@@ -167,6 +175,9 @@ public final class TownsteadKeybinds {
         // Releases any borrowed binding whose hold has run out, before anything presses a new one.
         com.aetherianartificer.townstead.client.input.SyntheticKey.tick();
         tickWheel(mc);
+        while (QUEST_LEDGER.consumeClick()) {
+            if (mc.player != null && mc.screen == null) mc.setScreen(new QuestLedgerScreen());
+        }
         while (TALK.consumeClick()) {
             if (mc.player == null || mc.screen != null) continue;
             HitResult hit = mc.hitResult;
