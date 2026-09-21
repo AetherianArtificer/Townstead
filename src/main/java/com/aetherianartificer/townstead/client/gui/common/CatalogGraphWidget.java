@@ -66,7 +66,7 @@ public final class CatalogGraphWidget extends AbstractWidget {
             for (var edge : sector.edges()) g.fill(edge.x1(), edge.y1(), edge.x2(), edge.y2() + 1, 0xFF879B93);
             for (var node : sector.nodes()) {
                 int x = node.x(), y = node.y();
-                if (camera.screenY(y + 54) < 0 || camera.screenY(y) > height
+                if (camera.screenY(y + 54) < 0 || camera.screenY(y - 12) > height
                         || camera.screenX(x + 45) < 0 || camera.screenX(x - 20) > width) continue;
                 var entry = node.entry();
                 boolean chosen = entry.id().equals(selection.get());
@@ -88,7 +88,7 @@ public final class CatalogGraphWidget extends AbstractWidget {
                 var display = displays.get(entry.id());
                 if (display != null) display.drawIcon(g, x + 5, y + 5);
                 if (entry.hangout()) CatalogBadgeRenderer.hangout(g, x + 19, y - 5);
-                if (entry.pinned()) g.drawString(font, "◆", x + 20, y + 20, 0xFFD778, false);
+                if (entry.pinned()) CatalogBadgeRenderer.pin(g, x - 9, y - 10);
                 if (entry.tier() > 0) {
                     String tier = CatalogGraphLayout.roman(entry.tier());
                     g.drawCenteredString(font, tier, x + 13, y - 12, 0xD6DFC9);
@@ -116,6 +116,7 @@ public final class CatalogGraphWidget extends AbstractWidget {
             var display = displays.get(hovered.entry().id());
             if (display != null && !display.modName().isEmpty()) tip.add(Component.literal(display.modName()));
             if (hovered.entry().hangout()) tip.add(Component.translatable("townstead.catalog.hangout_hint"));
+            if (hovered.entry().pinned()) tip.add(Component.translatable("townstead.catalog.filter.pinned"));
             if (hovered.entry().recognized()) tip.add(Component.translatable("townstead.catalog.recognized"));
             if (!hovered.match()) tip.add(Component.translatable("townstead.catalog.context"));
             g.renderComponentTooltip(font, tip, mx, my);

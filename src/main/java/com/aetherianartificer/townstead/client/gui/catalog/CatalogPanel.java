@@ -255,7 +255,7 @@ public final class CatalogPanel {
         int hangoutX = x + 9;
         CatalogBadgeRenderer.hangoutLabel(g, font, tr("hangout").getString(), hangoutX, legendY, 0xADBEAF);
         int pinX = hangoutX + 28 + font.width(tr("hangout"));
-        if (tab == 0) g.drawString(font, "◆ " + tr("filter.pinned").getString(), pinX, legendY, 0xDACB9F, false);
+        if (tab == 0) CatalogBadgeRenderer.pinLabel(g, font, tr("filter.pinned").getString(), pinX, legendY, 0xDACB9F);
         String help = tr("navigation_hint").getString();
         g.drawString(font, help, x + w - 9 - font.width(help), legendY, 0xADBEAF, false);
         updateActions();
