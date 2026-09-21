@@ -172,10 +172,10 @@ public abstract class ReportBuildingMessageMixin {
                     if ("FULL_SCAN".equals(actName)) {
                         OptionalBuildingRecognition.RefreshResult refreshed =
                                 OptionalBuildingRecognition.reconcileVillage(level, v);
-                        int objectSets = com.aetherianartificer.townstead.objectset.ObjectSetRecognizer
+                        int decorations = com.aetherianartificer.townstead.decoration.DecorationRecognizer
                                 .reconcileVillage(level, v);
-                        TOWNSTEAD$LOG.info("Village refresh imported {} open-air buildings, refreshed {}, and imported {} object sets",
-                                refreshed.created(), refreshed.refreshed(), objectSets);
+                        TOWNSTEAD$LOG.info("Village refresh imported {} open-air buildings, refreshed {}, and imported {} decorations",
+                                refreshed.created(), refreshed.refreshed(), decorations);
                         var catalog = com.aetherianartificer.townstead.client.catalog.CatalogSyncS2CPayload
                                 .snapshot(level, v);
                         //? if neoforge {

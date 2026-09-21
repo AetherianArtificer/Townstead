@@ -17,6 +17,7 @@ import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -260,8 +261,14 @@ public final class QuestLedgerScreen extends Screen {
         openButton.active = has && selected.capabilities().contains(QuestCapability.OPEN_SOURCE);
         trackButton.setMessage(Component.translatable(selected != null && selected.tracked()
                 ? "townstead.quest_ledger.untrack" : "townstead.quest_ledger.track"));
+        trackButton.setTooltip(has && !trackButton.active ? Tooltip.create(untrackable(selected)) : null);
         pinButton.setMessage(Component.translatable(selected != null && selected.pinned()
                 ? "townstead.quest_ledger.unpin" : "townstead.quest_ledger.pin"));
+    }
+
+    /** Why a source's quests carry no Track: Bountiful and the advancement tree have no tracker. */
+    private static Component untrackable(QuestEntry quest) {
+        return Component.translatable("townstead.quest_ledger.track.unsupported", quest.providerName());
     }
 
     private void trackSelected() {
@@ -446,6 +453,13 @@ public final class QuestLedgerScreen extends Screen {
         if (!selected.metadata().isBlank()) {
             for (FormattedCharSequence line : font.split(Component.literal(selected.metadata()), contentW)) {
                 g.drawString(font, line, x, y, 0xFF66513B, false);
+                y += 10;
+            }
+            y += 3;
+        }
+        if (!selected.capabilities().contains(QuestCapability.TRACK)) {
+            for (FormattedCharSequence line : font.split(untrackable(selected), contentW)) {
+                g.drawString(font, line, x, y, 0xFF8A6A4A, false);
                 y += 10;
             }
             y += 3;

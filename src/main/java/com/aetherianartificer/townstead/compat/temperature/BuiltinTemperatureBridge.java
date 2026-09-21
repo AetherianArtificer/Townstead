@@ -73,7 +73,7 @@ public final class BuiltinTemperatureBridge implements AmbientTemperatureBridge 
     }
 
     private static float structureZone(ServerLevel level, BlockPos pos) {
-        return com.aetherianartificer.townstead.objectset.ObjectSets.thermalZone(level, pos);
+        return com.aetherianartificer.townstead.decoration.Decorations.thermalZone(level, pos);
     }
 
     private static float seasonOffset(ServerLevel level, TemperatureSettings s) {

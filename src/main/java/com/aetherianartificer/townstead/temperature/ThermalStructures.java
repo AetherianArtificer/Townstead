@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * A {@code thermal} declaration: what something warms or cools around it. Object sets carry one
+ * A {@code thermal} declaration: what something warms or cools around it. Decorations carry one
  * (a hearth, a cool spot); a building type may carry one too for a room that is cool by nature,
  * like a cask cellar, in which case only the offset applies to that room.
  * <pre>{ "thermal": { "kind": "warming", "offset": 10, "radius": 6 } }</pre>

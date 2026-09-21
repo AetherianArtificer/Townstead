@@ -7,8 +7,8 @@ import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import com.aetherianartificer.townstead.dialogue.contextual.DialogueDirector;
 import com.aetherianartificer.townstead.expression.ExpressionService;
 import com.aetherianartificer.townstead.needs.Amenities;
-import com.aetherianartificer.townstead.objectset.ObjectSetInstance;
-import com.aetherianartificer.townstead.objectset.ObjectSetSavedData;
+import com.aetherianartificer.townstead.decoration.DecorationInstance;
+import com.aetherianartificer.townstead.decoration.DecorationSavedData;
 import com.aetherianartificer.townstead.performance.PerformanceHandle;
 import com.aetherianartificer.townstead.performance.PerformanceProviders;
 import com.aetherianartificer.townstead.performance.PerformanceRequest;
@@ -738,15 +738,15 @@ public final class HangoutEngine {
                 if (!spots.isEmpty()) out.add(new VenueCandidate(venue, village, building.getId(),
                         center.immutable(), spots));
             }
-            if (!venue.objectSets().isEmpty()) {
-                for (ObjectSetInstance set : ObjectSetSavedData.get(level)
+            if (!venue.decorations().isEmpty()) {
+                for (DecorationInstance set : DecorationSavedData.get(level)
                         .within(villager.blockPosition(), radius)) {
-                    if (!venue.objectSets().contains(set.setId())) continue;
-                    // Object-set venue spots belong to the assembly as a whole. Scanning every
+                    if (!venue.decorations().contains(set.decorationId())) continue;
+                    // Decoration venue spots belong to the assembly as a whole. Scanning every
                     // repeated water/member block would manufacture dozens of seats around one well.
                     List<SpotCandidate> spots = scanSpots(level, List.of(set.anchor()));
                     if (!spots.isEmpty()) out.add(new VenueCandidate(venue, village,
-                            31 * set.setId().hashCode() + set.anchor().hashCode(),
+                            31 * set.decorationId().hashCode() + set.anchor().hashCode(),
                             set.anchor(), spots));
                 }
             }

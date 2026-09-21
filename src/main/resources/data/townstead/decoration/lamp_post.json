@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:decoration/v1",
+  "radius": 4,
+  "variants": [
+    {"anchor": "minecraft:torch", "requires": {"minecraft:cut_sandstone": 1, "minecraft:terracotta": 1}},
+    {"anchor": "minecraft:wall_torch", "requires": {"minecraft:stripped_oak_wood": 1, "minecraft:oak_fence": 2}},
+    {"anchor": "minecraft:lantern", "requires": {"minecraft:spruce_fence": 4}}
+  ],
+  "icon": "minecraft:lantern"
+}

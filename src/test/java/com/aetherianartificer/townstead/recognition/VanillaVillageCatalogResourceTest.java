@@ -68,18 +68,18 @@ class VanillaVillageCatalogResourceTest {
     }
 
     @Test
-    void minorVillageAssembliesAndWaterFeaturesAreConceptualObjectSets() {
+    void minorVillageAssembliesAndWaterFeaturesAreConceptualDecorations() {
         for (String id : new String[]{"lamp_post", "well", "fountain", "haystack", "flower_bed"}) {
-            JsonObject json = resource("/data/townstead/object_set/" + id + ".json");
-            assertEquals("townstead:object_set/v1", json.get("schema").getAsString());
+            JsonObject json = resource("/data/townstead/decoration/" + id + ".json");
+            assertEquals("townstead:decoration/v1", json.get("schema").getAsString());
             assertNotNull(json.get("icon"), id);
         }
-        assertTrue(resource("/data/townstead/object_set/lamp_post.json").getAsJsonArray("variants").size() >= 3);
-        assertTrue(resource("/data/townstead/object_set/well.json").getAsJsonArray("variants").size() >= 4);
+        assertTrue(resource("/data/townstead/decoration/lamp_post.json").getAsJsonArray("variants").size() >= 3);
+        assertTrue(resource("/data/townstead/decoration/well.json").getAsJsonArray("variants").size() >= 4);
         assertEquals("townstead:well", resource("/data/townstead/hangout_venue/village_well.json")
-                .getAsJsonArray("object_sets").get(0).getAsString());
+                .getAsJsonArray("decorations").get(0).getAsString());
         assertEquals("townstead:fountain", resource("/data/townstead/hangout_venue/village_fountain.json")
-                .getAsJsonArray("object_sets").get(0).getAsString());
+                .getAsJsonArray("decorations").get(0).getAsString());
     }
 
     private static void assertIngredient(String type, String selector, int count) {

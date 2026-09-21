@@ -61,7 +61,7 @@ public final class FtbQuestsProvider implements QuestProvider {
             long numericId = ReflectiveAccess.number(ReflectiveAccess.call(quest, "getId"));
             String localId = String.format("%016X", numericId);
             ids.put(localId, numericId);
-            boolean pinned = ReflectiveAccess.bool(ReflectiveAccess.callStatic(clientType, "isQuestPinned", numericId));
+            boolean tracked = ReflectiveAccess.bool(ReflectiveAccess.callStatic(clientType, "isQuestPinned", numericId));
             QuestState state = complete ? QuestState.COMPLETE : started ? QuestState.ACTIVE : QuestState.AVAILABLE;
 
             List<QuestObjective> objectives = new ArrayList<>();
@@ -86,8 +86,8 @@ public final class FtbQuestsProvider implements QuestProvider {
             result.add(new QuestEntry(id(), displayName(), localId,
                     ReflectiveAccess.text(ReflectiveAccess.call(quest, "getTitle")), description, group,
                     "minecraft:writable_book", state, objectives, rewards,
-                    Set.of(QuestCapability.PIN, QuestCapability.OPEN_SOURCE), false, pinned, List.of(),
-                    pinned ? "Pinned in FTB Quests" : "Progress belongs to the player's FTB team"));
+                    Set.of(QuestCapability.TRACK, QuestCapability.OPEN_SOURCE), tracked, false, List.of(),
+                    tracked ? "Tracked in FTB Quests" : "Progress belongs to the player's FTB team"));
         }
         return result;
     }
@@ -108,7 +108,7 @@ public final class FtbQuestsProvider implements QuestProvider {
         Long numericId = ids.get(quest.id());
         if (numericId == null) return QuestActionResult.unavailable("FTB quest data changed; refresh the ledger.");
         if (action == QuestAction.OPEN_SOURCE) return openSource(numericId);
-        if (action == QuestAction.PIN) return toggleNativePin(numericId, quest.pinned());
+        if (action == QuestAction.TRACK) return toggleNativeTrack(numericId, quest.tracked());
         return QuestProvider.super.perform(action, quest);
     }
 
@@ -122,13 +122,17 @@ public final class FtbQuestsProvider implements QuestProvider {
         }
     }
 
-    private QuestActionResult toggleNativePin(long numericId, boolean pinned) {
+    /**
+     * FTB calls this pinning, but a pinned quest is exactly what its on-screen tracker draws, so the
+     * ledger presents it as tracking. Townstead's own pin stays a local star for list ordering.
+     */
+    private QuestActionResult toggleNativeTrack(long numericId, boolean tracked) {
         try {
             Class<?> packetType = Class.forName(PIN_PACKET, true, getClass().getClassLoader());
             Object packet = ReflectiveAccess.construct(packetType, numericId);
             try {
                 ReflectiveAccess.call(packet, "sendToServer");
-                return QuestActionResult.ok(pinned ? "Unpinned in FTB Quests." : "Pinned in FTB Quests.");
+                return QuestActionResult.ok(message(tracked));
             } catch (Throwable ignored) {
             }
             for (String sender : List.of("dev.architectury.networking.NetworkManager",
@@ -137,12 +141,16 @@ public final class FtbQuestsProvider implements QuestProvider {
                 if (type == null) continue;
                 try {
                     ReflectiveAccess.callStatic(type, "sendToServer", packet);
-                    return QuestActionResult.ok(pinned ? "Unpinned in FTB Quests." : "Pinned in FTB Quests.");
+                    return QuestActionResult.ok(message(tracked));
                 } catch (Throwable ignored) {
                 }
             }
         } catch (Throwable ignored) {
         }
-        return QuestActionResult.unavailable("Pinning is owned by this FTB Quests version.");
+        return QuestActionResult.unavailable("Tracking is owned by this FTB Quests version.");
+    }
+
+    private static String message(boolean tracked) {
+        return tracked ? "Stopped tracking in FTB Quests." : "Tracking in FTB Quests.";
     }
 }

@@ -671,7 +671,14 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
      * server's datapack reload produced. On a dedicated server the client never runs
      * {@link #apply}, so groups, overrides, theme, and spirits stay empty without this.
      */
+    private static volatile Set<String> hangoutBuildings = Set.of();
+    private static int syncRevision;
+    public static boolean isHangout(String building) { return hangoutBuildings.contains(building); }
+    public static int syncRevision() { return syncRevision; }
+
     public static void applySynced(CatalogSyncS2CPayload payload) {
+        hangoutBuildings = Set.copyOf(payload.hangoutBuildings());
+        syncRevision++;
         GROUPS.clear();
         GROUPS.addAll(payload.groups());
         MATCH_CACHE.clear();
@@ -683,7 +690,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         THEME = payload.theme();
         CLIENT_THEME_RESOURCE_MANAGER = null;
         BuildingSpiritIndex.replaceAll(payload.spirits());
-        ObjectSetCatalogClientStore.replaceAll(payload.objectSets());
+        DecorationCatalogClientStore.replaceAll(payload.decorations());
         BuildingIconResolver.invalidate();
         RequirementNameResolver.invalidate();
         com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.invalidateSignatures();

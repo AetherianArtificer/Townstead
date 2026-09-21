@@ -915,6 +915,7 @@
   "townstead.quest_ledger.provider.tabs": "Onglets des sources de quêtes",
   "townstead.quest_ledger.provider.current": "Source de quête : %s",
   "townstead.quest_ledger.track": "Suivre",
+  "townstead.quest_ledger.track.unsupported": "Il n'y a pas de suivi pour les quêtes de %s.",
   "townstead.quest_ledger.untrack": "Ne plus suivre",
   "townstead.quest_ledger.pin": "Épingler",
   "townstead.quest_ledger.unpin": "Désépingler",

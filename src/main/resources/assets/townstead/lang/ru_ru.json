@@ -915,6 +915,7 @@
   "townstead.quest_ledger.provider.tabs": "Вкладки источников заданий",
   "townstead.quest_ledger.provider.current": "Источник задания: %s",
   "townstead.quest_ledger.track": "Отслеживать",
+  "townstead.quest_ledger.track.unsupported": "Для заданий %s нет отслеживания.",
   "townstead.quest_ledger.untrack": "Не отслеживать",
   "townstead.quest_ledger.pin": "Закрепить",
   "townstead.quest_ledger.unpin": "Открепить",

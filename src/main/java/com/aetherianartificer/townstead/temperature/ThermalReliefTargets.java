@@ -63,7 +63,7 @@ public final class ThermalReliefTargets {
                 .sorted(Comparator.comparingDouble(c -> c.pos().distSqr(here))).limit(4)
                 .forEach(c -> search.approach(c.pos(), c.kind() == null ? "thermal_service" : c.kind(),
                         null));
-        for (var pos : com.aetherianartificer.townstead.objectset.ObjectSets.nearestThermal(level, here, 48, cold, 2))
+        for (var pos : com.aetherianartificer.townstead.decoration.Decorations.nearestThermal(level, here, 48, cold, 2))
             search.approach(pos, cold ? "hearth_set" : "cool_set", null);
         for (var pos : ThermalBlocks.nearest(level, here, 32, cold, 4))
             search.approach(pos, cold ? "heat_source" : "cooling_source", null);

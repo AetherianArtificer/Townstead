@@ -454,9 +454,9 @@ public final class PhenoSchemas {
                 .field(of("biome", PhenoType.TAG_OR_ID).asList())
                 .field(of("dimension", PhenoType.ID).asList())
                 .field(of("effects", PhenoType.OBJECT)).build());
-        NodeSchemas.register(NodeSchema.of("pheno:near_object_set", NodeDomain.CONDITION)
-                .doc("A recognised object set (a hearth, a cool spot) stands within radius of the entity.")
-                .field(of("set", PhenoType.ID).doc("Set definition id; omit for any set."))
+        NodeSchemas.register(NodeSchema.of("pheno:near_decoration", NodeDomain.CONDITION)
+                .doc("A recognised decoration (a hearth, a cool spot) stands within radius of the entity.")
+                .field(of("decoration", PhenoType.ID).doc("Decoration definition id; omit for any decoration."))
                 .field(of("radius", PhenoType.INT)).build());
         for (var query : java.util.Map.of(
                 "thermal_stress", "Server villager core deviation in species comfort bands: negative cold, positive hot.",

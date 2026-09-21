@@ -935,6 +935,7 @@
   "townstead.quest_ledger.provider.tabs": "任务来源标签页",
   "townstead.quest_ledger.provider.current": "任务来源：%s",
   "townstead.quest_ledger.track": "追踪",
+  "townstead.quest_ledger.track.unsupported": "%s 的任务没有追踪功能。",
   "townstead.quest_ledger.untrack": "取消追踪",
   "townstead.quest_ledger.pin": "置顶",
   "townstead.quest_ledger.unpin": "取消置顶",

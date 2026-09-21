@@ -58,12 +58,12 @@ public final class HangoutData {
 
     static HangoutVenue parseVenue(ResourceLocation id, JsonObject json) {
         TownsteadSchema.validateRequired(json, VENUE_SCHEMA);
-        requireOnly(json, "schema", "mods", "buildings", "object_sets", "capacity", "activities", "tags", "amenities",
+        requireOnly(json, "schema", "mods", "buildings", "decorations", "capacity", "activities", "tags", "amenities",
                 "staff_roles", "open_when", "admission_when");
         Set<String> buildings = strings(json, "buildings", false);
-        Set<ResourceLocation> objectSets = ids(json, "object_sets", false);
-        if (buildings.isEmpty() && objectSets.isEmpty()) {
-            throw new IllegalArgumentException("buildings or object_sets must not be empty");
+        Set<ResourceLocation> decorations = ids(json, "decorations", false);
+        if (buildings.isEmpty() && decorations.isEmpty()) {
+            throw new IllegalArgumentException("buildings or decorations must not be empty");
         }
         List<ResourceLocation> activityIds = idList(json, "activities", false);
         Condition open = condition(json, "open_when");
@@ -81,7 +81,7 @@ public final class HangoutData {
                 staffRoles.put(entry.getKey(), parsed);
             }
         }
-        return new HangoutVenue(id, buildings, objectSets, positive(json, "capacity", 8), activityIds,
+        return new HangoutVenue(id, buildings, decorations, positive(json, "capacity", 8), activityIds,
                 ids(json, "tags", false),
                 strings(json, "amenities", false), staffRoles, open,
                 condition(json, "admission_when"));

@@ -17,6 +17,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.LinkedHashSet;
 
 /**
  * Server → client: everything {@code CatalogDataLoader} produced from the datapack reload that
@@ -28,16 +30,29 @@ import java.util.Optional;
 //? if neoforge {
 public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingOverride> overrides,
                                     Theme theme, Map<String, Map<String, Integer>> spirits,
-                                    List<ObjectSetSummary> objectSets)
+                                    List<DecorationSummary> decorations, Set<String> hangoutBuildings)
         implements CustomPacketPayload {
 //?} else {
 /*public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingOverride> overrides,
                                     Theme theme, Map<String, Map<String, Integer>> spirits,
-                                    List<ObjectSetSummary> objectSets) {
+                                    List<DecorationSummary> decorations, Set<String> hangoutBuildings) {
 *///?}
 
-    public record ObjectSetSummary(ResourceLocation id, ResourceLocation icon, int radius,
-                                   int recognized, List<String> ingredients) {}
+    public record Ingredient(String selector, int count) {}
+    public record Variant(List<String> anchors, List<Ingredient> requirements) {
+        public Variant { anchors = List.copyOf(anchors); requirements = List.copyOf(requirements); }
+    }
+    public record DecorationSummary(ResourceLocation id, ResourceLocation icon, int radius,
+                                   int recognized, List<Variant> variants, boolean hangout) {
+        public DecorationSummary { variants = List.copyOf(variants); }
+    }
+
+    private static Set<String> hangoutBuildingSnapshot() {
+        Set<String> ids = new LinkedHashSet<>();
+        for (var venue : com.aetherianartificer.townstead.hangout.HangoutData.venues().values())
+            ids.addAll(venue.buildings());
+        return Set.copyOf(ids);
+    }
 
     //? if neoforge {
     public static final Type<CatalogSyncS2CPayload> TYPE =
@@ -60,7 +75,7 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
     public static CatalogSyncS2CPayload snapshot() {
         return new CatalogSyncS2CPayload(List.copyOf(CatalogDataLoader.groups()),
                 CatalogDataLoader.overridesSnapshot(), CatalogDataLoader.dataTheme(),
-                BuildingSpiritIndex.snapshot(), objectSetSnapshot(Map.of()));
+                BuildingSpiritIndex.snapshot(), decorationSnapshot(Map.of()), hangoutBuildingSnapshot());
     }
 
     /** Catalog plus recognition counts for the village whose Blueprint was refreshed. */
@@ -73,31 +88,27 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
             var box = village.getBox();
             int radius = Math.max(Math.max(center.getX() - box.minX(), box.maxX() - center.getX()),
                     Math.max(center.getZ() - box.minZ(), box.maxZ() - center.getZ())) + 24;
-            for (var instance : com.aetherianartificer.townstead.objectset.ObjectSetSavedData.get(level)
+            for (var instance : com.aetherianartificer.townstead.decoration.DecorationSavedData.get(level)
                     .within(center, Math.min(320, radius * 2))) {
                 if (instance.anchor().getX() < box.minX() - 24 || instance.anchor().getX() > box.maxX() + 24
                         || instance.anchor().getZ() < box.minZ() - 24 || instance.anchor().getZ() > box.maxZ() + 24) continue;
-                counts.merge(instance.setId(), 1, Integer::sum);
+                counts.merge(instance.decorationId(), 1, Integer::sum);
             }
         }
         return new CatalogSyncS2CPayload(List.copyOf(CatalogDataLoader.groups()),
                 CatalogDataLoader.overridesSnapshot(), CatalogDataLoader.dataTheme(),
-                BuildingSpiritIndex.snapshot(), objectSetSnapshot(counts));
+                BuildingSpiritIndex.snapshot(), decorationSnapshot(counts), hangoutBuildingSnapshot());
     }
 
-    private static List<ObjectSetSummary> objectSetSnapshot(Map<ResourceLocation, Integer> counts) {
-        List<ObjectSetSummary> out = new ArrayList<>();
-        for (com.aetherianartificer.townstead.objectset.ObjectSetDefinition definition
-                : com.aetherianartificer.townstead.objectset.ObjectSets.all()) {
-            List<String> ingredients = new ArrayList<>();
-            int variantIndex = 0;
-            for (var variant : definition.variants()) {
-                if (variantIndex++ > 0) ingredients.add("— or —");
-                for (var anchor : variant.anchors()) ingredients.add(anchor.raw() + " ×1 anchor");
-                for (var requirement : variant.requires()) {
-                    ingredients.add(requirement.raw() + " ×" + requirement.count());
-                }
-            }
+    private static List<DecorationSummary> decorationSnapshot(Map<ResourceLocation, Integer> counts) {
+        List<DecorationSummary> out = new ArrayList<>();
+        for (com.aetherianartificer.townstead.decoration.DecorationDefinition definition
+                : com.aetherianartificer.townstead.decoration.Decorations.all()) {
+            List<Variant> variants = definition.variants().stream().map(variant -> new Variant(
+                    variant.anchors().stream().map(anchor -> anchor.raw()).toList(),
+                    variant.requires().stream().map(req -> new Ingredient(req.raw(), req.count())).toList())).toList();
+            boolean hangout = com.aetherianartificer.townstead.hangout.HangoutData.venues().values()
+                    .stream().anyMatch(venue -> venue.decorations().contains(definition.id()));
             ResourceLocation icon = definition.icon() == null
                     ? definition.anchors().get(0).blockId() : definition.icon();
             //? if >=1.21 {
@@ -105,8 +116,8 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
             //?} else {
             /*if (icon == null) icon = new ResourceLocation("minecraft", "barrier");
             *///?}
-            out.add(new ObjectSetSummary(definition.id(), icon, definition.radius(),
-                    counts.getOrDefault(definition.id(), 0), List.copyOf(ingredients)));
+            out.add(new DecorationSummary(definition.id(), icon, definition.radius(),
+                    counts.getOrDefault(definition.id(), 0), variants, hangout));
         }
         out.sort(java.util.Comparator.comparing(entry -> entry.id().toString()));
         return List.copyOf(out);
@@ -160,15 +171,26 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
                 buf.writeVarInt(s.getValue());
             }
         }
-        buf.writeVarInt(objectSets.size());
-        for (ObjectSetSummary set : objectSets) {
+        buf.writeVarInt(decorations.size());
+        for (DecorationSummary set : decorations) {
             buf.writeResourceLocation(set.id());
             buf.writeResourceLocation(set.icon());
             buf.writeVarInt(set.radius());
             buf.writeVarInt(set.recognized());
-            buf.writeVarInt(set.ingredients().size());
-            for (String ingredient : set.ingredients()) buf.writeUtf(ingredient);
+            buf.writeBoolean(set.hangout());
+            buf.writeVarInt(set.variants().size());
+            for (Variant variant : set.variants()) {
+                buf.writeVarInt(variant.anchors().size());
+                for (String anchor : variant.anchors()) buf.writeUtf(anchor);
+                buf.writeVarInt(variant.requirements().size());
+                for (Ingredient ingredient : variant.requirements()) {
+                    buf.writeUtf(ingredient.selector());
+                    buf.writeVarInt(ingredient.count());
+                }
+            }
         }
+        buf.writeVarInt(hangoutBuildings.size());
+        for (String building : hangoutBuildings.stream().sorted().toList()) buf.writeUtf(building);
     }
 
     public static CatalogSyncS2CPayload read(FriendlyByteBuf buf) {
@@ -210,18 +232,37 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
             spirits.put(type, contributions);
         }
         int osn = buf.readVarInt();
-        List<ObjectSetSummary> objectSets = new ArrayList<>(osn);
+        List<DecorationSummary> decorations = new ArrayList<>(osn);
         for (int i = 0; i < osn; i++) {
             ResourceLocation id = buf.readResourceLocation();
             ResourceLocation icon = buf.readResourceLocation();
             int radius = buf.readVarInt();
             int recognized = buf.readVarInt();
-            int ingredientCount = buf.readVarInt();
-            List<String> ingredients = new ArrayList<>(ingredientCount);
-            for (int j = 0; j < ingredientCount; j++) ingredients.add(buf.readUtf());
-            objectSets.add(new ObjectSetSummary(id, icon, radius, recognized, List.copyOf(ingredients)));
+            boolean hangout = buf.readBoolean();
+            int variantCount = readCount(buf);
+            List<Variant> variants = new ArrayList<>();
+            for (int v = 0; v < variantCount; v++) {
+                int anchorCount = readCount(buf);
+                List<String> anchors = new ArrayList<>();
+                for (int j = 0; j < anchorCount; j++) anchors.add(buf.readUtf());
+                int requirementCount = readCount(buf);
+                List<Ingredient> requirements = new ArrayList<>();
+                for (int j = 0; j < requirementCount; j++)
+                    requirements.add(new Ingredient(buf.readUtf(), buf.readVarInt()));
+                variants.add(new Variant(anchors, requirements));
+            }
+            decorations.add(new DecorationSummary(id, icon, radius, recognized, variants, hangout));
         }
-        return new CatalogSyncS2CPayload(groups, overrides, theme, spirits, objectSets);
+        int hangoutCount = readCount(buf);
+        Set<String> hangouts = new LinkedHashSet<>();
+        for (int i = 0; i < hangoutCount; i++) hangouts.add(buf.readUtf());
+        return new CatalogSyncS2CPayload(groups, overrides, theme, spirits, decorations, Set.copyOf(hangouts));
+    }
+
+    private static int readCount(FriendlyByteBuf buf) {
+        int count = buf.readVarInt();
+        if (count < 0 || count > 16384) throw new IllegalArgumentException("Invalid catalog collection size: " + count);
+        return count;
     }
 
     private static Optional<ResourceLocation> parseOptional(String raw) {

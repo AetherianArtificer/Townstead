@@ -915,6 +915,7 @@
   "townstead.quest_ledger.provider.tabs": "Questquellen-Tabs",
   "townstead.quest_ledger.provider.current": "Questquelle: %s",
   "townstead.quest_ledger.track": "Verfolgen",
+  "townstead.quest_ledger.track.unsupported": "Für Quests aus %s gibt es keine Verfolgung.",
   "townstead.quest_ledger.untrack": "Nicht verfolgen",
   "townstead.quest_ledger.pin": "Anheften",
   "townstead.quest_ledger.unpin": "Lösen",

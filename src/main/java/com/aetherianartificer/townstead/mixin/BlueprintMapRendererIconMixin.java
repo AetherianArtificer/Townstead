@@ -24,10 +24,15 @@ import org.spongepowered.asm.mixin.injection.At;
  */
 @Mixin(targets = "net.conczin.mca.client.gui.BlueprintMapRenderer")
 public class BlueprintMapRendererIconMixin {
+    /**
+     * A node item draws as a full block model, so it fills its whole box. MCA's atlas icons are
+     * small glyphs inside a mostly empty 20 px cell, and matching the boxes leaves the item
+     * reading far heavier on the map. These keep the drawn mark about the weight of MCA's.
+     */
     @Unique
-    private static final float TOWNSTEAD$FOOTPRINT_ICON_MIN_SCALE = 0.90f;
+    private static final float TOWNSTEAD$FOOTPRINT_ICON_MIN_SCALE = 0.65f;
     @Unique
-    private static final float TOWNSTEAD$FOOTPRINT_ICON_MAX_SCALE = 1.35f;
+    private static final float TOWNSTEAD$FOOTPRINT_ICON_MAX_SCALE = 0.95f;
     @Unique
     private static final float TOWNSTEAD$FOOTPRINT_ICON_AREA_REFERENCE = 6.0f;
 

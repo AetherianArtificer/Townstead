@@ -77,19 +77,19 @@ class LocalizationCoverageTest {
     }
 
     @Test
-    void everyBundledObjectSetCatalogEntryHasARealNameAndDescription() {
+    void everyBundledDecorationCatalogEntryHasARealNameAndDescription() {
         JsonObject english = resource("assets/townstead/lang/en_us.json");
-        Path objectSetRoot = resourcePath("data/townstead/object_set");
-        try (var files = Files.walk(objectSetRoot)) {
+        Path decorationRoot = resourcePath("data/townstead/decoration");
+        try (var files = Files.walk(decorationRoot)) {
             for (Path path : files.filter(Files::isRegularFile)
                     .filter(file -> file.getFileName().toString().endsWith(".json")).toList()) {
-                String id = objectSetRoot.relativize(path).toString().replace('\\', '/');
+                String id = decorationRoot.relativize(path).toString().replace('\\', '/');
                 id = id.substring(0, id.length() - ".json".length()).replace('/', '.');
-                assertNonBlankEnglish(english, "object_set.townstead." + id, id);
-                assertNonBlankEnglish(english, "object_set.townstead." + id + ".description", id);
+                assertNonBlankEnglish(english, "decoration.townstead." + id, id);
+                assertNonBlankEnglish(english, "decoration.townstead." + id + ".description", id);
             }
         } catch (IOException exception) {
-            throw new AssertionError("failed to enumerate bundled object sets", exception);
+            throw new AssertionError("failed to enumerate bundled decorations", exception);
         }
     }
 

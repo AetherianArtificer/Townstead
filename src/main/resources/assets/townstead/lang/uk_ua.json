@@ -915,6 +915,7 @@
   "townstead.quest_ledger.provider.tabs": "Вкладки джерел завдань",
   "townstead.quest_ledger.provider.current": "Джерело завдання: %s",
   "townstead.quest_ledger.track": "Відстежувати",
+  "townstead.quest_ledger.track.unsupported": "Для завдань %s немає відстеження.",
   "townstead.quest_ledger.untrack": "Не відстежувати",
   "townstead.quest_ledger.pin": "Закріпити",
   "townstead.quest_ledger.unpin": "Відкріпити",

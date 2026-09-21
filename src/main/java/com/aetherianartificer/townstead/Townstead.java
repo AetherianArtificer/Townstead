@@ -1834,7 +1834,7 @@ public class Townstead {
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.WetConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
-                new com.aetherianartificer.townstead.pheno.condition.types.NearObjectSetConditionType());
+                new com.aetherianartificer.townstead.pheno.condition.types.NearDecorationConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.TimeOfDayConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
@@ -2817,7 +2817,7 @@ public class Townstead {
 
     //? if neoforge {
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar(MOD_ID).versioned("6");
+        var registrar = event.registrar(MOD_ID).versioned("7");
         boolean thirstAvailable = ThirstBridgeResolver.anyThirstModLoaded();
         registrar.playToClient(
                 HungerSyncPayload.TYPE,
