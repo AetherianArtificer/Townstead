@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.client.catalog.*;
 import com.aetherianartificer.townstead.client.catalog.CatalogGraphLayout.*;
 import com.aetherianartificer.townstead.client.building.BuildingPinClientStore;
 import com.aetherianartificer.townstead.client.gui.common.*;
+import com.aetherianartificer.townstead.client.gui.common.TabButton;
 import com.aetherianartificer.townstead.spirit.ClientVillageSpiritStore;
 import com.aetherianartificer.townstead.spirit.SpiritRegistry;
 import net.conczin.mca.server.world.data.Village;
@@ -53,7 +54,7 @@ public final class CatalogPanel {
     private CatalogGraphWidget graph;
     private CatalogInspectorWidget inspector;
     private EditBox search;
-    private CatalogButton groupingButton, sortButton, directionButton, filterButton, pinButton, previousVariant, nextVariant;
+    private CatalogButton groupingButton, sortButton, directionButton, filterButton, pinButton, previousVariant, nextVariant, clearSearch;
     private String pendingFocus;
     private boolean dirty;
     private CatalogDataLoader.Theme theme = CatalogDataLoader.Theme.DEFAULT;
@@ -79,14 +80,18 @@ public final class CatalogPanel {
         inspector = new CatalogInspectorWidget(font, x + graphW + 16, bodyY, detailsW, bodyH);
         inspector.uiScale(uiScale);
         button(x + 5, y + 3, 60, 16, Component.translatable("gui.back"), () -> false, b -> back.run());
-        button(x + 8, y + 27, 88, 20, Component.translatable("townstead.decorations.buildings_button"),
-                () -> tab == 0, b -> switchTab(0));
-        button(x + 100, y + 27, 94, 20, Component.translatable("townstead.decorations.button"),
-                () -> tab == 1, b -> switchTab(1));
-        search = new EditBox(font, x + 212, y + 27, Math.min(260, w - 380), 20, tr("search"));
+        Component[] tabLabels = {Component.translatable("townstead.decorations.buildings_button"),
+                Component.translatable("townstead.decorations.button")};
+        int tabWidth = Math.max(font.width(tabLabels[0]), font.width(tabLabels[1])) + 16;
+        var tabRects = Controls.tabLayout(x + 8, y + 30, tabWidth * 2, 2);
+        for (int i = 0; i < tabLabels.length; i++) {
+            int index = i;
+            widgets.add(new TabButton(tabRects[i], tabLabels[i], () -> tab == index, b -> switchTab(index)));
+        }
+        search = new EditBox(font, tabRects[1].right() + 10, y + 27, 100, 20, tr("search"));
         search.setMaxLength(128); search.setHint(tr("search")); search.setValue(state().query);
         search.setResponder(value -> { state().query = value; rebuild(true); }); widgets.add(search);
-        button(search.getX() + search.getWidth() + 4, y + 27, 20, 20, Component.literal("×"), () -> false, b -> {
+        clearSearch = button(search.getX() + search.getWidth() + 4, y + 27, 20, 20, Component.literal("×"), () -> false, b -> {
             state().filter = Filter.ALL; search.setValue(""); rebuild(true);
         });
         groupingButton = button(x + 8, y + 54, 166, 18, Component.empty(), () -> false, b ->
@@ -181,7 +186,7 @@ public final class CatalogPanel {
         if (!sorts().contains(state().order().key)) state().order().key = Sort.NAME;
         layout = CatalogGraphLayout.build(entries.stream().map(CatalogEntries.Display::entry).toList(),
                 state().grouping, state().order().key, state().order().descending, state().query, state().filter,
-                points(), this::sectorLabel, graphW);
+                points(), this::sectorLabel, graphW, bodyH);
         graph.content(layout, byId);
         inspector.select(layout.matches() == 0 ? null : byId.get(state().selected));
         if (reveal) {
@@ -193,6 +198,10 @@ public final class CatalogPanel {
         label(sortButton, tr("sort_groups", option(state().order().key)));
         label(filterButton, tr("filter_by", option(state().filter)));
         label(directionButton, Component.literal(state().order().descending ? "↓" : "↑"));
+        // Reserve the full catalog count so typing doesn't move the search field's right edge.
+        int countWidth = font.width(tr("results", entries.size()));
+        clearSearch.setX(x + w - 8 - countWidth - 8 - clearSearch.getWidth());
+        search.setWidth(clearSearch.getX() - 4 - search.getX());
         updateActions();
     }
     private void label(Button button, Component label) { button.setMessage(label); }
@@ -236,14 +245,13 @@ public final class CatalogPanel {
         g.fill(x + 3, y + 3, x + w - 3, y + 20, theme.titleBarColor());
         g.drawCenteredString(font, Component.translatable("townstead.configuration.catalog"), x + w / 2, y + 7, 0xF2ECD8);
         g.fill(x + 4, y + 50, x + w - 4, y + 51, theme.borderColor());
-        g.drawString(font, tr("results", layout.matches()), x + w - 118, y + 33, 0xADBEAF, false);
+        Component count = tr("results", layout.matches());
+        g.drawString(font, count, x + w - 8 - font.width(count), y + 33, 0xADBEAF, false);
         g.drawCenteredString(font, Math.round(state().camera.zoom * 100) + "%", x + w - 84, y + 59, 0xD8DEC9);
         int legendY = y + h - 14;
-        g.drawString(font, "✓", x + 9, legendY, 0x96D895, false);
-        g.drawString(font, tr("recognized"), x + 21, legendY, 0xADBEAF, false);
-        int hangoutX = x + 34 + font.width(tr("recognized"));
-        CatalogBadgeRenderer.hangout(g, hangoutX, legendY - 2);
-        g.drawString(font, tr("hangout"), hangoutX + 15, legendY, 0xADBEAF, false);
+        g.drawString(font, tr("recognized"), x + 9, legendY, 0x96D895, false);
+        int hangoutX = x + 22 + font.width(tr("recognized"));
+        CatalogBadgeRenderer.hangoutLabel(g, font, tr("hangout").getString(), hangoutX, legendY, 0xADBEAF);
         int pinX = hangoutX + 28 + font.width(tr("hangout"));
         if (tab == 0) g.drawString(font, "◆ " + tr("filter.pinned").getString(), pinX, legendY, 0xDACB9F, false);
         String help = tr("navigation_hint").getString();
@@ -257,6 +265,7 @@ public final class CatalogPanel {
         }
         if (!menu.open()) {
             graph.renderTooltip(g, mx, my);
+            inspector.renderTooltip(g, mx, my);
             for (var widget : widgets) if (widget instanceof CatalogButton && widget.visible && widget.isMouseOver(mx, my)) {
                 Component hint = widget == directionButton ? tr(state().order().descending ? "descending" : "ascending")
                         : widget == previousVariant ? tr("previous_variant") : widget == nextVariant ? tr("next_variant")

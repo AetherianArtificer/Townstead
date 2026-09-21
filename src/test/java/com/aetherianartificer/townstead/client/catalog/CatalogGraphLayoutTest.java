@@ -68,4 +68,50 @@ class CatalogGraphLayoutTest {
         assertTrue(b.y() >= a.y() + a.height()); assertEquals(7, a.edges().size());
         assertEquals(8, a.nodes().stream().map(Node::x).distinct().count());
     }
+
+    @Test void mixedCatalogBalancesTheOverviewAgainstBothViewportDimensions() {
+        var entries = mixedCatalog();
+        var result = build(entries, Grouping.GROUP, Sort.NAME, false, "", Filter.ALL, Map.of(), s -> s, 560, 310);
+        double fit = Math.min(560.0 / result.width(), 310.0 / result.height());
+        assertTrue(result.width() * fit > 560 * 0.8, "Overview should use the horizontal space");
+        assertTrue(result.height() * fit > 310 * 0.8, "Overview should use the vertical space");
+        assertEquals(entries.size(), result.matches());
+        assertEquals(entries.size(), result.nodes().size());
+        for (var a : result.sectors()) {
+            for (var b : result.sectors()) {
+                if (a == b) continue;
+                assertTrue(a.x() + a.width() <= b.x() || b.x() + b.width() <= a.x()
+                        || a.y() + a.height() <= b.y() || b.y() + b.height() <= a.y());
+            }
+        }
+        var core = result.sectors().stream().filter(s -> s.id().equals("Core")).findFirst().orElseThrow();
+        assertTrue(core.nodes().stream().map(Node::x).distinct().count() > 5);
+    }
+
+    @Test void viewportShapeChangesPackingWithoutChangingSortOrTierChains() {
+        var entries = mixedCatalog();
+        var wide = build(entries, Grouping.GROUP, Sort.NAME, true, "", Filter.ALL, Map.of(), s -> s, 800, 300);
+        var tall = build(entries, Grouping.GROUP, Sort.NAME, true, "", Filter.ALL, Map.of(), s -> s, 300, 800);
+        assertTrue(wide.width() / (double) wide.height() > tall.width() / (double) tall.height());
+        assertEquals(wide.sectors().stream().map(Sector::id).toList(), tall.sectors().stream().map(Sector::id).toList());
+        assertEquals(40, wide.sectors().stream().mapToInt(s -> s.edges().size()).sum());
+        assertEquals(wide, build(entries, Grouping.GROUP, Sort.NAME, true, "", Filter.ALL, Map.of(), s -> s, 800, 300));
+    }
+
+    @Test void loneBuildingIsCenteredInsideItsGroupBox() {
+        var result = layout(List.of(entry("Beach Club", "", 0, "Beachparty", false)), Grouping.GROUP, Sort.NAME, false, "");
+        var sector = result.sectors().get(0);
+        var node = sector.nodes().get(0);
+        assertEquals(node.x() - sector.x(), sector.x() + sector.width() - node.x() - 26);
+    }
+
+    private List<Entry> mixedCatalog() {
+        List<Entry> entries = new ArrayList<>();
+        for (int group = 0; group < 20; group++) {
+            String id = "Group " + String.format(Locale.ROOT, "%02d", group);
+            for (int tier = 1; tier <= 3; tier++) entries.add(entry(id + " tier " + tier, id, tier, id, false));
+        }
+        for (int i = 0; i < 32; i++) entries.add(entry("Independent " + i, "", 0, "Core", false));
+        return entries;
+    }
 }

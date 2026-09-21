@@ -22,7 +22,7 @@ public final class CatalogEntries {
     private static final Pattern TIER = Pattern.compile("(.+_l)([0-9]+)$");
     public record Display(CatalogGraphLayout.Entry entry, BuildingType building,
                           CatalogSyncS2CPayload.DecorationSummary decoration,
-                          Component description, ItemStack icon) {
+                          Component description, ItemStack icon, String modName) {
         public void drawIcon(GuiGraphics g, int x, int y) {
             if (!icon.isEmpty()) g.renderItem(icon, x, y);
             else if (building != null) g.blit(MCA.locate("textures/buildings.png"), x, y,
@@ -74,13 +74,15 @@ public final class CatalogEntries {
             String spiritNames = String.join(" ", spirits.keySet().stream().map(s ->
                     translated("townstead.spirit." + s, humanize(s))).toList());
             String name = translated("buildingType." + id, humanize(id));
+            String modName = String.join(" + ", ModCompat.loadedCompatProviders(id).stream()
+                    .map(ModDisplayNameResolver::displayName).distinct().toList());
             var entry = new CatalogGraphLayout.Entry(id, name, group, groupLabel, family, tier,
                     spirits.keySet(), recognized.contains(id), CatalogDataLoader.isHangout(id),
-                    BuildingPinClientStore.isPinned(id), spiritNames + " " + String.join(" ", spirits.keySet()));
+                    BuildingPinClientStore.isPinned(id), spiritNames + " " + String.join(" ", spirits.keySet()) + " " + modName);
             ItemStack icon = BuildingIconResolver.nodeItemForType(id).filter(BuiltInRegistries.ITEM::containsKey)
                     .map(key -> new ItemStack(BuiltInRegistries.ITEM.get(key))).orElse(ItemStack.EMPTY);
             out.add(new Display(entry, type, null, Component.translatableWithFallback("buildingType." + id + ".description",
-                    Component.translatable("townstead.catalog.no_description").getString()), icon));
+                    Component.translatable("townstead.catalog.no_description").getString()), icon, modName));
         }
         out.sort(Comparator.comparing(d -> d.entry().id()));
         return List.copyOf(out);
@@ -94,7 +96,8 @@ public final class CatalogEntries {
                     set.recognized() > 0, set.hangout(), false, "");
             ItemStack icon = BuiltInRegistries.ITEM.containsKey(set.icon())
                     ? new ItemStack(BuiltInRegistries.ITEM.get(set.icon())) : ItemStack.EMPTY;
-            out.add(new Display(entry, null, set, Component.translatableWithFallback(key + ".description", ""), icon));
+            out.add(new Display(entry, null, set, Component.translatableWithFallback(key + ".description", ""), icon,
+                    ModDisplayNameResolver.displayName(set.id().getNamespace())));
         }
         return List.copyOf(out);
     }

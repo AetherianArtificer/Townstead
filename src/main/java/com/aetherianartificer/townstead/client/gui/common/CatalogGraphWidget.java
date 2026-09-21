@@ -88,7 +88,6 @@ public final class CatalogGraphWidget extends AbstractWidget {
                 var display = displays.get(entry.id());
                 if (display != null) display.drawIcon(g, x + 5, y + 5);
                 if (entry.hangout()) CatalogBadgeRenderer.hangout(g, x + 19, y - 5);
-                if (entry.recognized()) g.drawString(font, "✓", x - 3, y + 20, 0x96D895, false);
                 if (entry.pinned()) g.drawString(font, "◆", x + 20, y + 20, 0xFFD778, false);
                 if (entry.tier() > 0) {
                     String tier = CatalogGraphLayout.roman(entry.tier());
@@ -114,6 +113,8 @@ public final class CatalogGraphWidget extends AbstractWidget {
             List<Component> tip = new ArrayList<>();
             tip.add(Component.literal(hovered.entry().name()));
             tip.add(Component.literal(hovered.entry().groupLabel()));
+            var display = displays.get(hovered.entry().id());
+            if (display != null && !display.modName().isEmpty()) tip.add(Component.literal(display.modName()));
             if (hovered.entry().hangout()) tip.add(Component.translatable("townstead.catalog.hangout_hint"));
             if (hovered.entry().recognized()) tip.add(Component.translatable("townstead.catalog.recognized"));
             if (!hovered.match()) tip.add(Component.translatable("townstead.catalog.context"));

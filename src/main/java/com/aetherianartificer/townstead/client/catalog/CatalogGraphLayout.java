@@ -21,6 +21,7 @@ public final class CatalogGraphLayout {
         public static final Layout EMPTY = new Layout(List.of(), List.of(), 0, 0, 0);
     }
     private record Bucket(String id, String label, List<Entry> members) {}
+    private static final int MARGIN = 8, GAP = 16;
     private CatalogGraphLayout() {}
 
     /** Datapacks may use an explicit tier prefix as well as the conventional terminal _lN. */
@@ -60,6 +61,13 @@ public final class CatalogGraphLayout {
     public static Layout build(List<Entry> entries, Grouping grouping, Sort sort, boolean descending,
                                String query, Filter filter, Map<String, Integer> points,
                                Function<String, String> label, int availableWidth) {
+        return build(entries, grouping, sort, descending, query, filter, points, label, availableWidth, availableWidth);
+    }
+
+    public static Layout build(List<Entry> entries, Grouping grouping, Sort sort, boolean descending,
+                               String query, Filter filter, Map<String, Integer> points,
+                               Function<String, String> label, int availableWidth, int availableHeight) {
+        double aspect = Math.max(0.5, Math.min(3, availableWidth / (double) Math.max(1, availableHeight)));
         Map<String, Bucket> buckets = new LinkedHashMap<>();
         for (Entry e : entries) {
             Collection<String> keys = switch (grouping) {
@@ -83,9 +91,7 @@ public final class CatalogGraphLayout {
         ordering = Comparator.<Bucket, Boolean>comparing(b -> b.id().startsWith("~"))
                 .thenComparing(ordering).thenComparing(names);
         List<Sector> sectors = new ArrayList<>();
-        List<Node> nodes = new ArrayList<>();
         Set<String> resultIds = new HashSet<>();
-        int x = 8, y = 8, rowHeight = 0, maxRight = 0;
         for (Bucket bucket : buckets.values().stream().sorted(ordering).toList()) {
             List<Entry> hits = bucket.members().stream().filter(e -> matches(e, query, filter)).toList();
             if (hits.isEmpty()) continue;
@@ -102,12 +108,13 @@ public final class CatalogGraphLayout {
             Map<String, List<Entry>> rows = new LinkedHashMap<>();
             for (Entry e : visible) rows.computeIfAbsent(e.family().isEmpty() ? "" : e.family(),
                     ignored -> new ArrayList<>()).add(e);
-            int columns = Math.max(2, Math.min(5, (availableWidth - 32) / 70));
             List<Node> local = new ArrayList<>();
             List<Edge> edges = new ArrayList<>();
             int top = 39, right = 118;
             for (var family : rows.entrySet()) {
                 List<Entry> members = family.getValue();
+                // Large independent groups grow in both dimensions rather than becoming towers.
+                int columns = Math.max(1, (int) Math.ceil(Math.sqrt(members.size() * aspect * 62 / 70)));
                 if (!family.getKey().isEmpty()) members.sort(Comparator.comparingInt(Entry::tier).thenComparing(Entry::id));
                 Node previous = null;
                 for (int i = 0; i < members.size(); i++) {
@@ -124,20 +131,55 @@ public final class CatalogGraphLayout {
                 }
                 top += family.getKey().isEmpty() ? ((members.size() + columns - 1) / columns) * 62 : 62;
             }
-            if (x > 8 && x + right > availableWidth - 8) { x = 8; y += rowHeight + 10; rowHeight = 0; }
-            List<Node> placed = new ArrayList<>();
-            for (Node node : local) placed.add(new Node(node.entry(), x + node.x(), y + node.y(), node.match(), node.sector()));
-            List<Edge> placedEdges = new ArrayList<>();
-            for (Edge edge : edges) placedEdges.add(new Edge(x + edge.x1(), y + edge.y1(), x + edge.x2(), y + edge.y2()));
-            sectors.add(new Sector(bucket.id(), bucket.label(), x, y, right, top,
+            if (local.size() == 1) {
+                Node lone = local.get(0);
+                local.set(0, new Node(lone.entry(), (right - 26) / 2, lone.y(), lone.match(), lone.sector()));
+            }
+            sectors.add(new Sector(bucket.id(), bucket.label(), 0, 0, right, top,
                     bucket.members().size(), (int) bucket.members().stream().filter(Entry::recognized).count(),
+                    List.copyOf(local), List.copyOf(edges)));
+        }
+        if (sectors.isEmpty()) return Layout.EMPTY;
+
+        // Choose a canvas that fits the viewport's proportions, independent of the zoom level.
+        // Keeping each row in catalog order makes Name / Built / Entries sorting predictable.
+        int minimum = sectors.stream().mapToInt(Sector::width).max().orElse(0) + MARGIN * 2;
+        int maximum = sectors.stream().mapToInt(s -> s.width() + GAP).sum() - GAP + MARGIN * 2;
+        Layout best = null;
+        double bestScore = Double.POSITIVE_INFINITY;
+        for (int canvas = minimum; canvas < maximum + GAP; canvas += GAP) {
+            Layout candidate = pack(sectors, Math.min(canvas, maximum), resultIds.size());
+            double scaleNeeded = Math.max(candidate.width() / (double) Math.max(1, availableWidth),
+                    candidate.height() / (double) Math.max(1, availableHeight));
+            // Prefer the largest readable overview, then the least unused canvas area.
+            double score = scaleNeeded * scaleNeeded + 0.1 * candidate.width() * (double) candidate.height()
+                    / (Math.max(1, availableWidth) * (double) Math.max(1, availableHeight));
+            if (score < bestScore) { best = candidate; bestScore = score; }
+        }
+        return best;
+    }
+
+    private static Layout pack(List<Sector> measured, int canvasWidth, int matches) {
+        List<Sector> sectors = new ArrayList<>();
+        List<Node> nodes = new ArrayList<>();
+        int x = MARGIN, y = MARGIN, rowHeight = 0, maxRight = 0;
+        for (Sector sector : measured) {
+            if (x > MARGIN && x + sector.width() > canvasWidth - MARGIN) {
+                x = MARGIN; y += rowHeight + GAP; rowHeight = 0;
+            }
+            List<Node> placed = new ArrayList<>();
+            for (Node node : sector.nodes()) placed.add(new Node(node.entry(), x + node.x(), y + node.y(), node.match(), node.sector()));
+            List<Edge> placedEdges = new ArrayList<>();
+            for (Edge edge : sector.edges()) placedEdges.add(new Edge(x + edge.x1(), y + edge.y1(), x + edge.x2(), y + edge.y2()));
+            sectors.add(new Sector(sector.id(), sector.label(), x, y, sector.width(), sector.height(),
+                    sector.members(), sector.recognized(),
                     List.copyOf(placed), List.copyOf(placedEdges)));
             nodes.addAll(placed);
-            maxRight = Math.max(maxRight, x + right);
-            x += right + 10;
-            rowHeight = Math.max(rowHeight, top);
+            maxRight = Math.max(maxRight, x + sector.width());
+            x += sector.width() + GAP;
+            rowHeight = Math.max(rowHeight, sector.height());
         }
-        return new Layout(List.copyOf(sectors), List.copyOf(nodes), maxRight + 8,
-                sectors.isEmpty() ? 0 : y + rowHeight + 8, resultIds.size());
+        return new Layout(List.copyOf(sectors), List.copyOf(nodes), maxRight + MARGIN,
+                y + rowHeight + MARGIN, matches);
     }
 }
