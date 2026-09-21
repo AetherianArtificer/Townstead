@@ -2637,6 +2637,7 @@
   "townstead.catalog.navigation_hint": "Drag to pan · Scroll to zoom",
   "townstead.catalog.legend": "♟ Hangout   ◆ Pinned   ·   Drag to pan · Scroll to zoom",
   "townstead.catalog.grouping.group": "Building group",
+  "townstead.catalog.grouping.mod": "Mod",
   "townstead.catalog.grouping.spirit": "Community Spirit",
   "townstead.catalog.grouping.hangout": "Hangout status",
   "townstead.catalog.grouping.status": "Built",

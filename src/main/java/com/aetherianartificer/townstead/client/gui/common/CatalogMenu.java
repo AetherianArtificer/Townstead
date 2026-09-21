@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.client.gui.common;
 
+import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -14,6 +15,11 @@ public final class CatalogMenu {
     private IntConsumer select;
     private Controls.Rect bounds;
     private int highlighted;
+    private MenuPanel.Colors colors = MenuPanel.Colors.DEFAULT;
+    public void theme(CatalogDataLoader.Theme theme) {
+        colors = new MenuPanel.Colors(theme.panelColor(), theme.borderColor(), theme.frameColor(),
+                theme.borderColor(), theme.titleBarColor(), theme.detailsBackgroundColor(), theme.frameColor());
+    }
     public boolean open() { return !choices.isEmpty(); }
     public void close() { choices = List.of(); }
     public void open(Font font, List<Component> labels, int current, int x, int y, int screenW, int screenH, IntConsumer action) {
@@ -26,12 +32,12 @@ public final class CatalogMenu {
     public void render(GuiGraphics g, Font font, int mx, int my) {
         if (!open()) return;
         g.pose().pushPose(); g.pose().translate(0, 0, 400);
-        MenuPanel.drawFrame(g, font, bounds.x(), bounds.y(), bounds.w(), bounds.h(), null, false);
+        MenuPanel.drawFrame(g, font, bounds.x(), bounds.y(), bounds.w(), bounds.h(), null, false, colors);
         for (int i = 0; i < choices.size(); i++) {
             int y = MenuPanel.rowsTop(bounds.y(), false) + i * MenuPanel.ROW_H;
             MenuPanel.drawRow(g, bounds.x(), y, bounds.w(), i == highlighted,
-                    new Controls.Rect(bounds.x(), y, bounds.w(), MenuPanel.ROW_H).contains(mx, my));
-            g.drawString(font, choices.get(i), bounds.x() + 6, y + MenuPanel.TEXT_Y, Palette.TAB_ACTIVE, false);
+                    new Controls.Rect(bounds.x(), y, bounds.w(), MenuPanel.ROW_H).contains(mx, my), colors);
+            g.drawString(font, choices.get(i), bounds.x() + 6, y + MenuPanel.TEXT_Y, 0xF2ECD8, false);
         }
         g.pose().popPose();
     }

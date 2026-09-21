@@ -13,7 +13,7 @@ class CatalogGraphLayoutTest {
         assertEquals(0, tierNumber("stage_l99999999999999", null));
     }
     private Entry entry(String id, String family, int tier, String group, boolean recognized, String... spirits) {
-        return new Entry(id, id, group, group, family, tier, Set.of(spirits), recognized, false, false, String.join(" ", spirits));
+        return new Entry(id, id, group, group, family, tier, Set.of(spirits), recognized, false, false, String.join(" ", spirits), Map.of());
     }
     private Layout layout(List<Entry> entries, Grouping grouping, Sort sort, boolean descending, String query) {
         return build(entries, grouping, sort, descending, query, Filter.ALL,
@@ -41,6 +41,35 @@ class CatalogGraphLayoutTest {
                 Grouping.SPIRIT, Sort.POINTS, true, "");
         assertEquals(List.of("industry", "nautical"), result.sectors().stream().map(Sector::id).toList());
         assertEquals(1, result.matches()); assertEquals(2, result.nodes().size());
+    }
+    @Test void modGroupsUseDisplayNamesAndCountSharedProvidersOnlyOnce() {
+        var mods = Map.of("bakery", "Bakery", "farmersdelight", "Farmer's Delight");
+        var first = new Entry("bread_l1", "Bread Stand", "bakers", "Bakeries", "bread", 1,
+                Set.of(), true, false, false, "", mods);
+        var second = new Entry("bread_l2", "Bakery", "bakers", "Bakeries", "bread", 2,
+                Set.of(), false, false, false, "", mods);
+        var result = layout(List.of(first, second, entry("House", "", 0, "Core", false)),
+                Grouping.MOD, Sort.NAME, false, "");
+        assertEquals(List.of("Bakery", "Farmer's Delight", "~core"), result.sectors().stream().map(Sector::label).toList());
+        assertEquals(3, result.matches());
+        assertEquals(5, result.nodes().size());
+        assertEquals(2, result.sectors().stream().mapToInt(s -> s.edges().size()).sum());
+        var reversed = layout(List.of(first, second), Grouping.MOD, Sort.NAME, true, "");
+        assertEquals(List.of("farmersdelight", "bakery"), reversed.sectors().stream().map(Sector::id).toList());
+        assertTrue(matches(first, "farmer's delight", Filter.RECOGNIZED));
+        assertTrue(matches(first, "farmersdelight", Filter.ALL));
+    }
+
+    @Test void modGroupingRetainsNeighboringTiersWhenSearchingAndFiltering() {
+        var first = new Entry("bread_l1", "Bread Stand", "bakers", "Bakeries", "bread", 1,
+                Set.of(), true, false, false, "", Map.of("bakery", "Bakery"));
+        var second = new Entry("bread_l2", "Bake Sale", "bakers", "Bakeries", "bread", 2,
+                Set.of(), false, false, false, "", Map.of("bakery", "Bakery"));
+        var result = build(List.of(first, second), Grouping.MOD, Sort.NAME, false, "bread", Filter.RECOGNIZED,
+                Map.of(), s -> s, 430);
+        assertEquals(1, result.matches());
+        assertEquals(List.of(true, false), result.nodes().stream().map(Node::match).toList());
+        assertEquals(1, result.sectors().getFirst().edges().size());
     }
     @Test void missingTierDoesNotInventAnEdgeAndIndependentSetsNeverConnect() {
         var result = layout(List.of(entry("One", "chain", 1, "Group", false), entry("Three", "chain", 3, "Group", false),

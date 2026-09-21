@@ -138,7 +138,7 @@ public final class CatalogPanel {
         menu.open(font, values.stream().map(labels).toList(), values.indexOf(current), button.getX(), button.getY() + button.getHeight(),
                 virtualWidth, virtualHeight, index -> action.accept(values.get(index)));
     }
-    private List<Grouping> groupings() { return tab == 0 ? List.of(Grouping.values()) : List.of(Grouping.SPIRIT, Grouping.HANGOUT, Grouping.STATUS); }
+    private List<Grouping> groupings() { return tab == 0 ? List.of(Grouping.values()) : List.of(Grouping.MOD, Grouping.SPIRIT, Grouping.HANGOUT, Grouping.STATUS); }
     private Map<String, Integer> points() {
         return village == null ? Map.of() : ClientVillageSpiritStore.get(village.getId()).map(p -> p.perSpirit()).orElse(Map.of());
     }
@@ -165,7 +165,7 @@ public final class CatalogPanel {
         background = client.getResourceManager().getResource(texture).isPresent() ? texture : null;
         spiritSnapshot = village == null ? null : ClientVillageSpiritStore.get(village.getId()).orElse(null);
         theme = CatalogVillageTheme.resolve(CatalogDataLoader.theme(), village == null ? null : ClientVillageSpiritStore.get(village.getId()).orElse(null));
-        graph.theme(theme); inspector.theme(theme);
+        graph.theme(theme); inspector.theme(theme); menu.theme(theme);
         entries = tab == 0 ? CatalogEntries.buildings(village) : CatalogEntries.decorations();
         Map<String, CatalogEntries.Display> map = new LinkedHashMap<>();
         for (var entry : entries) map.put(entry.entry().id(), entry);
@@ -181,6 +181,7 @@ public final class CatalogPanel {
         dirty = false;
     }
     private String sectorLabel(String id) {
+        if (id.equals("~core")) return tr("group.core").getString();
         return SpiritRegistry.get(id).map(s -> Component.translatable(s.displayKey()).getString())
                 .orElseGet(() -> tr("sector." + (id.equals("~unclassified") ? "unclassified" : id)).getString());
     }

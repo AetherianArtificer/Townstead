@@ -32,6 +32,11 @@ public final class MenuPanel {
     public static final int LABEL_X = 19;
     public static final int TEXT_Y = 3;
 
+    public record Colors(int ground, int edge, int heading, int rule, int selected, int hover, int accent) {
+        public static final Colors DEFAULT = new Colors(Palette.MENU_GROUND, Palette.MENU_EDGE,
+                Palette.MENU_HEADING, Palette.MENU_RULE, Palette.MENU_ROW_ON, Palette.MENU_ROW_HOVER, Palette.BRASS);
+    }
+
     private MenuPanel() {}
 
     public static int height(int visibleRows, boolean heading) {
@@ -66,27 +71,37 @@ public final class MenuPanel {
      */
     public static void drawFrame(GuiGraphics g, Font font, int x, int y, int w, int h,
                                  String heading, boolean seated) {
+        drawFrame(g, font, x, y, w, h, heading, seated, Colors.DEFAULT);
+    }
+
+    public static void drawFrame(GuiGraphics g, Font font, int x, int y, int w, int h,
+                                 String heading, boolean seated, Colors colors) {
         if (!seated) {
             g.fill(x + 2, y + 2, x + w + 2, y + h + 2, Palette.MENU_SHADOW);
         }
-        g.fill(x, y, x + w, y + h, Palette.MENU_GROUND);
-        g.fill(x, y, x + w, y + 1, Palette.MENU_EDGE);
-        g.fill(x, y, x + 1, y + h, Palette.MENU_EDGE);
-        g.fill(x + w - 1, y, x + w, y + h, Palette.MENU_EDGE);
-        if (!seated) g.fill(x, y + h - 1, x + w, y + h, Palette.MENU_EDGE);
+        g.fill(x, y, x + w, y + h, colors.ground());
+        g.fill(x, y, x + w, y + 1, colors.edge());
+        g.fill(x, y, x + 1, y + h, colors.edge());
+        g.fill(x + w - 1, y, x + w, y + h, colors.edge());
+        if (!seated) g.fill(x, y + h - 1, x + w, y + h, colors.edge());
         if (heading == null || heading.isEmpty()) return;
-        g.drawString(font, heading, x + 5, y + 3, Palette.MENU_HEADING, false);
-        g.fill(x + 4, y + HEAD_H - 2, x + w - 4, y + HEAD_H - 1, Palette.MENU_RULE);
+        g.drawString(font, heading, x + 5, y + 3, colors.heading(), false);
+        g.fill(x + 4, y + HEAD_H - 2, x + w - 4, y + HEAD_H - 1, colors.rule());
     }
 
     /** A row's ground and its selection tick. Content is the caller's business. */
     public static void drawRow(GuiGraphics g, int x, int y, int w, boolean selected,
                                boolean hover) {
+        drawRow(g, x, y, w, selected, hover, Colors.DEFAULT);
+    }
+
+    public static void drawRow(GuiGraphics g, int x, int y, int w, boolean selected,
+                               boolean hover, Colors colors) {
         if (selected || hover) {
             g.fill(x + ROW_INSET, y, x + w - ROW_INSET, y + ROW_H - 1,
-                    selected ? Palette.MENU_ROW_ON : Palette.MENU_ROW_HOVER);
+                    selected ? colors.selected() : colors.hover());
         }
-        if (selected) g.fill(x + ROW_INSET, y, x + ROW_INSET + 2, y + ROW_H - 1, Palette.BRASS);
+        if (selected) g.fill(x + ROW_INSET, y, x + ROW_INSET + 2, y + ROW_H - 1, colors.accent());
     }
 
     /** Only draws when there is more content than room. */

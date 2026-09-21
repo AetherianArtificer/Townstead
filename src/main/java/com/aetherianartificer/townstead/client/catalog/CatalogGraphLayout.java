@@ -5,13 +5,13 @@ import java.util.function.Function;
 
 /** Pure layout: sectors can move, but a family always remains an ordered chain. */
 public final class CatalogGraphLayout {
-    public enum Grouping { GROUP, SPIRIT, HANGOUT, STATUS }
+    public enum Grouping { GROUP, MOD, SPIRIT, HANGOUT, STATUS }
     public enum Sort { NAME, RECOGNIZED, ENTRIES, POINTS }
     public enum Filter { ALL, HANGOUT, RECOGNIZED, MISSING, PINNED }
     public record Entry(String id, String name, String group, String groupLabel, String family, int tier,
                         Set<String> spirits, boolean recognized, boolean hangout, boolean pinned,
-                        String searchText) {
-        public Entry { spirits = Set.copyOf(spirits); }
+                        String searchText, Map<String, String> mods) {
+        public Entry { spirits = Set.copyOf(spirits); mods = Map.copyOf(mods); }
     }
     public record Node(Entry entry, int x, int y, boolean match, String sector) {}
     public record Edge(int x1, int y1, int x2, int y2) {}
@@ -52,7 +52,8 @@ public final class CatalogGraphLayout {
             case PINNED -> e.pinned();
         };
         if (!eligible) return false;
-        String text = (e.id() + " " + e.name() + " " + e.groupLabel() + " " + e.searchText())
+        String text = (e.id() + " " + e.name() + " " + e.groupLabel() + " " + e.searchText()
+                + " " + String.join(" ", e.mods().keySet()) + " " + String.join(" ", e.mods().values()))
                 .toLowerCase(Locale.ROOT);
         return Arrays.stream(query.strip().toLowerCase(Locale.ROOT).split("\\s+"))
                 .allMatch(text::contains);
@@ -72,12 +73,15 @@ public final class CatalogGraphLayout {
         for (Entry e : entries) {
             Collection<String> keys = switch (grouping) {
                 case GROUP -> List.of(e.group());
+                case MOD -> e.mods().isEmpty() ? List.of("~core") : e.mods().keySet();
                 case SPIRIT -> e.spirits().isEmpty() ? List.of("~unclassified") : e.spirits();
                 case HANGOUT -> List.of(e.hangout() ? "hangout" : "other");
                 case STATUS -> List.of(e.recognized() ? "recognized" : "missing");
             };
             for (String key : keys) buckets.computeIfAbsent(key, k -> new Bucket(k,
-                    grouping == Grouping.GROUP ? e.groupLabel() : label.apply(k), new ArrayList<>())).members().add(e);
+                    grouping == Grouping.GROUP ? e.groupLabel()
+                            : grouping == Grouping.MOD ? e.mods().getOrDefault(k, label.apply(k))
+                            : label.apply(k), new ArrayList<>())).members().add(e);
         }
         Comparator<Bucket> names = Comparator.comparing(Bucket::label, String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(Bucket::id);

@@ -74,11 +74,12 @@ public final class CatalogEntries {
             String spiritNames = String.join(" ", spirits.keySet().stream().map(s ->
                     translated("townstead.spirit." + s, humanize(s))).toList());
             String name = translated("buildingType." + id, humanize(id));
-            String modName = String.join(" + ", ModCompat.loadedCompatProviders(id).stream()
-                    .map(ModDisplayNameResolver::displayName).distinct().toList());
+            Map<String, String> mods = new LinkedHashMap<>();
+            for (String provider : ModCompat.loadedCompatProviders(id)) mods.put(provider, ModDisplayNameResolver.displayName(provider));
+            String modName = String.join(" + ", mods.values().stream().distinct().toList());
             var entry = new CatalogGraphLayout.Entry(id, name, group, groupLabel, family, tier,
                     spirits.keySet(), recognized.contains(id), CatalogDataLoader.isHangout(id),
-                    BuildingPinClientStore.isPinned(id), spiritNames + " " + String.join(" ", spirits.keySet()) + " " + modName);
+                    BuildingPinClientStore.isPinned(id), spiritNames + " " + String.join(" ", spirits.keySet()), mods);
             ItemStack icon = BuildingIconResolver.nodeItemForType(id).filter(BuiltInRegistries.ITEM::containsKey)
                     .map(key -> new ItemStack(BuiltInRegistries.ITEM.get(key))).orElse(ItemStack.EMPTY);
             out.add(new Display(entry, type, null, Component.translatableWithFallback("buildingType." + id + ".description",
@@ -95,7 +96,8 @@ public final class CatalogEntries {
                     translated("townstead.spirit." + s, humanize(s))).toList());
             var entry = new CatalogGraphLayout.Entry(set.id().toString(), translated(key, humanize(set.id().getPath())),
                     "decorations", Component.translatable("townstead.decorations.title").getString(), "", 0, set.spirits().keySet(),
-                    set.recognized() > 0, set.hangout(), false, spiritNames);
+                    set.recognized() > 0, set.hangout(), false, spiritNames,
+                    Map.of(set.id().getNamespace(), ModDisplayNameResolver.displayName(set.id().getNamespace())));
             ItemStack icon = BuiltInRegistries.ITEM.containsKey(set.icon())
                     ? new ItemStack(BuiltInRegistries.ITEM.get(set.icon())) : ItemStack.EMPTY;
             out.add(new Display(entry, null, set, Component.translatableWithFallback(key + ".description", ""), icon,
