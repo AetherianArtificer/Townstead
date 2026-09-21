@@ -2817,7 +2817,7 @@ public class Townstead {
 
     //? if neoforge {
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar(MOD_ID).versioned("7");
+        var registrar = event.registrar(MOD_ID).versioned("8");
         boolean thirstAvailable = ThirstBridgeResolver.anyThirstModLoaded();
         registrar.playToClient(
                 HungerSyncPayload.TYPE,

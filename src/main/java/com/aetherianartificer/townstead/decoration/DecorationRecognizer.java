@@ -86,6 +86,7 @@ public final class DecorationRecognizer {
         List<DecorationDefinition> candidates = Decorations.touching(placed);
         if (candidates.isEmpty()) return;
         DecorationSavedData data = DecorationSavedData.get(level);
+        boolean changed = false;
         for (DecorationDefinition definition : candidates) {
             for (BlockPos anchor : anchorsNear(level, definition, pos, placed)) {
                 if (data.at(anchor) != null) continue;
@@ -93,9 +94,11 @@ public final class DecorationRecognizer {
                 if (instance == null) continue;
                 if (duplicatesNearby(data, definition, instance)) continue;
                 data.put(instance);
+                changed = true;
                 celebrate(level, definition, instance, by);
             }
         }
+        if (changed) updateSpirits(level, pos);
     }
 
     /** Multi-anchor assemblies (a four-lantern post or a haystack) are one set, not four. */
@@ -117,16 +120,29 @@ public final class DecorationRecognizer {
     public static void onRemoved(ServerLevel level, BlockPos pos, BlockState removed, @Nullable Entity by) {
         if (Decorations.isEmpty() || Decorations.touching(removed).isEmpty()) return;
         DecorationSavedData data = DecorationSavedData.get(level);
+        boolean changed = false;
         for (DecorationInstance instance : data.within(pos, Decorations.maxRadius())) {
             if (!instance.involves(pos)) continue;
             DecorationDefinition definition = Decorations.definition(instance.decorationId());
             if (definition == null || evaluate(level, definition, instance.anchor(), pos) == null) {
                 data.remove(instance.anchor());
+                changed = true;
                 if (by instanceof ServerPlayer player && definition != null) {
                     player.displayClientMessage(Component.translatable("townstead.decoration.dismantled",
                             Component.translatable(definition.translationKey())), true);
                 }
             }
+        }
+        if (changed) updateSpirits(level, pos);
+    }
+
+    private static void updateSpirits(ServerLevel level, BlockPos changed) {
+        int margin = 24 + Decorations.maxRadius();
+        for (var village : net.conczin.mca.server.world.data.VillageManager.get(level)) {
+            var box = village.getBox();
+            if (changed.getX() < box.minX() - margin || changed.getX() > box.maxX() + margin
+                    || changed.getZ() < box.minZ() - margin || changed.getZ() > box.maxZ() + margin) continue;
+            com.aetherianartificer.townstead.spirit.SpiritReconciler.reconcileVillage(level, village);
         }
     }
 

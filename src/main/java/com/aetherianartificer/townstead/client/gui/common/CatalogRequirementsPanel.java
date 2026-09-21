@@ -9,7 +9,7 @@ import java.util.List;
 
 /** The same ingredient rows for building requirements and each alternative decoration assembly. */
 public final class CatalogRequirementsPanel {
-    public record Row(List<String> selectors, int count, boolean anchor) {
+    public record Row(List<String> selectors, int count) {
         public Row { selectors = List.copyOf(selectors); }
     }
     private CatalogRequirementsPanel() {}
@@ -26,7 +26,6 @@ public final class CatalogRequirementsPanel {
                 name = icon.label().isEmpty() ? RequirementNameResolver.displayName(id) : icon.label();
             }
             String text = row.count() + "× " + name;
-            if (row.anchor()) text += " · " + Component.translatable("townstead.catalog.anchor").getString();
             int h = Math.max(18, font.split(Component.literal(text), width - 22).size() * font.lineHeight + 3);
             g.drawWordWrap(font, Component.literal(text), x + 21, y + 2, width - 22, 0xC4D7DB);
             y += h;

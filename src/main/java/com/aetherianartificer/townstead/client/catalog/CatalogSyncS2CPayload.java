@@ -43,8 +43,8 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
         public Variant { anchors = List.copyOf(anchors); requirements = List.copyOf(requirements); }
     }
     public record DecorationSummary(ResourceLocation id, ResourceLocation icon, int radius,
-                                   int recognized, List<Variant> variants, boolean hangout) {
-        public DecorationSummary { variants = List.copyOf(variants); }
+                                   int recognized, List<Variant> variants, boolean hangout, Map<String, Integer> spirits) {
+        public DecorationSummary { variants = List.copyOf(variants); spirits = Map.copyOf(spirits); }
     }
 
     private static Set<String> hangoutBuildingSnapshot() {
@@ -81,20 +81,7 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
     /** Catalog plus recognition counts for the village whose Blueprint was refreshed. */
     public static CatalogSyncS2CPayload snapshot(net.minecraft.server.level.ServerLevel level,
                                                   net.conczin.mca.server.world.data.Village village) {
-        Map<ResourceLocation, Integer> counts = new LinkedHashMap<>();
-        if (level != null && village != null) {
-            var centerVector = village.getCenter();
-            var center = new net.minecraft.core.BlockPos(centerVector.getX(), centerVector.getY(), centerVector.getZ());
-            var box = village.getBox();
-            int radius = Math.max(Math.max(center.getX() - box.minX(), box.maxX() - center.getX()),
-                    Math.max(center.getZ() - box.minZ(), box.maxZ() - center.getZ())) + 24;
-            for (var instance : com.aetherianartificer.townstead.decoration.DecorationSavedData.get(level)
-                    .within(center, Math.min(320, radius * 2))) {
-                if (instance.anchor().getX() < box.minX() - 24 || instance.anchor().getX() > box.maxX() + 24
-                        || instance.anchor().getZ() < box.minZ() - 24 || instance.anchor().getZ() > box.maxZ() + 24) continue;
-                counts.merge(instance.decorationId(), 1, Integer::sum);
-            }
-        }
+        Map<ResourceLocation, Integer> counts = com.aetherianartificer.townstead.decoration.Decorations.countsForVillage(level, village);
         return new CatalogSyncS2CPayload(List.copyOf(CatalogDataLoader.groups()),
                 CatalogDataLoader.overridesSnapshot(), CatalogDataLoader.dataTheme(),
                 BuildingSpiritIndex.snapshot(), decorationSnapshot(counts), hangoutBuildingSnapshot());
@@ -117,7 +104,7 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
             /*if (icon == null) icon = new ResourceLocation("minecraft", "barrier");
             *///?}
             out.add(new DecorationSummary(definition.id(), icon, definition.radius(),
-                    counts.getOrDefault(definition.id(), 0), variants, hangout));
+                    counts.getOrDefault(definition.id(), 0), variants, hangout, definition.spirits()));
         }
         out.sort(java.util.Comparator.comparing(entry -> entry.id().toString()));
         return List.copyOf(out);
@@ -178,6 +165,10 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
             buf.writeVarInt(set.radius());
             buf.writeVarInt(set.recognized());
             buf.writeBoolean(set.hangout());
+            buf.writeVarInt(set.spirits().size());
+            for (var spirit : new java.util.TreeMap<>(set.spirits()).entrySet()) {
+                buf.writeUtf(spirit.getKey()); buf.writeVarInt(spirit.getValue());
+            }
             buf.writeVarInt(set.variants().size());
             for (Variant variant : set.variants()) {
                 buf.writeVarInt(variant.anchors().size());
@@ -239,6 +230,9 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
             int radius = buf.readVarInt();
             int recognized = buf.readVarInt();
             boolean hangout = buf.readBoolean();
+            int spiritCount = readCount(buf);
+            Map<String, Integer> decorationSpirits = new LinkedHashMap<>();
+            for (int s = 0; s < spiritCount; s++) decorationSpirits.put(buf.readUtf(), buf.readVarInt());
             int variantCount = readCount(buf);
             List<Variant> variants = new ArrayList<>();
             for (int v = 0; v < variantCount; v++) {
@@ -251,7 +245,7 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
                     requirements.add(new Ingredient(buf.readUtf(), buf.readVarInt()));
                 variants.add(new Variant(anchors, requirements));
             }
-            decorations.add(new DecorationSummary(id, icon, radius, recognized, variants, hangout));
+            decorations.add(new DecorationSummary(id, icon, radius, recognized, variants, hangout, decorationSpirits));
         }
         int hangoutCount = readCount(buf);
         Set<String> hangouts = new LinkedHashSet<>();

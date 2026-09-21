@@ -1,5 +1,6 @@
 {
   "schema":"townstead:decoration/v1",
+  "spirits": { "natural": 1 },
   "anchor":"#minecraft:small_flowers",
   "radius":3,
   "requires":{"#minecraft:wooden_trapdoors":4},

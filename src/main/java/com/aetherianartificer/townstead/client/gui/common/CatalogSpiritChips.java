@@ -15,7 +15,7 @@ public final class CatalogSpiritChips {
     public record Result(int bottom, List<Component> tooltip) {}
 
     public static Result draw(GuiGraphics g, Font font, Map<String, Integer> points,
-                              int x, int y, int width, int mx, int my) {
+                              int x, int y, int width, int mx, int my, String tooltipKey) {
         int left = x;
         List<Component> tooltip = List.of();
         for (var spirit : SpiritRegistry.ordered()) {
@@ -35,7 +35,7 @@ public final class CatalogSpiritChips {
             g.drawString(font, label, x + 12, y + 2, color, false);
             if (new Controls.Rect(x, y, w, 11).contains(mx, my)) {
                 tooltip = List.of(Component.translatable(spirit.displayKey()).withStyle(style -> style.withColor(color & 0xFFFFFF)),
-                        Component.translatable("townstead.spirit.chip.tooltip", value).withStyle(ChatFormatting.GRAY));
+                        Component.translatable(tooltipKey, value).withStyle(ChatFormatting.GRAY));
             }
             x += w + 3;
         }

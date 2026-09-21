@@ -91,13 +91,15 @@ public final class CatalogEntries {
         List<Display> out = new ArrayList<>();
         for (var set : DecorationCatalogClientStore.entries()) {
             String key = "decoration." + set.id().getNamespace() + "." + set.id().getPath().replace('/', '.');
+            String spiritNames = String.join(" ", set.spirits().keySet().stream().map(s ->
+                    translated("townstead.spirit." + s, humanize(s))).toList());
             var entry = new CatalogGraphLayout.Entry(set.id().toString(), translated(key, humanize(set.id().getPath())),
-                    "decorations", Component.translatable("townstead.decorations.title").getString(), "", 0, Set.of(),
-                    set.recognized() > 0, set.hangout(), false, "");
+                    "decorations", Component.translatable("townstead.decorations.title").getString(), "", 0, set.spirits().keySet(),
+                    set.recognized() > 0, set.hangout(), false, spiritNames);
             ItemStack icon = BuiltInRegistries.ITEM.containsKey(set.icon())
                     ? new ItemStack(BuiltInRegistries.ITEM.get(set.icon())) : ItemStack.EMPTY;
             out.add(new Display(entry, null, set, Component.translatableWithFallback(key + ".description", ""), icon,
-                    ModDisplayNameResolver.displayName(set.id().getNamespace())));
+                    set.id().getNamespace().equals("townstead") ? "" : ModDisplayNameResolver.displayName(set.id().getNamespace())));
         }
         return List.copyOf(out);
     }

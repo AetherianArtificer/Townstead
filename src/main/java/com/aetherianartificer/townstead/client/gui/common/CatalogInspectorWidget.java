@@ -70,16 +70,18 @@ public final class CatalogInspectorWidget extends AbstractWidget {
             y += 17;
         }
         if (selected.decoration() != null) {
-            y = text(g, Component.translatable("townstead.catalog.decoration_recognized", selected.decoration().recognized()), y, 0xA5C9A8);
-            y = text(g, Component.translatable("townstead.catalog.radius", selected.decoration().radius()), y, 0xC7C5AF);
+            y = text(g, selected.decoration().recognized() > 0
+                    ? Component.translatable("townstead.catalog.decoration_recognized", selected.decoration().recognized())
+                    : Component.translatable("townstead.catalog.not_recognized"), y, 0xA5C9A8);
         } else {
             y = text(g, Component.translatable(entry.recognized() ? "townstead.catalog.recognized" : "townstead.catalog.not_recognized"), y, 0xA5C9A8);
-            var chips = CatalogSpiritChips.draw(g, font, BuildingSpiritIndex.contributionsFor(entry.id()),
-                    getX() + 7, y, width - 18, mx, my);
-            y = chips.bottom();
-            if (mx >= getX() + 2 && mx < getX() + width - 3 && my >= getY() + 2 && my < dividerY() - 3) {
-                spiritTooltip = chips.tooltip();
-            }
+        }
+        var contributions = selected.decoration() == null ? BuildingSpiritIndex.contributionsFor(entry.id()) : selected.decoration().spirits();
+        var chips = CatalogSpiritChips.draw(g, font, contributions, getX() + 7, y, width - 18, mx, my,
+                selected.decoration() == null ? "townstead.spirit.chip.tooltip" : "townstead.spirit.chip.decoration_tooltip");
+        y = chips.bottom();
+        if (mx >= getX() + 2 && mx < getX() + width - 3 && my >= getY() + 2 && my < dividerY() - 3) {
+            spiritTooltip = chips.tooltip();
         }
         y += 3;
         y = text(g, selected.description(), y, 0xB4BCAF);
@@ -88,8 +90,7 @@ public final class CatalogInspectorWidget extends AbstractWidget {
         g.disableScissor();
         g.fill(getX() + 1, dividerY(), getX() + width - 1, dividerY() + 1, theme.borderColor());
         int requirementsTop = requirementsTop();
-        g.drawString(font, Component.translatable(selected.decoration() == null
-                ? "townstead.configuration.needs" : "townstead.catalog.assembly"), getX() + 7, dividerY() + 7, 0xEEE7D4, false);
+        g.drawString(font, Component.translatable("townstead.configuration.needs"), getX() + 7, dividerY() + 7, 0xEEE7D4, false);
         int bottom = requirementsBottom();
         ScaledWidget.scissor(g, uiScale, getX() + 2, requirementsTop, getX() + width - 3, bottom);
         y = requirementsTop - scroll;
@@ -97,20 +98,15 @@ public final class CatalogInspectorWidget extends AbstractWidget {
         List<CatalogRequirementsPanel.Row> rows = new ArrayList<>();
         if (selected.building() != null) {
             selected.building().getGroups().entrySet().stream().sorted(Map.Entry.comparingByKey(Comparator.comparing(Object::toString)))
-                    .forEach(e -> rows.add(new CatalogRequirementsPanel.Row(List.of(e.getKey().toString()), e.getValue(), false)));
+                    .forEach(e -> rows.add(new CatalogRequirementsPanel.Row(List.of(e.getKey().toString()), e.getValue())));
         } else if (variantCount() > 0) {
             var recipe = selected.decoration().variants().get(variant);
-            rows.add(new CatalogRequirementsPanel.Row(recipe.anchors(), 1, true));
-            for (var row : recipe.requirements()) rows.add(new CatalogRequirementsPanel.Row(List.of(row.selector()), row.count(), false));
+            rows.add(new CatalogRequirementsPanel.Row(recipe.anchors(), 1));
+            for (var row : recipe.requirements()) rows.add(new CatalogRequirementsPanel.Row(List.of(row.selector()), row.count()));
         }
         var level = Minecraft.getInstance().level;
         y = CatalogRequirementsPanel.draw(g, font, rows, getX() + 7, y, width - 18,
                 level == null ? System.currentTimeMillis() / 50 : level.getGameTime());
-        if (selected.decoration() != null) {
-            y += 7;
-            if (variantCount() > 1) y = text(g, Component.translatable("townstead.catalog.one_variant"), y, 0xA4B2A3);
-            y = text(g, Component.translatable("townstead.catalog.radius_hint", selected.decoration().radius()), y, 0xA4B2A3);
-        }
         contentHeight = y - requirementsStart + 4;
         scroll = Math.min(scroll, maxScroll());
         g.disableScissor();

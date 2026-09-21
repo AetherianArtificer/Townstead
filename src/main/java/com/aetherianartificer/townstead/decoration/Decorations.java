@@ -49,6 +49,23 @@ public final class Decorations {
         return DEFINITIONS.isEmpty();
     }
 
+    /** Use the same village boundary for catalog counts and Community Spirit contributions. */
+    public static Map<ResourceLocation, Integer> countsForVillage(ServerLevel level, net.conczin.mca.server.world.data.Village village) {
+        if (level == null || village == null) return Map.of();
+        var centerVector = village.getCenter();
+        var center = new BlockPos(centerVector.getX(), centerVector.getY(), centerVector.getZ());
+        var box = village.getBox();
+        int radius = Math.max(Math.max(center.getX() - box.minX(), box.maxX() - center.getX()),
+                Math.max(center.getZ() - box.minZ(), box.maxZ() - center.getZ())) + 24;
+        Map<ResourceLocation, Integer> counts = new LinkedHashMap<>();
+        for (var instance : DecorationSavedData.get(level).within(center, Math.min(320, radius * 2))) {
+            if (instance.anchor().getX() < box.minX() - 24 || instance.anchor().getX() > box.maxX() + 24
+                    || instance.anchor().getZ() < box.minZ() - 24 || instance.anchor().getZ() > box.maxZ() + 24) continue;
+            if (definition(instance.decorationId()) != null) counts.merge(instance.decorationId(), 1, Integer::sum);
+        }
+        return Map.copyOf(counts);
+    }
+
     /** The largest recognition radius among definitions: how far a placed or broken block can matter. */
     public static int maxRadius() {
         return MAX_RADIUS;
@@ -161,6 +178,7 @@ public final class Decorations {
                 if (definition.thermal() != null) maxThermal = Math.max(maxThermal, definition.thermal().radius());
             }
             DEFINITIONS = Map.copyOf(loaded);
+            com.aetherianartificer.townstead.spirit.VillageSpiritCache.clear();
             MAX_RADIUS = maxRadius;
             MAX_THERMAL_RADIUS = maxThermal;
             LOGGER.info("Loaded {} decoration definitions", loaded.size());

@@ -199,7 +199,7 @@ final class VillagesImpl implements VillagesApi {
             totals = cached.totals();
             readout = cached.readout();
         } else {
-            totals = VillageSpiritAggregator.totalsFor(village);
+            totals = VillageSpiritAggregator.snapshotFor(level, village).totals();
             readout = VillageSpiritAggregator.readoutFor(totals);
         }
         return spirit(ApiSupport.villageId(level, village), totals, readout);

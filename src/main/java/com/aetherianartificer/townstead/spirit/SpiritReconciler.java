@@ -49,7 +49,7 @@ public final class SpiritReconciler {
             reconcileVillage(level, village);
             return;
         }
-        VillageSpiritAggregator.Snapshot snap = VillageSpiritAggregator.snapshotFor(village);
+        VillageSpiritAggregator.Snapshot snap = VillageSpiritAggregator.snapshotFor(level, village);
         SpiritReadout readout = VillageSpiritAggregator.readoutFor(snap.totals());
         VillageSpiritCache.put(level, village.getId(),
                 new VillageSpiritCache.Entry(snap.totals(), readout, snap.contributors()));
@@ -80,7 +80,7 @@ public final class SpiritReconciler {
      */
     public static void reconcileVillage(ServerLevel level, Village village) {
         if (level == null || village == null) return;
-        VillageSpiritAggregator.Snapshot snap = VillageSpiritAggregator.snapshotFor(village);
+        VillageSpiritAggregator.Snapshot snap = VillageSpiritAggregator.snapshotFor(level, village);
         SpiritReadout newReadout = VillageSpiritAggregator.readoutFor(snap.totals());
         VillageSpiritCache.Entry prev = VillageSpiritCache.get(level, village.getId());
         VillageSpiritCache.put(level, village.getId(),

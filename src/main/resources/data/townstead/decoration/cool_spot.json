@@ -1,5 +1,6 @@
 {
   "schema": "townstead:decoration/v1",
+  "spirits": { "natural": 1 },
   "anchor": ["#townstead:thermal/cooling_sources"],
   "radius": 3,
   "requires": {

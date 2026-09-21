@@ -1,5 +1,6 @@
 {
   "schema": "townstead:decoration/v1",
+  "spirits": { "tourism": 1 },
   "radius": 6,
   "variants": [
     {"anchor": "minecraft:water", "requires": {"minecraft:potted_cactus": 1, "minecraft:smooth_sandstone": 32}},

@@ -31,9 +31,10 @@ public final class VillageSpirits {
         ServerLevel level = (ServerLevel) entity.level();
         VillageSpiritCache.Entry cached = VillageSpiritCache.get(level, village.getId());
         if (cached != null) return cached.totals();
-        SpiritTotals totals = VillageSpiritAggregator.totalsFor(village);
+        var snapshot = VillageSpiritAggregator.snapshotFor(level, village);
+        SpiritTotals totals = snapshot.totals();
         VillageSpiritCache.put(level, village.getId(),
-                new VillageSpiritCache.Entry(totals, VillageSpiritAggregator.readoutFor(totals)));
+                new VillageSpiritCache.Entry(totals, VillageSpiritAggregator.readoutFor(totals), snapshot.contributors()));
         return totals;
     }
 

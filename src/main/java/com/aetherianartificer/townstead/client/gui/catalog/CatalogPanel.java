@@ -138,7 +138,7 @@ public final class CatalogPanel {
         menu.open(font, values.stream().map(labels).toList(), values.indexOf(current), button.getX(), button.getY() + button.getHeight(),
                 virtualWidth, virtualHeight, index -> action.accept(values.get(index)));
     }
-    private List<Grouping> groupings() { return tab == 0 ? List.of(Grouping.values()) : List.of(Grouping.HANGOUT, Grouping.STATUS); }
+    private List<Grouping> groupings() { return tab == 0 ? List.of(Grouping.values()) : List.of(Grouping.SPIRIT, Grouping.HANGOUT, Grouping.STATUS); }
     private Map<String, Integer> points() {
         return village == null ? Map.of() : ClientVillageSpiritStore.get(village.getId()).map(p -> p.perSpirit()).orElse(Map.of());
     }
@@ -150,7 +150,10 @@ public final class CatalogPanel {
         tab = next; rebuildHost.run();
     }
     public void focusBuilding(String id) {
-        tab = 0; tabs[0].selected = id; tabs[0].query = ""; tabs[0].filter = Filter.ALL; pendingFocus = id;
+        var decoration = com.aetherianartificer.townstead.spirit.DecorationSpiritContributions.decorationId(id);
+        tab = decoration == null ? 0 : 1;
+        String selected = decoration == null ? id : decoration.toString();
+        state().selected = selected; state().query = ""; state().filter = Filter.ALL; pendingFocus = selected;
     }
     private void refresh() {
         var client = Minecraft.getInstance();
@@ -249,8 +252,7 @@ public final class CatalogPanel {
         g.drawString(font, count, x + w - 8 - font.width(count), y + 33, 0xADBEAF, false);
         g.drawCenteredString(font, Math.round(state().camera.zoom * 100) + "%", x + w - 84, y + 59, 0xD8DEC9);
         int legendY = y + h - 14;
-        g.drawString(font, tr("recognized"), x + 9, legendY, 0x96D895, false);
-        int hangoutX = x + 22 + font.width(tr("recognized"));
+        int hangoutX = x + 9;
         CatalogBadgeRenderer.hangoutLabel(g, font, tr("hangout").getString(), hangoutX, legendY, 0xADBEAF);
         int pinX = hangoutX + 28 + font.width(tr("hangout"));
         if (tab == 0) g.drawString(font, "◆ " + tr("filter.pinned").getString(), pinX, legendY, 0xDACB9F, false);

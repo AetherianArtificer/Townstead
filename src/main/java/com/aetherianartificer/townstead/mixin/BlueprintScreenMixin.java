@@ -1809,7 +1809,9 @@ public abstract class BlueprintScreenMixin extends Screen {
                     context.renderItem(iconStack, 0, 0);
                     context.pose().popPose();
                 }
-                String displayName = townstead$translatedText("buildingType." + c.buildingType());
+                var decoration = com.aetherianartificer.townstead.spirit.DecorationSpiritContributions.decorationId(c.buildingType());
+                String displayName = townstead$translatedText(decoration == null ? "buildingType." + c.buildingType()
+                        : "decoration." + decoration.getNamespace() + "." + decoration.getPath().replace('/', '.'));
                 String line = c.count() + "x " + displayName + "  +" + c.points();
                 townstead$drawScaledString(context, line, contribTextX, listY, contribColor, fs);
                 listY += contribLineH;
@@ -2116,6 +2118,13 @@ public abstract class BlueprintScreenMixin extends Screen {
     @Unique
     private net.minecraft.world.item.ItemStack townstead$catalogIconFor(String buildingTypeName) {
         if (buildingTypeName == null || buildingTypeName.isEmpty()) return net.minecraft.world.item.ItemStack.EMPTY;
+        var decoration = com.aetherianartificer.townstead.spirit.DecorationSpiritContributions.decorationId(buildingTypeName);
+        if (decoration != null) {
+            return com.aetherianartificer.townstead.client.catalog.CatalogEntries.decorations().stream()
+                    .filter(display -> display.entry().id().equals(decoration.toString()))
+                    .map(com.aetherianartificer.townstead.client.catalog.CatalogEntries.Display::icon)
+                    .findFirst().orElse(net.minecraft.world.item.ItemStack.EMPTY);
+        }
         BuildingType bt = BuildingTypes.getInstance().getBuildingTypes().get(buildingTypeName);
         if (bt == null) {
             bt = com.aetherianartificer.townstead.client.catalog.CatalogDataLoader

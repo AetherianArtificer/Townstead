@@ -1,5 +1,6 @@
 {
   "schema": "townstead:decoration/v1",
+  "spirits": { "tourism": 1 },
   "radius": 4,
   "variants": [
     {"anchor": "minecraft:torch", "requires": {"minecraft:cut_sandstone": 1, "minecraft:terracotta": 1}},

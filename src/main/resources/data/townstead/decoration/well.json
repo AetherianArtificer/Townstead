@@ -1,5 +1,6 @@
 {
   "schema": "townstead:decoration/v1",
+  "spirits": { "nautical": 1 },
   "radius": 6,
   "variants": [
     {"anchor": "minecraft:water", "requires": {"minecraft:smooth_sandstone": 80}},

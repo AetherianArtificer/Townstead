@@ -25,14 +25,17 @@ import java.util.Map;
  *   "radius": 3,
  *   "requires": { "#townstead:masonry_materials": 4 },
  *   "thermal": { "kind": "warming", "offset": 10, "radius": 6 },
+ *   "spirits": { "pastoral": 1 },
  *   "icon": "minecraft:campfire"
  * }</pre>
  * A definition may instead provide {@code variants}, each with its own anchor and requirements,
  * so local material forms share one catalog identity.
+ * Spirit points apply once per built decoration, regardless of its material variant.
  */
 public record DecorationDefinition(ResourceLocation id, List<Variant> variants, int radius,
                                   @Nullable ThermalStructures.Spec thermal,
-                                  @Nullable ResourceLocation icon) {
+                                  @Nullable ResourceLocation icon, Map<String, Integer> spirits) {
+    public DecorationDefinition { spirits = Map.copyOf(spirits); }
     public static final String SCHEMA = "townstead:decoration/v1";
     public static final int MAX_RADIUS = 6;
 
@@ -114,7 +117,18 @@ public record DecorationDefinition(ResourceLocation id, List<Variant> variants, 
         ThermalStructures.Spec thermal = json.has("thermal") && json.get("thermal").isJsonObject()
                 ? ThermalStructures.parse(id.toString(), json.getAsJsonObject("thermal")) : null;
         ResourceLocation icon = json.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(json, "icon", "")) : null;
-        return new DecorationDefinition(id, List.copyOf(variants), radius, thermal, icon);
+        Map<String, Integer> spirits = new java.util.LinkedHashMap<>();
+        if (json.has("spirits")) {
+            if (!json.get("spirits").isJsonObject()) return null;
+            for (var entry : json.getAsJsonObject("spirits").entrySet()) {
+                if (!com.aetherianartificer.townstead.spirit.SpiritRegistry.contains(entry.getKey())
+                        || !entry.getValue().isJsonPrimitive() || !entry.getValue().getAsJsonPrimitive().isNumber()) return null;
+                double points = entry.getValue().getAsDouble();
+                if (!Double.isFinite(points) || points < 0 || points > Integer.MAX_VALUE || points != Math.floor(points)) return null;
+                if (points > 0) spirits.put(entry.getKey(), (int) points);
+            }
+        }
+        return new DecorationDefinition(id, List.copyOf(variants), radius, thermal, icon, spirits);
     }
 
     private static @Nullable Variant parseVariant(JsonObject json) {
