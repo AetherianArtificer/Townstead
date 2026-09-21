@@ -22,6 +22,13 @@ import java.util.function.Function;
 
 /** Shared catalog UI embedded in MCA's Blueprint lifecycle; MCA remains the active Screen. */
 public final class CatalogPanel {
+    private static final int INSET = 8, GAP = 6;
+    private static final int TITLE_BOTTOM = 29, SEARCH_HEIGHT = 20, TOOLBAR_HEIGHT = 18;
+    private static final int SEARCH_TOP = TITLE_BOTTOM + GAP;
+    private static final int SEARCH_RULE = SEARCH_TOP + SEARCH_HEIGHT + GAP;
+    private static final int TOOLBAR_TOP = SEARCH_RULE + 1 + GAP;
+    private static final int BODY_TOP = TOOLBAR_TOP + TOOLBAR_HEIGHT + GAP;
+    private static final int FOOTER_HEIGHT = GAP + 16 + GAP + 1;
     private static final class SortOrder { Sort key = Sort.NAME; boolean descending; }
     private static final class TabState {
         final CatalogViewport camera = new CatalogViewport();
@@ -72,46 +79,46 @@ public final class CatalogPanel {
         w = Math.min(900, virtualWidth - 32); h = Math.min(500, virtualHeight - 32);
         x = (virtualWidth - w) / 2; y = (virtualHeight - h) / 2;
         int detailsW = Math.min(244, w * 30 / 100);
-        graphW = w - detailsW - 26;
-        bodyY = y + 78; bodyH = h - 100;
-        graph = new CatalogGraphWidget(font, x + 8, bodyY, graphW, bodyH, state().camera,
+        graphW = w - detailsW - INSET * 3;
+        bodyY = y + BODY_TOP; bodyH = h - BODY_TOP - FOOTER_HEIGHT;
+        graph = new CatalogGraphWidget(font, x + INSET, bodyY, graphW, bodyH, state().camera,
                 () -> state().selected, this::select);
         graph.uiScale(uiScale);
-        inspector = new CatalogInspectorWidget(font, x + graphW + 16, bodyY, detailsW, bodyH);
+        inspector = new CatalogInspectorWidget(font, x + graphW + INSET * 2, bodyY, detailsW, bodyH);
         inspector.uiScale(uiScale);
-        button(x + 5, y + 3, 60, 16, Component.translatable("gui.back"), () -> false, b -> back.run());
+        button(x + INSET, y + 6, 60, 18, Component.translatable("gui.back"), () -> false, b -> back.run());
         Component[] tabLabels = {Component.translatable("townstead.decorations.buildings_button"),
                 Component.translatable("townstead.decorations.button")};
         int tabWidth = Math.max(font.width(tabLabels[0]), font.width(tabLabels[1])) + 16;
-        var tabRects = Controls.tabLayout(x + 8, y + 30, tabWidth * 2, 2);
+        var tabRects = Controls.tabLayout(x + INSET, y + SEARCH_TOP + (SEARCH_HEIGHT - Controls.TAB_H) / 2, tabWidth * 2, 2);
         for (int i = 0; i < tabLabels.length; i++) {
             int index = i;
             widgets.add(new TabButton(tabRects[i], tabLabels[i], () -> tab == index, b -> switchTab(index)));
         }
-        search = new EditBox(font, tabRects[1].right() + 10, y + 27, 100, 20, tr("search"));
+        search = new EditBox(font, tabRects[1].right() + 10, y + SEARCH_TOP, 100, SEARCH_HEIGHT, tr("search"));
         search.setMaxLength(128); search.setHint(tr("search")); search.setValue(state().query);
         search.setResponder(value -> { state().query = value; rebuild(true); }); widgets.add(search);
-        clearSearch = button(search.getX() + search.getWidth() + 4, y + 27, 20, 20, Component.literal("×"), () -> false, b -> {
+        clearSearch = button(search.getX() + search.getWidth() + 4, y + SEARCH_TOP, 20, SEARCH_HEIGHT, Component.literal("×"), () -> false, b -> {
             state().filter = Filter.ALL; search.setValue(""); rebuild(true);
         });
-        groupingButton = button(x + 8, y + 54, 166, 18, Component.empty(), () -> false, b ->
+        groupingButton = button(x + INSET, y + TOOLBAR_TOP, 166, TOOLBAR_HEIGHT, Component.empty(), () -> false, b ->
                 choices(b, groupings(), state().grouping, CatalogPanel::option, value -> {
                     state().grouping = value; rebuild(true);
                 }));
-        sortButton = button(x + 179, y + 54, 126, 18, Component.empty(), () -> false, b ->
+        sortButton = button(x + 179, y + TOOLBAR_TOP, 126, TOOLBAR_HEIGHT, Component.empty(), () -> false, b ->
                 choices(b, sorts(), state().order().key, CatalogPanel::option, value -> {
                     state().order().key = value; rebuild(true);
                 }));
-        directionButton = button(x + 308, y + 54, 18, 18, Component.empty(), () -> false, b -> {
+        directionButton = button(x + 308, y + TOOLBAR_TOP, 18, TOOLBAR_HEIGHT, Component.empty(), () -> false, b -> {
             state().order().descending = !state().order().descending; rebuild(true);
         });
-        filterButton = button(x + 331, y + 54, 130, 18, Component.empty(), () -> state().filter != Filter.ALL, b ->
+        filterButton = button(x + 331, y + TOOLBAR_TOP, 130, TOOLBAR_HEIGHT, Component.empty(), () -> state().filter != Filter.ALL, b ->
                 choices(b, tab == 0 ? List.of(Filter.values()) : List.of(Filter.ALL, Filter.HANGOUT, Filter.RECOGNIZED, Filter.MISSING),
                         state().filter, CatalogPanel::option, value -> { state().filter = value; rebuild(true); }));
-        int cameraX = x + w - 121;
-        button(cameraX, y + 54, 18, 18, Component.literal("−"), () -> false, b -> zoom(-1));
-        button(cameraX + 56, y + 54, 18, 18, Component.literal("+"), () -> false, b -> zoom(1));
-        button(cameraX + 79, y + 54, 34, 18, tr("fit"), () -> false, b -> graph.fit());
+        int cameraX = x + w - INSET - 113;
+        button(cameraX, y + TOOLBAR_TOP, 18, TOOLBAR_HEIGHT, Component.literal("−"), () -> false, b -> zoom(-1));
+        button(cameraX + 56, y + TOOLBAR_TOP, 18, TOOLBAR_HEIGHT, Component.literal("+"), () -> false, b -> zoom(1));
+        button(cameraX + 79, y + TOOLBAR_TOP, 34, TOOLBAR_HEIGHT, tr("fit"), () -> false, b -> graph.fit());
         widgets.add(graph); widgets.add(inspector);
         int actionY = bodyY + bodyH - 26;
         pinButton = button(inspector.getX() + (detailsW - 156) / 2, actionY, 156, 20, tr("pin_requirements"),
@@ -204,7 +211,7 @@ public final class CatalogPanel {
         label(directionButton, Component.literal(state().order().descending ? "↓" : "↑"));
         // Reserve the full catalog count so typing doesn't move the search field's right edge.
         int countWidth = font.width(tr("results", entries.size()));
-        clearSearch.setX(x + w - 8 - countWidth - 8 - clearSearch.getWidth());
+        clearSearch.setX(x + w - INSET - countWidth - 8 - clearSearch.getWidth());
         search.setWidth(clearSearch.getX() - 4 - search.getX());
         updateActions();
     }
@@ -246,19 +253,21 @@ public final class CatalogPanel {
         g.fill(x, y, x + w, y + h, theme.frameColor());
         g.fill(x + 1, y + 1, x + w - 1, y + h - 1, theme.panelColor());
         if (background != null) g.blit(background, x + 1, y + 1, w - 2, h - 2, 0, 0, 640, 380, 640, 380);
-        g.fill(x + 3, y + 3, x + w - 3, y + 20, theme.titleBarColor());
-        g.drawCenteredString(font, Component.translatable("townstead.configuration.catalog"), x + w / 2, y + 7, 0xF2ECD8);
-        g.fill(x + 4, y + 50, x + w - 4, y + 51, theme.borderColor());
+        g.fill(x + 1, y + 1, x + w - 1, y + TITLE_BOTTOM, theme.titleBarColor());
+        g.drawCenteredString(font, Component.translatable("townstead.configuration.catalog"), x + w / 2,
+                y + 1 + (TITLE_BOTTOM - 1 - 8) / 2, 0xF2ECD8);
+        g.fill(x + INSET, y + SEARCH_RULE, x + w - INSET, y + SEARCH_RULE + 1, theme.borderColor());
         Component count = tr("results", layout.matches());
-        g.drawString(font, count, x + w - 8 - font.width(count), y + 33, 0xADBEAF, false);
-        g.drawCenteredString(font, Math.round(state().camera.zoom * 100) + "%", x + w - 84, y + 59, 0xD8DEC9);
-        int legendY = y + h - 14;
-        int hangoutX = x + 9;
+        g.drawString(font, count, x + w - INSET - font.width(count), y + SEARCH_TOP + (SEARCH_HEIGHT - 8) / 2, 0xADBEAF, false);
+        g.drawCenteredString(font, Math.round(state().camera.zoom * 100) + "%", x + w - 84,
+                y + TOOLBAR_TOP + (TOOLBAR_HEIGHT - 8) / 2, 0xD8DEC9);
+        int legendY = bodyY + bodyH + GAP + 4;
+        int hangoutX = x + INSET + 1;
         CatalogBadgeRenderer.hangoutLabel(g, font, tr("hangout").getString(), hangoutX, legendY, 0xADBEAF);
         int pinX = hangoutX + 28 + font.width(tr("hangout"));
         if (tab == 0) CatalogBadgeRenderer.pinLabel(g, font, tr("filter.pinned").getString(), pinX, legendY, 0xDACB9F);
         String help = tr("navigation_hint").getString();
-        g.drawString(font, help, x + w - 9 - font.width(help), legendY, 0xADBEAF, false);
+        g.drawString(font, help, x + w - INSET - font.width(help), legendY, 0xADBEAF, false);
         updateActions();
         for (var input : inputWidgets.values()) input.sync();
         for (var widget : widgets) if (widget.visible) widget.render(g, mx, my, tick);

@@ -31,7 +31,8 @@ public final class ScaledWidget extends AbstractWidget {
     @Override protected void updateWidgetNarration(NarrationElementOutput output) { delegate.updateNarration(output); }
 
     public static void scissor(GuiGraphics g, float scale, int x, int y, int right, int bottom) {
-        g.enableScissor((int) Math.floor(x * scale), (int) Math.floor(y * scale),
-                (int) Math.ceil(right * scale), (int) Math.ceil(bottom * scale));
+        // Round inward: fractional GUI scales must not expose content beyond a panel edge.
+        g.enableScissor((int) Math.ceil(x * scale), (int) Math.ceil(y * scale),
+                (int) Math.floor(right * scale), (int) Math.floor(bottom * scale));
     }
 }

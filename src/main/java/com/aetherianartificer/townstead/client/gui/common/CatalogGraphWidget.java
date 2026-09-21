@@ -46,7 +46,8 @@ public final class CatalogGraphWidget extends AbstractWidget {
     }
     @Override protected void renderWidget(GuiGraphics g, int mx, int my, float tick) {
         g.fill(getX(), getY(), getX() + width, getY() + height, theme.graphBackgroundColor());
-        ScaledWidget.scissor(g, uiScale, getX(), getY(), getX() + width, getY() + height);
+        // Keep item depth and badges out of the separator's own row.
+        ScaledWidget.scissor(g, uiScale, getX(), getY(), getX() + width, getY() + height - 1);
         g.pose().pushPose();
         g.pose().translate(getX(), getY(), 0);
         g.pose().scale((float) camera.zoom, (float) camera.zoom, 1);
@@ -105,7 +106,8 @@ public final class CatalogGraphWidget extends AbstractWidget {
         g.pose().popPose(); g.disableScissor();
         if (layout.matches() == 0) g.drawWordWrap(font, Component.translatable("townstead.catalog.no_matches"),
                 getX() + 12, getY() + 20, width - 24, 0xC5C4B1);
-        if (isFocused()) g.fill(getX(), getY() + height - 1, getX() + width, getY() + height, theme.frameColor());
+        g.fill(getX(), getY() + height - 1, getX() + width, getY() + height,
+                isFocused() ? theme.frameColor() : theme.borderColor());
     }
     public void renderTooltip(GuiGraphics g, int mx, int my) {
         var hovered = isMouseOver(mx, my) ? nodeAt(mx, my) : null;
