@@ -1,8 +1,10 @@
 package com.aetherianartificer.townstead.client;
 
+import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.client.gui.dialogue.RpgDialogueScreen;
 import com.aetherianartificer.townstead.client.gui.quest.QuestLedgerScreen;
 import com.mojang.blaze3d.platform.InputConstants;
+import net.conczin.mca.client.gui.InteractScreen;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.VillagerLike;
 import net.minecraft.client.KeyMapping;
@@ -184,7 +186,11 @@ public final class TownsteadKeybinds {
             if (hit instanceof EntityHitResult entityHit) {
                 Entity entity = entityHit.getEntity();
                 if (entity instanceof VillagerLike<?> villager) {
-                    mc.setScreen(new RpgDialogueScreen(villager));
+                    // With the RPG screen turned off there is no Townstead dialogue to open, so the
+                    // key lands on MCA's interaction menu and its own Talk button takes it from there.
+                    mc.setScreen(TownsteadConfig.isRpgDialogueEnabled()
+                            ? new RpgDialogueScreen(villager)
+                            : new InteractScreen(villager));
                 }
             }
         }

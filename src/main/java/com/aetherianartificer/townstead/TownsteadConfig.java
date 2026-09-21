@@ -88,6 +88,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ModConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
+    public static final ModConfigSpec.BooleanValue USE_RPG_DIALOGUE;
     public static final ModConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.temperature.TemperatureData.Unit> TEMPERATURE_UNIT;
     public static final ModConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
@@ -186,6 +187,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ForgeConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ForgeConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
+    public static final ForgeConfigSpec.BooleanValue USE_RPG_DIALOGUE;
     public static final ForgeConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.temperature.TemperatureData.Unit> TEMPERATURE_UNIT;
     public static final ForgeConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
@@ -693,6 +695,13 @@ public final class TownsteadConfig {
                 .define("useTownsteadCatalog", true);
         clientBuilder.pop();
 
+        clientBuilder.translation("townstead.configuration.dialogue").push("dialogue");
+        USE_RPG_DIALOGUE = clientBuilder
+                .translation("townstead.configuration.dialogue.useRpgDialogue")
+                .comment("Use the Townstead RPG dialogue screen when you talk to a villager. Disable to use MCA's original chat dialogue with answer buttons in the interaction menu.")
+                .define("useRpgDialogue", true);
+        clientBuilder.pop();
+
         clientBuilder.translation("townstead.configuration.needs_display").push("needs_display");
         TEMPERATURE_UNIT = clientBuilder
                 .translation("townstead.configuration.needs_display.temperatureUnit")
@@ -855,6 +864,19 @@ public final class TownsteadConfig {
 
     public static boolean isMoodVocalizationMuteEnabled() {
         return MUTE_MOOD_VOCALIZATIONS.get();
+    }
+
+    /**
+     * Whether talking to a villager opens the Townstead RPG dialogue screen. When this is
+     * false, MCA's own dialogue runs instead. Client config, so it defaults to true whenever
+     * the value is not loaded.
+     */
+    public static boolean isRpgDialogueEnabled() {
+        try {
+            return USE_RPG_DIALOGUE == null || USE_RPG_DIALOGUE.get();
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     private static boolean isValidResourceLocationString(final @NotNull Object o) {

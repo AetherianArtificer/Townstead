@@ -107,7 +107,7 @@ public abstract class InteractScreenMixin extends Screen {
         String id = button.identifier();
         if (timeSinceLastClick <= 2) return;
         if (townstead$openDress(id, ci)) return;
-        if ("gui.button.talk".equals(id)) {
+        if ("gui.button.talk".equals(id) && TownsteadConfig.isRpgDialogueEnabled()) {
             ci.cancel();
             townstead$transitioning = true;
             Minecraft.getInstance().setScreen(new RpgDialogueScreen(villager));
@@ -123,7 +123,7 @@ public abstract class InteractScreenMixin extends Screen {
         String id = button.identifier();
         if (timeSinceLastClick <= 2) return;
         if (townstead$openDress(id, ci)) return;
-        if ("gui.button.talk".equals(id)) {
+        if ("gui.button.talk".equals(id) && TownsteadConfig.isRpgDialogueEnabled()) {
             ci.cancel();
             townstead$transitioning = true;
             Minecraft.getInstance().setScreen(new RpgDialogueScreen(villager));
