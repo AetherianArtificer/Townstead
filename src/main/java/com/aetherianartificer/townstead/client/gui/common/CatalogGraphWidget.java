@@ -89,7 +89,7 @@ public final class CatalogGraphWidget extends AbstractWidget {
                 var display = displays.get(entry.id());
                 if (display != null) display.drawIcon(g, x + 5, y + 5);
                 if (entry.hangout()) CatalogBadgeRenderer.hangout(g, x + 19, y - 5);
-                if (entry.pinned()) CatalogBadgeRenderer.pin(g, x - 9, y - 10);
+                if (entry.pinned()) CatalogBadgeRenderer.pin(g, x - 9, y - 7);
                 if (entry.tier() > 0) {
                     String tier = CatalogGraphLayout.roman(entry.tier());
                     g.drawCenteredString(font, tier, x + 13, y - 12, 0xD6DFC9);
@@ -113,14 +113,19 @@ public final class CatalogGraphWidget extends AbstractWidget {
         var hovered = isMouseOver(mx, my) ? nodeAt(mx, my) : null;
         if (hovered != null && !armed) {
             List<Component> tip = new ArrayList<>();
-            tip.add(Component.literal(hovered.entry().name()));
-            tip.add(Component.literal(hovered.entry().groupLabel()));
+            tip.add(Component.literal(hovered.entry().name()).withStyle(style -> style.withColor(0xF1E6C9)));
+            tip.add(Component.literal(hovered.entry().groupLabel()).withStyle(style -> style.withColor(0xD6C381)));
             var display = displays.get(hovered.entry().id());
-            if (display != null && !display.modName().isEmpty()) tip.add(Component.literal(display.modName()));
-            if (hovered.entry().hangout()) tip.add(Component.translatable("townstead.catalog.hangout_hint"));
-            if (hovered.entry().pinned()) tip.add(Component.translatable("townstead.catalog.filter.pinned"));
-            if (hovered.entry().recognized()) tip.add(Component.translatable("townstead.catalog.recognized"));
-            if (!hovered.match()) tip.add(Component.translatable("townstead.catalog.context"));
+            if (display != null && !display.modName().isEmpty()) tip.add(Component.literal(display.modName())
+                    .withStyle(style -> style.withColor(0x8FC1FF)));
+            if (hovered.entry().hangout()) tip.add(Component.translatable("townstead.catalog.hangout_hint")
+                    .withStyle(style -> style.withColor(0xADBEAF)));
+            if (hovered.entry().pinned()) tip.add(Component.translatable("townstead.catalog.filter.pinned")
+                    .withStyle(style -> style.withColor(0xF7D77A)));
+            if (hovered.entry().recognized()) tip.add(Component.translatable("townstead.catalog.recognized")
+                    .withStyle(style -> style.withColor(0xA5C9A8)));
+            if (!hovered.match()) tip.add(Component.translatable("townstead.catalog.context")
+                    .withStyle(style -> style.withColor(0xAAAAAA)));
             g.renderComponentTooltip(font, tip, mx, my);
         }
     }
