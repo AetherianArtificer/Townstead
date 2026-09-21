@@ -202,7 +202,7 @@
   "townstead.configuration.dialogue": "对话",
   "townstead.configuration.dialogue.tooltip": "与村民交谈时打开的界面设置。",
   "townstead.configuration.dialogue.useRpgDialogue": "使用 RPG 对话界面",
-  "townstead.configuration.dialogue.useRpgDialogue.tooltip": "与村民交谈时使用 Townstead 的 RPG 对话界面。禁用则使用 MCA 原始的聊天对话，回答按钮显示在互动菜单中。",
+  "townstead.configuration.dialogue.useRpgDialogue.tooltip": "在 MCA 的交谈界面上显示 Townstead 的视觉覆盖层。设为 false 则使用 MCA 默认的交谈界面。",
   "townstead.hunger.label": "饥饿：%s",
   "townstead.hunger.well_fed": "饱足",
   "townstead.hunger.adequate": "正常",

@@ -196,7 +196,7 @@
   "townstead.configuration.dialogue": "Dialog",
   "townstead.configuration.dialogue.tooltip": "Einstellungen für das Fenster, das sich beim Gespräch mit einem Dorfbewohner öffnet.",
   "townstead.configuration.dialogue.useRpgDialogue": "RPG-Dialog verwenden",
-  "townstead.configuration.dialogue.useRpgDialogue.tooltip": "Verwendet das RPG-Dialogfenster von Townstead beim Gespräch mit einem Dorfbewohner. Deaktivieren, um MCAs ursprünglichen Chat-Dialog mit Antwortknöpfen im Interaktionsmenü zu verwenden.",
+  "townstead.configuration.dialogue.useRpgDialogue.tooltip": "Zeigt die visuelle Townstead-Überlagerung auf MCAs Gesprächsfenster. Auf false setzen, um MCAs Standard-Gesprächsfenster zu verwenden.",
   "townstead.hunger.label": "Hunger: %s",
   "townstead.hunger.well_fed": "Gut genährt",
   "townstead.hunger.adequate": "Ausreichend",

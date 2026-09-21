@@ -283,7 +283,7 @@
   "townstead.configuration.dialogue": "Dialogue",
   "townstead.configuration.dialogue.tooltip": "Settings for the screen that opens when you talk to a villager.",
   "townstead.configuration.dialogue.useRpgDialogue": "Use RPG Dialogue",
-  "townstead.configuration.dialogue.useRpgDialogue.tooltip": "Use the Townstead RPG dialogue screen when you talk to a villager. Disable to use MCA's original chat dialogue with answer buttons in the interaction menu.",
+  "townstead.configuration.dialogue.useRpgDialogue.tooltip": "Shows the Townstead visual overlay on MCA's talk screen. Set to false to use MCA's default talk screen.",
   "townstead.hunger.label": "Hunger: %s",
   "townstead.hunger.well_fed": "Well-Fed",
   "townstead.hunger.adequate": "Adequate",

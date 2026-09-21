@@ -698,7 +698,7 @@ public final class TownsteadConfig {
         clientBuilder.translation("townstead.configuration.dialogue").push("dialogue");
         USE_RPG_DIALOGUE = clientBuilder
                 .translation("townstead.configuration.dialogue.useRpgDialogue")
-                .comment("Use the Townstead RPG dialogue screen when you talk to a villager. Disable to use MCA's original chat dialogue with answer buttons in the interaction menu.")
+                .comment("Show the Townstead visual overlay on MCA's talk screen. Set to false to use MCA's default talk screen.")
                 .define("useRpgDialogue", true);
         clientBuilder.pop();
 

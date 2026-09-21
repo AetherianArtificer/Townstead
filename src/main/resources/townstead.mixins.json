@@ -123,6 +123,8 @@
     "compat.emf.EmfAnimationEntityContextCompatMixin",
     "ChatListenerMixin",
     "ClientHandlerImplMixin",
+    "AudioCacheRetryMixin",
+    "CleanPhraseEffectTagsMixin",
     "accessor.AbstractDynamicScreenAccessor",
     "client.VillagerDressMenuMixin",
     "accessor.BlueprintScreenAccessor",

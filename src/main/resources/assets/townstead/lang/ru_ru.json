@@ -196,7 +196,7 @@
   "townstead.configuration.dialogue": "Диалог",
   "townstead.configuration.dialogue.tooltip": "Настройки окна, которое открывается при разговоре с жителем.",
   "townstead.configuration.dialogue.useRpgDialogue": "Использовать RPG-диалог",
-  "townstead.configuration.dialogue.useRpgDialogue.tooltip": "Использовать окно RPG-диалога Townstead при разговоре с жителем. Отключите, чтобы использовать оригинальный диалог MCA в чате с кнопками ответов в меню взаимодействия.",
+  "townstead.configuration.dialogue.useRpgDialogue.tooltip": "Показывает визуальный слой Townstead поверх окна разговора MCA. Установите false, чтобы использовать стандартное окно разговора MCA.",
   "townstead.hunger.label": "Голод: %s",
   "townstead.hunger.well_fed": "Сыт",
   "townstead.hunger.adequate": "Нормально",

@@ -443,7 +443,8 @@ public class RpgDialogueScreen extends Screen {
         choicePanel.setVisible(false);
         state = DialogueState.TYPEWRITER_PLAYING;
         awaitingResponseTimer = 0;
-        speakDisplayedText(line);
+        // No speech here: this line reached the chat listener, which means MCA's own handler was
+        // left to run and speaks it a moment later. Saying it again would say it twice.
         narrateText(line);
     }
 
@@ -462,8 +463,12 @@ public class RpgDialogueScreen extends Screen {
 
     private void speakDisplayedText(Component text) {
         if (!(villager.asEntity() instanceof VillagerEntityMCA mca)) return;
+        // Resolving first is what registers the line's translation key with MCA, so the lookup
+        // inside speakLine can find it and hand a stock MCA line back to MCA's own speech manager.
+        // Clearing first keeps a line MCA does not own from claiming the previous line's key.
+        com.aetherianartificer.townstead.client.tts.McaSpeechKeys.clearPending();
         TypewriterText.DisplayText displayText = TypewriterText.resolveDisplayText(text);
-        TownsteadLiteralTts.speak(displayText.component().getString(), mca);
+        TownsteadLiteralTts.speakLine(text, displayText.component().getString(), mca);
     }
 
     private void narrateText(Component text) {
