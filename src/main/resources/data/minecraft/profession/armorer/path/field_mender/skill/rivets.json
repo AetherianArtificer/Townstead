@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.field_mender.rivets"
+  },
+  "icon": "minecraft:iron_nugget",
+  "description": {
+    "translate": "skill.townstead.armorer.field_mender.rivets.description"
+  },
+  "cost": 1,
+  "requires": [
+    "careful_wear"
+  ],
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.85,
+    "damage_condition": {
+      "type": "pheno:attacker",
+      "condition": {
+        "type": "pheno:constant",
+        "value": true
+      }
+    },
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "chest"
+    }
+  }
+}

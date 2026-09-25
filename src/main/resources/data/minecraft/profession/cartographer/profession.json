@@ -7,5 +7,9 @@
   "description": {
     "text": "Craft maps and wayfinding tools to build a history of cartography mastery."
   },
+  "skills": [
+    "well_travelled",
+    "compass_rose"
+  ],
   "unlock_model": "experiential"
 }

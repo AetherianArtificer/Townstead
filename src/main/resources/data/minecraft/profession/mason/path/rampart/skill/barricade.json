@@ -1,0 +1,41 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.rampart.barricade"
+  },
+  "icon": "minecraft:cobblestone",
+  "description": {
+    "translate": "skill.townstead.mason.rampart.barricade.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:rampart_wall",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:stone_wall",
+          "blocks": {
+            "radius": 0,
+            "around": "in_front"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.stone.place",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

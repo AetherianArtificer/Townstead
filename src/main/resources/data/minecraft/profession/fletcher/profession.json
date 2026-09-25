@@ -7,5 +7,9 @@
   "description": {
     "text": "Fletch arrows and string bows to build a history of fletching mastery."
   },
+  "skills": [
+    "archers_eye",
+    "quick_shot"
+  ],
   "unlock_model": "experiential"
 }

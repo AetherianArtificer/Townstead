@@ -1,0 +1,51 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.duelist.humiliate"
+  },
+  "icon": "minecraft:golden_sword",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.duelist.humiliate.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sweeping_disarm"
+  ],
+  "skill_group": "townstead:duelist_disarm",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:edge",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:disarm"
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:weakness",
+            "duration": 200,
+            "amplifier": 2
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:slowness",
+            "duration": 200,
+            "amplifier": 1
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.honer.field_forge"
+  },
+  "icon": "minecraft:anvil",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.honer.field_forge.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sharpen_arms"
+  ],
+  "skill_group": "townstead:honer_forge",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:if_else",
+      "condition": {
+        "type": "pheno:not",
+        "condition": {
+          "type": "pheno:hostile"
+        }
+      },
+      "if_action": {
+        "type": "pheno:equipped_item_action",
+        "slot": "mainhand",
+        "item_action": {
+          "type": "pheno:damage",
+          "amount": -20
+        }
+      },
+      "on": {
+        "type": "pheno:ray",
+        "distance": 6
+      }
+    }
+  }
+}

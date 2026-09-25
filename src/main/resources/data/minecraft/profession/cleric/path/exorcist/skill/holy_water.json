@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.exorcist.holy_water"
+  },
+  "icon": "minecraft:potion",
+  "description": {
+    "translate": "skill.townstead.cleric.exorcist.holy_water.description"
+  },
+  "cost": 1,
+  "requires": [
+    "rebuke"
+  ],
+  "skill_group": "townstead:exorcist_rite",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:faith",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:holy_water",
+          "blocks": {
+            "radius": 3,
+            "where": {
+              "type": "air"
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.beacon.activate",
+          "volume": 0.6,
+          "pitch": 1.6
+        }
+      ]
+    }
+  }
+}

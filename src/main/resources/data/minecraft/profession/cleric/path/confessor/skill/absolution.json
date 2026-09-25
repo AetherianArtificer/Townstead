@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.confessor.absolution"
+  },
+  "icon": "minecraft:milk_bucket",
+  "description": {
+    "translate": "skill.townstead.cleric.confessor.absolution.description"
+  },
+  "cost": 1,
+  "requires": [
+    "steady_soul"
+  ],
+  "power": {
+    "type": "pheno:effect_immunity",
+    "effects": [
+      "minecraft:poison",
+      "minecraft:weakness"
+    ]
+  }
+}

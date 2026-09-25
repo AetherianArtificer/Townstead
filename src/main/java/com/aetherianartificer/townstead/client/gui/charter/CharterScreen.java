@@ -347,6 +347,13 @@ public final class CharterScreen extends Screen {
         Component description = snapshot.civic() != null && snapshot.civic().controlsGovernment()
                 ? snapshot.civic().description().component() : governing == null ? snapshot.authority().component() : governing.description().component();
         y = information(g, x, y, w, snapshot.governance().component(), description);
+        var seat = snapshot.seat();
+        if (seat != null) {
+            y = information(g, x, y, w, seat.heading().component(), seat.body().component());
+            if (!seat.actions().isEmpty()) y = drawActions(g, x, y - 2, w, seat.actions(), seat.actor()) + 7;
+        }
+        if (snapshot.legitimacy() != null) y = information(g, x, y, w, tr("legitimacy.title"), snapshot.legitimacy().component());
+        if (snapshot.standing() != null) y = information(g, x, y, w, tr("standing.title"), snapshot.standing().component());
         if (personalPane == null) y = drawFactionStanding(g, x, y, w);
         int censusH = Math.max(88, 34 + currentCensus().groups().size() * 19);
         sheet(g, x, y, w, censusH, tr("cultures"));

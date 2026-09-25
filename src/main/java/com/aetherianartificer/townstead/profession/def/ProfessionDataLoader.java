@@ -99,14 +99,11 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             int tradeDir = subpath.lastIndexOf("/trade/");
             if (pathDir > 0 && pathSkillDir > pathDir) {
                 String professionPath = subpath.substring(0, pathDir);
-                ResourceLocation professionId = ResourceLocation.tryParse(
-                        file.getNamespace() + ":" + professionPath);
-                String pathId = CareerIdAliases.canonicalPath(professionId,
-                        subpath.substring(pathDir + "/path/".length(), pathSkillDir));
+                String pathId = subpath.substring(pathDir + "/path/".length(), pathSkillDir);
                 String skillName = subpath.substring(pathSkillDir + "/skill/".length());
-                ResourceLocation skillId = CareerIdAliases.canonicalSkill(ResourceLocation.tryParse(
+                ResourceLocation skillId = ResourceLocation.tryParse(
                         file.getNamespace() + ":" + professionPath + "/" + pathId + "/"
-                                + skillName));
+                                + skillName);
                 if (skillId == null || pathId.isBlank() || pathId.contains("/")
                         || skillName.isBlank()) continue;
                 if (!json.has("profession")) {
@@ -118,8 +115,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 String professionPath = subpath.substring(0, pathDir);
                 ResourceLocation professionId = ResourceLocation.tryParse(
                         file.getNamespace() + ":" + professionPath);
-                String pathId = CareerIdAliases.canonicalPath(professionId,
-                        subpath.substring(pathDir + "/path/".length(), pathTradeDir));
+                String pathId = subpath.substring(pathDir + "/path/".length(), pathTradeDir);
                 String contributionName = subpath.substring(pathTradeDir + "/trade/".length());
                 if (professionId == null || pathId.isBlank() || pathId.contains("/")
                         || contributionName.isBlank()) continue;
@@ -140,9 +136,8 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 String professionPath = subpath.substring(0, pathDir);
                 ResourceLocation professionId = ResourceLocation.tryParse(
                         file.getNamespace() + ":" + professionPath);
-                String pathId = CareerIdAliases.canonicalPath(professionId,
-                        subpath.substring(pathDir + "/path/".length(),
-                                subpath.length() - "/path".length()));
+                String pathId = subpath.substring(pathDir + "/path/".length(),
+                        subpath.length() - "/path".length());
                 if (professionId != null && !pathId.isBlank() && !pathId.contains("/")) {
                     pathDocuments.computeIfAbsent(professionId, ignored -> new LinkedHashMap<>())
                             .put(pathId, json);
@@ -1210,10 +1205,10 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
     private static ResourceLocation resolveSkillRef(ResourceLocation owner,
                                                     @Nullable String scope, String raw) {
         if (raw == null || raw.isBlank()) return null;
-        return CareerIdAliases.canonicalSkill(raw.contains(":")
+        return raw.contains(":")
                 ? ResourceLocation.tryParse(raw)
                 : ResourceLocation.tryParse(owner.getNamespace() + ":" + owner.getPath() + "/"
-                        + (scope == null || scope.isBlank() ? "" : scope + "/") + raw));
+                        + (scope == null || scope.isBlank() ? "" : scope + "/") + raw);
     }
 
     /** Directory portion between the owning Profession and this Skill's filename. */

@@ -1,0 +1,40 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.diplomat.common_ground"
+  },
+  "icon": "minecraft:emerald",
+  "description": {
+    "translate": "skill.townstead.scribe.diplomat.common_ground.description"
+  },
+  "cost": 1,
+  "requires": [
+    "safe_conduct"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:goodwill",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:interaction",
+          "interaction": "in_dialogue"
+        },
+        {
+          "type": "pheno:interaction",
+          "interaction": "heart_increased"
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:goodwill",
+      "amount": 4
+    }
+  }
+}

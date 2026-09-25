@@ -1,0 +1,51 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.barista.perfect_pour"
+  },
+  "icon": "minecraft:golden_carrot",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.barista.perfect_pour.description"
+  },
+  "cost": 1,
+  "requires": [
+    "caffeinated"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:buzz",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:buzz",
+      "min": 34,
+      "max": 66
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:speed",
+            "duration": 30,
+            "amplifier": 0
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:haste",
+            "duration": 30,
+            "amplifier": 0
+          }
+        ]
+      }
+    }
+  }
+}

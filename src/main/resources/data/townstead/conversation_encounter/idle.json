@@ -1,0 +1,88 @@
+{
+  "schema": "townstead:conversation_encounter/v1",
+  "context": "idle",
+  "opening": [
+    {
+      "sequence": [
+        "townstead:greet",
+        "townstead:greet_back"
+      ],
+      "weight": 0.6
+    },
+    {
+      "sequence": [
+        "townstead:greet"
+      ],
+      "weight": 0.15
+    },
+    {
+      "sequence": [],
+      "weight": 0.25
+    }
+  ],
+  "opening_again": [
+    {
+      "sequence": [
+        "townstead:light_greet"
+      ],
+      "weight": 0.4
+    },
+    {
+      "sequence": [],
+      "weight": 0.6
+    }
+  ],
+  "topics": {
+    "min": 1,
+    "max": 4
+  },
+  "chattiness": {
+    "base": 0.2,
+    "per_familiarity": 0.02,
+    "max_familiarity": 10,
+    "personality": {
+      "upbeat": 0.15,
+      "peppy": 0.15,
+      "friendly": 0.1,
+      "extroverted": 0.15,
+      "confident": 0.05,
+      "playful": 0.05,
+      "witty": 0.05,
+      "flirty": 0.05,
+      "introverted": -0.15,
+      "shy": -0.15,
+      "crabby": -0.1,
+      "grumpy": -0.1,
+      "gloomy": -0.05,
+      "anxious": -0.05
+    }
+  },
+  "expansions": {
+    "max": 2
+  },
+  "bridge_pool": "townstead:bridge",
+  "closing": [
+    {
+      "sequence": [
+        "townstead:pre_close",
+        "townstead:farewell_reply",
+        "townstead:farewell_last"
+      ],
+      "weight": 1,
+      "min_lines": 6,
+      "min_interest": 0.3
+    },
+    {
+      "sequence": [
+        "townstead:close"
+      ],
+      "weight": 0.6,
+      "max_interest": 0.5
+    },
+    {
+      "sequence": [],
+      "weight": 0.4,
+      "max_interest": 0.2
+    }
+  ]
+}

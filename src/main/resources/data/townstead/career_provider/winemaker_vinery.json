@@ -1,25 +1,46 @@
 {
   "schema": "townstead:career_provider/v1",
-  "profession": "vinery:winemaker",
+  "profession": "townstead:beverage_artisan",
+  "path": "winemaker",
   "mods": "vinery",
   "priority": 20,
+  "aliases": [
+    "vinery:winemaker"
+  ],
   "contributes": {
+    "path": {
+      "worksites": [
+        "vinery:fermentation_barrel"
+      ]
+    },
     "profession": {
       "poi": [
         {
           "type": "townstead:job_block",
-          "blocks": ["vinery:fermentation_barrel"],
+          "blocks": [
+            "vinery:fermentation_barrel"
+          ],
           "via": "vinery:winemaker"
         },
         {
           "type": "townstead:station_post",
-          "blocks": ["vinery:grapevine_pot", "vinery:apple_press"],
+          "blocks": [
+            "vinery:grapevine_pot",
+            "vinery:apple_press"
+          ],
           "slots": 1
         },
         {
           "type": "townstead:building",
           "type_prefix": "compat/vinery/winery_l",
-          "slots_per_tier": [1, 2, 3]
+          "slots_per_tier": [
+            1,
+            2,
+            3
+          ],
+          "path_affinity": [
+            "winemaker"
+          ]
         }
       ]
     }

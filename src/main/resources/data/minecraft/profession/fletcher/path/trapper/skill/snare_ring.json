@@ -1,0 +1,98 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.trapper.snare_ring"
+  },
+  "icon": "minecraft:tripwire_hook",
+  "description": {
+    "translate": "skill.townstead.fletcher.trapper.snare_ring.description"
+  },
+  "cost": 1,
+  "requires": [
+    "snare_line"
+  ],
+  "skill_group": "townstead:trapper_snare",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:draw",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:snare",
+          "blocks": [
+            {
+              "radius": [
+                3,
+                0,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  0,
+                  3
+                ]
+              }
+            },
+            {
+              "radius": [
+                3,
+                0,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  0,
+                  -3
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                0,
+                3
+              ],
+              "around": {
+                "offset": [
+                  3,
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                0,
+                3
+              ],
+              "around": {
+                "offset": [
+                  -3,
+                  0,
+                  0
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.tripwire.click_on",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

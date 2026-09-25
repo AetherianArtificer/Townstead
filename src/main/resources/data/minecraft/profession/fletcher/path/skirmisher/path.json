@@ -1,0 +1,107 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.fletcher.path.skirmisher"
+  },
+  "title": {
+    "translate": "career.townstead.fletcher.title.skirmisher"
+  },
+  "color": "#9A7A4A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:draw",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fletcher/skirmisher/hit_and_run"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fletcher/skirmisher/vault"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fletcher/skirmisher/distraction"
+              }
+            ]
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:equipped_item",
+                "slot": "mainhand",
+                "item_condition": {
+                  "type": "or",
+                  "conditions": [
+                    {
+                      "type": "ingredient",
+                      "item": "minecraft:bow"
+                    },
+                    {
+                      "type": "ingredient",
+                      "item": "minecraft:crossbow"
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:movement",
+                "movement": "moving"
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 16,
+                "condition": {
+                  "type": "pheno:hostile"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:draw",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "light_step",
+      "backstep",
+      "smoke_arrow"
+    ],
+    [
+      "nimble",
+      "sidestep",
+      "caltrops"
+    ],
+    [
+      "hit_and_run",
+      "vault",
+      "distraction"
+    ],
+    [
+      "evasive",
+      "shoot_and_scoot",
+      "covering_fire"
+    ],
+    [
+      "wind_runner",
+      "whirlwind_archer",
+      "harrier"
+    ]
+  ]
+}

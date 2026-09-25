@@ -1,0 +1,56 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.harpooner.taut_line"
+  },
+  "icon": "minecraft:string",
+  "description": {
+    "translate": "skill.townstead.fisherman.harpooner.taut_line.description"
+  },
+  "cost": 1,
+  "requires": [
+    "hauling_arms"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "or",
+            "conditions": [
+              {
+                "type": "ingredient",
+                "item": "minecraft:fishing_rod"
+              },
+              {
+                "type": "ingredient",
+                "tag": "starcatcher:rods"
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:entity_in_radius",
+          "radius": 8,
+          "condition": {
+            "type": "pheno:hostile"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:tide",
+      "amount": 3
+    }
+  }
+}

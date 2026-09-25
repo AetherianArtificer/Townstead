@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.tanner.tough_work"
+  },
+  "icon": "minecraft:leather",
+  "description": {
+    "translate": "skill.townstead.leatherworker.tanner.tough_work.description"
+  },
+  "cost": 1,
+  "requires": [
+    "weathered"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:hide",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "chest",
+          "item_condition": {
+            "type": "ingredient",
+            "item": "minecraft:leather_chestplate"
+          }
+        },
+        {
+          "type": "pheno:entity_in_radius",
+          "radius": 8,
+          "condition": {
+            "type": "pheno:hostile"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:hide",
+      "amount": 3
+    }
+  }
+}

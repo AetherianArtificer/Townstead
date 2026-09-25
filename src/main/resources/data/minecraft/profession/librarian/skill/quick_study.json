@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.quick_study"
+  },
+  "icon": "minecraft:writable_book",
+  "description": {
+    "translate": "skill.townstead.librarian.quick_study.description"
+  },
+  "tier": 2,
+  "cost": 1,
+  "requires": [
+    "well_read"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "always",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 25
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:haste",
+          "duration": 600,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.book.page_turn",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

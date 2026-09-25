@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.politics.state;
 
+import com.aetherianartificer.townstead.api.impl.v1.PoliticalEvents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -22,7 +23,7 @@ import java.util.UUID;
 /** Server-wide persistent political identities and person-to-actor relationships. */
 public final class PoliticalSavedData extends SavedData {
     public static final String FILE_ID = "townstead_politics";
-    private static final int SCHEMA_VERSION = 4;
+    private static final int SCHEMA_VERSION = 5;
     private final Map<ResourceLocation, com.aetherianartificer.townstead.culture.FactionNaming.Name> factionNames = new LinkedHashMap<>();
     public com.aetherianartificer.townstead.culture.FactionNaming.Name factionName(ResourceLocation id) { return factionNames.get(id); }
     public void putFactionName(ResourceLocation id, com.aetherianartificer.townstead.culture.FactionNaming.Name name) {
@@ -50,6 +51,8 @@ public final class PoliticalSavedData extends SavedData {
     private final Map<ResourceLocation, AffiliationInstance> affiliations = new LinkedHashMap<>();
     private final Map<ResourceLocation, MembershipInstance> memberships = new LinkedHashMap<>();
     private final Map<SettlementRef, SettlementFoundingRecord> foundingRecords = new LinkedHashMap<>();
+    private final Map<PoliticalActorRef, SeatInstance> seats = new LinkedHashMap<>();
+    private final Map<ResourceLocation, Double> legitimacy = new LinkedHashMap<>();
 
     public PoliticalSavedData() {}
 
@@ -87,6 +90,14 @@ public final class PoliticalSavedData extends SavedData {
     public Collection<AffiliationInstance> directAffiliations() { return List.copyOf(affiliations.values()); }
     public Collection<MembershipInstance> memberships() { return List.copyOf(memberships.values()); }
     public Collection<SettlementFoundingRecord> foundingRecords() { return List.copyOf(foundingRecords.values()); }
+    public @Nullable SeatInstance seat(PoliticalActorRef actor) { return seats.get(actor); }
+    public Collection<SeatInstance> seats() { return List.copyOf(seats.values()); }
+    /** A government's stored legitimacy (0 to 100), or null before it was first computed. */
+    public @Nullable Double legitimacy(ResourceLocation government) { return legitimacy.get(government); }
+    public void setLegitimacy(ResourceLocation government, double value) {
+        legitimacy.put(government, Math.max(0.0, Math.min(100.0, value)));
+        setDirty();
+    }
 
     /** Includes ordinary affiliations and the affiliation carried by every membership. */
     public List<AffiliationInstance> affiliations(UUID person) {
@@ -127,7 +138,8 @@ public final class PoliticalSavedData extends SavedData {
     }
 
     public void putOrganization(OrganizationInstance value) {
-        organizations.put(value.id(), value);
+        OrganizationInstance before = organizations.put(value.id(), value);
+        PoliticalEvents.organization(this, before, value);
         setDirty();
     }
 
@@ -135,14 +147,17 @@ public final class PoliticalSavedData extends SavedData {
         if (value.governmentOrganization() != null && !organizations.containsKey(value.governmentOrganization())) {
             throw new IllegalArgumentException("Unknown government organization " + value.governmentOrganization());
         }
-        polities.put(value.id(), value);
+        PoliticalEvents.beforePolityWrite(this);
+        PolityInstance before = polities.put(value.id(), value);
+        PoliticalEvents.polity(before, value);
         setDirty();
     }
 
     public void putAffiliation(AffiliationInstance value) {
         requireActor(value.actor());
         if (memberships.containsKey(value.id())) throw new IllegalArgumentException("Affiliation id already belongs to a membership");
-        affiliations.put(value.id(), value);
+        AffiliationInstance before = affiliations.put(value.id(), value);
+        PoliticalEvents.affiliation(before, value);
         setDirty();
     }
 
@@ -158,7 +173,8 @@ public final class PoliticalSavedData extends SavedData {
                         + value.affiliation().actor().id());
             }
         }
-        memberships.put(value.id(), value);
+        MembershipInstance before = memberships.put(value.id(), value);
+        PoliticalEvents.membership(before, value);
         setDirty();
     }
 
@@ -169,7 +185,25 @@ public final class PoliticalSavedData extends SavedData {
         if (value.government() != null && !organizations.containsKey(value.government())) {
             throw new IllegalArgumentException("Founding record has unknown government " + value.government());
         }
-        foundingRecords.put(value.settlement(), value);
+        SettlementFoundingRecord before = foundingRecords.put(value.settlement(), value);
+        PoliticalEvents.founding(before, value);
+        setDirty();
+    }
+
+    /** An actor has at most one Seat; writing a Seat for an actor that has one moves it. */
+    public void putSeat(SeatInstance value) {
+        requireActor(value.actor());
+        SeatInstance before = seats.put(value.actor(), value);
+        PoliticalEvents.seat(before, value);
+        com.aetherianartificer.townstead.politics.seat.SeatNotices.changed(before, value);
+        setDirty();
+    }
+
+    public void removeSeat(PoliticalActorRef actor, String reason) {
+        SeatInstance before = seats.remove(actor);
+        if (before == null) return;
+        PoliticalEvents.seatLost(before, reason);
+        com.aetherianartificer.townstead.politics.seat.SeatNotices.lost(before, reason);
         setDirty();
     }
 
@@ -195,6 +229,12 @@ public final class PoliticalSavedData extends SavedData {
         load(tag, "memberships", PoliticalNbt::membership, value -> data.memberships.put(value.id(), value));
         load(tag, "founding_records", PoliticalNbt::founding,
                 value -> data.foundingRecords.put(value.settlement(), value));
+        load(tag, "seats", PoliticalNbt::seat, value -> data.seats.put(value.actor(), value));
+        CompoundTag legitimacy = tag.getCompound("legitimacy");
+        for (String key : legitimacy.getAllKeys()) {
+            ResourceLocation id = ResourceLocation.tryParse(key);
+            if (id != null) data.legitimacy.put(id, legitimacy.getDouble(key));
+        }
         ListTag external = tag.getList("external_governments", Tag.TAG_STRING);
         for (int i = 0; i < external.size(); i++) {
             ResourceLocation actor = ResourceLocation.tryParse(external.getString(i));
@@ -228,6 +268,10 @@ public final class PoliticalSavedData extends SavedData {
         tag.put("affiliations", save(affiliations.values(), PoliticalNbt::save));
         tag.put("memberships", save(memberships.values(), PoliticalNbt::save));
         tag.put("founding_records", save(foundingRecords.values(), PoliticalNbt::save));
+        tag.put("seats", save(seats.values(), PoliticalNbt::save));
+        CompoundTag legitimacyTag = new CompoundTag();
+        legitimacy.forEach((id, value) -> legitimacyTag.putDouble(id.toString(), value));
+        tag.put("legitimacy", legitimacyTag);
         return tag;
     }
 

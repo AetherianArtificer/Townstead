@@ -1,7 +1,44 @@
 {
   "schema": "townstead:skill/v1",
-  "display_name": { "translate": "skill.townstead.beverage_artisan.brewer.patient_fermentation" },
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.brewer.patient_fermentation"
+  },
   "icon": "minecraft:barrel",
-  "description": { "translate": "skill.townstead.beverage_artisan.brewer.patient_fermentation.description" },
-  "cost": 1
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.brewer.patient_fermentation.description"
+  },
+  "cost": 1,
+  "requires": [
+    "iron_liver"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:ferment",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:block_in_radius",
+      "radius": 6,
+      "block_condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:block",
+            "block": "minecraft:barrel"
+          },
+          {
+            "type": "pheno:block",
+            "block": "minecraft:brewing_stand"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:ferment",
+      "amount": 3
+    }
+  }
 }

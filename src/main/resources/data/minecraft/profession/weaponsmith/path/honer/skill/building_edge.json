@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.honer.building_edge"
+  },
+  "icon": "minecraft:diamond",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.honer.building_edge.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sharpening"
+  ],
+  "power": {
+    "type": "pheno:stacking_effect",
+    "effect": "minecraft:strength",
+    "min_stacks": 0,
+    "max_stacks": 180,
+    "stacks_per_level": 60,
+    "condition": {
+      "type": "pheno:entity_in_radius",
+      "radius": 8,
+      "condition": {
+        "type": "pheno:hostile"
+      }
+    }
+  }
+}

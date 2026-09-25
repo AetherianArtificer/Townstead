@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.tenderizer.pound"
+  },
+  "icon": "minecraft:iron_block",
+  "description": {
+    "translate": "skill.townstead.butcher.tenderizer.pound.description"
+  },
+  "cost": 1,
+  "requires": [
+    "mallet_blows"
+  ],
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 1.3,
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "ingredient",
+        "tag": "townstead:butcher_hammers"
+      }
+    }
+  }
+}

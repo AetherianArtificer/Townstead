@@ -46,6 +46,7 @@
     "ServerLocaleChangeMixin",
     "TombstoneRevivalMixin",
     "VillagerEatSafetyMixin",
+    "VillagerInfectionChronicleMixin",
     "VillagerInfectionImmunityMixin",
     "VillagerProfessionClothingMixin",
     "VillagerEditorBirthMixin",

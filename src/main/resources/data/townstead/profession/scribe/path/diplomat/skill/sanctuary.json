@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.diplomat.sanctuary"
+  },
+  "icon": "minecraft:campfire",
+  "description": {
+    "translate": "skill.townstead.scribe.diplomat.sanctuary.description"
+  },
+  "cost": 1,
+  "requires": [
+    "parley"
+  ],
+  "skill_group": "townstead:diplomat_parley",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:goodwill",
+      "amount": 50
+    },
+    "action": {
+      "type": "pheno:cloud",
+      "radius": 5,
+      "duration": 300,
+      "particle": "minecraft:happy_villager",
+      "where": {
+        "type": "pheno:target_condition",
+        "condition": {
+          "type": "pheno:hostile"
+        }
+      },
+      "do": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:weakness",
+        "duration": 60,
+        "amplifier": 0
+      }
+    }
+  }
+}

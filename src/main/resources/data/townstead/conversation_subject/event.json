@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:conversation_subject/v1",
+  "source": {
+    "type": "townstead:chronicle_account",
+    "max_age_days": 14,
+    "min_fidelity": 0.2,
+    "events": {
+      "townstead:public_argument": {
+        "variant": "argument",
+        "valence": "negative",
+        "roles": {
+          "who": "instigator",
+          "other2": "target"
+        }
+      },
+      "townstead:became_master": {
+        "variant": "mastery",
+        "valence": "positive",
+        "roles": {
+          "who": "master"
+        }
+      },
+      "townstead:wedding": {
+        "variant": "marriage",
+        "valence": "positive",
+        "roles": {
+          "who": "partner",
+          "other2": "spouse"
+        }
+      }
+    }
+  },
+  "register": "social",
+  "valence": "from_source",
+  "symmetric": [
+    "who",
+    "other2"
+  ],
+  "slots": {
+    "who": {
+      "type": "person",
+      "from": "role.who"
+    },
+    "other2": {
+      "type": "person",
+      "from": "role.other2",
+      "required": false
+    }
+  }
+}

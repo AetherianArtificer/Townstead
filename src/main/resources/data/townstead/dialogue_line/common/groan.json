@@ -1,0 +1,27 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "groan",
+  "lines": {
+    "oh_no": "Oh, no.",
+    "that_was_awful": "That was awful.",
+    "i_want_that_minute_back": "I want that minute back.",
+    "why_do_i_talk_to": "Why do I talk to you.",
+    "boo": "Boo!",
+    "ugh": "Ugh.",
+    "thats_terrible": "That's terrible.",
+    "i_dont_get_it": "I don't get it.",
+    "please_stop": "Please stop.",
+    "wow_no": "Wow. No.",
+    "thats_the_worst_one_yet": "That's the worst one yet.",
+    "really": "Really?",
+    "ive_heard_that_one_before": "I've heard that one before.",
+    "im_going_to_pretend_you": "I'm going to pretend you didn't say that.",
+    "oof": "Oof.",
+    "i_dont_get_it_2": { "text": "I don't get it...", "stages": "child" },
+    "thats_so_lame": { "text": "That's so lame.", "stages": "teen" },
+    "in_my_day_jokes_were": { "text": "In my day, jokes were funny.", "stages": "senior" },
+    "never_tell_a_joke_again": { "text": "Never tell a joke again.", "personalities": ["crabby", "grumpy"] },
+    "even_that_joke_is_sad": { "text": "Even that joke is sad.", "personalities": "gloomy" },
+    "skeletons_are_people_too_how": { "text": "Skeletons are people too! How dare you!", "personalities": "odd" }
+  }
+}

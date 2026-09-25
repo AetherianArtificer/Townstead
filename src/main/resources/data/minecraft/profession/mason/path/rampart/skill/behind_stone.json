@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.rampart.behind_stone"
+  },
+  "icon": "minecraft:arrow",
+  "description": {
+    "translate": "skill.townstead.mason.rampart.behind_stone.description"
+  },
+  "cost": 1,
+  "requires": [
+    "trowel_hand"
+  ],
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.7,
+    "damage_tag": "minecraft:is_projectile"
+  }
+}

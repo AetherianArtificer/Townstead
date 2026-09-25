@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.heavyweight.immovable"
+  },
+  "icon": "minecraft:obsidian",
+  "description": {
+    "translate": "skill.townstead.armorer.heavyweight.immovable.description"
+  },
+  "cost": 1,
+  "requires": [
+    "weight_of_iron"
+  ],
+  "power": {
+    "type": "pheno:attribute",
+    "attribute": "minecraft:generic.knockback_resistance",
+    "amount": 1.0,
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:temper",
+      "min": 50
+    }
+  }
+}

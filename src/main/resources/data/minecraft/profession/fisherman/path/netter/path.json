@@ -1,0 +1,90 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.fisherman.path.netter"
+  },
+  "title": {
+    "translate": "career.townstead.fisherman.title.netter"
+  },
+  "color": "#6E7C5A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:tide",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fisherman/netter/full_net"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fisherman/netter/seine"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fisherman/netter/chum"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 8,
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:hostile"
+                },
+                {
+                  "type": "pheno:status_effect",
+                  "effect": "minecraft:slowness"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:tide",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "knot_work",
+      "toss_net",
+      "lure"
+    ],
+    [
+      "tangle",
+      "drag_net",
+      "bait_and_switch"
+    ],
+    [
+      "full_net",
+      "seine",
+      "chum"
+    ],
+    [
+      "strong_knots",
+      "trawl_net",
+      "iron_gut"
+    ],
+    [
+      "master_netter",
+      "great_net",
+      "the_big_one"
+    ]
+  ]
+}

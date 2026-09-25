@@ -1,0 +1,49 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "insist",
+  "groups": [
+    {
+      "lines": {
+        "im_telling_you_its_true": "I'm telling you, it's true.",
+        "ask_anyone": "Ask anyone.",
+        "fine_dont_believe_me": "Fine, don't believe me.",
+        "its_true_i_swear": "It's true! I swear.",
+        "youll_see": "You'll see.",
+        "believe_what_you_want": "Believe what you want.",
+        "suit_yourself_its_true": "Suit yourself. It's true.",
+        "im_not_making_it_up": "I'm not making it up!",
+        "why_would_i_lie": "Why would I lie?",
+        "its_the_truth_honest": "It's the truth, honest.",
+        "okay_but_it_really_happened": "Okay, but it really happened.",
+        "everyones_talking_about_it": "Everyone's talking about it.",
+        "youll_hear_it_soon_enough": "You'll hear it soon enough."
+      }
+    },
+    {
+      "provenance": "heard",
+      "lines": {
+        "i_know_what_i_heard": "I know what I heard.",
+        "thats_what_i_heard_anyway": "That's what I heard, anyway.",
+        "i_heard_it_from_a": "I heard it from a good source."
+      }
+    },
+    {
+      "provenance": "witnessed",
+      "lines": {
+        "i_saw_it_with_my": "I saw it with my own eyes.",
+        "i_was_right_there": "I was right there!",
+        "i_watched_it_happen": "I watched it happen."
+      }
+    },
+    {
+      "lines": {
+        "hmph_fine_be_that_way": { "text": "Hmph. Fine. Be that way.", "personalities": ["crabby", "grumpy"] },
+        "its_true_oh_please_believe": { "text": "It's true! Oh, please believe me!", "personalities": "anxious" },
+        "would_this_face_lie_to": { "text": "Would this face lie to you?", "personalities": "flirty" },
+        "its_true_cross_my_heart": { "text": "It's true! Cross my heart!", "stages": "child" },
+        "whatever_its_true": { "text": "Whatever. It's true.", "stages": "teen" },
+        "i_may_be_old_but": { "text": "I may be old, but my ears work fine.", "stages": "senior" }
+      }
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.toolsmith.path.tinker"
+  },
+  "title": {
+    "translate": "career.townstead.toolsmith.title.tinker"
+  },
+  "color": "#8A7A5A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:knack",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:toolsmith/tinker/fiddle"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:toolsmith/tinker/overhaul"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:toolsmith/tinker/smoke_bomb"
+              }
+            ]
+          },
+          {
+            "type": "pheno:equipped_item",
+            "slot": "mainhand",
+            "item_condition": {
+              "type": "or",
+              "conditions": [
+                {
+                  "type": "ingredient",
+                  "tag": "minecraft:pickaxes"
+                },
+                {
+                  "type": "ingredient",
+                  "tag": "minecraft:shovels"
+                },
+                {
+                  "type": "ingredient",
+                  "tag": "minecraft:axes"
+                },
+                {
+                  "type": "ingredient",
+                  "tag": "minecraft:hoes"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:knack",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "handy",
+      "quick_fix",
+      "spring_boots"
+    ],
+    [
+      "grip_spikes",
+      "tool_swap",
+      "grappling_line"
+    ],
+    [
+      "fiddle",
+      "overhaul",
+      "smoke_bomb"
+    ],
+    [
+      "self_repair",
+      "workshop",
+      "flash_powder"
+    ],
+    [
+      "gadgeteer",
+      "master_tinker",
+      "contraption"
+    ]
+  ]
+}

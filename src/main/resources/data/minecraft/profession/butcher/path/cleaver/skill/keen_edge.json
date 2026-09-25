@@ -1,0 +1,65 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.cleaver.keen_edge"
+  },
+  "icon": "minecraft:iron_axe",
+  "description": {
+    "translate": "skill.townstead.butcher.cleaver.keen_edge.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "target": "other",
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "or",
+        "conditions": [
+          {
+            "type": "ingredient",
+            "tag": "townstead:butcher_cleavers"
+          },
+          {
+            "type": "ingredient",
+            "tag": "minecraft:axes"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:delay",
+          "ticks": 20,
+          "action": {
+            "type": "pheno:damage",
+            "amount": 1,
+            "source": "other"
+          }
+        },
+        {
+          "type": "pheno:delay",
+          "ticks": 40,
+          "action": {
+            "type": "pheno:damage",
+            "amount": 1,
+            "source": "other"
+          }
+        },
+        {
+          "type": "pheno:delay",
+          "ticks": 60,
+          "action": {
+            "type": "pheno:damage",
+            "amount": 1,
+            "source": "other"
+          }
+        }
+      ]
+    }
+  }
+}

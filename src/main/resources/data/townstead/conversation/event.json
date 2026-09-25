@@ -1,0 +1,69 @@
+{
+  "schema": "townstead:conversation/v1",
+  "subjects": [
+    "townstead:event"
+  ],
+  "register": "social",
+  "start": "t0_share_account",
+  "turns": {
+    "t0_share_account": {
+      "speaker": "initiator",
+      "move": "townstead:share_account",
+      "replies": [
+        "t1_ask_detail",
+        "t1_doubt",
+        "t1_react",
+        "t1_respond",
+        "t1_console"
+      ]
+    },
+    "t1_ask_detail": {
+      "speaker": "responder",
+      "move": "townstead:ask_detail",
+      "weight": 2
+    },
+    "t1_doubt": {
+      "speaker": "responder",
+      "move": "townstead:doubt",
+      "personality_weights": {
+        "crabby": 3,
+        "grumpy": 3,
+        "default": 1
+      },
+      "replies": [
+        "t_insist"
+      ]
+    },
+    "t1_react": {
+      "speaker": "responder",
+      "move": "townstead:react",
+      "weight": 2
+    },
+    "t1_respond": {
+      "speaker": "responder",
+      "move": "townstead:respond",
+      "weight": 3
+    },
+    "t1_console": {
+      "speaker": "responder",
+      "move": "townstead:console",
+      "weight": 3
+    },
+    "t_insist": {
+      "speaker": "initiator",
+      "move": "townstead:insist"
+    }
+  },
+  "associated": [
+    "townstead:event",
+    "townstead:joke"
+  ],
+  "expansions": {
+    "moves": [
+      "townstead:elaborate",
+      "townstead:opinion_ask",
+      "townstead:anecdote"
+    ],
+    "max": 2
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.outfitter.waterproof_pack"
+  },
+  "icon": "minecraft:ender_chest",
+  "description": {
+    "translate": "skill.townstead.leatherworker.outfitter.waterproof_pack.description"
+  },
+  "cost": 1,
+  "requires": [
+    "well_supplied"
+  ],
+  "power": {
+    "type": "pheno:keep_inventory"
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.jam_maker.pollinate"
+  },
+  "icon": "minecraft:bone_meal",
+  "description": {
+    "translate": "skill.townstead.baker.jam_maker.pollinate.description"
+  },
+  "cost": 1,
+  "requires": [
+    "hive_smoke"
+  ],
+  "skill_group": "townstead:jam_orchard",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 6000,
+    "slot": 2,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 3,
+        "where": {
+          "type": "or",
+          "conditions": [
+            {
+              "type": "and",
+              "conditions": [
+                {
+                  "type": "block",
+                  "block": "minecraft:sweet_berry_bush"
+                },
+                {
+                  "type": "or",
+                  "conditions": [
+                    {
+                      "type": "block_state",
+                      "property": "age",
+                      "value": "0"
+                    },
+                    {
+                      "type": "block_state",
+                      "property": "age",
+                      "value": "1"
+                    },
+                    {
+                      "type": "block_state",
+                      "property": "age",
+                      "value": "2"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "and",
+              "conditions": [
+                {
+                  "type": "in_tag",
+                  "tag": "minecraft:crops"
+                },
+                {
+                  "type": "or",
+                  "conditions": [
+                    {
+                      "type": "block_state",
+                      "property": "age",
+                      "value": "0"
+                    },
+                    {
+                      "type": "block_state",
+                      "property": "age",
+                      "value": "1"
+                    },
+                    {
+                      "type": "block_state",
+                      "property": "age",
+                      "value": "2"
+                    },
+                    {
+                      "type": "block_state",
+                      "property": "age",
+                      "value": "3"
+                    },
+                    {
+                      "type": "block_state",
+                      "property": "age",
+                      "value": "4"
+                    },
+                    {
+                      "type": "block_state",
+                      "property": "age",
+                      "value": "5"
+                    },
+                    {
+                      "type": "block_state",
+                      "property": "age",
+                      "value": "6"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "do": {
+        "type": "pheno:modify_block_state",
+        "property": "age",
+        "operation": "add",
+        "amount": 1
+      }
+    }
+  }
+}

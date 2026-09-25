@@ -1,0 +1,110 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.mocktail"
+  },
+  "icon": "minecraft:honey_bottle",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.mocktail.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:sandy_cocktails",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "always",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:choice",
+          "actions": [
+            {
+              "action": {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:speed",
+                "duration": 400,
+                "amplifier": 0
+              },
+              "weight": 3
+            },
+            {
+              "action": {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:haste",
+                "duration": 400,
+                "amplifier": 0
+              },
+              "weight": 3
+            },
+            {
+              "action": {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:jump_boost",
+                "duration": 400,
+                "amplifier": 0
+              },
+              "weight": 2
+            },
+            {
+              "action": {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:strength",
+                "duration": 400,
+                "amplifier": 0
+              },
+              "weight": 2
+            },
+            {
+              "action": {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:resistance",
+                "duration": 400,
+                "amplifier": 0
+              },
+              "weight": 2
+            },
+            {
+              "action": {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:fire_resistance",
+                "duration": 400,
+                "amplifier": 0
+              },
+              "weight": 1
+            },
+            {
+              "action": {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:water_breathing",
+                "duration": 400,
+                "amplifier": 0
+              },
+              "weight": 1
+            },
+            {
+              "action": {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:dolphins_grace",
+                "duration": 400,
+                "amplifier": 0
+              },
+              "weight": 1
+            }
+          ]
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.bamboo.hit",
+          "volume": 1.0,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

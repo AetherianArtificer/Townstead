@@ -17,12 +17,12 @@ import com.aetherianartificer.townstead.api.v1.VillagesApi;
 /**
  * The live v1 implementation. Constructed reflectively by {@code TownsteadApiV1.get()}.
  *
- * <p>{@link #API_REVISION} increments on every additive change to {@code api.v1}; keep
- * {@code docs/API.md} in step.
+ * <p>{@link #API_REVISION} increments once per Townstead release that adds to {@code api.v1},
+ * not once per change; keep {@code docs/API.md} in step.
  */
 public final class TownsteadApiV1Impl implements TownsteadApiV1 {
     private static final int API_VERSION = 1;
-    private static final int API_REVISION = 4;
+    private static final int API_REVISION = 2;
 
     private final VillagersApi villagers = new VillagersImpl();
     private final VillagesApi villages = new VillagesImpl();

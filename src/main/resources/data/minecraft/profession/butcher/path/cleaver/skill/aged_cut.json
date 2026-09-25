@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.cleaver.aged_cut"
+  },
+  "icon": "minecraft:cooked_beef",
+  "description": {
+    "translate": "skill.townstead.butcher.cleaver.aged_cut.description"
+  },
+  "cost": 1,
+  "requires": [
+    "hang_em_up"
+  ],
+  "skill_group": "townstead:cleaver_menace",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:cut",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:strength",
+      "duration": 400,
+      "amplifier": 1
+    }
+  }
+}

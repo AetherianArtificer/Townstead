@@ -1,0 +1,54 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.surveyor.grand_survey"
+  },
+  "icon": "minecraft:cartography_table",
+  "description": {
+    "translate": "skill.townstead.cartographer.surveyor.grand_survey.description"
+  },
+  "cost": 1,
+  "requires": [
+    "signal_fire"
+  ],
+  "skill_group": "townstead:surveyor_survey",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:bearing",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 32,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:glowing",
+            "duration": 400,
+            "amplifier": 0
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 16,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:speed",
+            "duration": 400,
+            "amplifier": 0
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,176 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.jam_maker.orchard_bloom"
+  },
+  "icon": "minecraft:flowering_azalea",
+  "description": {
+    "translate": "skill.townstead.baker.jam_maker.orchard_bloom.description"
+  },
+  "cost": 1,
+  "requires": [
+    "bee_friend"
+  ],
+  "skill_group": "townstead:jam_orchard",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 6000,
+    "slot": 2,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:at",
+          "blocks": {
+            "radius": 5,
+            "where": {
+              "type": "or",
+              "conditions": [
+                {
+                  "type": "and",
+                  "conditions": [
+                    {
+                      "type": "block",
+                      "block": "minecraft:sweet_berry_bush"
+                    },
+                    {
+                      "type": "or",
+                      "conditions": [
+                        {
+                          "type": "block_state",
+                          "property": "age",
+                          "value": "0"
+                        },
+                        {
+                          "type": "block_state",
+                          "property": "age",
+                          "value": "1"
+                        },
+                        {
+                          "type": "block_state",
+                          "property": "age",
+                          "value": "2"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "and",
+                  "conditions": [
+                    {
+                      "type": "in_tag",
+                      "tag": "minecraft:crops"
+                    },
+                    {
+                      "type": "or",
+                      "conditions": [
+                        {
+                          "type": "block_state",
+                          "property": "age",
+                          "value": "0"
+                        },
+                        {
+                          "type": "block_state",
+                          "property": "age",
+                          "value": "1"
+                        },
+                        {
+                          "type": "block_state",
+                          "property": "age",
+                          "value": "2"
+                        },
+                        {
+                          "type": "block_state",
+                          "property": "age",
+                          "value": "3"
+                        },
+                        {
+                          "type": "block_state",
+                          "property": "age",
+                          "value": "4"
+                        },
+                        {
+                          "type": "block_state",
+                          "property": "age",
+                          "value": "5"
+                        },
+                        {
+                          "type": "block_state",
+                          "property": "age",
+                          "value": "6"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "do": {
+            "type": "pheno:modify_block_state",
+            "property": "age",
+            "operation": "add",
+            "amount": 1
+          }
+        },
+        {
+          "type": "pheno:at",
+          "blocks": {
+            "radius": 5,
+            "where": {
+              "type": "and",
+              "conditions": [
+                {
+                  "type": "in_tag",
+                  "tag": "minecraft:beehives"
+                },
+                {
+                  "type": "or",
+                  "conditions": [
+                    {
+                      "type": "block_state",
+                      "property": "honey_level",
+                      "value": "0"
+                    },
+                    {
+                      "type": "block_state",
+                      "property": "honey_level",
+                      "value": "1"
+                    },
+                    {
+                      "type": "block_state",
+                      "property": "honey_level",
+                      "value": "2"
+                    },
+                    {
+                      "type": "block_state",
+                      "property": "honey_level",
+                      "value": "3"
+                    },
+                    {
+                      "type": "block_state",
+                      "property": "honey_level",
+                      "value": "4"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "do": {
+            "type": "pheno:modify_block_state",
+            "property": "honey_level",
+            "operation": "add",
+            "amount": 1
+          }
+        }
+      ]
+    }
+  }
+}

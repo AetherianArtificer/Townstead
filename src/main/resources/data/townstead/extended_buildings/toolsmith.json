@@ -4,5 +4,6 @@
   "workers": ["minecraft:toolsmith"],
   "spirit": {
     "industrious": 5
-  }
+  },
+  "talk": { "tags": ["townstead:smithy"] }
 }

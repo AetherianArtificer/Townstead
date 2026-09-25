@@ -1,0 +1,36 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.miller.flour_cloud"
+  },
+  "icon": "minecraft:white_dye",
+  "description": {
+    "translate": "skill.townstead.baker.miller.flour_cloud.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sack_burst"
+  ],
+  "skill_group": "townstead:miller_flour",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:haze",
+      "kind": "townstead:flour",
+      "blocks": {
+        "radius": 4,
+        "around": "above",
+        "where": {
+          "type": "air"
+        }
+      }
+    }
+  }
+}

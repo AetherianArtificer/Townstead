@@ -138,6 +138,23 @@ public final class McaBuildingCompat {
     }
 
     /**
+     * MCA's candidates in MCA's order (highest priority first), without collapsing tier families,
+     * so a check that fails a high tier can fall back to a lower one.
+     */
+    public static List<String> candidateTypeNames(Village village, Building building) {
+        if (building == null) return List.of();
+        //? if >=1.21 {
+        List<String> names = RoomTypeResolver.create(village).resolve(building)
+                .visibleMatchingTypes().stream().map(BuildingType::name).toList();
+        //?} else {
+        /*List<String> names = building.getVisibleMatchingTypes().stream()
+                .map(BuildingType::name).toList();
+        *///?}
+        return com.aetherianartificer.townstead.client.catalog.CatalogDataLoader
+                .withoutActiveSupersededBuildingTypesForRecognition(names);
+    }
+
+    /**
      * Exact MCA floor footprint plus MCA-recorded POIs. Floor-system external buildings may own a
      * floor region too: an open Apiary is still a registered place with a finite footprint. Empty
      * means this MCA generation or building has no exact floor model and callers should use their

@@ -69,7 +69,7 @@ class CatalogGraphLayoutTest {
                 Map.of(), s -> s, 430);
         assertEquals(1, result.matches());
         assertEquals(List.of(true, false), result.nodes().stream().map(Node::match).toList());
-        assertEquals(1, result.sectors().getFirst().edges().size());
+        assertEquals(1, result.sectors().get(0).edges().size());
     }
     @Test void missingTierDoesNotInventAnEdgeAndIndependentSetsNeverConnect() {
         var result = layout(List.of(entry("One", "chain", 1, "Group", false), entry("Three", "chain", 3, "Group", false),

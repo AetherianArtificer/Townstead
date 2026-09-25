@@ -1,0 +1,81 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.farmer.path.levy"
+  },
+  "title": {
+    "translate": "career.townstead.farmer.title.levy"
+  },
+  "color": "#8C5A3A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:grit",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:farmer/levy/toil"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:farmer/levy/threshing_blow"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:farmer/levy/call_to_arms"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 8,
+            "condition": {
+              "type": "pheno:hostile"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:grit",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "calloused_hands",
+      "reap",
+      "rally"
+    ],
+    [
+      "hamstring",
+      "sweep_the_rows",
+      "hold_the_line"
+    ],
+    [
+      "toil",
+      "threshing_blow",
+      "call_to_arms"
+    ],
+    [
+      "hard_harvest",
+      "whirlwind",
+      "shield_wall"
+    ],
+    [
+      "reapers_due",
+      "grim_reaper",
+      "levee_en_masse"
+    ]
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tinker.grappling_line"
+  },
+  "icon": "minecraft:lead",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tinker.grappling_line.description"
+  },
+  "cost": 1,
+  "requires": [
+    "spring_boots"
+  ],
+  "skill_group": "townstead:tinker_gadget",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:add_velocity",
+      "relative": true,
+      "z": 1.6,
+      "y": 0.7
+    }
+  }
+}

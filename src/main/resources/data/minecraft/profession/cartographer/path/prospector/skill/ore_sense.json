@@ -1,0 +1,40 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.prospector.ore_sense"
+  },
+  "icon": "minecraft:raw_iron",
+  "description": {
+    "translate": "skill.townstead.cartographer.prospector.ore_sense.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 100,
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 6,
+        "where": {
+          "type": "or",
+          "conditions": [
+            {
+              "type": "in_tag",
+              "tag": "c:ores"
+            },
+            {
+              "type": "in_tag",
+              "tag": "forge:ores"
+            }
+          ]
+        }
+      },
+      "do": {
+        "type": "pheno:spawn_particles",
+        "particle": "minecraft:wax_on",
+        "count": 6,
+        "spread": 0.4
+      }
+    }
+  }
+}

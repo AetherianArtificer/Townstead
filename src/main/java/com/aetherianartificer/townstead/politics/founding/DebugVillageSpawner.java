@@ -56,9 +56,8 @@ public final class DebugVillageSpawner {
         BlockPos anchor = BlockPos.containing(source.getPosition());
         VillageManager villages = VillageManager.get(level);
 
-        if (villages.findNearestVillage(anchor, VILLAGE_RADIUS).isPresent()) {
-            return Result.failed("near_village", null);
-        }
+        Village blocking = villages.findNearestVillage(anchor, VILLAGE_RADIUS).orElse(null);
+        if (blocking != null) return new Result(false, "near_village", null, blocking, 0, 0, null);
         AABB area = new AABB(anchor).inflate(VILLAGE_RADIUS, 64.0D, VILLAGE_RADIUS);
         Set<UUID> existingResidents = level.getEntitiesOfClass(Villager.class, area).stream()
                 .map(Villager::getUUID)
@@ -164,6 +163,103 @@ public final class DebugVillageSpawner {
                 village, removed, spawned, founded);
     }
 
+    /** How far past the buildings a clear reaches, for paths, lamps and farm plots, and how high above them. */
+    public static final int CLEAR_MARGIN = 8, CLEAR_HEADROOM = 12, MAX_CLEAR_SPAN = 320;
+
+    /**
+     * Removes the village the source stands in: its residents, then MCA's village record. With {@code clear},
+     * also sets the village area to air, from the lowest building floor up, and removes loose items, frames,
+     * armor stands, golems and villagers there. Players are never touched.
+     */
+    public static RemovalResult remove(CommandSourceStack source, boolean clear) {
+        if (source == null) return RemovalResult.failed("invalid_request");
+        ServerLevel level = source.getLevel();
+        BlockPos anchor = BlockPos.containing(source.getPosition());
+        VillageManager villages = VillageManager.get(level);
+        // Same reach as the spawn check, so remove always finds the village that blocks a spawn here.
+        Village village = villages.findNearestVillage(anchor, Village.MERGE_MARGIN)
+                .or(() -> villages.findNearestVillage(anchor, VILLAGE_RADIUS)).orElse(null);
+        if (village == null) return RemovalResult.failed("no_village");
+        int id = village.getId();
+        String name = village.getName();
+        net.minecraft.world.level.levelgen.structure.BoundingBox box = village.getBox();
+        // A village with no buildings at all keeps MCA's placeholder box at the world origin. Never clear that.
+        boolean located = located(village);
+
+        int minX = box.minX() - CLEAR_MARGIN, maxX = box.maxX() + CLEAR_MARGIN;
+        int minZ = box.minZ() - CLEAR_MARGIN, maxZ = box.maxZ() + CLEAR_MARGIN;
+        int minY = Math.max(level.getMinBuildHeight(), box.minY());
+        int maxY = Math.min(level.getMaxBuildHeight() - 1, box.maxY() + CLEAR_HEADROOM);
+        boolean fits = maxX - minX <= MAX_CLEAR_SPAN && maxZ - minZ <= MAX_CLEAR_SPAN;
+        net.minecraft.world.level.levelgen.structure.BoundingBox clearBox =
+                new net.minecraft.world.level.levelgen.structure.BoundingBox(minX, minY, minZ, maxX, maxY, maxZ);
+
+        // A clear also takes any other village inside the area, such as the one-headstone village MCA makes
+        // from a tombstone, so nothing is left to block a new spawn here.
+        List<Village> doomed = new java.util.ArrayList<>(List.of(village));
+        if (clear && located && fits) {
+            List<Village> all = new java.util.ArrayList<>();
+            villages.forEach(all::add);
+            for (Village other : all) {
+                if (other != village && other.getBox().intersects(clearBox)
+                        && located(other)) {
+                    doomed.add(other);
+                }
+            }
+        }
+
+        int removed = 0;
+        for (Village gone : doomed) {
+            Set<UUID> residentIds = gone.getResidentsUUIDs().filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+            BlockPos center = new BlockPos(gone.getCenter());
+            for (VillagerEntityMCA resident : level.getEntitiesOfClass(VillagerEntityMCA.class,
+                    new AABB(center).inflate(VILLAGE_RADIUS, 64.0D, VILLAGE_RADIUS))) {
+                if (!residentIds.contains(resident.getUUID())) continue;
+                resident.getResidency().leaveHome();
+                resident.discard();
+                removed++;
+            }
+            villages.removeVillage(gone.getId());
+        }
+        villages.setDirty();
+        int others = doomed.size() - 1;
+        if (!clear) return new RemovalResult(true, "removed", id, name, removed, 0, others);
+        if (!located) return new RemovalResult(true, "nothing_to_clear", id, name, removed, 0, others);
+        if (!fits) return new RemovalResult(true, "too_large_to_clear", id, name, removed, 0, others);
+        AABB area = new AABB(minX, minY, minZ, maxX + 1, maxY + 1, maxZ + 1);
+        for (net.minecraft.world.entity.Entity entity : level.getEntities((net.minecraft.world.entity.Entity) null, area,
+                entity -> entity instanceof net.minecraft.world.entity.item.ItemEntity
+                        || entity instanceof net.minecraft.world.entity.decoration.HangingEntity
+                        || entity instanceof net.minecraft.world.entity.decoration.ArmorStand
+                        || entity instanceof net.minecraft.world.entity.animal.IronGolem
+                        || entity instanceof Villager)) {
+            entity.discard();
+        }
+        net.minecraft.world.level.block.state.BlockState air = net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        int cleared = 0;
+        // Top down, so nothing above a cleared block falls or pops off; no drops and no neighbor updates.
+        for (int y = maxY; y >= minY; y--) {
+            for (int x = minX; x <= maxX; x++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    pos.set(x, y, z);
+                    if (level.getBlockState(pos).isAir()) continue;
+                    level.setBlock(pos, air, net.minecraft.world.level.block.Block.UPDATE_CLIENTS
+                            | net.minecraft.world.level.block.Block.UPDATE_SUPPRESS_DROPS
+                            | net.minecraft.world.level.block.Block.UPDATE_KNOWN_SHAPE);
+                    cleared++;
+                }
+            }
+        }
+        return new RemovalResult(true, "cleared", id, name, removed, cleared, others);
+    }
+
+    /** False for MCA's empty placeholder box at the world origin, which a village with nothing in it keeps. */
+    private static boolean located(Village village) {
+        net.minecraft.world.level.levelgen.structure.BoundingBox box = village.getBox();
+        return box.minX() != 0 || box.minY() != 0 || box.minZ() != 0 || box.maxX() != 0 || box.maxY() != 0 || box.maxZ() != 0;
+    }
+
     private static int spawnResidents(ServerLevel level, FoundingProfileDefinition profile,
                                       List<BlockPos> homes, int residentCount) {
         int spawned = 0;
@@ -249,6 +345,13 @@ public final class DebugVillageSpawner {
                          int buildings, int residents, FoundingProfileApplier.Result founding) {
         static Result failed(String reason, ResourceLocation structure) {
             return new Result(false, reason, structure, null, 0, 0, null);
+        }
+    }
+
+    public record RemovalResult(boolean removed, String reason, int villageId, String name, int residents, int blocks,
+                                int otherVillages) {
+        static RemovalResult failed(String reason) {
+            return new RemovalResult(false, reason, -1, "", 0, 0, 0);
         }
     }
 

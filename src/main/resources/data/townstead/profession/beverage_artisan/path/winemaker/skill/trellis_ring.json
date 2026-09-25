@@ -1,0 +1,87 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.trellis_ring"
+  },
+  "icon": "minecraft:oak_fence",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.trellis_ring.description"
+  },
+  "cost": 1,
+  "requires": [
+    "vine_snare"
+  ],
+  "skill_group": "townstead:winemaker_vineyard",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:vintage",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:haze",
+      "kind": "townstead:grapevine",
+      "blocks": [
+        {
+          "radius": [
+            3,
+            0,
+            0
+          ],
+          "around": {
+            "offset": [
+              0,
+              0,
+              3
+            ]
+          }
+        },
+        {
+          "radius": [
+            3,
+            0,
+            0
+          ],
+          "around": {
+            "offset": [
+              0,
+              0,
+              -3
+            ]
+          }
+        },
+        {
+          "radius": [
+            0,
+            0,
+            3
+          ],
+          "around": {
+            "offset": [
+              3,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "radius": [
+            0,
+            0,
+            3
+          ],
+          "around": {
+            "offset": [
+              -3,
+              0,
+              0
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

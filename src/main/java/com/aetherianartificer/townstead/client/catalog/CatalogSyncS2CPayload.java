@@ -30,12 +30,16 @@ import java.util.LinkedHashSet;
 //? if neoforge {
 public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingOverride> overrides,
                                     Theme theme, Map<String, Map<String, Integer>> spirits,
-                                    List<DecorationSummary> decorations, Set<String> hangoutBuildings)
+                                    List<DecorationSummary> decorations, Set<String> hangoutBuildings,
+                                    Map<String, List<com.aetherianartificer.townstead.recognition.BuildingChecks.Check>> checks,
+                                    Map<String, com.aetherianartificer.townstead.politics.seat.SeatBuildings.Spec> seats)
         implements CustomPacketPayload {
 //?} else {
 /*public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingOverride> overrides,
                                     Theme theme, Map<String, Map<String, Integer>> spirits,
-                                    List<DecorationSummary> decorations, Set<String> hangoutBuildings) {
+                                    List<DecorationSummary> decorations, Set<String> hangoutBuildings,
+                                    Map<String, List<com.aetherianartificer.townstead.recognition.BuildingChecks.Check>> checks,
+                                    Map<String, com.aetherianartificer.townstead.politics.seat.SeatBuildings.Spec> seats) {
 *///?}
 
     public record Ingredient(String selector, int count) {}
@@ -75,7 +79,8 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
     public static CatalogSyncS2CPayload snapshot() {
         return new CatalogSyncS2CPayload(List.copyOf(CatalogDataLoader.groups()),
                 CatalogDataLoader.overridesSnapshot(), CatalogDataLoader.dataTheme(),
-                BuildingSpiritIndex.snapshot(), decorationSnapshot(Map.of()), hangoutBuildingSnapshot());
+                BuildingSpiritIndex.snapshot(), decorationSnapshot(Map.of()), hangoutBuildingSnapshot(),
+                com.aetherianartificer.townstead.recognition.BuildingChecks.snapshot(), com.aetherianartificer.townstead.politics.seat.SeatBuildings.snapshot());
     }
 
     /** Catalog plus recognition counts for the village whose Blueprint was refreshed. */
@@ -84,7 +89,8 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
         Map<ResourceLocation, Integer> counts = com.aetherianartificer.townstead.decoration.Decorations.countsForVillage(level, village);
         return new CatalogSyncS2CPayload(List.copyOf(CatalogDataLoader.groups()),
                 CatalogDataLoader.overridesSnapshot(), CatalogDataLoader.dataTheme(),
-                BuildingSpiritIndex.snapshot(), decorationSnapshot(counts), hangoutBuildingSnapshot());
+                BuildingSpiritIndex.snapshot(), decorationSnapshot(counts), hangoutBuildingSnapshot(),
+                com.aetherianartificer.townstead.recognition.BuildingChecks.snapshot(), com.aetherianartificer.townstead.politics.seat.SeatBuildings.snapshot());
     }
 
     private static List<DecorationSummary> decorationSnapshot(Map<ResourceLocation, Integer> counts) {
@@ -182,6 +188,34 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
         }
         buf.writeVarInt(hangoutBuildings.size());
         for (String building : hangoutBuildings.stream().sorted().toList()) buf.writeUtf(building);
+        buf.writeVarInt(checks.size());
+        for (var entry : checks.entrySet()) {
+            buf.writeUtf(entry.getKey());
+            buf.writeVarInt(entry.getValue().size());
+            for (var check : entry.getValue()) {
+                if (check instanceof com.aetherianartificer.townstead.recognition.BuildingChecks.DecorationCount d) {
+                    buf.writeByte(0); buf.writeResourceLocation(d.decoration()); buf.writeVarInt(d.count());
+                } else if (check instanceof com.aetherianartificer.townstead.recognition.BuildingChecks.Size s) {
+                    buf.writeByte(1); buf.writeVarInt(s.min()); buf.writeVarInt(s.max());
+                } else if (check instanceof com.aetherianartificer.townstead.recognition.BuildingChecks.Height h) {
+                    buf.writeByte(2); buf.writeVarInt(h.min()); buf.writeVarInt(h.max());
+                }
+            }
+        }
+        buf.writeVarInt(seats.size());
+        for (var entry : seats.entrySet()) {
+            var spec = entry.getValue();
+            buf.writeUtf(entry.getKey());
+            buf.writeVarInt(spec.tier());
+            buf.writeVarInt(spec.functions().size());
+            for (ResourceLocation function : spec.functions()) buf.writeResourceLocation(function);
+            buf.writeVarInt(spec.actors().size());
+            for (String actor : spec.actors()) buf.writeUtf(actor);
+            buf.writeVarInt(spec.affinity().size());
+            for (var affinity : spec.affinity().entrySet()) {
+                buf.writeResourceLocation(affinity.getKey()); buf.writeVarInt(affinity.getValue());
+            }
+        }
     }
 
     public static CatalogSyncS2CPayload read(FriendlyByteBuf buf) {
@@ -250,7 +284,38 @@ public record CatalogSyncS2CPayload(List<GroupDef> groups, Map<String, BuildingO
         int hangoutCount = readCount(buf);
         Set<String> hangouts = new LinkedHashSet<>();
         for (int i = 0; i < hangoutCount; i++) hangouts.add(buf.readUtf());
-        return new CatalogSyncS2CPayload(groups, overrides, theme, spirits, decorations, Set.copyOf(hangouts));
+        int checkTypes = readCount(buf);
+        Map<String, List<com.aetherianartificer.townstead.recognition.BuildingChecks.Check>> checks = new LinkedHashMap<>();
+        for (int i = 0; i < checkTypes; i++) {
+            String type = buf.readUtf();
+            int count = readCount(buf);
+            List<com.aetherianartificer.townstead.recognition.BuildingChecks.Check> list = new ArrayList<>();
+            for (int j = 0; j < count; j++) {
+                byte kind = buf.readByte();
+                if (kind == 0) list.add(new com.aetherianartificer.townstead.recognition.BuildingChecks.DecorationCount(buf.readResourceLocation(), buf.readVarInt()));
+                else if (kind == 1) list.add(new com.aetherianartificer.townstead.recognition.BuildingChecks.Size(buf.readVarInt(), buf.readVarInt()));
+                else list.add(new com.aetherianartificer.townstead.recognition.BuildingChecks.Height(buf.readVarInt(), buf.readVarInt()));
+            }
+            checks.put(type, list);
+        }
+        int seatTypes = readCount(buf);
+        Map<String, com.aetherianartificer.townstead.politics.seat.SeatBuildings.Spec> seats = new LinkedHashMap<>();
+        for (int i = 0; i < seatTypes; i++) {
+            String type = buf.readUtf();
+            int tier = buf.readVarInt();
+            int functionCount = readCount(buf);
+            List<ResourceLocation> functions = new ArrayList<>();
+            for (int j = 0; j < functionCount; j++) functions.add(buf.readResourceLocation());
+            int actorCount = readCount(buf);
+            Set<String> actors = new LinkedHashSet<>();
+            for (int j = 0; j < actorCount; j++) actors.add(buf.readUtf());
+            int affinityCount = readCount(buf);
+            Map<ResourceLocation, Integer> affinity = new LinkedHashMap<>();
+            for (int j = 0; j < affinityCount; j++) affinity.put(buf.readResourceLocation(), buf.readVarInt());
+            seats.put(type, new com.aetherianartificer.townstead.politics.seat.SeatBuildings.Spec(tier, functions, actors, affinity));
+        }
+        return new CatalogSyncS2CPayload(groups, overrides, theme, spirits, decorations, Set.copyOf(hangouts),
+                checks, seats);
     }
 
     private static int readCount(FriendlyByteBuf buf) {

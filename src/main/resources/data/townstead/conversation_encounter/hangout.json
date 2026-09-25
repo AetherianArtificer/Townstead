@@ -1,0 +1,63 @@
+{
+  "schema": "townstead:conversation_encounter/v1",
+  "context": "hangout",
+  "opening": [
+    {
+      "sequence": [
+        "townstead:arrive",
+        "townstead:arrive_back"
+      ]
+    }
+  ],
+  "opening_again": [
+    {
+      "sequence": [
+        "townstead:arrive",
+        "townstead:arrive_back"
+      ]
+    }
+  ],
+  "topics": {
+    "min": 1,
+    "until": "departure"
+  },
+  "chattiness": {
+    "base": 0.45,
+    "per_familiarity": 0.02,
+    "max_familiarity": 10,
+    "personality": {
+      "upbeat": 0.15,
+      "peppy": 0.15,
+      "friendly": 0.1,
+      "extroverted": 0.15,
+      "confident": 0.05,
+      "playful": 0.05,
+      "witty": 0.05,
+      "flirty": 0.05,
+      "introverted": -0.15,
+      "shy": -0.15,
+      "crabby": -0.1,
+      "grumpy": -0.1,
+      "gloomy": -0.05,
+      "anxious": -0.05
+    }
+  },
+  "expansions": {
+    "max": 3
+  },
+  "bridge_pool": "townstead:bridge",
+  "pause": {
+    "chance": 0.3,
+    "remark_chance": 0.5,
+    "remark_move": "townstead:remark"
+  },
+  "closing": [
+    {
+      "sequence": [
+        "townstead:leave",
+        "townstead:farewell_reply",
+        "townstead:farewell_last"
+      ]
+    }
+  ]
+}

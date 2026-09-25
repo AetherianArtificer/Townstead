@@ -1,0 +1,54 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.scarecrow.hide_in_the_rows"
+  },
+  "icon": "minecraft:tall_grass",
+  "description": {
+    "translate": "skill.townstead.farmer.scarecrow.hide_in_the_rows.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 10,
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:movement",
+            "movement": "moving"
+          }
+        },
+        {
+          "type": "pheno:block",
+          "y": 0,
+          "block_condition": {
+            "type": "or",
+            "conditions": [
+              {
+                "type": "in_tag",
+                "tag": "minecraft:crops"
+              },
+              {
+                "type": "in_tag",
+                "tag": "minecraft:replaceable_by_trees"
+              },
+              {
+                "type": "block",
+                "block": "minecraft:sweet_berry_bush"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:invisibility",
+      "duration": 20,
+      "amplifier": 0
+    }
+  }
+}

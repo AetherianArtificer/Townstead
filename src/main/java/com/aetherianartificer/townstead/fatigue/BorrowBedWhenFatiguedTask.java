@@ -10,7 +10,6 @@ import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.ai.behavior.Behavior;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -215,18 +214,23 @@ public final class BorrowBedWhenFatiguedTask extends Behavior<VillagerEntityMCA>
     private static BlockPos normalizeBedHead(ServerLevel level, BlockPos pos) {
         if (!level.isLoaded(pos)) return null;
         BlockState state = level.getBlockState(pos);
-        if (!state.is(BlockTags.BEDS)
-                || !state.hasProperty(BedBlock.PART)
-                || !state.hasProperty(BedBlock.FACING)) return null;
+        if (!isCompatibleBed(state)) return null;
         BlockPos head = state.getValue(BedBlock.PART) == BedPart.HEAD
                 ? pos
                 : pos.relative(BedBlock.getConnectedDirection(state));
         BlockState headState = level.getBlockState(head);
-        return headState.is(BlockTags.BEDS)
-                && headState.hasProperty(BedBlock.PART)
+        return isCompatibleBed(headState)
                 && headState.getValue(BedBlock.PART) == BedPart.HEAD
                 ? head.immutable()
                 : null;
+    }
+
+    // Matches MCA's BedPoiCompatibility: modded BedBlock subclasses count even outside #minecraft:beds.
+    private static boolean isCompatibleBed(BlockState state) {
+        return state.getBlock() instanceof BedBlock
+                && state.hasProperty(BedBlock.FACING)
+                && state.hasProperty(BedBlock.PART)
+                && state.hasProperty(BedBlock.OCCUPIED);
     }
 
     public static void requestEmergencyFallback(VillagerEntityMCA villager, boolean requested) {

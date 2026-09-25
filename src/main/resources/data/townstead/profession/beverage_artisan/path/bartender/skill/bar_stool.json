@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.bartender.bar_stool"
+  },
+  "icon": "minecraft:oak_stairs",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.bartender.bar_stool.description"
+  },
+  "cost": 1,
+  "requires": [
+    "familiar_faces"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 100,
+    "action": {
+      "type": "pheno:for_each",
+      "in": "townstead:regulars",
+      "where": {
+        "type": "pheno:distance",
+        "max": 8
+      },
+      "do": {
+        "type": "pheno:target_action",
+        "action": {
+          "type": "pheno:energize",
+          "amount": 1
+        }
+      }
+    }
+  }
+}

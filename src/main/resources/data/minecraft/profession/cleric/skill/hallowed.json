@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.hallowed"
+  },
+  "icon": "minecraft:wither_rose",
+  "description": {
+    "translate": "skill.townstead.cleric.hallowed.description"
+  },
+  "tier": 1,
+  "cost": 1,
+  "power": {
+    "type": "pheno:effect_immunity",
+    "effects": [
+      "minecraft:wither"
+    ]
+  }
+}

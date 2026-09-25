@@ -7,5 +7,5 @@
     {"anchor": "minecraft:water", "requires": {"minecraft:water": 16, "minecraft:cobblestone": 32}},
     {"anchor": "minecraft:water", "requires": {"minecraft:yellow_terracotta": 8, "minecraft:orange_terracotta": 6}}
   ],
-  "icon": "minecraft:water_bucket"
+  "icon": "minecraft:prismarine"
 }

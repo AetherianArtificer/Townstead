@@ -1,0 +1,90 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.cartographer.path.pathfinder"
+  },
+  "title": {
+    "translate": "career.townstead.cartographer.title.pathfinder"
+  },
+  "color": "#6E9A5A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:bearing",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cartographer/pathfinder/mile_marker"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cartographer/pathfinder/swift_return"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cartographer/pathfinder/trail_markers"
+              }
+            ]
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:movement",
+                "movement": "moving"
+              },
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:village",
+                  "within_border": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:bearing",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "sure_stride",
+      "mark_waypoint",
+      "keen_sight"
+    ],
+    [
+      "trail_legs",
+      "return",
+      "scout_ahead"
+    ],
+    [
+      "mile_marker",
+      "swift_return",
+      "trail_markers"
+    ],
+    [
+      "second_wind",
+      "escape_route",
+      "forced_march"
+    ],
+    [
+      "homing",
+      "homeward",
+      "expedition"
+    ]
+  ]
+}

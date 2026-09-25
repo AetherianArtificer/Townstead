@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.hamstring"
+  },
+  "icon": "minecraft:stone_hoe",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.hamstring.description"
+  },
+  "cost": 1,
+  "requires": [
+    "calloused_hands"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "target": "other",
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "ingredient",
+        "tag": "minecraft:hoes"
+      }
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:slowness",
+      "duration": 60,
+      "amplifier": 1
+    }
+  }
+}

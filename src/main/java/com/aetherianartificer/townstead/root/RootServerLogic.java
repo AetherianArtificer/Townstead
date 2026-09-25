@@ -60,11 +60,10 @@ public final class RootServerLogic {
             }
             ResourceLocation id = resolveKnown(rootId);
             if (id == null) return null;
-            boolean changed = !id.toString().equals(orDefault(PlayerRoot.getRootId(sp)));
-            List<Power> oldGenes = changed ? new ArrayList<>(Powers.active(sp)) : List.of();
-            PlayerRoot.setRootId(sp, id.toString());
-            StartingEquipment.grant(sp);
-            if (changed) resetPassives(sp, oldGenes);
+            String before = orDefault(PlayerRoot.getRootId(sp));
+            if (setPlayerRoot(sp, id)) {
+                com.aetherianartificer.townstead.api.impl.v1.ApiEvents.rootChanged(sp, before, id.toString());
+            }
             return new Result(RootSetC2SPayload.SELF, id.toString());
         }
 
@@ -77,6 +76,26 @@ public final class RootServerLogic {
         }
         ResourceLocation id = resolveKnown(rootId);
         if (id == null) return null;
+        String before = orDefault(state.life().rootId());
+        if (setVillagerRoot(villager, id)) {
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.rootChanged(villager, before, id.toString());
+        }
+        return new Result(villager.getId(), id.toString());
+    }
+
+    /** Assign a known root to a player and reset passives on a change. Returns whether it changed. */
+    public static boolean setPlayerRoot(ServerPlayer sp, ResourceLocation id) {
+        boolean changed = !id.toString().equals(orDefault(PlayerRoot.getRootId(sp)));
+        List<Power> oldGenes = changed ? new ArrayList<>(Powers.active(sp)) : List.of();
+        PlayerRoot.setRootId(sp, id.toString());
+        StartingEquipment.grant(sp);
+        if (changed) resetPassives(sp, oldGenes);
+        return changed;
+    }
+
+    /** Assign a known root to a villager, reseeding its root-derived state. Returns whether it changed. */
+    public static boolean setVillagerRoot(VillagerEntityMCA villager, ResourceLocation id) {
+        TownsteadVillager state = TownsteadVillagers.get(villager);
         boolean changed = !id.toString().equals(state.life().rootId());
         List<Power> oldGenes = changed ? new ArrayList<>(Powers.active(villager)) : List.of();
         state.life().setRoot(id.toString());
@@ -106,7 +125,7 @@ public final class RootServerLogic {
         // world saves/exits — which lost the origin (and so the skin tint) on reload.
         TownsteadVillagers.flush(villager);
         if (changed) resetPassives(villager, oldGenes);
-        return new Result(villager.getId(), id.toString());
+        return changed;
     }
 
     /**
@@ -305,10 +324,14 @@ public final class RootServerLogic {
         GeneAttributeApplier.removeFor(entity, oldGenes);
     }
 
+    /** A registered, non-blocked root id, or null. */
     @Nullable
-    private static ResourceLocation resolveKnown(String rootId) {
-        ResourceLocation id = DataPackLang.parseId(rootId);
-        if (id == null || RootRegistry.byId(id) == null) return null;
+    public static ResourceLocation resolveKnown(String rootId) {
+        ResourceLocation parsed = DataPackLang.parseId(rootId);
+        Root root = parsed == null ? null : RootRegistry.byId(parsed);
+        if (root == null) return null;
+        // Canonical id, so a legacy-namespace id is stored under its current namespace.
+        ResourceLocation id = root.id();
         // The picker hides blocked roots; rejecting here keeps a modified client from applying one.
         return RootBlocklist.isBlocked(id) ? null : id;
     }

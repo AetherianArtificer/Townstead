@@ -1,0 +1,44 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.aeration"
+  },
+  "icon": "minecraft:barrel",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.aeration.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sun_kissed"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:vintage",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:block_in_radius",
+      "radius": 6,
+      "block_condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:block",
+            "block": "vinery:fermentation_barrel"
+          },
+          {
+            "type": "pheno:block",
+            "block": "minecraft:barrel"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:vintage",
+      "amount": 3
+    }
+  }
+}

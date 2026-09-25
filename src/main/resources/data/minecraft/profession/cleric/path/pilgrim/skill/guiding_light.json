@@ -1,0 +1,65 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.pilgrim.guiding_light"
+  },
+  "icon": "minecraft:beacon",
+  "description": {
+    "translate": "skill.townstead.cleric.pilgrim.guiding_light.description"
+  },
+  "cost": 1,
+  "requires": [
+    "lantern"
+  ],
+  "skill_group": "townstead:pilgrim_road",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:faith",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 16,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:speed",
+                "duration": 1200,
+                "amplifier": 1
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:night_vision",
+                "duration": 1200,
+                "amplifier": 0
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:resistance",
+                "duration": 1200,
+                "amplifier": 0
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.beacon.activate",
+          "volume": 0.6,
+          "pitch": 1.6
+        }
+      ]
+    }
+  }
+}

@@ -209,6 +209,9 @@ tasks.withType<Test> {
     systemProperty("townstead.classes", sourceSets.main.get().output.classesDirs.asPath)
     systemProperty("townstead.mcaVersion", mcaVersion)
     systemProperty("townstead.mcaDevelopmentVersion", mcaDevelopmentVersion)
+    // Transcript options given to Gradle with -D reach the test JVM.
+    System.getProperties().stringPropertyNames().filter { it.startsWith("townstead.transcript.") }
+        .forEach { systemProperty(it, System.getProperty(it)) }
 }
 
 // The public API alone, for third-party mods to compile against (compileOnly, never shipped).

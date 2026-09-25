@@ -68,6 +68,11 @@ public final class ReputationDeeds {
         });
     }
 
+    /** The player a deed happening now is credited to, or null when no one reported it. */
+    public static @Nullable ServerPlayer reporter() {
+        return REPORTER.get();
+    }
+
     /** Runs {@code body} with {@code player} as the reporter every deed filed inside it is credited to. */
     public static void withReporter(@Nullable ServerPlayer player, Runnable body) {
         if (player == null) {

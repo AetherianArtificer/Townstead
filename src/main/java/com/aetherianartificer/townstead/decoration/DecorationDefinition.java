@@ -29,13 +29,21 @@ import java.util.Map;
  *   "icon": "minecraft:campfire"
  * }</pre>
  * A definition may instead provide {@code variants}, each with its own anchor and requirements,
- * so local material forms share one catalog identity.
+ * so local material forms share one catalog identity. {@code supersedes} lists smaller sets this
+ * one includes: when both match one anchor, this one takes it, and the smaller set comes back if
+ * this one is dismantled.
  * Spirit points apply once per built decoration, regardless of its material variant.
  */
 public record DecorationDefinition(ResourceLocation id, List<Variant> variants, int radius,
                                   @Nullable ThermalStructures.Spec thermal,
-                                  @Nullable ResourceLocation icon, Map<String, Integer> spirits) {
-    public DecorationDefinition { spirits = Map.copyOf(spirits); }
+                                  @Nullable ResourceLocation icon, Map<String, Integer> spirits,
+                                  List<ResourceLocation> supersedes) {
+    public DecorationDefinition { spirits = Map.copyOf(spirits); supersedes = List.copyOf(supersedes); }
+
+    /** A bigger set that includes a smaller one (a Council Fire over a Hearth) takes its anchor. */
+    public boolean supersedes(ResourceLocation other) {
+        return supersedes.contains(other);
+    }
     public static final String SCHEMA = "townstead:decoration/v1";
     public static final int MAX_RADIUS = 6;
 
@@ -128,7 +136,16 @@ public record DecorationDefinition(ResourceLocation id, List<Variant> variants, 
                 if (points > 0) spirits.put(entry.getKey(), (int) points);
             }
         }
-        return new DecorationDefinition(id, List.copyOf(variants), radius, thermal, icon, spirits);
+        List<ResourceLocation> supersedes = new ArrayList<>();
+        if (json.has("supersedes")) {
+            if (!json.get("supersedes").isJsonArray()) return null;
+            for (JsonElement element : json.getAsJsonArray("supersedes")) {
+                ResourceLocation other = ResourceLocation.tryParse(element.getAsString());
+                if (other == null) return null;
+                supersedes.add(other);
+            }
+        }
+        return new DecorationDefinition(id, List.copyOf(variants), radius, thermal, icon, spirits, supersedes);
     }
 
     private static @Nullable Variant parseVariant(JsonObject json) {

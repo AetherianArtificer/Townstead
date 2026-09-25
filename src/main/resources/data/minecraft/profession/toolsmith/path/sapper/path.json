@@ -1,0 +1,81 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.toolsmith.path.sapper"
+  },
+  "title": {
+    "translate": "career.townstead.toolsmith.title.sapper"
+  },
+  "color": "#A8583A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:knack",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:toolsmith/sapper/powder_monkey"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:toolsmith/sapper/blasting_cap"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:toolsmith/sapper/sapper_smoke"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 12,
+            "condition": {
+              "type": "pheno:hostile"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:knack",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "blast_hardened",
+      "firecracker",
+      "tripwire"
+    ],
+    [
+      "steady_fuse",
+      "shaped_charge",
+      "concussion"
+    ],
+    [
+      "powder_monkey",
+      "blasting_cap",
+      "sapper_smoke"
+    ],
+    [
+      "shock_absorber",
+      "chain_reaction",
+      "blast_shield"
+    ],
+    [
+      "demolitionist",
+      "grand_detonation",
+      "minefield"
+    ]
+  ]
+}

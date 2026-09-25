@@ -1,0 +1,44 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.curse_breaker.antimagic"
+  },
+  "icon": "minecraft:milk_bucket",
+  "description": {
+    "translate": "skill.townstead.librarian.curse_breaker.antimagic.description"
+  },
+  "cost": 1,
+  "requires": [
+    "warded"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "resource_cost": {
+      "resource": "townstead:insight",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:insight",
+      "min": 75
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:clear_effect",
+          "effect": "minecraft:poison"
+        },
+        {
+          "type": "pheno:clear_effect",
+          "effect": "minecraft:wither"
+        },
+        {
+          "type": "pheno:clear_effect",
+          "effect": "minecraft:weakness"
+        }
+      ]
+    }
+  }
+}

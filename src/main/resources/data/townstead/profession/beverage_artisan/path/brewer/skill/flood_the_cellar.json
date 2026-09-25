@@ -1,0 +1,59 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.brewer.flood_the_cellar"
+  },
+  "icon": "minecraft:water_bucket",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.brewer.flood_the_cellar.description"
+  },
+  "cost": 1,
+  "requires": [
+    "pub_brawl"
+  ],
+  "skill_group": "townstead:brewer_spill",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:ferment",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:ale",
+          "blocks": {
+            "radius": 6,
+            "where": {
+              "type": "air"
+            }
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 16,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:haze",
+            "kind": "townstead:ale",
+            "blocks": {
+              "radius": 0
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.barrel.open",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

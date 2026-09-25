@@ -1,0 +1,91 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.farmer.path.tiller"
+  },
+  "title": {
+    "translate": "career.townstead.farmer.title.tiller"
+  },
+  "color": "#6B4A2E",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:grit",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:farmer/tiller/worked_earth"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:farmer/tiller/churn"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:farmer/tiller/bull_rush"
+              }
+            ]
+          },
+          {
+            "type": "pheno:block",
+            "y": -1,
+            "block_condition": {
+              "type": "or",
+              "conditions": [
+                {
+                  "type": "in_tag",
+                  "tag": "minecraft:dirt"
+                },
+                {
+                  "type": "block",
+                  "block": "minecraft:farmland"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:grit",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "sure_footing",
+      "tamp",
+      "plow_ahead"
+    ],
+    [
+      "rootbound",
+      "furrow_line",
+      "shoulder_charge"
+    ],
+    [
+      "worked_earth",
+      "churn",
+      "bull_rush"
+    ],
+    [
+      "stomp",
+      "fault_line",
+      "uproot"
+    ],
+    [
+      "bedrock_stance",
+      "earthquake",
+      "landslide"
+    ]
+  ]
+}

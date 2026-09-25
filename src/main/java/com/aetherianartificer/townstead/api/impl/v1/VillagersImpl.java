@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.api.v1.model.NeedsSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.VillagerRecord;
 import com.aetherianartificer.townstead.api.v1.model.VillagerSnapshot;
 import com.aetherianartificer.townstead.api.v1.result.NeedResult;
+import com.aetherianartificer.townstead.api.v1.result.RootResult;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.temperature.TemperatureData;
@@ -79,6 +80,33 @@ final class VillagersImpl implements VillagersApi {
     @Override
     public NeedResult adjustNeed(Entity entity, String needId, int delta, ResourceLocation source) {
         return mutate(entity, needId, delta, true, source);
+    }
+
+    @Override
+    public RootResult setRoot(Entity entity, ResourceLocation rootId, ResourceLocation source) {
+        try {
+            if (!ApiSupport.writesAllowed(source)) {
+                return RootResult.failed(RootResult.Status.DISABLED, "writes from " + source + " are disabled");
+            }
+            com.aetherianartificer.townstead.root.Root root = rootId == null ? null
+                    : com.aetherianartificer.townstead.root.RootRegistry.byId(rootId);
+            if (root == null) {
+                return RootResult.failed(RootResult.Status.UNKNOWN_ROOT, "unknown root " + rootId);
+            }
+            if (com.aetherianartificer.townstead.root.RootBlocklist.isBlocked(root.id())) {
+                return RootResult.failed(RootResult.Status.BLOCKED, root.id() + " is blocked on this server");
+            }
+            String before = com.aetherianartificer.townstead.root.RootAssignment.currentRoot(entity);
+            if (before == null) {
+                return RootResult.failed(RootResult.Status.NOT_A_VILLAGER, "not an MCA villager or a server player");
+            }
+            boolean changed = com.aetherianartificer.townstead.root.RootAssignment.assign(entity, root.id());
+            return new RootResult(changed ? RootResult.Status.APPLIED : RootResult.Status.NO_CHANGE,
+                    before, root.id().toString(), "");
+        } catch (Throwable t) {
+            ApiSupport.swallow("villagers.setRoot", t);
+            return RootResult.failed(RootResult.Status.ERROR, t.toString());
+        }
     }
 
     private NeedResult mutate(Entity entity, String needId, int amount, boolean relative, ResourceLocation source) {

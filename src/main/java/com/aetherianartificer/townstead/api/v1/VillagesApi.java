@@ -23,6 +23,14 @@ public interface VillagesApi {
     /** The village whose border contains {@code pos}, or the nearest within MCA's merge margin. */
     Optional<VillageSnapshot> nearest(ServerLevel level, BlockPos pos);
 
+    /**
+     * The village whose town range contains {@code pos}, with no nearest-village fallback. When
+     * ranges overlap, the village with the closest center is returned.
+     */
+    default Optional<VillageSnapshot> within(ServerLevel level, BlockPos pos) {
+        return Optional.empty();
+    }
+
     List<VillageSnapshot> all(ServerLevel level);
 
     /** The villager's home village, falling back to the nearest one. Empty for non-villagers. */

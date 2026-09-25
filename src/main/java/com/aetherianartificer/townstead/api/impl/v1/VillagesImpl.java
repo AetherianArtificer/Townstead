@@ -16,6 +16,7 @@ import com.aetherianartificer.townstead.spirit.SpiritTotals;
 import com.aetherianartificer.townstead.spirit.VillageSpiritAggregator;
 import com.aetherianartificer.townstead.spirit.VillageSpiritCache;
 import com.aetherianartificer.townstead.village.ResidentRegister;
+import com.aetherianartificer.townstead.village.TownRange;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
@@ -66,6 +67,17 @@ final class VillagesImpl implements VillagesApi {
                     .map(v -> snapshot(level, v));
         } catch (Throwable t) {
             ApiSupport.swallow("villages.nearest", t);
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<VillageSnapshot> within(ServerLevel level, BlockPos pos) {
+        try {
+            if (level == null || pos == null) return Optional.empty();
+            return TownRange.at(level, pos).map(v -> snapshot(level, v));
+        } catch (Throwable t) {
+            ApiSupport.swallow("villages.within", t);
             return Optional.empty();
         }
     }
@@ -188,7 +200,7 @@ final class VillagesImpl implements VillagesApi {
         return new VillageSnapshot(id, village.getName(), new BlockPos(center),
                 new BlockPos(box.minX(), box.minY(), box.minZ()), new BlockPos(box.maxX(), box.maxY(), box.maxZ()),
                 residents.size(), loaded, residents, established, playerFounded, McaBuildings.all(village).size(),
-                Optional.ofNullable(culture));
+                Optional.ofNullable(culture), TownRange.margin(level, village));
     }
 
     static SpiritSnapshot spirit(ServerLevel level, Village village) {

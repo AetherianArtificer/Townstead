@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.smokehouse.smoke_screen"
+  },
+  "icon": "minecraft:gray_dye",
+  "description": {
+    "translate": "skill.townstead.butcher.smokehouse.smoke_screen.description"
+  },
+  "cost": 1,
+  "requires": [
+    "cure"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 10,
+    "resource_cost": {
+      "resource": "townstead:cut",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:cut",
+          "min": 75
+        },
+        {
+          "type": "pheno:block",
+          "y": 0,
+          "block_condition": {
+            "type": "block",
+            "block": "pheno:haze"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:invisibility",
+      "duration": 20,
+      "amplifier": 0
+    }
+  }
+}

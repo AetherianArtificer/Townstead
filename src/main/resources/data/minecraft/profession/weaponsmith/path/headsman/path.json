@@ -1,0 +1,91 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.weaponsmith.path.headsman"
+  },
+  "title": {
+    "translate": "career.townstead.weaponsmith.title.headsman"
+  },
+  "color": "#4A3A3A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:edge",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:weaponsmith/headsman/smell_blood"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:weaponsmith/headsman/execute"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:weaponsmith/headsman/sentence"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 8,
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:hostile"
+                },
+                {
+                  "type": "pheno:health",
+                  "max": 0.5,
+                  "relative": true
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:edge",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "finishing_blow",
+      "cleave_through",
+      "dread_presence"
+    ],
+    [
+      "grim_resolve",
+      "headsmans_swing",
+      "hooded"
+    ],
+    [
+      "smell_blood",
+      "execute",
+      "sentence"
+    ],
+    [
+      "executioner",
+      "mass_execution",
+      "gallows_shadow"
+    ],
+    [
+      "reapers_toll",
+      "final_verdict",
+      "grim_harvest"
+    ]
+  ]
+}

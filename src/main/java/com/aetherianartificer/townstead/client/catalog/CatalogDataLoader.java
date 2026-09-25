@@ -12,6 +12,7 @@ import com.aetherianartificer.townstead.recognition.SiteRequirements;
 import com.aetherianartificer.townstead.spirit.BuildingSpiritIndex;
 import com.aetherianartificer.townstead.spirit.SpiritRegistry;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -142,6 +143,8 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         Map<String, Set<ResourceLocation>> servingProductsByType = new HashMap<>();
         Map<String, BuildingEnclosurePolicies.Mode> enclosurePolicies = new HashMap<>();
         Map<String, List<SiteRequirements.Requirement>> siteRequirements = new HashMap<>();
+        Map<String, List<com.aetherianartificer.townstead.recognition.BuildingChecks.Check>> buildingChecks = new HashMap<>();
+        Map<String, com.aetherianartificer.townstead.politics.seat.SeatBuildings.Spec> seatSpecs = new HashMap<>();
         Map<String, Set<String>> dialogueTopicsByType = new HashMap<>();
         THERMAL_SPECS.clear();
         scanLegacyBuildingTypes(resourceManager, enclosurePolicies);
@@ -149,7 +152,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         scanLegacyBuildingSpawn(resourceManager, spawnPolicies);
         scanExtendedBuildings(resourceManager, spawnPolicies, workersByType,
                 storageRolesByType, recipeNamespacesByType, enclosurePolicies, siteRequirements,
-                dialogueTopicsByType);
+                dialogueTopicsByType, buildingChecks, seatSpecs);
         scanServingMenus(resourceManager, servingProductsByType);
         BuildingSpawnPolicies.replaceAll(spawnPolicies);
         com.aetherianartificer.townstead.work.site.BuildingWorkforceIndex.replaceAll(workersByType);
@@ -159,6 +162,8 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         com.aetherianartificer.townstead.food.BuildingServingMenus.replaceAll(servingProductsByType);
         BuildingEnclosurePolicies.replaceAll(enclosurePolicies);
         SiteRequirements.replaceAll(siteRequirements);
+        com.aetherianartificer.townstead.recognition.BuildingChecks.replaceAll(buildingChecks);
+        com.aetherianartificer.townstead.politics.seat.SeatBuildings.replaceAll(seatSpecs);
         com.aetherianartificer.townstead.temperature.ThermalStructures.replaceAll(THERMAL_SPECS);
         com.aetherianartificer.townstead.work.feedback.BuildingDialogueTopics
                 .replaceAll(dialogueTopicsByType);
@@ -409,7 +414,9 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
             Map<String, Set<String>> recipeNamespacesByType,
             Map<String, BuildingEnclosurePolicies.Mode> enclosurePolicies,
             Map<String, List<SiteRequirements.Requirement>> siteRequirements,
-            Map<String, Set<String>> dialogueTopicsByType) {
+            Map<String, Set<String>> dialogueTopicsByType,
+            Map<String, List<com.aetherianartificer.townstead.recognition.BuildingChecks.Check>> buildingChecks,
+            Map<String, com.aetherianartificer.townstead.politics.seat.SeatBuildings.Spec> seatSpecs) {
         Map<ResourceLocation, Resource> resources = resourceManager.listResources("extended_buildings",
                 id -> id.getPath().endsWith(".json"));
         for (Map.Entry<ResourceLocation, Resource> entry : resources.entrySet()) {
@@ -500,8 +507,14 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                     }
                 }
                 if (json.has("requires")) {
-                    siteRequirements.put(buildingType, SiteRequirements.parse(
-                            GsonHelper.getAsJsonArray(json, "requires")));
+                    JsonArray requires = GsonHelper.getAsJsonArray(json, "requires");
+                    siteRequirements.put(buildingType, SiteRequirements.parse(requires));
+                    buildingChecks.put(buildingType,
+                            com.aetherianartificer.townstead.recognition.BuildingChecks.parse(requires));
+                }
+                if (json.has("seat")) {
+                    seatSpecs.put(buildingType, com.aetherianartificer.townstead.politics.seat.SeatBuildings
+                            .parse(GsonHelper.getAsJsonObject(json, "seat")));
                 }
             } catch (Exception ex) {
                 LOGGER.warn("Rejected extended_buildings entry '{}': {}", location, ex.getMessage());
@@ -691,6 +704,8 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         CLIENT_THEME_RESOURCE_MANAGER = null;
         BuildingSpiritIndex.replaceAll(payload.spirits());
         DecorationCatalogClientStore.replaceAll(payload.decorations());
+        com.aetherianartificer.townstead.recognition.BuildingChecks.replaceAll(payload.checks());
+        com.aetherianartificer.townstead.politics.seat.SeatBuildings.replaceAll(payload.seats());
         BuildingIconResolver.invalidate();
         RequirementNameResolver.invalidate();
         com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.invalidateSignatures();

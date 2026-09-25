@@ -1,0 +1,81 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.farmer.path.scarecrow"
+  },
+  "title": {
+    "translate": "career.townstead.farmer.title.scarecrow"
+  },
+  "color": "#B08A3E",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:grit",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:farmer/scarecrow/watchful"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:farmer/scarecrow/dread"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:farmer/scarecrow/scarecrows_post"
+              }
+            ]
+          },
+          {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:movement",
+              "movement": "moving"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:grit",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "hide_in_the_rows",
+      "boo",
+      "straw_double"
+    ],
+    [
+      "straw_stuffing",
+      "rattle",
+      "chaff_in_the_wind"
+    ],
+    [
+      "watchful",
+      "dread",
+      "scarecrows_post"
+    ],
+    [
+      "stand_still",
+      "nightmare",
+      "unseen"
+    ],
+    [
+      "harvest_specter",
+      "dread_harvest",
+      "field_of_straw"
+    ]
+  ]
+}

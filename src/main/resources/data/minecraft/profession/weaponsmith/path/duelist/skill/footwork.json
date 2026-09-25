@@ -1,0 +1,53 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.duelist.footwork"
+  },
+  "icon": "minecraft:leather_boots",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.duelist.footwork.description"
+  },
+  "cost": 1,
+  "requires": [
+    "parry"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "or",
+            "conditions": [
+              {
+                "type": "ingredient",
+                "tag": "minecraft:swords"
+              },
+              {
+                "type": "ingredient",
+                "tag": "minecraft:axes"
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:entity_in_radius",
+          "radius": 8,
+          "condition": {
+            "type": "pheno:hostile"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 30,
+      "amplifier": 0
+    }
+  }
+}

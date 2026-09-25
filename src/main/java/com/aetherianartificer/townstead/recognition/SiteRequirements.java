@@ -172,8 +172,9 @@ public final class SiteRequirements {
             } else if (GsonHelper.getAsBoolean(json, "enclosed", false)) {
                 out.add(new Enclosed(GsonHelper.getAsInt(json, "min_interior", 4),
                         GsonHelper.getAsInt(json, "max_interior", DEFAULT_MAX_INTERIOR)));
-            } else {
-                throw new IllegalArgumentException("'requires' entries must declare 'surface_over' or 'enclosed'");
+            } else if (!BuildingChecks.isCheck(json)) {
+                throw new IllegalArgumentException("'requires' entries must declare 'surface_over', 'enclosed', "
+                        + "'decoration', 'size', or 'height'");
             }
         }
         return out;

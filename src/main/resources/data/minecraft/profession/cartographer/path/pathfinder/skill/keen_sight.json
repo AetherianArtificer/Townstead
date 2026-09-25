@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.pathfinder.keen_sight"
+  },
+  "icon": "minecraft:spyglass",
+  "description": {
+    "translate": "skill.townstead.cartographer.pathfinder.keen_sight.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:pathfinder_trail",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 2,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:night_vision",
+      "duration": 1200,
+      "amplifier": 0
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:conversation/v1",
+  "subjects": ["townstead:company"],
+  "register": "social",
+  "start": "t0_invite",
+  "turns": {
+    "t0_invite": { "speaker": "initiator", "move": "townstead:invite", "replies": ["t1_reply"] },
+    "t1_reply": { "speaker": "responder", "move": "townstead:reply" }
+  },
+  "associated": ["townstead:venue", "townstead:joke"]
+}

@@ -1,0 +1,162 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "weather_remark",
+  "groups": [
+    {
+      "variant": "rain",
+      "stance": "+",
+      "lines": {
+        "the_fields_needed_this_at": { "text": "The fields needed this, at least.", "thread": "weather.crops" },
+        "good_weather_for_staying_in": { "text": "Good weather for staying in.", "thread": "weather.cozy" },
+        "i_love_the_sound_of": "I love the sound of rain.",
+        "the_crops_will_be_happy": { "text": "The crops will be happy.", "thread": "weather.crops" },
+        "rain_means_mushrooms_i_love": { "text": "Rain means mushrooms. I love mushrooms.", "thread": "weather.crops" },
+        "perfect_weather_for_a_nap": { "text": "Perfect weather for a nap.", "thread": "weather.cozy" },
+        "puddles": { "text": "Puddles!", "stages": "child", "thread": "weather.play" },
+        "i_love_jumping_in_puddles": { "text": "I love jumping in puddles!", "stages": "child", "thread": "weather.play" }
+      }
+    },
+    {
+      "variant": "rain",
+      "stance": "-",
+      "lines": {
+        "this_rain_wont_quit": { "text": "This rain won't quit.", "thread": "weather.duration" },
+        "everythings_soaked": { "text": "Everything's soaked.", "thread": "weather.storm" },
+        "my_boots_will_never_dry": { "text": "My boots will never dry.", "opens": "complaint", "thread": "weather.wet" },
+        "rain_again": { "text": "Rain again.", "thread": "weather.duration" },
+        "smell_that_rain_all_day": "Smell that? Rain all day.",
+        "im_so_tired_of_being": { "text": "I'm so tired of being wet.", "opens": "complaint", "thread": "weather.wet" },
+        "its_been_raining_forever": { "text": "It's been raining forever.", "thread": "weather.duration" },
+        "ugh_the_mud": { "text": "Ugh, the mud.", "thread": "weather.wet" },
+        "i_just_hung_my_washing": { "text": "I just hung my washing out, too.", "opens": "complaint", "thread": "weather.wet" },
+        "the_roads_are_a_mess": { "text": "The roads are a mess.", "thread": "weather.wet" },
+        "my_hair_is_ruined": { "text": "My hair is ruined.", "opens": "complaint", "thread": "weather.wet" },
+        "its_always_raining_always": { "text": "It's always raining. Always.", "personalities": "gloomy", "thread": "weather.duration" },
+        "who_ordered_this_rain_not": { "text": "Who ordered this rain? Not me.", "personalities": ["crabby", "grumpy"] }
+      }
+    },
+    {
+      "variant": "thunder",
+      "stance": "-",
+      "lines": {
+        "that_thunder": { "text": "That thunder!", "thread": "weather.storm" },
+        "storms_getting_closer": { "text": "Storm's getting closer.", "thread": "weather.storm" },
+        "i_dont_like_being_out": { "text": "I don't like being out in this.", "opens": "complaint" },
+        "that_one_shook_the_windows": { "text": "That one shook the windows.", "thread": "weather.storm" },
+        "the_lightnings_so_close_tonight": { "text": "The lightning's so close tonight.", "thread": "weather.storm", "requires": ["time:night"] },
+        "i_hope_nothing_catches_fire": { "text": "I hope nothing catches fire.", "thread": "weather.storm" },
+        "i_cant_sleep_in_storms": { "text": "I can't sleep in storms like this.", "opens": "complaint", "thread": "weather.storm" },
+        "stay_away_from_tall_trees": { "text": "Stay away from tall trees today.", "thread": "weather.storm" },
+        "the_animals_are_all_spooked": { "text": "The animals are all spooked.", "thread": "weather.animals" },
+        "is_it_going_to_hit": {
+          "text": "Is it going to hit us? It's going to hit us.",
+          "personalities": "anxious",
+          "thread": "weather.storm"
+        },
+        "scary": { "text": "Scary!", "stages": "child", "thread": "weather.storm" }
+      }
+    },
+    {
+      "variant": "thunder",
+      "stance": "+",
+      "lines": {
+        "i_love_a_good_storm": { "text": "I love a good storm.", "thread": "weather.storm" },
+        "the_skys_putting_on_a": { "text": "The sky's putting on a show.", "thread": "weather.beauty" },
+        "storms_make_everything_feel_exciting": { "text": "Storms make everything feel exciting.", "thread": "weather.storm" },
+        "thunder_is_the_skys_drum": { "text": "Thunder is the sky's drum!", "stages": "child", "thread": "weather.storm" }
+      }
+    },
+    {
+      "variant": "clear",
+      "stance": "+",
+      "form": "quality",
+      "lines": { "lovely_day_for_it": {"text": "Lovely day for it.", "thread": "weather.beauty"} }
+    },
+    {
+      "variant": "clear",
+      "stance": "+",
+      "lines": {
+        "finally_some_sun": { "text": "Finally some sun.", "thread": "weather.beauty" },
+        "not_a_cloud_up_there": { "text": "Not a cloud up there.", "thread": "weather.beauty" },
+        "warm_one_today": "Warm one today.",
+        "days_like_this_make_up": { "text": "Days like this make up for the winter.", "thread": "weather.cold" }
+      }
+    },
+    {
+      "variant": "clear",
+      "stance": "+",
+      "form": "quality",
+      "lines": {
+        "perfect_day_to_be_outside": "Perfect day to be outside.",
+        "what_a_beautiful_day": { "text": "What a beautiful day.", "thread": "weather.beauty" },
+        "isnt_it_gorgeous_out": { "text": "Isn't it gorgeous out?", "thread": "weather.beauty" }
+      }
+    },
+    {
+      "variant": "clear",
+      "stance": "+",
+      "lines": {
+        "the_sun_feels_so_nice": { "text": "The sun feels so nice.", "thread": "weather.beauty" },
+        "great_day_to_get_things": "Great day to get things done.",
+        "the_flowers_look_happy_today": { "text": "The flowers look happy today.", "thread": "weather.crops" },
+        "i_could_stay_outside_all": { "text": "I could stay outside all day.", "thread": "weather.play" },
+        "nice_day_for_a_run": { "text": "Nice day for a run!", "personalities": "athletic", "thread": "weather.play" },
+        "its_such_a_splendid_day": { "text": "It's such a splendid day!", "personalities": "sensitive", "thread": "weather.beauty" },
+        "sun_sun_sun": { "text": "Sun! Sun! Sun!", "stages": "child", "thread": "weather.play" }
+      }
+    },
+    {
+      "variant": "clear",
+      "stance": "-",
+      "lines": {
+        "too_hot_for_me": { "text": "Too hot for me.", "opens": "complaint", "thread": "weather.heat" },
+        "the_suns_so_bright_today": { "text": "The sun's so bright today.", "thread": "weather.heat" },
+        "im_melting": { "text": "I'm melting.", "opens": "complaint", "thread": "weather.heat" },
+        "no_shade_anywhere": { "text": "No shade anywhere.", "thread": "weather.heat" },
+        "sunny_great_ill_burn": { "text": "Sunny. Great. I'll burn.", "personalities": "gloomy", "thread": "weather.heat" }
+      }
+    },
+    {
+      "variant": "snow",
+      "stance": "+",
+      "lines": {
+        "look_at_it_come_down": { "text": "Look at it come down.", "thread": "weather.beauty" },
+        "the_children_will_love_this": { "text": "The children will love this.", "thread": "weather.play" }
+      }
+    },
+    {
+      "variant": "snow",
+      "stance": "+",
+      "form": "quality",
+      "lines": { "everything_looks_so_pretty": {"text": "Everything looks so pretty.", "thread": "weather.beauty"} }
+    },
+    {
+      "variant": "snow",
+      "stance": "+",
+      "lines": {
+        "i_love_how_quiet_the": { "text": "I love how quiet the snow makes everything.", "thread": "weather.cozy" },
+        "snow_snow": { "text": "Snow! Snow!", "stages": "child", "thread": "weather.play" },
+        "it_takes_me_back_to": { "text": "It takes me back to my childhood.", "stages": ["adult", "senior"] }
+      }
+    },
+    {
+      "variant": "snow",
+      "stance": "-",
+      "lines": {
+        "my_fingers_are_numb": { "text": "My fingers are numb.", "opens": "complaint", "thread": "weather.cold" },
+        "cold_enough_to_freeze_your": { "text": "Cold enough to freeze your words.", "thread": "weather.cold" },
+        "snows_sticking": "Snow's sticking.",
+        "i_cant_feel_my_toes": { "text": "I can't feel my toes.", "opens": "complaint", "thread": "weather.cold" },
+        "the_paths_are_so_slippery": { "text": "The paths are so slippery.", "thread": "weather.wet" },
+        "im_never_warm_enough": { "text": "I'm never warm enough.", "opens": "complaint", "thread": "weather.cold" },
+        "winters_too_long_here": { "text": "Winter's too long here.", "thread": "weather.cold" },
+        "my_old_bones_hate_the": {
+          "text": "My old bones hate the cold.",
+          "stages": "senior",
+          "opens": "complaint",
+          "thread": "weather.cold"
+        }
+      }
+    }
+  ]
+}

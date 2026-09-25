@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:conversation_subject/v1",
+  "source": { "type": "townstead:mob_sighting" },
+  "register": "social",
+  "slots": {
+    "mob": { "type": "text", "from": "mob.name" },
+    "a_mob": { "type": "text", "from": "mob.name_with_article" },
+    "who": { "type": "person", "from": "mob.witness", "required": false },
+    "where": { "type": "place", "from": "mob.place", "required": false }
+  },
+  "valence": "negative"
+}

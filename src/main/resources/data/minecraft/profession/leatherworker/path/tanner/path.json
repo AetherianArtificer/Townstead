@@ -1,0 +1,94 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.leatherworker.path.tanner"
+  },
+  "title": {
+    "translate": "career.townstead.leatherworker.title.tanner"
+  },
+  "color": "#A0703A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:hide",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:leatherworker/tanner/tough_work"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:leatherworker/tanner/strap_down"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:leatherworker/tanner/hardened_hide"
+              }
+            ]
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:equipped_item",
+                "slot": "chest",
+                "item_condition": {
+                  "type": "ingredient",
+                  "item": "minecraft:leather_chestplate"
+                }
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 8,
+                "condition": {
+                  "type": "pheno:hostile"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:hide",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "supple_hide",
+      "whip_crack",
+      "oil_the_leather"
+    ],
+    [
+      "weathered",
+      "lash",
+      "patch_the_hide"
+    ],
+    [
+      "tough_work",
+      "strap_down",
+      "hardened_hide"
+    ],
+    [
+      "boiled_leather",
+      "flay",
+      "treated_hides"
+    ],
+    [
+      "hide_of_iron",
+      "cat_o_nine",
+      "master_tanner"
+    ]
+  ]
+}

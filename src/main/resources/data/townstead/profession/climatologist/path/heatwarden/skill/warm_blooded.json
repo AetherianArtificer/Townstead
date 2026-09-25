@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.heatwarden.warm_blooded"
+  },
+  "icon": "minecraft:blaze_powder",
+  "description": {
+    "translate": "skill.townstead.climatologist.heatwarden.warm_blooded.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:thermal_tolerance",
+    "cold": 1.0,
+    "heat": 0.0
+  }
+}

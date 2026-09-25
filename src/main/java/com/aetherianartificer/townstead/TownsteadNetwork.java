@@ -110,6 +110,10 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload::read,
                 TownsteadNetwork::handleConsumableEffectsSync);
+        registerS2C(com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload::read,
+                TownsteadNetwork::handleHazeKindsSync);
         registerS2C(FarmStatusSyncPayload.class, FarmStatusSyncPayload::write, FarmStatusSyncPayload::read,
                 TownsteadNetwork::handleFarmStatusSync);
         registerS2C(FishermanStatusSyncPayload.class, FishermanStatusSyncPayload::write, FishermanStatusSyncPayload::read,
@@ -402,6 +406,10 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.root.ability.AbilityTogglesS2CPayload::write,
                 com.aetherianartificer.townstead.root.ability.AbilityTogglesS2CPayload::read,
                 TownsteadNetwork::handleAbilityTogglesSync);
+        registerS2C(com.aetherianartificer.townstead.pheno.cosmetic.CosmeticWearS2CPayload.class,
+                com.aetherianartificer.townstead.pheno.cosmetic.CosmeticWearS2CPayload::write,
+                com.aetherianartificer.townstead.pheno.cosmetic.CosmeticWearS2CPayload::read,
+                com.aetherianartificer.townstead.pheno.cosmetic.CosmeticClientBridge::apply);
         registerS2C(com.aetherianartificer.townstead.root.fx.OverlayActiveS2CPayload.class,
                 com.aetherianartificer.townstead.root.fx.OverlayActiveS2CPayload::write,
                 com.aetherianartificer.townstead.root.fx.OverlayActiveS2CPayload::read,
@@ -813,6 +821,10 @@ public final class TownsteadNetwork {
     private static void handleConsumableEffectsSync(
             com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload payload) {
         com.aetherianartificer.townstead.needs.ConsumableEffectsClientStore.setFrom(payload);
+    }
+
+    private static void handleHazeKindsSync(com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload payload) {
+        com.aetherianartificer.townstead.client.haze.HazeClient.apply(payload);
     }
 
     private static void handleThirstSync(ThirstSyncPayload payload) {

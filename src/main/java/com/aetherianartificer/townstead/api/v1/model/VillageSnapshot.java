@@ -9,7 +9,9 @@ import java.util.UUID;
 
 /**
  * A village's identity and roll. {@link #residentCount} is MCA's roll and is unload-safe;
- * {@link #loadedResidentCount} is how many of them are currently in the world.
+ * {@link #loadedResidentCount} is how many of them are currently in the world. {@link #min} and
+ * {@link #max} bound the buildings; the town range is that box grown by {@link #rangeMargin} on
+ * every side. The margin grows as the town gets stronger.
  */
 public record VillageSnapshot(
         VillageId id,
@@ -23,7 +25,8 @@ public record VillageSnapshot(
         long establishedWorldDay,
         boolean playerFounded,
         int buildingCount,
-        Optional<ResourceLocation> culture
+        Optional<ResourceLocation> culture,
+        int rangeMargin
 ) {
     public VillageSnapshot {
         residents = residents == null ? List.of() : List.copyOf(residents);

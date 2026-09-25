@@ -126,7 +126,7 @@ class SiteGeometryTest {
                 List.of(SiteGeometry.pack(2, 64, 5)), grid.loaded(), grid.openness());
 
         assertEquals(SiteGeometry.Status.FOUND,
-                SiteGeometry.enclosure(roots.getFirst(), grid.loaded(), grid.openness(), 32, 4096).status(),
+                SiteGeometry.enclosure(roots.get(0), grid.loaded(), grid.openness(), 32, 4096).status(),
                 "the first root tried must be inside the ring, not on top of it");
     }
 

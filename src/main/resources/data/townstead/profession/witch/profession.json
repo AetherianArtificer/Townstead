@@ -8,5 +8,9 @@
   "description": {
     "translate": "career.townstead.witch.description"
   },
+  "skills": [
+    "iron_stomach",
+    "cackle"
+  ],
   "unlock_model": "experiential"
 }

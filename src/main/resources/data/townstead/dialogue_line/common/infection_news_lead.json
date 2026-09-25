@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "infection_news_lead",
+  "groups": [
+    { "lines": {"did_you_hear": "Did you hear?"} },
+    {
+      "valence": "negative",
+      "lines": { "i_have_bad_news": "I have bad news.", "its_awful_news": "It's awful news." }
+    },
+    { "valence": "positive", "lines": {"good_news_for_once": "Good news, for once."} }
+  ]
+}

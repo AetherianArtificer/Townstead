@@ -6,6 +6,7 @@
   "turns": {
     "open": {
       "speaker": "initiator",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.checking_after_harm.open.1",
         "dialogue.townstead_social.checking_after_harm.open.2",
@@ -18,6 +19,7 @@
     },
     "accepts_concern": {
       "speaker": "responder",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.checking_after_harm.accepts_concern.1",
         "dialogue.townstead_social.checking_after_harm.accepts_concern.2",
@@ -32,6 +34,7 @@
     },
     "guards_pride": {
       "speaker": "responder",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.checking_after_harm.guards_pride.1",
         "dialogue.townstead_social.checking_after_harm.guards_pride.2",
@@ -46,6 +49,7 @@
     },
     "offers_help": {
       "speaker": "initiator",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.checking_after_harm.offers_help.1",
         "dialogue.townstead_social.checking_after_harm.offers_help.2"
@@ -57,6 +61,7 @@
     },
     "gives_space": {
       "speaker": "initiator",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.checking_after_harm.gives_space.1",
         "dialogue.townstead_social.checking_after_harm.gives_space.2"
@@ -68,6 +73,7 @@
     },
     "accepts_help": {
       "speaker": "responder",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.checking_after_harm.accepts_help.1",
         "dialogue.townstead_social.checking_after_harm.accepts_help.2"
@@ -95,6 +101,7 @@
     },
     "ends_guarded": {
       "speaker": "responder",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.checking_after_harm.ends_guarded.1",
         "dialogue.townstead_social.checking_after_harm.ends_guarded.2"

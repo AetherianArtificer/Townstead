@@ -1,0 +1,55 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.heatwarden.kindle"
+  },
+  "icon": "minecraft:torch",
+  "description": {
+    "translate": "skill.townstead.climatologist.heatwarden.kindle.description"
+  },
+  "cost": 1,
+  "requires": [
+    "heatproof"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:front",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:environment",
+          "exposure": "sun"
+        },
+        {
+          "type": "pheno:block_in_radius",
+          "radius": 6,
+          "block_condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:in_tag",
+                "tag": "townstead:kitchen/heat_sources"
+              },
+              {
+                "type": "pheno:block_state",
+                "property": "lit",
+                "value": "true",
+                "if_missing": "pass"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:front",
+      "amount": 3
+    }
+  }
+}

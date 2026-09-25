@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.weaver.master_weaver"
+  },
+  "icon": "minecraft:loom",
+  "description": {
+    "translate": "skill.townstead.tailor.weaver.master_weaver.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tangleweave"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:stitch",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:stitch",
+      "min": 75
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:slowness",
+            "duration": 30,
+            "amplifier": 1
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:weakness",
+            "duration": 30,
+            "amplifier": 0
+          }
+        ]
+      }
+    }
+  }
+}

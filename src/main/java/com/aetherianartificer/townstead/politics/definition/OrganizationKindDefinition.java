@@ -23,12 +23,19 @@ public record OrganizationKindDefinition(ResourceLocation id,
                                          ResourceLocation membershipPolicy,
                                          List<RoleBinding> roles,
                                          Founding founding,
-                                         Presentation presentation) {
+                                         Presentation presentation,
+                                         @Nullable GovernanceDefinition governance) {
     public static final String SCHEMA = "townstead:organization_kind/v1";
 
     public OrganizationKindDefinition {
         tags = Set.copyOf(tags);
         roles = List.copyOf(roles);
+    }
+
+    public OrganizationKindDefinition(ResourceLocation id, PoliticalDisplay display, Set<ResourceLocation> tags,
+                                      ResourceLocation membershipPolicy, List<RoleBinding> roles,
+                                      Founding founding, Presentation presentation) {
+        this(id, display, tags, membershipPolicy, roles, founding, presentation, null);
     }
 
     public static OrganizationKindDefinition parse(ResourceLocation id, JsonObject json,
@@ -46,9 +53,11 @@ public record OrganizationKindDefinition(ResourceLocation id,
         }
         JsonObject foundingJson = PoliticalJson.object(json, "founding", true);
         JsonObject presentationJson = PoliticalJson.object(json, "presentation", false);
+        JsonObject governanceJson = PoliticalJson.object(json, "governance", false);
         return new OrganizationKindDefinition(id, PoliticalDisplay.parse(json, id, lang),
                 PoliticalJson.idSet(json, "tags"), PoliticalJson.requiredId(json, "membership_policy"),
-                roles, Founding.parse(foundingJson), Presentation.parse(presentationJson));
+                roles, Founding.parse(foundingJson), Presentation.parse(presentationJson),
+                governanceJson == null ? null : GovernanceDefinition.parse(governanceJson, seen));
     }
 
     public record RoleBinding(ResourceLocation role, int minimum, int maximum, boolean founder) {

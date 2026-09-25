@@ -1,0 +1,81 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.armorer.path.bulwark"
+  },
+  "title": {
+    "translate": "career.townstead.armorer.title.bulwark"
+  },
+  "color": "#7A8A9A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:temper",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:armorer/bulwark/take_the_hit"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:armorer/bulwark/iron_will"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:armorer/bulwark/arrow_screen"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 8,
+            "condition": {
+              "type": "pheno:hostile"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:temper",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "arrow_catcher",
+      "stand_firm",
+      "cover"
+    ],
+    [
+      "blast_plate",
+      "brace_for_impact",
+      "shield_line"
+    ],
+    [
+      "take_the_hit",
+      "iron_will",
+      "arrow_screen"
+    ],
+    [
+      "fireproof",
+      "fortress",
+      "iron_wall"
+    ],
+    [
+      "unbreakable",
+      "last_bastion",
+      "aegis"
+    ]
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tinker.contraption"
+  },
+  "icon": "minecraft:piston",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tinker.contraption.description"
+  },
+  "cost": 1,
+  "requires": [
+    "flash_powder"
+  ],
+  "skill_group": "townstead:tinker_gadget",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:knack",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:smoke",
+          "blocks": {
+            "radius": 5,
+            "around": "above",
+            "where": {
+              "type": "air"
+            }
+          }
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:speed",
+          "duration": 400,
+          "amplifier": 1
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:jump_boost",
+          "duration": 400,
+          "amplifier": 1
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 10,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:blindness",
+            "duration": 100,
+            "amplifier": 0
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.broomrider.night_flyer"
+  },
+  "icon": "minecraft:phantom_membrane",
+  "description": {
+    "translate": "skill.townstead.witch.broomrider.night_flyer.description"
+  },
+  "cost": 1,
+  "requires": [
+    "light_as_a_feather"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:time_of_day",
+      "min": 13000,
+      "max": 23000
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:night_vision",
+      "duration": 300,
+      "amplifier": 0
+    }
+  }
+}

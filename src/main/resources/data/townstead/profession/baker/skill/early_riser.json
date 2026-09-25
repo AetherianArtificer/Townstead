@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.early_riser"
+  },
+  "icon": "minecraft:clock",
+  "description": {
+    "translate": "skill.townstead.baker.early_riser.description"
+  },
+  "tier": 1,
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 60,
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:time_of_day",
+          "min": 23000,
+          "max": 24000
+        },
+        {
+          "type": "pheno:time_of_day",
+          "min": 0,
+          "max": 1500
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:energize",
+      "amount": 2
+    }
+  }
+}

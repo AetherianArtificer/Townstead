@@ -6,6 +6,7 @@
   "turns": {
     "open": {
       "speaker": "initiator",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.speaking_after_harm.open.1",
         "dialogue.townstead_social.speaking_after_harm.open.2",
@@ -18,6 +19,7 @@
     },
     "meets_honesty": {
       "speaker": "responder",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.speaking_after_harm.meets_honesty.1",
         "dialogue.townstead_social.speaking_after_harm.meets_honesty.2",
@@ -32,6 +34,7 @@
     },
     "avoids_subject": {
       "speaker": "responder",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.speaking_after_harm.avoids_subject.1",
         "dialogue.townstead_social.speaking_after_harm.avoids_subject.2",
@@ -46,6 +49,7 @@
     },
     "admits_fear": {
       "speaker": "initiator",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.speaking_after_harm.admits_fear.1",
         "dialogue.townstead_social.speaking_after_harm.admits_fear.2"
@@ -57,6 +61,7 @@
     },
     "lets_it_rest": {
       "speaker": "initiator",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.speaking_after_harm.lets_it_rest.1",
         "dialogue.townstead_social.speaking_after_harm.lets_it_rest.2"
@@ -68,6 +73,7 @@
     },
     "shares_relief": {
       "speaker": "responder",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.speaking_after_harm.shares_relief.1",
         "dialogue.townstead_social.speaking_after_harm.shares_relief.2"
@@ -95,6 +101,7 @@
     },
     "ends_quietly": {
       "speaker": "responder",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.speaking_after_harm.ends_quietly.1",
         "dialogue.townstead_social.speaking_after_harm.ends_quietly.2"

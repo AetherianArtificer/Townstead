@@ -103,6 +103,25 @@ public final class RootGenes {
         }
     }
 
+    /** Read a player's stored MCA floats into a {@link #snapshot}-ordered array; a missing key reads as 0.5. */
+    public static float[] readFromPlayerData(net.minecraft.nbt.CompoundTag entityData) {
+        float[] out = new float[ORDERED.length];
+        for (int i = 0; i < ORDERED.length; i++) {
+            String key = ORDERED[i].key();
+            out[i] = entityData != null && entityData.contains(key) ? entityData.getFloat(key) : 0.5f;
+        }
+        return out;
+    }
+
+    /** {@link #apply} onto a {@link #snapshot}-ordered array instead of a live villager. */
+    public static void apply(float[] snapshot, Map<String, GeneRange> targetRanges, RandomSource random) {
+        if (snapshot == null || targetRanges == null) return;
+        for (Map.Entry<String, GeneRange> entry : targetRanges.entrySet()) {
+            Genetics.GeneType type = BY_KEY.get(entry.getKey());
+            if (type != null) writeSnapshot(snapshot, type, entry.getValue().sample(random));
+        }
+    }
+
     /** Normalize an author-supplied gene key to the form used as a map key. */
     public static String normalizeKey(String raw) {
         if (raw == null) return "";

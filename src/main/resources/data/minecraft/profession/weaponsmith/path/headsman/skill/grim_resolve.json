@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.headsman.grim_resolve"
+  },
+  "icon": "minecraft:skeleton_skull",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.headsman.grim_resolve.description"
+  },
+  "cost": 1,
+  "requires": [
+    "finishing_blow"
+  ],
+  "power": {
+    "type": "pheno:effect_immunity",
+    "effects": [
+      "minecraft:weakness"
+    ]
+  }
+}

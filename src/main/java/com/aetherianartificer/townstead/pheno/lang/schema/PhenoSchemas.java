@@ -365,6 +365,24 @@ public final class PhenoSchemas {
                 .field(required("blocks", PhenoType.OBJECT).doc("A block selector (e.g. { type: pheno:ray, stop_on: block })."))
                 .field(required("do", PhenoType.BLOCK_ACTION)).primaryChild("do").build());
 
+        NodeSchemas.register(NodeSchema.of("pheno:haze", NodeDomain.ACTION)
+                .doc("Raises haze of one data-defined kind (data/<ns>/haze) at the selected blocks. Fills only "
+                        + "air and existing haze; grounded kinds skip cells with nothing solid below.")
+                .field(required("kind", PhenoType.ID).doc("A haze kind id, e.g. townstead:flour."))
+                .field(required("blocks", PhenoType.OBJECT).doc("A block selector, e.g. { radius: 3, where: { type: air } }."))
+                .field(of("density", PhenoType.INT).doc("Starting density, 1 to 8 (default 8).")).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:wear_cosmetic", NodeDomain.ACTION)
+                .doc("Shows an item in an equipment slot for a while, display only: real gear is untouched and "
+                        + "nothing is created. One of the listed items (ids or #tags) is picked at random.")
+                .field(of("slot", PhenoType.STRING).doc("head (default), chest, legs, feet, mainhand, offhand."))
+                .field(required("item", PhenoType.ANY).doc("An item id, a #tag, or a list of either."))
+                .field(of("duration", PhenoType.INT).doc("Ticks the cosmetic shows (default 200).")).build());
+        NodeSchemas.register(NodeSchema.of("pheno:wearing_cosmetic", NodeDomain.CONDITION)
+                .doc("True while a pheno:wear_cosmetic item shows in the slot; with item, only while that item does.")
+                .field(of("slot", PhenoType.STRING).doc("head (default), chest, legs, feet, mainhand, offhand."))
+                .field(of("item", PhenoType.STRING).doc("Optional item id or #tag.")).build());
+
         NodeSchemas.register(NodeSchema.of("pheno:beam", NodeDomain.ACTION)
                 .doc("Draws a line of particles from the caster's eyes along a ray to its impact point "
                         + "(the beam half of Apoli/Apugli raycast).")

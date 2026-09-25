@@ -1,0 +1,91 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.shepherd.path.night_watch"
+  },
+  "title": {
+    "translate": "career.townstead.shepherd.title.night_watch"
+  },
+  "color": "#3E4A6A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:flock",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:shepherd/night_watch/vigil"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:shepherd/night_watch/crook_and_lantern"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:shepherd/night_watch/counted_sheep"
+              }
+            ]
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:time_of_day",
+                "min": 13000,
+                "max": 23000
+              },
+              {
+                "type": "pheno:block",
+                "y": 0,
+                "block_condition": {
+                  "type": "exposed_to_sky"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:flock",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "night_eyes",
+      "alarm",
+      "hidden_watch"
+    ],
+    [
+      "light_sleeper",
+      "torchlight",
+      "wolfs_howl"
+    ],
+    [
+      "vigil",
+      "crook_and_lantern",
+      "counted_sheep"
+    ],
+    [
+      "watchfire",
+      "rout",
+      "nightfall_ambush"
+    ],
+    [
+      "dawn_guard",
+      "long_night",
+      "warden_of_the_fold"
+    ]
+  ]
+}

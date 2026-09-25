@@ -1,0 +1,52 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tinker.fiddle"
+  },
+  "icon": "minecraft:clock",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tinker.fiddle.description"
+  },
+  "cost": 1,
+  "requires": [
+    "grip_spikes"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:knack",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "or",
+        "conditions": [
+          {
+            "type": "ingredient",
+            "tag": "minecraft:pickaxes"
+          },
+          {
+            "type": "ingredient",
+            "tag": "minecraft:shovels"
+          },
+          {
+            "type": "ingredient",
+            "tag": "minecraft:axes"
+          },
+          {
+            "type": "ingredient",
+            "tag": "minecraft:hoes"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:knack",
+      "amount": 3
+    }
+  }
+}

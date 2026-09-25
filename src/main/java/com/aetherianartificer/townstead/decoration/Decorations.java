@@ -34,6 +34,7 @@ public final class Decorations {
     private static volatile Map<ResourceLocation, DecorationDefinition> DEFINITIONS = Map.of();
     private static volatile int MAX_RADIUS = 0;
     private static volatile int MAX_THERMAL_RADIUS = 0;
+    private static volatile boolean OVERLAP_CHECK_PENDING = false;
 
     private Decorations() {}
 
@@ -67,6 +68,32 @@ public final class Decorations {
     }
 
     /** The largest recognition radius among definitions: how far a placed or broken block can matter. */
+    /**
+     * Warns once per reload about two sets that can share an anchor block when neither declares
+     * {@code supersedes}: whichever is built first takes the anchor. Runs on first use, because
+     * block tags are not bound yet while definitions load.
+     */
+    public static void warnOverlapsOnce() {
+        if (!OVERLAP_CHECK_PENDING) return;
+        OVERLAP_CHECK_PENDING = false;
+        List<DecorationDefinition> definitions = List.copyOf(DEFINITIONS.values());
+        for (int i = 0; i < definitions.size(); i++) {
+            for (int j = i + 1; j < definitions.size(); j++) {
+                DecorationDefinition a = definitions.get(i), b = definitions.get(j);
+                if (a.supersedes(b.id()) || b.supersedes(a.id())) continue;
+                for (net.minecraft.world.level.block.Block block : net.minecraft.core.registries.BuiltInRegistries.BLOCK) {
+                    BlockState state = block.defaultBlockState();
+                    if (a.isAnchor(state) && b.isAnchor(state)) {
+                        LOGGER.warn("Decorations {} and {} can both anchor on {} and neither declares 'supersedes'; "
+                                + "the one built first takes the anchor", a.id(), b.id(),
+                                net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block));
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     public static int maxRadius() {
         return MAX_RADIUS;
     }
@@ -181,6 +208,7 @@ public final class Decorations {
             com.aetherianartificer.townstead.spirit.VillageSpiritCache.clear();
             MAX_RADIUS = maxRadius;
             MAX_THERMAL_RADIUS = maxThermal;
+            OVERLAP_CHECK_PENDING = true;
             LOGGER.info("Loaded {} decoration definitions", loaded.size());
         }
     }

@@ -1,0 +1,57 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "survival.rescue",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "survival",
+    "key": "townstead:infection_cured"
+  },
+  "reach": "village",
+  "news_value": 6.0,
+  "roles": [
+    {
+      "id": "cured",
+      "kind": "villager"
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.infection_cured"
+    },
+    "params": [
+      "cured"
+    ]
+  },
+  "impact": {
+    "cured": {
+      "mood": 10.0,
+      "memory": {
+        "valence": 1.0,
+        "strength": 3.0
+      }
+    },
+    "witness": {
+      "mood": 3.0,
+      "memory": {
+        "valence": 0.8,
+        "strength": 1.5
+      }
+    },
+    "on_learn": {
+      "mood": 1.0,
+      "memory": {
+        "valence": 0.7,
+        "strength": 1.0
+      }
+    }
+  }
+}

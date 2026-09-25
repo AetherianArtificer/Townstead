@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.netter.knot_work"
+  },
+  "icon": "minecraft:string",
+  "description": {
+    "translate": "skill.townstead.fisherman.netter.knot_work.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:stuck_immunity",
+    "blocks": [
+      "minecraft:cobweb",
+      "minecraft:sweet_berry_bush"
+    ]
+  }
+}

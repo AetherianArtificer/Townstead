@@ -1,0 +1,40 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.smokehouse.cure"
+  },
+  "icon": "minecraft:sugar",
+  "description": {
+    "translate": "skill.townstead.butcher.smokehouse.cure.description"
+  },
+  "cost": 1,
+  "requires": [
+    "low_and_slow"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 60,
+    "resource_cost": {
+      "resource": "townstead:cut",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:cut",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:clear_effect",
+          "effect": "minecraft:poison"
+        },
+        {
+          "type": "pheno:clear_effect",
+          "effect": "minecraft:hunger"
+        }
+      ]
+    }
+  }
+}

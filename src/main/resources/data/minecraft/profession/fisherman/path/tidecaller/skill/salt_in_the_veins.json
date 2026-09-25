@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.tidecaller.salt_in_the_veins"
+  },
+  "icon": "minecraft:prismarine_crystals",
+  "description": {
+    "translate": "skill.townstead.fisherman.tidecaller.salt_in_the_veins.description"
+  },
+  "cost": 1,
+  "requires": [
+    "swell"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:in_fluid",
+      "fluid": "water"
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:conduit_power",
+      "duration": 30,
+      "amplifier": 0
+    }
+  }
+}

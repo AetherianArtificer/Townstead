@@ -15,6 +15,9 @@ public final class ChronicleTapKeys {
     public static final String CURED = "townstead:cured";
     public static final String FREEZING = "townstead:freezing";
     public static final String SWELTERING = "townstead:sweltering";
+    public static final String ZOMBIE_BITE = "townstead:zombie_bite";
+    public static final String TURNED_ZOMBIE = "townstead:turned_zombie";
+    public static final String INFECTION_CURED = "townstead:infection_cured";
 
     private ChronicleTapKeys() {}
 }

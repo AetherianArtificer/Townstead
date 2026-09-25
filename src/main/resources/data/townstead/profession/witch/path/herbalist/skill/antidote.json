@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.herbalist.antidote"
+  },
+  "icon": "minecraft:honey_bottle",
+  "description": {
+    "translate": "skill.townstead.witch.herbalist.antidote.description"
+  },
+  "cost": 1,
+  "requires": [
+    "poultice"
+  ],
+  "power": {
+    "type": "pheno:effect_immunity",
+    "effects": [
+      "minecraft:wither",
+      "minecraft:nausea"
+    ]
+  }
+}

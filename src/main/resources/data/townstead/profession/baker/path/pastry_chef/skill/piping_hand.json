@@ -3,17 +3,51 @@
   "display_name": {
     "translate": "skill.townstead.baker.pastry_chef.piping_hand"
   },
-  "icon": "minecraft:barrier",
+  "icon": "minecraft:candle",
   "description": {
     "translate": "skill.townstead.baker.pastry_chef.piping_hand.description"
   },
   "cost": 1,
-  "requires": ["fine_crumb"],
-  "grants": [
-    {
-      "capability": "townstead:baker_xp_flat",
-      "op": "add",
-      "value": 1
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 100,
+    "condition": {
+      "type": "pheno:building",
+      "building_prefix": "bakery"
+    },
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 6,
+        "where": {
+          "type": "and",
+          "conditions": [
+            {
+              "type": "or",
+              "conditions": [
+                {
+                  "type": "in_tag",
+                  "tag": "minecraft:candles"
+                },
+                {
+                  "type": "in_tag",
+                  "tag": "minecraft:candle_cakes"
+                }
+              ]
+            },
+            {
+              "type": "block_state",
+              "property": "lit",
+              "value": "false"
+            }
+          ]
+        }
+      },
+      "do": {
+        "type": "pheno:modify_block_state",
+        "property": "lit",
+        "value": "true"
+      }
     }
-  ]
+  }
 }

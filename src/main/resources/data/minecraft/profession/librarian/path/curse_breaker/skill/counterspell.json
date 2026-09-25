@@ -1,0 +1,49 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.curse_breaker.counterspell"
+  },
+  "icon": "minecraft:enchanted_book",
+  "description": {
+    "translate": "skill.townstead.librarian.curse_breaker.counterspell.description"
+  },
+  "cost": 1,
+  "requires": [
+    "silence"
+  ],
+  "skill_group": "townstead:curse_counter",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:insight",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:clear_effect"
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:weakness",
+          "duration": 200,
+          "amplifier": 1
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:slowness",
+          "duration": 200,
+          "amplifier": 1
+        }
+      ],
+      "on": {
+        "type": "pheno:ray",
+        "distance": 16
+      }
+    }
+  }
+}

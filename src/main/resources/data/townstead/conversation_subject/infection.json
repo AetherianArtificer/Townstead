@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:conversation_subject/v1",
+  "source": { "type": "townstead:infection" },
+  "register": "grief",
+  "slots": { "who": {"type": "person", "from": "infection.who"} },
+  "valence": "negative"
+}

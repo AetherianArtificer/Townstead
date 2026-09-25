@@ -2,7 +2,10 @@ package com.aetherianartificer.townstead.decoration;
 
 import com.aetherianartificer.townstead.spirit.*;
 import com.google.gson.JsonParser;
+import net.minecraft.SharedConstants;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.Bootstrap;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -11,6 +14,15 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DecorationSpiritTest {
+    // TagKey.create touches Registries, which on 1.20.1 requires a bootstrapped registry root.
+    // NeoForge's bootstrap fails outside the game, and 1.21 does not need it.
+    @BeforeAll static void bootstrap() {
+        //? if <1.21 {
+        /*SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
+        *///?}
+    }
+
     @Test void everyBundledDecorationHasOneSmallContribution() throws Exception {
         for (String name : List.of("cool_spot", "flower_bed", "fountain", "haystack", "hearth", "lamp_post", "well")) {
             try (var stream = getClass().getResourceAsStream("/data/townstead/decoration/" + name + ".json")) {

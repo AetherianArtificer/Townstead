@@ -1,0 +1,62 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.pastry_chef.confectioners_cloud"
+  },
+  "icon": "minecraft:sugar",
+  "description": {
+    "translate": "skill.townstead.baker.pastry_chef.confectioners_cloud.description"
+  },
+  "cost": 1,
+  "requires": [
+    "candy_floss"
+  ],
+  "skill_group": "townstead:pastry_sugar",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:sugar",
+          "blocks": {
+            "radius": 5,
+            "around": "above",
+            "where": {
+              "type": "air"
+            }
+          }
+        },
+        {
+          "type": "pheno:cloud",
+          "radius": 4,
+          "duration": 300,
+          "particle": "minecraft:end_rod",
+          "where": {
+            "type": "pheno:target_condition",
+            "condition": {
+              "type": "pheno:not",
+              "condition": {
+                "type": "pheno:hostile"
+              }
+            }
+          },
+          "do": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:speed",
+            "duration": 40,
+            "amplifier": 1
+          }
+        }
+      ]
+    }
+  }
+}

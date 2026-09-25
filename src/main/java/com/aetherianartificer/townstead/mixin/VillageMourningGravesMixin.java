@@ -15,7 +15,8 @@ import java.util.List;
  * {@code Stream#toList()}, which is unmodifiable. Copy the result before MCA
  * shuffles it so villages with more than one mournable grave do not fail their
  * village tick. The optional injector is inert on MCA builds predating the
- * village-scoped scheduler.
+ * village-scoped scheduler, and on later builds where MCA copies the list
+ * itself and takes a {@code ServerLevel}.
  */
 @Pseudo
 @Mixin(targets = "net.conczin.mca.server.world.data.Village", remap = false)

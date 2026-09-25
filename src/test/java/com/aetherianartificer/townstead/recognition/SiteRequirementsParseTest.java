@@ -17,7 +17,7 @@ class SiteRequirementsParseTest {
     @Test
     void surfaceOverTakesATagAndItsCount() {
         var requirement = assertInstanceOf(SiteRequirements.SurfaceOver.class,
-                parse("[{\"surface_over\": \"#townstead:liquids\", \"count\": 24}]").getFirst());
+                parse("[{\"surface_over\": \"#townstead:liquids\", \"count\": 24}]").get(0));
         assertEquals(24, requirement.count());
         assertEquals(6, requirement.maxDrop());
         assertEquals("townstead:liquids", requirement.tag().location().toString());
@@ -26,7 +26,7 @@ class SiteRequirementsParseTest {
     @Test
     void enclosedCarriesItsInteriorBounds() {
         var requirement = assertInstanceOf(SiteRequirements.Enclosed.class,
-                parse("[{\"enclosed\": true, \"min_interior\": 4, \"max_interior\": 4096}]").getFirst());
+                parse("[{\"enclosed\": true, \"min_interior\": 4, \"max_interior\": 4096}]").get(0));
         assertEquals(4, requirement.minInterior());
         assertEquals(4096, requirement.maxInterior());
     }

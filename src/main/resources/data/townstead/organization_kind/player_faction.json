@@ -31,5 +31,41 @@
     "faction_name_patterns": [
       "{name}"
     ]
+  },
+  "governance": {
+    "head": "townstead:faction_leader",
+    "routes": [
+      {
+        "route": "townstead:favor",
+        "office": "townstead:faction_leader"
+      }
+    ],
+    "succession": "townstead:favor",
+    "legitimacy": {
+      "base": 60,
+      "sources": [
+        {
+          "label": "townstead:prosperity",
+          "value": {
+            "type": "pheno:village_needs"
+          },
+          "weight": 20
+        },
+        {
+          "label": "townstead:village_spirit",
+          "value": {
+            "type": "pheno:village_spirit_tier"
+          },
+          "weight": 4
+        },
+        {
+          "label": "townstead:leader_standing",
+          "value": {
+            "type": "pheno:standing"
+          },
+          "weight": 0.5
+        }
+      ]
+    }
   }
 }

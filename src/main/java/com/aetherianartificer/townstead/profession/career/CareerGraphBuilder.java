@@ -218,12 +218,27 @@ public final class CareerGraphBuilder {
         if (description == null || description.isBlank()) {
             return new SkillCopy("", List.copyOf(effects));
         }
-        int sentence = description.indexOf(". ");
+        int sentence = firstSentenceEnd(description);
         if (sentence < 0) return new SkillCopy(description, List.copyOf(effects));
         String about = description.substring(0, sentence + 1).trim();
-        String mechanics = description.substring(sentence + 2).trim();
+        String mechanics = description.substring(sentence + 1).trim();
         if (!mechanics.isEmpty()) effects.add(0, mechanics);
         return new SkillCopy(about, List.copyOf(effects));
+    }
+
+    /**
+     * Index of the mark that ends the first sentence, or -1. Latin marks count only before
+     * whitespace so "1.5" and "e.g." stay whole; CJK full-width marks end a sentence on their own.
+     */
+    static int firstSentenceEnd(String text) {
+        for (int i = 0; i < text.length() - 1; i++) {
+            char c = text.charAt(i);
+            if (c == '。' || c == '！' || c == '？') return i;
+            if ((c == '.' || c == '!' || c == '?') && Character.isWhitespace(text.charAt(i + 1))) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /** The mark this subject pressed when they registered the skill, if they have. */

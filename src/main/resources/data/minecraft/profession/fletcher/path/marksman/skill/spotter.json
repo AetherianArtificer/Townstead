@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.marksman.spotter"
+  },
+  "icon": "minecraft:spyglass",
+  "description": {
+    "translate": "skill.townstead.fletcher.marksman.spotter.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "or",
+        "conditions": [
+          {
+            "type": "ingredient",
+            "item": "minecraft:bow"
+          },
+          {
+            "type": "ingredient",
+            "item": "minecraft:crossbow"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 24,
+      "include_self": false,
+      "target": "hostile",
+      "bientity_condition": {
+        "type": "pheno:relative_rotation",
+        "max_angle": 30
+      },
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:glowing",
+        "duration": 50,
+        "amplifier": 0
+      }
+    }
+  }
+}

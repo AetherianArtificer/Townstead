@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.broomrider.broomstick"
+  },
+  "icon": "minecraft:stick",
+  "description": {
+    "translate": "skill.townstead.witch.broomrider.broomstick.description"
+  },
+  "cost": 1,
+  "requires": [
+    "moonlight"
+  ],
+  "power": {
+    "type": "pheno:ability",
+    "ability": "creative_flight",
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:hex",
+      "min": 1
+    }
+  }
+}

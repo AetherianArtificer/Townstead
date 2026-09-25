@@ -1,0 +1,41 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tinker.handy"
+  },
+  "icon": "minecraft:iron_axe",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tinker.handy.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:block_break_speed",
+    "tag": "minecraft:mineable/axe",
+    "value": 1.15,
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "or",
+        "conditions": [
+          {
+            "type": "ingredient",
+            "tag": "minecraft:pickaxes"
+          },
+          {
+            "type": "ingredient",
+            "tag": "minecraft:shovels"
+          },
+          {
+            "type": "ingredient",
+            "tag": "minecraft:axes"
+          },
+          {
+            "type": "ingredient",
+            "tag": "minecraft:hoes"
+          }
+        ]
+      }
+    }
+  }
+}

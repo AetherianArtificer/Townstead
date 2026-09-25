@@ -1,0 +1,53 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.tiller.stomp"
+  },
+  "icon": "minecraft:piston",
+  "description": {
+    "translate": "skill.townstead.farmer.tiller.stomp.description"
+  },
+  "cost": 1,
+  "requires": [
+    "worked_earth"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_land",
+    "condition": {
+      "type": "pheno:fall_distance",
+      "min": 1.5
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 4,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:add_velocity",
+                "y": 0.8
+              },
+              {
+                "type": "pheno:damage",
+                "amount": 2,
+                "source": "other"
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.rooted_dirt.break",
+          "volume": 1.0,
+          "pitch": 0.6
+        }
+      ]
+    }
+  }
+}

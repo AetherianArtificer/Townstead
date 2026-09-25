@@ -10,5 +10,9 @@
     "text": "Keeps village climate equipment supplied with heating and cooling fuel, including compatible boilers and coolers."
   },
   "icon": "toughasnails:thermoregulator",
+  "skills": [
+    "weathered",
+    "barometer"
+  ],
   "unlock_model": "experiential"
 }

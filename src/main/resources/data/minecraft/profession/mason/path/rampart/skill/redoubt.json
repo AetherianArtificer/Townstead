@@ -1,0 +1,98 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.rampart.redoubt"
+  },
+  "icon": "minecraft:stone_brick_wall",
+  "description": {
+    "translate": "skill.townstead.mason.rampart.redoubt.description"
+  },
+  "cost": 1,
+  "requires": [
+    "breastwork"
+  ],
+  "skill_group": "townstead:rampart_wall",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:mortar",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:stone_wall",
+          "blocks": [
+            {
+              "radius": [
+                2,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  2
+                ]
+              }
+            },
+            {
+              "radius": [
+                2,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  -2
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                2
+              ],
+              "around": {
+                "offset": [
+                  2,
+                  1,
+                  0
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                2
+              ],
+              "around": {
+                "offset": [
+                  -2,
+                  1,
+                  0
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.stone.place",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

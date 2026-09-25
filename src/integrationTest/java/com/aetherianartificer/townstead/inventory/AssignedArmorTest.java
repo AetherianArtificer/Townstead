@@ -18,7 +18,11 @@ class AssignedArmorTest {
         AssignedArmor.set(state, EquipmentSlot.CHEST, true);
         var saved = new ByteArrayOutputStream();
         NbtIo.writeCompressed(state, saved);
+        //? if >=1.21 {
         var loaded = NbtIo.readCompressed(new ByteArrayInputStream(saved.toByteArray()), NbtAccounter.unlimitedHeap());
+        //?} else {
+        /*var loaded = NbtIo.readCompressed(new ByteArrayInputStream(saved.toByteArray()));
+        *///?}
         assertTrue(AssignedArmor.protects(loaded, EquipmentSlot.HEAD, true));
         assertTrue(AssignedArmor.protects(loaded, EquipmentSlot.CHEST, true));
         assertFalse(AssignedArmor.protects(loaded, EquipmentSlot.LEGS, true));

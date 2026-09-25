@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.pastry_chef.folding"
+  },
+  "icon": "minecraft:rabbit_foot",
+  "description": {
+    "translate": "skill.townstead.baker.pastry_chef.folding.description"
+  },
+  "cost": 1,
+  "requires": [
+    "whisk"
+  ],
+  "skill_group": "townstead:pastry_rise",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 360,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:jump_boost",
+        "duration": 200,
+        "amplifier": 1
+      }
+    }
+  }
+}

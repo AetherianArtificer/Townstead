@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.clothier.wardrobe_change"
+  },
+  "icon": "minecraft:chest",
+  "description": {
+    "translate": "skill.townstead.tailor.clothier.wardrobe_change.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tailored_fit"
+  ],
+  "skill_group": "townstead:clothier_outfit",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stitch",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 10,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:resistance",
+            "duration": 1200,
+            "amplifier": 0
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:fire_resistance",
+            "duration": 1200,
+            "amplifier": 0
+          }
+        ]
+      }
+    }
+  }
+}

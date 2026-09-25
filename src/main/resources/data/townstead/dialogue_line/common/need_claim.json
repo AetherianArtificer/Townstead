@@ -1,0 +1,78 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "need_claim",
+  "groups": [
+    {
+      "variant": "hungry",
+      "thread": "need.food",
+      "lines": {
+        "im_starving": "I'm starving.",
+        "i_havent_eaten_all_day": "I haven't eaten all day.",
+        "my_stomach_wont_stop_growling": "My stomach won't stop growling.",
+        "i_could_eat_a_whole": "I could eat a whole pie.",
+        "i_skipped_breakfast_big_mistake": "I skipped breakfast. Big mistake.",
+        "id_trade_anything_for_a": "I'd trade anything for a bowl of stew.",
+        "all_i_can_think_about": "All I can think about is bread.",
+        "my_tummy_hurts_im_so": { "text": "My tummy hurts, I'm so hungry.", "stages": "child" },
+        "ive_been_hungry_since_morning": { "text": "I've been hungry since morning. At my age!", "stages": "senior" },
+        "id_pay_good_emeralds_for": { "text": "I'd pay good emeralds for a meal right now.", "personalities": "greedy" },
+        "hungry_of_course_nothing_ever": { "text": "Hungry. Of course. Nothing ever goes right.", "personalities": "gloomy" },
+        "i_could_eat_a_horse": { "text": "I could eat a horse. Well, not a horse. A sandwich.", "personalities": "odd" }
+      }
+    },
+    {
+      "variant": "thirsty",
+      "thread": "need.drink",
+      "lines": {
+        "im_so_thirsty": "I'm so thirsty.",
+        "my_throat_is_dry_as": "My throat is dry as sand.",
+        "i_need_a_drink_of": "I need a drink of water.",
+        "i_havent_had_a_drop": "I haven't had a drop all day.",
+        "id_drink_a_whole_bucket": "I'd drink a whole bucket right now.",
+        "im_thirsty": { "text": "I'm thirsty!", "stages": "child", "simple": true },
+        "id_kill_for_a_cold": { "text": "I'd kill for a cold drink. Figure of speech.", "personalities": ["crabby", "grumpy"] }
+      }
+    },
+    {
+      "variant": "tired",
+      "thread": "need.sleep",
+      "lines": {
+        "im_so_tired": "I'm so tired.",
+        "i_barely_slept_last_night": "I barely slept last night.",
+        "i_could_fall_asleep_standing": "I could fall asleep standing up.",
+        "my_eyes_wont_stay_open": "My eyes won't stay open.",
+        "i_need_a_nap_a": "I need a nap. A long one.",
+        "ive_been_yawning_all_day": "I've been yawning all day.",
+        "im_running_on_nothing_today": "I'm running on nothing today.",
+        "im_sleepy": { "text": "I'm sleepy.", "stages": "child", "simple": true },
+        "these_old_bones_need_a": { "text": "These old bones need a rest.", "stages": "senior" },
+        "i_was_up_all_night": { "text": "I was up all night worrying.", "personalities": "anxious" },
+        "even_resting_is_tiring_today": { "text": "Even resting is tiring today.", "personalities": ["relaxed", "lazy"] }
+      }
+    },
+    {
+      "variant": "cold",
+      "thread": "need.cold",
+      "lines": {
+        "im_freezing": "I'm freezing.",
+        "i_cant_get_warm": "I can't get warm.",
+        "i_cant_feel_my_fingers": "I can't feel my fingers.",
+        "im_cold_all_the_way": "I'm cold all the way to my bones.",
+        "i_need_to_sit_by": "I need to sit by a fire.",
+        "my_teeth_wont_stop_chattering": { "text": "My teeth won't stop chattering!", "stages": "child" }
+      }
+    },
+    {
+      "variant": "hot",
+      "thread": "need.heat",
+      "lines": {
+        "im_roasting": "I'm roasting.",
+        "im_so_hot_i_could": "I'm so hot I could melt.",
+        "i_need_some_shade": "I need some shade.",
+        "im_sweating_buckets": "I'm sweating buckets.",
+        "id_give_anything_for_a": "I'd give anything for a cool breeze.",
+        "its_too_hot": { "text": "It's too hot!", "stages": "child", "simple": true }
+      }
+    }
+  ]
+}

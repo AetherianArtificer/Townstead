@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.shield_wall"
+  },
+  "icon": "minecraft:iron_chestplate",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.shield_wall.description"
+  },
+  "cost": 1,
+  "requires": [
+    "call_to_arms"
+  ],
+  "skill_group": "townstead:levy_muster",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:grit",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:resistance",
+            "duration": 300,
+            "amplifier": 1
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:absorption",
+            "duration": 300,
+            "amplifier": 0
+          }
+        ]
+      }
+    }
+  }
+}

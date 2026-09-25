@@ -107,7 +107,11 @@ class VineryBreweryPackDataTest {
     @Test
     void nativeWinemakerIsEnrichedWithoutInventingVintnerWork() {
         JsonObject provider = data("career_provider/winemaker_vinery.json");
-        assertEquals("vinery:winemaker", provider.get("profession").getAsString());
+        assertEquals("townstead:beverage_artisan", provider.get("profession").getAsString());
+        assertEquals("winemaker", provider.get("path").getAsString());
+        assertTrue(provider.getAsJsonArray("aliases").asList().stream()
+                        .anyMatch(value -> "vinery:winemaker".equals(value.getAsString())),
+                "Vinery's own profession becomes the Beverage Artisan's Winemaker path");
         assertFalse(provider.toString().toLowerCase().contains("vintner"));
         assertFalse(provider.getAsJsonObject("contributes").getAsJsonObject("profession").has("tasks"),
                 "cross-version Vinery inventory and juice staging are intentionally not simulated");
@@ -120,7 +124,7 @@ class VineryBreweryPackDataTest {
 
     @Test
     void winemakerPrefersTheDedicatedWineCellar() {
-        JsonObject work = resource("/data/vinery/profession/winemaker/work.json");
+        JsonObject work = resource("/data/townstead/profession/beverage_artisan/path/winemaker/path.json");
         assertEquals("townstead:wine", work.getAsJsonObject("storage")
                 .getAsJsonArray("preferred_roles").get(0).getAsString());
 

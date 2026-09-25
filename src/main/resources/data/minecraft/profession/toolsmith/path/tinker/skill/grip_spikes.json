@@ -1,0 +1,22 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tinker.grip_spikes"
+  },
+  "icon": "minecraft:tripwire_hook",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tinker.grip_spikes.description"
+  },
+  "cost": 1,
+  "requires": [
+    "handy"
+  ],
+  "power": {
+    "type": "pheno:ability",
+    "ability": "climbing",
+    "condition": {
+      "type": "pheno:movement",
+      "movement": "sneaking"
+    }
+  }
+}

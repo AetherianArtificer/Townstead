@@ -13,5 +13,6 @@
   "spirit": {
     "industrious": 5,
     "pastoral": 3
-  }
+  },
+  "talk": { "tags": ["townstead:mill"] }
 }

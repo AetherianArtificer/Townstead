@@ -1,0 +1,98 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.miller.threshing_floor"
+  },
+  "icon": "minecraft:hay_block",
+  "description": {
+    "translate": "skill.townstead.baker.miller.threshing_floor.description"
+  },
+  "cost": 1,
+  "requires": [
+    "turning_stone"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 400,
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:village",
+          "within_border": true
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:proof",
+          "min": 50
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 8,
+        "where": {
+          "type": "and",
+          "conditions": [
+            {
+              "type": "block",
+              "block": "minecraft:wheat"
+            },
+            {
+              "type": "or",
+              "conditions": [
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "0"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "1"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "2"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "3"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "4"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "5"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "6"
+                }
+              ]
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "do": {
+        "type": "pheno:modify_block_state",
+        "property": "age",
+        "operation": "add",
+        "amount": 1
+      }
+    }
+  }
+}

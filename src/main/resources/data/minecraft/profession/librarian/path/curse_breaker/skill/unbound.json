@@ -1,0 +1,52 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.curse_breaker.unbound"
+  },
+  "icon": "minecraft:carved_pumpkin",
+  "description": {
+    "translate": "skill.townstead.librarian.curse_breaker.unbound.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 200,
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "head",
+          "item_action": {
+            "type": "pheno:remove_enchantment",
+            "enchantment": "minecraft:binding_curse"
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "chest",
+          "item_action": {
+            "type": "pheno:remove_enchantment",
+            "enchantment": "minecraft:binding_curse"
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "legs",
+          "item_action": {
+            "type": "pheno:remove_enchantment",
+            "enchantment": "minecraft:binding_curse"
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "feet",
+          "item_action": {
+            "type": "pheno:remove_enchantment",
+            "enchantment": "minecraft:binding_curse"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -27,6 +27,11 @@ public final class CivicProviders {
         }
         return null;
     }
+    /** The id of the provider that governs this settlement in Townstead's place, such as {@code mcacapitals}. */
+    public static java.util.Optional<String> governingProvider(net.minecraft.server.MinecraftServer server, SettlementRef settlement) {
+        return PROVIDERS.values().stream().filter(provider -> provider.ownsGovernment(server, settlement))
+                .map(Provider::id).findFirst();
+    }
     public static boolean ownsGovernment(net.minecraft.server.MinecraftServer server, SettlementRef settlement) {
         return PROVIDERS.values().stream().anyMatch(provider -> provider.ownsGovernment(server, settlement));
     }

@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.stormcaller.eye_of_the_storm"
+  },
+  "icon": "minecraft:heart_of_the_sea",
+  "description": {
+    "translate": "skill.townstead.climatologist.stormcaller.eye_of_the_storm.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tempest"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:front",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:front",
+          "min": 75
+        },
+        {
+          "type": "pheno:environment",
+          "weather": [
+            "rain",
+            "thunder"
+          ]
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:resistance",
+      "duration": 30,
+      "amplifier": 0
+    }
+  }
+}

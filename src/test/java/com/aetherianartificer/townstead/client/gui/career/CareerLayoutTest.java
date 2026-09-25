@@ -31,6 +31,27 @@ class CareerLayoutTest {
     }
 
     @Test
+    void peerChoicesNeverTouchAndFitTheirColumn() {
+        CareerGraphS2CPayload.PathTag path =
+                new CareerGraphS2CPayload.PathTag("example", "Example", false);
+        List<CareerGraphS2CPayload.Node> row = List.of(
+                skill("townstead:cook/example/a", path),
+                skill("townstead:cook/example/b", path),
+                skill("townstead:cook/example/c", path));
+        int centre = CareerLayout.COL_W / 2;
+        Map<String, int[]> positions = CareerLayout.placeCell(row, centre, 10, 58);
+        int mark = NodeArt.markSize(row.get(0));
+
+        int left = positions.get("townstead:cook/example/a")[0];
+        int middle = positions.get("townstead:cook/example/b")[0];
+        int right = positions.get("townstead:cook/example/c")[0];
+        assertTrue(middle - left >= mark + 8, "peer marks need a visible gap");
+        assertTrue(right - middle >= mark + 8, "peer marks need a visible gap");
+        assertTrue(left - mark / 2 >= 0 && right + mark / 2 <= CareerLayout.COL_W,
+                "a three-choice row stays inside its column");
+    }
+
+    @Test
     void everySkillUsesTheSameAuthoredFrameSize() {
         CareerGraphS2CPayload.PathTag path =
                 new CareerGraphS2CPayload.PathTag("chef", "Chef", false);

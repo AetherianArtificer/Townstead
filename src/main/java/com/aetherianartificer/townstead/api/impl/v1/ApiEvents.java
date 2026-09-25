@@ -11,6 +11,7 @@ import com.aetherianartificer.townstead.api.v1.event.HangoutEndedEvent;
 import com.aetherianartificer.townstead.api.v1.event.HangoutStartedEvent;
 import com.aetherianartificer.townstead.api.v1.event.VillagerProfessionChangedEvent;
 import com.aetherianartificer.townstead.api.v1.event.VillagerRefueledEvent;
+import com.aetherianartificer.townstead.api.v1.event.VillagerRootChangedEvent;
 import com.aetherianartificer.townstead.api.v1.event.VillagerVillageChangedEvent;
 import com.aetherianartificer.townstead.api.v1.event.WorkCompletedEvent;
 import com.aetherianartificer.townstead.api.v1.event.WorksiteRegisteredEvent;
@@ -238,6 +239,13 @@ public final class ApiEvents {
     public static void professionChanged(LivingEntity villager, String before, String after) {
         safe(() -> post(new VillagerProfessionChangedEvent(villager, villager.getUUID(), before == null ? "" : before,
                 after == null ? "" : after)));
+    }
+
+    public static void rootChanged(LivingEntity entity, String before, String after) {
+        if (before != null && before.equals(after)) return;
+        safe(() -> post(new VillagerRootChangedEvent(entity, entity.getUUID(),
+                entity instanceof net.minecraft.world.entity.player.Player,
+                before == null ? "" : before, after == null ? "" : after)));
     }
 
     public static void refueled(LivingEntity villager, ResourceLocation item, int hungerBefore, int hungerAfter,

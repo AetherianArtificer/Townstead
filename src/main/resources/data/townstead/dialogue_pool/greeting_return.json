@@ -1,0 +1,5 @@
+{
+  "schema": "townstead:dialogue_pool/v1",
+  "act": "greet",
+  "empty": 3
+}

@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.confessor.listening_ear"
+  },
+  "icon": "minecraft:book",
+  "description": {
+    "translate": "skill.townstead.cleric.confessor.listening_ear.description"
+  },
+  "cost": 1,
+  "requires": [
+    "absolution"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:faith",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:entity_in_radius",
+      "radius": 8,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:hostile"
+            }
+          },
+          {
+            "type": "pheno:health",
+            "max": 0.7,
+            "relative": true
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:faith",
+      "amount": 3
+    }
+  }
+}

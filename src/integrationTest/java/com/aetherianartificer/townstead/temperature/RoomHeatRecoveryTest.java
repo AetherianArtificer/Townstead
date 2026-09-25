@@ -9,19 +9,32 @@ class RoomHeatRecoveryTest {
         CompoundTag tag = fixture();
         tag.putFloat("temperature_0", -1977.1399f); // MoreTest cave at 735,49,159
         tag.putFloat("solid_0_temperature", -1931.288f);
+        //? if >=1.21 {
         var data = RoomHeatData.load(tag, null);
+        //?} else {
+        /*var data = RoomHeatData.load(tag);
+        *///?}
         assertEquals(0, data.temperature(1, 0));
         assertEquals(0, data.temperature(2, 0));
         assertEquals(0, data.solidTemperature(3, "minecraft:stone/MASONRY", 0));
         assertTrue(data.isDirty());
+        //? if >=1.21 {
         var saved = data.save(new CompoundTag(), null);
+        //?} else {
+        /*var saved = data.save(new CompoundTag());
+        *///?}
         assertEquals(0, saved.getInt("count"));
         assertEquals(0, saved.getInt("solid_count"));
     }
 
     @Test void legitimateStoredWarmthSurvivesSaveAndReload() {
+        //? if >=1.21 {
         var data = RoomHeatData.load(fixture(), null);
         var restored = RoomHeatData.load(data.save(new CompoundTag(), null), null);
+        //?} else {
+        /*var data = RoomHeatData.load(fixture());
+        var restored = RoomHeatData.load(data.save(new CompoundTag()));
+        *///?}
         assertEquals(22, restored.temperature(1, 0));
         assertEquals(18, restored.temperature(2, 0));
         assertEquals(19, restored.solidTemperature(3, "minecraft:stone/MASONRY", 0));

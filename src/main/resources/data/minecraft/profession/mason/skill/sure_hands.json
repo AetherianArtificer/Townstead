@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.sure_hands"
+  },
+  "icon": "minecraft:stone_bricks",
+  "description": {
+    "translate": "skill.townstead.mason.sure_hands.description"
+  },
+  "tier": 1,
+  "cost": 1,
+  "power": {
+    "type": "pheno:block_break_speed",
+    "tag": "minecraft:mineable/pickaxe",
+    "value": 1.2
+  }
+}

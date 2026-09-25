@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "event_console",
+  "groups": [
+    {
+      "state": { "stance": "+" },
+      "lines": {
+        "congratulations": "Congratulations!",
+        "thats_wonderful_news": "That's wonderful news!",
+        "im_so_happy_for_you": "I'm so happy for you!"
+      }
+    },
+    {
+      "state": { "variant": "mastery" },
+      "lines": { "well_done": "Well done!", "you_deserve_it": "You deserve it!" }
+    },
+    { "state": {"variant": "birth"}, "lines": {"aw_a_baby_congratulations": "Aw, a baby! Congratulations!"} },
+    {
+      "state": { "variant": "marriage" },
+      "lines": { "you_two_are_perfect_together": "You two are perfect together!" }
+    },
+    {
+      "state": { "stance": "-" },
+      "lines": {
+        "im_sorry_to_hear_it": "I'm sorry to hear it.",
+        "give_it_time": "Give it time.",
+        "that_sounds_hard": "That sounds hard.",
+        "im_sure_itll_blow_over": "I'm sure it'll blow over."
+      }
+    },
+    {
+      "state": { "variant": "argument" },
+      "lines": {
+        "want_me_to_talk_to": { "text": "Want me to talk to {other2}?", "asks": "townstead:help" },
+        "do_you_want_me_to": { "text": "Do you want me to have a word with {other2}?", "asks": "townstead:help" }
+      }
+    },
+    {
+      "state": { "stance": "+" },
+      "lines": { "oh_thats_so_exciting": {"text": "Oh! That's so exciting!", "personalities": ["upbeat", "peppy"]} }
+    },
+    {
+      "state": { "stance": "-" },
+      "lines": { "oh_you_poor_thing": {"text": "Oh, you poor thing.", "personalities": "sensitive"} }
+    }
+  ]
+}

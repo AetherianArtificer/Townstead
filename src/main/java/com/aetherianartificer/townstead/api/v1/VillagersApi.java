@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.api.v1.model.NeedsSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.VillagerRecord;
 import com.aetherianartificer.townstead.api.v1.model.VillagerSnapshot;
 import com.aetherianartificer.townstead.api.v1.result.NeedResult;
+import com.aetherianartificer.townstead.api.v1.result.RootResult;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
@@ -42,4 +43,14 @@ public interface VillagersApi {
 
     /** Moves a need by a delta, clamped to its range. */
     NeedResult adjustNeed(Entity entity, String needId, int delta, ResourceLocation source);
+
+    /**
+     * Assigns a Root to a villager or player, the same as {@code /townstead root set}: root-derived
+     * genes, heritage and personality are reseeded, body metrics re-roll inside the new root's
+     * ranges, and {@code VillagerRootChangedEvent} is posted. The current root reads from
+     * {@link VillagerSnapshot#rootId()}. Since revision 2.
+     */
+    default RootResult setRoot(Entity entity, ResourceLocation rootId, ResourceLocation source) {
+        return RootResult.failed(RootResult.Status.ERROR, "not supported by this implementation");
+    }
 }

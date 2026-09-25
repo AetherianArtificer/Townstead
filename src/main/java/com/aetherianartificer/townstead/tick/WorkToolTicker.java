@@ -27,6 +27,7 @@ import java.util.function.Predicate;
  */
 public final class WorkToolTicker {
     private static final int CHECK_INTERVAL_TICKS = 20;
+    private static final String GRIEVE_ID = "mca:grieve";
     private WorkToolTicker() {}
 
     private static final Map<UUID, ItemStack> PREVIOUS_MAIN_HAND = new ConcurrentHashMap<>();
@@ -37,6 +38,8 @@ public final class WorkToolTicker {
         if ((villager.level().getGameTime() + villager.getId()) % CHECK_INTERVAL_TICKS != 0) return;
 
         Brain<?> brain = villager.getBrain();
+        // A mourner holds MCA's flower and gets its hand back when mourning ends; leave the hand alone.
+        if (isGrieving(brain)) return;
         long dayTime = villager.level().getDayTime() % 24000L;
         Activity current = brain.getSchedule().getActivityAt((int) dayTime);
         if (current != Activity.WORK) {
@@ -119,6 +122,14 @@ public final class WorkToolTicker {
         ItemStack prev = PREVIOUS_MAIN_HAND.remove(villager.getUUID());
         if (prev == null) return;
         villager.setItemInHand(InteractionHand.MAIN_HAND, prev);
+    }
+
+    // Matched by id: the activity constant lives in a different MCA class on each version.
+    private static boolean isGrieving(Brain<?> brain) {
+        return brain.getActiveNonCoreActivity()
+                .map(activity -> GRIEVE_ID.equals(String.valueOf(
+                        net.minecraft.core.registries.BuiltInRegistries.ACTIVITY.getKey(activity))))
+                .orElse(false);
     }
 
     private static int findSlot(SimpleContainer inv, Predicate<ItemStack> matcher) {

@@ -1,0 +1,85 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.scribe.path.journalist"
+  },
+  "title": {
+    "translate": "career.townstead.scribe.title.journalist"
+  },
+  "color": "#3E5C76",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:scoop",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:scribe/journalist/nose_for_news"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:scribe/journalist/expose"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:scribe/journalist/extra_edition"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 8,
+            "compare_to": 3,
+            "condition": {
+              "type": "pheno:not",
+              "condition": {
+                "type": "pheno:hostile"
+              }
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:scoop",
+        "amount": 3
+      }
+    }
+  ],
+  "skills": [
+    [
+      "shorthand",
+      "eyewitness",
+      "legwork"
+    ],
+    [
+      "stakeout",
+      "fact_check",
+      "tip_off"
+    ],
+    [
+      "nose_for_news",
+      "expose",
+      "extra_edition"
+    ],
+    [
+      "beat_reporter",
+      "byline",
+      "late_edition"
+    ],
+    [
+      "scoop_of_the_year",
+      "front_page",
+      "extra_extra"
+    ]
+  ]
+}

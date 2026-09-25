@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.night_watch.crook_and_lantern"
+  },
+  "icon": "minecraft:lantern",
+  "description": {
+    "translate": "skill.townstead.shepherd.night_watch.crook_and_lantern.description"
+  },
+  "cost": 1,
+  "requires": [
+    "torchlight"
+  ],
+  "skill_group": "townstead:watch_alarm",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:flock",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:add_velocity",
+            "away_from_other": 1.2,
+            "y": 0.3
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:slowness",
+            "duration": 160,
+            "amplifier": 0
+          }
+        ]
+      }
+    }
+  }
+}

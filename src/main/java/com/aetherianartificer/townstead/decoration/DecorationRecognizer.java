@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.decoration;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -83,22 +84,50 @@ public final class DecorationRecognizer {
 
     public static void onPlaced(ServerLevel level, BlockPos pos, BlockState placed, @Nullable Entity by) {
         if (Decorations.isEmpty()) return;
-        List<DecorationDefinition> candidates = Decorations.touching(placed);
+        Decorations.warnOverlapsOnce();
+        List<DecorationDefinition> candidates = new ArrayList<>(Decorations.touching(placed));
         if (candidates.isEmpty()) return;
+        // Bigger sets first, so they take a shared anchor before the sets they include.
+        candidates.sort(java.util.Comparator.comparingInt(definition -> -definition.supersedes().size()));
         DecorationSavedData data = DecorationSavedData.get(level);
         boolean changed = false;
         for (DecorationDefinition definition : candidates) {
             for (BlockPos anchor : anchorsNear(level, definition, pos, placed)) {
-                if (data.at(anchor) != null) continue;
+                DecorationInstance existing = data.at(anchor);
+                if (existing != null && !definition.supersedes(existing.decorationId())) continue;
                 DecorationInstance instance = evaluate(level, definition, anchor, null);
                 if (instance == null) continue;
                 if (duplicatesNearby(data, definition, instance)) continue;
+                if (existing != null) data.remove(anchor);
                 data.put(instance);
+                releaseMembers(level, data, instance, by);
                 changed = true;
                 celebrate(level, definition, instance, by);
             }
         }
-        if (changed) updateSpirits(level, pos);
+        if (changed) updateVillages(level, pos, by);
+    }
+
+    /**
+     * An anchor belongs to one set. A set that counted the new anchor as one of its members
+     * re-checks without it and is dismantled if it falls short.
+     */
+    private static void releaseMembers(ServerLevel level, DecorationSavedData data, DecorationInstance claimed,
+                                       @Nullable Entity by) {
+        for (DecorationInstance other : data.within(claimed.anchor(), Decorations.maxRadius())) {
+            if (other.anchor().equals(claimed.anchor()) || !other.members().contains(claimed.anchor())) continue;
+            DecorationDefinition definition = Decorations.definition(other.decorationId());
+            DecorationInstance rechecked = definition == null ? null : evaluate(level, definition, other.anchor(), null);
+            if (rechecked != null) {
+                data.put(rechecked);
+                continue;
+            }
+            data.remove(other.anchor());
+            if (by instanceof ServerPlayer player && definition != null) {
+                player.displayClientMessage(Component.translatable("townstead.decoration.dismantled",
+                        Component.translatable(definition.translationKey())), true);
+            }
+        }
     }
 
     /** Multi-anchor assemblies (a four-lantern post or a haystack) are one set, not four. */
@@ -127,13 +156,41 @@ public final class DecorationRecognizer {
             if (definition == null || evaluate(level, definition, instance.anchor(), pos) == null) {
                 data.remove(instance.anchor());
                 changed = true;
+                DecorationDefinition smaller = definition == null ? null : fallback(level, definition, instance.anchor(), pos, data);
                 if (by instanceof ServerPlayer player && definition != null) {
-                    player.displayClientMessage(Component.translatable("townstead.decoration.dismantled",
-                            Component.translatable(definition.translationKey())), true);
+                    player.displayClientMessage(smaller == null
+                            ? Component.translatable("townstead.decoration.dismantled", Component.translatable(definition.translationKey()))
+                            : Component.translatable("townstead.decoration.reverted", Component.translatable(definition.translationKey()),
+                                    Component.translatable(smaller.translationKey())), true);
                 }
             }
         }
-        if (changed) updateSpirits(level, pos);
+        if (changed) updateVillages(level, pos, by);
+    }
+
+    /** A decoration can decide a building's type (a Throne makes a Keep), so rooms around it are re-checked. */
+    private static void updateVillages(ServerLevel level, BlockPos changed, @Nullable Entity by) {
+        for (var village : net.conczin.mca.server.world.data.VillageManager.get(level)) {
+            boolean retyped = false;
+            for (var building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
+                BlockPos min = building.getPos0(), max = building.getPos1();
+                if (changed.getX() < min.getX() || changed.getX() > max.getX() || changed.getY() < min.getY()
+                        || changed.getY() > max.getY() || changed.getZ() < min.getZ() || changed.getZ() > max.getZ()) continue;
+                String before = building.getType();
+                var failure = com.aetherianartificer.townstead.upgrade.BuildingTierReconciler.applyChecks(village, level, building);
+                if (building.getType() != null && !building.getType().equals(before)) {
+                    retyped = true;
+                    if (by instanceof ServerPlayer player) {
+                        player.displayClientMessage(Component.translatable("townstead.building_check.now",
+                                Component.translatable("buildingType." + building.getType())), false);
+                    }
+                } else if (failure != null && by instanceof ServerPlayer player) {
+                    player.displayClientMessage(failure.message(), false);
+                }
+            }
+            if (retyped) village.markDirty();
+        }
+        updateSpirits(level, changed);
     }
 
     private static void updateSpirits(ServerLevel level, BlockPos changed) {
@@ -164,7 +221,24 @@ public final class DecorationRecognizer {
         return anchors;
     }
 
-    /** The set at this anchor when every requirement is met, or null. {@code ignore} is treated as air. */
+    /** When a bigger set is dismantled, the smaller set it included takes its anchor back if it still stands. */
+    private static @Nullable DecorationDefinition fallback(ServerLevel level, DecorationDefinition bigger, BlockPos anchor,
+                                                           BlockPos removed, DecorationSavedData data) {
+        for (ResourceLocation id : bigger.supersedes()) {
+            DecorationDefinition smaller = Decorations.definition(id);
+            DecorationInstance instance = smaller == null ? null : evaluate(level, smaller, anchor, removed);
+            if (instance != null) {
+                data.put(instance);
+                return smaller;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The set at this anchor when every requirement is met, or null. {@code ignore} is treated as
+     * air. The anchor of another set never counts as a member.
+     */
     public static @Nullable DecorationInstance evaluate(ServerLevel level, DecorationDefinition definition,
                                                        BlockPos anchor, @Nullable BlockPos ignore) {
         if (!level.isLoaded(anchor) || anchor.equals(ignore)) return null;
@@ -181,6 +255,7 @@ public final class DecorationRecognizer {
                                                                 DecorationDefinition.Variant variant,
                                                                 BlockPos anchor, @Nullable BlockPos ignore) {
         if (!variant.isAnchor(level.getBlockState(anchor))) return null;
+        DecorationSavedData recognized = DecorationSavedData.get(level);
         int r = definition.radius();
         int n = variant.requires().size();
         int[] found = new int[n];
@@ -192,6 +267,8 @@ public final class DecorationRecognizer {
                 for (int dz = -r; dz <= r; dz++) {
                     cursor.set(anchor.getX() + dx, anchor.getY() + dy, anchor.getZ() + dz);
                     if (cursor.equals(anchor) || cursor.equals(ignore)) continue;
+                    DecorationInstance owner = recognized.at(cursor);
+                    if (owner != null && !owner.decorationId().equals(definition.id())) continue;
                     BlockState state = level.getBlockState(cursor);
                     for (int i = 0; i < n; i++) {
                         DecorationDefinition.Requirement requirement = variant.requires().get(i);

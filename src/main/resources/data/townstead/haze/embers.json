@@ -1,0 +1,16 @@
+{
+  "shape": "layer",
+  "color": "#E0602A",
+  "duration": 200,
+  "texture": "townstead:haze/embers",
+  "inside": {
+    "interval": 10,
+    "condition": {
+      "type": "pheno:hostile"
+    },
+    "action": {
+      "type": "pheno:ignite",
+      "seconds": 2
+    }
+  }
+}

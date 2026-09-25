@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.saddler.barding"
+  },
+  "icon": "minecraft:iron_horse_armor",
+  "description": {
+    "translate": "skill.townstead.leatherworker.saddler.barding.description"
+  },
+  "cost": 1,
+  "requires": [
+    "groom"
+  ],
+  "skill_group": "townstead:saddler_tack",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 2,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "condition": {
+      "type": "pheno:riding"
+    },
+    "action": {
+      "type": "pheno:riding_action",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:resistance",
+        "duration": 1200,
+        "amplifier": 1
+      }
+    }
+  }
+}

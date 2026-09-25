@@ -65,6 +65,8 @@ public final class TownsteadClient {
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPost);
             NeoForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbView::onComputeCameraAngles);
+            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onRenderFog);
+            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onFogColor);
             hooksRegistered = true;
             Townstead.LOGGER.info("[ClientPresentation] registered expression and animation render hooks");
         }
@@ -88,6 +90,8 @@ public final class TownsteadClient {
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPost);
             MinecraftForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbView::onComputeCameraAngles);
+            MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onRenderFog);
+            MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onFogColor);
             hooksRegistered = true;
         }
         *///?}
@@ -173,6 +177,7 @@ public final class TownsteadClient {
     //?} else if forge {
     /*private static void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
     *///?}
+        com.aetherianartificer.townstead.pheno.cosmetic.CosmeticClientBridge.clear();
         clearClientStore("com.aetherianartificer.townstead.hunger.HungerClientStore");
         clearClientStore("com.aetherianartificer.townstead.hunger.FishermanHookLinkStore");
         clearClientStore("com.aetherianartificer.townstead.thirst.ThirstClientStore");

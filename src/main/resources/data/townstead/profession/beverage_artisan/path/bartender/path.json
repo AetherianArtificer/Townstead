@@ -1,10 +1,90 @@
 {
   "schema": "townstead:profession_path/v1",
   "providers_required": true,
-  "name": { "translate": "career.townstead.beverage_artisan.path.bartender" },
-  "title": { "translate": "career.townstead.beverage_artisan.title.bartender" },
+  "name": {
+    "translate": "career.townstead.beverage_artisan.path.bartender"
+  },
+  "title": {
+    "translate": "career.townstead.beverage_artisan.title.bartender"
+  },
   "color": "#68455B",
-  "clothing": ["minecraft:leatherworker"],
+  "clothing": [
+    "minecraft:leatherworker"
+  ],
   "worksites": [],
-  "skills": ["read_the_room"]
+  "skills": [
+    [
+      "familiar_faces",
+      "read_the_room",
+      "on_the_house"
+    ],
+    [
+      "bar_stool",
+      "eighty_six",
+      "round_for_the_regulars"
+    ],
+    [
+      "running_tab",
+      "bums_rush",
+      "house_special"
+    ],
+    [
+      "heavy_hand",
+      "closing_time",
+      "toast"
+    ],
+    [
+      "everybody_knows_your_name",
+      "last_call",
+      "bottle_service"
+    ]
+  ],
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:tab",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/bartender/running_tab"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/bartender/bums_rush"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/bartender/house_special"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 6,
+            "compare_to": 2,
+            "condition": {
+              "type": "pheno:not",
+              "condition": {
+                "type": "pheno:hostile"
+              }
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:tab",
+        "amount": 1
+      }
+    }
+  ]
 }

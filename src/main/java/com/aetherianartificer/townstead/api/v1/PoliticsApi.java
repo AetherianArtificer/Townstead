@@ -4,9 +4,11 @@ import com.aetherianartificer.townstead.api.v1.model.AffiliationSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.AuthorityDecision;
 import com.aetherianartificer.townstead.api.v1.model.MembershipSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.FoundingProfileSnapshot;
+import com.aetherianartificer.townstead.api.v1.model.GovernanceSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.OrganizationSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.PoliticalActorRef;
 import com.aetherianartificer.townstead.api.v1.model.PolitySnapshot;
+import com.aetherianartificer.townstead.api.v1.model.SeatSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.VillageId;
 import com.aetherianartificer.townstead.api.v1.model.SettlementFoundingSnapshot;
 import net.minecraft.resources.ResourceLocation;
@@ -65,6 +67,25 @@ public interface PoliticsApi {
     }
 
     default List<MembershipSnapshot> memberships(MinecraftServer server, UUID person) {
+        return List.of();
+    }
+
+    /**
+     * Who governs this polity and how firmly: the form, the head and every office with its
+     * holders, legitimacy, and the outside mod that governs it instead, if any. Empty for an
+     * unknown polity or one with no government.
+     */
+    default Optional<GovernanceSnapshot> governance(MinecraftServer server, ResourceLocation polity) {
+        return Optional.empty();
+    }
+
+    /** The Seat this actor governs from: a Seat of Power for a polity, a Headquarters for an organization. */
+    default Optional<SeatSnapshot> seat(MinecraftServer server, PoliticalActorRef actor) {
+        return Optional.empty();
+    }
+
+    /** Every Seat inside one settlement. A building can hold the Seats of several actors. */
+    default List<SeatSnapshot> seats(MinecraftServer server, VillageId settlement) {
         return List.of();
     }
 

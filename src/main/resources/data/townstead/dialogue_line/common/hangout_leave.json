@@ -1,0 +1,76 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "hangout_leave",
+  "groups": [
+    {
+      "lines": {
+        "i_should_head_home": "I should head home.",
+        "thats_me_for_tonight": { "text": "That's me for tonight.", "requires": ["time:night"] },
+        "early_start_tomorrow": { "text": "Early start tomorrow.", "stages": ["teen", "adult", "senior"], "requires": ["time:night"] },
+        "well_thats_my_cup_finished": {
+          "text": "Well, that's my cup finished.",
+          "stages": ["teen", "adult", "senior"],
+          "requires": ["venue.amenity:drink"]
+        },
+        "id_better_go_before_i": {
+          "text": "I'd better go before I order another.",
+          "stages": ["adult", "senior"],
+          "requires": ["venue.amenity:drink"]
+        },
+        "i_think_ill_call_it": { "text": "I think I'll call it a night.", "requires": ["time:night"] },
+        "right_im_heading_off": "Right, I'm heading off.",
+        "i_should_get_some_sleep": { "text": "I should get some sleep.", "requires": ["time:night"] },
+        "time_for_me_to_go": "Time for me to go home.",
+        "its_getting_late_im_off": { "text": "It's getting late. I'm off.", "requires": ["time:night"] },
+        "id_better_get_going_its": { "text": "I'd better get going. It's dark out.", "requires": ["time:night"] },
+        "that_was_nice_im_going": "That was nice. I'm going to go now.",
+        "my_bed_is_calling_me": { "text": "My bed is calling me.", "requires": ["time:night"] },
+        "okay_im_heading_home_before": { "text": "Okay, I'm heading home before I fall asleep here.", "requires": ["time:night"] },
+        "ill_see_you_next_time": "I'll see you next time.",
+        "thanks_for_the_company_im": "Thanks for the company. I'm off.",
+        "mum_wants_me_home": { "text": "Mum wants me home.", "stages": "child" },
+        "i_have_to_go_to": { "text": "I have to go to bed. Ugh.", "stages": "child", "requires": ["time:night"] },
+        "im_off_dont_tell_anyone": {
+          "text": "I'm off. Don't tell anyone how late I stayed.",
+          "stages": "teen",
+          "requires": ["time:night"]
+        },
+        "these_old_legs_need_their": { "text": "These old legs need their bed.", "stages": "senior", "requires": ["time:night"] },
+        "thats_enough_fun_for_one": {
+          "text": "That's enough fun for one night.",
+          "personalities": ["crabby", "grumpy"],
+          "requires": ["time:night"]
+        },
+        "tonight_was_so_fun_bye": { "text": "Tonight was so fun! Bye!", "personalities": ["upbeat", "peppy"], "requires": ["time:night"] },
+        "well_back_to_my_empty": { "text": "Well, back to my empty house.", "personalities": "gloomy" },
+        "id_stay_but_ill_turn": {
+          "text": "I'd stay, but I'll turn into a pumpkin.",
+          "personalities": ["playful", "witty"],
+          "requires": ["time:night"]
+        },
+        "ill_dream_of_this_evening": { "text": "I'll dream of this evening.", "personalities": "flirty", "requires": ["time:night"] },
+        "ive_spent_enough_emeralds_for": {
+          "text": "I've spent enough emeralds for one night.",
+          "personalities": "greedy",
+          "requires": ["venue.amenity:drink", "time:night"]
+        },
+        "i_um_need_some_quiet": {
+          "text": "I, um, need some quiet now. Goodnight!",
+          "personalities": ["introverted", "shy"],
+          "requires": ["time:night"]
+        }
+      }
+    },
+    {
+      "requires": ["time:day"],
+      "lines": {
+        "i_should_get_back_to_work": { "text": "I should get back to work.", "stages": ["teen", "adult", "senior"] },
+        "right_back_to_my_chores": "Right, back to my chores.",
+        "that_was_a_nice_break": "That was a nice break.",
+        "ill_let_you_enjoy_the_rest": "I'll let you enjoy the rest of your day.",
+        "i_have_to_go_help_mum": { "text": "I have to go help Mum.", "stages": "child" },
+        "the_afternoons_not_over_yet": { "text": "The afternoon's not over yet. Lots to do!", "personalities": ["upbeat", "peppy"] }
+      }
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "farewell_last",
+  "groups": [
+    {
+      "state": { "wish": true },
+      "lines": {
+        "you_too": "You too!",
+        "you_too_2": "You too.",
+        "thanks_you_too": "Thanks! You too.",
+        "i_will": "I will!",
+        "ill_try": "I'll try!",
+        "will_do": "Will do!",
+        "thanks": "Thanks!",
+        "same_to_you": "Same to you!",
+        "ill_be_careful": "I'll be careful.",
+        "always_am": "Always am!",
+        "no_promises": "No promises!",
+        "likewise": "Likewise!",
+        "thanks_i_appreciate_it": "Thanks, I appreciate it.",
+        "i_will_you_too": "I will. You too.",
+        "aw_thanks": "Aw, thanks!",
+        "ill_do_my_best": "I'll do my best!",
+        "you_bet": "You bet!",
+        "of_course": "Of course!",
+        "heh_ill_try": "Heh. I'll try.",
+        "and_you": "And you!"
+      }
+    },
+    {
+      "lines": {
+        "bye": "Bye!",
+        "see_you": "See you!",
+        "bye_then": "Bye, then.",
+        "later": "Later!",
+        "see_you_around": "See you around.",
+        "until_next_time": "Until next time.",
+        "okay_bye": "Okay, bye!",
+        "mm_bye": "Mm. Bye.",
+        "bye_bye": "Bye bye!",
+        "take_care": "Take care.",
+        "see_ya": "See ya!",
+        "bye_for_now": "Bye for now.",
+        "bye_bye_2": { "text": "Bye! Bye!", "stages": "child" },
+        "byeee": { "text": "Byeee!", "stages": "child" },
+        "yeah_later": { "text": "Yeah. Later.", "stages": "teen" }
+      }
+    },
+    {
+      "state": { "wish": true },
+      "lines": {
+        "bless_you_dear": { "text": "Bless you, dear.", "stages": "senior" },
+        "oh_i_will_dear": { "text": "Oh, I will, dear.", "stages": "senior" }
+      }
+    },
+    { "lines": {"hmph": {"text": "Hmph.", "personalities": ["crabby", "grumpy"]}} },
+    {
+      "state": { "wish": true },
+      "lines": { "yeah_yeah": {"text": "Yeah, yeah.", "personalities": ["crabby", "grumpy"]} }
+    },
+    { "lines": {"yay_bye": {"text": "Yay! Bye!", "personalities": ["upbeat", "peppy"]}} },
+    {
+      "state": { "wish": true },
+      "lines": {
+        "you_too_the_very_best": { "text": "You too! The very best!", "personalities": ["upbeat", "peppy"] },
+        "ill_try_no_promises": { "text": "I'll try. No promises.", "personalities": "gloomy" }
+      }
+    },
+    { "lines": {"if_i_must": {"text": "If I must.", "personalities": "gloomy"}} },
+    {
+      "state": { "wish": true },
+      "lines": { "no_promises_2": {"text": "No promises!", "personalities": ["playful", "witty"]} }
+    },
+    { "lines": {"heh_bye": {"text": "Heh. Bye.", "personalities": ["playful", "witty"]}} },
+    {
+      "state": { "wish": true },
+      "lines": { "for_you_anything": {"text": "For you? Anything.", "personalities": "flirty"} }
+    },
+    {
+      "lines": {
+        "miss_you_already": { "text": "Miss you already.", "personalities": "flirty" },
+        "emeralds_dont_forget": { "text": "Emeralds! Don't forget!", "personalities": "greedy" }
+      }
+    },
+    {
+      "state": { "wish": true },
+      "lines": {
+        "and_may_your_socks_stay": { "text": "And may your socks stay dry too!", "personalities": "odd" },
+        "th_thanks_bye": { "text": "Th-thanks. Bye!", "personalities": ["introverted", "shy"] }
+      }
+    },
+    {
+      "lines": {
+        "bye_bye_everyone": { "text": "Bye! Bye, everyone!", "personalities": ["extroverted", "confident"] },
+        "mm_hm_later": { "text": "Mm-hm. Later.", "personalities": ["relaxed", "lazy"] }
+      }
+    },
+    {
+      "state": { "wish": true },
+      "lines": {
+        "ill_try_oh_i_hope": { "text": "I'll try! Oh, I hope I do!", "personalities": "anxious" },
+        "peace_to_you_as_well": { "text": "Peace to you as well.", "personalities": "peaceful" },
+        "thank_you_really": { "text": "Thank you. Really.", "personalities": "sensitive" },
+        "always_friend": { "text": "Always, friend!", "personalities": "friendly" },
+        "will_do_always_do": { "text": "Will do! Always do!", "personalities": "athletic" }
+      }
+    }
+  ]
+}

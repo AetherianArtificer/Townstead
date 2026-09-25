@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.netter.tangle"
+  },
+  "icon": "minecraft:cobweb",
+  "description": {
+    "translate": "skill.townstead.fisherman.netter.tangle.description"
+  },
+  "cost": 1,
+  "requires": [
+    "knot_work"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "target": "other",
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "or",
+        "conditions": [
+          {
+            "type": "ingredient",
+            "item": "minecraft:fishing_rod"
+          },
+          {
+            "type": "ingredient",
+            "tag": "starcatcher:rods"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:slowness",
+      "duration": 60,
+      "amplifier": 1
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.sapper.powder_monkey"
+  },
+  "icon": "minecraft:gunpowder",
+  "description": {
+    "translate": "skill.townstead.toolsmith.sapper.powder_monkey.description"
+  },
+  "cost": 1,
+  "requires": [
+    "steady_fuse"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:knack",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:entity_in_radius",
+      "radius": 12,
+      "condition": {
+        "type": "pheno:hostile"
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:knack",
+      "amount": 3
+    }
+  }
+}

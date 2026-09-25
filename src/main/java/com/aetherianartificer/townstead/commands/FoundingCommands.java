@@ -83,6 +83,9 @@ public final class FoundingCommands {
                         StringArgumentType.getString(command, "profile"),
                         IntegerArgumentType.getInteger(command, "residents"))));
         villageCommand.then(Commands.literal("repopulate").then(repopulateProfile));
+        villageCommand.then(Commands.literal("remove")
+                .executes(command -> remove(command.getSource(), false))
+                .then(Commands.literal("clear").executes(command -> remove(command.getSource(), true))));
         villageCommand.then(profileArgument);
         dispatcher.register(Commands.literal("townstead")
                 .then(Commands.literal("debug").then(villageCommand)));
@@ -156,6 +159,21 @@ public final class FoundingCommands {
         return 1;
     }
 
+    private static int remove(CommandSourceStack source, boolean clear) {
+        DebugVillageSpawner.RemovalResult result = DebugVillageSpawner.remove(source, clear);
+        if (!result.removed()) {
+            failure(source, "command.townstead.founding.remove_failed", result.reason());
+            return 0;
+        }
+        line(source, "command.townstead.founding.removed", result.name(), result.villageId(), result.residents());
+        if (result.otherVillages() > 0) line(source, "command.townstead.founding.removed_others", result.otherVillages());
+        if (result.reason().equals("nothing_to_clear")) line(source, "command.townstead.founding.nothing_to_clear");
+        if (result.reason().equals("cleared")) line(source, "command.townstead.founding.cleared", result.blocks());
+        else if (result.reason().equals("too_large_to_clear"))
+            failure(source, "command.townstead.founding.clear_too_large", DebugVillageSpawner.MAX_CLEAR_SPAN);
+        return 1;
+    }
+
     private static int repopulate(CommandSourceStack source, String raw, int residents) {
         ResourceLocation id = ResourceLocation.tryParse(raw);
         FoundingProfileDefinition profile = FoundingProfiles.get(id);
@@ -199,9 +217,13 @@ public final class FoundingCommands {
 
     private static Component spawnFailureDetail(DebugVillageSpawner.Result result) {
         return switch (result.reason()) {
-            case "near_village" -> Component.translatable(
-                    "command.townstead.founding.spawn_reason.near_village",
-                    DebugVillageSpawner.VILLAGE_RADIUS);
+            case "near_village" -> result.village() == null
+                    ? Component.translatable("command.townstead.founding.spawn_reason.near_village",
+                            DebugVillageSpawner.VILLAGE_RADIUS)
+                    : Component.translatable("command.townstead.founding.spawn_reason.near_named_village",
+                            result.village().getName(), result.village().getId(),
+                            result.village().getCenter().getX(), result.village().getCenter().getY(),
+                            result.village().getCenter().getZ(), DebugVillageSpawner.VILLAGE_RADIUS);
             case "unknown_structure" -> Component.translatable(
                     "command.townstead.founding.spawn_reason.unknown_structure",
                     result.structure() == null ? "?" : result.structure().toString());

@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.netter.master_netter"
+  },
+  "icon": "minecraft:cobweb",
+  "description": {
+    "translate": "skill.townstead.fisherman.netter.master_netter.description"
+  },
+  "cost": 1,
+  "requires": [
+    "strong_knots"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:tide",
+      "min": 75
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:slowness",
+        "duration": 30,
+        "amplifier": 1
+      }
+    }
+  }
+}

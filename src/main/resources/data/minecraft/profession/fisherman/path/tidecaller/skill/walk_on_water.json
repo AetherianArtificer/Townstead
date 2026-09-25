@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.tidecaller.walk_on_water"
+  },
+  "icon": "minecraft:blue_ice",
+  "description": {
+    "translate": "skill.townstead.fisherman.tidecaller.walk_on_water.description"
+  },
+  "cost": 1,
+  "requires": [
+    "salt_in_the_veins"
+  ],
+  "power": {
+    "type": "pheno:ability",
+    "ability": "walk_on_fluid",
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:tide",
+          "min": 75
+        },
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:movement",
+            "movement": "sneaking"
+          }
+        }
+      ]
+    }
+  }
+}

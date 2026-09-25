@@ -1,0 +1,73 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.prospector.eureka"
+  },
+  "icon": "minecraft:diamond",
+  "description": {
+    "translate": "skill.townstead.cartographer.prospector.eureka.description"
+  },
+  "cost": 1,
+  "requires": [
+    "deep_survey"
+  ],
+  "skill_group": "townstead:prospector_sense",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:bearing",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:at",
+          "blocks": {
+            "radius": 12,
+            "where": {
+              "type": "or",
+              "conditions": [
+                {
+                  "type": "in_tag",
+                  "tag": "c:ores"
+                },
+                {
+                  "type": "in_tag",
+                  "tag": "forge:ores"
+                }
+              ]
+            }
+          },
+          "do": {
+            "type": "pheno:spawn_particles",
+            "particle": "minecraft:wax_on",
+            "count": 6,
+            "spread": 0.4
+          }
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:haste",
+          "duration": 1200,
+          "amplifier": 2
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:night_vision",
+          "duration": 1200,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.bell.use",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

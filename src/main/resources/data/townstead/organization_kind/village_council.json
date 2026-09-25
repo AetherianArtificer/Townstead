@@ -41,5 +41,38 @@
       "Commonwealth of {name}",
       "{name} Community"
     ]
+  },
+  "governance": {
+    "head": "townstead:presiding_councilor",
+    "routes": [
+      {
+        "route": "townstead:council_vote",
+        "office": "townstead:councilor"
+      },
+      {
+        "route": "townstead:council_vote",
+        "office": "townstead:presiding_councilor"
+      }
+    ],
+    "succession": "townstead:council_vote",
+    "legitimacy": {
+      "base": 50,
+      "sources": [
+        {
+          "label": "townstead:prosperity",
+          "value": {
+            "type": "pheno:village_needs"
+          },
+          "weight": 20
+        },
+        {
+          "label": "townstead:village_spirit",
+          "value": {
+            "type": "pheno:village_spirit_tier"
+          },
+          "weight": 4
+        }
+      ]
+    }
   }
 }

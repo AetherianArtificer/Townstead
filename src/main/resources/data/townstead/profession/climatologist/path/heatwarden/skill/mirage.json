@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.heatwarden.mirage"
+  },
+  "icon": "minecraft:tinted_glass",
+  "description": {
+    "translate": "skill.townstead.climatologist.heatwarden.mirage.description"
+  },
+  "cost": 1,
+  "requires": [
+    "heat_shimmer"
+  ],
+  "skill_group": "townstead:heat_mirage",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:front",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:invisibility",
+        "duration": 200,
+        "amplifier": 0
+      }
+    }
+  }
+}

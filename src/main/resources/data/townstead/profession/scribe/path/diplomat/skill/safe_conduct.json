@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.diplomat.safe_conduct"
+  },
+  "icon": "minecraft:white_banner",
+  "description": {
+    "translate": "skill.townstead.scribe.diplomat.safe_conduct.description"
+  },
+  "cost": 1,
+  "requires": [
+    "courtesy"
+  ],
+  "power": {
+    "type": "pheno:mobs_ignore",
+    "mob_condition": {
+      "type": "pheno:entity_type",
+      "tag": "minecraft:raiders"
+    }
+  }
+}

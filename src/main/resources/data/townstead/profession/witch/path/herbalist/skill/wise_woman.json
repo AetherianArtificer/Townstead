@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.herbalist.wise_woman"
+  },
+  "icon": "minecraft:flowering_azalea",
+  "description": {
+    "translate": "skill.townstead.witch.herbalist.wise_woman.description"
+  },
+  "cost": 1,
+  "requires": [
+    "herbal_aura"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:hex",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:hex",
+      "min": 75
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 10,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:resistance",
+        "duration": 30,
+        "amplifier": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.heatwarden.living_flame"
+  },
+  "icon": "minecraft:blaze_rod",
+  "description": {
+    "translate": "skill.townstead.climatologist.heatwarden.living_flame.description"
+  },
+  "cost": 1,
+  "requires": [
+    "searing_touch"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "resource_cost": {
+      "resource": "townstead:front",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:front",
+      "min": 75
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:extinguish"
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:fire_resistance",
+          "duration": 50,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 4,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:ignite",
+            "seconds": 3
+          }
+        }
+      ]
+    }
+  }
+}

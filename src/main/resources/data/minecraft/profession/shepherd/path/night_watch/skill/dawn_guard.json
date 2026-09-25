@@ -1,0 +1,54 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.night_watch.dawn_guard"
+  },
+  "icon": "minecraft:shield",
+  "description": {
+    "translate": "skill.townstead.shepherd.night_watch.dawn_guard.description"
+  },
+  "cost": 1,
+  "requires": [
+    "watchfire"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:flock",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:time_of_day",
+          "min": 13000,
+          "max": 23000
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:flock",
+          "min": 75
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:strength",
+          "duration": 30,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 30,
+          "amplifier": 0
+        }
+      ]
+    }
+  }
+}

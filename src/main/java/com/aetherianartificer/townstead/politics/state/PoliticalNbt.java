@@ -160,6 +160,37 @@ final class PoliticalNbt {
         }
     }
 
+    static CompoundTag save(SeatInstance value) {
+        CompoundTag tag = new CompoundTag();
+        tag.putString("actor_kind", value.actor().kind().id());
+        id(tag, "actor_id", value.actor().id());
+        tag.put("settlement", save(value.settlement()));
+        tag.putLong("lectern", value.lectern().asLong());
+        tag.putInt("building", value.buildingId());
+        tag.putLong("designated_at", value.designatedAt());
+        if (value.damaged()) {
+            tag.putString("damage", value.damage());
+            tag.putLong("damaged_at", value.damagedAt());
+        }
+        return tag;
+    }
+
+    static @Nullable SeatInstance seat(CompoundTag tag) {
+        PoliticalActorRef.Kind actorKind = PoliticalActorRef.Kind.parse(tag.getString("actor_kind"));
+        ResourceLocation actorId = id(tag, "actor_id");
+        SettlementRef settlement = tag.contains("settlement", Tag.TAG_COMPOUND)
+                ? settlement(tag.getCompound("settlement")) : null;
+        if (actorKind == null || actorId == null || settlement == null
+                || !tag.contains("lectern", Tag.TAG_LONG)) return null;
+        try {
+            return new SeatInstance(new PoliticalActorRef(actorKind, actorId), settlement,
+                    net.minecraft.core.BlockPos.of(tag.getLong("lectern")), tag.getInt("building"),
+                    tag.getLong("designated_at"), tag.getString("damage"), tag.getLong("damaged_at"));
+        } catch (RuntimeException error) {
+            return null;
+        }
+    }
+
     private static CompoundTag save(SettlementRef value) {
         CompoundTag tag = new CompoundTag();
         id(tag, "dimension", value.dimension());

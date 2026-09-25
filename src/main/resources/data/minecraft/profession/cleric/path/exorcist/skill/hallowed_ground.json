@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.exorcist.hallowed_ground"
+  },
+  "icon": "minecraft:soul_lantern",
+  "description": {
+    "translate": "skill.townstead.cleric.exorcist.hallowed_ground.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:entity_group",
+          "group": "undead"
+        },
+        "if_action": {
+          "type": "pheno:damage",
+          "amount": 1,
+          "source": "other"
+        }
+      }
+    }
+  }
+}

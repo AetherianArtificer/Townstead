@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:decoration/v1",
+  "radius": 3,
+  "variants": [
+    {"anchor": ["#townstead_hangouts:tables"], "requires": {"#townstead_hangouts:seats": 4}},
+    {"anchor": ["#minecraft:wooden_pressure_plates"], "requires": {"#minecraft:wooden_fences": 2, "#townstead_hangouts:seats": 4}}
+  ],
+  "icon": "minecraft:oak_pressure_plate"
+}

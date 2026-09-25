@@ -1,1 +1,3 @@
-{"schema":"townstead:extended_building/v1","catalog":{"node_item":"herbalbrews:oolong_tea"},"spirit":{"commercial":9,"tourism":9,"natural":4}}
+{"schema":"townstead:extended_building/v1","catalog":{"node_item":"herbalbrews:oolong_tea"},"spirit":{"commercial":9,"tourism":9,"natural":4},
+  "talk": { "tags": ["townstead:cafe"] }
+}

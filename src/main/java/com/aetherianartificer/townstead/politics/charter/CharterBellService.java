@@ -11,6 +11,7 @@ import com.aetherianartificer.townstead.politics.definition.PoliticalDefinitions
 import com.aetherianartificer.townstead.politics.founding.FoundingProfileApplier;
 import com.aetherianartificer.townstead.politics.founding.FoundingProfileDefinition;
 import com.aetherianartificer.townstead.politics.founding.FoundingProfiles;
+import com.aetherianartificer.townstead.politics.seat.SeatService;
 import com.aetherianartificer.townstead.politics.state.AffiliationInstance;
 import com.aetherianartificer.townstead.politics.state.MembershipInstance;
 import com.aetherianartificer.townstead.politics.state.OrganizationInstance;
@@ -18,6 +19,7 @@ import com.aetherianartificer.townstead.politics.state.PoliticalSavedData;
 import com.aetherianartificer.townstead.politics.state.PoliticalStatus;
 import com.aetherianartificer.townstead.politics.state.PoliticalAuthority;
 import com.aetherianartificer.townstead.politics.state.PolityInstance;
+import com.aetherianartificer.townstead.politics.state.SeatInstance;
 import com.aetherianartificer.townstead.politics.state.SettlementFoundingRecord;
 import com.aetherianartificer.townstead.politics.state.SettlementRef;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -53,6 +55,7 @@ public final class CharterBellService {
     private static final long PROPOSAL_LIFETIME = 20L * 60L * 10L;
     private static final double USE_DISTANCE_SQUARED = 64.0D;
     private static final ResourceLocation GOVERN_POLITY = id("townstead:govern_polity");
+    private static final String DESIGNATE_SEAT = "designate_seat";
     //? if >=1.21 {
     private static final ResourceLocation CLAP = ResourceLocation.fromNamespaceAndPath("townstead", "clap");
     //?} else {
@@ -108,6 +111,14 @@ public final class CharterBellService {
                 boolean executed = CivicProviders.execute(player, binding.settlement(), civic, request.target(), request.operation());
                 if (!executed) player.displayClientMessage(Component.translatable("charter.townstead.membership.denied"), false);
                 if (!executed || !CivicProviders.opensScreen(civic, request.operation())) send(player, request.lectern(), false, "");
+                return;
+            }
+            if (request.operation().equals(DESIGNATE_SEAT)) {
+                if (polity == null || !request.target().equals(polity.id().toString())
+                        || !mayLink(player, polity, binding.settlement())) return;
+                Component result = seatResult(SeatService.designate(player.serverLevel(), binding, true));
+                player.displayClientMessage(result, false);
+                send(player, request.lectern(), false, result.getString());
                 return;
             }
             if (civic != null && civic.controlsGovernment() && polity != null && polity.governmentOrganization() != null
@@ -170,6 +181,7 @@ public final class CharterBellService {
             if (saved.bindExisting(dimension, request.lectern(), assembly.bell(), existing.settlement(),
                     existing.polity().id(), player.getUUID(), player.serverLevel().getGameTime())) {
                 setLecternState(player.serverLevel(), request.lectern(), CharterLecternAccess.FOUNDED);
+                SeatService.designate(player.serverLevel(), saved.binding(dimension, request.lectern()), false);
             }
             send(player, request.lectern(), false, "Charter Bell linked.");
             return;
@@ -280,6 +292,7 @@ public final class CharterBellService {
         }
         SettlementRef settlement = new SettlementRef(level.dimension().location(), village.getId());
         if (!saved.commit(proposal, settlement, result.polity(), level.getGameTime())) return;
+        SeatService.designate(level, saved.binding(proposal.dimension(), proposal.lectern()), false);
         setLecternState(level, proposal.lectern(), CharterLecternAccess.FOUNDED);
         celebrate(level, bell, proposal.factionName().display());
         level.getServer().getPlayerList().broadcastSystemMessage(Component.translatable(
@@ -383,7 +396,9 @@ public final class CharterBellService {
                 editable, village.getName(), polity.name(), CharterSnapshotS2CPayload.Text.of(governance),
                 CharterSnapshotS2CPayload.Text.of(authority), CharterSnapshotS2CPayload.Text.of(tradition),
                 message, List.of(), List.of(), organizations, ties, census.groups(), census.total(),
-                CharterMemberships.requests(player, politics, polity), CivicProviders.revision(player, civic), censusScopes(level, village, polity, census), civic, com.aetherianartificer.townstead.politics.heraldry.HeraldryService.views(player, binding, village.getName()));
+                CharterMemberships.requests(player, politics, polity), CivicProviders.revision(player, civic), censusScopes(level, village, polity, census), civic, com.aetherianartificer.townstead.politics.heraldry.HeraldryService.views(player, binding, village.getName()),
+                seatView(player, level, binding, polity, editable), standingView(player, binding),
+                legitimacyView(player.server, politics, polity));
     }
 
     private static List<CharterSnapshotS2CPayload.Option> profileOptions() {
@@ -642,6 +657,108 @@ public final class CharterBellService {
         PoliticalSavedData politics = PoliticalSavedData.get(level.getServer());
         PolityInstance polity = politics.polity(settlement);
         return polity == null || polity.status() == PoliticalStatus.Polity.DISSOLVED ? null : new Existing(village, settlement, polity);
+    }
+
+    /** "Accepted (68). Heading toward it: Prosperity +10, Village spirit +4." Null without a governance block. */
+    private static @Nullable CharterSnapshotS2CPayload.Text legitimacyView(net.minecraft.server.MinecraftServer server,
+            PoliticalSavedData politics, PolityInstance polity) {
+        if (polity.governmentOrganization() == null) return null;
+        OrganizationInstance government = politics.organization(polity.governmentOrganization());
+        if (government == null || com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService.governance(government) == null) return null;
+        double value = com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService.current(politics, government);
+        var target = com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService.target(server, polity, government);
+        net.minecraft.network.chat.MutableComponent reasons = Component.empty();
+        for (var contribution : target.contributions()) {
+            long amount = Math.round(contribution.amount());
+            if (amount == 0) continue;
+            if (!reasons.getSiblings().isEmpty()) reasons.append(", ");
+            reasons.append(Component.translatable("townstead.legitimacy.source." + contribution.label().getNamespace()
+                    + "." + contribution.label().getPath())).append(" " + (amount > 0 ? "+" : "") + amount);
+        }
+        Component band = Component.translatable("townstead.legitimacy.band." + com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService.band(value));
+        Component text = reasons.getSiblings().isEmpty()
+                ? Component.translatable("charter.townstead.legitimacy.detail", band, Math.round(value))
+                : Component.translatable("charter.townstead.legitimacy.detail_reasons", band, Math.round(value), reasons);
+        return CharterSnapshotS2CPayload.Text.of(text);
+    }
+
+    /** "34: hearts 20, deeds 9, reputation 5" for the viewing player in this Charter's settlement. */
+    private static CharterSnapshotS2CPayload.Text standingView(ServerPlayer player, CharterSavedData.Binding binding) {
+        var standing = com.aetherianartificer.townstead.politics.standing.StandingService.of(
+                player.server, player.getUUID(), binding.settlement());
+        Component text = com.aetherianartificer.townstead.compat.otectus.OtectusStanding.available()
+                ? Component.translatable("charter.townstead.standing.detail_reputation", standing.total(),
+                        standing.hearts(), standing.deeds(), standing.reputation())
+                : Component.translatable("charter.townstead.standing.detail", standing.total(),
+                        standing.hearts(), standing.deeds());
+        return CharterSnapshotS2CPayload.Text.of(text);
+    }
+
+    private static CharterSnapshotS2CPayload.Seat seatView(ServerPlayer player, ServerLevel level,
+            CharterSavedData.Binding binding, PolityInstance polity, boolean editable) {
+        SeatInstance seat = PoliticalSavedData.get(level.getServer()).seat(polity.actor());
+        boolean here = seat != null && seat.settlement().dimension().equals(binding.dimension())
+                && seat.lectern().equals(binding.lectern());
+        Component body = seat == null ? Component.translatable("charter.townstead.seat.none")
+                : here ? Component.translatable("charter.townstead.seat.here", seatBuildingName(level, seat))
+                : Component.translatable("charter.townstead.seat.elsewhere", seatBuildingName(level, seat), settlementName(level, seat));
+        if (seat != null) body = Component.empty().append(body).append(" ").append(seatDetail(level, seat));
+        List<CharterSnapshotS2CPayload.Action> actions = List.of();
+        if (!here && editable && mayLink(player, polity, binding.settlement())) {
+            if (SeatService.host(level, binding) == null) {
+                body = Component.empty().append(body).append(" ").append(Component.translatable("charter.townstead.seat.no_building"));
+            } else {
+                actions = List.of(new CharterSnapshotS2CPayload.Action(DESIGNATE_SEAT,
+                        CharterSnapshotS2CPayload.Text.of(Component.translatable("charter.townstead.seat.designate")),
+                        CharterSnapshotS2CPayload.Text.of(Component.translatable(seat == null
+                                ? "charter.townstead.seat.designate.description" : "charter.townstead.seat.move.description")),
+                        false));
+            }
+        }
+        return new CharterSnapshotS2CPayload.Seat(polity.id().toString(),
+                CharterSnapshotS2CPayload.Text.of(Component.translatable("charter.townstead.seat.title")),
+                CharterSnapshotS2CPayload.Text.of(body), actions);
+    }
+
+    /** "Tier 2. It provides Records, Audience, and Assembly." or what is damaged and how to repair it. */
+    private static Component seatDetail(ServerLevel level, SeatInstance seat) {
+        if (seat.damaged()) return Component.translatable("charter.townstead.seat.damaged." + seat.damage());
+        var spec = com.aetherianartificer.townstead.politics.seat.SeatBuildings.forType(seatBuildingType(level, seat));
+        net.minecraft.network.chat.MutableComponent functions = Component.empty();
+        for (int i = 0; i < spec.functions().size(); i++) {
+            ResourceLocation function = spec.functions().get(i);
+            if (i > 0) functions.append(", ");
+            functions.append(Component.translatable("townstead.seat.function." + function.getNamespace() + "." + function.getPath()));
+        }
+        return Component.translatable("charter.townstead.seat.detail", spec.tier(), functions);
+    }
+
+    private static @Nullable String seatBuildingType(ServerLevel level, SeatInstance seat) {
+        ServerLevel seatLevel = level.getServer().getLevel(net.minecraft.resources.ResourceKey.create(
+                net.minecraft.core.registries.Registries.DIMENSION, seat.settlement().dimension()));
+        return seatLevel == null ? null : VillageManager.get(seatLevel).getOrEmpty(seat.settlement().villageId())
+                .map(v -> com.aetherianartificer.townstead.compat.mca.McaBuildings.byId(v, seat.buildingId()))
+                .map(Building::getType).orElse(null);
+    }
+
+    /** The host building's type name, or "Meeting Place" when that type has no Seat data. */
+    private static Component seatBuildingName(ServerLevel level, SeatInstance seat) {
+        String type = seatBuildingType(level, seat);
+        if (!com.aetherianartificer.townstead.politics.seat.SeatBuildings.isSeatBuilding(type)) {
+            return Component.translatable("charter.townstead.seat.meeting_place");
+        }
+        return Component.translatable("buildingType." + type);
+    }
+
+    private static String settlementName(ServerLevel level, SeatInstance seat) {
+        ServerLevel seatLevel = level.getServer().getLevel(net.minecraft.resources.ResourceKey.create(
+                net.minecraft.core.registries.Registries.DIMENSION, seat.settlement().dimension()));
+        if (seatLevel == null) return "";
+        return VillageManager.get(seatLevel).getOrEmpty(seat.settlement().villageId()).map(Village::getName).orElse("");
+    }
+
+    private static Component seatResult(SeatService.Result result) {
+        return Component.translatable("charter.townstead.seat.result." + result.name().toLowerCase(java.util.Locale.ROOT));
     }
 
     private static boolean mayLink(ServerPlayer player, PolityInstance polity, SettlementRef settlement) {

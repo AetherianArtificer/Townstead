@@ -26,6 +26,12 @@ class PoliticalDefinitionsTest {
     @BeforeAll
     static void registerPhenoVocabulary() {
         ConditionTypes.register(new ConstantConditionType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.StandingValueType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.VillageNeedsValueType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.VillageSpiritTierValueType());
     }
 
     @AfterEach
@@ -64,6 +70,15 @@ class PoliticalDefinitionsTest {
         MembershipPolicyDefinition playerPolicy = policies.get(playerFaction.membershipPolicy());
         assertEquals(id("townstead:faction_leader"), playerPolicy.admission().decision().role());
         assertEquals(java.util.List.of(id("townstead:member")), playerPolicy.admission().initialRoles());
+        assertEquals(id("townstead:faction_leader"), playerFaction.governance().head());
+        assertEquals(GovernanceRoutes.FAVOR, playerFaction.governance().succession());
+
+        GovernanceDefinition council = kinds.get(id("townstead:village_council")).governance();
+        assertEquals(id("townstead:presiding_councilor"), council.head());
+        assertEquals(GovernanceRoutes.COUNCIL_VOTE, council.succession());
+        assertEquals(50, council.legitimacy().base());
+        assertEquals(2, council.legitimacy().sources().size());
+        assertEquals(2, council.routes().size());
 
         PoliticalDefinitions.replace(roles, policies, kinds);
         Path profileFile = Path.of(Objects.requireNonNull(PoliticalDefinitionsTest.class.getClassLoader()
@@ -108,6 +123,39 @@ class PoliticalDefinitionsTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> MembershipPolicyDefinition.parse(id("test:closed"), json));
+    }
+
+    @Test
+    void governanceNamesOnlyImplementedRoutes() {
+        JsonObject json = governanceKind("""
+                {"head":"townstead:member","succession":"test:trial_by_lottery"}
+                """);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> OrganizationKindDefinition.parse(id("test:lottery"), json, Map.of()));
+    }
+
+    @Test
+    void governanceOfficesMustBeRolesOfTheKind() {
+        JsonObject json = governanceKind("""
+                {"head":"test:emperor","succession":"townstead:favor"}
+                """);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> OrganizationKindDefinition.parse(id("test:empire"), json, Map.of()));
+    }
+
+    private static JsonObject governanceKind(String governance) {
+        JsonObject json = JsonParser.parseString("""
+                {
+                  "schema":"townstead:organization_kind/v1",
+                  "membership_policy":"townstead:open",
+                  "roles":[{"role":"townstead:member","min":1,"max":1}],
+                  "founding":{"procedure":"townstead:charter"}
+                }
+                """).getAsJsonObject();
+        json.add("governance", JsonParser.parseString(governance));
+        return json;
     }
 
     @Test

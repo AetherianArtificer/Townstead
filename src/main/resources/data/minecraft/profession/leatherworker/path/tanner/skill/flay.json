@@ -1,0 +1,62 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.tanner.flay"
+  },
+  "icon": "minecraft:rabbit_hide",
+  "description": {
+    "translate": "skill.townstead.leatherworker.tanner.flay.description"
+  },
+  "cost": 1,
+  "requires": [
+    "strap_down"
+  ],
+  "skill_group": "townstead:tanner_whip",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:hide",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 6,
+          "include_self": false,
+          "target": "hostile",
+          "bientity_condition": {
+            "type": "pheno:relative_rotation",
+            "max_angle": 60
+          },
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:damage",
+                "amount": 5,
+                "source": "other"
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:wither",
+                "duration": 80,
+                "amplifier": 0
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.player.attack.knockback",
+          "volume": 1.0,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

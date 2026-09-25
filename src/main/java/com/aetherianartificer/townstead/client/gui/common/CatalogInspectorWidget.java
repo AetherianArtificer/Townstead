@@ -1,6 +1,8 @@
 package com.aetherianartificer.townstead.client.gui.common;
 
 import com.aetherianartificer.townstead.client.catalog.*;
+import com.aetherianartificer.townstead.politics.seat.SeatBuildings;
+import com.aetherianartificer.townstead.recognition.BuildingChecks;
 import com.aetherianartificer.townstead.spirit.BuildingSpiritIndex;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -9,6 +11,7 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import org.lwjgl.glfw.GLFW;
 import java.util.*;
 
@@ -46,6 +49,39 @@ public final class CatalogInspectorWidget extends AbstractWidget {
         variant = Math.floorMod(variant + delta, Math.max(1, variantCount()));
         scroll = 0; contentHeight = 0; draggingScrollbar = false;
     }
+    /** A building check as a need row: a decoration with its catalog icon, or a floor size or height. */
+    private static CatalogRequirementsPanel.Row checkRow(BuildingChecks.Check check) {
+        if (check instanceof BuildingChecks.DecorationCount d) {
+            ResourceLocation icon = DecorationCatalogClientStore.entries().stream()
+                    .filter(summary -> summary.id().equals(d.decoration())).findFirst()
+                    .map(summary -> summary.icon()).orElse(null);
+            return CatalogRequirementsPanel.Row.labelled(Component.translatable(
+                    "decoration." + d.decoration().getNamespace() + "." + d.decoration().getPath().replace('/', '.')), icon, d.count());
+        }
+        if (check instanceof BuildingChecks.Size s) {
+            return CatalogRequirementsPanel.Row.labelled(range("floor", s.min(), s.max()), ResourceLocation.tryParse("minecraft:oak_planks"), 0);
+        }
+        BuildingChecks.Height h = (BuildingChecks.Height) check;
+        return CatalogRequirementsPanel.Row.labelled(range("height", h.min(), h.max()), ResourceLocation.tryParse("minecraft:ladder"), 0);
+    }
+
+    private static Component range(String what, int min, int max) {
+        String key = "townstead.catalog.need." + what;
+        if (max == Integer.MAX_VALUE) return Component.translatable(key + ".min", min);
+        if (min <= 0) return Component.translatable(key + ".max", max);
+        return Component.translatable(key + ".range", min, max);
+    }
+
+    private static Component seatLine(SeatBuildings.Spec spec) {
+        net.minecraft.network.chat.MutableComponent functions = Component.empty();
+        for (int i = 0; i < spec.functions().size(); i++) {
+            ResourceLocation function = spec.functions().get(i);
+            if (i > 0) functions.append(", ");
+            functions.append(Component.translatable("townstead.seat.function." + function.getNamespace() + "." + function.getPath()));
+        }
+        return Component.translatable("townstead.catalog.seat", spec.tier(), functions);
+    }
+
     private int text(GuiGraphics g, Component text, int y, int color) {
         g.drawWordWrap(font, text, getX() + 7, y, width - 18, color);
         return y + Math.max(1, font.split(text, width - 18).size()) * font.lineHeight + 5;
@@ -85,6 +121,9 @@ public final class CatalogInspectorWidget extends AbstractWidget {
         }
         y += 3;
         y = text(g, selected.description(), y, 0xB4BCAF);
+        if (selected.building() != null && SeatBuildings.isSeatBuilding(entry.id())) {
+            y = text(g, seatLine(SeatBuildings.forType(entry.id())), y, 0xD6C381);
+        }
         summaryHeight = y - start + 10;
         summaryScroll = Math.min(summaryScroll, Math.max(0, summaryHeight - (dividerY() - getY())));
         g.disableScissor();
@@ -99,6 +138,7 @@ public final class CatalogInspectorWidget extends AbstractWidget {
         if (selected.building() != null) {
             selected.building().getGroups().entrySet().stream().sorted(Map.Entry.comparingByKey(Comparator.comparing(Object::toString)))
                     .forEach(e -> rows.add(new CatalogRequirementsPanel.Row(List.of(e.getKey().toString()), e.getValue())));
+            for (BuildingChecks.Check check : BuildingChecks.of(selected.entry().id())) rows.add(checkRow(check));
         } else if (variantCount() > 0) {
             var recipe = selected.decoration().variants().get(variant);
             rows.add(new CatalogRequirementsPanel.Row(recipe.anchors(), 1));

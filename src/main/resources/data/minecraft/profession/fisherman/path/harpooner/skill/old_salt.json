@@ -1,0 +1,66 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.harpooner.old_salt"
+  },
+  "icon": "minecraft:trident",
+  "description": {
+    "translate": "skill.townstead.fisherman.harpooner.old_salt.description"
+  },
+  "cost": 1,
+  "requires": [
+    "filleter"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "or",
+            "conditions": [
+              {
+                "type": "ingredient",
+                "item": "minecraft:fishing_rod"
+              },
+              {
+                "type": "ingredient",
+                "tag": "starcatcher:rods"
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:tide",
+          "min": 75
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:strength",
+          "duration": 30,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 30,
+          "amplifier": 0
+        }
+      ]
+    }
+  }
+}

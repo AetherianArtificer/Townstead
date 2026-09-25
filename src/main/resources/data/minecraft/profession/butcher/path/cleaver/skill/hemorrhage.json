@@ -1,0 +1,52 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.cleaver.hemorrhage"
+  },
+  "icon": "minecraft:wither_rose",
+  "description": {
+    "translate": "skill.townstead.butcher.cleaver.hemorrhage.description"
+  },
+  "cost": 1,
+  "requires": [
+    "deep_cuts"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "target": "other",
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "or",
+            "conditions": [
+              {
+                "type": "ingredient",
+                "tag": "townstead:butcher_cleavers"
+              },
+              {
+                "type": "ingredient",
+                "tag": "minecraft:axes"
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:cut",
+          "min": 75
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:wither",
+      "duration": 60,
+      "amplifier": 0
+    }
+  }
+}
