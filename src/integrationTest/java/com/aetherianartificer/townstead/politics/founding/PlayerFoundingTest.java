@@ -16,6 +16,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Exercises shipped player-founding data, authority, persistence and single-use proclamation. */
 class PlayerFoundingTest {
+    @org.junit.jupiter.api.BeforeAll
+    static void registerPhenoValues() {
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(new com.aetherianartificer.townstead.pheno.value.types.StandingValueType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(new com.aetherianartificer.townstead.pheno.value.types.VillageNeedsValueType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(new com.aetherianartificer.townstead.pheno.value.types.VillageSpiritTierValueType());
+    }
+
     @Test
     void foundingLeadershipTransferAndDissolution() throws Exception {
         var chronicle = com.aetherianartificer.townstead.chronicle.template.ChronicleEventTemplate.parse(

@@ -17,7 +17,7 @@ class CatalogSyncRoundTripTest {
         var set = new CatalogSyncS2CPayload.DecorationSummary(ResourceLocation.tryParse("townstead:well"),
                 ResourceLocation.tryParse("minecraft:water_bucket"), 6, 2, List.of(variant, alternative), true, Map.of("nautical", 1));
         var source = new CatalogSyncS2CPayload(List.of(), Map.of(), CatalogDataLoader.Theme.DEFAULT,
-                Map.of("dock_l3", Map.of("nautical", 20, "industrious", 10)), List.of(set), Set.of("inn", "grove"));
+                Map.of("dock_l3", Map.of("nautical", 20, "industrious", 10)), List.of(set), Set.of("inn", "grove"), Map.of(), Map.of());
         FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
         try {
             source.write(buffer);
