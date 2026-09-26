@@ -75,6 +75,19 @@ public final class RootAssignment {
             RootServerLogic.commitGenes(player, RootSetC2SPayload.SELF, genes, entityData.getInt("HairColor"));
         }
 
+        syncPlayer(player, id);
+    }
+
+    /**
+     * Gives a player a Root while keeping the body they already have, as when they take over a
+     * villager whose body came with them. No body re-roll, no root-changed event.
+     */
+    public static void adoptPlayerRoot(ServerPlayer player, ResourceLocation id) {
+        RootServerLogic.setPlayerRoot(player, id);
+        syncPlayer(player, id);
+    }
+
+    private static void syncPlayer(ServerPlayer player, ResourceLocation id) {
         sendToPlayer(player, new RootSyncS2CPayload(RootSetC2SPayload.SELF, id.toString()));
         RootSyncS2CPayload entitySync = new RootSyncS2CPayload(player.getId(), id.toString());
         sendToPlayer(player, entitySync);

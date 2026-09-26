@@ -33,12 +33,6 @@ public final class NamePlate {
      * @param sink    where to put the replacement, when there is one
      */
     public static void render(Entity entity, Component content, Consumer<Component> sink) {
-        if (entity instanceof net.minecraft.world.entity.player.Player player) {
-            // A reborn player goes by the name of their current life.
-            String reborn = com.aetherianartificer.townstead.client.rebirth.CharacterNameClient.get(player.getUUID());
-            if (reborn != null) sink.accept(Component.literal(reborn));
-            return;
-        }
         if (!(entity instanceof VillagerEntityMCA villager)) return;
 
         // Capitals draws the nameplate when it is installed, and composes it itself from a title,

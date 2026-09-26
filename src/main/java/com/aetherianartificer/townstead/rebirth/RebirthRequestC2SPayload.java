@@ -8,11 +8,14 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 //?}
 import net.minecraft.resources.ResourceLocation;
 
-/** Client to server, from the death screen: the next respawn is a rebirth under this name. */
+/**
+ * Client to server, from the death screen: the next respawn is a rebirth under this name, or, with
+ * {@code descendant}, a hand-off to MCA Descendants to continue as one of the family.
+ */
 //? if neoforge {
-public record RebirthRequestC2SPayload(String name) implements CustomPacketPayload {
+public record RebirthRequestC2SPayload(String name, boolean descendant) implements CustomPacketPayload {
 //?} else {
-/*public record RebirthRequestC2SPayload(String name) {
+/*public record RebirthRequestC2SPayload(String name, boolean descendant) {
 *///?}
 
     //? if neoforge {
@@ -28,9 +31,10 @@ public record RebirthRequestC2SPayload(String name) implements CustomPacketPaylo
 
     public void write(FriendlyByteBuf buf) {
         buf.writeUtf(name, Rebirth.MAX_NAME_LENGTH);
+        buf.writeBoolean(descendant);
     }
 
     public static RebirthRequestC2SPayload read(FriendlyByteBuf buf) {
-        return new RebirthRequestC2SPayload(buf.readUtf(Rebirth.MAX_NAME_LENGTH));
+        return new RebirthRequestC2SPayload(buf.readUtf(Rebirth.MAX_NAME_LENGTH), buf.readBoolean());
     }
 }

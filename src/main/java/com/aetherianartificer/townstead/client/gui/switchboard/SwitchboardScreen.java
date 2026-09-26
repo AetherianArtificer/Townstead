@@ -28,7 +28,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
- * World Setup, laid out like Create World. Village holds a Play Style and five broad dials, each with a
+ * World Setup, laid out like Create World. General holds a Play Style and the broad dials, each with a
  * "..." for its details; Peoples holds Roots and Cultures; More leads to presets, every setting, and
  * this computer's own settings.
  */
@@ -129,7 +129,13 @@ public class SwitchboardScreen extends MenuBackgroundScreen {
         hints.add(new Hint(hint, y));
         y += 10 * font.split(hint, COLUMN).size() + 10;
 
-        for (Dials.Dial dial : Dials.all()) {
+        // Two columns, like Create World's game options, so every dial fits on one screen.
+        int half = (COLUMN - 8) / 2;
+        List<Dials.Dial> dials = Dials.all();
+        for (int i = 0; i < dials.size(); i++) {
+            Dials.Dial dial = dials.get(i);
+            int x = left() + (i % 2) * (half + 8);
+            int rowY = y + (i / 2) * 24;
             int level = dial.level(model);
             Component value = level >= 0 ? dial.levels().get(level).name() : custom();
             Button button = Button.builder(Component.translatable("townstead.switchboard.dial.value", dial.label(), value),
@@ -137,14 +143,13 @@ public class SwitchboardScreen extends MenuBackgroundScreen {
                                 dial.set(model, (level + 1) % dial.levels().size());
                                 rebuildWidgets();
                             })
-                    .bounds(left(), y, COLUMN - MORE_WIDTH - 4, 20).build();
+                    .bounds(x, rowY, half - MORE_WIDTH - 4, 20).build();
             if (dial.locked(model)) lock(button);
             addRenderableWidget(button);
             Button more = Button.builder(Component.literal("..."), b -> openDetails(dial))
-                    .bounds(left() + COLUMN - MORE_WIDTH, y, MORE_WIDTH, 20).build();
+                    .bounds(x + half - MORE_WIDTH, rowY, MORE_WIDTH, 20).build();
             more.setTooltip(Tooltip.create(Component.translatable("townstead.switchboard.customize", dial.label())));
             addRenderableWidget(more);
-            y += 24;
         }
     }
 

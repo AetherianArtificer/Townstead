@@ -116,6 +116,10 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.rebirth.CharacterNamesS2CPayload::write,
                 com.aetherianartificer.townstead.rebirth.CharacterNamesS2CPayload::read,
                 payload -> com.aetherianartificer.townstead.client.rebirth.CharacterNameClient.set(payload.names()));
+        registerS2C(com.aetherianartificer.townstead.rebirth.RebirthDestinyS2CPayload.class,
+                com.aetherianartificer.townstead.rebirth.RebirthDestinyS2CPayload::write,
+                com.aetherianartificer.townstead.rebirth.RebirthDestinyS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.rebirth.RebirthDestinyClient.offer());
         registerC2S(com.aetherianartificer.townstead.switchboard.SwitchboardSaveC2SPayload.class,
                 com.aetherianartificer.townstead.switchboard.SwitchboardSaveC2SPayload::write,
                 com.aetherianartificer.townstead.switchboard.SwitchboardSaveC2SPayload::read,

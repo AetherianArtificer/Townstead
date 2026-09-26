@@ -23,7 +23,7 @@ public final class RebirthDeathButton {
     *///?}
         if (!(event.getScreen() instanceof DeathScreen screen)) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || !Rebirth.available(mc.player)) return;
+        if (mc.player == null) return;
         Button respawn = null;
         for (GuiEventListener child : screen.children()) {
             if (child instanceof Button button && button.getMessage().getContents() instanceof TranslatableContents t
@@ -31,6 +31,23 @@ public final class RebirthDeathButton {
                 respawn = button;
             }
         }
+        // MCA Descendants continues the bloodline; Townstead only hands the respawn over to it.
+        if (com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.canHandOff(mc.player)) {
+            int dx = respawn != null ? respawn.getX() : screen.width / 2 - 100;
+            event.addListener(Button.builder(Component.translatable("townstead.rebirth.descendant"), b -> {
+                        //? if neoforge {
+                        net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+                                new com.aetherianartificer.townstead.rebirth.RebirthRequestC2SPayload("", true));
+                        //?} else if forge {
+                        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(
+                                new com.aetherianartificer.townstead.rebirth.RebirthRequestC2SPayload("", true));
+                        *///?}
+                        b.active = false;
+                        mc.player.respawn();
+                    })
+                    .bounds(dx, screen.height / 4 + 144, 200, 20).build());
+        }
+        if (!Rebirth.available(mc.player)) return;
         boolean forced = Rebirth.mode() == RebirthMode.FORCED;
         int x = respawn != null ? respawn.getX() : screen.width / 2 - 100;
         int y = forced && respawn != null ? respawn.getY() : screen.height / 4 + 120;

@@ -91,6 +91,14 @@ public final class PlayerLives extends SavedData {
         publish();
     }
 
+    void rename(UUID player, String name) {
+        Person person = people.computeIfAbsent(player, ignored -> new Person());
+        if (name.equals(person.name)) return;
+        person.name = name;
+        setDirty();
+        publish();
+    }
+
     /** True the first time a villager meets this player's current life; marks it as met. */
     boolean forgetOnce(UUID player, UUID villager) {
         Person person = people.get(player);

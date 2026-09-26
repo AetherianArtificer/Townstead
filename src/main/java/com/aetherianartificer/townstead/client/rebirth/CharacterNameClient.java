@@ -13,6 +13,9 @@ public final class CharacterNameClient {
 
     public static void set(Map<UUID, String> next) {
         names = Map.copyOf(next);
+        // Display names are cached per player; drop them so the new names show.
+        var level = net.minecraft.client.Minecraft.getInstance().level;
+        if (level != null) level.players().forEach(net.minecraft.world.entity.player.Player::refreshDisplayName);
     }
 
     public static @Nullable String get(UUID player) {

@@ -95,6 +95,16 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        // MCA Descendants: one mixin over its utilities and event handlers, only when it is installed.
+        if (mixinClassName.endsWith("DescendantsMixin")) {
+            return TownsteadMixinPlugin.class.getClassLoader()
+                    .getResource("net/dannyfather/mca_descendants/util/ModUtils.class") != null;
+        }
+        // Only MCA builds whose Destiny reads its locations from config have this method; newer
+        // builds send the locations, and Townstead adds "Where you died" to that list instead.
+        if (mixinClassName.endsWith("DestinyScreenWhereYouDiedMixin")) {
+            return TownsteadMixinPlugin.class.getClassLoader().getResource(FORGE_LOADER_MARKER) != null;
+        }
         if (mixinClassName.endsWith("McaPlayerArmOverlayMixin")) {
             return isMcaForge();
         }

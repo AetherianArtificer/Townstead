@@ -187,6 +187,7 @@ public final class TownsteadClient {
         com.aetherianartificer.townstead.pheno.cosmetic.CosmeticClientBridge.clear();
         clearClientStore("com.aetherianartificer.townstead.hunger.HungerClientStore");
         clearClientStore("com.aetherianartificer.townstead.client.rebirth.CharacterNameClient");
+        clearClientStore("com.aetherianartificer.townstead.client.rebirth.RebirthDestinyClient");
         clearClientStore("com.aetherianartificer.townstead.hunger.FishermanHookLinkStore");
         clearClientStore("com.aetherianartificer.townstead.thirst.ThirstClientStore");
         clearClientStore("com.aetherianartificer.townstead.fatigue.FatigueClientStore");

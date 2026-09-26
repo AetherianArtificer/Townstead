@@ -53,9 +53,9 @@ public final class RebirthScreen extends Screen {
         String clean = Rebirth.cleanName(name);
         if (clean == null || minecraft.player == null) return;
         //? if neoforge {
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(new RebirthRequestC2SPayload(clean));
+        net.neoforged.neoforge.network.PacketDistributor.sendToServer(new RebirthRequestC2SPayload(clean, false));
         //?} else if forge {
-        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(new RebirthRequestC2SPayload(clean));
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(new RebirthRequestC2SPayload(clean, false));
         *///?}
         // The same order as the death screen's own Respawn: back to it, then respawn.
         minecraft.setScreen(deathScreen);

@@ -526,6 +526,7 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> {
             com.aetherianartificer.townstead.temperature.RoomHeat.tick(e.getServer());
             com.aetherianartificer.townstead.politics.charter.CharterMemberships.tick(e.getServer());
+            com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
             townstead$profile("server.village_startup_seed", () ->
                     com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer()));
@@ -639,6 +640,11 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppedEvent e) ->
                 { com.aetherianartificer.townstead.switchboard.SwitchboardServer.onServerStopping();
                   com.aetherianartificer.townstead.rebirth.PlayerLives.onServerStopping(); });
+        // A reborn player goes by the name of their current life in chat, death messages and nameplates.
+        NeoForge.EVENT_BUS.addListener((PlayerEvent.NameFormat e) -> {
+            String name = com.aetherianartificer.townstead.rebirth.Rebirth.characterName(e.getEntity());
+            if (name != null) e.setDisplayname(net.minecraft.network.chat.Component.literal(name));
+        });
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerRespawnEvent e) -> {
             if (e.getEntity() instanceof ServerPlayer sp) com.aetherianartificer.townstead.rebirth.Rebirth.onRespawn(sp, e.isEndConquered());
         });
@@ -854,6 +860,7 @@ public class Townstead {
                 return;
             }
             com.aetherianartificer.townstead.root.trigger.GeneTriggers.onDeath(e.getEntity(), e.getSource());
+            if (e.getEntity() instanceof ServerPlayer deadPlayer) com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.rememberDeath(deadPlayer, e.getSource());
             com.aetherianartificer.townstead.root.loot.DeathLoot.onDeath(e.getEntity());
             com.aetherianartificer.townstead.compat.wholecloth.WholeClothDrops.onDeath(e.getEntity(), e.getSource());
             if (!(e.getEntity() instanceof net.minecraft.world.entity.player.Player)) {
@@ -1030,6 +1037,7 @@ public class Townstead {
             if (e.phase == net.minecraftforge.event.TickEvent.Phase.END) {
                 com.aetherianartificer.townstead.temperature.RoomHeat.tick(e.getServer());
             com.aetherianartificer.townstead.politics.charter.CharterMemberships.tick(e.getServer());
+            com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.tick(e.getServer());
                 com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
                 townstead$profile("server.village_startup_seed", () ->
                         com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer()));
@@ -1137,6 +1145,11 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStoppedEvent e) ->
                 { com.aetherianartificer.townstead.switchboard.SwitchboardServer.onServerStopping();
                   com.aetherianartificer.townstead.rebirth.PlayerLives.onServerStopping(); });
+        // A reborn player goes by the name of their current life in chat, death messages and nameplates.
+        MinecraftForge.EVENT_BUS.addListener((PlayerEvent.NameFormat e) -> {
+            String name = com.aetherianartificer.townstead.rebirth.Rebirth.characterName(e.getEntity());
+            if (name != null) e.setDisplayname(net.minecraft.network.chat.Component.literal(name));
+        });
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerRespawnEvent e) -> {
             if (e.getEntity() instanceof ServerPlayer sp) com.aetherianartificer.townstead.rebirth.Rebirth.onRespawn(sp, e.isEndConquered());
         });
@@ -1372,6 +1385,7 @@ public class Townstead {
                 return;
             }
             com.aetherianartificer.townstead.root.trigger.GeneTriggers.onDeath(e.getEntity(), e.getSource());
+            if (e.getEntity() instanceof ServerPlayer deadPlayer) com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.rememberDeath(deadPlayer, e.getSource());
             com.aetherianartificer.townstead.root.loot.DeathLoot.onDeath(e.getEntity());
             com.aetherianartificer.townstead.compat.wholecloth.WholeClothDrops.onDeath(e.getEntity(), e.getSource());
             if (!(e.getEntity() instanceof net.minecraft.world.entity.player.Player)) {

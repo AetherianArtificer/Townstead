@@ -284,6 +284,17 @@ public abstract class BlueprintScreenMixin extends Screen {
     }
     *///?}
 
+    // BlueprintScreen inherits keyPressed from Screen, so it is overridden here rather than injected;
+    // Mixin merges this override into BlueprintScreen.
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        CallbackInfoReturnable<Boolean> cir = new CallbackInfoReturnable<>("keyPressed", true);
+        townstead$catalogKeyScroll(keyCode, scanCode, modifiers, cir);
+        if (!cir.isCancelled()) townstead$spiritKeyPressed(keyCode, scanCode, modifiers, cir);
+        if (cir.isCancelled()) return cir.getReturnValueZ();
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
     @Unique
     private boolean townstead$dispatchScroll(double mouseX, double mouseY, double verticalAmount) {
         if (townstead$handleCatalogScroll(mouseX, mouseY, verticalAmount))
@@ -347,11 +358,7 @@ public abstract class BlueprintScreenMixin extends Screen {
                 && townstead$catalogPanel.mouseClicked(mouseX, mouseY, button)) cir.setReturnValue(true);
     }
 
-    //? if neoforge {
-    @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
-    //?} else {
-    /*@Inject(method = "m_7933_", remap = false, at = @At("HEAD"), cancellable = true)
-    *///?}
+    @Unique
     private void townstead$catalogKeyScroll(int keyCode, int scanCode, int modifiers,
             CallbackInfoReturnable<Boolean> cir) {
         if (TOWNSTEAD_CATALOG_PAGE.equals(this.page) && townstead$catalogPanel != null
@@ -1932,11 +1939,7 @@ public abstract class BlueprintScreenMixin extends Screen {
         }
     }
 
-    //? if neoforge {
-    @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
-    //?} else {
-    /*@Inject(method = "m_7933_", remap = false, at = @At("HEAD"), cancellable = true)
-    *///?}
+    @Unique
     private void townstead$spiritKeyPressed(int keyCode, int scanCode, int modifiers,
             CallbackInfoReturnable<Boolean> cir) {
         if (!TOWNSTEAD_SPIRIT_PAGE.equals(this.page)) return;

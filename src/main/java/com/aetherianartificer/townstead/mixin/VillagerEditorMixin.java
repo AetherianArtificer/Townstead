@@ -374,16 +374,18 @@ public abstract class VillagerEditorMixin extends Screen {
     @Unique
     private void townstead$buildMortalLife(LifeClientStore.Snapshot snap, int sx, int sy, int sw, int sh) {
         CalendarClientStore.Snapshot cal = CalendarClientStore.get();
-        int sliderW = Math.max(40, sw - TOWNSTEAD_AGE_W - 4);
+        // Players who hide villager ages get the slider across the whole row, with no age readout.
+        boolean showAge = com.aetherianartificer.townstead.TownsteadConfig.SHOW_VILLAGER_AGE.get();
+        int sliderW = showAge ? Math.max(40, sw - TOWNSTEAD_AGE_W - 4) : sw;
 
-        Button ageField = addRenderableWidget(Button.builder(Component.empty(), b -> {})
-                .pos(sx + sw - TOWNSTEAD_AGE_W, sy).size(TOWNSTEAD_AGE_W, sh).build());
+        Button ageField = showAge ? addRenderableWidget(Button.builder(Component.empty(), b -> {})
+                .pos(sx + sw - TOWNSTEAD_AGE_W, sy).size(TOWNSTEAD_AGE_W, sh).build()) : null;
         int[] ymd = townstead$seedYmd(snap, cal);
         int total = snap.totalDays();
         // Apparent ("narrative") years for the current biological age, mirroring the
         // inspect screen. Boxed so the slider/DOB callbacks can both refresh it.
         int[] bioRef = {0};
-        Runnable ageRefresh = () -> ageField.setMessage(Component.translatable(
+        Runnable ageRefresh = ageField == null ? () -> {} : () -> ageField.setMessage(Component.translatable(
                 "townstead.life_stage.age_short", Math.round(snap.narrativeAgeForBio(bioRef[0]))));
 
         // Initial biological age: an in-progress slider edit wins, else the snapshot.
@@ -580,12 +582,16 @@ public abstract class VillagerEditorMixin extends Screen {
         return Component.translatable("townstead.life_stage.editor_slider", stage);
     }
 
-    //? if neoforge {
-    @Inject(method = "removed", at = @At("TAIL"))
-    //?} else {
-    /*@Inject(method = "m_7861_", remap = false, at = @At("TAIL"))
-    *///?}
-    private void townstead$cleanupOnClose(CallbackInfo ci) {
+    // VillagerEditorScreen inherits removed() from Screen, so it is overridden here rather than
+    // injected; Mixin merges this override into the editor (and Destiny, which extends it).
+    @Override
+    public void removed() {
+        super.removed();
+        townstead$cleanupOnClose();
+    }
+
+    @Unique
+    private void townstead$cleanupOnClose() {
         HungerClientStore.clearOnChange();
         ThirstClientStore.clearOnChange();
         FatigueClientStore.clearOnChange();

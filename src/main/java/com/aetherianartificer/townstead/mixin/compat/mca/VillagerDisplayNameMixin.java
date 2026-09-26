@@ -23,7 +23,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(VillagerEntityMCA.class)
 public abstract class VillagerDisplayNameMixin {
 
+    //? if neoforge {
     @Inject(method = "getDisplayName", at = @At("RETURN"), cancellable = true)
+    //?} else {
+    /*@Inject(method = "m_5446_", remap = false, at = @At("RETURN"), cancellable = true)
+    *///?}
     private void townstead$composeDisplayName(CallbackInfoReturnable<Component> cir) {
         VillagerEntityMCA self = (VillagerEntityMCA) (Object) this;
         Component composed = DisplayNames.of(self, cir.getReturnValue());

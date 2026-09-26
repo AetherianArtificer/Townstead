@@ -15,7 +15,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 /**
- * The broad dials on the Village tab. Each level is a bundle of target values; a dial shows the level
+ * The broad dials on the General tab. Each level is a bundle of target values; a dial shows the level
  * whose bundle matches the world now, or Custom. Nothing about a dial is stored.
  */
 final class Dials {
@@ -55,6 +55,7 @@ final class Dials {
         }
     }
 
+    /** A Play Style's level for each dial, in dial order; {@link #ANY} leaves that dial as it is. */
     record Style(String id, int[] levels) {
         Component name() {
             return Component.translatable("townstead.switchboard.style." + id);
@@ -70,6 +71,12 @@ final class Dials {
     static final String PEOPLES = "peoples";
     static final String SOCIAL = "social";
     static final String RECORDS = "records";
+    static final String TIME = "time";
+    static final String REBIRTH = "rebirth";
+    static final String QUESTS = "quests";
+
+    /** A style level that matches any level and applies nothing. */
+    static final int ANY = -1;
 
     private static List<Dial> dials;
 
@@ -84,13 +91,16 @@ final class Dials {
     }
 
     static List<Style> styles() {
+        // Dials: needs, work, peoples, social, records, time, rebirth, quests. Full is Townstead's
+        // defaults for every dial; the others leave time and rebirth as they are, since those are a
+        // matter of taste. Everything Off sets them all.
         return List.of(
-                new Style("full", new int[]{2, 2, 2, 1, 1}),
-                new Style("cozy", new int[]{1, 2, 2, 1, 1}),
-                new Style("hard", new int[]{3, 2, 2, 1, 1}),
-                new Style("storybook", new int[]{0, 0, 2, 1, 1}),
-                new Style("light", new int[]{0, 0, 1, 1, 0}),
-                new Style("off", new int[]{0, 0, 0, 0, 0}));
+                new Style("full", new int[]{2, 2, 2, 1, 1, 2, 1, 1}),
+                new Style("cozy", new int[]{1, 2, 2, 1, 1, ANY, ANY, 1}),
+                new Style("hard", new int[]{3, 2, 2, 1, 1, ANY, ANY, 1}),
+                new Style("storybook", new int[]{0, 0, 2, 1, 1, ANY, ANY, 1}),
+                new Style("light", new int[]{0, 0, 1, 1, 0, ANY, ANY, 1}),
+                new Style("off", new int[]{0, 0, 0, 0, 0, 0, 0, 0}));
     }
 
     /** The style whose dial levels match the world now, or -1 for Custom. */
@@ -99,7 +109,8 @@ final class Dials {
         for (int s = 0; s < styles.size(); s++) {
             boolean match = true;
             for (int d = 0; d < all().size(); d++) {
-                if (all().get(d).level(model) != styles.get(s).levels()[d]) {
+                int wanted = styles.get(s).levels()[d];
+                if (wanted != ANY && all().get(d).level(model) != wanted) {
                     match = false;
                     break;
                 }
@@ -112,7 +123,7 @@ final class Dials {
     static void applyStyle(SwitchboardModel model, Style style) {
         for (int d = 0; d < all().size(); d++) {
             Dial dial = all().get(d);
-            if (!dial.locked(model)) dial.set(model, style.levels()[d]);
+            if (style.levels()[d] != ANY && !dial.locked(model)) dial.set(model, style.levels()[d]);
         }
     }
 
@@ -125,7 +136,7 @@ final class Dials {
                 level("needs.gentle", pace(with(needSwitches, true), 0.5)),
                 level("needs.normal", pace(with(needSwitches, true), 1.0)),
                 level("needs.harsh", pace(with(needSwitches, true), 1.5))),
-                key -> key.startsWith("needs.") || key.startsWith("caregiving.")));
+                key -> key.startsWith("needs.") || key.startsWith("caregiving.") || key.startsWith("cannibalism.")));
 
         List<String> trades = List.of(Systems.WORK, Systems.FARMING, Systems.FISHING, Systems.SHEPHERDING,
                 Systems.HOSPITALITY, Systems.CLOTHING, Systems.SHIFTS);
@@ -146,7 +157,7 @@ final class Dials {
                 level("peoples.overworlders", systems(Map.of(Systems.ROOTS, false, Systems.CULTURES, false, Systems.NAMING, false))),
                 level("peoples.roots", systems(Map.of(Systems.ROOTS, true, Systems.CULTURES, false, Systems.NAMING, true))),
                 level("peoples.cultures", systems(Map.of(Systems.ROOTS, true, Systems.CULTURES, true, Systems.NAMING, true)))),
-                key -> key.startsWith("naming.") || key.startsWith("rebirth.") || key.equals(Systems.key(Systems.NAMING))));
+                key -> key.startsWith("naming.") || key.equals(Systems.key(Systems.NAMING))));
 
         List<Object> socialSwitch = List.of(TownsteadConfig.ENABLE_CONVERSATIONS);
         Map<String, Object> socialOff = with(socialSwitch, false);
@@ -161,6 +172,32 @@ final class Dials {
         Set<String> recordKeys = systems(records, true).keySet();
         out.add(new Dial(RECORDS, label("records"), List.of(onOff(false, systems(records, false)),
                 onOff(true, systems(records, true))), recordKeys::contains));
+
+        // Time: the calendar and how villagers age, as a few whole setups.
+        String calendar = Systems.key(Systems.CALENDAR);
+        String scale = SettingIndex.keyOf(TownsteadConfig.AGING_SCALE);
+        String frozen = SettingIndex.keyOf(TownsteadConfig.DISABLE_VILLAGER_AGING);
+        String seniors = SettingIndex.keyOf(TownsteadConfig.ENABLE_SENIORS);
+        String realClock = SettingIndex.keyOf(TownsteadConfig.CALENDAR_REAL_CLOCK);
+        out.add(new Dial(TIME, label("time"), List.of(
+                level("time.off", time(calendar, false, null, null, null, null, null, null, null, null)),
+                level("time.mca", time(calendar, true, scale, 0.9, frozen, false, seniors, false, realClock, false)),
+                level("time.townstead", time(calendar, true, scale, 8.0, frozen, false, seniors, true, realClock, false)),
+                level("time.lifelike", time(calendar, true, scale, 20.0, frozen, false, seniors, true, realClock, true)),
+                level("time.frozen", time(calendar, true, null, null, frozen, true, null, null, null, null))),
+                key -> key.startsWith("calendar.") || key.equals(calendar)));
+
+        String rebirth = SettingIndex.keyOf(TownsteadConfig.REBIRTH_MODE);
+        out.add(new Dial(REBIRTH, label("rebirth"), List.of(
+                level("rebirth.off", single(rebirth, com.aetherianartificer.townstead.rebirth.RebirthMode.OFF)),
+                level("rebirth.optional", single(rebirth, com.aetherianartificer.townstead.rebirth.RebirthMode.OPTIONAL)),
+                level("rebirth.forced", single(rebirth, com.aetherianartificer.townstead.rebirth.RebirthMode.FORCED))),
+                key -> key.startsWith("rebirth.")));
+
+        out.add(new Dial(QUESTS, label("quests"), List.of(
+                onOff(false, systems(List.of(Systems.QUESTS), false)),
+                onOff(true, systems(List.of(Systems.QUESTS), true))),
+                key -> key.equals(Systems.key(Systems.QUESTS))));
         return out;
     }
 
@@ -194,6 +231,21 @@ final class Dials {
         String paceKey = SettingIndex.keyOf(TownsteadConfig.NEEDS_PACE);
         if (paceKey != null) values.put(paceKey, pace);
         return values;
+    }
+
+    /** A bundle of key and value pairs; a null key or value leaves that setting out. */
+    private static Map<String, Object> time(Object... pairs) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        for (int i = 0; i + 1 < pairs.length; i += 2) {
+            if (pairs[i] instanceof String key && pairs[i + 1] != null) out.put(key, pairs[i + 1]);
+        }
+        return out;
+    }
+
+    private static Map<String, Object> single(@org.jetbrains.annotations.Nullable String key, Object value) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        if (key != null) out.put(key, value);
+        return out;
     }
 
     private static Map<String, Object> systems(List<String> names, boolean value) {

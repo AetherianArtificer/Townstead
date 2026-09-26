@@ -162,7 +162,11 @@ public abstract class InteractScreenMixin extends Screen {
         }
     }
 
+    //? if neoforge {
     @Inject(method = "init", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_7856_", remap = false, at = @At("TAIL"))
+    *///?}
     private void townstead$hidePoseButtonWhenNoEmoteSource(CallbackInfo ci) {
         if (EmoteReflection.isAvailable()) return;
         // No emote source loaded — hide Pose so the button doesn't dead-end.
@@ -187,7 +191,11 @@ public abstract class InteractScreenMixin extends Screen {
         return true;
     }
 
+    //? if neoforge {
     @Inject(method = "onClose", at = @At("HEAD"), cancellable = true)
+    //?} else {
+    /*@Inject(method = "m_7379_", remap = false, at = @At("HEAD"), cancellable = true)
+    *///?}
     private void townstead$suppressCloseOnTransition(CallbackInfo ci) {
         if (townstead$transitioning) {
             townstead$transitioning = false;
