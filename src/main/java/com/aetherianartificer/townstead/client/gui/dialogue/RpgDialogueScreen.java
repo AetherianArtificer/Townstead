@@ -71,6 +71,7 @@ public class RpgDialogueScreen extends Screen {
         this.villager = villager;
         this.villagerUUID = villager.asEntity().getUUID();
         if (villager.asEntity() instanceof VillagerEntityMCA mca
+                && com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CAREERS)
                 && com.aetherianartificer.townstead.profession.career.CareerTreeOpener.isScribe(mca)
                 && com.aetherianartificer.townstead.profession.career.CareerTreeOpener.isOnDuty(mca)) {
             choicePanel.setShowCareersEntry(true);

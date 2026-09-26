@@ -34,6 +34,7 @@ public class TimekeeperQueryProcMixin {
     @Inject(method = "execute(Lnet/minecraft/world/level/LevelAccessor;Lnet/minecraft/world/entity/Entity;)V",
             at = @At("HEAD"), cancellable = true, remap = false, require = 0)
     private static void townstead$sendTownsteadDate(LevelAccessor level, Entity actor, CallbackInfo ci) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CALENDAR)) return;
         if (!(actor instanceof Player player)) return;
         if (player.level().isClientSide()) {
             ci.cancel();

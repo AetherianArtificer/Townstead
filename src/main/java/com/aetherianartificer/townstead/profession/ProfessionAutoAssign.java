@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.profession;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -92,7 +93,7 @@ public final class ProfessionAutoAssign {
 
     /** Narrates a hire or release to the nearest player when villager-AI debugging is on. */
     private static void narrate(ServerLevel level, VillagerEntityMCA villager, String message) {
-        if (!TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
+        if (!Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) return;
         if (!(level.getNearestPlayer(villager, 24)
                 instanceof net.minecraft.server.level.ServerPlayer player)) return;
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(

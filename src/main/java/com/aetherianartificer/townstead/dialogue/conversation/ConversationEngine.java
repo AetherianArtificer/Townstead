@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.dialogue.conversation;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.chronicle.knowledge.GossipTicker;
 import com.aetherianartificer.townstead.chronicle.knowledge.KnownStoriesCache;
 import com.aetherianartificer.townstead.dialogue.contextual.*;
@@ -91,7 +92,7 @@ public final class ConversationEngine {
 
     /** Discovery is staggered and deliberately does not take ownership of navigation or work. */
     public static void consider(VillagerEntityMCA actor) {
-        if (!TownsteadConfig.ENABLE_CONVERSATIONS.get()
+        if (!Switchboard.get(TownsteadConfig.ENABLE_CONVERSATIONS)
                 || !(actor.level() instanceof ServerLevel level) || ConversationTopics.all().isEmpty()) return;
         long now = level.getGameTime();
         if (Math.floorMod(now + actor.getUUID().hashCode(), 200) != 0) return;
@@ -99,7 +100,7 @@ public final class ConversationEngine {
         if (!available(actor)) return;
         Runtime runtime = LEVELS.computeIfAbsent(level, ignored -> new Runtime());
         if (runtime.members.containsKey(actor.getUUID()) || runtime.cooldowns.getOrDefault(actor.getUUID(), 0L) > now) return;
-        if (actor.getRandom().nextDouble() >= TownsteadConfig.IDLE_CONVERSATION_CHANCE.get()) return;
+        if (actor.getRandom().nextDouble() >= Switchboard.get(TownsteadConfig.IDLE_CONVERSATION_CHANCE)) return;
         List<VillagerEntityMCA> nearby = level.getEntitiesOfClass(VillagerEntityMCA.class,
                 actor.getBoundingBox().inflate(6), other -> other != actor && available(other)
                         && !runtime.members.containsKey(other.getUUID()) && actor.distanceToSqr(other) <= 36
@@ -122,7 +123,7 @@ public final class ConversationEngine {
     /** Shared entry point for idle AI, Pheno, hangouts and operator previews. */
     public static boolean request(VillagerEntityMCA actor, VillagerEntityMCA other,
                                   ResourceLocation requestedTopic, boolean preview) {
-        if (!preview && !TownsteadConfig.ENABLE_CONVERSATIONS.get()) return false;
+        if (!preview && !Switchboard.get(TownsteadConfig.ENABLE_CONVERSATIONS)) return false;
         if (!(actor.level() instanceof ServerLevel level) || other.level() != level || actor == other
                 || !available(actor) || !available(other) || actor.distanceToSqr(other) > 36
                 || !actor.hasLineOfSight(other) || !other.hasLineOfSight(actor)) return false;
@@ -167,7 +168,7 @@ public final class ConversationEngine {
             if (now % 10 != 0) continue;
             for (Live live : new LinkedHashSet<>(runtime.members.values())) {
                 VillagerEntityMCA a = find(level, live.a), b = find(level, live.b);
-                boolean valid = (live.preview || TownsteadConfig.ENABLE_CONVERSATIONS.get())
+                boolean valid = (live.preview || Switchboard.get(TownsteadConfig.ENABLE_CONVERSATIONS))
                         && a != null && b != null && available(a) && available(b)
                         && a.distanceToSqr(b) <= 49 && a.hasLineOfSight(b) && b.hasLineOfSight(a);
                 if (!valid) { live.reason = "participant_unavailable"; end(level, runtime, live); continue; }
@@ -226,7 +227,7 @@ public final class ConversationEngine {
             VillagerEntityMCA initiator = completion.initiator() == EncounterRun.Side.A ? a : b;
             applyOutcome(level, initiator, initiator == a ? b : a, completion.topic().id(), completion.turn().outcome());
         }
-        if (TownsteadConfig.DEBUG_LOGGING.get()) Townstead.LOGGER.info("[Conversation] {} ({}): {}",
+        if (Switchboard.get(TownsteadConfig.DEBUG_LOGGING)) Townstead.LOGGER.info("[Conversation] {} ({}): {}",
                 speaker.getName().getString(), spokenMove, rendered.english());
     }
 
@@ -545,9 +546,9 @@ public final class ConversationEngine {
                 || ReactionLockTracker.isLocked(actor, actor.level().getGameTime())) return false;
         if (actor.getLastHurtByMob() != null && actor.tickCount - actor.getLastHurtByMobTimestamp() < 200) return false;
         var needs = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(actor).needs();
-        if (needs.hunger() <= com.aetherianartificer.townstead.hunger.HungerData.EMERGENCY_THRESHOLD
-                || needs.thirst() <= com.aetherianartificer.townstead.thirst.ThirstData.EMERGENCY_THRESHOLD
-                || needs.fatigue() >= com.aetherianartificer.townstead.fatigue.FatigueData.EXHAUSTED_THRESHOLD) return false;
+        if (com.aetherianartificer.townstead.api.impl.v1.NeedScales.hungerEnabled() && needs.hunger() <= com.aetherianartificer.townstead.hunger.HungerData.EMERGENCY_THRESHOLD
+                || com.aetherianartificer.townstead.api.impl.v1.NeedScales.thirstEnabled() && needs.thirst() <= com.aetherianartificer.townstead.thirst.ThirstData.EMERGENCY_THRESHOLD
+                || com.aetherianartificer.townstead.api.impl.v1.NeedScales.fatigueEnabled() && needs.fatigue() >= com.aetherianartificer.townstead.fatigue.FatigueData.EXHAUSTED_THRESHOLD) return false;
         HangoutVisit visit = HangoutEngine.visit(actor.getUUID());
         if (visit != null) return visit.phase() == HangoutVisit.Phase.PRESENT;
         Activity activity = actor.getBrain().getSchedule().getActivityAt((int) (actor.level().getDayTime() % 24000L));
@@ -566,7 +567,7 @@ public final class ConversationEngine {
         }
         long today = TownsteadCalendar.worldDay(level.getServer());
         runtime.greeted.values().removeIf(day -> day < today);
-        if (TownsteadConfig.DEBUG_LOGGING.get()) Townstead.LOGGER.info("[Conversation] {} -> {}: ended after {} lines ({})",
+        if (Switchboard.get(TownsteadConfig.DEBUG_LOGGING)) Townstead.LOGGER.info("[Conversation] {} -> {}: ended after {} lines ({})",
                 live.a, live.b, live.run.lines(), live.reason);
     }
 

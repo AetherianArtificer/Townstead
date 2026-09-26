@@ -48,6 +48,7 @@ public class ChronicleScreen extends Screen {
     }
 
     public static void openArchive(String villageName) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CHRONICLES)) return;
         Minecraft mc = Minecraft.getInstance();
         mc.setScreen(new ChronicleScreen(villageName, mc.screen));
     }

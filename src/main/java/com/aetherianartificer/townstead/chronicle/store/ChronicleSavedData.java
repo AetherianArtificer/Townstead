@@ -83,6 +83,11 @@ public class ChronicleSavedData extends SavedData {
 
     // ---- id sequences ----
 
+    /** The id of the latest event recorded so far, or 0 before any. */
+    public long lastEventId() {
+        return nextEventId - 1L;
+    }
+
     public long assignEventId() {
         long id = nextEventId++;
         setDirty();

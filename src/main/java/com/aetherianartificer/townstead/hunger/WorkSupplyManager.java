@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.compat.mca.McaChoreTools;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Chore;
@@ -32,7 +33,7 @@ public final class WorkSupplyManager {
     private WorkSupplyManager() {}
 
     public static void restockForCurrentJob(ServerLevel level, VillagerEntityMCA villager, Chore job) {
-        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get()) return;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING)) return;
         if (job == null || job == Chore.NONE) return;
         boolean isFarmer = com.aetherianartificer.townstead.work.WorkTaskDeclarations.permitsTask(
                 villager, com.aetherianartificer.townstead.profession.def.WorkTaskTypes.HARVEST);
@@ -66,7 +67,7 @@ public final class WorkSupplyManager {
                         stack -> 1);
             }
 
-            if (TownsteadConfig.ENABLE_HARVEST_OUTPUT_STORAGE.get() && villager.tickCount % 40 == 0) {
+            if (Switchboard.get(TownsteadConfig.ENABLE_HARVEST_OUTPUT_STORAGE) && villager.tickCount % 40 == 0) {
                 offloadHarvestOutput(level, villager, toolMatcher);
             }
         }

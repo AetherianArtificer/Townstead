@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.api.impl.v1;
 import com.aetherianartificer.townstead.api.v1.CalendarApi;
 import com.aetherianartificer.townstead.api.v1.ChroniclesApi;
 import com.aetherianartificer.townstead.api.v1.EventsApi;
+import com.aetherianartificer.townstead.api.v1.SettingsApi;
 import com.aetherianartificer.townstead.api.v1.HangoutsApi;
 import com.aetherianartificer.townstead.api.v1.RegistriesApi;
 import com.aetherianartificer.townstead.api.v1.SchedulesApi;
@@ -110,5 +111,10 @@ public final class TownsteadApiV1Impl implements TownsteadApiV1 {
     @Override
     public PoliticsApi politics() {
         return politics;
+    }
+
+    @Override
+    public SettingsApi settings() {
+        return SettingsImpl.INSTANCE;
     }
 }

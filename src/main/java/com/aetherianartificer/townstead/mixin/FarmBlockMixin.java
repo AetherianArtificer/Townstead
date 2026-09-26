@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
@@ -21,7 +22,7 @@ public class FarmBlockMixin {
     /*@Inject(method = "m_142072_", remap = false, at = @At("HEAD"), cancellable = true)
     *///?}
     private void townstead$preventHarvestChoreTrample(Level level, BlockState state, BlockPos pos, Entity entity, float fallDistance, CallbackInfo ci) {
-        if (!TownsteadConfig.ENABLE_FARM_ASSIST.get()) return;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_FARM_ASSIST)) return;
         if (!(entity instanceof VillagerEntityMCA villager)) return;
         if (com.aetherianartificer.townstead.work.WorkTaskDeclarations.permitsTask(
                 villager, com.aetherianartificer.townstead.profession.def.WorkTaskTypes.HARVEST)) {

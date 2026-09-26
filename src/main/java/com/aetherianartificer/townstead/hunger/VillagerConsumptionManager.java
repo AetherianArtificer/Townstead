@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.compat.mca.McaSicknessAdapter;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
@@ -353,7 +354,7 @@ public final class VillagerConsumptionManager {
         recordSapientMeal(recipient, stack);
         if (statuses) applyFoodEffects(recipient, stack);
         if (teleport && stack.is(Items.CHORUS_FRUIT)
-                && TownsteadConfig.ENABLE_CHORUS_FRUIT_TELEPORT.get()) {
+                && Switchboard.get(TownsteadConfig.ENABLE_CHORUS_FRUIT_TELEPORT)) {
             chorusTeleport(recipient);
         }
         return needs.hunger() != before;
@@ -465,7 +466,7 @@ public final class VillagerConsumptionManager {
 
     private static void returnRemainder(VillagerEntityMCA villager, ItemStack stack, BlockPos source,
                                         ConsumptionPolicy policy) {
-        boolean debug = TownsteadConfig.DEBUG_VILLAGER_AI.get();
+        boolean debug = Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI);
         ItemStack remainder = remainder(stack, policy);
         if (remainder.isEmpty()) {
             if (debug) {

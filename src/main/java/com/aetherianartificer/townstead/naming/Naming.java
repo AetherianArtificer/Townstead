@@ -34,6 +34,7 @@ public final class Naming {
      * has no usable tradition. This is what MCA's own naming is answered with.
      */
     public static String nameList(VillagerEntityMCA villager) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.NAMING)) return "";
         TownsteadVillager state = TownsteadVillagers.get(villager);
         String recorded = state.life().nameList();
         if (NameLists.hasGiven(recorded)) return recorded;
@@ -53,6 +54,7 @@ public final class Naming {
      * which is a real answer rather than a failure: plenty of peoples have no family names.
      */
     public static String familyName(VillagerEntityMCA villager) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.NAMING)) return "";
         TownsteadVillager state = TownsteadVillagers.get(villager);
         String recorded = state.life().familyName();
         if (!recorded.isEmpty()) return recorded;

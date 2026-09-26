@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.temperature;
 
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+
 import com.aetherianartificer.townstead.hunger.*;
 import com.aetherianartificer.townstead.work.ReachableTargetSelector;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
@@ -63,7 +65,7 @@ public final class ThermalSupplyTask extends Behavior<VillagerEntityMCA> {
         // the same interruption threshold as a full relief break.
         if (!ThermalCare.needsBreak(villager,
                 ThermalExposure.at(level, villager, villager.blockPosition(), ThermalExposure.activity(villager)))) return false;
-        if (com.aetherianartificer.townstead.TownsteadConfig.ENABLE_CONTAINER_SOURCING.get()) {
+        if (Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.ENABLE_CONTAINER_SOURCING)) {
             var candidates = new ArrayList<ReachableTargetSelector.Candidate<NearbyItemSources.ContainerSlot>>();
             NearbyItemSources.collectMatchingSlots(level, villager, 48, 8, stack -> score(villager, stack) > .01f,
                     stack -> Math.round(score(villager, stack) * 1000), villager.blockPosition(), slot -> {

@@ -55,7 +55,13 @@ public final class RootClientStore {
 
     /** Current origin id for the target, or empty string if unknown. */
     public static String get(int entityId) {
+        if (rootsOff()) return "";
         return BY_ENTITY.getOrDefault(entityId, "");
+    }
+
+    /** With Roots switched off in this world everyone reads as the default Root, with no genes. */
+    private static boolean rootsOff() {
+        return !com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.ROOTS);
     }
 
     public static String getSelf() {
@@ -69,7 +75,7 @@ public final class RootClientStore {
      * never tracked, so render layers keep its species (rig, skin tint, proportions) while carried.
      */
     public static String resolve(LivingEntity entity) {
-        if (entity == null) return "";
+        if (entity == null || rootsOff()) return "";
         String synced = get(entity.getId());
         if (synced != null && !synced.isEmpty()) return synced;
         if (entity instanceof VillagerEntityMCA villager) return TownsteadVillagerState.snapshotRootId(villager);
@@ -78,7 +84,7 @@ public final class RootClientStore {
 
     /** This entity's rolled variant for {@code geneId}, synced if present, else from its snapshot. */
     public static String resolveCarriedVariant(LivingEntity entity, String geneId) {
-        if (entity == null) return "";
+        if (entity == null || rootsOff()) return "";
         String synced = carriedVariants(entity.getId()).get(geneId);
         if (synced != null && !synced.isEmpty()) return synced;
         if (entity instanceof VillagerEntityMCA villager) {
@@ -157,7 +163,7 @@ public final class RootClientStore {
 
     /** The gene ids the entity expresses, or an empty set if not yet synced (or it does not express). */
     public static Set<String> expressedGenes(int entityId) {
-        if (!expressesById(entityId)) return Set.of();
+        if (rootsOff() || !expressesById(entityId)) return Set.of();
         return EXPRESSED.getOrDefault(entityId, Set.of());
     }
 
@@ -175,6 +181,7 @@ public final class RootClientStore {
      * CarryOn-reconstructed villager), so its real attachments and hidden features still render.
      */
     public static Set<String> appearanceGenes(LivingEntity entity) {
+        if (rootsOff()) return Set.of();
         Set<String> expressed = expressedGenes(entity);
         if (hasExpressionSync(entity) || !expressed.isEmpty() || entity == null || !expresses(entity))
             return expressed;
@@ -190,7 +197,7 @@ public final class RootClientStore {
     }
 
     public static Set<String> expressedGenes(LivingEntity entity) {
-        if (entity == null || !expresses(entity)) return Set.of();
+        if (entity == null || rootsOff() || !expresses(entity)) return Set.of();
         Set<String> synced = EXPRESSED.get(entity.getId());
         if (synced != null) return synced;
         if (entity instanceof VillagerEntityMCA villager) {
@@ -245,6 +252,7 @@ public final class RootClientStore {
 
     /** Whether the entity is known to express the given gene id. */
     public static boolean expresses(int entityId, String geneId) {
+        if (rootsOff()) return false;
         return EXPRESSED.getOrDefault(entityId, Set.of()).contains(geneId);
     }
 

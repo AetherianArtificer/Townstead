@@ -59,7 +59,7 @@ public final class RootServerLogic {
                 return new Result(RootSetC2SPayload.SELF, orDefault(PlayerRoot.getRootId(sp)));
             }
             ResourceLocation id = resolveKnown(rootId);
-            if (id == null) return null;
+            if (id == null || !mayChooseOwn(sp, id)) return null;
             String before = orDefault(PlayerRoot.getRootId(sp));
             if (setPlayerRoot(sp, id)) {
                 com.aetherianartificer.townstead.api.impl.v1.ApiEvents.rootChanged(sp, before, id.toString());
@@ -333,7 +333,15 @@ public final class RootServerLogic {
         // Canonical id, so a legacy-namespace id is stored under its current namespace.
         ResourceLocation id = root.id();
         // The picker hides blocked roots; rejecting here keeps a modified client from applying one.
-        return RootBlocklist.isBlocked(id) ? null : id;
+        return RootRules.isOff(id) ? null : id;
+    }
+
+    /** Operators may give themselves any Root; everyone else needs one players can choose, and the choice on. */
+    private static boolean mayChooseOwn(ServerPlayer sp, ResourceLocation id) {
+        if (sp.hasPermissions(2)) return true;
+        return com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.ROOTS) && RootRules.playersChoose(id)
+                && com.aetherianartificer.townstead.switchboard.Switchboard.get(
+                        com.aetherianartificer.townstead.TownsteadConfig.ALLOW_ROOT_CHOICE_IN_DESTINY);
     }
 
     /** Treat an unset origin as the default (everyone is an Overworlder by default). */

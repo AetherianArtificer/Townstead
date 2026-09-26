@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.client.animation;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import net.minecraft.util.Mth;
 
 import java.util.List;
@@ -20,7 +21,7 @@ public final class DebugAnimationSourceAdapter implements AnimationSourceAdapter
 
     @Override
     public boolean isAvailable() {
-        return TownsteadConfig.DEBUG_VILLAGER_AI.get();
+        return Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI);
     }
 
     @Override

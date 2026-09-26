@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.root.ExpressedGenes;
 import com.aetherianartificer.townstead.root.Root;
 import com.aetherianartificer.townstead.root.RootRegistry;
@@ -54,7 +55,7 @@ public final class CannibalismPolicy {
     private CannibalismPolicy() {}
 
     public static Mode mode() {
-        return TownsteadConfig.CANNIBALISM_MODE.get();
+        return Switchboard.get(TownsteadConfig.CANNIBALISM_MODE);
     }
 
     /**

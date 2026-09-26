@@ -104,6 +104,34 @@ public final class TownsteadNetwork {
                         payload.entityId(), payload.familyName(), payload.culture(),
                         payload.order(), payload.familyType(), payload.tradition()));
         // Server -> Client
+        registerS2C(com.aetherianartificer.townstead.switchboard.SwitchboardOpenS2CPayload.class,
+                com.aetherianartificer.townstead.switchboard.SwitchboardOpenS2CPayload::write,
+                com.aetherianartificer.townstead.switchboard.SwitchboardOpenS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardScreen.open(payload));
+        registerC2S(com.aetherianartificer.townstead.rebirth.RebirthRequestC2SPayload.class,
+                com.aetherianartificer.townstead.rebirth.RebirthRequestC2SPayload::write,
+                com.aetherianartificer.townstead.rebirth.RebirthRequestC2SPayload::read,
+                (payload, sp) -> com.aetherianartificer.townstead.rebirth.Rebirth.handleRequest(sp, payload));
+        registerS2C(com.aetherianartificer.townstead.rebirth.CharacterNamesS2CPayload.class,
+                com.aetherianartificer.townstead.rebirth.CharacterNamesS2CPayload::write,
+                com.aetherianartificer.townstead.rebirth.CharacterNamesS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.rebirth.CharacterNameClient.set(payload.names()));
+        registerC2S(com.aetherianartificer.townstead.switchboard.SwitchboardSaveC2SPayload.class,
+                com.aetherianartificer.townstead.switchboard.SwitchboardSaveC2SPayload::write,
+                com.aetherianartificer.townstead.switchboard.SwitchboardSaveC2SPayload::read,
+                (payload, sp) -> com.aetherianartificer.townstead.switchboard.SwitchboardServer.handleSave(sp, payload));
+        registerC2S(com.aetherianartificer.townstead.switchboard.SwitchboardRequestC2SPayload.class,
+                com.aetherianartificer.townstead.switchboard.SwitchboardRequestC2SPayload::write,
+                com.aetherianartificer.townstead.switchboard.SwitchboardRequestC2SPayload::read,
+                (payload, sp) -> com.aetherianartificer.townstead.switchboard.SwitchboardServer.handleRequest(sp));
+        registerS2C(com.aetherianartificer.townstead.root.RootDiscoveredS2CPayload.class,
+                com.aetherianartificer.townstead.root.RootDiscoveredS2CPayload::write,
+                com.aetherianartificer.townstead.root.RootDiscoveredS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.root.RootDiscoveryToast.show(payload));
+        registerS2C(com.aetherianartificer.townstead.switchboard.SwitchboardSyncS2CPayload.class,
+                com.aetherianartificer.townstead.switchboard.SwitchboardSyncS2CPayload::write,
+                com.aetherianartificer.townstead.switchboard.SwitchboardSyncS2CPayload::read,
+                com.aetherianartificer.townstead.switchboard.SwitchboardSyncS2CPayload::apply);
         registerS2C(HungerSyncPayload.class, HungerSyncPayload::write, HungerSyncPayload::read,
                 TownsteadNetwork::handleHungerSync);
         registerS2C(com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload.class,

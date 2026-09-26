@@ -178,7 +178,7 @@ public final class TownsteadKeybinds {
         com.aetherianartificer.townstead.client.input.SyntheticKey.tick();
         tickWheel(mc);
         while (QUEST_LEDGER.consumeClick()) {
-            if (mc.player != null && mc.screen == null) mc.setScreen(new QuestLedgerScreen());
+            if (mc.player != null && mc.screen == null && com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.QUESTS)) mc.setScreen(new QuestLedgerScreen());
         }
         while (TALK.consumeClick()) {
             if (mc.player == null || mc.screen != null) continue;

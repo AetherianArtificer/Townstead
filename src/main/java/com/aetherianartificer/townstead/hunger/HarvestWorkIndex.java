@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.hunger;
 
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+
 import com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry;
 import com.aetherianartificer.townstead.compat.farming.FarmerRemovableWeedCompatRegistry;
 import com.aetherianartificer.townstead.farming.CropProductResolver;
@@ -203,7 +205,7 @@ public final class HarvestWorkIndex {
                 if (!hasWater) {
                     if (isWaterPlaceable(soilState)) {
                         waterTargets.add(soilPos.immutable());
-                    } else if (com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+                    } else if (Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI)) {
                         org.slf4j.LoggerFactory.getLogger("townstead/HarvestWorkIndex").info(
                                 "WATER cell {} dry but not placeable: block={}", soilPos, soilState.getBlock());
                     }
@@ -221,7 +223,7 @@ public final class HarvestWorkIndex {
                 boolean matches = seedMatchesSoil(level, cell);
                 if (seedAllowed && plantable && matches) {
                     plantTargets.add(plantPos.immutable());
-                } else if (com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get() && seedAllowed) {
+                } else if (Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI) && seedAllowed) {
                     org.slf4j.LoggerFactory.getLogger("townstead/HarvestWorkIndex").info(
                             "WATER cell {} has water but no plant target: seed={}, plantPos={}, blockThere={}, blockBelow={}, plantable={}, matches={}",
                             soilPos, cell.seedAssignment(), plantPos,

@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.work.ReachableTargetSelector;
 import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
@@ -75,7 +76,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA caregiver) {
         if (!TownsteadConfig.isVillagerHungerEnabled()) return false;
-        if (!TownsteadConfig.ENABLE_FEEDING_YOUNG.get()) return false;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_FEEDING_YOUNG)) return false;
         if (currentScheduleActivity(caregiver) == Activity.REST) return false;
         if (cooldown > 0) {
             cooldown--;
@@ -101,22 +102,22 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         sourceContainerSlot = null;
         nextFeedTick = 0L;
 
-        if (TownsteadConfig.ENABLE_SELF_INVENTORY_EATING.get() && townstead$hasFood(caregiver)) {
+        if (Switchboard.get(TownsteadConfig.ENABLE_SELF_INVENTORY_EATING) && townstead$hasFood(caregiver)) {
             phase = Phase.FEED;
             BehaviorUtils.setWalkAndLookTargetMemories(caregiver, childTarget, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
 
         phase = Phase.ACQUIRE;
-        if (TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING.get() && townstead$findGroundItem(level, caregiver)) {
+        if (Switchboard.get(TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING) && townstead$findGroundItem(level, caregiver)) {
             BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourceItem, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
-        if (TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() && townstead$findContainerFood(level, caregiver)) {
+        if (Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING) && townstead$findContainerFood(level, caregiver)) {
             BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourcePos, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
-        if (TownsteadConfig.ENABLE_CROP_SOURCING.get() && townstead$findMatureCrop(level, caregiver)) {
+        if (Switchboard.get(TownsteadConfig.ENABLE_CROP_SOURCING) && townstead$findMatureCrop(level, caregiver)) {
             BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourcePos, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
@@ -248,15 +249,15 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         ItemStack food = townstead$findBestFood(caregiver.getInventory());
         if (food.isEmpty()) {
             phase = Phase.ACQUIRE;
-            if (TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING.get() && townstead$findGroundItem(level, caregiver)) {
+            if (Switchboard.get(TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING) && townstead$findGroundItem(level, caregiver)) {
                 BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourceItem, WALK_SPEED, CLOSE_ENOUGH);
                 return;
             }
-            if (TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() && townstead$findContainerFood(level, caregiver)) {
+            if (Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING) && townstead$findContainerFood(level, caregiver)) {
                 BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourcePos, WALK_SPEED, CLOSE_ENOUGH);
                 return;
             }
-            if (TownsteadConfig.ENABLE_CROP_SOURCING.get() && townstead$findMatureCrop(level, caregiver)) {
+            if (Switchboard.get(TownsteadConfig.ENABLE_CROP_SOURCING) && townstead$findMatureCrop(level, caregiver)) {
                 BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourcePos, WALK_SPEED, CLOSE_ENOUGH);
                 return;
             }
@@ -317,7 +318,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
 
     private boolean townstead$mayCareFor(VillagerEntityMCA caregiver, VillagerEntityMCA child) {
         if (townstead$isParentOf(caregiver, child)) return true;
-        if (!TownsteadConfig.ENABLE_NON_PARENT_CAREGIVERS.get()) return false;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_NON_PARENT_CAREGIVERS)) return false;
         if (McaPersonalityCompat.isCrabby(caregiver.getVillagerBrain().getPersonality())) return false;
         return !townstead$parentsNearby(child);
     }

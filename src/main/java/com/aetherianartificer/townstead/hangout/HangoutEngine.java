@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hangout;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
 import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import com.aetherianartificer.townstead.dialogue.contextual.DialogueDirector;
@@ -503,7 +504,7 @@ public final class HangoutEngine {
     }
 
     private static boolean connectedConversations(HangoutActivity.SocialCues cues) {
-        return cues != null && cues.conversations() && TownsteadConfig.ENABLE_CONVERSATIONS.get()
+        return cues != null && cues.conversations() && Switchboard.get(TownsteadConfig.ENABLE_CONVERSATIONS)
                 && !com.aetherianartificer.townstead.dialogue.conversation.ConversationTopics.all().isEmpty();
     }
 
@@ -514,7 +515,7 @@ public final class HangoutEngine {
             removeBeatMember(level, beat, member, success, now);
         }
         HOSTED_SERVICE.forget(beat.id());
-        if (TownsteadConfig.DEBUG_LOGGING.get()) {
+        if (Switchboard.get(TownsteadConfig.DEBUG_LOGGING)) {
             Townstead.LOGGER.info("[Hangouts] ended beat={} venue={} activity={} success={} reason={} age={}",
                     beat.id(), beat.venueDefinition(), beat.activity(), success, reason, now - beat.startedAt());
         }
@@ -572,7 +573,7 @@ public final class HangoutEngine {
         }
         if (success) visit.complete(reason); else visit.interrupt(reason);
         HangoutEmbodiment.recoverNearby(level, visit.venueAnchor());
-        if (TownsteadConfig.DEBUG_LOGGING.get()) {
+        if (Switchboard.get(TownsteadConfig.DEBUG_LOGGING)) {
             Townstead.LOGGER.info("[Hangouts] ended visit={} visitor={} venue={} success={} reason={} age={} pos={}",
                     visit.id(), visitorId, visit.venueDefinition(), success, reason,
                     now - visit.createdAt(), villager == null ? "missing" : villager.blockPosition().toShortString());
@@ -651,7 +652,7 @@ public final class HangoutEngine {
                     course, index, elapsed, now, test(activity.serviceWhen(), guest),
                     test(course.eligibleWhen(), guest), amenity != null,
                     () -> amenity != null && Amenities.use(level, guest, amenity));
-            if (result.terminal() && TownsteadConfig.DEBUG_LOGGING.get()) {
+            if (result.terminal() && Switchboard.get(TownsteadConfig.DEBUG_LOGGING)) {
                 Townstead.LOGGER.info("[Hangouts] service result beat={} guest={} course={} status={} reason={}",
                         beat.id(), guest.getName().getString(), course.id(), result.status(), result.reason());
             }
@@ -1013,7 +1014,7 @@ public final class HangoutEngine {
 
     private static void traceVisitStart(VillagerEntityMCA villager, HangoutVisit visit,
                                         HangoutVenue venue, HangoutPolicy policy, long now) {
-        if (!TownsteadConfig.DEBUG_LOGGING.get()) return;
+        if (!Switchboard.get(TownsteadConfig.DEBUG_LOGGING)) return;
         LAST_DIAGNOSTIC.put(villager.getUUID(), now);
         String personality = basePersonalityKey(villager);
         Townstead.LOGGER.info("[Hangouts] visit started id={} visitor={} venue={} personality={} tags={} affinity={} spot={} approach={}",
@@ -1024,14 +1025,14 @@ public final class HangoutEngine {
     }
 
     private static void traceArrival(VillagerEntityMCA villager, HangoutVisit visit, long now) {
-        if (!TownsteadConfig.DEBUG_LOGGING.get()) return;
+        if (!Switchboard.get(TownsteadConfig.DEBUG_LOGGING)) return;
         Townstead.LOGGER.info("[Hangouts] visitor arrived id={} visitor={} venue={} travelTicks={} departIn={}",
                 visit.id(), villager.getName().getString(), visit.venueDefinition(),
                 now - visit.createdAt(), visit.deadline() - now);
     }
 
     private static void traceTravel(VillagerEntityMCA villager, HangoutVisit visit, long now) {
-        if (!TownsteadConfig.DEBUG_LOGGING.get() || (now - visit.createdAt()) % 100L != 0L) return;
+        if (!Switchboard.get(TownsteadConfig.DEBUG_LOGGING) || (now - visit.createdAt()) % 100L != 0L) return;
         Townstead.LOGGER.info(
                 "[Hangouts] visitor traveling id={} visitor={} pos={} approach={} distance={} navigationDone={} ownsWalkTarget={}",
                 visit.id(), villager.getName().getString(), villager.blockPosition().toShortString(),
@@ -1041,13 +1042,13 @@ public final class HangoutEngine {
     }
 
     private static void traceBeatStart(HangoutBeat beat) {
-        if (!TownsteadConfig.DEBUG_LOGGING.get()) return;
+        if (!Switchboard.get(TownsteadConfig.DEBUG_LOGGING)) return;
         Townstead.LOGGER.info("[Hangouts] beat started id={} venue={} activity={} roles={}",
                 beat.id(), beat.venueDefinition(), beat.activity(), beat.roles());
     }
 
     private static void traceRejection(VillagerEntityMCA villager, long now, String reason) {
-        if (!TownsteadConfig.DEBUG_LOGGING.get()) return;
+        if (!Switchboard.get(TownsteadConfig.DEBUG_LOGGING)) return;
         long previous = LAST_DIAGNOSTIC.getOrDefault(villager.getUUID(), Long.MIN_VALUE / 2);
         if (now - previous < 1200L) return;
         LAST_DIAGNOSTIC.put(villager.getUUID(), now);

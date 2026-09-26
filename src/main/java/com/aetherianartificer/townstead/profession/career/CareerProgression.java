@@ -50,12 +50,19 @@ public final class CareerProgression {
         setPrimaryIfAbsent(worker, career);
         int xp = withSkillBonus(worker, career, baseXp, magnitude);
         Set<ResourceLocation> combosBefore = comboIds(worker);
-        ProfessionProgress.GainResult result = ProfessionProgress.addXp(store, career, xp, gameTime);
+        int xpBefore = ProfessionProgress.getXp(store, career);
+        com.aetherianartificer.townstead.rebirth.Relearning.Boost boost = worker instanceof Player player
+                ? com.aetherianartificer.townstead.rebirth.Relearning.boost(player, career, xp)
+                : new com.aetherianartificer.townstead.rebirth.Relearning.Boost(xp, 1);
+        ProfessionProgress.GainResult result = ProfessionProgress.addXp(store, career, boost.xp(), gameTime,
+                true, boost.capScale());
         syncMerchantLevel(worker, career, result);
         Set<ResourceLocation> affected = Set.of(career);
         Map<ResourceLocation, ProfessionProgress.GainResult> gains = new java.util.LinkedHashMap<>();
         gains.put(career, result);
         notifyTierUps(worker, gains);
+        int insight = insightGained(career, xpBefore, ProfessionProgress.getXp(store, career));
+        notifyInsight(worker, insight, result.tierUp());
         if (result.tierUp()) {
             notifyComboUnlocks(worker, combosBefore);
         }
@@ -71,9 +78,11 @@ public final class CareerProgression {
                         def == null ? Component.literal(acquired.toString()) : def.displayName()), false);
             }
         }
-        boolean tieredUp = gains.values().stream().anyMatch(ProfessionProgress.GainResult::tierUp);
-        if (tieredUp && worker instanceof VillagerEntityMCA) {
+        if (insight > 0 && worker instanceof VillagerEntityMCA) {
             SkillPoints.autoSpend(worker, affected);
+        }
+        if ((insight > 0 || boost.capScale() > 1) && worker instanceof net.minecraft.server.level.ServerPlayer player) {
+            com.aetherianartificer.townstead.rebirth.Relearning.restore(player);
         }
         return result;
     }
@@ -90,14 +99,22 @@ public final class CareerProgression {
         if (store == null) return new ProfessionProgress.GainResult(0, 1, 1, false);
         setPrimaryIfAbsent(worker, career);
         Set<ResourceLocation> combosBefore = comboIds(worker);
-        ProfessionProgress.GainResult result = ProfessionProgress.addXp(store, career, amount, gameTime, respectDailyCap);
+        int xpBefore = ProfessionProgress.getXp(store, career);
+        com.aetherianartificer.townstead.rebirth.Relearning.Boost boost = worker instanceof Player player
+                ? com.aetherianartificer.townstead.rebirth.Relearning.boost(player, career, amount)
+                : new com.aetherianartificer.townstead.rebirth.Relearning.Boost(amount, 1);
+        ProfessionProgress.GainResult result = ProfessionProgress.addXp(store, career, boost.xp(), gameTime,
+                respectDailyCap, boost.capScale());
         syncMerchantLevel(worker, career, result);
         Map<ResourceLocation, ProfessionProgress.GainResult> gains = new java.util.LinkedHashMap<>();
         gains.put(career, result);
         notifyTierUps(worker, gains);
-        if (result.tierUp()) {
-            notifyComboUnlocks(worker, combosBefore);
-            if (worker instanceof VillagerEntityMCA) SkillPoints.autoSpend(worker, Set.of(career));
+        int insight = insightGained(career, xpBefore, ProfessionProgress.getXp(store, career));
+        notifyInsight(worker, insight, result.tierUp());
+        if (result.tierUp()) notifyComboUnlocks(worker, combosBefore);
+        if (insight > 0 && worker instanceof VillagerEntityMCA) SkillPoints.autoSpend(worker, Set.of(career));
+        if ((insight > 0 || boost.capScale() > 1) && worker instanceof net.minecraft.server.level.ServerPlayer player) {
+            com.aetherianartificer.townstead.rebirth.Relearning.restore(player);
         }
         return result;
     }
@@ -121,7 +138,7 @@ public final class CareerProgression {
         }
     }
 
-    /** Rank-up is the loop's payoff: name the new rank and any skill points it brought. */
+    /** Rank-up is a payoff of its own: name the new rank. Insight is announced separately. */
     private static void notifyTierUps(LivingEntity worker,
                                       Map<ResourceLocation, ProfessionProgress.GainResult> gains) {
         // Reaching a rank is a moment in the work engine, so the chronicle hears about it
@@ -149,16 +166,26 @@ public final class CareerProgression {
             any = true;
             player.displayClientMessage(Component.translatable("townstead.career.levelup",
                     def.levelName(gain.tierAfter()), def.displayName()), false);
-            int points = def.skillPointsThrough(gain.tierAfter())
-                    - def.skillPointsThrough(gain.tierBefore());
-            if (points > 0) {
-                player.displayClientMessage(Component.translatable(
-                        "townstead.career.levelup.points", points), false);
-            }
         }
         if (any && worker instanceof net.minecraft.server.level.ServerPlayer sp) {
             sp.playNotifySound(net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP,
                     net.minecraft.sounds.SoundSource.PLAYERS, 0.55f, 1.15f);
+        }
+    }
+
+    private static int insightGained(ResourceLocation career, int xpBefore, int xpAfter) {
+        ProfessionDef def = ProfessionDefs.byId(career);
+        return def == null ? 0 : Math.max(0, def.insightAt(xpAfter) - def.insightAt(xpBefore));
+    }
+
+    /** Checkpoints pay between ranks, so Insight is announced on its own, not only on rank-up. */
+    private static void notifyInsight(LivingEntity worker, int insight, boolean tieredUp) {
+        if (insight <= 0 || !(worker instanceof Player player)) return;
+        player.displayClientMessage(Component.translatable(
+                "townstead.career.levelup.points", insight), false);
+        if (!tieredUp && worker instanceof net.minecraft.server.level.ServerPlayer sp) {
+            sp.playNotifySound(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP,
+                    net.minecraft.sounds.SoundSource.PLAYERS, 0.5f, 0.8f);
         }
     }
 

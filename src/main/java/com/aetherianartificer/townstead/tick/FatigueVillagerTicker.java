@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.tick;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
@@ -182,13 +183,14 @@ public final class FatigueVillagerTicker {
                 if (inCombat) {
                     rate *= FatigueData.COMBAT_MULTIPLIER;
                 }
-                float alignedMult = TownsteadConfig.FATIGUE_NOCTURNAL_MULTIPLIER.get().floatValue();
-                float misalignedMult = TownsteadConfig.FATIGUE_MISALIGNED_MULTIPLIER.get().floatValue();
+                float alignedMult = Switchboard.get(TownsteadConfig.FATIGUE_NOCTURNAL_MULTIPLIER).floatValue();
+                float misalignedMult = Switchboard.get(TownsteadConfig.FATIGUE_MISALIGNED_MULTIPLIER).floatValue();
                 if (isCycleAligned) {
                     rate *= alignedMult;
                 } else {
                     rate *= misalignedMult;
                 }
+                rate *= (float) com.aetherianartificer.townstead.needs.NeedPace.pace();
                 applyFatigueDelta(needs, state, rate);
             }
         }
@@ -231,7 +233,7 @@ public final class FatigueVillagerTicker {
                 changed = true;
                 com.aetherianartificer.townstead.api.impl.v1.ApiEvents.recovered(self,
                         FatigueData.MAX_FATIGUE - currentFatigue);
-                if (TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
+                if (Switchboard.get(TownsteadConfig.ENABLE_FATIGUE_ALERTS)) {
                     self.sendChatToAllAround("dialogue.chat.energy.recovered/"
                             + (1 + level.random.nextInt(4)));
                 }
@@ -245,7 +247,7 @@ public final class FatigueVillagerTicker {
                 changed = true;
                 com.aetherianartificer.townstead.api.impl.v1.ApiEvents.collapsed(self,
                         FatigueData.MAX_FATIGUE - currentFatigue);
-                if (TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
+                if (Switchboard.get(TownsteadConfig.ENABLE_FATIGUE_ALERTS)) {
                     self.sendChatToAllAround("dialogue.chat.energy.collapsed/"
                             + (1 + level.random.nextInt(4)));
                 }
@@ -257,7 +259,7 @@ public final class FatigueVillagerTicker {
                 needs.setGated(false);
                 needs.setCollapsed(false);
                 changed = true;
-                if (wasCollapsedHere && TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
+                if (wasCollapsedHere && Switchboard.get(TownsteadConfig.ENABLE_FATIGUE_ALERTS)) {
                     self.sendChatToAllAround("dialogue.chat.energy.recovered/"
                             + (1 + level.random.nextInt(4)));
                 }

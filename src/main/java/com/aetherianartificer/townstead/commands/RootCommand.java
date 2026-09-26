@@ -1,7 +1,6 @@
 package com.aetherianartificer.townstead.commands;
 
 import com.aetherianartificer.townstead.root.RootAssignment;
-import com.aetherianartificer.townstead.root.RootBlocklist;
 import com.aetherianartificer.townstead.root.RootRegistry;
 import com.aetherianartificer.townstead.root.RootServerLogic;
 import com.mojang.brigadier.CommandDispatcher;
@@ -20,7 +19,8 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * {@code /townstead root set <targets> <root>} and {@code /townstead root get <target>}.
+ * {@code /townstead root set <targets> <root>}, {@code /townstead root get <target>}, and
+ * {@code /townstead root discover|forget <root>} for Discoverable Roots.
  * Set goes through {@link RootAssignment}, the same path as the public API.
  */
 public final class RootCommand {
@@ -30,7 +30,7 @@ public final class RootCommand {
     private static final SuggestionProvider<CommandSourceStack> ROOT_IDS = (c, b) -> {
         List<String> ids = new ArrayList<>();
         RootRegistry.all().forEach(r -> {
-            if (!RootBlocklist.isBlocked(r.id())) ids.add("\"" + r.id() + "\"");
+            if (!com.aetherianartificer.townstead.root.RootRules.isOff(r.id())) ids.add("\"" + r.id() + "\"");
         });
         return SharedSuggestionProvider.suggest(ids, b);
     };
@@ -46,7 +46,31 @@ public final class RootCommand {
                                                 StringArgumentType.getString(c, "id"))))))
                 .then(Commands.literal("get")
                         .then(Commands.argument("target", EntityArgument.entity())
-                                .executes(c -> get(c.getSource(), EntityArgument.getEntity(c, "target")))))));
+                                .executes(c -> get(c.getSource(), EntityArgument.getEntity(c, "target")))))
+                .then(Commands.literal("discover")
+                        .then(Commands.argument("id", StringArgumentType.string()).suggests(ROOT_IDS)
+                                .executes(c -> discover(c.getSource(), StringArgumentType.getString(c, "id"), true))))
+                .then(Commands.literal("forget")
+                        .then(Commands.argument("id", StringArgumentType.string()).suggests(ROOT_IDS)
+                                .executes(c -> discover(c.getSource(), StringArgumentType.getString(c, "id"), false))))));
+    }
+
+    private static int discover(CommandSourceStack source, String rawId, boolean discover) {
+        ResourceLocation id = RootServerLogic.resolveKnown(rawId);
+        if (id == null) {
+            source.sendFailure(Component.translatable("command.townstead.root.unknown", rawId));
+            return 0;
+        }
+        boolean changed = discover
+                ? com.aetherianartificer.townstead.root.RootDiscovery.discover(source.getServer(), id, source.getTextName())
+                : com.aetherianartificer.townstead.root.RootDiscovery.forget(source.getServer(), id);
+        String key = "command.townstead.root." + (discover ? "discover" : "forget");
+        if (!changed) {
+            source.sendFailure(Component.translatable(key + ".unchanged", id.toString()));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.translatable(key, id.toString()), true);
+        return 1;
     }
 
     private static int set(CommandSourceStack source, Collection<? extends Entity> targets, String rawId) {

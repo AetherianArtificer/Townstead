@@ -56,6 +56,10 @@ repositories {
         url = uri("https://www.cursemaven.com")
         content { includeGroup("curse.maven") }
     }
+    // EMI and REI plugin APIs (runtime optional; each plugin class is only loaded by its viewer's scan).
+    maven { url = uri("https://maven.terraformersmc.com/releases") }
+    maven { url = uri("https://maven.shedaniel.me") }
+    maven { url = uri("https://maven.architectury.dev") }
     mavenCentral()
 }
 
@@ -73,6 +77,9 @@ dependencies {
     // JEI plugin API (runtime optional; the plugin class is only loaded by JEI's scan)
     compileOnly("mezz.jei:jei-1.21.1-common-api:19.39.0.370")
     compileOnly("mezz.jei:jei-1.21.1-neoforge-api:19.39.0.370")
+    compileOnly("dev.emi:emi-neoforge:1.1.24+1.21.1:api")
+    compileOnly("me.shedaniel:RoughlyEnoughItems-api-neoforge:16.0.799") { isTransitive = false }
+    compileOnly("dev.architectury:architectury-neoforge:13.0.8") { isTransitive = false }
     // Iron's Spells API, for reading what is actually in a quick-cast slot. compileOnly and
     // non-transitive: the bridge is guarded by ModList, so nothing here is required at runtime.
     compileOnly("io.redspace:irons_spellbooks:1.21.1-3.16.2:api") { isTransitive = false }

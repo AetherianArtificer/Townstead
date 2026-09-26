@@ -87,7 +87,8 @@ public final class RootCatalog {
                     hair.enabled(), hair.colorRanges(), hair.colors(), hair.gradients(),
                     stageRigsFor(origin.id()),
                     spc != null ? spc.characterEditor() : null,
-                    RootBlocklist.isBlocked(origin.id())));
+                    RootRules.isOff(origin.id()),
+                    RootRules.playersChoose(origin.id())));
         }
         // Every registered gene gets a catalog entry, not just origin-wired ones: a gene
         // granted outright (/townstead gene grant, or a pack gene awaiting wiring) still

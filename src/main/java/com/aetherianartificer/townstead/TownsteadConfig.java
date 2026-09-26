@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead;
 
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+
 import net.minecraft.core.registries.Registries;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -19,7 +21,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 import java.util.Set;
 
 public final class TownsteadConfig {
@@ -33,6 +38,12 @@ public final class TownsteadConfig {
     public enum ResourceHudExitStyle { INSTANT, FADE, SLIDE, FLICKER }
 
     private static volatile ProtectedStorageRules protectedStorageRules = ProtectedStorageRules.empty();
+
+    /** Every system a world can switch off, in the order the setup screen lists them. */
+    public static final List<String> SYSTEM_NAMES = List.of("careers", "work", "farming", "fishing", "shepherding",
+            "hospitality", "clothing", "shifts", "hangouts", "reactions", "roots", "cultures", "naming",
+            "chronicles", "politics", "spirit", "calendar", "quests");
+    public static final Map<String, Supplier<Boolean>> SYSTEMS;
 
     //? if neoforge {
     public static final ModConfigSpec SERVER_SPEC;
@@ -50,6 +61,8 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_EMPTY_CONTAINER_DROPOFF;
     public static final ModConfigSpec.BooleanValue ENABLE_CROP_THIRST_SOURCING;
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_HUNGER;
+    public static final ModConfigSpec.DoubleValue NEEDS_PACE;
+    public static final ModConfigSpec.BooleanValue NEEDS_CAN_KILL;
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_THIRST;
     public static final ModConfigSpec.BooleanValue THIRST_LETHAL_FALLBACK;
     public static final ModConfigSpec.BooleanValue ENABLE_COOK_WATER_PURIFICATION;
@@ -88,6 +101,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ModConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
+    public static final ModConfigSpec.BooleanValue SHOW_VILLAGER_AGE;
     public static final ModConfigSpec.BooleanValue USE_RPG_DIALOGUE;
     public static final ModConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.temperature.TemperatureData.Unit> TEMPERATURE_UNIT;
@@ -123,6 +137,10 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_LINEAGES;
+    public static final ModConfigSpec.BooleanValue ALLOW_ROOT_CHOICE_IN_DESTINY;
+    public static final ModConfigSpec.IntValue ROOT_DISCOVERY_HEARTS;
+    public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.rebirth.RebirthMode> REBIRTH_MODE;
+    public static final ModConfigSpec.IntValue REBIRTH_RELEARN_SPEED;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.naming.NameStyle> NAME_STYLE;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.naming.NameStyle> NAMEPLATE_NAME_STYLE;
     public static final ModConfigSpec.BooleanValue ENABLE_STABLE_NAMING_REGISTERS;
@@ -130,6 +148,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue CALENDAR_REAL_CLOCK;
     public static final ModConfigSpec.DoubleValue AGING_SCALE;
     public static final ModConfigSpec.BooleanValue DISABLE_VILLAGER_AGING;
+    public static final ModConfigSpec.BooleanValue ENABLE_SENIORS;
     public static final ModConfigSpec.BooleanValue CALENDAR_RANDOMIZE_START;
     public static final ModConfigSpec.IntValue CALENDAR_START_YEAR_MIN;
     public static final ModConfigSpec.IntValue CALENDAR_START_YEAR_MAX;
@@ -149,6 +168,8 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_EMPTY_CONTAINER_DROPOFF;
     public static final ForgeConfigSpec.BooleanValue ENABLE_CROP_THIRST_SOURCING;
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_HUNGER;
+    public static final ForgeConfigSpec.DoubleValue NEEDS_PACE;
+    public static final ForgeConfigSpec.BooleanValue NEEDS_CAN_KILL;
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_THIRST;
     public static final ForgeConfigSpec.BooleanValue THIRST_LETHAL_FALLBACK;
     public static final ForgeConfigSpec.BooleanValue ENABLE_COOK_WATER_PURIFICATION;
@@ -187,6 +208,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PROTECTED_STORAGE_TAGS;
     public static final ForgeConfigSpec.BooleanValue MUTE_MOOD_VOCALIZATIONS;
     public static final ForgeConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
+    public static final ForgeConfigSpec.BooleanValue SHOW_VILLAGER_AGE;
     public static final ForgeConfigSpec.BooleanValue USE_RPG_DIALOGUE;
     public static final ForgeConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.temperature.TemperatureData.Unit> TEMPERATURE_UNIT;
@@ -222,6 +244,10 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_LINEAGES;
+    public static final ForgeConfigSpec.BooleanValue ALLOW_ROOT_CHOICE_IN_DESTINY;
+    public static final ForgeConfigSpec.IntValue ROOT_DISCOVERY_HEARTS;
+    public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.rebirth.RebirthMode> REBIRTH_MODE;
+    public static final ForgeConfigSpec.IntValue REBIRTH_RELEARN_SPEED;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.naming.NameStyle> NAME_STYLE;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.naming.NameStyle> NAMEPLATE_NAME_STYLE;
     public static final ForgeConfigSpec.BooleanValue ENABLE_STABLE_NAMING_REGISTERS;
@@ -229,6 +255,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue CALENDAR_REAL_CLOCK;
     public static final ForgeConfigSpec.DoubleValue AGING_SCALE;
     public static final ForgeConfigSpec.BooleanValue DISABLE_VILLAGER_AGING;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_SENIORS;
     public static final ForgeConfigSpec.BooleanValue CALENDAR_RANDOMIZE_START;
     public static final ForgeConfigSpec.IntValue CALENDAR_START_YEAR_MIN;
     public static final ForgeConfigSpec.IntValue CALENDAR_START_YEAR_MAX;
@@ -241,8 +268,27 @@ public final class TownsteadConfig {
         /*ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
         *///?}
 
+        // ── Systems ──
+        b.translation("townstead.configuration.systems").push("systems");
+        Map<String, Supplier<Boolean>> systems = new LinkedHashMap<>();
+        for (String system : SYSTEM_NAMES) {
+            systems.put(system, b.translation("townstead.configuration.systems." + system)
+                    .comment("Run the " + system + " system in this world. When false it stops acting; its saved data is kept.")
+                    .define(system, true));
+        }
+        SYSTEMS = Collections.unmodifiableMap(systems);
+        b.pop();
+
         // ── Needs ──
         b.translation("townstead.configuration.needs").push("needs");
+        NEEDS_PACE = b
+                .translation("townstead.configuration.needs.pace")
+                .comment("How fast hunger, thirst and tiredness build up. 1.0 is normal, 0.5 is half as fast.")
+                .defineInRange("pace", 1.0, 0.25, 3.0);
+        NEEDS_CAN_KILL = b
+                .translation("townstead.configuration.needs.canKill")
+                .comment("Villagers with no food or no water left take damage, like a starving player. Babies are spared.")
+                .define("canKill", false);
         b.translation("townstead.configuration.needs.hunger").push("hunger");
         ENABLE_VILLAGER_HUNGER = b
                 .translation("townstead.configuration.needs.hunger.enableVillagerHunger")
@@ -571,6 +617,25 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.roots.blockedLineages")
                 .comment("Lineage ids to disable. Blocks every root that selects a listed lineage.")
                 .defineListAllowEmpty("blockedLineages", List.of(), TownsteadConfig::isValidResourceLocationString);
+        ALLOW_ROOT_CHOICE_IN_DESTINY = b
+                .translation("townstead.configuration.roots.allowRootChoiceInDestiny")
+                .comment("Let players choose their own Root in Destiny. When false, players keep the default Root unless an operator changes it.")
+                .define("allowRootChoiceInDestiny", true);
+        ROOT_DISCOVERY_HEARTS = b
+                .translation("townstead.configuration.roots.discoveryHearts")
+                .comment("Hearts a player needs with a villager of a Discoverable Root to discover it for the whole server.")
+                .defineInRange("discoveryHearts", 50, 1, 100);
+        b.pop();
+
+        b.push("rebirth");
+        REBIRTH_MODE = b
+                .translation("townstead.configuration.rebirth.mode")
+                .comment("OFF: death works as usual. OPTIONAL: the death screen offers to be reborn as a new person. FORCED: every death is a rebirth.")
+                .defineEnum("mode", com.aetherianartificer.townstead.rebirth.RebirthMode.OPTIONAL);
+        REBIRTH_RELEARN_SPEED = b
+                .translation("townstead.configuration.rebirth.relearnSpeed")
+                .comment("How many times faster a reborn player regains career XP, after reading their old journal, until they are back at their old level.")
+                .defineInRange("relearnSpeed", 3, 1, 10);
         b.pop();
 
         // ── Naming ──
@@ -628,6 +693,11 @@ public final class TownsteadConfig {
                 .comment("When true, villagers hold their current life stage and apparent age, and the",
                          "away-time age catch-up is skipped. Animals still grow normally while loaded.")
                 .define("disableVillagerAging", false);
+        ENABLE_SENIORS = b
+                .translation("townstead.configuration.calendar.enableSeniors")
+                .comment("When false, villagers stay adults instead of becoming seniors, and current seniors",
+                         "become adults again.")
+                .define("enableSeniors", true);
         CALENDAR_RANDOMIZE_START = b
                 .translation("townstead.configuration.calendar.randomizeStart")
                 .comment("APPLIES ONLY TO NEW WORLDS. Editing this on an existing save has no effect.",
@@ -700,6 +770,10 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.dialogue.useRpgDialogue")
                 .comment("Show the Townstead visual overlay on MCA's talk screen. Set to false to use MCA's default talk screen.")
                 .define("useRpgDialogue", true);
+        SHOW_VILLAGER_AGE = clientBuilder
+                .translation("townstead.configuration.dialogue.showVillagerAge")
+                .comment("Show a villager's age next to their birthday when you hover their name on the interact screen.")
+                .define("showVillagerAge", true);
         clientBuilder.pop();
 
         clientBuilder.translation("townstead.configuration.needs_display").push("needs_display");
@@ -793,73 +867,73 @@ public final class TownsteadConfig {
     public static boolean isTownsteadCookEnabled() {
         if (!ModCompat.hasKitchenProvider()) return false;
         if (ENABLE_TOWNSTEAD_COOK == null) return true;
-        return ENABLE_TOWNSTEAD_COOK.get();
+        return Switchboard.get(ENABLE_TOWNSTEAD_COOK);
     }
 
     public static boolean isSelfInventoryDrinkingEnabled() {
-        return ENABLE_SELF_INVENTORY_DRINKING != null && ENABLE_SELF_INVENTORY_DRINKING.get();
+        return ENABLE_SELF_INVENTORY_DRINKING != null && Switchboard.get(ENABLE_SELF_INVENTORY_DRINKING);
     }
 
     public static boolean isGroundItemThirstSourcingEnabled() {
-        return ENABLE_GROUND_ITEM_THIRST_SOURCING != null && ENABLE_GROUND_ITEM_THIRST_SOURCING.get();
+        return ENABLE_GROUND_ITEM_THIRST_SOURCING != null && Switchboard.get(ENABLE_GROUND_ITEM_THIRST_SOURCING);
     }
 
     public static boolean isContainerThirstSourcingEnabled() {
-        return ENABLE_CONTAINER_THIRST_SOURCING != null && ENABLE_CONTAINER_THIRST_SOURCING.get();
+        return ENABLE_CONTAINER_THIRST_SOURCING != null && Switchboard.get(ENABLE_CONTAINER_THIRST_SOURCING);
     }
 
     public static boolean isCropThirstSourcingEnabled() {
-        return ENABLE_CROP_THIRST_SOURCING != null && ENABLE_CROP_THIRST_SOURCING.get();
+        return ENABLE_CROP_THIRST_SOURCING != null && Switchboard.get(ENABLE_CROP_THIRST_SOURCING);
     }
 
     public static boolean isVillagerHungerEnabled() {
-        return ENABLE_VILLAGER_HUNGER.get();
+        return Switchboard.get(ENABLE_VILLAGER_HUNGER);
     }
 
     public static boolean isVillagerThirstEnabled() {
-        return ENABLE_VILLAGER_THIRST != null && ENABLE_VILLAGER_THIRST.get()
+        return ENABLE_VILLAGER_THIRST != null && Switchboard.get(ENABLE_VILLAGER_THIRST)
                 && com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver.isActive();
     }
 
     public static boolean isThirstLethalFallbackEnabled() {
-        return THIRST_LETHAL_FALLBACK != null && THIRST_LETHAL_FALLBACK.get();
+        return THIRST_LETHAL_FALLBACK != null && Switchboard.get(THIRST_LETHAL_FALLBACK);
     }
 
     public static boolean isCookWaterPurificationEnabled() {
-        return ENABLE_COOK_WATER_PURIFICATION != null && ENABLE_COOK_WATER_PURIFICATION.get();
+        return ENABLE_COOK_WATER_PURIFICATION != null && Switchboard.get(ENABLE_COOK_WATER_PURIFICATION);
     }
 
     /** Never throws: falls back to "auto" before the server config is loaded. */
     public static String preferredThirstBackend() {
         if (PREFERRED_THIRST_BACKEND == null) return "auto";
         try {
-            return PREFERRED_THIRST_BACKEND.get();
+            return Switchboard.get(PREFERRED_THIRST_BACKEND);
         } catch (IllegalStateException e) {
             return "auto";
         }
     }
 
     public static boolean isPreferKitchenStorageForEmptyBottlesEnabled() {
-        return PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES != null && PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES.get();
+        return PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES != null && Switchboard.get(PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES);
     }
 
     public static boolean isEmptyContainerDropoffEnabled() {
-        if (ENABLE_EMPTY_CONTAINER_DROPOFF != null && !ENABLE_EMPTY_CONTAINER_DROPOFF.get()) return false;
+        if (ENABLE_EMPTY_CONTAINER_DROPOFF != null && !Switchboard.get(ENABLE_EMPTY_CONTAINER_DROPOFF)) return false;
         // Back-compat: honor the old thirst-scoped empty-bottle toggle if a user turned it off.
-        if (PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES != null && !PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES.get()) return false;
+        if (PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES != null && !Switchboard.get(PREFER_KITCHEN_STORAGE_FOR_EMPTY_BOTTLES)) return false;
         return true;
     }
 
     public static boolean isWorkFeedbackEnabled() {
-        return ENABLE_WORK_FEEDBACK.get();
+        return Switchboard.get(ENABLE_WORK_FEEDBACK);
     }
 
     public static boolean isRepeatedWorkRequestsEnabled() {
-        return ENABLE_REPEATED_WORK_REQUESTS.get();
+        return Switchboard.get(ENABLE_REPEATED_WORK_REQUESTS);
     }
 
     public static int minimumWorkRequestIntervalTicks() {
-        return Math.max(200, MINIMUM_WORK_REQUEST_INTERVAL_TICKS.get());
+        return Math.max(200, Switchboard.get(MINIMUM_WORK_REQUEST_INTERVAL_TICKS));
     }
 
     public static boolean isMoodVocalizationMuteEnabled() {
@@ -884,18 +958,18 @@ public final class TownsteadConfig {
     }
 
     public static boolean isHydratingYoungEnabled() {
-        return ENABLE_HYDRATING_YOUNG != null && ENABLE_HYDRATING_YOUNG.get();
+        return ENABLE_HYDRATING_YOUNG != null && Switchboard.get(ENABLE_HYDRATING_YOUNG);
     }
 
     public static boolean isVillagerFatigueEnabled() {
-        return ENABLE_VILLAGER_FATIGUE.get();
+        return Switchboard.get(ENABLE_VILLAGER_FATIGUE);
     }
 
     /** Whether API writes attributed to {@code namespace} are refused. Never throws. */
     public static boolean isApiSourceDenied(String namespace) {
         if (namespace == null || API_DENIED_WRITE_SOURCES == null) return false;
         try {
-            for (String denied : API_DENIED_WRITE_SOURCES.get()) {
+            for (String denied : Switchboard.get(API_DENIED_WRITE_SOURCES)) {
                 if (namespace.equalsIgnoreCase(denied)) return true;
             }
         } catch (IllegalStateException e) {
@@ -907,7 +981,7 @@ public final class TownsteadConfig {
     public static boolean isVillagerTemperatureEnabled() {
         if (ENABLE_VILLAGER_TEMPERATURE == null) return false;
         try {
-            return ENABLE_VILLAGER_TEMPERATURE.get();
+            return Switchboard.get(ENABLE_VILLAGER_TEMPERATURE);
         } catch (IllegalStateException e) {
             return false;
         }
@@ -917,7 +991,7 @@ public final class TownsteadConfig {
     public static String preferredTemperatureBackend() {
         if (PREFERRED_TEMPERATURE_BACKEND == null) return "auto";
         try {
-            return PREFERRED_TEMPERATURE_BACKEND.get();
+            return Switchboard.get(PREFERRED_TEMPERATURE_BACKEND);
         } catch (IllegalStateException e) {
             return "auto";
         }
@@ -934,13 +1008,13 @@ public final class TownsteadConfig {
     }
 
     public static boolean isVillagerSleepDebugEnabled() {
-        return DEBUG_VILLAGER_SLEEP.get();
+        return Switchboard.get(DEBUG_VILLAGER_SLEEP);
     }
 
     /** Never throws: empty before the server config is loaded. */
     public static List<? extends String> blockedRootIds() {
         try {
-            return BLOCKED_ROOTS.get();
+            return Switchboard.get(BLOCKED_ROOTS);
         } catch (IllegalStateException | NullPointerException e) {
             return List.of();
         }
@@ -949,7 +1023,7 @@ public final class TownsteadConfig {
     /** Never throws: empty before the server config is loaded. */
     public static List<? extends String> blockedSpeciesIds() {
         try {
-            return BLOCKED_SPECIES.get();
+            return Switchboard.get(BLOCKED_SPECIES);
         } catch (IllegalStateException | NullPointerException e) {
             return List.of();
         }
@@ -958,7 +1032,7 @@ public final class TownsteadConfig {
     /** Never throws: empty before the server config is loaded. */
     public static List<? extends String> blockedAncestryIds() {
         try {
-            return BLOCKED_ANCESTRIES.get();
+            return Switchboard.get(BLOCKED_ANCESTRIES);
         } catch (IllegalStateException | NullPointerException e) {
             return List.of();
         }
@@ -967,54 +1041,58 @@ public final class TownsteadConfig {
     /** Never throws: empty before the server config is loaded. */
     public static List<? extends String> blockedLineageIds() {
         try {
-            return BLOCKED_LINEAGES.get();
+            return Switchboard.get(BLOCKED_LINEAGES);
         } catch (IllegalStateException | NullPointerException e) {
             return List.of();
         }
     }
 
     public static String getCalendarProfile() {
-        return CALENDAR_PROFILE.get();
+        return Switchboard.get(CALENDAR_PROFILE);
     }
 
     public static String getCalendarTimeMode() {
-        return CALENDAR_REAL_CLOCK.get() ? "real_clock" : "normal";
+        return Switchboard.get(CALENDAR_REAL_CLOCK) ? "real_clock" : "normal";
     }
 
     public static boolean isCalendarRealClockMode() {
-        return CALENDAR_REAL_CLOCK.get();
+        return Switchboard.get(CALENDAR_REAL_CLOCK);
     }
 
     /** Game-days per narrative year — the species-neutral aging rate (see agingScale config). */
     public static double getAgingScale() {
-        return AGING_SCALE.get();
+        return Switchboard.get(AGING_SCALE);
+    }
+
+    public static boolean areSeniorsEnabled() {
+        return Switchboard.get(ENABLE_SENIORS);
     }
 
     /** True when villagers should never change life stage and away-time age catch-up is suppressed. */
     public static boolean isVillagerAgingDisabled() {
-        return DISABLE_VILLAGER_AGING.get();
+        return Switchboard.get(DISABLE_VILLAGER_AGING);
     }
 
     public static boolean isCalendarRandomizeStartEnabled() {
-        return CALENDAR_RANDOMIZE_START.get();
+        return Switchboard.get(CALENDAR_RANDOMIZE_START);
     }
 
     public static int getCalendarStartYearMin() {
-        return CALENDAR_START_YEAR_MIN.get();
+        return Switchboard.get(CALENDAR_START_YEAR_MIN);
     }
 
     public static int getCalendarStartYearMax() {
-        return CALENDAR_START_YEAR_MAX.get();
+        return Switchboard.get(CALENDAR_START_YEAR_MAX);
     }
 
     public static boolean isProtectedStorage(BlockState state) {
-        if (!RESPECT_PROTECTED_STORAGE.get()) return false;
+        if (!Switchboard.get(RESPECT_PROTECTED_STORAGE)) return false;
         return protectedStorageRules().matches(state);
     }
 
     private static ProtectedStorageRules protectedStorageRules() {
-        List<? extends String> blockIds = PROTECTED_STORAGE_BLOCKS.get();
-        List<? extends String> tagIds = PROTECTED_STORAGE_TAGS.get();
+        List<? extends String> blockIds = Switchboard.get(PROTECTED_STORAGE_BLOCKS);
+        List<? extends String> tagIds = Switchboard.get(PROTECTED_STORAGE_TAGS);
         ProtectedStorageRules current = protectedStorageRules;
         if (current.matchesInputs(blockIds, tagIds)) return current;
         synchronized (TownsteadConfig.class) {

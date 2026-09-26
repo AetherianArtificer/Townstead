@@ -24,19 +24,19 @@ class BuiltinProfessionParityTest {
     @Test
     void farmerMatchesLegacyNumbers() {
         assertProgression("/data/minecraft/profession/farmer/profession.json", "minecraft:farmer",
-                List.of(0, 120, 320, 700, 1300), 240, 1300);
+                List.of(0, 120, 320, 700, 1300), 240, ProgressionTrack.DEFAULT_MAX_XP);
     }
 
     @Test
     void butcherMatchesLegacyNumbers() {
         assertProgression("/data/minecraft/profession/butcher/profession.json", "minecraft:butcher",
-                List.of(0, 20, 60, 120, 200), 60, 200);
+                List.of(0, 30, 80, 175, 325), 60, ProgressionTrack.DEFAULT_MAX_XP);
     }
 
     @Test
     void shepherdMatchesLegacyNumbers() {
         assertProgression("/data/minecraft/profession/shepherd/profession.json", "minecraft:shepherd",
-                List.of(0, 20, 60, 120, 200), 60, 200);
+                List.of(0, 30, 80, 175, 325), 60, ProgressionTrack.DEFAULT_MAX_XP);
     }
 
     @Test
@@ -45,7 +45,7 @@ class BuiltinProfessionParityTest {
         assertEquals(List.of(0, 110, 300, 660, 1250),
                 cook.progression().tierThresholds().subList(0, 5), "cook tiers 1-5");
         assertEquals(230, cook.progression().dailyCap(), "cook daily cap");
-        assertEquals(1250, cook.progression().maxXp(), "cook max xp");
+        assertEquals(ProgressionTrack.DEFAULT_MAX_XP, cook.progression().maxXp(), "cook max xp");
     }
 
     private static void assertProgression(String resource, String id,

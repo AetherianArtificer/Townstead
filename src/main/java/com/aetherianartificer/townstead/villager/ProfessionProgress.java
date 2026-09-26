@@ -63,9 +63,15 @@ public final class ProfessionProgress {
     /** {@code respectDailyCap} false ignores the track's daily allowance; the ceiling still holds. */
     public static GainResult addXp(ProfessionXpStore store, ResourceLocation careerId, int requested, long gameTime,
                                    boolean respectDailyCap) {
+        return addXp(store, careerId, requested, gameTime, respectDailyCap, 1);
+    }
+
+    /** {@code capScale} widens the daily allowance, for work that is coming back faster. */
+    public static GainResult addXp(ProfessionXpStore store, ResourceLocation careerId, int requested, long gameTime,
+                                   boolean respectDailyCap, int capScale) {
         careerId = canonical(careerId);
         return addXp(store, careerId.toString(), ProfessionProgressions.spec(careerId), requested, gameTime,
-                respectDailyCap);
+                respectDailyCap, Math.max(1, capScale));
     }
 
     /** Alias ids converge on their def's primary id so history never fragments per source mod. */
@@ -88,9 +94,12 @@ public final class ProfessionProgress {
     }
 
     private static GainResult addXp(ProfessionXpStore store, String professionId, ProgressionSpec spec,
-                                    int requested, long gameTime, boolean respectDailyCap) {
+                                    int requested, long gameTime, boolean respectDailyCap, int capScale) {
         int beforeTier = getTier(store, professionId, spec);
-        if (requested <= 0) return new GainResult(0, beforeTier, beforeTier, false);
+        if (requested <= 0 || !com.aetherianartificer.townstead.switchboard.Systems.on(
+                com.aetherianartificer.townstead.switchboard.Systems.CAREERS)) {
+            return new GainResult(0, beforeTier, beforeTier, false);
+        }
 
         ProfessionXp state = store.professionXp(professionId);
         long day = gameTime / 24000L;
@@ -101,16 +110,31 @@ public final class ProfessionProgress {
             gainedToday = 0;
         }
 
-        int allowance = respectDailyCap ? Math.max(0, spec.dailyXpCap() - gainedToday) : requested;
-        int applied = Math.min(requested, allowance);
+        int applied;
+        int workedToday;
+        if (respectDailyCap) {
+            // xpToday counts all XP worked today. Inside the cap it lands in full; past it, the
+            // track's over-cap share lands, rounded against the running total so small awards
+            // still add up instead of each rounding to nothing.
+            int cap = (int) Math.min(Integer.MAX_VALUE, (long) spec.dailyXpCap() * capScale);
+            int inside = Math.max(0, Math.min(requested, cap - gainedToday));
+            int overBefore = Math.max(0, gainedToday - cap);
+            int overAfter = Math.max(0, gainedToday + requested - cap);
+            int percent = Math.max(0, Math.min(100, spec.overCapPercent()));
+            applied = inside + (overAfter * percent / 100 - overBefore * percent / 100);
+            workedToday = gainedToday + requested;
+        } else {
+            applied = requested;
+            workedToday = gainedToday + requested;
+        }
         if (applied <= 0) {
             store.setProfessionXp(professionId,
-                    new ProfessionXp(state.xp(), state.tier(), state.lastTierUpTick(), storedDay, gainedToday));
+                    new ProfessionXp(state.xp(), state.tier(), state.lastTierUpTick(), storedDay, workedToday));
             return new GainResult(0, beforeTier, beforeTier, false);
         }
 
         int xp = Math.max(0, Math.min(spec.maxXp(), state.xp() + applied));
-        gainedToday += applied;
+        gainedToday = workedToday;
         int afterTier = spec.tierForXp(xp);
         boolean tierUp = afterTier > beforeTier;
         long lastTierUpTick = tierUp ? gameTime : state.lastTierUpTick();

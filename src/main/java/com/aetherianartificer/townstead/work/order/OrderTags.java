@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.work.order;
 
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
@@ -84,7 +86,7 @@ public final class OrderTags {
         // The tag is asked first: almost nothing is sapient flesh, this sits inside per-stack
         // filters on work-selection ticks, and the config only matters once something matched.
         if (!contains(CANNIBAL_MEATS, output)) return true;
-        return com.aetherianartificer.townstead.TownsteadConfig.CANNIBALISM_PRODUCE.get();
+        return Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.CANNIBALISM_PRODUCE);
     }
 
     /** Test seam: replaces registry lookups. Null restores the real registry. */

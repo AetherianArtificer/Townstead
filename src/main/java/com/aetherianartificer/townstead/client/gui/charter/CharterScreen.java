@@ -45,6 +45,7 @@ public final class CharterScreen extends Screen {
     }
 
     public static void accept(CharterSnapshotS2CPayload snapshot) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.POLITICS)) return;
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null) return;
         if (minecraft.screen instanceof FactionNameScreen naming && naming.accept(snapshot)) return;

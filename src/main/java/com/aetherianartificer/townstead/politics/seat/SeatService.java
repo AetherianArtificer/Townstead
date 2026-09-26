@@ -70,6 +70,7 @@ public final class SeatService {
     }
 
     public static void tick(MinecraftServer server) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.POLITICS)) return;
         SeatNotices.send(server);
         if (server.getTickCount() % CHECK_INTERVAL != 0) return;
         PoliticalSavedData data = PoliticalSavedData.get(server);

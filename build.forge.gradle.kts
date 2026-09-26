@@ -58,6 +58,9 @@ repositories {
     maven("https://maven.blamejared.com")
     // Curios API, for the optional wearables integration (villager Curios slots and screen).
     maven("https://www.cursemaven.com") { content { includeGroup("curse.maven") } }
+    // EMI and REI plugin APIs (runtime optional; each plugin class is only loaded by its viewer's scan).
+    maven("https://maven.terraformersmc.com/releases")
+    maven("https://maven.shedaniel.me")
     mavenCentral()
 }
 
@@ -84,6 +87,8 @@ dependencies {
     // JEI plugin API (runtime optional; the plugin class is only loaded by JEI's scan)
     compileOnly(fg.deobf("mezz.jei:jei-1.20.1-common-api:15.20.0.135"))
     compileOnly(fg.deobf("mezz.jei:jei-1.20.1-forge-api:15.20.0.135"))
+    compileOnly(fg.deobf("dev.emi:emi-forge:1.0.9+1.20.1:api"))
+    compileOnly(fg.deobf("me.shedaniel:RoughlyEnoughItems-api-forge:12.1.785"))
     // Curios (runtime optional): everything Curios-shaped lives in compat.curios behind ModCompat.
     compileOnly(fg.deobf("curse.maven:curios-309927:6418456"))
     // Jade plugin API (runtime optional; the plugin class is only loaded by Jade's scan)

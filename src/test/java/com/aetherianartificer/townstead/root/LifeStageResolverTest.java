@@ -113,4 +113,18 @@ class LifeStageResolverTest {
         assertEquals(90L, LifeStageResolver.cumulativeDaysBefore(HUMAN_DAYS, 6)); // whole cycle
         assertEquals(90L, LifeStageResolver.cumulativeDaysBefore(HUMAN_DAYS, 99)); // index past end clamps
     }
+
+    @Test
+    void seniorsOffKeepsAdults() {
+        LifeStageResolver.setSeniorsAllowed(() -> false);
+        try {
+            LifeStageResolver.Resolved r = resolveAt(80);
+            assertEquals(4, r.stageIndex());
+            assertEquals(1f, r.deltaInStage(), 1e-6);
+            assertEquals(1, resolveAt(3).stageIndex());
+        } finally {
+            LifeStageResolver.setSeniorsAllowed(null);
+        }
+        assertEquals(5, resolveAt(80).stageIndex());
+    }
 }

@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.naming;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.network.chat.Component;
 
@@ -33,6 +34,7 @@ public final class DisplayNames {
     /** The composed name in a named style, for a surface that wants something other than the default. */
     public static String apply(VillagerEntityMCA villager, String given, NameStyle style) {
         if (villager == null || style == null || COMPOSING.get()) return given;
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.NAMING)) return given;
         COMPOSING.set(Boolean.TRUE);
         try {
             return villager.level().isClientSide
@@ -54,7 +56,7 @@ public final class DisplayNames {
     /** The configured default, which every surface uses unless it asks for something else. */
     public static NameStyle style() {
         try {
-            return TownsteadConfig.NAME_STYLE.get();
+            return Switchboard.get(TownsteadConfig.NAME_STYLE);
         } catch (Throwable ignored) {
             // Config not loaded yet: showing the whole name is the point of having one.
             return NameStyle.FULL;

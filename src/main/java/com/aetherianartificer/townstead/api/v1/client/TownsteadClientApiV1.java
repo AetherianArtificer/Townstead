@@ -52,6 +52,14 @@ public interface TownsteadClientApiV1 {
     default void setChoiceNumbering(BooleanSupplier enabled) {
     }
 
+    /**
+     * The settings of the world this client is in, from the synced values. See {@code SettingsApi}
+     * for what a client can and cannot see. Added in API revision 2.
+     */
+    default com.aetherianartificer.townstead.api.v1.SettingsApi settings() {
+        return com.aetherianartificer.townstead.api.v1.SettingsApi.EMPTY;
+    }
+
     /** The constant form of {@link #setChoiceNumbering(BooleanSupplier)}. */
     default void setChoiceNumbering(boolean numbered) {
         setChoiceNumbering(numbered ? () -> true : null);

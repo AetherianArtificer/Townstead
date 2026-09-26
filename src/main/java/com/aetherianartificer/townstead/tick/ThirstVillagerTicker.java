@@ -150,8 +150,9 @@ public final class ThirstVillagerTicker {
         } else {
             // Passive thirst drain only. Drinking is owned by RefuelTask now.
             int drainIterations = 0;
-            while (elapsedTime - state.lastPassiveDrainGameTime >= ThirstData.PASSIVE_DRAIN_INTERVAL && drainIterations < 100) {
-                state.lastPassiveDrainGameTime += ThirstData.PASSIVE_DRAIN_INTERVAL;
+            int passiveInterval = com.aetherianartificer.townstead.needs.NeedPace.interval(ThirstData.PASSIVE_DRAIN_INTERVAL);
+            while (elapsedTime - state.lastPassiveDrainGameTime >= passiveInterval && drainIterations < 100) {
+                state.lastPassiveDrainGameTime += passiveInterval;
                 thirstChanged |= needs.passiveThirstDrain();
                 drainIterations++;
             }
@@ -178,6 +179,7 @@ public final class ThirstVillagerTicker {
         // Dehydration no longer deals damage — villagers get speed penalties
         // and mood pressure instead, matching hunger's non-lethal approach.
         needs.setThirstDamageTimer(0);
+        if (needs.thirst() <= 0 && NeedHarm.due(self, level)) self.hurt(self.damageSources().dryOut(), 1.0F);
 
         if (!self.isBaby()) {
             updateSpeedModifier(self, needs.thirst());

@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.naming;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -230,7 +231,7 @@ public final class NamingRegisters {
 
     private static boolean enabled() {
         try {
-            return TownsteadConfig.ENABLE_STABLE_NAMING_REGISTERS.get();
+            return Switchboard.get(TownsteadConfig.ENABLE_STABLE_NAMING_REGISTERS);
         } catch (Throwable ignored) {
             // Config not loaded yet: stamping is the safe default, since the alternative is drift.
             return true;

@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.client.naming;
 
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+
 import com.aetherianartificer.townstead.compat.ModCompat;
 import com.aetherianartificer.townstead.naming.NameClientStore;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -31,6 +33,12 @@ public final class NamePlate {
      * @param sink    where to put the replacement, when there is one
      */
     public static void render(Entity entity, Component content, Consumer<Component> sink) {
+        if (entity instanceof net.minecraft.world.entity.player.Player player) {
+            // A reborn player goes by the name of their current life.
+            String reborn = com.aetherianartificer.townstead.client.rebirth.CharacterNameClient.get(player.getUUID());
+            if (reborn != null) sink.accept(Component.literal(reborn));
+            return;
+        }
         if (!(entity instanceof VillagerEntityMCA villager)) return;
 
         // Capitals draws the nameplate when it is installed, and composes it itself from a title,
@@ -59,7 +67,7 @@ public final class NamePlate {
 
     private static com.aetherianartificer.townstead.naming.NameStyle style() {
         try {
-            return com.aetherianartificer.townstead.TownsteadConfig.NAMEPLATE_NAME_STYLE.get();
+            return Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.NAMEPLATE_NAME_STYLE);
         } catch (Throwable ignored) {
             return com.aetherianartificer.townstead.naming.NameStyle.FULL;
         }

@@ -477,7 +477,8 @@ public abstract class BlueprintScreenMixin extends Screen {
                 x, y, 96, 20,
                 Component.translatable("gui.blueprint.shifts"),
                 Component.empty(),
-                b -> net.minecraft.client.Minecraft.getInstance().setScreen(new ShiftManagerScreen((Screen) (Object) this))));
+                b -> net.minecraft.client.Minecraft.getInstance().setScreen(new ShiftManagerScreen((Screen) (Object) this))))
+                .active = com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.SHIFTS);
         addRenderableWidget(townstead$tooltipButton(
                 x, y + 22, 96, 20,
                 Component.translatable("gui.blueprint.professions"),
@@ -488,7 +489,8 @@ public abstract class BlueprintScreenMixin extends Screen {
                 Component.translatable("gui.blueprint.wardrobe"),
                 Component.empty(),
                 b -> net.minecraft.client.Minecraft.getInstance().setScreen(
-                        new com.aetherianartificer.townstead.client.gui.wardrobe.WardrobeScreen((Screen) (Object) this))));
+                        new com.aetherianartificer.townstead.client.gui.wardrobe.WardrobeScreen((Screen) (Object) this))))
+                .active = com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CLOTHING);
     }
 
     // =====================================================================

@@ -91,6 +91,7 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
             for (String r : e.stageRigs()) buf.writeUtf(r == null ? "" : r);
             writeCharacterEditor(buf, e.characterEditor());
             buf.writeBoolean(e.blocked());
+            buf.writeBoolean(e.choosable());
         }
         buf.writeVarInt(genes.size());
         for (GeneCatalogEntry g : genes) {
@@ -186,6 +187,7 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
             for (int s = 0; s < stageRigCount; s++) stageRigs.add(buf.readUtf());
             CharacterEditorLayout characterEditor = readCharacterEditor(buf);
             boolean blocked = buf.readBoolean();
+            boolean choosable = buf.readBoolean();
             entries.add(new RootCatalogEntry(id,
                     localize(nameKey, name),
                     localize(singularKey, singular),
@@ -198,7 +200,7 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
                     nameKey, singularKey, pluralKey, backstoryKey,
                     speciesNameKey, ancestryNameKey, lineageNameKey,
                     rigBase, rigScale, animations, breasts, hair, hairRanges, hairColors, hairGradients,
-                    stageRigs, characterEditor, blocked));
+                    stageRigs, characterEditor, blocked, choosable));
         }
         int m = buf.readVarInt();
         List<GeneCatalogEntry> genes = new ArrayList<>(m);

@@ -32,6 +32,7 @@ public class StardewHudSeasonMixin {
             cancellable = true, remap = false, require = 0)
     private void townstead$overrideSeasonIndex(long day, int seasonDays,
                                                 CallbackInfoReturnable<Integer> cir) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CALENDAR)) return;
         CalendarClientStore.Snapshot snap = CalendarClientStore.get();
         if (snap == null || !snap.hasSeason()) return;
         int idx = StardewSeasonMapping.indexFromKey(snap.seasonKey());

@@ -202,6 +202,15 @@ public final class CharterMemberships {
         data.putMembership(new MembershipInstance(affiliation, policy.id(), policy.admission().procedure(),
                 policy.departure().procedure(), Set.copyOf(policy.admission().initialRoles())));
     }
+    /** Ends every active membership a person holds, as when they start a new life. */
+    public static void endAll(MinecraftServer server, UUID person) {
+        var data = PoliticalSavedData.get(server);
+        long now = server.overworld().getGameTime();
+        for (MembershipInstance member : data.memberships(person)) {
+            if (member.affiliation().active()) end(data, member, now);
+        }
+    }
+
     static void end(PoliticalSavedData data, MembershipInstance member, long now) {
         var a = member.affiliation();
         data.putMembership(new MembershipInstance(new AffiliationInstance(a.id(), a.person(), a.actor(), a.kind(),
@@ -209,6 +218,7 @@ public final class CharterMemberships {
                 member.membershipPolicy(), member.admissionProcedure(), member.departureProcedure(), member.roles()));
     }
     public static void tick(MinecraftServer server) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.POLITICS)) return;
         long now = server.overworld().getGameTime();
         if (now % 20 != 0) return;
         var store = CharterRequests.get(server);

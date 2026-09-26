@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.work.station;
 
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
 import com.aetherianartificer.townstead.work.recipe.StationType;
@@ -333,7 +335,7 @@ public final class ProtocolRecipes {
             ));
         }
         List<DiscoveredRecipe> frozen = List.copyOf(out);
-        if (com.aetherianartificer.townstead.TownsteadConfig.DEBUG_LOGGING.get()) {
+        if (Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_LOGGING)) {
             com.aetherianartificer.townstead.Townstead.LOGGER.info(
                     "Recipe type {} for station {}: {} recipes of this type, {} usable, {} dropped without inputs {}",
                     def.recipeType(), def.id(), ofType, frozen.size(), ofType - frozen.size(), droppedNoInputs);

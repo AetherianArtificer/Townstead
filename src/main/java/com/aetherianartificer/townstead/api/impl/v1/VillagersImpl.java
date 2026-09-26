@@ -93,7 +93,7 @@ final class VillagersImpl implements VillagersApi {
             if (root == null) {
                 return RootResult.failed(RootResult.Status.UNKNOWN_ROOT, "unknown root " + rootId);
             }
-            if (com.aetherianartificer.townstead.root.RootBlocklist.isBlocked(root.id())) {
+            if (com.aetherianartificer.townstead.root.RootRules.isOff(root.id())) {
                 return RootResult.failed(RootResult.Status.BLOCKED, root.id() + " is blocked on this server");
             }
             String before = com.aetherianartificer.townstead.root.RootAssignment.currentRoot(entity);

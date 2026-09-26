@@ -57,6 +57,24 @@ public final class StandingService {
         }
     }
 
+    /** Clears a person's standing everywhere: MCA's village hearts record and their deeds. */
+    @SuppressWarnings("unchecked")
+    public static void forget(MinecraftServer server, UUID person) {
+        DeedLedger.get(server).forget(person);
+        Field field = reputationField();
+        if (field == null) return;
+        for (ServerLevel level : server.getAllLevels()) {
+            for (Village village : VillageManager.get(level)) {
+                try {
+                    Map<UUID, Map<UUID, Integer>> reputation = (Map<UUID, Map<UUID, Integer>>) field.get(village);
+                    if (reputation != null && reputation.remove(person) != null) VillageManager.get(level).setDirty();
+                } catch (ReflectiveOperationException | ClassCastException ignored) {
+                    return;
+                }
+            }
+        }
+    }
+
     private static synchronized @Nullable Field reputationField() {
         if (reputationFieldResolved) return reputationField;
         reputationFieldResolved = true;

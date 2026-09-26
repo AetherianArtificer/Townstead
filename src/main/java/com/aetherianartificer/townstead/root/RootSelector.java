@@ -60,8 +60,9 @@ public final class RootSelector {
     public static Selection select(Level level, BlockPos pos, RandomSource random,
                                    Predicate<ResourceLocation> allowed,
                                    ToDoubleFunction<ResourceLocation> contextualWeight) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.ROOTS)) return new Selection(null, null);
         // Server-config blocklist applies to every founder roll, on top of the caller's filter.
-        Predicate<ResourceLocation> permitted = id -> !RootBlocklist.isBlocked(id) && allowed.test(id);
+        Predicate<ResourceLocation> permitted = id -> RootRules.villagersSpawn(id) && allowed.test(id);
         Holder<Biome> biome = level.getBiome(pos);
         ResourceLocation biomeId = biome.unwrapKey().map(ResourceKey::location).orElse(null);
         Set<ResourceLocation> tagIds = new HashSet<>();
@@ -94,7 +95,8 @@ public final class RootSelector {
         for (int i = 0; i < origins.size(); i++) {
             if (!allowed.test(origins.get(i).id())) continue;   // filtered out: weight stays 0
             float w = RootRegistry.effectiveSpawnBias(origins.get(i).id()).weight(biomeId, tagIds, dimId)
-                    * (float) Math.max(0.0D, contextualWeight.applyAsDouble(origins.get(i).id()));
+                    * (float) Math.max(0.0D, contextualWeight.applyAsDouble(origins.get(i).id()))
+                    * (float) RootRules.rate(origins.get(i).id());
             weights[i] = Math.max(0f, w);
             total += weights[i];
         }

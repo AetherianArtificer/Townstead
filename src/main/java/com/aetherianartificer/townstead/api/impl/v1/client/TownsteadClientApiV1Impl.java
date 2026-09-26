@@ -15,7 +15,7 @@ import java.util.function.Consumer;
 
 public final class TownsteadClientApiV1Impl implements TownsteadClientApiV1 {
     private static final int API_VERSION = 1;
-    private static final int API_REVISION = 1;
+    private static final int API_REVISION = 2;
 
     @Override
     public int getApiVersion() {
@@ -25,6 +25,11 @@ public final class TownsteadClientApiV1Impl implements TownsteadClientApiV1 {
     @Override
     public int getApiRevision() {
         return API_REVISION;
+    }
+
+    @Override
+    public com.aetherianartificer.townstead.api.v1.SettingsApi settings() {
+        return com.aetherianartificer.townstead.api.impl.v1.SettingsImpl.INSTANCE;
     }
 
     @Override

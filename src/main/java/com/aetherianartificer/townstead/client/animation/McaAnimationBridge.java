@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.client.animation;
 
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.client.animation.emote.EmoteRegistry;
 import com.aetherianartificer.townstead.client.animation.emote.EmotecraftAnimationSourceAdapter;
@@ -208,7 +210,7 @@ public final class McaAnimationBridge {
         BendStateRegistry.clearEntity(entity.getUUID());
 
         boolean anyAvailable = false;
-        boolean diagnostics = com.aetherianartificer.townstead.TownsteadConfig.DEBUG_LOGGING.get();
+        boolean diagnostics = Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_LOGGING);
         for (AnimationSourceAdapter source : SOURCES) {
             if (source == EMOTE_ADAPTER
                     && com.aetherianartificer.townstead.client.animation.nativeclip.NativePlaybackRegistry
@@ -247,7 +249,7 @@ public final class McaAnimationBridge {
             List<AnimationTransform> transforms,
             McaModelPartApplier.ApplyStats stats
     ) {
-        if (!com.aetherianartificer.townstead.TownsteadConfig.DEBUG_LOGGING.get()) return;
+        if (!Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_LOGGING)) return;
         if (!"emf".equals(sourceId)
                 && !("emotes".equals(sourceId) && !transforms.isEmpty())
                 && !("fatigue".equals(sourceId) && !transforms.isEmpty())

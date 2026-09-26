@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.api.impl.v1;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.api.v1.model.NeedLevel;
 import com.aetherianartificer.townstead.api.v1.model.NeedsSnapshot;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
@@ -85,7 +86,7 @@ public final class NeedScales {
 
     public static boolean hungerEnabled() {
         try {
-            return TownsteadConfig.ENABLE_VILLAGER_HUNGER.get();
+            return Switchboard.get(TownsteadConfig.ENABLE_VILLAGER_HUNGER);
         } catch (Throwable t) {
             return true;
         }
@@ -93,7 +94,7 @@ public final class NeedScales {
 
     public static boolean thirstEnabled() {
         try {
-            return TownsteadConfig.ENABLE_VILLAGER_THIRST.get() && ThirstBridgeResolver.isActive();
+            return Switchboard.get(TownsteadConfig.ENABLE_VILLAGER_THIRST) && ThirstBridgeResolver.isActive();
         } catch (Throwable t) {
             return false;
         }
@@ -101,7 +102,7 @@ public final class NeedScales {
 
     public static boolean fatigueEnabled() {
         try {
-            return TownsteadConfig.ENABLE_VILLAGER_FATIGUE.get();
+            return Switchboard.get(TownsteadConfig.ENABLE_VILLAGER_FATIGUE);
         } catch (Throwable t) {
             return true;
         }

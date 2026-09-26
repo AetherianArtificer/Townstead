@@ -60,13 +60,23 @@ class SkillPointsTest {
     }
 
     @Test
-    void insightCombinesEveryRegisteredCareerButNotUntouchedTierOneCareers() {
+    void insightCombinesEveryCareerByWorkDoneNotByRankHeld() {
         profile.setPrimaryVocation(COOK);
         profile.acquireCareer(BAKER);
         store.setProfessionXp(COOK.toString(), new ProfessionXp(100, 0, 0, 0, 0));
+        store.setProfessionXp(BAKER.toString(), new ProfessionXp(25, 0, 0, 0, 0));
 
-        assertEquals(3, SkillPoints.earned(profile, store),
-                "Cook rank 2 and Baker rank 1 contribute; untouched Farmer does not");
+        assertEquals(5, SkillPoints.earned(profile, store),
+                "Cook's three checkpoints and rank-up, Baker's first checkpoint; Farmer pays nothing");
+    }
+
+    @Test
+    void holdingAFirstRankPaysNoInsight() {
+        profile.setPrimaryVocation(COOK);
+        profile.acquireCareer(BAKER);
+        store.setProfessionXp(COOK.toString(), new ProfessionXp(1, 0, 0, 0, 0));
+
+        assertEquals(0, SkillPoints.earned(profile, store));
     }
 
     @Test
@@ -75,8 +85,8 @@ class SkillPointsTest {
         profile.acquireCareer(BAKER);
         store.setProfessionXp(COOK.toString(), new ProfessionXp(100, 0, 0, 0, 0));
 
-        assertEquals(1, SkillPoints.available(profile, store, Set.of(BAKER_SKILL)),
-                "the two-Insight Baker skill spends from the combined three-Insight budget");
+        assertEquals(2, SkillPoints.available(profile, store, Set.of(BAKER_SKILL)),
+                "the two-Insight Baker skill spends from Cook's four Insight");
     }
 
     @Test

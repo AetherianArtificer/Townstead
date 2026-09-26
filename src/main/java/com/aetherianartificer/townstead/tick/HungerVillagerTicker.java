@@ -113,6 +113,7 @@ public final class HungerVillagerTicker {
                 passiveInterval = (int)(passiveInterval / FatigueData.DROWSY_HUNGER_MULTIPLIER);
             }
         }
+        passiveInterval = com.aetherianartificer.townstead.needs.NeedPace.interval(passiveInterval);
         if (state.lastPassiveDrainDayTime < 0) state.lastPassiveDrainDayTime = dayTime;
         Activity currentActivity = currentScheduleActivity(self);
         boolean resting = currentActivity == Activity.REST;
@@ -130,6 +131,7 @@ public final class HungerVillagerTicker {
         }
 
         boolean starving = needs.hunger() <= 0;
+        if (starving && NeedHarm.due(self, level)) self.hurt(self.damageSources().starve(), 1.0F);
         if (starving && !state.wasStarving) {
             com.aetherianartificer.townstead.hunger.CannibalismPolicy.onStarvation(level, self);
             // The moment hunger becomes starvation, not every tick of it.

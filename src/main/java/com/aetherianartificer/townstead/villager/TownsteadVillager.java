@@ -244,7 +244,7 @@ public final class TownsteadVillager {
         }
 
         public void addHungerExhaustion(float value) {
-            setHungerExhaustion(hungerExhaustion + value);
+            setHungerExhaustion(hungerExhaustion + value * (float) com.aetherianartificer.townstead.needs.NeedPace.pace());
         }
 
         public void setEatingMode(boolean value) {
@@ -345,7 +345,7 @@ public final class TownsteadVillager {
         }
 
         public void addThirstExhaustion(float value) {
-            setThirstExhaustion(thirstExhaustion + value);
+            setThirstExhaustion(thirstExhaustion + value * (float) com.aetherianartificer.townstead.needs.NeedPace.pace());
         }
 
         public void setDrinkingMode(boolean value) {

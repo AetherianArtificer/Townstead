@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.hangout;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.aetherianartificer.townstead.hunger.VillagerConsumptionManager;
@@ -33,7 +34,7 @@ final class HangoutDrinks {
     }
 
     private static boolean serve(ServerLevel level, VillagerEntityMCA guest, HangoutVisit visit) {
-        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get()) return false;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING)) return false;
         // Reuse the reloadable house-round admission rules, without its thirst/start condition.
         HangoutActivity round = HangoutData.activities().get(
                 net.minecraft.resources.ResourceLocation.tryParse("townstead:tavern_round"));
@@ -61,7 +62,7 @@ final class HangoutDrinks {
             if (drink.isEmpty()) continue;
             // Recheck the live extraction: the cached inventory view can have changed.
             if (isDrink(drink) && VillagerConsumptionManager.startRecreationalDrink(guest, drink, slot.pos())) {
-                if (TownsteadConfig.DEBUG_LOGGING.get()) {
+                if (Switchboard.get(TownsteadConfig.DEBUG_LOGGING)) {
                     com.aetherianartificer.townstead.Townstead.LOGGER.info(
                             "[Hangouts] drink acquired guest={} item={} source={} handler={}",
                             guest.getName().getString(),

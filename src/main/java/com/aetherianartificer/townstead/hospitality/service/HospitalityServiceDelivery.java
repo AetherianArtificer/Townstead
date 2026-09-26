@@ -193,6 +193,7 @@ public final class HospitalityServiceDelivery {
 
     private static List<Candidate> candidates(ServerLevel level, VillagerEntityMCA worker,
                                               Set<Long> worksiteBounds) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.HOSPITALITY)) return List.of();
         Snapshot snapshot = snapshot(level, worker, worksiteBounds);
         return snapshot.candidates();
     }
@@ -200,6 +201,7 @@ public final class HospitalityServiceDelivery {
     private static List<PreparationCandidate> preparationCandidates(
             ServerLevel level, VillagerEntityMCA worker, Set<Long> worksiteBounds,
             Predicate<ItemStack> carriedMatcher) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.HOSPITALITY)) return List.of();
         List<PreparationCandidate> out = new ArrayList<>();
         for (Candidate candidate : candidates(level, worker, worksiteBounds)) {
             for (int slot = 0; slot < worker.getInventory().getContainerSize(); slot++) {

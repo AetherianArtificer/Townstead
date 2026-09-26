@@ -29,6 +29,17 @@ public abstract class DestinyScreenMixin extends Screen {
 
     @Inject(method = "getPages", remap = false, at = @At("RETURN"), cancellable = true)
     private void townstead$appendRootsPage(CallbackInfoReturnable<String[]> cir) {
+        if (!townstead$rootChoiceAllowed()) return;
         cir.setReturnValue(RootPicker.insertRootsPage(cir.getReturnValue()));
+    }
+
+    private static boolean townstead$rootChoiceAllowed() {
+        try {
+            return com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.ROOTS)
+                    && com.aetherianartificer.townstead.switchboard.Switchboard.get(
+                    com.aetherianartificer.townstead.TownsteadConfig.ALLOW_ROOT_CHOICE_IN_DESTINY);
+        } catch (IllegalStateException e) {
+            return true;
+        }
     }
 }

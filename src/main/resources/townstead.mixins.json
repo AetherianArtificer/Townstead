@@ -4,6 +4,7 @@
   "plugin": "com.aetherianartificer.townstead.TownsteadMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "ResultContainerGateMixin",
     "VillagerServingHandMixin",
     "VillagerServingRecoveryMixin",
     "LecternBlockEntityCharterMixin",
@@ -32,6 +33,7 @@
     "compat.mca.PlayerSaveDataWelcomeMixin",
     "compat.mca.VillagerCommandHandlerInventoryMixin",
     "compat.mca.EquipmentTaskAssignedArmorMixin",
+    "compat.mca.VillagerBrainMemoriesMixin",
     "compat.mca.VillagerCommandHandlerHatGiftMixin",
     "compat.curios.CuriosEntitySlotsMixin",
     "compat.timekeeper.TimekeeperQueryProcMixin",

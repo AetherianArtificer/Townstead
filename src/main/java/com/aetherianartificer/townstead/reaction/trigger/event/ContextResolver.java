@@ -2,10 +2,10 @@ package com.aetherianartificer.townstead.reaction.trigger.event;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.api.impl.v1.NeedScales;
 import com.aetherianartificer.townstead.root.needs.NeedSuppression;
 import com.aetherianartificer.townstead.temperature.TemperatureData;
 import com.aetherianartificer.townstead.temperature.ThermalProfile;
-import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.reaction.ReactionLockTracker;
@@ -221,13 +221,15 @@ public final class ContextResolver {
      */
     private static void addProfessionStateTags(VillagerEntityMCA villager, Set<String> tags) {
         try {
-            int h = TownsteadVillagers.get(villager).needs().hunger();
-            if (h < HungerData.EMERGENCY_THRESHOLD) tags.add("hungry");
-            else if (h < HungerData.ADEQUATE_THRESHOLD) tags.add("peckish");
+            if (NeedScales.hungerEnabled()) {
+                int h = TownsteadVillagers.get(villager).needs().hunger();
+                if (h < HungerData.EMERGENCY_THRESHOLD) tags.add("hungry");
+                else if (h < HungerData.ADEQUATE_THRESHOLD) tags.add("peckish");
+            }
         } catch (Throwable ignored) {}
 
         try {
-            if (ThirstBridgeResolver.isActive()) {
+            if (NeedScales.thirstEnabled()) {
                 int t = TownsteadVillagers.get(villager).needs().thirst();
                 if (t <= ThirstData.EMERGENCY_THRESHOLD) tags.add("thirsty");
                 else if (t < ThirstData.ADEQUATE_THRESHOLD) tags.add("parched");
@@ -235,10 +237,12 @@ public final class ContextResolver {
         } catch (Throwable ignored) {}
 
         try {
-            int f = TownsteadVillagers.get(villager).needs().fatigue();
-            if (f >= FatigueData.COLLAPSE_THRESHOLD) tags.add("exhausted");
-            else if (f >= FatigueData.DROWSY_THRESHOLD) tags.add("drowsy");
-            else if (f >= FatigueData.TIRED_THRESHOLD) tags.add("tired");
+            if (NeedScales.fatigueEnabled()) {
+                int f = TownsteadVillagers.get(villager).needs().fatigue();
+                if (f >= FatigueData.COLLAPSE_THRESHOLD) tags.add("exhausted");
+                else if (f >= FatigueData.DROWSY_THRESHOLD) tags.add("drowsy");
+                else if (f >= FatigueData.TIRED_THRESHOLD) tags.add("tired");
+            }
         } catch (Throwable ignored) {}
 
         try {

@@ -49,6 +49,13 @@ public final class DeedLedger extends SavedData {
         return true;
     }
 
+    /** Drops every deed credited to a person, as when they start a new life. */
+    public void forget(UUID person) {
+        boolean changed = false;
+        for (Map<UUID, Integer> bySettlement : points.values()) changed |= bySettlement.remove(person) != null;
+        if (changed) setDirty();
+    }
+
     public void add(SettlementRef settlement, UUID person, int amount) {
         if (amount == 0) return;
         points.computeIfAbsent(settlement, ignored -> new HashMap<>()).merge(person, amount, Integer::sum);

@@ -33,6 +33,7 @@ public final class SkillPowerSource implements PowerSource {
 
     @Override
     public void collect(LivingEntity entity, List<Power> out) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CAREERS)) return;
         Set<ResourceLocation> learned = LearnedSkills.learned(entity);
         Set<ResourceLocation> professions = new LinkedHashSet<>();
         for (ResourceLocation skillId : learned) {

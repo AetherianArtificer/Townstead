@@ -127,10 +127,36 @@ public final class Chronicles {
 
     // ---- truth-side queries (async, archive-backed) ----
 
+    /**
+     * Events about a subject, newest first. A reborn player's history starts at their latest
+     * rebirth; the memorial id of a past life reads that life's events.
+     */
     public static CompletableFuture<List<ChronicleEvent>> bySubject(UUID subject, long beforeEventId, int limit) {
         ChronicleStore s = store;
-        return s == null ? CompletableFuture.completedFuture(List.of())
-                : s.bySubject(subject, beforeEventId, limit).exceptionally(t -> List.of());
+        if (s == null) return CompletableFuture.completedFuture(List.of());
+        UUID query = subject;
+        long before = beforeEventId;
+        long after = 0L;
+        UUID owner = com.aetherianartificer.townstead.rebirth.PlayerLives.ownerOf(subject);
+        List<com.aetherianartificer.townstead.rebirth.PlayerLives.Life> lives =
+                com.aetherianartificer.townstead.rebirth.PlayerLives.livesOf(owner != null ? owner : subject);
+        if (owner != null) {
+            query = owner;
+            for (int i = 0; i < lives.size(); i++) {
+                if (!lives.get(i).memorialId().equals(subject)) continue;
+                long end = lives.get(i).lastEventId() + 1L;
+                before = before <= 0L ? end : Math.min(before, end);
+                after = i == 0 ? 0L : lives.get(i - 1).lastEventId();
+                break;
+            }
+        } else if (!lives.isEmpty()) {
+            after = lives.get(lives.size() - 1).lastEventId();
+        }
+        long floor = after;
+        return s.bySubject(query, before, limit)
+                .thenApply(events -> floor <= 0L ? events
+                        : events.stream().filter(e -> e.eventId() > floor).toList())
+                .exceptionally(t -> List.of());
     }
 
     public static CompletableFuture<List<ChronicleEvent>> byVillage(ResourceLocation dimension, int villageId,

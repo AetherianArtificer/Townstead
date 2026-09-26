@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.profession.career;
 
 import com.aetherianartificer.townstead.chronicle.Chronicles;
+import com.aetherianartificer.townstead.profession.def.InsightSchedule;
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
 import com.aetherianartificer.townstead.profession.def.RequirementHint;
@@ -139,6 +140,8 @@ public final class CareerGraphBuilder {
         int xpToday = xpState.xpDay() == today ? Math.max(0, xpState.xpToday()) : 0;
         int dailyCap = ProfessionProgressions.spec(careerId).dailyXpCap();
         int maxTier = ProfessionProgressions.spec(careerId).maxTier();
+        InsightBracket insight = insightBracket(def, xp, currentTier >= maxTier
+                ? 0 : xp + ProfessionProgress.getXpToNextTier(store, careerId));
 
         String routesLine = masked || acquired || def.isRoot() || def.acquisitionRoutes().isEmpty()
                 ? "" : routesLine(def.acquisitionRoutes(), locale);
@@ -175,7 +178,8 @@ public final class CareerGraphBuilder {
                 // A career carries a mark of its own now: the day you were first admitted to this
                 // work. Only skills were sending one, so the screen had no way to tell a career you
                 // are returning to from one you have never held.
-                stampOf(profile, careerId)));
+                stampOf(profile, careerId), CareerGraphS2CPayload.Ability.NONE,
+                masked ? List.of() : insight.marks(), insight.prev(), insight.next()));
 
         for (ResourceLocation choice : def.skills()) {
             SkillDef skill = SkillDefs.byId(choice);
@@ -242,6 +246,19 @@ public final class CareerGraphBuilder {
     }
 
     /** The mark this subject pressed when they registered the skill, if they have. */
+    private record InsightBracket(List<Integer> marks, int prev, int next) {}
+
+    /**
+     * Where Insight lands along the rank bar ({@code barEnd} is the next rank's threshold, 0 at the
+     * top rank) and the payouts either side of the current XP, which drive the bar past the top.
+     */
+    private static InsightBracket insightBracket(ProfessionDef def, int xp, int barEnd) {
+        var track = def.progression();
+        List<Integer> marks = barEnd <= 0 ? List.of() : InsightSchedule.marksThrough(track, barEnd);
+        int next = Math.max(0, InsightSchedule.nextAfter(track, xp));
+        return new InsightBracket(marks, InsightSchedule.previousAtOrBefore(track, xp), next);
+    }
+
     private static CareerGraphS2CPayload.Stamp stampOf(CareerProfile profile,
                                                        net.minecraft.resources.ResourceLocation skill) {
         CareerStamp mark = profile == null ? null : profile.stamp(skill);

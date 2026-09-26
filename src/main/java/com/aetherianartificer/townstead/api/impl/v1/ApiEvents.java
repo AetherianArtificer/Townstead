@@ -241,6 +241,12 @@ public final class ApiEvents {
                 after == null ? "" : after)));
     }
 
+    public static void worldSettingsChanged(net.minecraft.server.MinecraftServer server, java.util.Set<String> changed,
+                                            java.util.Set<String> on, java.util.Set<String> off) {
+        safe(() -> post(new com.aetherianartificer.townstead.api.v1.event.WorldSettingsChangedEvent(server,
+                java.util.Set.copyOf(changed), java.util.Set.copyOf(on), java.util.Set.copyOf(off))));
+    }
+
     public static void rootChanged(LivingEntity entity, String before, String after) {
         if (before != null && before.equals(after)) return;
         safe(() -> post(new VillagerRootChangedEvent(entity, entity.getUUID(),

@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.api.impl.v1;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.api.v1.model.VillageId;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Village;
@@ -38,7 +39,7 @@ final class ApiSupport {
     static void swallow(String where, Throwable t) {
         boolean verbose;
         try {
-            verbose = TownsteadConfig.DEBUG_LOGGING.get();
+            verbose = Switchboard.get(TownsteadConfig.DEBUG_LOGGING);
         } catch (Throwable ignored) {
             verbose = false;
         }

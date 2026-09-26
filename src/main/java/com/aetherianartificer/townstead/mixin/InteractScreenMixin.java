@@ -534,10 +534,10 @@ public abstract class InteractScreenMixin extends Screen {
         }
         Component date = Component.translatableWithFallback(
                 "townstead.calendar.inspector.month_day", "%1$s %2$s", month, life.birthDayOfMonth());
-        Component born = Component.translatableWithFallback(
-                "townstead.calendar.inspector.born_with_age",
-                "Born %1$s (age %2$s)",
-                date, Math.round(life.narrativeAgeForBio(life.bioAgeDays())));
+        Component born = TownsteadConfig.SHOW_VILLAGER_AGE.get()
+                ? Component.translatableWithFallback("townstead.calendar.inspector.born_with_age",
+                        "Born %1$s (age %2$s)", date, Math.round(life.narrativeAgeForBio(life.bioAgeDays())))
+                : Component.translatableWithFallback("townstead.calendar.inspector.born", "Born %s", date);
 
         int nameW = font.width(originalName);
         int bornW = font.width(born);

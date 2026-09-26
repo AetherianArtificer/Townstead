@@ -74,4 +74,9 @@ public interface TownsteadApiV1 {
     default PoliticsApi politics() {
         return PoliticsApi.EMPTY;
     }
+
+    /** The world's settings and system switches, added in API revision 2. */
+    default SettingsApi settings() {
+        return SettingsApi.EMPTY;
+    }
 }

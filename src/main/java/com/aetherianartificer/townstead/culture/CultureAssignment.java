@@ -41,6 +41,7 @@ public final class CultureAssignment {
      * given them one, which is the normal answer in a world with no culture packs.
      */
     public static String ensure(ServerLevel level, VillagerEntityMCA villager) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CULTURES)) return "";
         String recorded = Naming.cultureOf(villager);
         if (Cultures.exists(recorded)) return record(villager, recorded);
 
@@ -116,7 +117,7 @@ public final class CultureAssignment {
 
         float total = 0.0F;
         for (CulturalSpawnBias.Entry entry : bias) {
-            if (entry.rate() > 0 && resolvable(entry.culture())) total += entry.rate();
+            if (resolvable(entry.culture())) total += weight(entry);
         }
         // A bias whose every culture is missing is a pack referencing something absent, not a
         // request for any culture at all, so it declines the same way an unbiased root does.
@@ -124,8 +125,9 @@ public final class CultureAssignment {
 
         float roll = random.nextFloat() * total;
         for (CulturalSpawnBias.Entry entry : bias) {
-            if (entry.rate() <= 0 || !resolvable(entry.culture())) continue;
-            roll -= entry.rate();
+            float weight = weight(entry);
+            if (weight <= 0 || !resolvable(entry.culture())) continue;
+            roll -= weight;
             if (roll <= 0.0F) return pick(entry.culture(), random);
         }
         return "";
@@ -142,7 +144,14 @@ public final class CultureAssignment {
     }
 
     private static boolean resolvable(String culture) {
-        return Cultures.ANY.equals(culture) || Cultures.exists(culture);
+        return Cultures.ANY.equals(culture) || Cultures.exists(culture) && CultureRules.enabled(culture);
+    }
+
+    /** A bias entry's pull after the world's Switchboard rate for that culture. */
+    private static float weight(CulturalSpawnBias.Entry entry) {
+        if (entry.rate() <= 0) return 0.0F;
+        return Cultures.ANY.equals(entry.culture()) ? entry.rate()
+                : (float) (entry.rate() * CultureRules.rate(entry.culture()));
     }
 
     private static String pick(String culture, RandomSource random) {
@@ -154,9 +163,20 @@ public final class CultureAssignment {
      * deliberately keeping a root's founders open rather than a default applied to everyone.
      */
     private static String anyCulture(RandomSource random) {
-        List<ResourceLocation> all = new ArrayList<>(Cultures.allIds());
+        List<ResourceLocation> all = new ArrayList<>();
+        double total = 0;
+        for (ResourceLocation id : Cultures.allIds()) {
+            if (!CultureRules.enabled(id.toString())) continue;
+            all.add(id);
+            total += CultureRules.rate(id.toString());
+        }
         if (all.isEmpty()) return "";
-        return all.get(random.nextInt(all.size())).toString();
+        double roll = random.nextDouble() * total;
+        for (ResourceLocation id : all) {
+            roll -= CultureRules.rate(id.toString());
+            if (roll <= 0) return id.toString();
+        }
+        return all.get(all.size() - 1).toString();
     }
 
     private static String record(VillagerEntityMCA villager, String culture) {

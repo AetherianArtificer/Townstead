@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.work.WorkBuildingNav;
 import com.aetherianartificer.townstead.work.WorkMovement;
 import com.aetherianartificer.townstead.work.WorkNavigationMetrics;
@@ -154,7 +155,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
-        if (!TownsteadConfig.ENABLE_FARM_ASSIST.get()) return false;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_FARM_ASSIST)) return false;
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
         if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) return false;
@@ -317,7 +318,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     @Override
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!TownsteadConfig.ENABLE_FARM_ASSIST.get()) return false;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_FARM_ASSIST)) return false;
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
         if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) return false;
@@ -333,7 +334,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (farmAnchor != null
-                && TownsteadConfig.ENABLE_CONTAINER_SOURCING.get()
+                && Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING)
                 && townstead$getCurrentScheduleActivity(villager) != Activity.WORK) {
             townstead$doStock(level, villager, true);
         }
@@ -605,7 +606,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         } else {
             cachedGroomTarget = null;
         }
-        if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+        if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
             LOGGER.info(
                     "Farmer {} target cache: snapshot[h={},p={},t={},w={},g={}] chosen[h={},p={},t={},w={},g={}] inv[seeds={},hoe={},waterBucket={}]",
                     farmAnchor,
@@ -1125,7 +1126,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private void townstead$doPlaceWater(ServerLevel level, VillagerEntityMCA villager, BlockPos pos, long gameTime) {
-        if (!TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT.get()) return;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT)) return;
         if (!townstead$canPlaceWaterAt(level, pos)) return;
         // Respect protected cells — don't place water on plots the player has marked hands-off
         if (farmBlueprint != null && farmBlueprint.isProtected(pos)) return;
@@ -1178,7 +1179,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private boolean townstead$doStock(ServerLevel level, VillagerEntityMCA villager, boolean endOfWork) {
-        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || farmAnchor == null) return false;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING) || farmAnchor == null) return false;
         java.util.function.Predicate<ItemStack> matcher = townstead$stockMatcher(villager, endOfWork);
         BlockPos destination = endOfWork
                 ? townstead$stockDestination(level, villager, true)
@@ -1486,7 +1487,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private void townstead$restockBasics(ServerLevel level, VillagerEntityMCA villager) {
-        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || farmAnchor == null) return;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING) || farmAnchor == null) return;
         SimpleContainer inv = villager.getInventory();
         if (!townstead$hasHoe(inv)) {
             townstead$pullFromStorage(level, villager,
@@ -1556,7 +1557,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             townstead$pullFromStorage(level, villager,
                     this::townstead$isHarvestTool, ItemStack::getCount, StorageUse.TOOL);
         }
-        if (TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT.get() && townstead$findWaterBucketSlot(inv) < 0) {
+        if (Switchboard.get(TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT) && townstead$findWaterBucketSlot(inv) < 0) {
             townstead$pullFromStorage(level, villager,
                     s -> s.is(Items.WATER_BUCKET), s -> 1, StorageUse.TOOL);
             if (townstead$findWaterBucketSlot(inv) < 0 && townstead$findEmptyBucketSlot(inv) < 0) {
@@ -1739,11 +1740,11 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             if (townstead$findNearestMatureCrop(snapshot, villager, gameTime) != null) return true;
             BlockPos plantSpot = townstead$findNearestPlantSpot(snapshot, level, villager, gameTime);
             if (hasSeeds && plantSpot != null) return true;
-            if (!hasSeeds && TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() && plantSpot != null) return true;
+            if (!hasSeeds && Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING) && plantSpot != null) return true;
 
             BlockPos tillSpot = townstead$findNearestTillSpot(snapshot, villager, gameTime);
             if (hasHoe && tillSpot != null) return true;
-            if (!hasHoe && TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() && tillSpot != null) return true;
+            if (!hasHoe && Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING) && tillSpot != null) return true;
 
             return townstead$isInventoryMostlyFull(inv);
         } finally {
@@ -1782,7 +1783,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             farmBlueprint = FarmBlueprint.empty(farmAnchor);
         }
 
-        if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+        if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
             LOGGER.info(
                     "Farmer {} blueprint plan: source=cell_plan, post={}, personality={}, cells={}",
                     farmAnchor,
@@ -1858,7 +1859,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             villager.getLongTermMemory().remember("townstead.farmer.tier." + result.tierAfter());
             villager.getLongTermMemory().remember("townstead.farmer.discovery.unlock");
             villager.getLongTermMemory().remember("townstead.farmer.discovery.tier." + result.tierAfter());
-            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
                 LOGGER.info(
                         "Farmer {} tier up: {} -> {} (source={}, xp={}, next={})",
                         villager.getUUID(),
@@ -1894,7 +1895,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             if (nextRequestTick < soonest) nextRequestTick = soonest;
         }
 
-        if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+        if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
             LOGGER.info("Farmer {} blocked state: {} -> {}", villager.getUUID(), previous.id(), reason.id());
         }
     }
@@ -1904,21 +1905,21 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         // painted plan. Otherwise fall back to the config default.
         if (cachedFieldPost != null) {
             // Add a small margin over the post's radius so edge cells are pathable.
-            return Math.max(TownsteadConfig.FARMER_FARM_RADIUS.get(), cachedFieldPost.getRadius() + 4);
+            return Math.max(Switchboard.get(TownsteadConfig.FARMER_FARM_RADIUS), cachedFieldPost.getRadius() + 4);
         }
-        return TownsteadConfig.FARMER_FARM_RADIUS.get();
+        return Switchboard.get(TownsteadConfig.FARMER_FARM_RADIUS);
     }
 
     private int townstead$cellCooldownTicks() {
-        return TownsteadConfig.FARMER_CELL_COOLDOWN_TICKS.get();
+        return Switchboard.get(TownsteadConfig.FARMER_CELL_COOLDOWN_TICKS);
     }
 
     private int townstead$pathfailMaxRetries() {
-        return TownsteadConfig.FARMER_PATHFAIL_MAX_RETRIES.get();
+        return Switchboard.get(TownsteadConfig.FARMER_PATHFAIL_MAX_RETRIES);
     }
 
     private int townstead$idleBackoffTicks(VillagerEntityMCA villager) {
-        int base = TownsteadConfig.FARMER_IDLE_BACKOFF_TICKS.get();
+        int base = Switchboard.get(TownsteadConfig.FARMER_IDLE_BACKOFF_TICKS);
         return townstead$scaleInt(base, townstead$profile(villager).idleBackoffScale(), 10, 200);
     }
 
@@ -1928,7 +1929,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             String hint = FarmerCropCompatRegistry.patternHintForSeed(inv.getItem(i));
             if (hint != null) {
                 if ("rice_paddy".equals(hint)
-                        && !TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT.get()) continue;
+                        && !Switchboard.get(TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT)) continue;
                 return hint;
             }
         }
@@ -1936,11 +1937,11 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private int townstead$waterSourceSearchRadius() {
-        return Math.max(8, TownsteadConfig.FARMER_WATER_SOURCE_SEARCH_RADIUS.get());
+        return Math.max(8, Switchboard.get(TownsteadConfig.FARMER_WATER_SOURCE_SEARCH_RADIUS));
     }
 
     private int townstead$waterSourceVerticalRadius() {
-        return Math.max(2, TownsteadConfig.FARMER_WATER_SOURCE_VERTICAL_RADIUS.get());
+        return Math.max(2, Switchboard.get(TownsteadConfig.FARMER_WATER_SOURCE_VERTICAL_RADIUS));
     }
 
     private int townstead$groomRadius() {
@@ -1948,11 +1949,11 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             if (!cachedFieldPost.isGroomEnabled()) return 0;
             return cachedFieldPost.getGroomRadius();
         }
-        return Math.max(0, TownsteadConfig.FARMER_GROOM_RADIUS.get());
+        return Math.max(0, Switchboard.get(TownsteadConfig.FARMER_GROOM_RADIUS));
     }
 
     private int townstead$groomScanIntervalTicks() {
-        return Math.max(20, TownsteadConfig.FARMER_GROOM_SCAN_INTERVAL_TICKS.get());
+        return Math.max(20, Switchboard.get(TownsteadConfig.FARMER_GROOM_SCAN_INTERVAL_TICKS));
     }
 
     private void townstead$maybeAnnounceRequest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -2003,7 +2004,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private void debugTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
+        if (!Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) return;
         if (gameTime < nextDebugTick) return;
         if (!(level.getNearestPlayer(villager, REQUEST_RANGE) instanceof ServerPlayer player)) return;
         String name = villager.getName().getString();

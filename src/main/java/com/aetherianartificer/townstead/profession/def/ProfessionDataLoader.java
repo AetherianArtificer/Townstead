@@ -740,7 +740,11 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         }
 
         return new ProfessionDef(id, name, description,
-                new ProgressionTrack(List.copyOf(tiers), dailyCap, maxXp),
+                new ProgressionTrack(List.copyOf(tiers), dailyCap, maxXp,
+                        Math.max(0, GsonHelper.getAsInt(obj, "checkpoints_per_rank",
+                                ProgressionTrack.DEFAULT_CHECKPOINTS)),
+                        Math.max(0, Math.min(100, GsonHelper.getAsInt(obj, "over_cap_percent",
+                                ProgressionTrack.DEFAULT_OVER_CAP_PERCENT)))),
                 UnlockModel.fromString(unlock),
                 GsonHelper.getAsInt(obj, "points_per_tier", 1),
                 RetrainingPolicy.fromString(retraining),
@@ -1191,6 +1195,10 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         if (overlay.has("levels")) def.add("levels", overlay.get("levels"));
         if (overlay.has("daily_cap")) def.add("daily_cap", overlay.get("daily_cap"));
         if (overlay.has("max_xp")) def.add("max_xp", overlay.get("max_xp"));
+        if (overlay.has("checkpoints_per_rank")) {
+            def.add("checkpoints_per_rank", overlay.get("checkpoints_per_rank"));
+        }
+        if (overlay.has("over_cap_percent")) def.add("over_cap_percent", overlay.get("over_cap_percent"));
     }
 
     /**

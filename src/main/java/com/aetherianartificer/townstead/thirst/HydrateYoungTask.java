@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.thirst;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.work.ReachableTargetSelector;
 import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
@@ -295,7 +296,7 @@ public class HydrateYoungTask extends Behavior<VillagerEntityMCA> {
 
     private boolean mayCareFor(VillagerEntityMCA caregiver, VillagerEntityMCA child) {
         if (isParentOf(caregiver, child)) return true;
-        if (!TownsteadConfig.ENABLE_NON_PARENT_CAREGIVERS.get()) return false;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_NON_PARENT_CAREGIVERS)) return false;
         if (McaPersonalityCompat.isCrabby(caregiver.getVillagerBrain().getPersonality())) return false;
         return !parentsNearby(child);
     }

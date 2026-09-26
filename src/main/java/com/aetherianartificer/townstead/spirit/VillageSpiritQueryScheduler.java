@@ -50,6 +50,7 @@ public final class VillageSpiritQueryScheduler {
     }
 
     public static void tick(MinecraftServer server) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.SPIRIT)) return;
         if (server == null || QUEUE.isEmpty()) return;
         long deadline = System.nanoTime() + MAX_NANOS_PER_TICK;
         int processed = 0;

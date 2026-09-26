@@ -23,7 +23,7 @@ public final class GenePowerSource implements PowerSource {
 
     @Override
     public void collect(LivingEntity entity, List<Power> out) {
-        if (!expresses(entity)) return;
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.ROOTS) || !expresses(entity)) return;
         for (var allele : com.aetherianartificer.townstead.root.gene.GeneExpression.activeAlleles(entity)) {
             Gene gene = GeneRegistry.byId(allele.geneId());
             if (gene == null) continue;

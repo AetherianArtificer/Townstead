@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.work.ReachableTargetSelector;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
@@ -350,20 +351,20 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
     private boolean acquireFood(ServerLevel level, VillagerEntityMCA villager) {
         long claimUntil = level.getGameTime() + MAX_DURATION + 20L;
         List<ScoredCandidate> candidates = new ArrayList<>();
-        if (TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING.get()) {
+        if (Switchboard.get(TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING)) {
             AABB box = villager.getBoundingBox().inflate(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS);
             for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, box, e -> !e.isRemoved() && FoodSafety.isSafeNutritiousFood(e.getItem(), villager))) {
                 if (ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, item)) continue;
                 candidates.add(new ScoredCandidate(TargetType.GROUND_ITEM, getNutrition(item.getItem()), item, null, null));
             }
         }
-        if (TownsteadConfig.ENABLE_CONTAINER_SOURCING.get()) {
+        if (Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING)) {
             NearbyItemSources.collectBestFoodSlots(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS, villager.blockPosition(), slot -> {
                 if (ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, slot)) return;
                 candidates.add(new ScoredCandidate(TargetType.CONTAINER, slot.score(), null, slot, null));
             });
         }
-        if (TownsteadConfig.PREFER_SERVED_FOOD.get()) {
+        if (Switchboard.get(TownsteadConfig.PREFER_SERVED_FOOD)) {
             // Served food within the same search box competes on nutrition like any other source.
             // Plates beyond it remain the village-wide fallback in acquireAmenity.
             for (Amenities.Candidate candidate : Amenities.candidates(level, villager)) {
@@ -386,7 +387,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
     /** Last-resort food source, after carried, stored, dropped, and served meals. */
     private boolean acquireCrop(ServerLevel level, VillagerEntityMCA villager) {
         long claimUntil = level.getGameTime() + MAX_DURATION + 20L;
-        if (TownsteadConfig.ENABLE_CROP_SOURCING.get()) {
+        if (Switchboard.get(TownsteadConfig.ENABLE_CROP_SOURCING)) {
             BlockPos cropPos = NearbyCropIndex.snapshot(level, villager.blockPosition(), SEARCH_RADIUS, VERTICAL_RADIUS).nearestTo(villager);
             if (cropPos != null) {
                 BlockPos chosen = ReachableTargetSelector.chooseReachable(level, villager,
