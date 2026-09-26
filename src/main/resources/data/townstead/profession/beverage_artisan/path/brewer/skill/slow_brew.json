@@ -1,0 +1,55 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.brewer.slow_brew"
+  },
+  "icon": "minecraft:brewing_stand",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.brewer.slow_brew.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:brewer_ferment",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 6,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:resistance",
+            "duration": 100,
+            "amplifier": 0
+          }
+        },
+        {
+          "type": "pheno:delay",
+          "ticks": 200,
+          "action": {
+            "type": "pheno:area_of_effect",
+            "radius": 6,
+            "include_self": true,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:strength",
+              "duration": 600,
+              "amplifier": 0
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.pilgrim.ascetic"
+  },
+  "icon": "minecraft:bread",
+  "description": {
+    "translate": "skill.townstead.cleric.pilgrim.ascetic.description"
+  },
+  "cost": 1,
+  "requires": [
+    "wayfarer"
+  ],
+  "power": {
+    "type": "pheno:effect_immunity",
+    "effects": [
+      "minecraft:hunger"
+    ]
+  }
+}

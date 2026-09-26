@@ -1,0 +1,71 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.curse_breaker.unfading"
+  },
+  "icon": "minecraft:ender_pearl",
+  "description": {
+    "translate": "skill.townstead.librarian.curse_breaker.unfading.description"
+  },
+  "cost": 1,
+  "requires": [
+    "unbound"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 200,
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "head",
+          "item_action": {
+            "type": "pheno:remove_enchantment",
+            "enchantment": "minecraft:vanishing_curse"
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "chest",
+          "item_action": {
+            "type": "pheno:remove_enchantment",
+            "enchantment": "minecraft:vanishing_curse"
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "legs",
+          "item_action": {
+            "type": "pheno:remove_enchantment",
+            "enchantment": "minecraft:vanishing_curse"
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "feet",
+          "item_action": {
+            "type": "pheno:remove_enchantment",
+            "enchantment": "minecraft:vanishing_curse"
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "mainhand",
+          "item_action": {
+            "type": "pheno:remove_enchantment",
+            "enchantment": "minecraft:vanishing_curse"
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "offhand",
+          "item_action": {
+            "type": "pheno:remove_enchantment",
+            "enchantment": "minecraft:vanishing_curse"
+          }
+        }
+      ]
+    }
+  }
+}

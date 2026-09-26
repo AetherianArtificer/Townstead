@@ -1,0 +1,21 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "accents:sewing_station",
+      "required": false
+    },
+    {
+      "id": "legendarysurvivaloverhaul:sewing_table",
+      "required": false
+    },
+    {
+      "id": "weaversparadise:clothcrafting_station",
+      "required": false
+    },
+    {
+      "id": "weaversparadise:spinning_jenny",
+      "required": false
+    }
+  ]
+}

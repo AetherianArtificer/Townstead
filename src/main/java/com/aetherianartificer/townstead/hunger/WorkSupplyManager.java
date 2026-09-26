@@ -1,6 +1,8 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+import com.aetherianartificer.townstead.compat.mca.McaChoreTools;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Chore;
 import net.minecraft.server.level.ServerLevel;
@@ -31,17 +33,17 @@ public final class WorkSupplyManager {
     private WorkSupplyManager() {}
 
     public static void restockForCurrentJob(ServerLevel level, VillagerEntityMCA villager, Chore job) {
-        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get()) return;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING)) return;
         if (job == null || job == Chore.NONE) return;
         boolean isFarmer = com.aetherianartificer.townstead.work.WorkTaskDeclarations.permitsTask(
                 villager, com.aetherianartificer.townstead.profession.def.WorkTaskTypes.HARVEST);
 
         SimpleContainer inv = villager.getInventory();
-        Class<?> toolType = job.getToolType();
-        boolean hasTool = toolType == null || contains(inv, stack -> toolType.isInstance(stack.getItem()));
-        if (!hasTool && toolType != null) {
+        Predicate<ItemStack> toolMatcher = McaChoreTools.toolMatcher(job);
+        boolean hasTool = toolMatcher == null || contains(inv, toolMatcher);
+        if (!hasTool) {
             NearbyItemSources.pullSingleToInventory(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
-                    stack -> toolType.isInstance(stack.getItem()),
+                    toolMatcher,
                     stack -> 1);
         }
 
@@ -59,19 +61,20 @@ public final class WorkSupplyManager {
                         stack -> stack.getItem() instanceof BoneMealItem,
                         stack -> stack.getCount());
             }
-            if (toolType == null && !contains(inv, stack -> stack.getItem() instanceof HoeItem)) {
+            if (toolMatcher == null && !contains(inv, stack -> stack.getItem() instanceof HoeItem)) {
                 NearbyItemSources.pullSingleToInventory(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
                         stack -> stack.getItem() instanceof HoeItem,
                         stack -> 1);
             }
 
-            if (TownsteadConfig.ENABLE_HARVEST_OUTPUT_STORAGE.get() && villager.tickCount % 40 == 0) {
-                offloadHarvestOutput(level, villager, toolType);
+            if (Switchboard.get(TownsteadConfig.ENABLE_HARVEST_OUTPUT_STORAGE) && villager.tickCount % 40 == 0) {
+                offloadHarvestOutput(level, villager, toolMatcher);
             }
         }
     }
 
-    private static void offloadHarvestOutput(ServerLevel level, VillagerEntityMCA villager, Class<?> requiredToolType) {
+    private static void offloadHarvestOutput(ServerLevel level, VillagerEntityMCA villager,
+                                             Predicate<ItemStack> requiredTool) {
         SimpleContainer inv = villager.getInventory();
         int reserveFoodSlot = findBestFoodSlot(inv);
 
@@ -79,7 +82,7 @@ public final class WorkSupplyManager {
             ItemStack stack = inv.getItem(i);
             if (stack.isEmpty()) continue;
             if (i == reserveFoodSlot) continue;
-            if (requiredToolType != null && requiredToolType.isInstance(stack.getItem())) continue;
+            if (requiredTool != null && requiredTool.test(stack)) continue;
             if (stack.getItem() instanceof HoeItem) continue;
             if (stack.getItem() instanceof BoneMealItem) continue;
             if (isPlantableSeed(stack)) continue;

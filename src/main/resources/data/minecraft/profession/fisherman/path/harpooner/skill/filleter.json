@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.harpooner.filleter"
+  },
+  "icon": "minecraft:cod",
+  "description": {
+    "translate": "skill.townstead.fisherman.harpooner.filleter.description"
+  },
+  "cost": 1,
+  "requires": [
+    "taut_line"
+  ],
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 1.5,
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "or",
+        "conditions": [
+          {
+            "type": "ingredient",
+            "item": "minecraft:fishing_rod"
+          },
+          {
+            "type": "ingredient",
+            "tag": "starcatcher:rods"
+          }
+        ]
+      }
+    },
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:entity_group",
+        "group": "aquatic"
+      }
+    }
+  }
+}

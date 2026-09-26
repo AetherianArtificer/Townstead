@@ -1,0 +1,32 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.surveyor.spot"
+  },
+  "icon": "minecraft:spyglass",
+  "description": {
+    "translate": "skill.townstead.cartographer.surveyor.spot.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:surveyor_survey",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:glowing",
+      "duration": 200,
+      "amplifier": 0,
+      "on": {
+        "type": "pheno:ray",
+        "distance": 32
+      }
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.prospector.vein_sense"
+  },
+  "icon": "minecraft:raw_copper",
+  "description": {
+    "translate": "skill.townstead.cartographer.prospector.vein_sense.description"
+  },
+  "cost": 1,
+  "requires": [
+    "strike_it_rich"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 100,
+    "resource_cost": {
+      "resource": "townstead:bearing",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:bearing",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 10,
+        "where": {
+          "type": "or",
+          "conditions": [
+            {
+              "type": "in_tag",
+              "tag": "c:ores"
+            },
+            {
+              "type": "in_tag",
+              "tag": "forge:ores"
+            }
+          ]
+        }
+      },
+      "do": {
+        "type": "pheno:spawn_particles",
+        "particle": "minecraft:wax_on",
+        "count": 6,
+        "spread": 0.4
+      }
+    }
+  }
+}

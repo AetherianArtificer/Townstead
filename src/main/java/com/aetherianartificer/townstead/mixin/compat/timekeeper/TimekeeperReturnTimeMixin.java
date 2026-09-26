@@ -26,6 +26,7 @@ public class TimekeeperReturnTimeMixin {
     @Inject(method = "execute(Lnet/minecraft/world/level/LevelAccessor;)Ljava/lang/String;",
             at = @At("HEAD"), cancellable = true, remap = false, require = 0)
     private static void townstead$returnTownsteadDate(LevelAccessor level, CallbackInfoReturnable<String> cir) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CALENDAR)) return;
         cir.setReturnValue(TimekeeperDateFormat.tooltipString());
     }
 }

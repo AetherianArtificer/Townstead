@@ -70,6 +70,10 @@ public abstract class InteractScreenMixin extends Screen {
     private static final int FATIGUE_ICON_X = 70;
     private static final int FATIGUE_ICON_Y = 170;
     private static final int FATIGUE_ICON_SIZE = 24;
+    private static final int TEMPERATURE_ICON_X = 70;
+    private static final int TEMPERATURE_ICON_Y = 194;
+    private static final int TEMPERATURE_ICON_SIZE = 24;
+    private static final int TEMPERATURE_ICON_PX = 20;
     // The icon art is a glyph-tight 12px sprite; render it at 24px so it fills the same
     // footprint as MCA's own status icons (16px sprites drawn at 1.5x = 24px). 12 -> 24
     // is a clean 2x.
@@ -102,7 +106,8 @@ public abstract class InteractScreenMixin extends Screen {
     private void townstead$interceptTalkButton(MCAButton button, CallbackInfo ci) {
         String id = button.identifier();
         if (timeSinceLastClick <= 2) return;
-        if ("gui.button.talk".equals(id)) {
+        if (townstead$openDress(id, ci)) return;
+        if ("gui.button.talk".equals(id) && TownsteadConfig.isRpgDialogueEnabled()) {
             ci.cancel();
             townstead$transitioning = true;
             Minecraft.getInstance().setScreen(new RpgDialogueScreen(villager));
@@ -117,7 +122,8 @@ public abstract class InteractScreenMixin extends Screen {
     private void townstead$interceptTalkButton(Button button, CallbackInfo ci) {
         String id = button.identifier();
         if (timeSinceLastClick <= 2) return;
-        if ("gui.button.talk".equals(id)) {
+        if (townstead$openDress(id, ci)) return;
+        if ("gui.button.talk".equals(id) && TownsteadConfig.isRpgDialogueEnabled()) {
             ci.cancel();
             townstead$transitioning = true;
             Minecraft.getInstance().setScreen(new RpgDialogueScreen(villager));
@@ -156,7 +162,11 @@ public abstract class InteractScreenMixin extends Screen {
         }
     }
 
+    //? if neoforge {
     @Inject(method = "init", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_7856_", remap = false, at = @At("TAIL"))
+    *///?}
     private void townstead$hidePoseButtonWhenNoEmoteSource(CallbackInfo ci) {
         if (EmoteReflection.isAvailable()) return;
         // No emote source loaded — hide Pose so the button doesn't dead-end.
@@ -170,7 +180,22 @@ public abstract class InteractScreenMixin extends Screen {
         }
     }
 
+    @Unique
+    private boolean townstead$openDress(String id, CallbackInfo ci) {
+        if (!"gui.button.townstead_dress".equals(id)) return false;
+        ci.cancel();
+        if (com.aetherianartificer.townstead.compat.hats.HatsCompat.present()) {
+            timeSinceLastClick = 0;
+            ((net.conczin.mca.client.gui.AbstractDynamicScreen) (Object) this).setLayout("townstead_dress");
+        }
+        return true;
+    }
+
+    //? if neoforge {
     @Inject(method = "onClose", at = @At("HEAD"), cancellable = true)
+    //?} else {
+    /*@Inject(method = "m_7379_", remap = false, at = @At("HEAD"), cancellable = true)
+    *///?}
     private void townstead$suppressCloseOnTransition(CallbackInfo ci) {
         if (townstead$transitioning) {
             townstead$transitioning = false;
@@ -291,6 +316,15 @@ public abstract class InteractScreenMixin extends Screen {
                     .withStyle(Style.EMPTY.withColor(fatigueState.getColor()));
             context.renderTooltip(font, energyLabel, FATIGUE_ICON_X + 16, FATIGUE_ICON_Y + 20);
         }
+
+        if (townstead$temperatureShown() && townstead$isHoveringTemperatureIcon()) {
+            boolean fahrenheit = TownsteadConfig.temperatureInFahrenheit();
+            com.aetherianartificer.townstead.temperature.TemperatureData.Tier tier =
+                    com.aetherianartificer.townstead.temperature.TemperatureClientStore.getTier(entityId);
+            Component temperatureLabel = com.aetherianartificer.townstead.temperature.TemperatureClientStore.tooltip(entityId, fahrenheit);
+            context.renderTooltip(font, font.split(temperatureLabel, Math.min(220, Math.max(80, width - 32))),
+                    TEMPERATURE_ICON_X + 16, TEMPERATURE_ICON_Y + 20);
+        }
     }
 
     private static final int TRAITS_Y = 30 + 17 * 4; // 98
@@ -308,6 +342,37 @@ public abstract class InteractScreenMixin extends Screen {
     *///?}
     private int townstead$shiftTraitsTooltipY(int y) {
         return y >= TRAITS_Y ? y + 17 : y;
+    }
+
+    /**
+     * Puts the family name on the one tooltip that shows who this is.
+     *
+     * <p>MCA draws that line from {@code getName}, the villager's identity, rather than from
+     * {@code getDisplayName}, so the composed name never reaches it. Every tooltip on this screen
+     * goes through the same call, so the name is recognised by being the villager's name rather
+     * than by its position: a coordinate would drift the moment MCA reorders a line.</p>
+     */
+    //? if >=1.21 {
+    @ModifyArg(method = "drawTextPopups", remap = false,
+            at = @At(value = "INVOKE", remap = false,
+                    target = "Lnet/minecraft/client/gui/GuiGraphics;renderTooltip(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;II)V"),
+            index = 1)
+    //?} else {
+    /*@ModifyArg(method = "drawTextPopups", remap = false,
+            at = @At(value = "INVOKE", remap = false,
+                    target = "Lnet/minecraft/client/gui/GuiGraphics;m_280557_(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;II)V"),
+            index = 1)
+    *///?}
+    private Component townstead$composeNameTooltip(Component text) {
+        if (text == null || villager == null) return text;
+        try {
+            net.minecraft.world.entity.Entity entity = villager.asEntity();
+            if (!text.getString().equals(entity.getName().getString())) return text;
+            Component composed = entity.getDisplayName();
+            return composed == null ? text : composed;
+        } catch (Throwable ignored) {
+            return text;
+        }
     }
 
     //? if >=1.21 {
@@ -357,6 +422,14 @@ public abstract class InteractScreenMixin extends Screen {
             townstead$drawNeedIcon(context, energySprite, FATIGUE_ICON_X, FATIGUE_ICON_Y, ENERGY_ICON_PX);
         }
 
+        if (townstead$temperatureShown()) {
+            com.aetherianartificer.townstead.temperature.TemperatureData.Tier tier =
+                    com.aetherianartificer.townstead.temperature.TemperatureClientStore.getTier(villager.asEntity().getId());
+            int inset = (NEED_ICON_PX - TEMPERATURE_ICON_PX) / 2;
+            com.aetherianartificer.townstead.client.gui.TemperatureIcons.draw(context, tier,
+                    TEMPERATURE_ICON_X + inset, TEMPERATURE_ICON_Y + inset, TEMPERATURE_ICON_PX);
+        }
+
         ThirstCompatBridge bridge = ThirstBridgeResolver.get();
         if (bridge == null || !TownsteadConfig.isVillagerThirstEnabled()) return;
 
@@ -394,6 +467,21 @@ public abstract class InteractScreenMixin extends Screen {
 
     private boolean townstead$isHoveringThirstIcon() {
         return ((AbstractDynamicScreenAccessor) this).townstead$invokeHoveringOverIcon("thirst");
+    }
+
+    @Unique
+    private boolean townstead$temperatureShown() {
+        return TownsteadConfig.isVillagerTemperatureEnabled()
+                && !com.aetherianartificer.townstead.client.root.ClientNeeds.suppresses(villager.asEntity().getId(), "temperature");
+    }
+
+
+    private boolean townstead$isHoveringTemperatureIcon() {
+        if (minecraft == null) return false;
+        double mx = minecraft.mouseHandler.xpos() * width / minecraft.getWindow().getScreenWidth();
+        double my = minecraft.mouseHandler.ypos() * height / minecraft.getWindow().getScreenHeight();
+        return mx >= TEMPERATURE_ICON_X && mx <= TEMPERATURE_ICON_X + TEMPERATURE_ICON_SIZE
+                && my >= TEMPERATURE_ICON_Y && my <= TEMPERATURE_ICON_Y + TEMPERATURE_ICON_SIZE;
     }
 
     private boolean townstead$isHoveringFatigueIcon() {
@@ -454,10 +542,10 @@ public abstract class InteractScreenMixin extends Screen {
         }
         Component date = Component.translatableWithFallback(
                 "townstead.calendar.inspector.month_day", "%1$s %2$s", month, life.birthDayOfMonth());
-        Component born = Component.translatableWithFallback(
-                "townstead.calendar.inspector.born_with_age",
-                "Born %1$s (age %2$s)",
-                date, Math.round(life.narrativeAgeForBio(life.bioAgeDays())));
+        Component born = TownsteadConfig.SHOW_VILLAGER_AGE.get()
+                ? Component.translatableWithFallback("townstead.calendar.inspector.born_with_age",
+                        "Born %1$s (age %2$s)", date, Math.round(life.narrativeAgeForBio(life.bioAgeDays())))
+                : Component.translatableWithFallback("townstead.calendar.inspector.born", "Born %s", date);
 
         int nameW = font.width(originalName);
         int bornW = font.width(born);

@@ -1,0 +1,22 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.stonewarden.load_bearing"
+  },
+  "icon": "minecraft:stone_bricks",
+  "description": {
+    "translate": "skill.townstead.mason.stonewarden.load_bearing.description"
+  },
+  "cost": 1,
+  "requires": [
+    "solid_ground"
+  ],
+  "power": {
+    "type": "pheno:attribute",
+    "attribute": "minecraft:generic.knockback_resistance",
+    "amount": 1.0,
+    "condition": {
+      "type": "pheno:building"
+    }
+  }
+}

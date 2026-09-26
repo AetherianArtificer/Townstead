@@ -1,0 +1,68 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.whirlwind"
+  },
+  "icon": "minecraft:diamond_hoe",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.whirlwind.description"
+  },
+  "cost": 1,
+  "requires": [
+    "threshing_blow"
+  ],
+  "skill_group": "townstead:levy_scythe",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:grit",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 4,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:damage",
+                "amount": 6,
+                "source": "other"
+              },
+              {
+                "type": "pheno:add_velocity",
+                "away_from_other": 0.6,
+                "y": 0.3
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:entity.player.attack.sweep",
+              "volume": 1.0,
+              "pitch": 0.9
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:sweep_attack",
+              "count": 6,
+              "spread": 1.2
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

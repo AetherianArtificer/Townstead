@@ -35,11 +35,14 @@ public abstract class BabyItemInheritanceMixin {
         if (child == null || child.level().isClientSide) return;
         List<Entity> parents = child.getRelationships().getParents().toList();
         Heredity.inheritFromEntities(TownsteadVillagers.get(child).life(), parents, child.getRandom());
+        com.aetherianartificer.townstead.root.appearance.HairColors.inherit(child, parents);
         // Re-align stage durations to the (possibly newly inherited) origin's cycle.
         RootSpawnHandler.backfillIfMissing(child);
         // birthChild spawned the child mid-method, so nearby players already received
         // the founder-seeded placeholder sync; re-push the inherited state.
         RootSpawnHandler.broadcastLateInheritance(child);
+        // Both parents are in hand here, which is exactly what a family name needs.
+        com.aetherianartificer.townstead.naming.VillagerNames.publish(child);
         com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.birth(child);
     }
 }

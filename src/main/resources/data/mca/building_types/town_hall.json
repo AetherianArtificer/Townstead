@@ -1,0 +1,12 @@
+{
+  "color": "ff5a8a6a",
+  "visible": true,
+  "priority": 4,
+  "icon": false,
+  "iconU": 242,
+  "iconV": 212,
+  "noBeds": true,
+  "blocks": {
+    "#minecraft:banners": 1
+  }
+}

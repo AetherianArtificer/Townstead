@@ -39,6 +39,7 @@ public final class CareerTreeOpener {
      * to one change per day. The declaration is a truth event, so it enters village history.
      */
     public static void handleVocation(ServerPlayer player, String careerIdRaw) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CAREERS)) return;
         takeUpWork(player, com.aetherianartificer.townstead.profession.def.ProfessionDefs
                 .canonicalId(net.minecraft.resources.ResourceLocation.tryParse(careerIdRaw)));
     }
@@ -102,6 +103,7 @@ public final class CareerTreeOpener {
 
     /** The "Careers" conversation option: validate the Scribe consult, then answer. */
     public static void handleRequest(ServerPlayer player, int villagerId) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CAREERS)) return;
         Entity entity = player.serverLevel().getEntity(villagerId);
         if (!(entity instanceof VillagerEntityMCA villager)
                 || !villager.isAlive()
@@ -119,6 +121,7 @@ public final class CareerTreeOpener {
 
     /** The screen's Learn/Equip click: act, then answer with feedback and a fresh record. */
     public static void handleChoose(ServerPlayer player, String skillIdRaw) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CAREERS)) return;
         com.aetherianartificer.townstead.profession.skill.LearnedSkills.Result result =
                 com.aetherianartificer.townstead.profession.career.CareerChoices.chooseFromAcquired(
                         player, net.minecraft.resources.ResourceLocation.tryParse(skillIdRaw));
@@ -185,6 +188,7 @@ public final class CareerTreeOpener {
     }
 
     public static void send(ServerPlayer player) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CAREERS)) return;
         send(player, player, false, "");
     }
 
@@ -221,6 +225,7 @@ public final class CareerTreeOpener {
                             boolean inspect, String notice) {
         net.minecraft.server.MinecraftServer server = viewer.getServer();
         if (server == null) return;
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CAREERS)) return;
         com.aetherianartificer.townstead.chronicle.Chronicles.bySubject(target.getUUID(), 0L, 64)
                 .thenAccept(events -> server.execute(() -> {
                     java.util.Map<String, java.util.List<String>> moments =

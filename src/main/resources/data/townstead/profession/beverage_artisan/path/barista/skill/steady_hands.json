@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.barista.steady_hands"
+  },
+  "icon": "minecraft:iron_pickaxe",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.barista.steady_hands.description"
+  },
+  "cost": 1,
+  "requires": [
+    "morning_cup"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:buzz",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:buzz",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:haste",
+      "duration": 30,
+      "amplifier": 0
+    }
+  }
+}

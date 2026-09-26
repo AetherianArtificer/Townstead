@@ -1,7 +1,9 @@
 {
   "schema": "townstead:extended_building/v1",
+  "catalog": {"node_item": "minecraft:smithing_table"},
   "workers": ["minecraft:toolsmith"],
   "spirit": {
     "industrious": 5
-  }
+  },
+  "talk": { "tags": ["townstead:smithy"] }
 }

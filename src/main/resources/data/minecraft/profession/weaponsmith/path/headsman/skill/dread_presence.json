@@ -1,0 +1,34 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.headsman.dread_presence"
+  },
+  "icon": "minecraft:skeleton_skull",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.headsman.dread_presence.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:headsman_dread",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:weakness",
+        "duration": 200,
+        "amplifier": 0
+      }
+    }
+  }
+}

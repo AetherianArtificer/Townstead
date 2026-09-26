@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.outfitter.well_supplied"
+  },
+  "icon": "minecraft:bread",
+  "description": {
+    "translate": "skill.townstead.leatherworker.outfitter.well_supplied.description"
+  },
+  "cost": 1,
+  "requires": [
+    "on_the_road"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 60,
+    "resource_cost": {
+      "resource": "townstead:hide",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:hide",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:energize",
+      "amount": 2
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.packmaster.release_the_hounds"
+  },
+  "icon": "minecraft:bone_block",
+  "description": {
+    "translate": "skill.townstead.shepherd.packmaster.release_the_hounds.description"
+  },
+  "cost": 1,
+  "requires": [
+    "pack_tactics"
+  ],
+  "skill_group": "townstead:pack_command",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:flock",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 24,
+          "include_self": false,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:tamed"
+            },
+            "if_action": {
+              "type": "pheno:set_attack_target"
+            }
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 16
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 24,
+          "include_self": false,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:tamed"
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:strength",
+                  "duration": 600,
+                  "amplifier": 1
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:speed",
+                  "duration": 600,
+                  "amplifier": 1
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:resistance",
+                  "duration": 600,
+                  "amplifier": 0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.wolf.howl",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tinker.master_tinker"
+  },
+  "icon": "minecraft:netherite_ingot",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tinker.master_tinker.description"
+  },
+  "cost": 1,
+  "requires": [
+    "workshop"
+  ],
+  "skill_group": "townstead:tinker_repair",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 3600,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:knack",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "mainhand",
+          "item_action": {
+            "type": "pheno:damage",
+            "amount": -60
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "chest",
+          "item_action": {
+            "type": "pheno:damage",
+            "amount": -30
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "head",
+          "item_action": {
+            "type": "pheno:damage",
+            "amount": -30
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "legs",
+          "item_action": {
+            "type": "pheno:damage",
+            "amount": -30
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "feet",
+          "item_action": {
+            "type": "pheno:damage",
+            "amount": -30
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.anvil.use",
+          "volume": 0.7,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

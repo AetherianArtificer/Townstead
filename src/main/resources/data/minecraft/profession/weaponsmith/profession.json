@@ -7,5 +7,9 @@
   "description": {
     "text": "Keep the village armed to build a history of weaponsmithing mastery."
   },
+  "skills": [
+    "balanced_grip",
+    "whetstone"
+  ],
   "unlock_model": "experiential"
 }

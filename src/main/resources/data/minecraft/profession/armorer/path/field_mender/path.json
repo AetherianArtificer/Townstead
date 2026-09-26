@@ -1,0 +1,94 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.armorer.path.field_mender"
+  },
+  "title": {
+    "translate": "career.townstead.armorer.title.field_mender"
+  },
+  "color": "#A88A5A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:temper",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:armorer/field_mender/tinkers_eye"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:armorer/field_mender/hammer_out"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:armorer/field_mender/tempered_steel"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 8,
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:not",
+                  "condition": {
+                    "type": "pheno:hostile"
+                  }
+                },
+                {
+                  "type": "pheno:health",
+                  "max": 0.7,
+                  "relative": true
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:temper",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "careful_wear",
+      "field_repair",
+      "reinforce"
+    ],
+    [
+      "rivets",
+      "mend_the_line",
+      "padding"
+    ],
+    [
+      "tinkers_eye",
+      "hammer_out",
+      "tempered_steel"
+    ],
+    [
+      "quartermaster",
+      "full_refit",
+      "fireguard"
+    ],
+    [
+      "master_smith",
+      "armory",
+      "masterwork"
+    ]
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.bulwark.take_the_hit"
+  },
+  "icon": "minecraft:shield",
+  "description": {
+    "translate": "skill.townstead.armorer.bulwark.take_the_hit.description"
+  },
+  "cost": 1,
+  "requires": [
+    "blast_plate"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_hurt",
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:temper",
+      "amount": 5
+    }
+  }
+}

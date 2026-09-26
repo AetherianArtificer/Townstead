@@ -1,0 +1,62 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.tanner.patch_the_hide"
+  },
+  "icon": "minecraft:leather",
+  "description": {
+    "translate": "skill.townstead.leatherworker.tanner.patch_the_hide.description"
+  },
+  "cost": 1,
+  "requires": [
+    "oil_the_leather"
+  ],
+  "skill_group": "townstead:tanner_hide",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "head",
+          "item_action": {
+            "type": "pheno:damage",
+            "amount": -20
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "chest",
+          "item_action": {
+            "type": "pheno:damage",
+            "amount": -20
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "legs",
+          "item_action": {
+            "type": "pheno:damage",
+            "amount": -20
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "feet",
+          "item_action": {
+            "type": "pheno:damage",
+            "amount": -20
+          }
+        }
+      ]
+    }
+  }
+}

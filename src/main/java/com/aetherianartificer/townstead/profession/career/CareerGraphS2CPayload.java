@@ -88,7 +88,28 @@ public record CareerGraphS2CPayload(String title, boolean inspect,
                        List<Evidence> evidence, List<String> moments,
                        String rankName, int points,
                        String group, String nextRankName, List<String> effects,
-                       List<String> requires, PathTag path, Stamp stamp, Ability ability) {
+                       List<String> requires, PathTag path, Stamp stamp, Ability ability,
+                       List<Integer> insightMarks, int insightPrev, int insightNext) {
+
+        /**
+         * Compatibility constructor predating Insight checkpoints. {@code insightMarks} are the XP
+         * totals where Insight lands up to the next rank; {@code insightPrev}/{@code insightNext}
+         * bracket the current XP (next 0 when nothing further pays).
+         */
+        public Node(String id, String rootId, String parentId, byte kind, byte state,
+                    String name, String description, String icon,
+                    int tier, int maxTier, int xp, int xpToNext, int xpToday, int dailyCap,
+                    boolean primary, boolean equipped,
+                    String routesLine, String replaces,
+                    List<Evidence> evidence, List<String> moments,
+                    String rankName, int points,
+                    String group, String nextRankName, List<String> effects,
+                    List<String> requires, PathTag path, Stamp stamp, Ability ability) {
+            this(id, rootId, parentId, kind, state, name, description, icon, tier, maxTier, xp,
+                    xpToNext, xpToday, dailyCap, primary, equipped, routesLine, replaces,
+                    evidence, moments, rankName, points, group, nextRankName, effects, requires,
+                    path, stamp, ability, List.of(), 0, 0);
+        }
 
         /** Compatibility constructor predating the active-ability block. */
         public Node(String id, String rootId, String parentId, byte kind, byte state,
@@ -195,6 +216,12 @@ public record CareerGraphS2CPayload(String title, boolean inspect,
                 buf.writeVarInt(node.ability().costAmount());
                 buf.writeUtf(node.ability().costLabel());
             }
+            buf.writeVarInt(node.insightMarks().size());
+            for (int mark : node.insightMarks()) {
+                buf.writeVarInt(mark);
+            }
+            buf.writeVarInt(node.insightPrev());
+            buf.writeVarInt(node.insightNext());
         }
     }
 
@@ -262,11 +289,19 @@ public record CareerGraphS2CPayload(String title, boolean inspect,
                 ability = new Ability(true, buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
                         buf.readUtf());
             }
+            int markCount = buf.readVarInt();
+            List<Integer> insightMarks = new ArrayList<>(markCount);
+            for (int j = 0; j < markCount; j++) {
+                insightMarks.add(buf.readVarInt());
+            }
+            int insightPrev = buf.readVarInt();
+            int insightNext = buf.readVarInt();
             nodes.add(new Node(id, rootId, parentId, kind, state, name, description, icon,
                     tier, maxTier, xp, xpToNext, xpToday, dailyCap, primary, equipped,
                     routesLine, replaces, List.copyOf(evidence), List.copyOf(moments),
                     rankName, points, group, nextRankName, List.copyOf(effects),
-                    List.copyOf(requires), path, stamp, ability));
+                    List.copyOf(requires), path, stamp, ability, List.copyOf(insightMarks),
+                    insightPrev, insightNext));
         }
         return new CareerGraphS2CPayload(title, inspect, notice, authority, dateLine,
                 List.copyOf(nodes));

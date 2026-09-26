@@ -26,6 +26,10 @@ public final class NativePerformanceProvider implements PerformanceProvider {
 
     @Override
     public @Nullable PerformanceHandle play(ServerLevel level, PerformanceRequest request) {
+        if (CollapseMotion.CLIP.equals(request.performance().toString())) {
+            return request.actor() instanceof VillagerEntityMCA villager
+                    ? CollapsePlayback.start(villager, request.channel(), request.durationTicks(), request.priority()) : null;
+        }
         NativePerformanceS2CPayload start = new NativePerformanceS2CPayload(request.actor().getId(),
                 request.channel(), request.performance().toString(), request.durationTicks(), request.priority());
         send(request, start);

@@ -23,14 +23,15 @@ public final class GenePowerSource implements PowerSource {
 
     @Override
     public void collect(LivingEntity entity, List<Power> out) {
-        if (!expresses(entity)) return;
-        for (Gene gene : Heredity.expressedGenes(ExpressedGenes.genotypeOf(entity))) {
-            out.add(new Power(gene.id(), gene.instance()));
-            // Companion resources declared inline ride along their parent's expression.
-            for (ResourceLocation companionId : GeneRegistry.companionsOf(gene.id())) {
-                Gene companion = GeneRegistry.byId(companionId);
-                if (companion != null) out.add(new Power(companion.id(), companion.instance()));
-            }
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.ROOTS) || !expresses(entity)) return;
+        for (var allele : com.aetherianartificer.townstead.root.gene.GeneExpression.activeAlleles(entity)) {
+            Gene gene = GeneRegistry.byId(allele.geneId());
+            if (gene == null) continue;
+            String variant = com.aetherianartificer.townstead.root.gene.AllelePayload.parse(allele.variantId()).variant();
+            var instance = gene.variants().stream().filter(v -> v.id().equals(variant))
+                    .findFirst().orElse(gene.variants().get(0)).instance();
+            out.add(new Power(gene.id(), instance));
+
         }
     }
 

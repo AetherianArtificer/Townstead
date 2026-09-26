@@ -1,0 +1,30 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.saddler.long_ride"
+  },
+  "icon": "minecraft:lead",
+  "description": {
+    "translate": "skill.townstead.leatherworker.saddler.long_ride.description"
+  },
+  "cost": 1,
+  "requires": [
+    "steady_mount"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:hide",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:riding"
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:hide",
+      "amount": 3
+    }
+  }
+}

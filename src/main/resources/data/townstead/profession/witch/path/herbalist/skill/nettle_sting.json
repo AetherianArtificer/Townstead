@@ -1,0 +1,34 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.herbalist.nettle_sting"
+  },
+  "icon": "minecraft:fern",
+  "description": {
+    "translate": "skill.townstead.witch.herbalist.nettle_sting.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:herbalist_poison",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 240,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 4,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:poison",
+        "duration": 100,
+        "amplifier": 0
+      }
+    }
+  }
+}

@@ -1,7 +1,10 @@
 package com.aetherianartificer.townstead.client;
 
+import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.client.gui.dialogue.RpgDialogueScreen;
+import com.aetherianartificer.townstead.client.gui.quest.QuestLedgerScreen;
 import com.mojang.blaze3d.platform.InputConstants;
+import net.conczin.mca.client.gui.InteractScreen;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.VillagerLike;
 import net.minecraft.client.KeyMapping;
@@ -64,6 +67,13 @@ public final class TownsteadKeybinds {
      * sixteen unbound entries in the Controls screen to serve a layer most players will drive with
      * the dial anyway.</p>
      */
+    public static final KeyMapping QUEST_LEDGER = new KeyMapping(
+            "townstead.key.quest_ledger",
+            InputConstants.Type.KEYSYM,
+            InputConstants.KEY_L,
+            "townstead.key.category"
+    );
+
     public static final int ABILITY_KEYS = 8;
     public static final KeyMapping[] ABILITIES = new KeyMapping[ABILITY_KEYS];
 
@@ -167,13 +177,20 @@ public final class TownsteadKeybinds {
         // Releases any borrowed binding whose hold has run out, before anything presses a new one.
         com.aetherianartificer.townstead.client.input.SyntheticKey.tick();
         tickWheel(mc);
+        while (QUEST_LEDGER.consumeClick()) {
+            if (mc.player != null && mc.screen == null && com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.QUESTS)) mc.setScreen(new QuestLedgerScreen());
+        }
         while (TALK.consumeClick()) {
             if (mc.player == null || mc.screen != null) continue;
             HitResult hit = mc.hitResult;
             if (hit instanceof EntityHitResult entityHit) {
                 Entity entity = entityHit.getEntity();
                 if (entity instanceof VillagerLike<?> villager) {
-                    mc.setScreen(new RpgDialogueScreen(villager));
+                    // With the RPG screen turned off there is no Townstead dialogue to open, so the
+                    // key lands on MCA's interaction menu and its own Talk button takes it from there.
+                    mc.setScreen(TownsteadConfig.isRpgDialogueEnabled()
+                            ? new RpgDialogueScreen(villager)
+                            : new InteractScreen(villager));
                 }
             }
         }

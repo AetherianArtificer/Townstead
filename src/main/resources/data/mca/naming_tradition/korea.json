@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:naming_tradition/v1",
+  "given": "mca:korea",
+  "family": {
+    "type": "inherited",
+    "list": "townstead_naming:korea",
+    "descent": "father"
+  },
+  "order": "family_first"
+}

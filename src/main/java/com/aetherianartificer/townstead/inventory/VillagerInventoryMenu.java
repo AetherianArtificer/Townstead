@@ -37,9 +37,8 @@ import java.util.List;
  * and the player's inventory below, chest style. Slot coordinates follow the vanilla textures so the
  * screen can be drawn from them and follow GUI resource packs.
  *
- * <p>Armor and offhand are shown but locked: MCA's equipment task owns those slots and would strip or
- * replace anything placed by hand. Curios slots are live, since MCA never touches them. Opened only with
- * Curios installed; otherwise MCA's chest stays in charge.</p>
+ * <p>Armor slots assign personal equipment that takes precedence over MCA's automatic uniforms.
+ * Offhand stays a read-only view because combat and work tasks use it. Curios is optional.</p>
  */
 public class VillagerInventoryMenu extends AbstractContainerMenu {
 
@@ -116,7 +115,7 @@ public class VillagerInventoryMenu extends AbstractContainerMenu {
         int curios = CuriosCompat.slotSpecs(villager).size();
         MenuProvider provider = new SimpleMenuProvider(
                 (id, inventory, p) -> new VillagerInventoryMenu(id, inventory, villager, curios),
-                villager.getDisplayName());
+                com.aetherianartificer.townstead.naming.VillagerNames.titleFor(villager));
         //? if neoforge {
         player.openMenu(provider, buf -> {
             buf.writeVarInt(villager.getId());
@@ -148,9 +147,12 @@ public class VillagerInventoryMenu extends AbstractContainerMenu {
         this.curioPanel = CurioPanel.of(curioCount);
         storage.startOpen(playerInventory.player);
 
-        Container equipment = villager != null ? new LivingEquipmentContainer(villager) : new SimpleContainer(EQUIPMENT_SLOTS);
+        // Client menu packets own this snapshot. Do not overwrite the client entity's actual automatic
+        // uniform when the server sends an empty assignment slot.
+        Container equipment = villager != null && !villager.level().isClientSide
+                ? new LivingEquipmentContainer(villager) : new SimpleContainer(EQUIPMENT_SLOTS);
         for (int i = 0; i < 4; i++) {
-            addSlot(new LockedSlot(equipment, i, 8, 8 + 18 * i, EQUIPMENT_ICONS[i]));
+            addSlot(new ArmorSlot(equipment, i, 8, 8 + 18 * i, EQUIPMENT_ICONS[i], villager));
         }
         addSlot(new LockedSlot(equipment, 4, 77, 62, EQUIPMENT_ICONS[4]));
 
@@ -199,15 +201,17 @@ public class VillagerInventoryMenu extends AbstractContainerMenu {
 
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
+        if (index < 0 || index >= slots.size()) return ItemStack.EMPTY;
         Slot slot = slots.get(index);
-        if (!slot.hasItem()) return ItemStack.EMPTY;
+        if (!slot.hasItem() || !slot.mayPickup(player)) return ItemStack.EMPTY;
         ItemStack stack = slot.getItem();
         ItemStack copy = stack.copy();
         if (index < playerStart) {
             if (!moveItemStackTo(stack, playerStart, playerEnd, true)) return ItemStack.EMPTY;
         } else {
             int curios = curioPanel.count();
-            boolean placed = curios > 0 && moveItemStackTo(stack, curioStart, curioStart + curios, false);
+            boolean placed = moveItemStackTo(stack, 0, 4, false);
+            if (!placed) placed = curios > 0 && moveItemStackTo(stack, curioStart, curioStart + curios, false);
             if (!placed && !moveItemStackTo(stack, storageStart, storageStart + STORAGE_SIZE, false)) {
                 return ItemStack.EMPTY;
             }
@@ -233,7 +237,38 @@ public class VillagerInventoryMenu extends AbstractContainerMenu {
         storage.stopOpen(player);
     }
 
-    /** A slot that shows what is worn but takes nothing in or out; MCA's equipment task owns it. */
+    /** Player armor assignments; vanilla equipment validation and binding rules still apply. */
+    public static final class ArmorSlot extends Slot {
+        private final ResourceLocation icon;
+        private final net.minecraft.world.entity.EquipmentSlot equipmentSlot;
+        @Nullable private final VillagerEntityMCA wearer;
+
+        ArmorSlot(Container container, int index, int x, int y, ResourceLocation icon,
+                  @Nullable VillagerEntityMCA wearer) {
+            super(container, index, x, y);
+            this.icon = icon;
+            this.equipmentSlot = LivingEquipmentContainer.SLOTS[index];
+            this.wearer = wearer;
+        }
+
+        @Override public int getMaxStackSize() { return 1; }
+        @Override public int getMaxStackSize(ItemStack stack) { return 1; }
+
+        @Override public boolean mayPlace(ItemStack stack) {
+            return wearer != null && !stack.isEmpty() && stack.canEquip(equipmentSlot, wearer);
+        }
+
+        @Override public boolean mayPickup(Player player) {
+            return wearer != null && (player.getAbilities().instabuild
+                    || !com.aetherianartificer.townstead.clothing.dress.ThermalDressing.bound(getItem()));
+        }
+
+        @Override public Pair<ResourceLocation, ResourceLocation> getNoItemIcon() {
+            return Pair.of(InventoryMenu.BLOCK_ATLAS, icon);
+        }
+    }
+
+    /** Read-only offhand equipment or inert client padding. */
     public static final class LockedSlot extends Slot {
         @Nullable
         private final ResourceLocation icon;

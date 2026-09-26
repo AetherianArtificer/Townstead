@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.brewer.cool_head"
+  },
+  "icon": "minecraft:ice",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.brewer.cool_head.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:effect_immunity",
+    "effects": [
+      "minecraft:nausea"
+    ]
+  }
+}

@@ -11,6 +11,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -28,12 +30,16 @@ import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
-public class FieldPostBlock extends Block implements EntityBlock, SimpleWaterloggedBlock {
+import java.util.List;
+
+public class FieldPostBlock extends SnowCoatedBlock implements EntityBlock, SimpleWaterloggedBlock {
     public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
 
@@ -42,13 +48,14 @@ public class FieldPostBlock extends Block implements EntityBlock, SimpleWaterlog
 
     public FieldPostBlock(Properties properties) {
         super(properties);
-        registerDefaultState(stateDefinition.any()
+        registerDefaultState(defaultBlockState()
                 .setValue(WATERLOGGED, false)
                 .setValue(FACING, Direction.NORTH));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        super.createBlockStateDefinition(builder);
         builder.add(WATERLOGGED, FACING);
     }
 
@@ -156,6 +163,31 @@ public class FieldPostBlock extends Block implements EntityBlock, SimpleWaterlog
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return new FieldPostBlockEntity(pos, state);
+    }
+
+    /**
+     * Field plans can take substantial player effort to paint. Preserve the complete block-entity
+     * configuration on every Field Post item produced by its loot table so an accidental break,
+     * relocation, or wood-variant pickup does not erase that work. BlockItem restores this data
+     * into the new block entity automatically when the item is placed.
+     */
+    @Override
+    public List<ItemStack> getDrops(BlockState state, LootParams.Builder builder) {
+        List<ItemStack> drops = super.getDrops(state, builder);
+        BlockEntity blockEntity = builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
+        if (blockEntity instanceof FieldPostBlockEntity fieldPost) {
+            for (ItemStack drop : drops) {
+                if (drop.getItem() instanceof BlockItem blockItem
+                        && blockItem.getBlock() instanceof FieldPostBlock) {
+                    //? if >=1.21 {
+                    fieldPost.saveToItem(drop, builder.getLevel().registryAccess());
+                    //?} else {
+                    /*fieldPost.saveToItem(drop);
+                    *///?}
+                }
+            }
+        }
+        return drops;
     }
 
     @Override

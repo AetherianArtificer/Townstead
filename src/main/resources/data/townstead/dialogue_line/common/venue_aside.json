@@ -1,0 +1,88 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "venue_aside",
+  "groups": [
+    {
+      "stance": "+",
+      "lines": {
+        "best_seat_in_the_house": { "text": "Best seat in the house.", "thread": "venue.comfort", "requires": ["venue.amenity:seating"] },
+        "i_could_stay_all_night": { "text": "I could stay all night.", "thread": "venue.stay", "requires": ["time:night"] }
+      }
+    },
+    {
+      "stance": "-",
+      "lines": {
+        "itll_quiet_down": {
+          "text": "It'll quiet down.",
+          "thread": "venue.stay",
+          "requires": ["!venue.tag:townstead_hangouts:quiet"]
+        }
+      }
+    },
+    {
+      "state": { "form": "quality" },
+      "stance": "+",
+      "lines": { "it_really_is": {"text": "It really is.", "thread": "venue.comfort"} }
+    },
+    {
+      "stance": "+",
+      "lines": { "i_come_here_every_chance": {"text": "I come here every chance I get.", "thread": "venue.comfort"} }
+    },
+    {
+      "stance": "-",
+      "lines": {
+        "too_bad_its_so_loud": {
+          "text": "Too bad it's so loud.",
+          "thread": "venue.crowd",
+          "requires": ["!venue.tag:townstead_hangouts:quiet"]
+        }
+      }
+    },
+    {
+      "stance": "+",
+      "lines": {
+        "lets_stay_until_they_close": {
+          "text": "Let's stay until they close.",
+          "opens": "invitation",
+          "thread": "venue.stay",
+          "requires": ["venue.amenity:drink", "time:night"]
+        }
+      }
+    },
+    {
+      "state": { "venue": "tavern" },
+      "stance": "+",
+      "lines": {
+        "stay_for_one_more": {
+          "text": "Stay for one more?",
+          "stages": ["adult", "senior"],
+          "opens": "invitation",
+          "thread": "venue.stay"
+        }
+      }
+    },
+    {
+      "state": { "venue": "cafe" },
+      "stance": "+",
+      "lines": {
+        "want_to_split_a_cake": { "text": "Want to split a cake?", "opens": "invitation", "thread": "venue.food" }
+      }
+    },
+    {
+      "stance": "+",
+      "lines": {
+        "lets_stay_a_while_longer": { "text": "Let's stay a while longer.", "opens": "invitation", "thread": "venue.stay" }
+      }
+    },
+    {
+      "stance": "+",
+      "requires": ["venue.tag:townstead_hangouts:outdoors"],
+      "lines": { "beats_sitting_inside_all_day": {"text": "Beats sitting inside all day.", "thread": "venue.comfort"} }
+    },
+    {
+      "stance": "+",
+      "requires": ["time:day"],
+      "lines": { "i_could_stay_all_day": {"text": "I could stay all day.", "thread": "venue.stay"} }
+    }
+  ]
+}

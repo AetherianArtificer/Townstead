@@ -1,0 +1,54 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.pathfinder.expedition"
+  },
+  "icon": "minecraft:filled_map",
+  "description": {
+    "translate": "skill.townstead.cartographer.pathfinder.expedition.description"
+  },
+  "cost": 1,
+  "requires": [
+    "forced_march"
+  ],
+  "skill_group": "townstead:pathfinder_trail",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "always",
+    "resource_cost": {
+      "resource": "townstead:bearing",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 16,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:speed",
+            "duration": 1200,
+            "amplifier": 1
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:resistance",
+            "duration": 1200,
+            "amplifier": 0
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:night_vision",
+            "duration": 1200,
+            "amplifier": 0
+          }
+        ]
+      }
+    }
+  }
+}

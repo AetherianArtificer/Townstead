@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.work.WorkBuildingNav;
 import com.aetherianartificer.townstead.work.WorkMovement;
 import com.aetherianartificer.townstead.work.WorkNavigationMetrics;
@@ -102,7 +103,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private static final int BLUEPRINT_REPLAN_INTERVAL = 1200;
     private static final int STOCK_MIN_INTERVAL_TICKS = 400;
 
-    private enum ActionType { NONE, RETURN, HARVEST, PLANT, TILL, GROOM, FETCH_WATER, PLACE_WATER, STOCK }
+    private enum ActionType { NONE, RETURN, HARVEST, PLANT, TILL, GROOM, FETCH_WATER, PLACE_WATER, STOCK, BUILD_SUPPORT, ROPE }
 
     private ActionType actionType = ActionType.NONE;
     private BlockPos targetPos;
@@ -122,6 +123,10 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private BlockPos cachedTillTarget;
     private BlockPos cachedWaterTarget;
     private BlockPos cachedGroomTarget;
+    private BlockPos cachedSupportTarget;
+    private BlockPos cachedRopeTarget;
+    /** A trellis cell still lacks a segment and the farmer carries no support item for it. */
+    private boolean cachedSupportWanted;
     private boolean cachedHasHoe;
     private boolean cachedHasSeed;
     private boolean cachedHasWaterBucket;
@@ -150,7 +155,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
-        if (!TownsteadConfig.ENABLE_FARM_ASSIST.get()) return false;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_FARM_ASSIST)) return false;
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
         if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) return false;
@@ -293,6 +298,8 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             case PLANT -> townstead$doPlant(level, villager, targetPos, gameTime);
             case TILL -> townstead$doTill(level, villager, targetPos, gameTime);
             case GROOM -> townstead$doGroom(level, villager, targetPos, gameTime);
+            case BUILD_SUPPORT -> townstead$doBuildSupport(level, villager, targetPos, gameTime);
+            case ROPE -> townstead$doRope(level, villager, targetPos, gameTime);
             case FETCH_WATER -> townstead$doFetchWater(level, villager, targetPos);
             case PLACE_WATER -> townstead$doPlaceWater(level, villager, targetPos, gameTime);
             case STOCK -> {
@@ -311,7 +318,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     @Override
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!TownsteadConfig.ENABLE_FARM_ASSIST.get()) return false;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_FARM_ASSIST)) return false;
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
         if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.HARVEST)) return false;
@@ -327,7 +334,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (farmAnchor != null
-                && TownsteadConfig.ENABLE_CONTAINER_SOURCING.get()
+                && Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING)
                 && townstead$getCurrentScheduleActivity(villager) != Activity.WORK) {
             townstead$doStock(level, villager, true);
         }
@@ -365,7 +372,12 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             return WorkTarget.zonePoint(currentWorksiteTarget, farmAnchor, "approach");
         }
         if (targetPos == null) return null;
-        return WorkTarget.zonePoint(targetPos, farmAnchor, actionType.name().toLowerCase());
+        // A segment high on a trellis pole or climbing crop is worked from the ground.
+        BlockPos standTarget = (actionType == ActionType.HARVEST || actionType == ActionType.PLANT
+                || actionType == ActionType.BUILD_SUPPORT || actionType == ActionType.ROPE)
+                ? FarmerCropCompatRegistry.columnBase(level, targetPos)
+                : targetPos;
+        return WorkTarget.zonePoint(standTarget, farmAnchor, actionType.name().toLowerCase());
     }
 
     @Override
@@ -468,6 +480,15 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             double s = Math.sqrt(villager.distanceToSqr(cachedTillTarget.getX() + 0.5, cachedTillTarget.getY() + 0.5, cachedTillTarget.getZ() + 0.5));
             if (s + 3 * PROX_PENALTY < bestScore) { bestScore = s + 3 * PROX_PENALTY; bestTarget = cachedTillTarget; bestAction = ActionType.TILL; }
         }
+        // Support building and rope rank with tilling: ground preparation, after planting.
+        if (cachedSupportTarget != null) {
+            double s = Math.sqrt(villager.distanceToSqr(cachedSupportTarget.getX() + 0.5, cachedSupportTarget.getY() + 0.5, cachedSupportTarget.getZ() + 0.5));
+            if (s + 3 * PROX_PENALTY < bestScore) { bestScore = s + 3 * PROX_PENALTY; bestTarget = cachedSupportTarget; bestAction = ActionType.BUILD_SUPPORT; }
+        }
+        if (cachedRopeTarget != null) {
+            double s = Math.sqrt(villager.distanceToSqr(cachedRopeTarget.getX() + 0.5, cachedRopeTarget.getY() + 0.5, cachedRopeTarget.getZ() + 0.5));
+            if (s + 3 * PROX_PENALTY < bestScore) { bestScore = s + 3 * PROX_PENALTY; bestTarget = cachedRopeTarget; bestAction = ActionType.ROPE; }
+        }
         if (cachedGroomTarget != null) {
             double s = Math.sqrt(villager.distanceToSqr(cachedGroomTarget.getX() + 0.5, cachedGroomTarget.getY() + 0.5, cachedGroomTarget.getZ() + 0.5));
             if (s + 4 * PROX_PENALTY < bestScore) { bestScore = s + 4 * PROX_PENALTY; bestTarget = cachedGroomTarget; bestAction = ActionType.GROOM; }
@@ -550,7 +571,10 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         actionType = ActionType.NONE;
         targetPos = null;
         townstead$clearMovementIntent(villager);
-        townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.NO_VALID_TARGET);
+        // Checked last so a farmer who waits for stems still harvests and stocks everything else.
+        townstead$setBlockedReason(level, villager, cachedSupportWanted
+                ? HungerData.FarmBlockedReason.NO_SUPPORT
+                : HungerData.FarmBlockedReason.NO_VALID_TARGET);
         nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
     }
 
@@ -570,13 +594,19 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         cachedPlantTarget = townstead$findNearestPlantSpot(snapshot, level, villager, gameTime);
         cachedTillTarget = townstead$findNearestTillSpot(snapshot, villager, gameTime);
         cachedWaterTarget = snapshot.nearestWaterTarget(villager, pos -> !townstead$isBlacklisted(pos, gameTime));
+        SimpleContainer targetInv = villager.getInventory();
+        cachedSupportTarget = snapshot.nearestSupportTarget(villager,
+                pos -> !townstead$isBlacklisted(pos, gameTime) && townstead$findSupportItemSlot(targetInv, level, pos) >= 0);
+        cachedSupportWanted = cachedSupportTarget == null && !snapshot.supportTargets().isEmpty();
+        cachedRopeTarget = townstead$findRopeSlot(targetInv) < 0 ? null
+                : snapshot.nearestRopeTarget(villager, pos -> !townstead$isBlacklisted(pos, gameTime));
         if (gameTime >= nextGroomScanTick) {
             cachedGroomTarget = townstead$findNearestGroomSpot(snapshot, villager, gameTime);
             nextGroomScanTick = gameTime + townstead$groomScanIntervalTicks();
         } else {
             cachedGroomTarget = null;
         }
-        if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+        if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
             LOGGER.info(
                     "Farmer {} target cache: snapshot[h={},p={},t={},w={},g={}] chosen[h={},p={},t={},w={},g={}] inv[seeds={},hoe={},waterBucket={}]",
                     farmAnchor,
@@ -639,7 +669,12 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             // Weeds usually stand on a planned cell (check below), but a dead water crop sits IN
             // the planned WATER cell itself — accept both placements.
             case GROOM -> (townstead$isPlannedOrAdjacentSoil(targetPos.below()) || townstead$isPlannedSoil(targetPos))
-                    && townstead$isRemovableWeed(state);
+                    && isRemovableWeed(state);
+            case BUILD_SUPPORT -> townstead$isSupportTargetValid(level, targetPos, state)
+                    && townstead$findSupportItemSlot(villager.getInventory(), level, targetPos) >= 0;
+            case ROPE -> townstead$columnCell(level, targetPos) != null
+                    && FarmerCropCompatRegistry.needsRope(level, targetPos, state)
+                    && townstead$findRopeSlot(villager.getInventory()) >= 0;
             case FETCH_WATER -> level.getFluidState(targetPos).is(FluidTags.WATER)
                     && townstead$findEmptyBucketSlot(villager.getInventory()) >= 0;
             case PLACE_WATER -> townstead$canPlaceWaterAt(level, targetPos);
@@ -733,13 +768,16 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private boolean townstead$isHarvestTargetValid(ServerLevel level, BlockPos pos, BlockState state) {
-        if (!townstead$isInsideFarmRadius(pos)) return false;
+        // A crop column counts as its lowest segment, so a tall pole stays inside the farm's
+        // vertical radius and resolves to the planned cell under it.
+        BlockPos base = FarmerCropCompatRegistry.columnBase(level, pos);
+        if (!townstead$isInsideFarmRadius(base)) return false;
         if (state.getBlock() instanceof CropBlock crop) {
             // Allow the candidate to be up to 2 blocks above planned soil — catches FD tomato vines.
             return townstead$hasPlannedSoilBelow(pos, 2) && crop.isMaxAge(state);
         }
         if (FarmerCropCompatRegistry.shouldPartialHarvest(state)) {
-            return townstead$hasPlannedSoilBelow(pos, 2);
+            return townstead$hasPlannedSoilBelow(base, 2);
         }
         if (HarvestWorkIndex.isGenericMatureCrop(state)) {
             return townstead$hasPlannedSoilBelow(pos, 2);
@@ -759,6 +797,11 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
 
     private boolean townstead$isPlantTargetValid(ServerLevel level, BlockPos pos, BlockState state) {
         if (farmBlueprint == null) return false;
+        if (FarmerCropCompatRegistry.isBareSupport(level, pos, state)) {
+            PlannedCell supportCell = townstead$columnCell(level, pos);
+            return supportCell != null
+                    && !com.aetherianartificer.townstead.farming.cellplan.SeedAssignment.NONE.equals(supportCell.seedAssignment());
+        }
         // Two valid cases:
         //  (a) pos.below() is a planned FARMLAND/RICH_SOIL cell, seed plants ABOVE the soil
         //  (b) pos IS a planned WATER cell, seed plants INTO the water (rice-type crops)
@@ -795,6 +838,11 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         candidates.add(cropPos.above());
         candidates.add(cropPos.above(2));
         candidates.add(cropPos.above(3));
+        for (int dy = 4; dy < FarmerCropCompatRegistry.MAX_COLUMN_HEIGHT; dy++) {
+            BlockPos segment = cropPos.above(dy);
+            if (!FarmerCropCompatRegistry.isColumnBlock(level.getBlockState(segment))) break;
+            candidates.add(segment);
+        }
         BlockState state = level.getBlockState(cropPos);
         if (state.getBlock() instanceof StemBlock || state.getBlock() instanceof AttachedStemBlock) {
             for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.Plane.HORIZONTAL) {
@@ -868,6 +916,19 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             return;
         }
         ItemStack seed = villager.getInventory().getItem(slot);
+        BlockState supportState = level.getBlockState(pos);
+        if (FarmerCropCompatRegistry.isBareSupport(level, pos, supportState)) {
+            if (FarmerCropCompatRegistry.plantOnSupport(level, pos, supportState, seed)) {
+                seed.shrink(1);
+                villager.swing(villager.getDominantHand());
+                townstead$markWorked(pos, gameTime);
+                HarvestWorkIndex.invalidate(level, pos);
+                townstead$awardFarmerXp(level, villager, gameTime, 2, "plant");
+            } else {
+                townstead$rejectCurrentTarget(pos, gameTime);
+            }
+            return;
+        }
         if (!townstead$canPlantSeedAt(level, pos, seed)) {
             townstead$rejectCurrentTarget(pos, gameTime);
             return;
@@ -897,6 +958,90 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             townstead$markWorked(pos, gameTime);
             HarvestWorkIndex.invalidate(level, pos);
             townstead$awardFarmerXp(level, villager, gameTime, 2, "plant");
+        } else {
+            townstead$rejectCurrentTarget(pos, gameTime);
+        }
+    }
+
+    private boolean townstead$isSupportTargetValid(ServerLevel level, BlockPos pos, BlockState state) {
+        PlannedCell cell = townstead$columnCell(level, pos);
+        if (cell == null || cell.desiredSoil() != com.aetherianartificer.townstead.farming.cellplan.SoilType.TRELLIS) return false;
+        if (farmBlueprint != null && farmBlueprint.isProtected(pos)) return false;
+        return state.isAir() || (state.canBeReplaced() && state.getFluidState().isEmpty());
+    }
+
+    private ItemStack townstead$cellSeedStack(PlannedCell cell) {
+        String seed = cell.seedAssignment();
+        if (!com.aetherianartificer.townstead.farming.cellplan.SeedAssignment.isExplicitSeed(seed)) return ItemStack.EMPTY;
+        try {
+            //? if >=1.21 {
+            return new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse(seed)));
+            //?} else {
+            /*return new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(new net.minecraft.resources.ResourceLocation(seed)));
+            *///?}
+        } catch (Exception e) {
+            return ItemStack.EMPTY;
+        }
+    }
+
+    /** Support item (stem, lattice) that fits the seed of the trellis cell under pos. */
+    private int townstead$findSupportItemSlot(SimpleContainer inv, ServerLevel level, BlockPos pos) {
+        PlannedCell cell = townstead$columnCell(level, pos);
+        if (cell == null) return -1;
+        ItemStack seed = townstead$cellSeedStack(cell);
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            if (FarmerCropCompatRegistry.isTrellisSupportItem(inv.getItem(i), seed)) return i;
+        }
+        return -1;
+    }
+
+    private int townstead$findRopeSlot(SimpleContainer inv) {
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            if (FarmerCropCompatRegistry.isRope(inv.getItem(i))) return i;
+        }
+        return -1;
+    }
+
+    private void townstead$doBuildSupport(ServerLevel level, VillagerEntityMCA villager, BlockPos pos, long gameTime) {
+        if (!townstead$isSupportTargetValid(level, pos, level.getBlockState(pos))) {
+            townstead$rejectCurrentTarget(pos, gameTime);
+            return;
+        }
+        PlannedCell cell = townstead$columnCell(level, pos);
+        int slot = townstead$findSupportItemSlot(villager.getInventory(), level, pos);
+        if (cell == null || slot < 0) {
+            townstead$rejectCurrentTarget(pos, gameTime);
+            return;
+        }
+        // Supports need solid ground. A cell that used to be a crop field goes back to dirt first.
+        if (pos.equals(cell.cropPos()) && level.getBlockState(cell.soilPos()).getBlock() instanceof FarmBlock) {
+            level.setBlock(cell.soilPos(), Blocks.DIRT.defaultBlockState(), Block.UPDATE_ALL);
+        }
+        ItemStack support = villager.getInventory().getItem(slot);
+        if (FarmerCropCompatRegistry.placeTrellisSupport(level, pos, support, townstead$cellSeedStack(cell), cell.trellisSpec())) {
+            support.shrink(1);
+            villager.swing(villager.getDominantHand());
+            HarvestWorkIndex.invalidate(level, pos);
+            nextTargetScanTick = 0;
+            townstead$awardFarmerXp(level, villager, gameTime, 1, "trellis");
+        } else {
+            townstead$rejectCurrentTarget(pos, gameTime);
+        }
+    }
+
+    private void townstead$doRope(ServerLevel level, VillagerEntityMCA villager, BlockPos pos, long gameTime) {
+        BlockState state = level.getBlockState(pos);
+        int slot = townstead$findRopeSlot(villager.getInventory());
+        if (slot < 0 || !FarmerCropCompatRegistry.needsRope(level, pos, state)) {
+            townstead$rejectCurrentTarget(pos, gameTime);
+            return;
+        }
+        if (FarmerCropCompatRegistry.applyRope(level, pos, state)) {
+            villager.getInventory().getItem(slot).shrink(1);
+            villager.swing(villager.getDominantHand());
+            HarvestWorkIndex.invalidate(level, pos);
+            nextTargetScanTick = 0;
+            townstead$awardFarmerXp(level, villager, gameTime, 1, "trellis");
         } else {
             townstead$rejectCurrentTarget(pos, gameTime);
         }
@@ -967,7 +1112,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private void townstead$doGroom(ServerLevel level, VillagerEntityMCA villager, BlockPos topPos, long gameTime) {
         if (!townstead$isPlannedOrAdjacentSoil(topPos.below()) && !townstead$isPlannedSoil(topPos)) return;
         BlockState state = level.getBlockState(topPos);
-        if (!townstead$isRemovableWeed(state)) return;
+        if (!isRemovableWeed(state)) return;
         ItemStack tool = townstead$getPreferredHarvestTool(villager.getInventory(), state);
         List<ItemStack> drops = Block.getDrops(state, level, topPos, null, villager, tool);
         level.destroyBlock(topPos, false, villager);
@@ -981,7 +1126,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private void townstead$doPlaceWater(ServerLevel level, VillagerEntityMCA villager, BlockPos pos, long gameTime) {
-        if (!TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT.get()) return;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT)) return;
         if (!townstead$canPlaceWaterAt(level, pos)) return;
         // Respect protected cells — don't place water on plots the player has marked hands-off
         if (farmBlueprint != null && farmBlueprint.isProtected(pos)) return;
@@ -1034,7 +1179,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private boolean townstead$doStock(ServerLevel level, VillagerEntityMCA villager, boolean endOfWork) {
-        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || farmAnchor == null) return false;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING) || farmAnchor == null) return false;
         java.util.function.Predicate<ItemStack> matcher = townstead$stockMatcher(villager, endOfWork);
         BlockPos destination = endOfWork
                 ? townstead$stockDestination(level, villager, true)
@@ -1059,15 +1204,51 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return stack -> {
             if (stack == null || stack.isEmpty()) return false;
             boolean forced = townstead$isAlwaysStockOutput(stack);
-            if (endOfWork) return true;
             if (stack == keptFood && !forced) return false;
             if (stack.getItem() instanceof HoeItem) return false;
+            if (stack.getItem() instanceof net.minecraft.world.item.BoneMealItem) return false;
+            if (stack.is(Items.BUCKET) || stack.is(Items.WATER_BUCKET)) return false;
+            if (townstead$isHarvestTool(stack)) return false;
+            if (townstead$isWorkMaterial(stack)) return false;
             return !townstead$isSeed(stack) || forced;
         };
     }
 
+    /** The planned cell under the crop column that contains pos, or null. */
+    @Nullable
+    private PlannedCell townstead$columnCell(ServerLevel level, BlockPos pos) {
+        if (farmBlueprint == null) return null;
+        BlockPos base = FarmerCropCompatRegistry.columnBase(level, pos);
+        if (!townstead$isInsideFarmRadius(base)) return null;
+        for (int dy = 1; dy <= 2; dy++) {
+            PlannedCell cell = farmBlueprint.cellAt(base.below(dy));
+            if (cell != null) return cell;
+        }
+        return null;
+    }
+
+    /** Seed for a bare support segment: the cell's assigned seed, or for AUTO any seed the support accepts. */
+    private int townstead$findSupportSeedSlot(SimpleContainer inv, ServerLevel level, BlockPos pos, BlockState state) {
+        PlannedCell cell = townstead$columnCell(level, pos);
+        if (cell == null) return -1;
+        String assigned = cell.seedAssignment();
+        boolean auto = assigned == null
+                || com.aetherianartificer.townstead.farming.cellplan.SeedAssignment.AUTO.equals(assigned);
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (stack.isEmpty()) continue;
+            if (!auto && !townstead$matchesSeedId(stack, assigned)) continue;
+            if (FarmerCropCompatRegistry.canPlantOnSupport(level, pos, state, stack)) return i;
+        }
+        return -1;
+    }
+
     private int townstead$findSeedSlot(SimpleContainer inv, VillagerEntityMCA villager, ServerLevel level, BlockPos plantPos) {
         if (!townstead$isPlantTargetValid(level, plantPos, level.getBlockState(plantPos))) return -1;
+        BlockState plantState = level.getBlockState(plantPos);
+        if (FarmerCropCompatRegistry.isBareSupport(level, plantPos, plantState)) {
+            return townstead$findSupportSeedSlot(inv, level, plantPos, plantState);
+        }
         // Delegate to the blueprint's CellPlanView if a plan assigns a specific seed to this cell.
         // Falls through to the default scoring loop for null/AUTO overrides.
         if (farmBlueprint != null) {
@@ -1206,17 +1387,17 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         // spot as farm soil, so the tree loses.
         if (state.getBlock() instanceof net.minecraft.world.level.block.LeavesBlock) return true;
         if (state.is(net.minecraft.tags.BlockTags.LOGS)) return true;
-        return townstead$isRemovableWeed(state);
+        return isRemovableWeed(state);
     }
 
     private boolean townstead$canClearWaterPlacementObstruction(BlockState state) {
         if (state.isAir()) return true;
         if (state.getBlock() instanceof CropBlock || state.getBlock() instanceof StemBlock) return true;
         if (state.getBlock() instanceof net.minecraft.world.level.block.LeavesBlock) return true;
-        return townstead$isRemovableWeed(state);
+        return isRemovableWeed(state);
     }
 
-    private boolean townstead$isRemovableWeed(BlockState state) {
+    public static boolean isRemovableWeed(BlockState state) {
         if (state.isAir()) return false;
         //? if >=1.21 {
         return state.is(Blocks.SHORT_GRASS)
@@ -1238,9 +1419,15 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             if (townstead$isAlwaysStockOutput(s)) return true;
             if (s.getItem() instanceof HoeItem) continue;
             if (townstead$isSeed(s)) continue;
+            if (townstead$isWorkMaterial(s)) continue;
             return true;
         }
         return false;
+    }
+
+    /** Trellis supports and rope are consumed by the farmer's own work, so they are not harvest output. */
+    private boolean townstead$isWorkMaterial(ItemStack stack) {
+        return FarmerCropCompatRegistry.isColumnBlockItem(stack) || FarmerCropCompatRegistry.isRope(stack);
     }
 
     private boolean townstead$isInventoryMostlyFull(SimpleContainer inv) {
@@ -1300,7 +1487,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private void townstead$restockBasics(ServerLevel level, VillagerEntityMCA villager) {
-        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() || farmAnchor == null) return;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING) || farmAnchor == null) return;
         SimpleContainer inv = villager.getInventory();
         if (!townstead$hasHoe(inv)) {
             townstead$pullFromStorage(level, villager,
@@ -1345,11 +1532,32 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
                         StorageUse.INGREDIENT);
             }
         }
+        if (farmBlueprint != null) {
+            HarvestWorkIndex.FarmSnapshot snapshot = HarvestWorkIndex.snapshot(level, farmAnchor, farmBlueprint);
+            // One pull per kind of support still missing (stems for poles, lattices for jungle grapes).
+            boolean pulledForSeededCell = false;
+            boolean pulledForPlainCell = false;
+            for (BlockPos supportPos : snapshot.supportTargets()) {
+                if (townstead$findSupportItemSlot(inv, level, supportPos) >= 0) continue;
+                PlannedCell cell = townstead$columnCell(level, supportPos);
+                if (cell == null) continue;
+                ItemStack seed = townstead$cellSeedStack(cell);
+                if (seed.isEmpty() ? pulledForPlainCell : pulledForSeededCell) continue;
+                townstead$pullFromStorage(level, villager,
+                        s -> FarmerCropCompatRegistry.isTrellisSupportItem(s, seed), ItemStack::getCount,
+                        StorageUse.INGREDIENT);
+                if (seed.isEmpty()) pulledForPlainCell = true; else pulledForSeededCell = true;
+            }
+            if (snapshot.ropeTargetCount() > 0 && townstead$findRopeSlot(inv) < 0) {
+                townstead$pullFromStorage(level, villager,
+                        FarmerCropCompatRegistry::isRope, ItemStack::getCount, StorageUse.INGREDIENT);
+            }
+        }
         if (!townstead$hasHarvestTool(inv)) {
             townstead$pullFromStorage(level, villager,
                     this::townstead$isHarvestTool, ItemStack::getCount, StorageUse.TOOL);
         }
-        if (TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT.get() && townstead$findWaterBucketSlot(inv) < 0) {
+        if (Switchboard.get(TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT) && townstead$findWaterBucketSlot(inv) < 0) {
             townstead$pullFromStorage(level, villager,
                     s -> s.is(Items.WATER_BUCKET), s -> 1, StorageUse.TOOL);
             if (townstead$findWaterBucketSlot(inv) < 0 && townstead$findEmptyBucketSlot(inv) < 0) {
@@ -1532,11 +1740,11 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             if (townstead$findNearestMatureCrop(snapshot, villager, gameTime) != null) return true;
             BlockPos plantSpot = townstead$findNearestPlantSpot(snapshot, level, villager, gameTime);
             if (hasSeeds && plantSpot != null) return true;
-            if (!hasSeeds && TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() && plantSpot != null) return true;
+            if (!hasSeeds && Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING) && plantSpot != null) return true;
 
             BlockPos tillSpot = townstead$findNearestTillSpot(snapshot, villager, gameTime);
             if (hasHoe && tillSpot != null) return true;
-            if (!hasHoe && TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() && tillSpot != null) return true;
+            if (!hasHoe && Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING) && tillSpot != null) return true;
 
             return townstead$isInventoryMostlyFull(inv);
         } finally {
@@ -1575,7 +1783,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             farmBlueprint = FarmBlueprint.empty(farmAnchor);
         }
 
-        if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+        if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
             LOGGER.info(
                     "Farmer {} blueprint plan: source=cell_plan, post={}, personality={}, cells={}",
                     farmAnchor,
@@ -1651,7 +1859,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             villager.getLongTermMemory().remember("townstead.farmer.tier." + result.tierAfter());
             villager.getLongTermMemory().remember("townstead.farmer.discovery.unlock");
             villager.getLongTermMemory().remember("townstead.farmer.discovery.tier." + result.tierAfter());
-            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
                 LOGGER.info(
                         "Farmer {} tier up: {} -> {} (source={}, xp={}, next={})",
                         villager.getUUID(),
@@ -1687,7 +1895,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             if (nextRequestTick < soonest) nextRequestTick = soonest;
         }
 
-        if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+        if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
             LOGGER.info("Farmer {} blocked state: {} -> {}", villager.getUUID(), previous.id(), reason.id());
         }
     }
@@ -1697,21 +1905,21 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         // painted plan. Otherwise fall back to the config default.
         if (cachedFieldPost != null) {
             // Add a small margin over the post's radius so edge cells are pathable.
-            return Math.max(TownsteadConfig.FARMER_FARM_RADIUS.get(), cachedFieldPost.getRadius() + 4);
+            return Math.max(Switchboard.get(TownsteadConfig.FARMER_FARM_RADIUS), cachedFieldPost.getRadius() + 4);
         }
-        return TownsteadConfig.FARMER_FARM_RADIUS.get();
+        return Switchboard.get(TownsteadConfig.FARMER_FARM_RADIUS);
     }
 
     private int townstead$cellCooldownTicks() {
-        return TownsteadConfig.FARMER_CELL_COOLDOWN_TICKS.get();
+        return Switchboard.get(TownsteadConfig.FARMER_CELL_COOLDOWN_TICKS);
     }
 
     private int townstead$pathfailMaxRetries() {
-        return TownsteadConfig.FARMER_PATHFAIL_MAX_RETRIES.get();
+        return Switchboard.get(TownsteadConfig.FARMER_PATHFAIL_MAX_RETRIES);
     }
 
     private int townstead$idleBackoffTicks(VillagerEntityMCA villager) {
-        int base = TownsteadConfig.FARMER_IDLE_BACKOFF_TICKS.get();
+        int base = Switchboard.get(TownsteadConfig.FARMER_IDLE_BACKOFF_TICKS);
         return townstead$scaleInt(base, townstead$profile(villager).idleBackoffScale(), 10, 200);
     }
 
@@ -1721,7 +1929,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             String hint = FarmerCropCompatRegistry.patternHintForSeed(inv.getItem(i));
             if (hint != null) {
                 if ("rice_paddy".equals(hint)
-                        && !TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT.get()) continue;
+                        && !Switchboard.get(TownsteadConfig.ENABLE_FARMER_WATER_PLACEMENT)) continue;
                 return hint;
             }
         }
@@ -1729,11 +1937,11 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private int townstead$waterSourceSearchRadius() {
-        return Math.max(8, TownsteadConfig.FARMER_WATER_SOURCE_SEARCH_RADIUS.get());
+        return Math.max(8, Switchboard.get(TownsteadConfig.FARMER_WATER_SOURCE_SEARCH_RADIUS));
     }
 
     private int townstead$waterSourceVerticalRadius() {
-        return Math.max(2, TownsteadConfig.FARMER_WATER_SOURCE_VERTICAL_RADIUS.get());
+        return Math.max(2, Switchboard.get(TownsteadConfig.FARMER_WATER_SOURCE_VERTICAL_RADIUS));
     }
 
     private int townstead$groomRadius() {
@@ -1741,11 +1949,11 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             if (!cachedFieldPost.isGroomEnabled()) return 0;
             return cachedFieldPost.getGroomRadius();
         }
-        return Math.max(0, TownsteadConfig.FARMER_GROOM_RADIUS.get());
+        return Math.max(0, Switchboard.get(TownsteadConfig.FARMER_GROOM_RADIUS));
     }
 
     private int townstead$groomScanIntervalTicks() {
-        return Math.max(20, TownsteadConfig.FARMER_GROOM_SCAN_INTERVAL_TICKS.get());
+        return Math.max(20, Switchboard.get(TownsteadConfig.FARMER_GROOM_SCAN_INTERVAL_TICKS));
     }
 
     private void townstead$maybeAnnounceRequest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -1763,6 +1971,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             case NO_SEEDS -> "no_seeds";
             case NO_TOOL -> "no_tool";
             case NO_WATER_PLAN -> "no_water_plan";
+            case NO_SUPPORT -> "no_support";
             case UNREACHABLE -> "unreachable";
             case OUT_OF_SCOPE -> "out_of_scope";
             case NO_VALID_TARGET, UNSUPPORTED_CROP -> null;
@@ -1795,7 +2004,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private void debugTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
+        if (!Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) return;
         if (gameTime < nextDebugTick) return;
         if (!(level.getNearestPlayer(villager, REQUEST_RANGE) instanceof ServerPlayer player)) return;
         String name = villager.getName().getString();

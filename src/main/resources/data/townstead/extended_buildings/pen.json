@@ -6,8 +6,12 @@
   "spirit": {
     "pastoral": 6
   },
-  "enclosure": {
-    "minInterior": 4,
-    "maxInterior": 1024
-  }
+  "enclosure": "optional",
+  "requires": [
+    {
+      "enclosed": true,
+      "min_interior": 4,
+      "max_interior": 4096
+    }
+  ]
 }

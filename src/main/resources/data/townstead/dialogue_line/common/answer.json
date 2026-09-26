@@ -1,0 +1,450 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "answer",
+  "groups": [
+    {
+      "lines": {
+        "fine_fine": { "text": "Fine, fine.", "answers": "townstead:how" },
+        "getting_by": { "text": "Getting by.", "answers": "townstead:how" },
+        "cant_complain": { "text": "Can't complain.", "answers": "townstead:how" },
+        "better_now": { "text": "Better now.", "answers": "townstead:how" },
+        "tired_but_fine": { "text": "Tired, but fine.", "answers": "townstead:how" },
+        "oh_you_know": { "text": "Oh, you know.", "answers": "townstead:how" },
+        "well_enough": { "text": "Well enough.", "answers": "townstead:how" },
+        "not_bad_at_all": { "text": "Not bad at all.", "answers": "townstead:how" },
+        "pretty_good_actually": { "text": "Pretty good, actually!", "answers": "townstead:how" },
+        "im_good": { "text": "I'm good!", "answers": "townstead:how" },
+        "doing_great_thanks": { "text": "Doing great, thanks!", "answers": "townstead:how" },
+        "not_too_bad": { "text": "Not too bad.", "answers": "townstead:how" },
+        "could_be_worse": { "text": "Could be worse!", "answers": "townstead:how" },
+        "hanging_in_there": { "text": "Hanging in there.", "answers": "townstead:how" },
+        "good_thanks_for_asking": { "text": "Good, thanks for asking!", "answers": "townstead:how" },
+        "honestly_pretty_great": { "text": "Honestly? Pretty great.", "answers": "townstead:how" },
+        "busy_but_good": { "text": "Busy, but good.", "answers": "townstead:how" },
+        "same_as_always": { "text": "Same as always.", "answers": "townstead:how" },
+        "ive_been_better": { "text": "I've been better.", "answers": "townstead:how" },
+        "alright_i_suppose": { "text": "Alright, I suppose.", "answers": "townstead:how" },
+        "good_really_good": { "text": "Good! Really good.", "answers": "townstead:how" },
+        "a_little_tired": { "text": "A little tired.", "answers": "townstead:how" },
+        "cant_really_complain": { "text": "Can't really complain.", "answers": "townstead:how" },
+        "oh_im_fine": { "text": "Oh, I'm fine.", "answers": "townstead:how" },
+        "surviving": { "text": "Surviving!", "answers": "townstead:how" },
+        "happy_actually": { "text": "Happy, actually.", "answers": "townstead:how" },
+        "old_but_upright": { "text": "Old, but upright.", "stages": "senior", "answers": "townstead:how" },
+        "my_back_hurts_but_im": { "text": "My back hurts, but I'm alive.", "stages": "senior", "answers": "townstead:how" },
+        "good_i_found_a_frog": { "text": "Good! I found a frog.", "stages": "child", "answers": "townstead:how" },
+        "great_im_the_fastest_in": { "text": "Great! I'm the fastest in the village now!", "stages": "child", "answers": "townstead:how" },
+        "bored_so_bored": { "text": "Bored. So bored.", "stages": "teen", "answers": "townstead:how" },
+        "fine_i_guess": { "text": "Fine, I guess.", "stages": "teen", "answers": "townstead:how" },
+        "terrible_thanks_for_asking": {
+          "text": "Terrible. Thanks for asking.",
+          "personalities": ["crabby", "grumpy"],
+          "answers": "townstead:how"
+        },
+        "why_do_you_care": { "text": "Why do you care?", "personalities": ["crabby", "grumpy"], "answers": "townstead:how" },
+        "amazing_every_day_is_amazing": {
+          "text": "Amazing! Every day is amazing!",
+          "personalities": ["upbeat", "peppy"],
+          "answers": "townstead:how"
+        },
+        "wonderful_thanks": { "text": "Wonderful! Thanks!", "personalities": ["upbeat", "peppy"], "answers": "townstead:how" },
+        "oh_youre_doing_good_how": {
+          "text": "Oh, you're doing good? How... lovely. I'm fine.",
+          "personalities": "gloomy",
+          "answers": "townstead:how"
+        },
+        "existing": { "text": "Existing.", "personalities": "gloomy", "answers": "townstead:how" },
+        "better_now_that_youre_here": { "text": "Better now that you're here.", "personalities": "flirty", "answers": "townstead:how" },
+        "richer_every_day_almost": { "text": "Richer every day. Almost.", "personalities": "greedy", "answers": "townstead:how" },
+        "i_dreamt_i_was_a": { "text": "I dreamt I was a potato. So, good.", "personalities": "odd", "answers": "townstead:how" },
+        "oh_um_fine_thank_you": {
+          "text": "Oh, um. Fine. Thank you.",
+          "personalities": ["introverted", "shy"],
+          "answers": "townstead:how"
+        },
+        "great_ive_talked_to_half": {
+          "text": "Great! I've talked to half the village already!",
+          "personalities": ["extroverted", "confident"],
+          "answers": "townstead:how"
+        },
+        "pretty_chill": { "text": "Pretty chill.", "personalities": ["relaxed", "lazy"], "answers": "townstead:how" },
+        "fine_i_think_is_something": { "text": "Fine! I think. Is something wrong?", "personalities": "anxious", "answers": "townstead:how" },
+        "at_peace_thank_you": { "text": "At peace, thank you.", "personalities": "peaceful", "answers": "townstead:how" },
+        "a_bit_up_and_down": {
+          "text": "A bit up and down, honestly. But better for seeing you.",
+          "personalities": "sensitive",
+          "answers": "townstead:how"
+        },
+        "good_always_good_with_a": {
+          "text": "Good! Always good with a friend around.",
+          "personalities": "friendly",
+          "answers": "townstead:how"
+        },
+        "great_just_did_my_morning": { "text": "Great! Just did my morning run.", "personalities": "athletic", "answers": "townstead:how" },
+        "fine_not_that_you_asked": { "text": "Fine. Not that you asked nicely.", "relationship": "strained", "answers": "townstead:how" },
+        "always": { "text": "Always.", "answers": "townstead:busy" },
+        "never_stops": { "text": "Never stops.", "answers": "townstead:busy" },
+        "not_too_bad_2": { "text": "Not too bad.", "answers": "townstead:busy" },
+        "busy_enough": { "text": "Busy enough.", "answers": "townstead:busy" },
+        "dont_ask": { "text": "Don't ask.", "answers": "townstead:busy" },
+        "less_than_i_should_be": { "text": "Less than I should be.", "answers": "townstead:busy" },
+        "very": { "text": "Very!", "answers": "townstead:busy" },
+        "run_off_my_feet": { "text": "Run off my feet.", "answers": "townstead:busy" },
+        "not_really_no": { "text": "Not really, no.", "answers": "townstead:busy" },
+        "a_little": { "text": "A little.", "answers": "townstead:busy" },
+        "swamped": { "text": "Swamped.", "answers": "townstead:busy" },
+        "its_been_a_quiet_one": { "text": "It's been a quiet one.", "answers": "townstead:busy" },
+        "busy_but_i_like_it": { "text": "Busy, but I like it.", "answers": "townstead:busy" },
+        "the_work_never_ends": { "text": "The work never ends.", "stages": ["teen", "adult", "senior"], "answers": "townstead:busy" },
+        "busy_playing": { "text": "Busy playing!", "stages": "child", "answers": "townstead:busy" },
+        "busy_avoiding_chores": { "text": "Busy avoiding chores.", "stages": "teen", "answers": "townstead:busy" },
+        "busy_doing_nothing_which_is": {
+          "text": "Busy doing nothing, which is the best kind.",
+          "personalities": ["relaxed", "lazy"],
+          "answers": "townstead:busy"
+        },
+        "too_busy_to_be_talking": {
+          "text": "Too busy to be talking, frankly.",
+          "personalities": ["crabby", "grumpy"],
+          "answers": "townstead:busy"
+        },
+        "busy_making_money_hopefully": { "text": "Busy making money! Hopefully.", "personalities": "greedy", "answers": "townstead:busy" },
+        "sure": { "text": "Sure!", "answers": "townstead:minute" },
+        "for_you_always": { "text": "For you, always.", "answers": "townstead:minute" },
+        "a_minute_yes": { "text": "A minute, yes.", "answers": "townstead:minute" },
+        "of_course": { "text": "Of course.", "answers": "townstead:minute" },
+        "i_have_one_just_one": { "text": "I have one. Just one.", "answers": "townstead:minute" },
+        "sure_whats_up": { "text": "Sure, what's up?", "answers": "townstead:minute" },
+        "ive_got_a_few": { "text": "I've got a few.", "answers": "townstead:minute" },
+        "go_ahead": { "text": "Go ahead.", "answers": "townstead:minute" },
+        "always_2": { "text": "Always.", "answers": "townstead:minute" },
+        "barely": { "text": "Barely.", "personalities": ["crabby", "grumpy"], "answers": "townstead:minute" },
+        "all_the_time_in_the": {
+          "text": "All the time in the world.",
+          "personalities": ["relaxed", "lazy"],
+          "answers": "townstead:minute"
+        },
+        "um_sure_okay": { "text": "Um, sure. Okay.", "personalities": ["introverted", "shy"], "answers": "townstead:minute" },
+        "cant_stay_away": { "text": "Can't stay away!", "answers": "townstead:back" },
+        "the_road_got_boring": { "text": "The road got boring.", "answers": "townstead:back" },
+        "i_missed_the_gossip": { "text": "I missed the gossip.", "answers": "townstead:back" },
+        "forgot_something": { "text": "Forgot something.", "answers": "townstead:back" },
+        "couldnt_help_it": { "text": "Couldn't help it!", "answers": "townstead:back" },
+        "i_live_here_you_know": { "text": "I live here, you know.", "answers": "townstead:back" },
+        "miss_me": { "text": "Miss me?", "personalities": "flirty", "answers": "townstead:back" },
+        "dont_sound_so_thrilled": {
+          "text": "Don't sound so thrilled.",
+          "personalities": ["crabby", "grumpy"],
+          "answers": "townstead:back"
+        },
+        "please": { "text": "Please!", "answers": "townstead:sit" },
+        "of_course_sit_sit": { "text": "Of course. Sit, sit.", "answers": "townstead:sit", "requires": ["venue.amenity:seating"] },
+        "pull_up_a_chair": { "text": "Pull up a chair.", "answers": "townstead:sit", "requires": ["venue.amenity:seating"] },
+        "only_if_youre_buying": { "text": "Only if you're buying.", "answers": "townstead:sit", "requires": ["venue.amenity:drink"] },
+        "go_ahead_2": { "text": "Go ahead!", "answers": "townstead:sit" },
+        "its_all_yours": { "text": "It's all yours.", "answers": "townstead:sit", "requires": ["venue.amenity:seating"] },
+        "sure_sit_down": { "text": "Sure, sit down!", "answers": "townstead:sit", "requires": ["venue.amenity:seating"] },
+        "of_course_i_was_hoping": { "text": "Of course! I was hoping for company.", "answers": "townstead:sit" },
+        "please_join_me": { "text": "Please, join me.", "answers": "townstead:sit" },
+        "be_my_guest": { "text": "Be my guest.", "answers": "townstead:sit" },
+        "plenty_of_room": { "text": "Plenty of room!", "answers": "townstead:sit" },
+        "fine": { "text": "Fine.", "personalities": ["crabby", "grumpy"], "answers": "townstead:sit" },
+        "yes_sit_yay": {
+          "text": "Yes! Sit! Yay!",
+          "personalities": ["upbeat", "peppy"],
+          "answers": "townstead:sit",
+          "requires": ["venue.amenity:seating"]
+        },
+        "oh_um_sure": { "text": "Oh, um, sure.", "personalities": ["introverted", "shy"], "answers": "townstead:sit" },
+        "its_a_very_good_sword": { "text": "It's a very good sword.", "answers": "townstead:sword" },
+        "mighty_truly_mighty": { "text": "Mighty. Truly mighty.", "answers": "townstead:sword" },
+        "fearsome_be_careful_with_it": { "text": "Fearsome. Be careful with it.", "answers": "townstead:sword" },
+        "wow_the_creepers_dont_stand": { "text": "Wow! The creepers don't stand a chance.", "answers": "townstead:sword" },
+        "thats_the_best_stick_sword": { "text": "That's the best stick-sword I've ever seen.", "answers": "townstead:sword" }
+      }
+    },
+    {
+      "subjects": "mob",
+      "lines": {
+        "right_by_where": { "text": "Right by {where}.", "answers": "townstead:where" },
+        "near_where_i_think": { "text": "Near {where}, I think.", "answers": "townstead:where" },
+        "by_where_close_to_the": { "text": "By {where}. Close to the houses.", "answers": "townstead:where" },
+        "just_past_where": { "text": "Just past {where}.", "answers": "townstead:where" },
+        "over_by_where": { "text": "Over by {where}.", "answers": "townstead:where" },
+        "somewhere_around_where": { "text": "Somewhere around {where}.", "answers": "townstead:where" },
+        "behind_where_i_heard": { "text": "Behind {where}, I heard.", "answers": "townstead:where" },
+        "not_far_from_where": { "text": "Not far from {where}.", "answers": "townstead:where" },
+        "just_before_sunrise": { "text": "Just before sunrise.", "answers": "townstead:when" },
+        "late_after_midnight": { "text": "Late. After midnight.", "answers": "townstead:when" },
+        "last_night_around_the_second": { "text": "Last night, around the second bell.", "answers": "townstead:when" },
+        "late_last_night": { "text": "Late last night.", "answers": "townstead:when" },
+        "just_before_dawn": { "text": "Just before dawn.", "answers": "townstead:when" },
+        "right_after_dark": { "text": "Right after dark.", "answers": "townstead:when" },
+        "in_the_middle_of_the": { "text": "In the middle of the night.", "answers": "townstead:when" },
+        "early_this_morning": { "text": "Early this morning.", "answers": "townstead:when" },
+        "i_dont_know_it_was": { "text": "I don't know. It was dark!", "stages": "child", "answers": "townstead:when" },
+        "nobody_got_hurt_thank_goodness": { "text": "Nobody got hurt, thank goodness.", "answers": "townstead:hurt" },
+        "just_a_scare_luckily": { "text": "Just a scare, luckily.", "answers": "townstead:hurt" },
+        "no_everyones_fine": { "text": "No, everyone's fine.", "answers": "townstead:hurt" },
+        "everyones_okay": { "text": "Everyone's okay.", "answers": "townstead:hurt" },
+        "a_few_scratches_nothing_bad": { "text": "A few scratches. Nothing bad.", "answers": "townstead:hurt" },
+        "nobodys_hurt_but_the_fence": { "text": "Nobody's hurt, but the fence isn't happy.", "answers": "townstead:hurt" },
+        "everyone_got_inside_in_time": { "text": "Everyone got inside in time.", "answers": "townstead:hurt" },
+        "just_some_broken_crates": { "text": "Just some broken crates.", "answers": "townstead:hurt" },
+        "who_saw_the_whole_thing": { "text": "{who} saw the whole thing.", "answers": "townstead:who" },
+        "who_did_saw_the_whole": { "text": "{who} did. Saw the whole thing.", "answers": "townstead:who" },
+        "who_they_were_out_late": { "text": "{who}. They were out late.", "answers": "townstead:who" },
+        "who_saw_it_from_their": { "text": "{who} saw it from their window.", "answers": "townstead:who" }
+      }
+    },
+    {
+      "subjects": "mob",
+      "persp": { "who": "me" },
+      "lines": {
+        "i_did_i_saw_it": { "text": "I did! I saw it myself.", "answers": "townstead:who" },
+        "me_i_saw_it": { "text": "Me! I saw it.", "answers": "townstead:who" },
+        "me_i_couldnt_sleep": { "text": "Me. I couldn't sleep.", "answers": "townstead:who" }
+      }
+    },
+    {
+      "subjects": "mob",
+      "lines": {
+        "nobodys_thats_the_problem": { "text": "Nobody's. That's the problem.", "answers": "townstead:watch" },
+        "the_night_guards_asleep_probably": { "text": "The night guard's. Asleep, probably.", "answers": "townstead:watch" },
+        "the_guards_were_busy_elsewhere": { "text": "The guards were busy elsewhere.", "answers": "townstead:watch" },
+        "i_dont_think_anyone_was": { "text": "I don't think anyone was on watch.", "answers": "townstead:watch" },
+        "nobody_we_need_more_guards": { "text": "Nobody. We need more guards.", "answers": "townstead:watch" },
+        "whoever_it_was_they_missed": { "text": "Whoever it was, they missed it.", "answers": "townstead:watch" }
+      }
+    },
+    {
+      "lines": {
+        "hard_to_say": { "text": "Hard to say.", "answers": "townstead:opinion" },
+        "im_not_sure_yet": { "text": "I'm not sure yet.", "answers": "townstead:opinion" },
+        "i_dont_know_what_to": { "text": "I don't know what to think.", "answers": "townstead:opinion" }
+      }
+    },
+    {
+      "state": { "stance": "-" },
+      "lines": {
+        "i_try_not_to_think": { "text": "I try not to think about it.", "answers": "townstead:opinion" },
+        "i_think_itll_work_out": { "text": "I think it'll work out.", "answers": "townstead:opinion" },
+        "honestly_it_worries_me": { "text": "Honestly? It worries me.", "answers": "townstead:opinion" },
+        "ive_seen_worse": { "text": "I've seen worse.", "answers": "townstead:opinion" },
+        "its_a_bit_much_if": { "text": "It's a bit much, if you ask me.", "answers": "townstead:opinion" },
+        "it_makes_me_nervous": { "text": "It makes me nervous.", "answers": "townstead:opinion" },
+        "somebody_should_do_something": { "text": "Somebody should do something.", "answers": "townstead:opinion" },
+        "its_a_shame_really": { "text": "It's a shame, really.", "answers": "townstead:opinion" }
+      }
+    },
+    {
+      "state": { "stance": "+" },
+      "lines": {
+        "i_think_its_wonderful": { "text": "I think it's wonderful.", "answers": "townstead:opinion" },
+        "good_news_for_once": { "text": "Good news for once!", "answers": "townstead:opinion" },
+        "it_made_my_day_honestly": { "text": "It made my day, honestly.", "answers": "townstead:opinion" },
+        "about_time_something_nice_happened": { "text": "About time something nice happened.", "answers": "townstead:opinion" }
+      }
+    },
+    {
+      "state": { "stance": "+", "variant": "mastery" },
+      "lines": { "well_deserved_id_say": {"text": "Well deserved, I'd say.", "answers": "townstead:opinion"} }
+    },
+    {
+      "state": { "variant": "birth" },
+      "lines": { "theyll_be_great_parents": {"text": "They'll be great parents.", "answers": "townstead:opinion"} }
+    },
+    {
+      "state": { "variant": "marriage" },
+      "lines": { "theyre_good_together": {"text": "They're good together.", "answers": "townstead:opinion"} }
+    },
+    {
+      "state": { "variant": "argument" },
+      "lines": {
+        "id_have_walked_away": { "text": "I'd have walked away.", "answers": "townstead:opinion" },
+        "theyll_make_up_they_always": { "text": "They'll make up. They always do.", "answers": "townstead:opinion" },
+        "im_staying_out_of_it": { "text": "I'm staying out of it.", "answers": "townstead:opinion" }
+      }
+    },
+    {
+      "state": { "stance": "0" },
+      "lines": {
+        "not_much_to_be_honest": { "text": "Not much, to be honest.", "answers": "townstead:opinion" },
+        "its_fine_i_guess": { "text": "It's fine, I guess.", "answers": "townstead:opinion" }
+      }
+    },
+    {
+      "lines": {
+        "terrible_everything_is_terrible": {
+          "text": "Terrible. Everything is terrible.",
+          "personalities": "gloomy",
+          "answers": "townstead:opinion"
+        },
+        "who_cares": { "text": "Who cares?", "personalities": ["crabby", "grumpy"], "answers": "townstead:opinion" },
+        "i_think_its_great_everythings": {
+          "text": "I think it's great! Everything's great!",
+          "personalities": ["upbeat", "peppy"],
+          "answers": "townstead:opinion"
+        }
+      }
+    },
+    {
+      "subjects": "event",
+      "lines": {
+        "neither_theyre_both_being_silly": { "text": "Neither. They're both being silly.", "answers": "townstead:side" },
+        "im_staying_out_of_it_2": { "text": "I'm staying out of it.", "answers": "townstead:side" },
+        "i_havent_decided": { "text": "I haven't decided.", "answers": "townstead:side" },
+        "honestly_both_of_them": { "text": "Honestly? Both of them.", "answers": "townstead:side" },
+        "i_dont_know_the_whole": { "text": "I don't know the whole story.", "answers": "townstead:side" },
+        "whoever_apologises_first_wins_i": { "text": "Whoever apologises first wins, I say.", "answers": "townstead:side" },
+        "not_mine_to_pick": { "text": "Not mine to pick.", "answers": "townstead:side" },
+        "both_of_them_obviously": {
+          "text": "Both of them. Obviously.",
+          "personalities": ["crabby", "grumpy"],
+          "answers": "townstead:side"
+        },
+        "id_have_walked_away_2": { "text": "I'd have walked away.", "answers": "townstead:would_do" },
+        "probably_the_same_thing_honestly": { "text": "Probably the same thing, honestly.", "answers": "townstead:would_do" },
+        "kept_my_mouth_shut": { "text": "Kept my mouth shut.", "answers": "townstead:would_do" },
+        "counted_to_ten_then_twenty": { "text": "Counted to ten. Then twenty.", "answers": "townstead:would_do" },
+        "gone_home_and_had_a": { "text": "Gone home and had a nap.", "answers": "townstead:would_do" },
+        "said_sorry_even_if_i": { "text": "Said sorry, even if I didn't mean it.", "answers": "townstead:would_do" },
+        "yelled_louder": { "text": "Yelled louder.", "personalities": ["crabby", "grumpy"], "answers": "townstead:would_do" }
+      }
+    },
+    {
+      "subjects": "weather",
+      "state": { "stance": "-" },
+      "lines": { "hope_not": {"text": "Hope not.", "answers": "townstead:last"} }
+    },
+    {
+      "subjects": "weather",
+      "state": { "stance": "+" },
+      "lines": { "hope_so": {"text": "Hope so!", "answers": "townstead:last"} }
+    },
+    {
+      "subjects": "weather",
+      "lines": {
+        "probably_all_week": { "text": "Probably all week.", "answers": "townstead:last" },
+        "cant_last_forever": { "text": "Can't last forever.", "answers": "townstead:last" },
+        "my_knees_say_it_will": { "text": "My knees say it will.", "stages": "senior", "answers": "townstead:last" },
+        "who_knows": { "text": "Who knows?", "answers": "townstead:last" },
+        "until_tomorrow_at_least": { "text": "Until tomorrow, at least.", "answers": "townstead:last" },
+        "probably_forever_knowing_my_luck": { "text": "Probably forever, knowing my luck.", "personalities": "gloomy", "answers": "townstead:last" }
+      }
+    },
+    {
+      "subjects": "weather",
+      "state": { "stance": "+" },
+      "lines": { "i_hope_it_lasts_all": {"text": "I hope it lasts all year!", "answers": "townstead:last"} }
+    },
+    {
+      "subjects": "quest",
+      "lines": {
+        "maybe_the_traveller_will": { "text": "Maybe the traveller will.", "answers": "townstead:taker" },
+        "not_me": { "text": "Not me.", "answers": "townstead:taker" },
+        "someone_always_does": { "text": "Someone always does.", "answers": "townstead:taker" },
+        "if_the_pays_right": { "text": "If the pay's right.", "answers": "townstead:taker" },
+        "someone_braver_than_me": { "text": "Someone braver than me.", "answers": "townstead:taker" },
+        "one_of_the_guards_maybe": { "text": "One of the guards, maybe.", "answers": "townstead:taker" },
+        "not_me_i_have_a": { "text": "Not me, I have a family.", "stages": ["adult", "senior"], "answers": "townstead:taker" },
+        "i_would_if_mum_let": { "text": "I would! If Mum let me.", "stages": "child", "answers": "townstead:taker" }
+      }
+    },
+    {
+      "provenance": "witnessed",
+      "lines": {
+        "i_saw_it_myself": { "text": "I saw it myself.", "answers": "townstead:source" },
+        "i_was_there": { "text": "I was there.", "answers": "townstead:source" },
+        "with_my_own_eyes": { "text": "With my own eyes!", "answers": "townstead:source" }
+      }
+    },
+    {
+      "provenance": "heard",
+      "lines": {
+        "everyones_saying_it": { "text": "Everyone's saying it.", "answers": "townstead:source" },
+        "i_heard_it_at_the": {
+          "text": "I heard it at the market.",
+          "requires": "here.building_tag:townstead:market",
+          "answers": "townstead:source"
+        },
+        "someone_told_me_at_the": {
+          "text": "Someone told me at the well.",
+          "requires": "here.decoration:townstead:well",
+          "answers": "townstead:source"
+        },
+        "half_the_village_knows_by": { "text": "Half the village knows by now.", "answers": "townstead:source" },
+        "a_friend_told_me": { "text": "A friend told me.", "answers": "townstead:source" }
+      }
+    },
+    {
+      "subjects": "ruler",
+      "lines": {
+        "nobody_forget_it": { "text": "Nobody. Forget it.", "answers": "townstead:source_ruler" },
+        "a_friend_of_a_friend": { "text": "A friend of a friend.", "answers": "townstead:source_ruler" },
+        "you_know_people": { "text": "You know. People.", "answers": "townstead:source_ruler" },
+        "id_rather_not_say": { "text": "I'd rather not say.", "answers": "townstead:source_ruler" },
+        "someone_whod_know": { "text": "Someone who'd know.", "answers": "townstead:source_ruler" }
+      }
+    },
+    {
+      "subjects": "event",
+      "lines": {
+        "really": { "text": "Really.", "answers": "townstead:confirm" },
+        "i_swear_it": { "text": "I swear it.", "answers": "townstead:confirm" },
+        "ask_anyone": { "text": "Ask anyone.", "answers": "townstead:confirm" },
+        "every_word": { "text": "Every word.", "answers": "townstead:confirm" },
+        "would_i_lie_to_you": { "text": "Would I lie to you?", "answers": "townstead:confirm" }
+      }
+    },
+    {
+      "subjects": "event",
+      "provenance": "witnessed",
+      "lines": { "i_saw_it_myself_2": {"text": "I saw it myself.", "answers": "townstead:confirm"} }
+    },
+    {
+      "subjects": "event",
+      "lines": {
+        "yesterday_i_think": { "text": "Yesterday, I think.", "answers": "townstead:when_event" },
+        "just_the_other_day": { "text": "Just the other day.", "answers": "townstead:when_event" },
+        "a_day_or_two_ago": { "text": "A day or two ago.", "answers": "townstead:when_event" },
+        "this_morning": { "text": "This morning!", "answers": "townstead:when_event" },
+        "not_long_ago": { "text": "Not long ago.", "answers": "townstead:when_event" },
+        "you_were_busy_i_suppose": { "text": "You were busy, I suppose.", "answers": "townstead:missed" },
+        "its_all_anyones_talking_about": { "text": "It's all anyone's talking about.", "answers": "townstead:missed" },
+        "you_really_missed_it": { "text": "You really missed it.", "answers": "townstead:missed" },
+        "where_have_you_been": { "text": "Where have you been?", "answers": "townstead:missed" },
+        "everyones_known_for_days": { "text": "Everyone's known for days!", "answers": "townstead:missed" },
+        "ill_live": { "text": "I'll live.", "answers": "townstead:okay" },
+        "i_dont_want_to_talk": { "text": "I don't want to talk about it.", "answers": "townstead:okay" },
+        "its_fine_its_done": { "text": "It's fine. It's done.", "answers": "townstead:okay" },
+        "mostly": { "text": "Mostly.", "answers": "townstead:okay" },
+        "im_okay_thanks": { "text": "I'm okay, thanks.", "answers": "townstead:okay" },
+        "better_now_2": { "text": "Better now.", "answers": "townstead:okay" },
+        "still_a_bit_upset_honestly": { "text": "Still a bit upset, honestly.", "answers": "townstead:okay" },
+        "no_ill_sort_it_out": { "text": "No, I'll sort it out.", "answers": "townstead:help" },
+        "maybe_let_me_think": { "text": "Maybe. Let me think.", "answers": "townstead:help" },
+        "please_dont": { "text": "Please don't.", "answers": "townstead:help" },
+        "thanks_but_no": { "text": "Thanks, but no.", "answers": "townstead:help" },
+        "would_you_thatd_help": { "text": "Would you? That'd help.", "answers": "townstead:help" }
+      }
+    },
+    {
+      "lines": {
+        "really_never_again": { "text": "Really. Never again.", "answers": "townstead:more" },
+        "its_true_ask_anyone": { "text": "It's true. Ask anyone.", "answers": "townstead:more" },
+        "i_swear_it_2": { "text": "I swear it.", "answers": "townstead:more" },
+        "every_word_2": { "text": "Every word.", "answers": "townstead:more" },
+        "mostly_true_anyway": { "text": "Mostly true, anyway.", "answers": "townstead:more" },
+        "then_it_got_even_worse": { "text": "Then it got even worse!", "answers": "townstead:more" },
+        "and_thats_not_even_the": { "text": "And that's not even the whole story.", "answers": "townstead:more" },
+        "honest": { "text": "Honest!", "answers": "townstead:more" },
+        "cross_my_heart": { "text": "Cross my heart.", "answers": "townstead:more" },
+        "not_yet_maybe_next_season": { "text": "Not yet. Maybe next season.", "answers": "townstead:proof" },
+        "im_trying": { "text": "I'm trying!", "answers": "townstead:proof" },
+        "dont_ask_ill_jinx_it": { "text": "Don't ask, I'll jinx it.", "answers": "townstead:proof" },
+        "soon_i_hope": { "text": "Soon, I hope!", "answers": "townstead:proof" }
+      }
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.scarecrow.straw_stuffing"
+  },
+  "icon": "minecraft:hay_block",
+  "description": {
+    "translate": "skill.townstead.farmer.scarecrow.straw_stuffing.description"
+  },
+  "cost": 1,
+  "requires": [
+    "hide_in_the_rows"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 5,
+    "action": {
+      "type": "pheno:set_fall_distance",
+      "fall_distance": 0
+    }
+  }
+}

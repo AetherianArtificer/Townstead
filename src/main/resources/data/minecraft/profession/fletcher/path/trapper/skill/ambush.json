@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.trapper.ambush"
+  },
+  "icon": "minecraft:oak_leaves",
+  "description": {
+    "translate": "skill.townstead.fletcher.trapper.ambush.description"
+  },
+  "cost": 1,
+  "requires": [
+    "pitfall"
+  ],
+  "skill_group": "townstead:trapper_ambush",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:draw",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:invisibility",
+          "duration": 200,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:strength",
+          "duration": 200,
+          "amplifier": 0
+        }
+      ]
+    }
+  }
+}

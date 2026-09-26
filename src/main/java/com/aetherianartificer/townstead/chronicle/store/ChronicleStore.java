@@ -36,11 +36,16 @@ public interface ChronicleStore extends AutoCloseable {
             long storyEventId, int limit);
 
     /** Known-story cache seed: accounts joined with their event's spread-relevant columns. */
-    CompletableFuture<List<KnownStory>> knownStories(UUID knower, int limit);
+    default CompletableFuture<List<KnownStory>> knownStories(UUID knower, int limit) {
+        return knownStories(knower, 0L, limit);
+    }
+
+    /** Newest first; {@code beforeAccountId <= 0} starts from the newest account. */
+    CompletableFuture<List<KnownStory>> knownStories(UUID knower, long beforeAccountId, int limit);
 
     record KnownStory(long storyEventId, long accountId, float fidelity, long learnedDay,
                       String templateId, long eventDay, int villageId, float magnitude,
-                      int reach, String overlayJson) {}
+                      int reach, String overlayJson, String channel) {}
 
     CompletableFuture<List<ChronicleEvent>> bySubject(UUID subject, long beforeEventId, int limit);
 
@@ -48,6 +53,9 @@ public interface ChronicleStore extends AutoCloseable {
                                                       long beforeEventId, int limit);
 
     CompletableFuture<List<ChronicleEvent>> byDay(long worldDay, int limit);
+
+    /** Newest first across {@code fromDay..toDay} inclusive; {@code beforeEventId <= 0} starts from the newest. */
+    CompletableFuture<List<ChronicleEvent>> byDayRange(long fromDay, long toDay, long beforeEventId, int limit);
 
     CompletableFuture<List<ChronicleEvent>> byArc(long arcId, int limit);
 

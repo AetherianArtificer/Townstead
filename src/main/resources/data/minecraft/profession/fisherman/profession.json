@@ -7,5 +7,9 @@
   "description": {
     "text": "Cast the line to build a history of the catch."
   },
+  "skills": [
+    "patient_line",
+    "sea_legs"
+  ],
   "unlock_model": "experiential"
 }

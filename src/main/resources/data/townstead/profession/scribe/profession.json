@@ -13,17 +13,9 @@
     "iceandfire:scribe",
     "minecraft:librarian"
   ],
-  "unlock_model": "experiential",
-  "titles": [
-    {
-      "id": "chronicler",
-      "name": {
-        "translate": "career.townstead.scribe.title.chronicler"
-      },
-      "skills": [
-        "long_ledger",
-        "steady_hand"
-      ]
-    }
-  ]
+  "skills": [
+    "steady_hand",
+    "long_ledger"
+  ],
+  "unlock_model": "experiential"
 }

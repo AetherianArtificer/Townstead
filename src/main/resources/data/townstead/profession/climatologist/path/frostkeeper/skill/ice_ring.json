@@ -1,0 +1,98 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.frostkeeper.ice_ring"
+  },
+  "icon": "minecraft:blue_ice",
+  "description": {
+    "translate": "skill.townstead.climatologist.frostkeeper.ice_ring.description"
+  },
+  "cost": 1,
+  "requires": [
+    "ice_wall"
+  ],
+  "skill_group": "townstead:frost_ice",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:front",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:ice_wall",
+          "blocks": [
+            {
+              "radius": [
+                3,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  3
+                ]
+              }
+            },
+            {
+              "radius": [
+                3,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  -3
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                3
+              ],
+              "around": {
+                "offset": [
+                  3,
+                  1,
+                  0
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                3
+              ],
+              "around": {
+                "offset": [
+                  -3,
+                  1,
+                  0
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.glass.break",
+          "volume": 0.6,
+          "pitch": 1.6
+        }
+      ]
+    }
+  }
+}

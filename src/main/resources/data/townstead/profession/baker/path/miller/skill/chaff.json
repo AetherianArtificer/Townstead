@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.miller.chaff"
+  },
+  "icon": "minecraft:wheat_seeds",
+  "description": {
+    "translate": "skill.townstead.baker.miller.chaff.description"
+  },
+  "cost": 1,
+  "requires": [
+    "dust_storm"
+  ],
+  "skill_group": "townstead:miller_flour",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:haze",
+        "kind": "townstead:flour",
+        "blocks": {
+          "radius": 3,
+          "around": "above",
+          "where": {
+            "type": "air"
+          }
+        }
+      }
+    }
+  }
+}

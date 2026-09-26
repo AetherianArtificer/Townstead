@@ -10,7 +10,9 @@ public enum SoilType {
     FERTILIZED_STABLE,     // Farming for Blockheads: trample protection (yellow fertilizer)
     WATER,                 // place water source block
     PROTECTED,             // do not touch this cell at all
-    CLAIM;                 // placeholder — server resolves this into a real soil+seed based on live world state
+    CLAIM,                 // placeholder — server resolves this into a real soil+seed based on live world state
+    // Appended last: soil types travel by ordinal on the network.
+    TRELLIS;               // solid ground with a farmer-built support (stem pole or lattice) for vine crops
 
     public static SoilType fromName(String name) {
         try {

@@ -76,6 +76,23 @@ public final class CharacterEditorResolver {
             for (Tab t : tabs) if (t.pageId().equals(pageId)) return t;
             return null;
         }
+
+        /**
+         * This layout with one MCA-native group removed: a species or rig that renders no hair
+         * has nothing for MCA's hair page to edit, so the Hair tab disappears rather than
+         * showing trimmed-down controls. A tab left with no fields is dropped.
+         */
+        public Resolved withoutNative(String nativeGroup) {
+            List<Tab> kept = new ArrayList<>();
+            for (Tab t : tabs) {
+                List<Field> fields = new ArrayList<>();
+                for (Field f : t.fields()) {
+                    if (f.kind() != Field.Kind.NATIVE || !nativeGroup.equals(f.nativeGroup())) fields.add(f);
+                }
+                if (!fields.isEmpty()) kept.add(new Tab(t.pageId(), t.label(), fields));
+            }
+            return new Resolved(kept);
+        }
     }
 
     /**
@@ -122,11 +139,17 @@ public final class CharacterEditorResolver {
      * as a top-level page — for custom rigs whose species hide the human body group. No-op on an
      * empty tab list, so a plain MCA villager (nothing of ours took over) is left untouched.
      */
-    private static Resolved finish(List<Tab> tabs) {
+    static Resolved finish(List<Tab> tabs) {
         if (!tabs.isEmpty() && tabs.stream().noneMatch(t -> t.pageId().equals(mcaSubpage(CharacterEditorLayout.NATIVE_BODY)))) {
             tabs.add(new Tab(SIZE_PAGE, Component.translatable("townstead.editor.size"), List.of(Field.scale())));
         }
-        return new Resolved(tabs);
+        Resolved resolved = new Resolved(tabs);
+        // Custom eye sprites replace MCA's eyes; its native controls cannot edit these genes.
+        if (tabs.stream().flatMap(t -> t.fields().stream())
+                .anyMatch(f -> f.gene() != null && f.gene().isEyes())) {
+            resolved = resolved.withoutNative(CharacterEditorLayout.NATIVE_EYES);
+        }
+        return resolved;
     }
 
     private static Map<String, List<Field>> editableByCategory(RootCatalogEntry entry) {

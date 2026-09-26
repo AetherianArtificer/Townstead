@@ -1,6 +1,8 @@
 {
   "schema": "townstead:profession_path/v1",
-  "mods": ["bakery"],
+  "mods": [
+    "bakery"
+  ],
   "name": {
     "translate": "career.townstead.baker.path.pastry_chef"
   },
@@ -11,9 +13,96 @@
   "worksites": [
     "bakery:baker_station"
   ],
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:proof",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:baker/pastry_chef/sugar_work"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:baker/pastry_chef/candy_floss"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:baker/pastry_chef/meringue"
+              }
+            ]
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:building",
+                "building_prefix": "bakery"
+              },
+              {
+                "type": "pheno:block_in_radius",
+                "radius": 6,
+                "block_condition": {
+                  "type": "pheno:and",
+                  "conditions": [
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "townstead:kitchen/heat_sources"
+                    },
+                    {
+                      "type": "pheno:block_state",
+                      "property": "lit",
+                      "value": "true",
+                      "if_missing": "pass"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:proof",
+        "amount": 1
+      }
+    }
+  ],
   "skills": [
-    "fine_crumb",
-    "piping_hand",
-    "sugar_work"
+    [
+      "piping_hand",
+      "sugar_rush",
+      "whisk"
+    ],
+    [
+      "fine_crumb",
+      "sugar_dust",
+      "folding"
+    ],
+    [
+      "sugar_work",
+      "candy_floss",
+      "meringue"
+    ],
+    [
+      "sugar_coat",
+      "confectioners_cloud",
+      "souffle"
+    ],
+    [
+      "patisserie",
+      "spun_sugar_storm",
+      "grand_finale"
+    ]
   ]
 }

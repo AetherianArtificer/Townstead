@@ -65,6 +65,12 @@ public final class TownsteadClient {
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPost);
             NeoForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbView::onComputeCameraAngles);
+            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onRenderFog);
+            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onFogColor);
+            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardLink::onScreenInit);
+            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.gui.rebirth.RebirthDeathButton::onScreenInit);
+            com.aetherianartificer.townstead.switchboard.Switchboard.onChange(() -> net.minecraft.client.Minecraft.getInstance()
+                    .execute(com.aetherianartificer.townstead.client.root.CreativeTabRefresh::refreshTownsteadTab));
             hooksRegistered = true;
             Townstead.LOGGER.info("[ClientPresentation] registered expression and animation render hooks");
         }
@@ -88,6 +94,11 @@ public final class TownsteadClient {
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPost);
             MinecraftForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbView::onComputeCameraAngles);
+            MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onRenderFog);
+            MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onFogColor);
+            MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.gui.rebirth.RebirthDeathButton::onScreenInit);
+            com.aetherianartificer.townstead.switchboard.Switchboard.onChange(() -> net.minecraft.client.Minecraft.getInstance()
+                    .execute(com.aetherianartificer.townstead.client.root.CreativeTabRefresh::refreshTownsteadTab));
             hooksRegistered = true;
         }
         *///?}
@@ -96,7 +107,7 @@ public final class TownsteadClient {
     //? if neoforge {
     private static net.minecraft.client.gui.screens.Screen townstead$configScreen(
             ModContainer container, net.minecraft.client.gui.screens.Screen parent) {
-        return new ConfigurationScreen(container, parent,
+        return com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardLink.track(new ConfigurationScreen(container, parent,
                 (screen, type, config, title) -> new ConfigurationScreen.ConfigurationSectionScreen(
                         screen, type, config, title) {
                     @Override
@@ -125,7 +136,7 @@ public final class TownsteadClient {
                         if ("roots".equals(key)) return null;
                         return super.createSection(key, subconfig, subsection);
                     }
-                });
+                }));
     }
     //?}
 
@@ -173,7 +184,10 @@ public final class TownsteadClient {
     //?} else if forge {
     /*private static void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
     *///?}
+        com.aetherianartificer.townstead.pheno.cosmetic.CosmeticClientBridge.clear();
         clearClientStore("com.aetherianartificer.townstead.hunger.HungerClientStore");
+        clearClientStore("com.aetherianartificer.townstead.client.rebirth.CharacterNameClient");
+        clearClientStore("com.aetherianartificer.townstead.client.rebirth.RebirthDestinyClient");
         clearClientStore("com.aetherianartificer.townstead.hunger.FishermanHookLinkStore");
         clearClientStore("com.aetherianartificer.townstead.thirst.ThirstClientStore");
         clearClientStore("com.aetherianartificer.townstead.fatigue.FatigueClientStore");
@@ -199,7 +213,10 @@ public final class TownsteadClient {
                 && net.minecraft.client.Minecraft.getInstance().player != null
                 && player.isInvisibleTo(net.minecraft.client.Minecraft.getInstance().player)) {
             event.setCanRender(net.neoforged.neoforge.common.util.TriState.FALSE);
+            return;
         }
+        com.aetherianartificer.townstead.client.naming.NamePlate.render(
+                event.getEntity(), event.getContent(), event::setContent);
     }
     //?} else if forge {
     /*private static void onRenderNameTag(net.minecraftforge.client.event.RenderNameTagEvent event) {
@@ -207,7 +224,10 @@ public final class TownsteadClient {
                 && net.minecraft.client.Minecraft.getInstance().player != null
                 && player.isInvisibleTo(net.minecraft.client.Minecraft.getInstance().player)) {
             event.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
+            return;
         }
+        com.aetherianartificer.townstead.client.naming.NamePlate.render(
+                event.getEntity(), event.getContent(), event::setContent);
     }
     *///?}
 
@@ -244,6 +264,7 @@ public final class TownsteadClient {
         com.aetherianartificer.townstead.client.species.InvisFade.tick();
         com.aetherianartificer.townstead.client.expression.ExpressionCueClientStore.tick();
         com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge.ensureRegistered();
+        com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardScreen.tickPending();
     }
     //?} else if forge {
     /*private static void onClientTick(net.minecraftforge.event.TickEvent.ClientTickEvent event) {
@@ -255,6 +276,7 @@ public final class TownsteadClient {
         com.aetherianartificer.townstead.client.species.InvisFade.tick();
         com.aetherianartificer.townstead.client.expression.ExpressionCueClientStore.tick();
         com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge.ensureRegistered();
+        com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardScreen.tickPending();
     }
     *///?}
 
@@ -330,6 +352,8 @@ public final class TownsteadClient {
                                             .create(this)))
                     .bounds(width / 2 - 100, 90, 200, 20)
                     .build());
+            addRenderableWidget(com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardLink.button(
+                    width / 2 - 100, 114, 200));
             addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, btn -> minecraft.setScreen(parent))
                     .bounds(width / 2 - 100, height - 28, 200, 20)
                     .build());

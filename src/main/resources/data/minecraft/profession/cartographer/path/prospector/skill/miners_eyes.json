@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.prospector.miners_eyes"
+  },
+  "icon": "minecraft:glow_berries",
+  "description": {
+    "translate": "skill.townstead.cartographer.prospector.miners_eyes.description"
+  },
+  "cost": 1,
+  "requires": [
+    "ore_sense"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:block",
+            "y": 0,
+            "block_condition": {
+              "type": "exposed_to_sky"
+            }
+          }
+        },
+        {
+          "type": "pheno:block",
+          "y": 0,
+          "block_condition": {
+            "type": "height",
+            "max": 60
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:night_vision",
+      "duration": 300,
+      "amplifier": 0
+    }
+  }
+}

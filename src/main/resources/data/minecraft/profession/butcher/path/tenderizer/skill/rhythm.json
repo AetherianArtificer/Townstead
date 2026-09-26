@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.tenderizer.rhythm"
+  },
+  "icon": "minecraft:note_block",
+  "description": {
+    "translate": "skill.townstead.butcher.tenderizer.rhythm.description"
+  },
+  "cost": 1,
+  "requires": [
+    "pound"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:cut",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "ingredient",
+            "tag": "townstead:butcher_hammers"
+          }
+        },
+        {
+          "type": "pheno:entity_in_radius",
+          "radius": 8,
+          "condition": {
+            "type": "pheno:hostile"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:cut",
+      "amount": 3
+    }
+  }
+}

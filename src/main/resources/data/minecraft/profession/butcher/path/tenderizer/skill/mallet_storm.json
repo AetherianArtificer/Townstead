@@ -1,0 +1,56 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.tenderizer.mallet_storm"
+  },
+  "icon": "minecraft:iron_block",
+  "description": {
+    "translate": "skill.townstead.butcher.tenderizer.mallet_storm.description"
+  },
+  "cost": 1,
+  "requires": [
+    "pulverize"
+  ],
+  "skill_group": "townstead:tenderizer_blow",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:cut",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 5,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:add_velocity",
+                "y": 0.6
+              },
+              {
+                "type": "pheno:damage",
+                "amount": 5,
+                "source": "other"
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.anvil.land",
+          "volume": 0.5,
+          "pitch": 0.7
+        }
+      ]
+    }
+  }
+}

@@ -7,5 +7,9 @@
   "description": {
     "text": "Work the fields to build a history of agricultural mastery."
   },
+  "skills": [
+    "sun_on_your_back",
+    "field_hand"
+  ],
   "unlock_model": "experiential"
 }

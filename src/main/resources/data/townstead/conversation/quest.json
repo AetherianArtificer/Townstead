@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:conversation/v1",
+  "subjects": [
+    "townstead:quest"
+  ],
+  "register": "commerce",
+  "start": "t0_open_subject",
+  "turns": {
+    "t0_open_subject": {
+      "speaker": "initiator",
+      "move": "townstead:open_subject",
+      "replies": [
+        "t1_reply"
+      ]
+    },
+    "t1_reply": {
+      "speaker": "responder",
+      "move": "townstead:reply"
+    }
+  },
+  "associated": [
+    "townstead:mob"
+  ],
+  "expansions": {
+    "moves": [
+      "townstead:elaborate",
+      "townstead:opinion_ask",
+      "townstead:anecdote"
+    ],
+    "max": 2
+  },
+  "requires": [
+    "here.building:board"
+  ]
+}

@@ -1,0 +1,175 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "venue_remark",
+  "groups": [
+    {
+      "stance": "0",
+      "lines": {
+        "busy_in_here_tonight": {
+          "text": "Busy in here tonight.",
+          "thread": "venue.crowd",
+          "requires": ["!venue.tag:townstead_hangouts:outdoors", "time:night"]
+        }
+      }
+    },
+    {
+      "stance": "+",
+      "form": "quality",
+      "lines": {
+        "i_like_this_spot": { "text": "I like this spot.", "thread": "venue.comfort" },
+        "this_is_nice": { "text": "This is nice.", "thread": "venue.comfort" }
+      }
+    },
+    {
+      "stance": "+",
+      "lines": {
+        "i_needed_a_sit_down": { "text": "I needed a sit-down.", "thread": "venue.comfort", "requires": ["venue.amenity:seating"] }
+      }
+    },
+    {
+      "stance": "+",
+      "form": "quality",
+      "lines": {
+        "its_so_cosy_in_here": {
+          "text": "It's so cosy in here.",
+          "thread": "venue.comfort",
+          "requires": ["!venue.tag:townstead_hangouts:outdoors"]
+        }
+      }
+    },
+    {
+      "stance": "+",
+      "lines": {
+        "nice_crowd_tonight": { "text": "Nice crowd tonight.", "thread": "venue.crowd", "requires": ["time:night"] },
+        "i_could_stay_here_all": { "text": "I could stay here all night.", "thread": "venue.stay", "requires": ["time:night"] },
+        "feels_good_to_relax": { "text": "Feels good to relax.", "thread": "venue.comfort" }
+      }
+    },
+    {
+      "stance": "0",
+      "lines": {
+        "its_quiet_tonight": { "text": "It's quiet tonight.", "thread": "venue.crowd", "requires": ["time:night"] },
+        "everyones_here_tonight": { "text": "Everyone's here tonight.", "thread": "venue.crowd", "requires": ["time:night"] }
+      }
+    },
+    {
+      "state": { "venue": "tavern" },
+      "stance": "+",
+      "lines": {
+        "the_musics_nice_tonight": { "text": "The music's nice tonight.", "thread": "venue.music", "requires": ["time:night"] },
+        "good_ale_tonight": {
+          "text": "Good ale tonight.",
+          "stages": ["adult", "senior"],
+          "thread": "venue.food",
+          "requires": ["time:night"]
+        }
+      }
+    },
+    {
+      "state": { "venue": "tavern" },
+      "stance": "-",
+      "lines": {
+        "loud_crowd_tonight": {
+          "text": "Loud crowd tonight.",
+          "thread": "venue.crowd",
+          "requires": ["!venue.tag:townstead_hangouts:quiet", "time:night"]
+        }
+      }
+    },
+    {
+      "state": { "venue": "tavern" },
+      "stance": "0",
+      "lines": {
+        "someones_going_to_start_singing": {
+          "text": "Someone's going to start singing soon. I can feel it.",
+          "thread": "venue.music",
+          "requires": ["!venue.tag:townstead_hangouts:quiet"]
+        }
+      }
+    },
+    {
+      "state": { "venue": "tavern" },
+      "stance": "+",
+      "lines": { "the_stew_here_is_actually": {"text": "The stew here is actually good.", "thread": "venue.food"} }
+    },
+    {
+      "state": { "venue": "cafe" },
+      "stance": "+",
+      "lines": {
+        "the_tea_here_is_the": { "text": "The tea here is the best in the village.", "thread": "venue.food" },
+        "i_love_the_smell_of": { "text": "I love the smell of this place.", "thread": "venue.food" },
+        "the_cakes_here_are_dangerous": { "text": "The cakes here are dangerous.", "thread": "venue.food" }
+      }
+    },
+    {
+      "stance": "-",
+      "lines": {
+        "its_too_crowded": {
+          "text": "It's too crowded.",
+          "personalities": ["introverted", "shy"],
+          "opens": "complaint",
+          "thread": "venue.crowd"
+        }
+      }
+    },
+    {
+      "stance": "+",
+      "lines": {
+        "this_is_the_best_place": {
+          "text": "This is the best place ever!",
+          "personalities": ["upbeat", "peppy"],
+          "thread": "venue.comfort"
+        }
+      }
+    },
+    {
+      "stance": "+",
+      "requires": ["venue.tag:townstead_hangouts:outdoors"],
+      "lines": {
+        "nice_to_be_out_in": { "text": "Nice to be out in the fresh air.", "thread": "venue.comfort" },
+        "good_spot_for_people_watching": { "text": "Good spot for people-watching.", "thread": "venue.crowd" },
+        "i_like_being_out_where": { "text": "I like being out where I can see everyone.", "thread": "venue.comfort" }
+      }
+    },
+    {
+      "stance": "0",
+      "requires": ["venue.tag:townstead_hangouts:outdoors"],
+      "lines": {
+        "the_whole_village_passes_through": { "text": "The whole village passes through here.", "thread": "venue.crowd" }
+      }
+    },
+    {
+      "stance": "+",
+      "requires": ["venue.amenity:water"],
+      "lines": { "the_sound_of_the_water": {"text": "The sound of the water is so calming.", "thread": "venue.comfort"} }
+    },
+    {
+      "stance": "+",
+      "requires": ["venue.amenity:shade"],
+      "lines": { "nice_and_shady_here": {"text": "Nice and shady here.", "thread": "venue.comfort"} }
+    },
+    {
+      "stance": "+",
+      "requires": ["venue.amenity:shelter"],
+      "lines": { "good_to_have_a_roof": {"text": "Good to have a roof over us if it rains.", "thread": "venue.comfort"} }
+    },
+    {
+      "stance": "0",
+      "requires": ["venue.amenity:market"],
+      "lines": { "everyones_out_shopping_today": {"text": "Everyone's out shopping today.", "thread": "venue.crowd"} }
+    },
+    {
+      "stance": "+",
+      "requires": ["time:day"],
+      "lines": {
+        "nice_crowd_today": { "text": "Nice crowd today.", "thread": "venue.crowd" },
+        "i_could_stay_here_all_day": { "text": "I could stay here all day.", "thread": "venue.stay" }
+      }
+    },
+    {
+      "stance": "0",
+      "requires": ["time:day"],
+      "lines": { "its_quiet_today": {"text": "It's quiet today.", "thread": "venue.crowd"} }
+    }
+  ]
+}

@@ -1,13 +1,101 @@
 {
   "schema": "townstead:profession_path/v1",
   "providers_required": true,
-  "name": { "translate": "career.townstead.beverage_artisan.path.brewer" },
-  "title": { "translate": "career.townstead.beverage_artisan.title.brewer" },
+  "name": {
+    "translate": "career.townstead.beverage_artisan.path.brewer"
+  },
+  "title": {
+    "translate": "career.townstead.beverage_artisan.title.brewer"
+  },
   "color": "#B87531",
-  "clothing": ["minecraft:brewer"],
+  "clothing": [
+    "minecraft:brewer"
+  ],
   "storage": {
-    "preferred_roles": ["townstead:brewed_drinks"]
+    "preferred_roles": [
+      "townstead:brewed_drinks"
+    ]
   },
   "worksites": [],
-  "skills": ["patient_fermentation"]
+  "skills": [
+    [
+      "cool_head",
+      "tap_the_keg",
+      "slow_brew"
+    ],
+    [
+      "iron_liver",
+      "barrel_roll",
+      "second_pour"
+    ],
+    [
+      "patient_fermentation",
+      "froth",
+      "cask_strength"
+    ],
+    [
+      "aged_in_oak",
+      "pub_brawl",
+      "sour_mash"
+    ],
+    [
+      "vintage",
+      "flood_the_cellar",
+      "grand_cru"
+    ]
+  ],
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:ferment",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/brewer/patient_fermentation"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/brewer/froth"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/brewer/cask_strength"
+              }
+            ]
+          },
+          {
+            "type": "pheno:block_in_radius",
+            "radius": 6,
+            "block_condition": {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:barrel"
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:brewing_stand"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:ferment",
+        "amount": 1
+      }
+    }
+  ]
 }

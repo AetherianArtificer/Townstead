@@ -1,0 +1,55 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.hexer.doom"
+  },
+  "icon": "minecraft:wither_skeleton_skull",
+  "description": {
+    "translate": "skill.townstead.witch.hexer.doom.description"
+  },
+  "cost": 1,
+  "requires": [
+    "withering_hex"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "resource_cost": {
+      "resource": "townstead:hex",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:hex",
+      "min": 75
+    },
+    "action": {
+      "type": "pheno:for_each",
+      "in": "townstead:hexed",
+      "where": {
+        "type": "pheno:distance",
+        "max": 24
+      },
+      "do": {
+        "type": "pheno:target_action",
+        "action": {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:glowing",
+              "duration": 60,
+              "amplifier": 0
+            },
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:weakness",
+              "duration": 60,
+              "amplifier": 1
+            }
+          ]
+        }
+      }
+    }
+  }
+}

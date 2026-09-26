@@ -18,6 +18,9 @@ public class PaperField extends EditBox {
     public PaperField(Font font, int x, int y, int w, int h, Component placeholder) {
         super(font, x, y, w, h, placeholder);
         setBordered(false);
+        //? if neoforge {
+        setTextShadow(false);
+        //?}
         setTextColor(Palette.CARD_INK);
         setTextColorUneditable(Palette.CARD_INK_DIM);
         setHint(placeholder);

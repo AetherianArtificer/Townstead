@@ -1,0 +1,100 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.confessor.miracle"
+  },
+  "icon": "minecraft:nether_star",
+  "description": {
+    "translate": "skill.townstead.cleric.confessor.miracle.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sanctify"
+  ],
+  "skill_group": "townstead:confessor_cleanse",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:faith",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 16,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:clear_effect",
+                    "effect": "minecraft:poison"
+                  },
+                  {
+                    "type": "pheno:clear_effect",
+                    "effect": "minecraft:wither"
+                  },
+                  {
+                    "type": "pheno:clear_effect",
+                    "effect": "minecraft:hunger"
+                  },
+                  {
+                    "type": "pheno:clear_effect",
+                    "effect": "minecraft:weakness"
+                  },
+                  {
+                    "type": "pheno:clear_effect",
+                    "effect": "minecraft:slowness"
+                  },
+                  {
+                    "type": "pheno:clear_effect",
+                    "effect": "minecraft:nausea"
+                  },
+                  {
+                    "type": "pheno:clear_effect",
+                    "effect": "minecraft:blindness"
+                  },
+                  {
+                    "type": "pheno:clear_effect",
+                    "effect": "minecraft:mining_fatigue"
+                  },
+                  {
+                    "type": "pheno:clear_effect",
+                    "effect": "minecraft:darkness"
+                  }
+                ]
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:resistance",
+                "duration": 200,
+                "amplifier": 2
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:absorption",
+                "duration": 600,
+                "amplifier": 1
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.beacon.activate",
+          "volume": 0.6,
+          "pitch": 1.6
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.needle.pinpoint"
+  },
+  "icon": "minecraft:tripwire_hook",
+  "description": {
+    "translate": "skill.townstead.tailor.needle.pinpoint.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sharp_shears"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "target": "other",
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "ingredient",
+        "item": "minecraft:shears"
+      }
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:slowness",
+      "duration": 60,
+      "amplifier": 1
+    }
+  }
+}

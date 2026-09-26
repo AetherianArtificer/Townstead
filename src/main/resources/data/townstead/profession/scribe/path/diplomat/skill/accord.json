@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.diplomat.accord"
+  },
+  "icon": "minecraft:iron_chestplate",
+  "description": {
+    "translate": "skill.townstead.scribe.diplomat.accord.description"
+  },
+  "cost": 1,
+  "requires": [
+    "common_ground"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 60,
+    "resource_cost": {
+      "resource": "townstead:goodwill",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:goodwill",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:resistance",
+        "duration": 100,
+        "amplifier": 0
+      }
+    }
+  }
+}

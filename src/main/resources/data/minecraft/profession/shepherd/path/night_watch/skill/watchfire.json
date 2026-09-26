@@ -1,0 +1,49 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.night_watch.watchfire"
+  },
+  "icon": "minecraft:campfire",
+  "description": {
+    "translate": "skill.townstead.shepherd.night_watch.watchfire.description"
+  },
+  "cost": 1,
+  "requires": [
+    "vigil"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "resource_cost": {
+      "resource": "townstead:flock",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:time_of_day",
+          "min": 13000,
+          "max": 23000
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:flock",
+          "min": 50
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:weakness",
+        "duration": 60,
+        "amplifier": 0
+      }
+    }
+  }
+}

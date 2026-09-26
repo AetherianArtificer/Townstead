@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "register_profession": false,
+  "poi": [
+    {
+      "type": "townstead:job_block",
+      "block": "toughasnails:thermoregulator",
+      "sites_per_worker": 8
+    }
+  ],
+  "tasks": [
+    {
+      "type": "townstead_work:maintain_climate",
+      "workstations": [
+        "toughasnails:thermoregulator",
+        "legendarysurvivaloverhaul:heater",
+        "legendarysurvivaloverhaul:cooler"
+      ],
+      "scope": "village",
+      "weight": 10,
+      "order": {
+        "name": "Maintain climate equipment",
+        "icon": "toughasnails:thermoregulator"
+      }
+    }
+  ],
+  "storage": {
+    "preferred_roles": [
+      "townstead:heating_fuel",
+      "townstead:cooling_fuel"
+    ]
+  }
+}

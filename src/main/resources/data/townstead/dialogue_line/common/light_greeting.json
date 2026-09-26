@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "light_greeting",
+  "lines": {
+    "oh_hi_again": "Oh, hi again!",
+    "back_again": "Back again?",
+    "twice_in_one_day": "Twice in one day!",
+    "we_keep_running_into_each": "We keep running into each other!",
+    "hello_again": "Hello again!",
+    "oh_its_you_again_hi": "Oh, it's you again! Hi!",
+    "fancy_seeing_you_twice": "Fancy seeing you twice!",
+    "hey_again": "Hey again.",
+    "oh_youre_still_around": "Oh! You're still around.",
+    "ha_hi_again": "Ha, hi again.",
+    "us_again": "Us again!",
+    "you_again_hmph": { "text": "You again. Hmph.", "personalities": ["crabby", "grumpy"] },
+    "hi_again_yay": { "text": "Hi again! Yay!", "personalities": ["upbeat", "peppy"] },
+    "people_will_start_to_talk": { "text": "People will start to talk, you know.", "personalities": ["playful", "witty"] },
+    "hi_again": { "text": "Hi again!!", "stages": "child" }
+  }
+}

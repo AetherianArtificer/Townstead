@@ -14,6 +14,6 @@ class ChronicleEventRegistryTest {
         ChronicleEventRegistry.replaceAll(Map.of());
 
         assertNull(ChronicleEventRegistry.byId(
-                ResourceLocation.fromNamespaceAndPath("townstead", "debug_dump")));
+                ResourceLocation.tryParse("townstead:debug_dump")));
     }
 }

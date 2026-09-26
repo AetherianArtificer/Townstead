@@ -1,0 +1,44 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.herbalist.gather_herbs"
+  },
+  "icon": "minecraft:poppy",
+  "description": {
+    "translate": "skill.townstead.witch.herbalist.gather_herbs.description"
+  },
+  "cost": 1,
+  "requires": [
+    "antidote"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:hex",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:block_in_radius",
+      "radius": 5,
+      "block_condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:in_tag",
+            "tag": "minecraft:flowers"
+          },
+          {
+            "type": "pheno:in_tag",
+            "tag": "minecraft:leaves"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:hex",
+      "amount": 3
+    }
+  }
+}

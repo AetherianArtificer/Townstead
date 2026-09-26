@@ -1,0 +1,25 @@
+{
+  "display": {
+    "translate": "townstead.incident.spirit_tier_reached"
+  },
+  "default_delta": 10,
+  "visibility": "village",
+  "severity": "major",
+  "tags": [
+    "service",
+    "village"
+  ],
+  "decay": {
+    "type": "none"
+  },
+  "gossip": {
+    "tone": "praise",
+    "phrase": "townstead.gossip.spirit_tier_reached",
+    "with": [
+      "player"
+    ]
+  },
+  "pinned": false,
+  "retain_unwitnessed": false,
+  "max_override_abs": 40
+}

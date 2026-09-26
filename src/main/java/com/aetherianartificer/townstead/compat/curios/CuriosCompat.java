@@ -31,6 +31,10 @@ public final class CuriosCompat {
         if (PRESENT && entity != null) CuriosBridge.forEachWorn(entity, out);
     }
 
+    public static void forEachEquipped(LivingEntity entity, BiConsumer<String, ItemStack> out) {
+        if (PRESENT && entity != null) CuriosBridge.forEachEquipped(entity, out);
+    }
+
     /**
      * Feeds every Curios-slot stack the entity shows, with its slot type id, the way Curios' own render
      * layer walks them: a cosmetic stack first, else the worn stack when its render toggle is on.

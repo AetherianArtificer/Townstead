@@ -1,0 +1,94 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.cleric.path.confessor"
+  },
+  "title": {
+    "translate": "career.townstead.cleric.title.confessor"
+  },
+  "color": "#9FB4D8",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:faith",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cleric/confessor/listening_ear"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cleric/confessor/purge"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cleric/confessor/last_rites"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 8,
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:not",
+                  "condition": {
+                    "type": "pheno:hostile"
+                  }
+                },
+                {
+                  "type": "pheno:health",
+                  "max": 0.7,
+                  "relative": true
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:faith",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "steady_soul",
+      "cleanse",
+      "stay_your_hand"
+    ],
+    [
+      "absolution",
+      "absolve",
+      "shield_of_faith"
+    ],
+    [
+      "listening_ear",
+      "purge",
+      "last_rites"
+    ],
+    [
+      "grace",
+      "sanctify",
+      "sanctuary"
+    ],
+    [
+      "martyr",
+      "miracle",
+      "deliverance"
+    ]
+  ]
+}

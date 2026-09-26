@@ -1,0 +1,40 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.stonewarden.bolt_the_door"
+  },
+  "icon": "minecraft:iron_door",
+  "description": {
+    "translate": "skill.townstead.mason.stonewarden.bolt_the_door.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:stonewarden_ward",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:building"
+        },
+        "if_action": {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 300,
+          "amplifier": 1
+        }
+      }
+    }
+  }
+}

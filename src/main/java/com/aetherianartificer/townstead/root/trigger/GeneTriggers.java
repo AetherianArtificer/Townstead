@@ -23,6 +23,14 @@ public final class GeneTriggers {
 
     private GeneTriggers() {}
 
+    /** Completed transfers only; conditions see the destination. Login and respawn do not call this. */
+    public static void onEnterDimension(LivingEntity entity,
+            net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> previousDimension) {
+        if (entity.level().isClientSide || previousDimension.equals(entity.level().dimension())) return;
+        Powers.invalidate(entity);
+        fire(entity, Trigger.WHEN_ENTER_DIMENSION, null, null, 0f);
+    }
+
     public static void onDamage(LivingEntity victim, DamageSource source, float amount) {
         if (victim.level().isClientSide) return;
         LivingEntity attacker = source.getEntity() instanceof LivingEntity le ? le : null;
@@ -70,7 +78,13 @@ public final class GeneTriggers {
     /** The bearer finished using/consuming an item (Roots {@code action_on_item_use}); self-only. */
     public static void onItemUse(LivingEntity entity) {
         if (entity.level().isClientSide) return;
-        fire(entity, Trigger.WHEN_ITEM_USE, null, null, 0f);
+        onItemUse(entity, net.minecraft.world.item.ItemStack.EMPTY);
+    }
+
+    /** The Finish event supplies the original stack, including the last item in a stack. */
+    public static void onItemUse(LivingEntity entity, net.minecraft.world.item.ItemStack usedItem) {
+        if (entity.level().isClientSide) return;
+        fire(entity, Trigger.WHEN_ITEM_USE, null, null, 0f, usedItem);
     }
 
     /** Fired by the key-press packet handler: run the entity's press triggers bound to {@code key}. */
@@ -91,11 +105,17 @@ public final class GeneTriggers {
 
     private static void fire(LivingEntity bearer, Trigger trigger, @Nullable LivingEntity other,
                              @Nullable DamageSource source, float amount) {
+        fire(bearer, trigger, other, source, amount, net.minecraft.world.item.ItemStack.EMPTY);
+    }
+
+    private static void fire(LivingEntity bearer, Trigger trigger, @Nullable LivingEntity other,
+                             @Nullable DamageSource source, float amount, net.minecraft.world.item.ItemStack usedItem) {
         List<TriggerGeneType.Instance> triggers = Powers.componentsOf(bearer, TriggerGeneType.Instance.class);
         if (triggers.isEmpty()) return;
         ConditionContext ctx = null;
         for (TriggerGeneType.Instance t : triggers) {
             if (t.trigger() != trigger) continue;
+            if (t.itemCondition() != null && !t.itemCondition().test(bearer.level(), usedItem)) continue;
             LivingEntity primary = t.target() == Target.OTHER ? other : bearer;
             if (primary == null) continue;
             // A damage_condition can only hold where a damage event is in play (hurt/attack/kill/death).

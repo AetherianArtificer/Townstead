@@ -92,12 +92,13 @@ class LevelSchemaTest {
     }
 
     @Test
-    void skillPointsAccumulatePerLevel() {
+    void insightPaysAtCheckpointsAndRankUps() {
         ProfessionDef cook = loadCook(new LinkedHashMap<>());
         assertEquals(0, cook.skillPointsThrough(0));
-        assertEquals(1, cook.skillPointsThrough(1));
-        assertEquals(5, cook.skillPointsThrough(5), "one pick per level, five levels");
-        assertEquals(5, cook.skillPointsThrough(30), "points stop at the last defined level");
+        assertEquals(0, cook.skillPointsThrough(1), "holding the first rank pays nothing");
+        assertEquals(4, cook.skillPointsThrough(2), "three checkpoints and the rank-up");
+        assertEquals(16, cook.skillPointsThrough(5), "four per rank span, four spans");
+        assertEquals(16, cook.skillPointsThrough(30), "a level past the track reads as the top");
     }
 
     @Test
@@ -158,7 +159,8 @@ class LevelSchemaTest {
                 id("test:legacy"), v1, Map.of(), diagnostics);
         assertNotNull(legacy);
         assertTrue(legacy.levels().isEmpty());
-        assertEquals(6, legacy.skillPointsThrough(3));
+        // Two spans, each three checkpoints plus a two-point rank-up.
+        assertEquals(10, legacy.skillPointsThrough(3));
     }
 
     private static ResourceLocation id(String raw) {

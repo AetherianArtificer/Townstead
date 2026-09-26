@@ -1,0 +1,87 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.jam_maker.marmalade_moat"
+  },
+  "icon": "minecraft:orange_dye",
+  "description": {
+    "translate": "skill.townstead.baker.jam_maker.marmalade_moat.description"
+  },
+  "cost": 1,
+  "requires": [
+    "preserve_trap"
+  ],
+  "skill_group": "townstead:jam_jam",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:haze",
+      "kind": "townstead:jam",
+      "blocks": [
+        {
+          "radius": [
+            4,
+            0,
+            0
+          ],
+          "around": {
+            "offset": [
+              0,
+              0,
+              4
+            ]
+          }
+        },
+        {
+          "radius": [
+            4,
+            0,
+            0
+          ],
+          "around": {
+            "offset": [
+              0,
+              0,
+              -4
+            ]
+          }
+        },
+        {
+          "radius": [
+            0,
+            0,
+            4
+          ],
+          "around": {
+            "offset": [
+              4,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "radius": [
+            0,
+            0,
+            4
+          ],
+          "around": {
+            "offset": [
+              -4,
+              0,
+              0
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

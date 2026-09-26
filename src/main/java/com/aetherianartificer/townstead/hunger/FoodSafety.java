@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 //? if >=1.21 {
 import net.minecraft.core.component.DataComponents;
 //?}
@@ -45,7 +46,7 @@ public final class FoodSafety {
                                       @org.jetbrains.annotations.Nullable net.minecraft.world.entity.LivingEntity eater) {
         if (stack == null || stack.isEmpty()) return false;
         if (isCannibalFare(stack) && !CannibalismPolicy.mayEat(eater, stack)) {
-            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
                 Townstead.LOGGER.info("[FoodSafety] rejected {} (cannibal fare)",
                         BuiltInRegistries.ITEM.getKey(stack.getItem()));
             }
@@ -55,7 +56,7 @@ public final class FoodSafety {
         if (food == null) return false;
         String harmful = firstHarmfulEffectName(food);
         if (harmful != null) {
-            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
                 Townstead.LOGGER.info("[FoodSafety] rejected {} (harmful effect: {})",
                         BuiltInRegistries.ITEM.getKey(stack.getItem()), harmful);
             }

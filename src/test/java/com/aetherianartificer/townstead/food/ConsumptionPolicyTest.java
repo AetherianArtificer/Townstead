@@ -10,6 +10,29 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ConsumptionPolicyTest {
     @Test
+    void tanConsumablesPermitManagedDrinkingAndRetainBackendHydration() throws Exception {
+        for (String name : java.util.List.of("bottles_0", "bottles_25", "bottles_75",
+                "canteens_0", "canteens_25", "canteens_75", "ice_cream", "charc_os")) {
+            String path = "/data/townstead/consumable/tough_as_nails_" + name + ".json";
+            try (var stream = getClass().getResourceAsStream(path)) {
+                org.junit.jupiter.api.Assertions.assertNotNull(stream, path);
+                var json = JsonParser.parseReader(new java.io.InputStreamReader(
+                        stream, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+                var policy = ConsumptionPolicy.parse(json.get("transaction"));
+                assertEquals(ConsumptionPolicy.Mode.REPLACE_WITH_PHENO, policy.mode(), path);
+                assertTrue(policy.permits(ConsumptionPolicy.Consumer.VILLAGER), path);
+                assertFalse(policy.permits(ConsumptionPolicy.Consumer.PLAYER), path);
+                assertEquals(ConsumptionPolicy.Decision.ALLOW,
+                        policy.effectAdmission().decision(ConsumptionPolicy.EffectClass.ATTRIBUTE), path);
+                if (name.startsWith("canteens")) {
+                    assertEquals(ConsumptionPolicy.RemainderMode.NONE, policy.remainder().mode(),
+                            "The backend updates canteen charges; do not create another container");
+                }
+            }
+        }
+    }
+
+    @Test
     void parsesTransactionEnvelope() {
         ConsumptionPolicy policy = parse("""
                 {

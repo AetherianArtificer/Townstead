@@ -57,6 +57,9 @@ import com.aetherianartificer.townstead.thirst.ThirstClientStore;
 import com.aetherianartificer.townstead.thirst.ThirstData;
 import com.aetherianartificer.townstead.thirst.ThirstSetPayload;
 import com.aetherianartificer.townstead.thirst.ThirstSyncPayload;
+import com.aetherianartificer.townstead.temperature.TemperatureClientStore;
+import com.aetherianartificer.townstead.temperature.TemperatureSetPayload;
+import com.aetherianartificer.townstead.temperature.TemperatureSyncPayload;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Village;
 import net.minecraft.core.BlockPos;
@@ -83,7 +86,7 @@ import java.util.function.Function;
 public final class TownsteadNetwork {
     private TownsteadNetwork() {}
 
-    private static final String PROTOCOL_VERSION = "7";
+    private static final String PROTOCOL_VERSION = "12";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(Townstead.MOD_ID, "main"),
             () -> PROTOCOL_VERSION,
@@ -94,13 +97,55 @@ public final class TownsteadNetwork {
     private static int nextId = 0;
 
     public static void register() {
+        registerS2C(com.aetherianartificer.townstead.naming.NameSyncPayload.class,
+                com.aetherianartificer.townstead.naming.NameSyncPayload::encode,
+                com.aetherianartificer.townstead.naming.NameSyncPayload::decode,
+                payload -> com.aetherianartificer.townstead.naming.NameClientStore.set(
+                        payload.entityId(), payload.familyName(), payload.culture(),
+                        payload.order(), payload.familyType(), payload.tradition()));
         // Server -> Client
+        registerS2C(com.aetherianartificer.townstead.switchboard.SwitchboardOpenS2CPayload.class,
+                com.aetherianartificer.townstead.switchboard.SwitchboardOpenS2CPayload::write,
+                com.aetherianartificer.townstead.switchboard.SwitchboardOpenS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardScreen.open(payload));
+        registerC2S(com.aetherianartificer.townstead.rebirth.RebirthRequestC2SPayload.class,
+                com.aetherianartificer.townstead.rebirth.RebirthRequestC2SPayload::write,
+                com.aetherianartificer.townstead.rebirth.RebirthRequestC2SPayload::read,
+                (payload, sp) -> com.aetherianartificer.townstead.rebirth.Rebirth.handleRequest(sp, payload));
+        registerS2C(com.aetherianartificer.townstead.rebirth.CharacterNamesS2CPayload.class,
+                com.aetherianartificer.townstead.rebirth.CharacterNamesS2CPayload::write,
+                com.aetherianartificer.townstead.rebirth.CharacterNamesS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.rebirth.CharacterNameClient.set(payload.names()));
+        registerS2C(com.aetherianartificer.townstead.rebirth.RebirthDestinyS2CPayload.class,
+                com.aetherianartificer.townstead.rebirth.RebirthDestinyS2CPayload::write,
+                com.aetherianartificer.townstead.rebirth.RebirthDestinyS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.rebirth.RebirthDestinyClient.offer());
+        registerC2S(com.aetherianartificer.townstead.switchboard.SwitchboardSaveC2SPayload.class,
+                com.aetherianartificer.townstead.switchboard.SwitchboardSaveC2SPayload::write,
+                com.aetherianartificer.townstead.switchboard.SwitchboardSaveC2SPayload::read,
+                (payload, sp) -> com.aetherianartificer.townstead.switchboard.SwitchboardServer.handleSave(sp, payload));
+        registerC2S(com.aetherianartificer.townstead.switchboard.SwitchboardRequestC2SPayload.class,
+                com.aetherianartificer.townstead.switchboard.SwitchboardRequestC2SPayload::write,
+                com.aetherianartificer.townstead.switchboard.SwitchboardRequestC2SPayload::read,
+                (payload, sp) -> com.aetherianartificer.townstead.switchboard.SwitchboardServer.handleRequest(sp));
+        registerS2C(com.aetherianartificer.townstead.root.RootDiscoveredS2CPayload.class,
+                com.aetherianartificer.townstead.root.RootDiscoveredS2CPayload::write,
+                com.aetherianartificer.townstead.root.RootDiscoveredS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.root.RootDiscoveryToast.show(payload));
+        registerS2C(com.aetherianartificer.townstead.switchboard.SwitchboardSyncS2CPayload.class,
+                com.aetherianartificer.townstead.switchboard.SwitchboardSyncS2CPayload::write,
+                com.aetherianartificer.townstead.switchboard.SwitchboardSyncS2CPayload::read,
+                com.aetherianartificer.townstead.switchboard.SwitchboardSyncS2CPayload::apply);
         registerS2C(HungerSyncPayload.class, HungerSyncPayload::write, HungerSyncPayload::read,
                 TownsteadNetwork::handleHungerSync);
         registerS2C(com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload.class,
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload::read,
                 TownsteadNetwork::handleConsumableEffectsSync);
+        registerS2C(com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload::read,
+                TownsteadNetwork::handleHazeKindsSync);
         registerS2C(FarmStatusSyncPayload.class, FarmStatusSyncPayload::write, FarmStatusSyncPayload::read,
                 TownsteadNetwork::handleFarmStatusSync);
         registerS2C(FishermanStatusSyncPayload.class, FishermanStatusSyncPayload::write, FishermanStatusSyncPayload::read,
@@ -185,6 +230,40 @@ public final class TownsteadNetwork {
         registerC2S(FatigueSetPayload.class, FatigueSetPayload::write, FatigueSetPayload::read,
                 TownsteadNetwork::handleFatigueSet);
 
+        // Temperature
+        registerS2C(TemperatureSyncPayload.class, TemperatureSyncPayload::write, TemperatureSyncPayload::read,
+                TownsteadNetwork::handleTemperatureSync);
+        registerS2C(com.aetherianartificer.townstead.temperature.ThermometerReadingPayload.class,
+                com.aetherianartificer.townstead.temperature.ThermometerReadingPayload::write,
+                com.aetherianartificer.townstead.temperature.ThermometerReadingPayload::read,
+                TownsteadNetwork::handleThermometerReading);
+        registerS2C(com.aetherianartificer.townstead.temperature.PlayerEnvironmentPayload.class,
+                com.aetherianartificer.townstead.temperature.PlayerEnvironmentPayload::write,
+                com.aetherianartificer.townstead.temperature.PlayerEnvironmentPayload::read,
+                TownsteadNetwork::handlePlayerEnvironment);
+        registerS2C(com.aetherianartificer.townstead.temperature.ThermostatSnapshotPayload.class,
+                com.aetherianartificer.townstead.temperature.ThermostatSnapshotPayload::write,
+                com.aetherianartificer.townstead.temperature.ThermostatSnapshotPayload::read,
+                TownsteadNetwork::handleThermostatSnapshot);
+        registerS2C(com.aetherianartificer.townstead.politics.charter.CharterSnapshotS2CPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.politics.charter.CharterSnapshotS2CPayload::read,
+                TownsteadNetwork::handleCharterSnapshot);
+        registerS2C(com.aetherianartificer.townstead.politics.charter.CharterCeremonyS2CPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.politics.charter.CharterCeremonyS2CPayload::read,
+                TownsteadNetwork::handleCharterCeremony);
+        registerC2S(com.aetherianartificer.townstead.politics.charter.CharterActionC2SPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.politics.charter.CharterActionC2SPayload::read,
+                com.aetherianartificer.townstead.politics.charter.CharterBellService::handle);
+        registerC2S(com.aetherianartificer.townstead.temperature.ThermostatRequestPayload.class,
+                com.aetherianartificer.townstead.temperature.ThermostatRequestPayload::write,
+                com.aetherianartificer.townstead.temperature.ThermostatRequestPayload::read,
+                com.aetherianartificer.townstead.temperature.ThermostatInteraction::handle);
+        registerC2S(TemperatureSetPayload.class, TemperatureSetPayload::write, TemperatureSetPayload::read,
+                TownsteadNetwork::handleTemperatureSet);
+
         // Shift management
         registerS2C(ShiftSyncPayload.class, ShiftSyncPayload::write, ShiftSyncPayload::read,
                 TownsteadNetwork::handleShiftSync);
@@ -208,6 +287,14 @@ public final class TownsteadNetwork {
                 TownsteadNetwork::handleShiftWeekSet);
         registerS2C(WeekPlanSyncPayload.class, WeekPlanSyncPayload::write, WeekPlanSyncPayload::read,
                 TownsteadNetwork::handleWeekPlanSync);
+        registerS2C(com.aetherianartificer.townstead.clothing.wardrobe.WardrobeSyncPayload.class,
+                com.aetherianartificer.townstead.clothing.wardrobe.WardrobeSyncPayload::write,
+                com.aetherianartificer.townstead.clothing.wardrobe.WardrobeSyncPayload::read,
+                TownsteadNetwork::handleWardrobeSync);
+        registerC2S(com.aetherianartificer.townstead.clothing.wardrobe.WardrobeAssignPayload.class,
+                com.aetherianartificer.townstead.clothing.wardrobe.WardrobeAssignPayload::write,
+                com.aetherianartificer.townstead.clothing.wardrobe.WardrobeAssignPayload::read,
+                TownsteadNetwork::handleWardrobeAssign);
         registerC2S(WeekPlanSavePayload.class, WeekPlanSavePayload::write, WeekPlanSavePayload::read,
                 TownsteadNetwork::handleWeekPlanSave);
         registerC2S(WeekPlanDeletePayload.class, WeekPlanDeletePayload::write, WeekPlanDeletePayload::read,
@@ -338,7 +425,7 @@ public final class TownsteadNetwork {
         registerS2C(com.aetherianartificer.townstead.inventory.VillagerCurioRenderS2CPayload.class,
                 com.aetherianartificer.townstead.inventory.VillagerCurioRenderS2CPayload::write,
                 com.aetherianartificer.townstead.inventory.VillagerCurioRenderS2CPayload::read,
-                com.aetherianartificer.townstead.client.gui.inventory.VillagerCurioRenderClient::apply);
+                TownsteadNetwork::handleVillagerCurioRender);
         registerS2C(com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload.class,
                 com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload::write,
                 com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload::read,
@@ -351,6 +438,10 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.root.ability.AbilityTogglesS2CPayload::write,
                 com.aetherianartificer.townstead.root.ability.AbilityTogglesS2CPayload::read,
                 TownsteadNetwork::handleAbilityTogglesSync);
+        registerS2C(com.aetherianartificer.townstead.pheno.cosmetic.CosmeticWearS2CPayload.class,
+                com.aetherianartificer.townstead.pheno.cosmetic.CosmeticWearS2CPayload::write,
+                com.aetherianartificer.townstead.pheno.cosmetic.CosmeticWearS2CPayload::read,
+                com.aetherianartificer.townstead.pheno.cosmetic.CosmeticClientBridge::apply);
         registerS2C(com.aetherianartificer.townstead.root.fx.OverlayActiveS2CPayload.class,
                 com.aetherianartificer.townstead.root.fx.OverlayActiveS2CPayload::write,
                 com.aetherianartificer.townstead.root.fx.OverlayActiveS2CPayload::read,
@@ -405,6 +496,11 @@ public final class TownsteadNetwork {
         com.aetherianartificer.townstead.client.root.HeritageClientStore.setFrom(payload);
     }
 
+    private static void handleVillagerCurioRender(
+            com.aetherianartificer.townstead.inventory.VillagerCurioRenderS2CPayload payload) {
+        com.aetherianartificer.townstead.client.gui.inventory.VillagerCurioRenderClient.apply(payload);
+    }
+
     private static void handleSetGeneVariant(
             com.aetherianartificer.townstead.root.SetGeneVariantC2SPayload payload, ServerPlayer sp) {
         int target = com.aetherianartificer.townstead.root.RootServerLogic.setVariant(
@@ -422,7 +518,7 @@ public final class TownsteadNetwork {
     private static void handleCommitRootGenes(
             com.aetherianartificer.townstead.root.CommitRootGenesC2SPayload payload, ServerPlayer sp) {
         com.aetherianartificer.townstead.root.RootServerLogic.commitGenes(
-                sp, payload.entityId(), payload.genes());
+                sp, payload.entityId(), payload.genes(), payload.hairColor());
     }
 
     private static void handleSetPersonality(
@@ -517,7 +613,9 @@ public final class TownsteadNetwork {
     }
 
     private static void handleExpressedGenesSync(com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload payload) {
-        com.aetherianartificer.townstead.client.root.RootClientStore.setExpressed(payload.entityId(), payload.genes());
+        com.aetherianartificer.townstead.client.root.RootClientStore.setExpressed(
+                payload.entityId(), payload.genes(), payload.hair(), payload.hairColorRanges(),
+                payload.hairColors(), payload.hairGradients());
     }
 
     private static void handleResourceSync(com.aetherianartificer.townstead.root.ability.ResourceSyncS2CPayload payload) {
@@ -757,6 +855,10 @@ public final class TownsteadNetwork {
         com.aetherianartificer.townstead.needs.ConsumableEffectsClientStore.setFrom(payload);
     }
 
+    private static void handleHazeKindsSync(com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload payload) {
+        com.aetherianartificer.townstead.client.haze.HazeClient.apply(payload);
+    }
+
     private static void handleThirstSync(ThirstSyncPayload payload) {
         if (!ThirstBridgeResolver.isActive()) return;
         ThirstClientStore.set(payload.entityId(), payload.thirst(), payload.quenched());
@@ -914,6 +1016,51 @@ public final class TownsteadNetwork {
         }
         state.needs().setThirstExhaustion(0f);
         ThirstSyncPayload sync = Townstead.townstead$thirstSync(villager, state.needs().thirstTag());
+        sendToPlayer(sp, sync);
+        sendToTrackingEntity(villager, sync);
+    }
+
+    private static void handleTemperatureSync(TemperatureSyncPayload payload) {
+        TemperatureClientStore.set(payload.entityId(), payload.bodyTenths(), payload.ambientTenths(), payload.flags());
+    }
+
+    // Keeps the client-only class out of the common registration method's constant pool bootstrap.
+    private static void handleThermometerReading(
+            com.aetherianartificer.townstead.temperature.ThermometerReadingPayload payload) {
+        com.aetherianartificer.townstead.temperature.ThermometerClient.show(payload);
+    }
+    private static void handlePlayerEnvironment(
+            com.aetherianartificer.townstead.temperature.PlayerEnvironmentPayload payload) {
+        com.aetherianartificer.townstead.temperature.PlayerEnvironmentClient.accept(payload);
+    }
+
+    // Keeps the Screen subclass from being resolved while a dedicated server registers packets.
+    private static void handleThermostatSnapshot(
+            com.aetherianartificer.townstead.temperature.ThermostatSnapshotPayload payload) {
+        com.aetherianartificer.townstead.client.gui.temperature.ThermostatScreen.accept(payload);
+    }
+
+    private static void handleCharterSnapshot(
+            com.aetherianartificer.townstead.politics.charter.CharterSnapshotS2CPayload payload) {
+        com.aetherianartificer.townstead.client.gui.charter.CharterScreen.accept(payload);
+    }
+
+    private static void handleCharterCeremony(
+            com.aetherianartificer.townstead.politics.charter.CharterCeremonyS2CPayload payload) {
+        com.aetherianartificer.townstead.client.gui.charter.CharterCeremonyClient.play(payload);
+    }
+
+    private static void handleTemperatureSet(TemperatureSetPayload payload, ServerPlayer sp) {
+        Entity entity = sp.serverLevel().getEntity(payload.entityId());
+        if (!(entity instanceof VillagerEntityMCA villager)) return;
+        TownsteadVillager state = TownsteadVillagers.get(villager);
+        if (payload.bodyTenths() == -1) {
+            sendToPlayer(sp, Townstead.townstead$temperatureSync(villager, state.needs().temperatureTag()));
+            return;
+        }
+        state.needs().setBodyTempTenths(payload.bodyTenths());
+        TownsteadVillagers.flush(villager);
+        TemperatureSyncPayload sync = Townstead.townstead$temperatureSync(villager, state.needs().temperatureTag());
         sendToPlayer(sp, sync);
         sendToTrackingEntity(villager, sync);
     }
@@ -1096,6 +1243,17 @@ public final class TownsteadNetwork {
 
     private static void handleWeekPlanSync(WeekPlanSyncPayload payload) {
         WeekPlanClientStore.set(payload.plans());
+    }
+
+    private static void handleWardrobeSync(com.aetherianartificer.townstead.clothing.wardrobe.WardrobeSyncPayload payload) {
+        com.aetherianartificer.townstead.clothing.wardrobe.WardrobeClientStore.set(payload);
+    }
+
+    private static void handleWardrobeAssign(com.aetherianartificer.townstead.clothing.wardrobe.WardrobeAssignPayload payload,
+                                             ServerPlayer sp) {
+        if (sp.getServer() == null) return;
+        com.aetherianartificer.townstead.clothing.wardrobe.WardrobeServer.apply(sp, payload);
+        sendToPlayer(sp, com.aetherianartificer.townstead.clothing.wardrobe.WardrobeServer.snapshot(sp.getServer()));
     }
 
     private static void handleWeekPlanSave(WeekPlanSavePayload payload, ServerPlayer sp) {

@@ -1,0 +1,41 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.surveyor.triangulate"
+  },
+  "icon": "minecraft:compass",
+  "description": {
+    "translate": "skill.townstead.cartographer.surveyor.triangulate.description"
+  },
+  "cost": 1,
+  "requires": [
+    "spot"
+  ],
+  "skill_group": "townstead:surveyor_survey",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 16,
+      "include_self": false,
+      "target": "hostile",
+      "bientity_condition": {
+        "type": "pheno:relative_rotation",
+        "max_angle": 45
+      },
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:glowing",
+        "duration": 200,
+        "amplifier": 0
+      }
+    }
+  }
+}

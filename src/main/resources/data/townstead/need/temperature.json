@@ -1,0 +1,224 @@
+{
+  "schema": "townstead:need_settings/v1",
+  "drying_seconds": 90,
+  "comfort_zone_c": 6.0,
+  "body_response_seconds": 480,
+  "body_recovery_seconds": 120,
+  "biome_anchors": [
+    [
+      0.15,
+      0.0
+    ],
+    [
+      0.8,
+      20.0
+    ],
+    [
+      2.0,
+      38.0
+    ]
+  ],
+  "season_offsets": {
+    "spring": 0.0,
+    "summer": 6.0,
+    "autumn": -2.0,
+    "winter": -12.0
+  },
+  "altitude_blocks_per_degree": 15,
+  "rain_offset": -5.0,
+  "night_offset": -6.0,
+  "nether_celsius": 45.0,
+  "end_celsius": 5.0,
+  "celsius_per_tan_step": 8.0,
+  "source_radius": 7,
+  "heat_source_offset": 12.0,
+  "cooling_source_offset": -8.0,
+  "room_heat_enabled": true,
+  "thermal_capacity_j_per_block_k": 2000.0,
+  "thermal_material_capacity_j_per_block_k": {
+    "insulation": 500.0,
+    "wood": 4000.0,
+    "earth": 16000.0,
+    "masonry": 12000.0,
+    "glass": 6000.0,
+    "metal": 16000.0,
+    "porous": 1000.0
+  },
+  "thermal_source_w_per_degree": 250.0,
+  "thermal_cooking_room_heat_fraction": 0.15,
+  "thermal_wall_w_per_face_k": 1.4,
+  "thermal_insulation_w_per_face_k": 0.08,
+  "thermal_opening_w_per_face_k": 30.0,
+  "thermal_time_scale": 20.0,
+  "thermal_air_changes_per_hour": 0.5,
+  "thermal_fire_max_rise_c": 25.0,
+  "thermal_appliances": {
+    "legendarysurvivaloverhaul:heater": {
+      "room_power_w": 3750,
+      "radiant_degrees": 15,
+      "native_reference_degrees": 15,
+      "draft": false
+    },
+    "legendarysurvivaloverhaul:cooler": {
+      "room_power_w": -3750,
+      "radiant_degrees": -15,
+      "native_reference_degrees": -15
+    },
+    "legendarysurvivaloverhaul:heater_top": {
+      "room_power_w": 0,
+      "radiant_degrees": 0,
+      "native_reference_degrees": 0
+    },
+    "minecraft:campfire": {
+      "room_power_w": 2500,
+      "radiant_degrees": 30,
+      "native_reference_degrees": 0
+    },
+    "minecraft:soul_campfire": {
+      "room_power_w": -2000,
+      "radiant_degrees": -8,
+      "native_reference_degrees": 0
+    },
+    "minecraft:furnace": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0
+    },
+    "minecraft:smoker": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0
+    },
+    "minecraft:blast_furnace": {
+      "room_power_w": 450,
+      "radiant_degrees": 12,
+      "native_reference_degrees": 0
+    },
+    "farmersdelight:stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "farm_and_charm:stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "farm_and_charm:roaster": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "candlelight:cobblestone_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "candlelight:sandstone_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "candlelight:stone_bricks_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "candlelight:deepslate_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "candlelight:granite_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "candlelight:end_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "candlelight:mud_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "candlelight:quartz_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "candlelight:red_nether_bricks_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "candlelight:basalt_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "candlelight:bamboo_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "herbalbrews:stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "kaleidoscope_cookery:stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "caupona:brick_kitchen_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "caupona:mud_kitchen_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "caupona:opus_incertum_kitchen_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "caupona:opus_latericium_kitchen_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    },
+    "caupona:stone_brick_kitchen_stove": {
+      "room_power_w": 300,
+      "radiant_degrees": 8,
+      "native_reference_degrees": 0,
+      "draft": true
+    }
+  }
+}

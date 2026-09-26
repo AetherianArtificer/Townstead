@@ -53,7 +53,7 @@ public abstract class ConfirmBuildingPolymorphMessageMixin {
     private void townstead$reconcileAfterPolymorphCommit(ServerPlayer player, CallbackInfo ci) {
         BlockPos source = townstead$source();
         if (source == null) return;
-        BuildingReportReconciler.reconcileNearest(player.serverLevel(), source, true, TOWNSTEAD$LOG);
+        BuildingReportReconciler.reconcileNearest(player.serverLevel(), source, TOWNSTEAD$LOG);
     }
 
     @Unique

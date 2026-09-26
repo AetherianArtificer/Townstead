@@ -1,0 +1,36 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.tiller.rootbound"
+  },
+  "icon": "minecraft:rooted_dirt",
+  "description": {
+    "translate": "skill.townstead.farmer.tiller.rootbound.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sure_footing"
+  ],
+  "power": {
+    "type": "pheno:attribute",
+    "attribute": "minecraft:generic.knockback_resistance",
+    "amount": 1.0,
+    "condition": {
+      "type": "pheno:block",
+      "y": -1,
+      "block_condition": {
+        "type": "or",
+        "conditions": [
+          {
+            "type": "in_tag",
+            "tag": "minecraft:dirt"
+          },
+          {
+            "type": "block",
+            "block": "minecraft:farmland"
+          }
+        ]
+      }
+    }
+  }
+}

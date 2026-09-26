@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.weaver.weave"
+  },
+  "icon": "minecraft:string",
+  "description": {
+    "translate": "skill.townstead.tailor.weaver.weave.description"
+  },
+  "cost": 1,
+  "requires": [
+    "silken_fall"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:stitch",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:entity_in_radius",
+      "radius": 8,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:hostile"
+          },
+          {
+            "type": "pheno:status_effect",
+            "effect": "minecraft:slowness"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:stitch",
+      "amount": 3
+    }
+  }
+}

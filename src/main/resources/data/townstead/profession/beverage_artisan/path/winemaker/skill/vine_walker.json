@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.vine_walker"
+  },
+  "icon": "minecraft:vine",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.vine_walker.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:stuck_immunity",
+    "blocks": [
+      "minecraft:cobweb",
+      "minecraft:sweet_berry_bush"
+    ]
+  }
+}

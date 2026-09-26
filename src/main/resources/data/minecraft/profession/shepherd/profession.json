@@ -7,5 +7,9 @@
   "description": {
     "text": "Tend the flock to build a history of animal husbandry."
   },
+  "skills": [
+    "open_pasture",
+    "whistle"
+  ],
   "unlock_model": "experiential"
 }

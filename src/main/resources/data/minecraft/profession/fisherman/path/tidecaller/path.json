@@ -1,0 +1,78 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.fisherman.path.tidecaller"
+  },
+  "title": {
+    "translate": "career.townstead.fisherman.title.tidecaller"
+  },
+  "color": "#2F8C8A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:tide",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fisherman/tidecaller/swell"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fisherman/tidecaller/whirlpool"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fisherman/tidecaller/dolphin_run"
+              }
+            ]
+          },
+          {
+            "type": "pheno:in_fluid",
+            "fluid": "water"
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:tide",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "webbed_feet",
+      "splash",
+      "fresh_water"
+    ],
+    [
+      "deep_breath",
+      "undertow",
+      "tidal_ward"
+    ],
+    [
+      "swell",
+      "whirlpool",
+      "dolphin_run"
+    ],
+    [
+      "salt_in_the_veins",
+      "riptide",
+      "sea_shanty"
+    ],
+    [
+      "walk_on_water",
+      "maelstrom",
+      "conduit"
+    ]
+  ]
+}

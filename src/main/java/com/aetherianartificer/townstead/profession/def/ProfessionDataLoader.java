@@ -99,14 +99,11 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
             int tradeDir = subpath.lastIndexOf("/trade/");
             if (pathDir > 0 && pathSkillDir > pathDir) {
                 String professionPath = subpath.substring(0, pathDir);
-                ResourceLocation professionId = ResourceLocation.tryParse(
-                        file.getNamespace() + ":" + professionPath);
-                String pathId = CareerIdAliases.canonicalPath(professionId,
-                        subpath.substring(pathDir + "/path/".length(), pathSkillDir));
+                String pathId = subpath.substring(pathDir + "/path/".length(), pathSkillDir);
                 String skillName = subpath.substring(pathSkillDir + "/skill/".length());
-                ResourceLocation skillId = CareerIdAliases.canonicalSkill(ResourceLocation.tryParse(
+                ResourceLocation skillId = ResourceLocation.tryParse(
                         file.getNamespace() + ":" + professionPath + "/" + pathId + "/"
-                                + skillName));
+                                + skillName);
                 if (skillId == null || pathId.isBlank() || pathId.contains("/")
                         || skillName.isBlank()) continue;
                 if (!json.has("profession")) {
@@ -118,8 +115,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 String professionPath = subpath.substring(0, pathDir);
                 ResourceLocation professionId = ResourceLocation.tryParse(
                         file.getNamespace() + ":" + professionPath);
-                String pathId = CareerIdAliases.canonicalPath(professionId,
-                        subpath.substring(pathDir + "/path/".length(), pathTradeDir));
+                String pathId = subpath.substring(pathDir + "/path/".length(), pathTradeDir);
                 String contributionName = subpath.substring(pathTradeDir + "/trade/".length());
                 if (professionId == null || pathId.isBlank() || pathId.contains("/")
                         || contributionName.isBlank()) continue;
@@ -140,9 +136,8 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 String professionPath = subpath.substring(0, pathDir);
                 ResourceLocation professionId = ResourceLocation.tryParse(
                         file.getNamespace() + ":" + professionPath);
-                String pathId = CareerIdAliases.canonicalPath(professionId,
-                        subpath.substring(pathDir + "/path/".length(),
-                                subpath.length() - "/path".length()));
+                String pathId = subpath.substring(pathDir + "/path/".length(),
+                        subpath.length() - "/path".length());
                 if (professionId != null && !pathId.isBlank() && !pathId.contains("/")) {
                     pathDocuments.computeIfAbsent(professionId, ignored -> new LinkedHashMap<>())
                             .put(pathId, json);
@@ -745,7 +740,11 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         }
 
         return new ProfessionDef(id, name, description,
-                new ProgressionTrack(List.copyOf(tiers), dailyCap, maxXp),
+                new ProgressionTrack(List.copyOf(tiers), dailyCap, maxXp,
+                        Math.max(0, GsonHelper.getAsInt(obj, "checkpoints_per_rank",
+                                ProgressionTrack.DEFAULT_CHECKPOINTS)),
+                        Math.max(0, Math.min(100, GsonHelper.getAsInt(obj, "over_cap_percent",
+                                ProgressionTrack.DEFAULT_OVER_CAP_PERCENT)))),
                 UnlockModel.fromString(unlock),
                 GsonHelper.getAsInt(obj, "points_per_tier", 1),
                 RetrainingPolicy.fromString(retraining),
@@ -1196,6 +1195,10 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
         if (overlay.has("levels")) def.add("levels", overlay.get("levels"));
         if (overlay.has("daily_cap")) def.add("daily_cap", overlay.get("daily_cap"));
         if (overlay.has("max_xp")) def.add("max_xp", overlay.get("max_xp"));
+        if (overlay.has("checkpoints_per_rank")) {
+            def.add("checkpoints_per_rank", overlay.get("checkpoints_per_rank"));
+        }
+        if (overlay.has("over_cap_percent")) def.add("over_cap_percent", overlay.get("over_cap_percent"));
     }
 
     /**
@@ -1210,10 +1213,10 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
     private static ResourceLocation resolveSkillRef(ResourceLocation owner,
                                                     @Nullable String scope, String raw) {
         if (raw == null || raw.isBlank()) return null;
-        return CareerIdAliases.canonicalSkill(raw.contains(":")
+        return raw.contains(":")
                 ? ResourceLocation.tryParse(raw)
                 : ResourceLocation.tryParse(owner.getNamespace() + ":" + owner.getPath() + "/"
-                        + (scope == null || scope.isBlank() ? "" : scope + "/") + raw));
+                        + (scope == null || scope.isBlank() ? "" : scope + "/") + raw);
     }
 
     /** Directory portion between the owning Profession and this Skill's filename. */

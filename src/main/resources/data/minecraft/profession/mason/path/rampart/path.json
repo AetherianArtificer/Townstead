@@ -1,0 +1,81 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.mason.path.rampart"
+  },
+  "title": {
+    "translate": "career.townstead.mason.title.rampart"
+  },
+  "color": "#6A6A6A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:mortar",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:mason/rampart/siege_mind"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:mason/rampart/redoubt"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:mason/rampart/sally_forth"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 12,
+            "condition": {
+              "type": "pheno:hostile"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:mortar",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "trowel_hand",
+      "barricade",
+      "arrow_slit"
+    ],
+    [
+      "behind_stone",
+      "breastwork",
+      "murder_holes"
+    ],
+    [
+      "siege_mind",
+      "redoubt",
+      "sally_forth"
+    ],
+    [
+      "battlements",
+      "fort",
+      "hold_the_wall"
+    ],
+    [
+      "master_builder",
+      "citadel_walls",
+      "siege_breaker"
+    ]
+  ]
+}

@@ -26,7 +26,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
 /** A framed deed which belongs on the wall of the place it governs. */
-public final class RoomOwnershipTagBlock extends Block {
+public final class RoomOwnershipTagBlock extends SnowCoatedBlock {
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
 
     private static final VoxelShape NORTH = Block.box(4, 3.5, 14.75, 12, 12.5, 16);
@@ -36,11 +36,12 @@ public final class RoomOwnershipTagBlock extends Block {
 
     public RoomOwnershipTagBlock(Properties properties) {
         super(properties);
-        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH));
+        registerDefaultState(defaultBlockState().setValue(FACING, Direction.NORTH));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        super.createBlockStateDefinition(builder);
         builder.add(FACING);
     }
 

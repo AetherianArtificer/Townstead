@@ -3,5 +3,6 @@
   "spirit": {
     "tourism": 5,
     "commercial": 2
-  }
+  },
+  "talk": { "tags": ["townstead:tavern"] }
 }

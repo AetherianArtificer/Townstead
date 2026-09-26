@@ -1,0 +1,89 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.marksman.volley"
+  },
+  "icon": "minecraft:bow",
+  "description": {
+    "translate": "skill.townstead.fletcher.marksman.volley.description"
+  },
+  "cost": 1,
+  "requires": [
+    "spread"
+  ],
+  "skill_group": "townstead:marksman_volley",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:draw",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:fire_projectile",
+              "entity": "minecraft:arrow",
+              "speed": 2.5,
+              "inaccuracy": 6.0
+            },
+            {
+              "type": "pheno:fire_projectile",
+              "entity": "minecraft:arrow",
+              "speed": 2.5,
+              "inaccuracy": 6.0
+            },
+            {
+              "type": "pheno:fire_projectile",
+              "entity": "minecraft:arrow",
+              "speed": 2.5,
+              "inaccuracy": 6.0
+            },
+            {
+              "type": "pheno:fire_projectile",
+              "entity": "minecraft:arrow",
+              "speed": 2.5,
+              "inaccuracy": 6.0
+            },
+            {
+              "type": "pheno:fire_projectile",
+              "entity": "minecraft:arrow",
+              "speed": 2.5,
+              "inaccuracy": 6.0
+            },
+            {
+              "type": "pheno:fire_projectile",
+              "entity": "minecraft:arrow",
+              "speed": 2.5,
+              "inaccuracy": 6.0
+            },
+            {
+              "type": "pheno:fire_projectile",
+              "entity": "minecraft:arrow",
+              "speed": 2.5,
+              "inaccuracy": 6.0
+            },
+            {
+              "type": "pheno:fire_projectile",
+              "entity": "minecraft:arrow",
+              "speed": 2.5,
+              "inaccuracy": 6.0
+            }
+          ]
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.arrow.shoot",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

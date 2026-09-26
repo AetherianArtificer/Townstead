@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.tenderizer.brace"
+  },
+  "icon": "minecraft:shield",
+  "description": {
+    "translate": "skill.townstead.butcher.tenderizer.brace.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:tenderizer_block",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:resistance",
+      "duration": 200,
+      "amplifier": 0
+    }
+  }
+}

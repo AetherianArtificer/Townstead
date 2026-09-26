@@ -47,8 +47,6 @@ public final class BuildingPinService {
     private static final String TAG_TYPE = "TownsteadBuildingPin";
     private static final String TAG_DIMENSION = "TownsteadBuildingPinDimension";
     private static final String TAG_VILLAGE = "TownsteadBuildingPinVillage";
-    private static final Method ANALYZE_BUILDING = findAnalyzeBuildingMethod();
-    private static final Method SCAN_BUILDING = findScanBuildingMethod();
 
     private BuildingPinService() {}
 
@@ -233,32 +231,17 @@ public final class BuildingPinService {
     }
 
     private static Building previewRoom(ServerLevel level, net.minecraft.core.BlockPos origin) {
-        if (ANALYZE_BUILDING == null || SCAN_BUILDING == null) return null;
+        //? if neoforge {
         try {
-            Object scan = ANALYZE_BUILDING.invoke(VillageManager.get(level), origin, true);
-            Object building = SCAN_BUILDING.invoke(scan);
-            return building instanceof Building candidate ? candidate : null;
-        } catch (ReflectiveOperationException | RuntimeException ignored) {
+            var scan = com.aetherianartificer.townstead.compat.mca.McaRoomWorkflow
+                    .analyzeBuildingAddition(level, origin);
+            return scan.result() == Building.validationResult.SUCCESS ? scan.building() : null;
+        } catch (RuntimeException ignored) {
             return null;
         }
-    }
-
-    private static Method findAnalyzeBuildingMethod() {
-        try {
-            return VillageManager.class.getMethod(
-                    "analyzeBuilding", net.minecraft.core.BlockPos.class, boolean.class);
-        } catch (ReflectiveOperationException ignored) {
-            return null;
-        }
-    }
-
-    private static Method findScanBuildingMethod() {
-        if (ANALYZE_BUILDING == null) return null;
-        try {
-            return ANALYZE_BUILDING.getReturnType().getMethod("building");
-        } catch (ReflectiveOperationException ignored) {
-            return null;
-        }
+        //?} else {
+        /*return null;
+        *///?}
     }
 
     /**
@@ -283,7 +266,7 @@ public final class BuildingPinService {
         int minZ = Math.min(a.getZ(), b.getZ());
         int maxZ = Math.max(a.getZ(), b.getZ());
         //? if neoforge {
-        List<BuildingFloorRegion> footprint = building.getFloorRegions();
+        List<BuildingFloorRegion> footprint = building.getFloorRegion().map(List::of).orElse(List.of());
         //?}
         net.minecraft.core.BlockPos.MutableBlockPos cursor = new net.minecraft.core.BlockPos.MutableBlockPos();
         for (int x = minX; x <= maxX; x++) {

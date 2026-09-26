@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.work.producer;
 
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+
 import com.aetherianartificer.townstead.work.producer.ProducerRole;
 import com.aetherianartificer.townstead.work.producer.ProducerWorkSupport;
 
@@ -384,7 +386,7 @@ public final class ProducerStationIndex {
 
     /** Narrates to the nearest player when villager-AI debugging is on. */
     private static void say(VillagerEntityMCA villager, String message) {
-        if (!com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
+        if (!Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI)) return;
         if (!(villager.level() instanceof ServerLevel level)) return;
         if (!(level.getNearestPlayer(villager, 24)
                 instanceof net.minecraft.server.level.ServerPlayer player)) return;
@@ -400,7 +402,7 @@ public final class ProducerStationIndex {
             List<ScoredRecipe> candidates,
             java.util.function.ToIntFunction<DiscoveredRecipe> recipePriority
     ) {
-        if (!com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
+        if (!Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI)) return;
         // Explain the highest-priority ordered recipe, not an arbitrary high-scoring recipe from
         // the station's entire book. "Sticky rice needs..." does not help someone who ordered
         // candied potatoes.

@@ -88,14 +88,22 @@ public record ProfessionDef(
                 .append(" " + roman(clamped - 4));
     }
 
-    /** Skill points earned through the given tier; v1 defs fall back to points_per_tier. */
+    /** Insight earned by the moment the given tier is reached. */
     public int skillPointsThrough(int tier) {
-        if (levels.isEmpty()) return Math.max(0, pointsPerTier * Math.max(0, tier));
-        int total = 0;
-        for (int i = 0; i < Math.min(tier, levels.size()); i++) {
-            total += Math.max(0, levels.get(i).skillPoints());
-        }
-        return total;
+        List<Integer> t = progression.tierThresholds();
+        int index = Math.max(0, Math.min(tier, t.size()) - 1);
+        return insightAt(t.isEmpty() ? 0 : t.get(index));
+    }
+
+    /** Insight this career has paid at an XP total: checkpoints, rank-ups, and the post-top tail. */
+    public int insightAt(int xp) {
+        return InsightSchedule.earnedAt(progression, this::rankPayout, xp);
+    }
+
+    /** Points for reaching a 1-based level; v1 defs fall back to points_per_tier. */
+    private int rankPayout(int level) {
+        if (level >= 1 && level <= levels.size()) return levels.get(level - 1).skillPoints();
+        return pointsPerTier;
     }
 
     static String roman(int n) {

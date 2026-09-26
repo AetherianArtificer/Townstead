@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.sun_kissed"
+  },
+  "icon": "minecraft:sunflower",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.sun_kissed.description"
+  },
+  "cost": 1,
+  "requires": [
+    "vine_walker"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:environment",
+      "exposure": "sun"
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 30,
+      "amplifier": 0
+    }
+  }
+}

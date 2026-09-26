@@ -6,6 +6,8 @@ import com.aetherianartificer.townstead.fatigue.SleepReason;
 import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.shift.ShiftData;
 import com.aetherianartificer.townstead.thirst.ThirstData;
+import com.aetherianartificer.townstead.temperature.TemperatureData;
+import com.aetherianartificer.townstead.temperature.TemperatureSyncPayload;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -159,8 +161,18 @@ public final class TownsteadVillager {
         private long emergencyBedPos = Long.MIN_VALUE;
         private String emergencyBedDim = null;
         private boolean emergencyBedPoiClaimed;
+        private boolean directEmergencyBed;
         private long savedHomePos = Long.MIN_VALUE;
         private String savedHomeDim = null;
+
+        private int bodyTempTenths = Integer.MIN_VALUE;
+        private int ambientTenths = TemperatureData.tenths(TemperatureData.AMBIENT_REFERENCE);
+        private boolean wet;
+        private float temperatureMoodDrift;
+        private boolean thermalCrisis;
+        private boolean seekingRelief;
+        private String reliefDebug = "none";
+        private int thermalTier = 3;
 
         public int hunger() {
             return hunger;
@@ -232,7 +244,7 @@ public final class TownsteadVillager {
         }
 
         public void addHungerExhaustion(float value) {
-            setHungerExhaustion(hungerExhaustion + value);
+            setHungerExhaustion(hungerExhaustion + value * (float) com.aetherianartificer.townstead.needs.NeedPace.pace());
         }
 
         public void setEatingMode(boolean value) {
@@ -333,7 +345,7 @@ public final class TownsteadVillager {
         }
 
         public void addThirstExhaustion(float value) {
-            setThirstExhaustion(thirstExhaustion + value);
+            setThirstExhaustion(thirstExhaustion + value * (float) com.aetherianartificer.townstead.needs.NeedPace.pace());
         }
 
         public void setDrinkingMode(boolean value) {
@@ -435,6 +447,113 @@ public final class TownsteadVillager {
             markDirty();
         }
 
+        public int bodyTempTenths() {
+            return bodyTempTenths;
+        }
+
+        public boolean hasBodyTemp() {
+            return bodyTempTenths != Integer.MIN_VALUE;
+        }
+
+        public void setBodyTempTenths(int value) {
+            bodyTempTenths = clamp(value, TemperatureData.MIN_BODY_TENTHS, TemperatureData.MAX_BODY_TENTHS);
+            markDirty();
+        }
+
+        public void adjustBodyTemp(int deltaTenths) {
+            if (!hasBodyTemp()) return;
+            setBodyTempTenths(bodyTempTenths + deltaTenths);
+        }
+
+        public int ambientTenths() {
+            return ambientTenths;
+        }
+
+        public void setAmbientTenths(int value) {
+            ambientTenths = value;
+            markDirty();
+        }
+
+        public boolean wet() {
+            return wet;
+        }
+
+        private float thermalWetness, comfortLoad, thermalStrainSeconds;
+        private int coreThermalTier = 3;
+
+        public float thermalWetness() { return thermalWetness; }
+        public float comfortLoad() { return comfortLoad; }
+        public float thermalStrainSeconds() { return thermalStrainSeconds; }
+        public int coreThermalTier() { return coreThermalTier; }
+        public void setCoreThermalTier(int value) {
+            int next = Math.max(0, Math.min(6, value));
+            if (coreThermalTier != next) { coreThermalTier = next; markDirty(); }
+        }
+        public void setThermalComfort(float wetness, float load, float strain) {
+            if (thermalWetness == wetness && comfortLoad == load && thermalStrainSeconds == strain) return;
+            thermalWetness = Math.max(0, Math.min(1, wetness));
+            comfortLoad = load;
+            thermalStrainSeconds = Math.max(0, strain);
+            wet = thermalWetness > 0.01f;
+            markDirty();
+        }
+
+        public void setWet(boolean value) {
+            wet = value;
+            markDirty();
+        }
+
+        public float temperatureMoodDrift() {
+            return temperatureMoodDrift;
+        }
+
+        public void setTemperatureMoodDrift(float value) {
+            temperatureMoodDrift = Math.max(-4f, Math.min(value, 4f));
+            markDirty();
+        }
+
+        public boolean thermalCrisis() {
+            return thermalCrisis;
+        }
+
+        public void setThermalCrisis(boolean value) {
+            thermalCrisis = value;
+            markDirty();
+        }
+
+        public boolean seekingRelief() {
+            return seekingRelief;
+        }
+
+        public void setSeekingRelief(boolean value) {
+            seekingRelief = value;
+            markDirty();
+        }
+
+        public String reliefDebug() {
+            return reliefDebug;
+        }
+
+        public void setReliefDebug(String value) {
+            reliefDebug = value == null ? "none" : value;
+            markDirty();
+        }
+
+        /** Ordinal of the current {@code TemperatureData.Tier}, computed by the ticker for the client readout. */
+        public int thermalTier() {
+            return thermalTier;
+        }
+
+        public void setThermalTier(int value) {
+            thermalTier = Math.max(0, Math.min(6, value));
+            markDirty();
+        }
+
+        /** Bit 0 wet, bit 1 seeking relief, bits 2-4 tier ordinal; the flag byte carried by the sync payload. */
+        public int temperatureFlags() {
+            return TemperatureSyncPayload.flags(wet, seekingRelief, thermalTier) | (coreThermalTier << 5);
+        }
+
         public float fatigueMoodDrift() {
             return fatigueMoodDrift;
         }
@@ -505,10 +624,15 @@ public final class TownsteadVillager {
             return emergencyBedPoiClaimed;
         }
 
+        public boolean usesDirectEmergencyBed() {
+            return directEmergencyBed;
+        }
+
         public void setEmergencyBed(BlockPos pos) {
             emergencyBedPos = pos == null ? Long.MIN_VALUE : pos.asLong();
             emergencyBedDim = null;
             emergencyBedPoiClaimed = false;
+            directEmergencyBed = false;
             markDirty();
         }
 
@@ -516,6 +640,15 @@ public final class TownsteadVillager {
             emergencyBedPos = pos == null ? Long.MIN_VALUE : pos.pos().asLong();
             emergencyBedDim = pos == null ? null : pos.dimension().location().toString();
             emergencyBedPoiClaimed = pos != null && poiClaimed;
+            directEmergencyBed = false;
+            markDirty();
+        }
+
+        public void setBorrowedEmergencyBed(net.minecraft.core.GlobalPos pos) {
+            emergencyBedPos = pos == null ? Long.MIN_VALUE : pos.pos().asLong();
+            emergencyBedDim = pos == null ? null : pos.dimension().location().toString();
+            emergencyBedPoiClaimed = pos != null;
+            directEmergencyBed = pos != null;
             markDirty();
         }
 
@@ -523,6 +656,7 @@ public final class TownsteadVillager {
             emergencyBedPos = Long.MIN_VALUE;
             emergencyBedDim = null;
             emergencyBedPoiClaimed = false;
+            directEmergencyBed = false;
             markDirty();
         }
 
@@ -651,6 +785,7 @@ public final class TownsteadVillager {
             if (emergencyBedPos != Long.MIN_VALUE) tag.putLong("emergencyBedPos", emergencyBedPos);
             if (emergencyBedDim != null) tag.putString("emergencyBedDim", emergencyBedDim);
             if (emergencyBedPoiClaimed) tag.putBoolean("emergencyBedPoiClaimed", true);
+            if (directEmergencyBed) tag.putBoolean("directEmergencyBed", true);
             if (savedHomeDim != null) {
                 tag.putLong("savedHomePos", savedHomePos);
                 tag.putString("savedHomeDim", savedHomeDim);
@@ -671,6 +806,7 @@ public final class TownsteadVillager {
             emergencyBedPos = FatigueData.hasEmergencyBed(tag) ? FatigueData.getEmergencyBed(tag).asLong() : Long.MIN_VALUE;
             emergencyBedDim = tag.contains("emergencyBedDim") ? tag.getString("emergencyBedDim") : null;
             emergencyBedPoiClaimed = tag.getBoolean("emergencyBedPoiClaimed");
+            directEmergencyBed = tag.getBoolean("directEmergencyBed");
             if (FatigueData.hasSavedHome(tag)) {
                 net.minecraft.core.GlobalPos home = FatigueData.getSavedHome(tag);
                 savedHomeDim = home == null ? "" : home.dimension().location().toString();
@@ -682,11 +818,40 @@ public final class TownsteadVillager {
             markDirty();
         }
 
+        public CompoundTag temperatureTag() {
+            CompoundTag tag = new CompoundTag();
+            TemperatureData.write(tag, bodyTempTenths, ambientTenths, wet, temperatureMoodDrift, thermalCrisis, reliefDebug);
+            new com.aetherianartificer.townstead.temperature.ThermalComfort.State(
+                    thermalWetness, comfortLoad, thermalStrainSeconds).write(tag);
+            tag.putInt("coreTier", coreThermalTier);
+            tag.putBoolean("seekingRelief", seekingRelief);
+            tag.putInt("tier", thermalTier);
+            return tag;
+        }
+
+        public void loadTemperature(CompoundTag tag) {
+            bodyTempTenths = TemperatureData.getBodyTemp(tag);
+            ambientTenths = TemperatureData.getAmbient(tag);
+            wet = TemperatureData.isWet(tag);
+            var comfort = com.aetherianartificer.townstead.temperature.ThermalComfort.State.read(tag);
+            thermalWetness = comfort.wetness();
+            comfortLoad = comfort.load();
+            thermalStrainSeconds = comfort.strainSeconds();
+            coreThermalTier = tag.contains("coreTier") ? Math.max(0, Math.min(6, tag.getInt("coreTier"))) : 3;
+            temperatureMoodDrift = TemperatureData.getMoodDrift(tag);
+            thermalCrisis = TemperatureData.isCrisis(tag);
+            seekingRelief = tag.getBoolean("seekingRelief");
+            thermalTier = tag.contains("tier") ? Math.max(0, Math.min(6, tag.getInt("tier"))) : 3;
+            reliefDebug = TemperatureData.getReliefDebug(tag);
+            markDirty();
+        }
+
         private CompoundTag toTag() {
             CompoundTag tag = new CompoundTag();
             tag.put("hunger", hungerTag());
             tag.put("thirst", thirstTag());
             tag.put("fatigue", fatigueTag());
+            tag.put("temperature", temperatureTag());
             return tag;
         }
 
@@ -694,6 +859,7 @@ public final class TownsteadVillager {
             loadHunger(tag.getCompound("hunger"));
             loadThirst(tag.getCompound("thirst"));
             loadFatigue(tag.getCompound("fatigue"));
+            loadTemperature(tag.getCompound("temperature"));
         }
     }
 
@@ -787,6 +953,15 @@ public final class TownsteadVillager {
         private int birthDay;
         private String rootId = "";
         private String personalityId = "";
+        // Civic culture, and the naming that follows from it. Cultural, never ethnic: inherited
+        // from the household, from the village, or rolled from the root's bias only for a founder
+        // who has neither. nameList is which of the culture's given-name lists this villager was
+        // named from, rolled once; familyName is the resolved surname. See naming/Naming.
+        private String culture = "";
+        private String namingTradition = "";
+        private String nameList = "";
+        private String familyName = "";
+        private boolean familyNameFixed;
         private int[] stageDays = EMPTY_INT_ARRAY;
         private int cycleFingerprint;
         private String currentStageId = "";
@@ -884,6 +1059,69 @@ public final class TownsteadVillager {
 
         public void setPersonalityId(String id) {
             personalityId = id == null ? "" : id;
+            markDirty();
+        }
+
+        /**
+         * The civic culture this villager belongs to, empty until one is recorded. Held by people
+         * and communities, never by species: see
+         * {@link com.aetherianartificer.townstead.naming.Naming}.
+         */
+        public String culture() {
+            return culture;
+        }
+
+        public void setCulture(String id) {
+            culture = id == null ? "" : id;
+            markDirty();
+        }
+
+        /**
+         * How this villager's name is built, which is a separate question from what they believe.
+         * Everyone has one, taken from their region when they belong to no culture; a culture that
+         * declares a tradition of its own overrides it, so a family keeps its naming when it moves.
+         */
+        public String namingTradition() {
+            return namingTradition;
+        }
+
+        public void setNamingTradition(String id) {
+            namingTradition = id == null ? "" : id;
+            markDirty();
+        }
+
+        /** Which of the culture's given-name lists named this villager, rolled once at naming. */
+        public String nameList() {
+            return nameList;
+        }
+
+        public void setNameList(String reference) {
+            nameList = reference == null ? "" : reference;
+            markDirty();
+        }
+
+        /** The resolved family name, empty when this villager's tradition gives none. */
+        public String familyName() {
+            return familyName;
+        }
+
+        public void setFamilyName(String name) {
+            familyName = name == null ? "" : name;
+            markDirty();
+        }
+
+        /**
+         * Whether a player set this family name by hand, in which case nothing derived may replace
+         * it. The same idea as MCA Capitals marking a surname a legal rename: a name somebody chose
+         * outranks a name a rule produced, so changing a villager's culture re-derives their name
+         * list but leaves the name they were given.
+         */
+        public boolean familyNameFixed() {
+            return familyNameFixed;
+        }
+
+        public void setFamilyNameFixed(boolean fixed) {
+            familyNameFixed = fixed;
             markDirty();
         }
 
@@ -1067,6 +1305,11 @@ public final class TownsteadVillager {
             if (!personalityId.isEmpty()) {
                 tag.putString("personalityId", personalityId);
             }
+            if (!culture.isEmpty()) tag.putString("culture", culture);
+            if (!namingTradition.isEmpty()) tag.putString("namingTradition", namingTradition);
+            if (!nameList.isEmpty()) tag.putString("nameList", nameList);
+            if (!familyName.isEmpty()) tag.putString("familyName", familyName);
+            if (familyNameFixed) tag.putBoolean("familyNameFixed", true);
             if (stageDays.length > 0) {
                 tag.putIntArray("stageDays", stageDays.clone());
             }
@@ -1111,6 +1354,11 @@ public final class TownsteadVillager {
             birthDay = tag.getInt("birthDay");
             rootId = tag.contains("rootId") ? tag.getString("rootId") : tag.getString("originId"); // legacy fallback
             personalityId = tag.getString("personalityId");
+            culture = tag.getString("culture");
+            namingTradition = tag.getString("namingTradition");
+            nameList = tag.getString("nameList");
+            familyName = tag.getString("familyName");
+            familyNameFixed = tag.getBoolean("familyNameFixed");
             stageDays = tag.contains("stageDays") ? tag.getIntArray("stageDays") : EMPTY_INT_ARRAY;
             cycleFingerprint = tag.getInt("cycleFingerprint");
             currentStageId = tag.getString("currentStageId");

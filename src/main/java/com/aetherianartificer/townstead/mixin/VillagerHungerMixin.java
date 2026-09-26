@@ -6,7 +6,7 @@ import com.aetherianartificer.townstead.TownsteadConfig;
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
 import com.aetherianartificer.townstead.fatigue.FatigueData;
-import com.aetherianartificer.townstead.fatigue.SeekBedWhenFatiguedTask;
+import com.aetherianartificer.townstead.fatigue.BorrowBedWhenFatiguedTask;
 import com.aetherianartificer.townstead.hunger.FishermanWorkTask;
 import com.aetherianartificer.townstead.shift.ShiftScheduleApplier;
 import com.aetherianartificer.townstead.hunger.CareForYoungTask;
@@ -17,6 +17,7 @@ import com.aetherianartificer.townstead.hunger.HungerData;
 import com.aetherianartificer.townstead.hunger.RefuelTask;
 import com.aetherianartificer.townstead.thirst.HydrateYoungTask;
 import com.aetherianartificer.townstead.thirst.ThirstData;
+import com.aetherianartificer.townstead.temperature.TemperatureData;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.google.common.collect.ImmutableList;
@@ -91,41 +92,44 @@ public abstract class VillagerHungerMixin extends Villager {
         // built-in work behaviors, preventing job-site pathing from overriding ours.
         brain.addActivity(Activity.WORK,
                 ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>>of(
-                        Pair.of(69, new com.aetherianartificer.townstead.hospitality.service.HospitalityCleanupTask()),
-                        Pair.of(70, new HarvestWorkTask()),
-                        Pair.of(71, new FishermanWorkTask()),
-                        Pair.of(72, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
+                        Pair.of(69, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.HOSPITALITY, new com.aetherianartificer.townstead.hospitality.service.HospitalityCleanupTask())),
+                        Pair.of(70, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.FARMING, new HarvestWorkTask())),
+                        Pair.of(71, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.FISHING, new FishermanWorkTask())),
+                        Pair.of(72, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
                                 new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask.Spec(
                                         "Cook",
                                         com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK,
                                         com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CHOP,
                                         com.aetherianartificer.townstead.work.producer.ProducerRole.COOK,
-                                        com.aetherianartificer.townstead.TownsteadConfig::isTownsteadCookEnabled))),
-                        Pair.of(72, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
+                                        com.aetherianartificer.townstead.TownsteadConfig::isTownsteadCookEnabled)))),
+                        Pair.of(72, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
                                 new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask.Spec(
                                         "Beverage Artisan",
                                         com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BREW,
                                         null,
                                         com.aetherianartificer.townstead.work.producer.ProducerRole.BEVERAGE_ARTISAN,
-                                        () -> true))),
-                        Pair.of(75, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
+                                        () -> true)))),
+                        Pair.of(75, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
                                 new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask.Spec(
                                         "Smoker",
                                         com.aetherianartificer.townstead.profession.def.WorkTaskTypes.SMOKE,
                                         null,
                                         com.aetherianartificer.townstead.work.producer.ProducerRole.GENERAL,
-                                        () -> true))),
-                        Pair.of(80, new com.aetherianartificer.townstead.work.job.EntityDeliveryWorkTask()),
-                        Pair.of(82, new com.aetherianartificer.townstead.shepherd.ShepherdWorkTask()),
-                        Pair.of(83, new com.aetherianartificer.townstead.shepherd.ShepherdDepositTask()),
-                        Pair.of(73, new com.aetherianartificer.townstead.work.job.BlockInteractionWorkTask()),
-                        Pair.of(84, new com.aetherianartificer.townstead.work.producer.StationWorkTask())
+                                        () -> true)))),
+                        Pair.of(80, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.job.EntityDeliveryWorkTask())),
+                        Pair.of(82, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.SHEPHERDING, new com.aetherianartificer.townstead.shepherd.ShepherdWorkTask())),
+                        Pair.of(83, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.SHEPHERDING, new com.aetherianartificer.townstead.shepherd.ShepherdDepositTask())),
+                        Pair.of(73, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.job.BlockInteractionWorkTask())),
+                        Pair.of(84, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.StationWorkTask()))
                 ));
         // Non-work behaviors stay in CORE so they tick regardless of schedule activity.
         ArrayList<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>> coreBehaviors = new ArrayList<>();
         coreBehaviors.add(Pair.of(64,
                 new com.aetherianartificer.townstead.work.producer.FinishCommittedProductionTask()));
-        coreBehaviors.add(Pair.of(65, new SeekBedWhenFatiguedTask()));
+        coreBehaviors.add(Pair.of(65, new BorrowBedWhenFatiguedTask()));
+        coreBehaviors.add(Pair.of(66, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.CLOTHING, new com.aetherianartificer.townstead.clothing.dress.DressTask())));
+        coreBehaviors.add(Pair.of(67, new com.aetherianartificer.townstead.temperature.ThermalSupplyTask()));
+        coreBehaviors.add(Pair.of(68, new com.aetherianartificer.townstead.temperature.SeekThermalReliefTask()));
         // One unified refuel behavior handles both hunger and thirst (eat/drink to satiety).
         coreBehaviors.add(Pair.of(99, new RefuelTask()));
         coreBehaviors.add(Pair.of(110, new CareForYoungTask()));
@@ -173,6 +177,7 @@ public abstract class VillagerHungerMixin extends Villager {
         nbt.putFloat(HungerData.EDITOR_KEY_SATURATION, needs.saturation());
         nbt.putFloat(HungerData.EDITOR_KEY_EXHAUSTION, needs.hungerExhaustion());
         nbt.putInt(FatigueData.EDITOR_KEY_FATIGUE, needs.fatigue());
+        if (needs.hasBodyTemp()) nbt.putInt(TemperatureData.EDITOR_KEY_BODY_TEMPERATURE, needs.bodyTempTenths());
         if (ThirstBridgeResolver.isActive()) {
             nbt.putInt(ThirstData.EDITOR_KEY_THIRST, needs.thirst());
             nbt.putInt(ThirstData.EDITOR_KEY_QUENCHED, needs.quenched());
@@ -192,7 +197,8 @@ public abstract class VillagerHungerMixin extends Villager {
         boolean nbtHasThirst = nbt.contains(ThirstData.EDITOR_KEY_THIRST);
         boolean hasThirst = bridgeActive && nbtHasThirst;
         boolean hasFatigue = nbt.contains(FatigueData.EDITOR_KEY_FATIGUE);
-        if (!hasHunger && !hasThirst && !hasFatigue) return;
+        boolean hasBodyTemp = nbt.contains(TemperatureData.EDITOR_KEY_BODY_TEMPERATURE);
+        if (!hasHunger && !hasThirst && !hasFatigue && !hasBodyTemp) return;
         TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
 
         if (hasHunger) {
@@ -236,5 +242,16 @@ public abstract class VillagerHungerMixin extends Villager {
             }
         }
 
+        if (hasBodyTemp) {
+            needs.setBodyTempTenths(nbt.getInt(TemperatureData.EDITOR_KEY_BODY_TEMPERATURE));
+            if (!self.level().isClientSide) {
+                CompoundTag temperature = needs.temperatureTag();
+                //? if neoforge {
+                PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$temperatureSync(self, temperature));
+                //?} else if forge {
+                /*TownsteadNetwork.sendToTrackingEntity(self, Townstead.townstead$temperatureSync(self, temperature));
+                *///?}
+            }
+        }
     }
 }

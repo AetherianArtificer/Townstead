@@ -24,6 +24,10 @@ public final class RootClientStore {
     private static final Map<Integer, Set<String>> EXPRESSED = new ConcurrentHashMap<>();
     private static final Map<Integer, Map<String, String>> VARIANTS = new ConcurrentHashMap<>();
     private static final Map<Integer, Set<String>> TOGGLES = new ConcurrentHashMap<>();
+    private static final Map<Integer, Boolean> HAIR = new ConcurrentHashMap<>();
+    private static final Map<Integer, List<com.aetherianartificer.townstead.root.appearance.HairColorRange>> HAIR_COLORS = new ConcurrentHashMap<>();
+    private static final Map<Integer, List<com.aetherianartificer.townstead.root.appearance.HairColorChoice>> HAIR_PALETTES = new ConcurrentHashMap<>();
+    private static final Map<Integer, List<com.aetherianartificer.townstead.root.appearance.HairGradient>> HAIR_GRADIENTS = new ConcurrentHashMap<>();
 
     private RootClientStore() {}
 
@@ -51,7 +55,13 @@ public final class RootClientStore {
 
     /** Current origin id for the target, or empty string if unknown. */
     public static String get(int entityId) {
+        if (rootsOff()) return "";
         return BY_ENTITY.getOrDefault(entityId, "");
+    }
+
+    /** With Roots switched off in this world everyone reads as the default Root, with no genes. */
+    private static boolean rootsOff() {
+        return !com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.ROOTS);
     }
 
     public static String getSelf() {
@@ -65,7 +75,7 @@ public final class RootClientStore {
      * never tracked, so render layers keep its species (rig, skin tint, proportions) while carried.
      */
     public static String resolve(LivingEntity entity) {
-        if (entity == null) return "";
+        if (entity == null || rootsOff()) return "";
         String synced = get(entity.getId());
         if (synced != null && !synced.isEmpty()) return synced;
         if (entity instanceof VillagerEntityMCA villager) return TownsteadVillagerState.snapshotRootId(villager);
@@ -74,7 +84,7 @@ public final class RootClientStore {
 
     /** This entity's rolled variant for {@code geneId}, synced if present, else from its snapshot. */
     public static String resolveCarriedVariant(LivingEntity entity, String geneId) {
-        if (entity == null) return "";
+        if (entity == null || rootsOff()) return "";
         String synced = carriedVariants(entity.getId()).get(geneId);
         if (synced != null && !synced.isEmpty()) return synced;
         if (entity instanceof VillagerEntityMCA villager) {
@@ -87,7 +97,10 @@ public final class RootClientStore {
      * Store an entity's expressed alleles: gene ids (for the expressed set) and, for variant genes,
      * the rolled variant id keyed by gene id (so a per-entity skin-tone variant can be resolved).
      */
-    public static void setExpressed(int entityId, List<String> alleleEncodings) {
+    public static void setExpressed(int entityId, List<String> alleleEncodings, boolean hair,
+            List<com.aetherianartificer.townstead.root.appearance.HairColorRange> hairColors,
+            List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> hairPalette,
+            List<com.aetherianartificer.townstead.root.appearance.HairGradient> hairGradients) {
         Set<String> ids = ConcurrentHashMap.newKeySet();
         Map<String, String> variants = new ConcurrentHashMap<>();
         for (String encoded : alleleEncodings) {
@@ -102,6 +115,35 @@ public final class RootClientStore {
         }
         EXPRESSED.put(entityId, ids);
         VARIANTS.put(entityId, variants);
+        HAIR.put(entityId, hair);
+        HAIR_COLORS.put(entityId, List.copyOf(hairColors));
+        HAIR_PALETTES.put(entityId, List.copyOf(hairPalette));
+        HAIR_GRADIENTS.put(entityId, List.copyOf(hairGradients));
+    }
+
+    /** Whether MCA's native hair layer is enabled for this individual (true while unsynced). */
+    public static boolean usesHair(LivingEntity entity) {
+        return entity == null || HAIR.getOrDefault(entity.getId(), true);
+    }
+
+    /** Set a preview dummy's effective root policy before its realized per-entity sync exists. */
+    public static void setHair(int entityId, boolean enabled,
+            List<com.aetherianartificer.townstead.root.appearance.HairColorRange> colors,
+            List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> palette,
+            List<com.aetherianartificer.townstead.root.appearance.HairGradient> gradients) {
+        HAIR.put(entityId, enabled);
+        HAIR_COLORS.put(entityId, List.copyOf(colors));
+        HAIR_PALETTES.put(entityId, List.copyOf(palette));
+        HAIR_GRADIENTS.put(entityId, List.copyOf(gradients));
+    }
+
+    public static com.aetherianartificer.townstead.root.appearance.HairSettings hairSettings(LivingEntity entity) {
+        if (entity == null) return com.aetherianartificer.townstead.root.appearance.HairSettings.DEFAULT;
+        return new com.aetherianartificer.townstead.root.appearance.HairSettings(
+                HAIR.getOrDefault(entity.getId(), true),
+                HAIR_COLORS.getOrDefault(entity.getId(), List.of()),
+                HAIR_PALETTES.getOrDefault(entity.getId(), List.of()),
+                HAIR_GRADIENTS.getOrDefault(entity.getId(), List.of()));
     }
 
     /**
@@ -121,7 +163,7 @@ public final class RootClientStore {
 
     /** The gene ids the entity expresses, or an empty set if not yet synced (or it does not express). */
     public static Set<String> expressedGenes(int entityId) {
-        if (!expressesById(entityId)) return Set.of();
+        if (rootsOff() || !expressesById(entityId)) return Set.of();
         return EXPRESSED.getOrDefault(entityId, Set.of());
     }
 
@@ -138,8 +180,24 @@ public final class RootClientStore {
      * encodings persisted in the entity's own snapshot when nothing is synced for its id (a
      * CarryOn-reconstructed villager), so its real attachments and hidden features still render.
      */
+    public static Set<String> appearanceGenes(LivingEntity entity) {
+        if (rootsOff()) return Set.of();
+        Set<String> expressed = expressedGenes(entity);
+        if (hasExpressionSync(entity) || !expressed.isEmpty() || entity == null || !expresses(entity))
+            return expressed;
+        var root = RootCatalogClient.origin(resolve(entity));
+        if (root == null) return Set.of();
+        Set<String> ids = new java.util.LinkedHashSet<>();
+        for (var inherited : root.inheritedGenes()) ids.add(inherited.geneId());
+        return ids;
+    }
+
+    public static boolean hasExpressionSync(LivingEntity entity) {
+        return entity != null && EXPRESSED.containsKey(entity.getId());
+    }
+
     public static Set<String> expressedGenes(LivingEntity entity) {
-        if (entity == null || !expresses(entity)) return Set.of();
+        if (entity == null || rootsOff() || !expresses(entity)) return Set.of();
         Set<String> synced = EXPRESSED.get(entity.getId());
         if (synced != null) return synced;
         if (entity instanceof VillagerEntityMCA villager) {
@@ -194,6 +252,7 @@ public final class RootClientStore {
 
     /** Whether the entity is known to express the given gene id. */
     public static boolean expresses(int entityId, String geneId) {
+        if (rootsOff()) return false;
         return EXPRESSED.getOrDefault(entityId, Set.of()).contains(geneId);
     }
 
@@ -215,11 +274,19 @@ public final class RootClientStore {
         BY_ENTITY.remove(entityId);
         EXPRESSED.remove(entityId);
         TOGGLES.remove(entityId);
+        HAIR.remove(entityId);
+        HAIR_COLORS.remove(entityId);
+        HAIR_PALETTES.remove(entityId);
+        HAIR_GRADIENTS.remove(entityId);
     }
 
     public static void clear() {
         BY_ENTITY.clear();
         EXPRESSED.clear();
         TOGGLES.clear();
+        HAIR.clear();
+        HAIR_COLORS.clear();
+        HAIR_PALETTES.clear();
+        HAIR_GRADIENTS.clear();
     }
 }

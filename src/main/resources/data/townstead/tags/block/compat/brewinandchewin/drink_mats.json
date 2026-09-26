@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "brewinandchewin:coaster",
+      "required": false
+    },
+    {
+      "id": "brewinandchewin:item_mat",
+      "required": false
+    }
+  ]
+}

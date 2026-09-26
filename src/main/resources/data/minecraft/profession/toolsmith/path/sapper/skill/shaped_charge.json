@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.sapper.shaped_charge"
+  },
+  "icon": "minecraft:tnt",
+  "description": {
+    "translate": "skill.townstead.toolsmith.sapper.shaped_charge.description"
+  },
+  "cost": 1,
+  "requires": [
+    "firecracker"
+  ],
+  "skill_group": "townstead:sapper_charge",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:delay",
+          "ticks": 40,
+          "action": {
+            "type": "pheno:explode",
+            "power": 2.0,
+            "fire": false,
+            "destroy": false
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 16
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.tnt.primed",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

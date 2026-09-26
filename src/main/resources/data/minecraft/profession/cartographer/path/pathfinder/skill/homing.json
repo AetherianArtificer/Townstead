@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.pathfinder.homing"
+  },
+  "icon": "minecraft:recovery_compass",
+  "description": {
+    "translate": "skill.townstead.cartographer.pathfinder.homing.description"
+  },
+  "cost": 1,
+  "requires": [
+    "second_wind"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:bearing",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:bearing",
+      "min": 75
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 30,
+      "amplifier": 1
+    }
+  }
+}

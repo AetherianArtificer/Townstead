@@ -1,0 +1,6 @@
+{
+  "schema": "townstead:dialogue_pool/v1",
+  "subjects": "infection",
+  "persp": { "who": "you" },
+  "empty": 2
+}

@@ -1,0 +1,24 @@
+[
+  {
+    "identifier": "gui.button.give_hat",
+    "x": -90,
+    "y": 10,
+    "row": 0,
+    "width": 80,
+    "height": 20,
+    "notifyServer": true,
+    "targetServer": false,
+    "constraints": "!baby"
+  },
+  {
+    "identifier": "gui.button.backarrow",
+    "x": -90,
+    "y": 10,
+    "row": 1,
+    "width": 80,
+    "height": 20,
+    "notifyServer": false,
+    "targetServer": false,
+    "constraints": ""
+  }
+]

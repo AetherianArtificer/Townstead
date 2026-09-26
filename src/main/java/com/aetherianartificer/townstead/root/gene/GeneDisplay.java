@@ -19,7 +19,7 @@ package com.aetherianartificer.townstead.root.gene;
  */
 public record GeneDisplay(Kind kind, float min, float max, String targetId, float amount) {
 
-    public enum Kind { RANGE, BOOLEAN, INFLUENCE, COLOR, ATTACHMENT, VARIANTS, PROPORTIONS, HIDE_FEATURE, ABILITY, OVERLAY, PARTICLE, SUPPRESS_NEED, STUCK_IMMUNITY, BUOYANCY, SKIN_OVERLAY, OPACITY, INNATE_TOOL, BLOCK_BREAK_SPEED }
+    public enum Kind { RANGE, BOOLEAN, INFLUENCE, COLOR, ATTACHMENT, VARIANTS, PROPORTIONS, HIDE_FEATURE, ABILITY, OVERLAY, PARTICLE, SUPPRESS_NEED, STUCK_IMMUNITY, BUOYANCY, SKIN_OVERLAY, OPACITY, INNATE_TOOL, BLOCK_BREAK_SPEED, ANIMATIONS }
 
     public static final GeneDisplay PRESENCE = new GeneDisplay(Kind.BOOLEAN, 0f, 1f, "", 0f);
 
@@ -144,13 +144,19 @@ public record GeneDisplay(Kind kind, float min, float max, String targetId, floa
      * colour, {@code skin}, or {@code hair}. A presence chip in the list.
      */
     public static GeneDisplay skinOverlay(String texture, String tint) {
-        return skinOverlay(texture, tint, 0);
+        return skinOverlay(texture, tint, 0, 0, 1f);
     }
 
     public static GeneDisplay skinOverlay(String texture, String tint, int order) {
+        return skinOverlay(texture, tint, order, 0, 1f);
+    }
+
+    public static GeneDisplay skinOverlay(String texture, String tint, int order,
+                                          int tintBlend, float tintStrength) {
         return new GeneDisplay(Kind.SKIN_OVERLAY, 0f, 1f,
                 (texture == null ? "" : texture) + ";" + (tint == null ? "" : tint)
-                        + ";" + order, 0f);
+                        + ";" + order + ";" + tintBlend + ";"
+                        + Math.max(0f, Math.min(1f, tintStrength)), 0f);
     }
 
     /**
@@ -162,9 +168,14 @@ public record GeneDisplay(Kind kind, float min, float max, String targetId, floa
      * chip in the picker.
      */
     public static GeneDisplay eyes(String texture, boolean glow, int row, String tint) {
+        return eyes(texture, glow, row, tint, "both");
+    }
+
+    public static GeneDisplay eyes(String texture, boolean glow, int row, String tint, String visibleHalf) {
         return new GeneDisplay(Kind.BOOLEAN, 0f, 1f,
                 (texture == null ? "" : texture) + ";" + (glow ? 1 : 0) + ";" + row
-                        + ";" + (tint == null ? "" : tint), 0f);
+                        + ";" + (tint == null ? "" : tint)
+                        + ("both".equals(visibleHalf) ? "" : ";" + visibleHalf), 0f);
     }
 
     /**

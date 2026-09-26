@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.bouquet"
+  },
+  "icon": "minecraft:allium",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.bouquet.description"
+  },
+  "cost": 1,
+  "requires": [
+    "aeration"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "resource_cost": {
+      "resource": "townstead:vintage",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:vintage",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:night_vision",
+          "duration": 300,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 24,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:glowing",
+            "duration": 50,
+            "amplifier": 0
+          }
+        }
+      ]
+    }
+  }
+}

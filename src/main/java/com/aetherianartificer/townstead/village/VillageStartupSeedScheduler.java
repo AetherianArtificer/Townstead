@@ -1,6 +1,5 @@
 package com.aetherianartificer.townstead.village;
 
-import com.aetherianartificer.townstead.dock.DockDuplicatePurger;
 import com.aetherianartificer.townstead.dock.DockLocationIndex;
 import com.aetherianartificer.townstead.recognition.BuildingRecognitionTracker;
 import com.aetherianartificer.townstead.spirit.SpiritReconciler;
@@ -52,7 +51,7 @@ public final class VillageStartupSeedScheduler {
     private static void seed(ServerLevel level, Village village) {
         if (level == null || village == null) return;
         TownsteadVillageMigration.migrateVillage(level, village);
-        DockDuplicatePurger.purgeAll(level, village);
+        com.aetherianartificer.townstead.politics.state.PoliticalVillageBootstrap.ensure(level, village);
         DockLocationIndex.rebuildVillage(level, village);
         BuildingRecognitionTracker.seed(level, village);
         SpiritReconciler.seed(level, village);

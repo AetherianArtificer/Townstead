@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:organization_role/v1",
+  "display": {
+    "name": { "translate": "organization_role.townstead.officer" },
+    "description": { "translate": "organization_role.townstead.officer.description" }
+  },
+  "capabilities": [
+    "townstead:view_member_information",
+    "townstead:invite_member",
+    "townstead:review_membership_requests",
+    "townstead:manage_members",
+    "townstead:assign_roles",
+    "townstead:represent_organization"
+  ],
+  "visibility": "public"
+}

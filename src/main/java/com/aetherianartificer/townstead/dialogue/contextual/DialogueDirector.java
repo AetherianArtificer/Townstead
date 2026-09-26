@@ -51,9 +51,11 @@ public final class DialogueDirector {
         if (profession != null) context.add("profession:" + profession);
         context.add("profession:" + com.aetherianartificer.townstead.profession.ProfessionIdentity.rawId(speaker));
         var needs = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(speaker).needs();
-        if (needs.hunger() < 70) context.add("need:hungry");
-        if (needs.thirst() < com.aetherianartificer.townstead.thirst.ThirstData.ADEQUATE_THRESHOLD) context.add("need:thirsty");
-        if (needs.fatigue() >= com.aetherianartificer.townstead.fatigue.FatigueData.TIRED_THRESHOLD) context.add("need:tired");
+        if (com.aetherianartificer.townstead.api.impl.v1.NeedScales.hungerEnabled() && needs.hunger() < 70) context.add("need:hungry");
+        if (com.aetherianartificer.townstead.api.impl.v1.NeedScales.thirstEnabled()
+                && needs.thirst() < com.aetherianartificer.townstead.thirst.ThirstData.ADEQUATE_THRESHOLD) context.add("need:thirsty");
+        if (com.aetherianartificer.townstead.api.impl.v1.NeedScales.fatigueEnabled()
+                && needs.fatigue() >= com.aetherianartificer.townstead.fatigue.FatigueData.TIRED_THRESHOLD) context.add("need:tired");
         if (counterpart != null) {
             context.add("counterpart:present");
             context.add(counterpart instanceof Player ? "counterpart:player" : "counterpart:entity");

@@ -128,7 +128,7 @@ public record WorkTaskDef(
          * the rare item that extends plain Item.
          */
         public static final Set<String> KIND_TOKENS =
-                Set.of("weapon", "armor", "tool", "block", "ranged", "navigation", "book");
+                Set.of("weapon", "armor", "tool", "block", "ranged", "navigation", "book", "clothing");
 
         public boolean isEmpty() {
             return ids.isEmpty() && tags.isEmpty() && !edible && kinds.isEmpty();
@@ -250,6 +250,10 @@ public record WorkTaskDef(
                     ;
             case "armor" -> item instanceof net.minecraft.world.item.ArmorItem
                     || item instanceof net.minecraft.world.item.ShieldItem;
+            // The tailor's classification: anything a clothing document describes, from any mod.
+            // Leather armour is only tagged, so it stays the leatherworker's.
+            case "clothing" -> com.aetherianartificer.townstead.clothing.ClothingDefs
+                    .documented(null, new net.minecraft.world.item.ItemStack(item)) != null;
             case "tool" -> item instanceof net.minecraft.world.item.DiggerItem
                     || item instanceof net.minecraft.world.item.ShearsItem
                     || item instanceof net.minecraft.world.item.FlintAndSteelItem

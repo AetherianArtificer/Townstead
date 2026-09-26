@@ -13,6 +13,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class HangoutDataTest {
     @Test
+    void decorationVenuesDeduplicateDefinitionIds() {
+        var json = JsonParser.parseString("""
+                {"schema":"townstead:hangout_venue/v2",
+                 "decorations":["townstead:well","townstead:well","townstead:fountain"]}
+                """).getAsJsonObject();
+        assertEquals(java.util.Set.of(id("townstead:well"), id("townstead:fountain")),
+                HangoutData.parseVenue(id("test:water"), json).decorations());
+    }
+
+    @Test
     void parsesOpenPosturesRolesAndSemanticPerformance() {
         HangoutVenue venue = HangoutData.parseVenue(id("test:tavern"), JsonParser.parseString("""
                 {"schema":"townstead:hangout_venue/v2","buildings":["mca:tavern"],
@@ -132,7 +142,7 @@ class HangoutDataTest {
         assertTrue(HangoutData.venueContractViolation(venue, java.util.Map.of(round.id(), round))
                 .contains("undeclared staff role"));
 
-        HangoutVenue staffed = new HangoutVenue(venue.id(), venue.buildings(), venue.capacity(),
+        HangoutVenue staffed = new HangoutVenue(venue.id(), venue.buildings(), venue.decorations(), venue.capacity(),
                 venue.activities(), venue.tags(), venue.amenities(),
                 java.util.Map.of("bartender", ignored -> true), null, null);
         assertNull(HangoutData.venueContractViolation(staffed, java.util.Map.of(round.id(), round)));

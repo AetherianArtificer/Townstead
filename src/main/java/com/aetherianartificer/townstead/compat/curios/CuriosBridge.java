@@ -68,13 +68,25 @@ final class CuriosBridge {
         }));
     }
 
+    static void forEachEquipped(LivingEntity entity, BiConsumer<String, ItemStack> out) {
+        inventory(entity).ifPresent(handler -> handler.getCurios().forEach((id, stacks) -> {
+            var main = stacks.getStacks();
+            for (int i = 0; i < main.getSlots(); i++) {
+                ItemStack stack = main.getStackInSlot(i);
+                if (!stack.isEmpty()) out.accept(id, stack);
+            }
+        }));
+    }
+
     static void removeWhere(LivingEntity entity, Predicate<ItemStack> test, Consumer<ItemStack> onRemoved) {
         inventory(entity).ifPresent(handler -> {
-            for (ICurioStacksHandler stacks : handler.getCurios().values()) {
+            for (var entry : handler.getCurios().entrySet()) {
+                ICurioStacksHandler stacks = entry.getValue();
                 IDynamicStackHandler dynamic = stacks.getStacks();
                 for (int i = 0; i < dynamic.getSlots(); i++) {
                     ItemStack stack = dynamic.getStackInSlot(i);
                     if (stack.isEmpty() || !test.test(stack)) continue;
+                    if (!canUnequip(entity, entry.getKey(), i, stack)) continue;
                     ItemStack removed = stack.copy();
                     dynamic.setStackInSlot(i, ItemStack.EMPTY);
                     onRemoved.accept(removed);

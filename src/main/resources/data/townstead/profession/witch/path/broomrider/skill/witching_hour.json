@@ -1,0 +1,59 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.broomrider.witching_hour"
+  },
+  "icon": "minecraft:clock",
+  "description": {
+    "translate": "skill.townstead.witch.broomrider.witching_hour.description"
+  },
+  "cost": 1,
+  "requires": [
+    "nightmare_flight"
+  ],
+  "skill_group": "townstead:broom_night",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:hex",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 12,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:weakness",
+                "duration": 300,
+                "amplifier": 1
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:slowness",
+                "duration": 300,
+                "amplifier": 1
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.witch.celebrate",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

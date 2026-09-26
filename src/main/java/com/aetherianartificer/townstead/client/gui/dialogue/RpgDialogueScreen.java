@@ -71,6 +71,7 @@ public class RpgDialogueScreen extends Screen {
         this.villager = villager;
         this.villagerUUID = villager.asEntity().getUUID();
         if (villager.asEntity() instanceof VillagerEntityMCA mca
+                && com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CAREERS)
                 && com.aetherianartificer.townstead.profession.career.CareerTreeOpener.isScribe(mca)
                 && com.aetherianartificer.townstead.profession.career.CareerTreeOpener.isOnDuty(mca)) {
             choicePanel.setShowCareersEntry(true);
@@ -80,7 +81,10 @@ public class RpgDialogueScreen extends Screen {
     @Override
     protected void init() {
         dialogueBox.layout(width, height);
-        dialogueBox.setVillagerName(villager.asEntity().getDisplayName());
+        // The header names whoever you are talking to, so it shows their full name: the
+        // family name their culture gave them, not just the given name MCA tracks.
+        dialogueBox.setVillagerName(
+                com.aetherianartificer.townstead.client.naming.ClientNames.displayName(villager.asEntity()));
         choicePanel.layout(width, height, dialogueBox.getY());
 
         if (!initialized) {
@@ -149,6 +153,12 @@ public class RpgDialogueScreen extends Screen {
         if (state == DialogueState.CLOSING) return;
         dialogueBox.render(graphics, font);
         choicePanel.render(graphics, font, mouseX, mouseY);
+        if (choicePanel.isVisible() && com.aetherianartificer.townstead.api.impl.v1.client.ChoicePanelPaintHooks.any()) {
+            com.aetherianartificer.townstead.api.impl.v1.client.ChoicePanelPaintHooks.fire(
+                    new com.aetherianartificer.townstead.api.v1.client.ChoicePanelPaint(this, graphics, font,
+                            choicePanel.panelX(), choicePanel.panelY(), choicePanel.panelWidth(),
+                            choicePanel.panelHeight(), choicePanel.fadeAlpha(), choicePanel.visibleRows()));
+        }
         renderHearts(graphics);
 
         if (debugEffects) {
@@ -434,7 +444,8 @@ public class RpgDialogueScreen extends Screen {
         choicePanel.setVisible(false);
         state = DialogueState.TYPEWRITER_PLAYING;
         awaitingResponseTimer = 0;
-        speakDisplayedText(line);
+        // No speech here: this line reached the chat listener, which means MCA's own handler was
+        // left to run and speaks it a moment later. Saying it again would say it twice.
         narrateText(line);
     }
 
@@ -453,8 +464,12 @@ public class RpgDialogueScreen extends Screen {
 
     private void speakDisplayedText(Component text) {
         if (!(villager.asEntity() instanceof VillagerEntityMCA mca)) return;
+        // Resolving first is what registers the line's translation key with MCA, so the lookup
+        // inside speakLine can find it and hand a stock MCA line back to MCA's own speech manager.
+        // Clearing first keeps a line MCA does not own from claiming the previous line's key.
+        com.aetherianartificer.townstead.client.tts.McaSpeechKeys.clearPending();
         TypewriterText.DisplayText displayText = TypewriterText.resolveDisplayText(text);
-        TownsteadLiteralTts.speak(displayText.component().getString(), mca);
+        TownsteadLiteralTts.speakLine(text, displayText.component().getString(), mca);
     }
 
     private void narrateText(Component text) {
@@ -468,6 +483,23 @@ public class RpgDialogueScreen extends Screen {
                 // Narrator not available on this platform
             }
         }
+    }
+
+    /** Client API: whether choices are showing. */
+    public boolean apiChoicesVisible() {
+        return state == DialogueState.CHOICES_VISIBLE && choicePanel.isVisible();
+    }
+
+    /** Client API: the visible choice rows. */
+    public List<com.aetherianartificer.townstead.api.v1.client.ChoiceRow> apiVisibleChoices() {
+        return apiChoicesVisible() ? choicePanel.visibleRows() : List.of();
+    }
+
+    /** Client API: select a row through the native hub, sub-menu and back routine. */
+    public boolean apiSelectChoice(int index) {
+        if (!apiChoicesVisible() || !choicePanel.selectIndex(index)) return false;
+        handleChoiceSelection();
+        return true;
     }
 
     private void handleChoiceSelection() {

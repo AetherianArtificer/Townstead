@@ -3,17 +3,59 @@
   "display_name": {
     "translate": "skill.townstead.baker.jam_maker.clean_jar"
   },
-  "icon": "minecraft:barrier",
+  "icon": "minecraft:sweet_berries",
   "description": {
     "translate": "skill.townstead.baker.jam_maker.clean_jar.description"
   },
   "cost": 1,
-  "requires": ["setting_point"],
-  "grants": [
-    {
-      "capability": "townstead:baker_xp_flat",
-      "op": "add",
-      "value": 1
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 600,
+    "condition": {
+      "type": "pheno:village",
+      "within_border": true
+    },
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 6,
+        "where": {
+          "type": "and",
+          "conditions": [
+            {
+              "type": "block",
+              "block": "minecraft:sweet_berry_bush"
+            },
+            {
+              "type": "or",
+              "conditions": [
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "0"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "1"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "2"
+                }
+              ]
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "do": {
+        "type": "pheno:modify_block_state",
+        "property": "age",
+        "operation": "add",
+        "amount": 1
+      }
     }
-  ]
+  }
 }

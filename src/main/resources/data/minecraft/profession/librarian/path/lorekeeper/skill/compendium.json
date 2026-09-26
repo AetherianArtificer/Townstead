@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.lorekeeper.compendium"
+  },
+  "icon": "minecraft:enchanted_book",
+  "description": {
+    "translate": "skill.townstead.librarian.lorekeeper.compendium.description"
+  },
+  "cost": 1,
+  "requires": [
+    "bestiary_illagers"
+  ],
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 1.25,
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:insight",
+      "min": 75
+    },
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:entity_group",
+            "group": "undead"
+          },
+          {
+            "type": "pheno:entity_group",
+            "group": "arthropod"
+          },
+          {
+            "type": "pheno:entity_group",
+            "group": "illager"
+          },
+          {
+            "type": "pheno:entity_group",
+            "group": "aquatic"
+          }
+        ]
+      }
+    }
+  }
+}

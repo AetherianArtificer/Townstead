@@ -184,6 +184,16 @@ final class CareerMasthead {
         int total = career.xp() + career.xpToNext();
         float progress = total <= 0 ? 1f : Mth.clamp(career.xp() / (float) total, 0f, 1f);
         String next = career.nextRankName();
+        // Past the top rank the bar keeps measuring: the distance to the next Insight.
+        boolean tail = next.isEmpty() && career.insightNext() > career.insightPrev();
+        String tailValue = "";
+        if (tail) {
+            int span = career.insightNext() - career.insightPrev();
+            int into = Math.max(0, career.xp() - career.insightPrev());
+            progress = Mth.clamp(into / (float) span, 0f, 1f);
+            next = Component.translatable("townstead.career.screen.next_insight").getString();
+            tailValue = into + " / " + span;
+        }
         boolean topped = next.isEmpty();
 
         // The NAME of the goal and the COUNT are two separate strings, because only one of them can
@@ -191,7 +201,7 @@ final class CareerMasthead {
         // which cut the tally in half and left "0 / 11" reading as a wrong number rather than as a
         // clipped one.
         String heading = topped ? career.rankName() : next;
-        String value = topped ? "" : career.xp() + " / " + total;
+        String value = topped ? "" : tail ? tailValue : career.xp() + " / " + total;
         // Never reduce a rank to “J” just to preserve a redundant number. The bar already carries
         // the amount; the destination is the information that cannot be inferred visually.
         if (!topped && font.width(heading) + font.width(value) + 20 > w) value = "";
@@ -215,6 +225,16 @@ final class CareerMasthead {
             g.fill(x + 1, barY + 1, x + 1 + fill, barY + BAR_H - 1, Palette.BRASS_DEEP);
             g.fill(x + 1, barY + 1, x + 1 + fill, barY + 3, Palette.BRASS);
             g.fill(x + 1, barY + 1, x + 1 + fill, barY + 2, Palette.BRASS_HOT);
+        }
+        // One notch per Insight checkpoint on the way to the next rank. The rank-up itself is the
+        // bar's end, so it needs no notch.
+        if (!tail && total > 0) {
+            for (int mark : career.insightMarks()) {
+                if (mark <= 0 || mark >= total) continue;
+                int px = x + 1 + Math.round((w - 2) * (mark / (float) total));
+                int ink = career.xp() >= mark ? Palette.BRASS_HOT : 0xFF6E5A38;
+                g.fill(px, barY + 1, px + 1, barY + BAR_H - 1, ink);
+            }
         }
     }
 

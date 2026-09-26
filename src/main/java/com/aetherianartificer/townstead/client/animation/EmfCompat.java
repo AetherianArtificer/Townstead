@@ -37,7 +37,9 @@ public final class EmfCompat {
             Function<Object, Boolean> townsteadOwnsPose = emfEntity -> {
                 if (!(emfEntity instanceof LivingEntity living)) return false;
                 return EmotePlaybackRegistry.get(living.getUUID()) != null
-                        || NativePlaybackRegistry.hasActive(living.getId(), living.level().getGameTime());
+                        || NativePlaybackRegistry.hasActive(living.getId(), living.level().getGameTime())
+                        || FatigueAnimationSourceAdapter.ownsPose(living)
+                        || GeneAnimations.ownsProviderSelection(living);
             };
             register.invoke(null, townsteadOwnsPose);
             Townstead.LOGGER.info("[EmfCompat] registered EMF vanilla-model condition for active Townstead performances");

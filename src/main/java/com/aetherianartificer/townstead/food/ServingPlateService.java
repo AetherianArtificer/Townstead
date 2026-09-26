@@ -241,6 +241,7 @@ public final class ServingPlateService {
         @Override public Set<ResourceLocation> blocks() { return ServingSurfaces.blockIds(); }
         @Override public boolean feeds(ServerLevel level, BlockPos pos) { return true; }
         @Override public boolean hydrates(ServerLevel level, BlockPos pos) { return false; }
+        @Override public ItemStack serving(ServerLevel level, BlockPos pos) { return servingAt(level, pos); }
 
         @Override
         public boolean available(ServerLevel level, BlockPos pos) {

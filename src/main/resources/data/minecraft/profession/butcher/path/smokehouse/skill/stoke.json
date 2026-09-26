@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.smokehouse.stoke"
+  },
+  "icon": "minecraft:campfire",
+  "description": {
+    "translate": "skill.townstead.butcher.smokehouse.stoke.description"
+  },
+  "cost": 1,
+  "requires": [
+    "cured_skin"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 60,
+    "condition": {
+      "type": "pheno:block_in_radius",
+      "radius": 6,
+      "block_condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:block",
+            "block": "minecraft:smoker"
+          },
+          {
+            "type": "pheno:in_tag",
+            "tag": "minecraft:campfires"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:energize",
+      "amount": 1
+    }
+  }
+}

@@ -34,6 +34,9 @@ public final class LivingEquipmentContainer implements Container {
 
     @Override
     public ItemStack getItem(int index) {
+        // Armor slots show real personal items, not MCA's generated uniforms or inventory aliases.
+        if (index < 4 && entity instanceof net.conczin.mca.entity.VillagerEntityMCA villager
+                && AssignedArmor.automatic(villager, SLOTS[index])) return ItemStack.EMPTY;
         return entity.getItemBySlot(SLOTS[index]);
     }
 
@@ -42,19 +45,23 @@ public final class LivingEquipmentContainer implements Container {
         ItemStack worn = getItem(index);
         if (worn.isEmpty()) return ItemStack.EMPTY;
         ItemStack removed = worn.split(count);
-        entity.setItemSlot(SLOTS[index], worn);
+        setItem(index, worn);
         return removed;
     }
 
     @Override
     public ItemStack removeItemNoUpdate(int index) {
         ItemStack worn = getItem(index);
-        entity.setItemSlot(SLOTS[index], ItemStack.EMPTY);
+        setItem(index, ItemStack.EMPTY);
         return worn;
     }
 
     @Override
     public void setItem(int index, ItemStack stack) {
+        if (index < 4 && entity instanceof net.conczin.mca.entity.VillagerEntityMCA villager) {
+            AssignedArmor.set(villager.getPersistentData(), SLOTS[index], !stack.isEmpty());
+            com.aetherianartificer.townstead.tick.TemperatureVillagerTicker.invalidateEquipment(villager);
+        }
         entity.setItemSlot(SLOTS[index], stack);
     }
 
@@ -68,6 +75,6 @@ public final class LivingEquipmentContainer implements Container {
 
     @Override
     public void clearContent() {
-        for (EquipmentSlot slot : SLOTS) entity.setItemSlot(slot, ItemStack.EMPTY);
+        for (int i = 0; i < SLOTS.length; i++) setItem(i, ItemStack.EMPTY);
     }
 }

@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:conversation/v1",
+  "subjects": ["townstead:infection_news"],
+  "register": "grief",
+  "start": "t0_share_account",
+  "turns": {
+    "t0_share_account": { "speaker": "initiator", "move": "townstead:share_account", "replies": ["t1_react", "t1_respond"] },
+    "t1_react": { "speaker": "responder", "move": "townstead:react", "weight": 2 },
+    "t1_respond": { "speaker": "responder", "move": "townstead:respond", "weight": 3 }
+  },
+  "associated": ["townstead:mob", "townstead:infection"]
+}

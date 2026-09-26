@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.profession;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -57,6 +58,14 @@ public final class ProfessionAutoAssign {
 
         if (def == null) return;
         VillagerProfession assignable = ProfessionSites.professionFor(def);
+        if (assignable == null) return;
+        // Native professions with grouped workloads retain their identity/trades, but their
+        // seat has no vanilla POI ticket. MCA must leave retention to this allocator.
+        //? if neoforge {
+        if (managesDefinition(def)) net.conczin.mca.registry.ProfessionsMCA.IS_IMPORTANT.add(assignable);
+        //?} else {
+        /*if (managesDefinition(def)) net.conczin.mca.ProfessionsMCA.isImportant.add(assignable);
+        *///?}
         VillagerProfession current = villager.getVillagerData().getProfession();
 
         if (current == assignable || ProfessionCarriers.carries(current, def)) {
@@ -84,7 +93,7 @@ public final class ProfessionAutoAssign {
 
     /** Narrates a hire or release to the nearest player when villager-AI debugging is on. */
     private static void narrate(ServerLevel level, VillagerEntityMCA villager, String message) {
-        if (!TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
+        if (!Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) return;
         if (!(level.getNearestPlayer(villager, 24)
                 instanceof net.minecraft.server.level.ServerPlayer player)) return;
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
@@ -102,6 +111,6 @@ public final class ProfessionAutoAssign {
     public static boolean managesDefinition(ProfessionDef def) {
         if (def == null || !def.isRoot()) return false;
         return def.jobSites().stream().anyMatch(
-                com.aetherianartificer.townstead.profession.def.JobSiteProvider.Building.class::isInstance);
+                com.aetherianartificer.townstead.profession.def.JobSiteProvider::ownsSeats);
     }
 }

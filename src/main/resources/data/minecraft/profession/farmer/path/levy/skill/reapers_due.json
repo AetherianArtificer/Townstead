@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.reapers_due"
+  },
+  "icon": "minecraft:golden_hoe",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.reapers_due.description"
+  },
+  "cost": 1,
+  "requires": [
+    "hard_harvest"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_kill",
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "ingredient",
+        "tag": "minecraft:hoes"
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:grit",
+      "amount": 15
+    }
+  }
+}

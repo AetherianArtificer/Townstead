@@ -1,0 +1,49 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.duelist.feint"
+  },
+  "icon": "minecraft:feather",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.duelist.feint.description"
+  },
+  "cost": 1,
+  "requires": [
+    "flurry"
+  ],
+  "skill_group": "townstead:duelist_blade",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:edge",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:add_velocity",
+          "relative": true,
+          "z": -1.2,
+          "y": 0.15
+        },
+        {
+          "type": "pheno:delay",
+          "ticks": 10,
+          "action": {
+            "type": "pheno:damage",
+            "amount": 7,
+            "source": "other",
+            "on": {
+              "type": "pheno:ray",
+              "distance": 6
+            }
+          }
+        }
+      ]
+    }
+  }
+}

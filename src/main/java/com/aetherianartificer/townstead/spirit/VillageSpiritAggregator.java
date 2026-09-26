@@ -117,6 +117,11 @@ public final class VillageSpiritAggregator {
     /** Combined snapshot: totals + per-spirit contributors in one pass. */
     public static record Snapshot(SpiritTotals totals, Map<String, List<ContributorRow>> contributors) {}
 
+    /** Server snapshot includes decorations within the village's catalog boundary. */
+    public static Snapshot snapshotFor(net.minecraft.server.level.ServerLevel level, Village village) {
+        return DecorationSpiritContributions.addTo(snapshotFor(village), level, village);
+    }
+
     public static Snapshot snapshotFor(Village village) {
         if (village == null) return new Snapshot(SpiritTotals.empty(), Map.of());
         Map<String, Integer> perSpirit = new HashMap<>();

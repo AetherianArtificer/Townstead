@@ -2,7 +2,9 @@ package com.aetherianartificer.townstead.mixin;
 
 //? if neoforge {
 import com.aetherianartificer.townstead.client.gui.dialogue.RpgDialogueScreen;
+import com.aetherianartificer.townstead.client.gui.dialogue.TownsteadLiteralTts;
 import com.aetherianartificer.townstead.client.gui.dialogue.effect.EffectTagParser;
+import com.aetherianartificer.townstead.client.tts.McaSpeechKeys;
 import net.conczin.mca.client.tts.SpeechManager;
 import net.conczin.mca.network.ClientHandlerImpl;
 import net.conczin.mca.network.s2c.InteractionDialogueQuestionResponse;
@@ -51,24 +53,40 @@ public class ClientHandlerImplMixin {
             return;
         }
 
+        // Clear first: resolving the line below is what claims a key, and a line MCA does not own
+        // would otherwise claim the last one MCA resolved and be spoken as that line instead.
+        McaSpeechKeys.clearPending();
+
         // Strip effect tags from chat-bound messages so <yell>Help!</yell> shows as "Help!"
         String raw = message.message().getString();
         if (raw.contains("<") && raw.contains(">")) {
             String stripped = EffectTagParser.stripTags(raw);
             if (!stripped.equals(raw)) {
-                Component cleanMessage = Component.literal(stripped);
-                MutableComponent full = message.prefix().copy().append(cleanMessage);
+                MutableComponent full = message.prefix().copy().append(Component.literal(stripped));
                 Minecraft.getInstance().getChatListener().handleSystemMessage(full, false);
-                SpeechManager.INSTANCE.onChatMessage(cleanMessage, message.uuid());
+                // Speech takes the line as it arrived, not the stripped copy: the key rides on the
+                // original, and the tags come off again inside the speech path.
+                SpeechManager.INSTANCE.onChatMessage(message.message(), message.uuid());
+                TownsteadLiteralTts.speakChatLine(message.message(), message.uuid());
                 ci.cancel();
             }
         }
+    }
+
+    @Inject(method = "handleVillagerMessage", remap = false, at = @At("RETURN"))
+    private void townstead$speakUnkeyedLine(VillagerMessage message, CallbackInfo ci) {
+        // Only now has MCA printed the line, which is what records its key, and spoken it if it had
+        // one. A line with no key is Townstead's to voice, and this is the earliest that is known.
+        TownsteadLiteralTts.speakChatLine(message.message(), message.uuid());
     }
 }
 //?} else {
 
 /*import com.aetherianartificer.townstead.client.gui.dialogue.RpgDialogueScreen;
+import com.aetherianartificer.townstead.client.gui.dialogue.TownsteadLiteralTts;
 import com.aetherianartificer.townstead.client.gui.dialogue.effect.EffectTagParser;
+import com.aetherianartificer.townstead.client.tts.McaSpeechKeys;
+import net.conczin.mca.client.tts.SpeechManager;
 import net.conczin.mca.network.ClientInteractionManagerImpl;
 import net.conczin.mca.network.s2c.InteractionDialogueQuestionResponse;
 import net.conczin.mca.network.s2c.InteractionDialogueResponse;
@@ -112,6 +130,10 @@ public class ClientHandlerImplMixin {
             return;
         }
 
+        // Clear first: resolving the line below is what claims a key, and a line MCA does not own
+        // would otherwise claim the last one MCA resolved and be spoken as that line instead.
+        McaSpeechKeys.clearPending();
+
         String raw = message.getContent().getString();
         if (raw.contains("<") && raw.contains(">")) {
             String stripped = EffectTagParser.stripTags(raw);
@@ -120,9 +142,20 @@ public class ClientHandlerImplMixin {
                 String fullRaw = message.getMessage().getString();
                 String fullStripped = EffectTagParser.stripTags(fullRaw);
                 Minecraft.getInstance().player.displayClientMessage(Component.literal(fullStripped), false);
+                // Speech takes the line as it arrived, not the stripped copy: the key rides on the
+                // original, and the tags come off again inside the speech path.
+                SpeechManager.INSTANCE.onChatMessage(message.getContent(), message.getUuid());
+                TownsteadLiteralTts.speakChatLine(message.getContent(), message.getUuid());
                 ci.cancel();
             }
         }
+    }
+
+    @Inject(method = "handleVillagerMessage", remap = false, at = @At("RETURN"))
+    private void townstead$speakUnkeyedLine(VillagerMessage message, CallbackInfo ci) {
+        // Only now has MCA printed the line, which is what records its key, and spoken it if it had
+        // one. A line with no key is Townstead's to voice, and this is the earliest that is known.
+        TownsteadLiteralTts.speakChatLine(message.getContent(), message.getUuid());
     }
 }
 *///?}

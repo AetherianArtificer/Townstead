@@ -383,14 +383,12 @@ final class BoardChrome {
     // ── Marks ──────────────────────────────────────────────────────────────
 
     /**
-     * Which nodes say their name unprompted. The choices you made are named; the ones you passed
-     * over answer on hover, where the question is actually being asked. Naming all three options at
-     * a rank puts three captions in one cluster and they collide.
+     * Which nodes carry a caption: only a skill alone at its rank. A cluster of choices is named by
+     * the hover tooltip and the record page, so a caption there would only repeat them.
      */
     private boolean labelled(CareerGraphS2CPayload.Node node, String hoveredId,
                              String selectedId,
                              List<CareerGraphS2CPayload.Node> tabNodes) {
-        if (node.id().equals(hoveredId) || node.id().equals(selectedId)) return true;
         int peers = 0;
         int column = layout.columnIndexOf(node);
         for (CareerGraphS2CPayload.Node other : tabNodes) {

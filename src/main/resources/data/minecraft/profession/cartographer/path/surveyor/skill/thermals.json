@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.surveyor.thermals"
+  },
+  "icon": "minecraft:campfire",
+  "description": {
+    "translate": "skill.townstead.cartographer.surveyor.thermals.description"
+  },
+  "cost": 1,
+  "requires": [
+    "glide"
+  ],
+  "skill_group": "townstead:surveyor_flight",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:bearing",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:slow_falling",
+            "duration": 600,
+            "amplifier": 0
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:jump_boost",
+            "duration": 600,
+            "amplifier": 1
+          }
+        ]
+      }
+    }
+  }
+}

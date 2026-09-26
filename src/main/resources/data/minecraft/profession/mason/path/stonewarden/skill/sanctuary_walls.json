@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.stonewarden.sanctuary_walls"
+  },
+  "icon": "minecraft:chiseled_stone_bricks",
+  "description": {
+    "translate": "skill.townstead.mason.stonewarden.sanctuary_walls.description"
+  },
+  "cost": 1,
+  "requires": [
+    "hold_the_house"
+  ],
+  "skill_group": "townstead:stonewarden_ward",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:mortar",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 12,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:building"
+        },
+        "if_action": {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 300,
+          "amplifier": 2
+        }
+      }
+    }
+  }
+}

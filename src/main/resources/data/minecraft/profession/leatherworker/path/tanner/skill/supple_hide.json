@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.tanner.supple_hide"
+  },
+  "icon": "minecraft:leather_chestplate",
+  "description": {
+    "translate": "skill.townstead.leatherworker.tanner.supple_hide.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "chest",
+      "item_condition": {
+        "type": "ingredient",
+        "item": "minecraft:leather_chestplate"
+      }
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 30,
+      "amplifier": 0
+    }
+  }
+}

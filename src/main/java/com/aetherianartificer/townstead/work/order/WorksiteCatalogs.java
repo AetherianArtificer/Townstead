@@ -68,8 +68,9 @@ public final class WorksiteCatalogs {
     }
 
     /**
-     * Everything anybody could make here, de-duplicated by output. Two engines offering the same
-     * item is a fact about the village, not two things to order.
+     * Everything anybody could make here, one entry per product. Two engines offering the same
+     * item is one thing to order with two routes, so the offers merge: makeable if either can,
+     * needs from the better route, every station named.
      */
     public static List<Option> optionsFor(ServerLevel level, Worksite site) {
         if (CATALOGS.isEmpty()) return List.of();
@@ -83,8 +84,7 @@ public final class WorksiteCatalogs {
                 || com.aetherianartificer.townstead.work.site.WorksiteDrivers
                         .assignmentAvailable(level, site);
 
-        Set<net.minecraft.resources.ResourceLocation> seen = new LinkedHashSet<>();
-        List<Option> out = new ArrayList<>();
+        java.util.Map<net.minecraft.resources.ResourceLocation, Option> byProduct = new java.util.LinkedHashMap<>();
         StringBuilder diagnostic = new StringBuilder("worked=").append(worked);
         for (Catalog catalog : CATALOGS) {
             net.minecraft.resources.ResourceLocation type = catalog.taskType();
@@ -98,11 +98,12 @@ public final class WorksiteCatalogs {
                 diagnostic.append(", ").append(catalog.getClass().getSimpleName())
                         .append('=').append(offered.size());
                 for (Option option : offered) {
-                    if (option == null || !seen.add(option.product())) continue;
+                    if (option == null) continue;
                     // Gated here, once, so no catalogue has to remember: what counts as cannibal
                     // fare is a tag, and whether it is served is a setting.
                     if (!option.activity() && !OrderTags.permitted(option.output())) continue;
-                    out.add(withDriverAvailability(site, option, driverAvailable));
+                    byProduct.merge(option.product(), withDriverAvailability(site, option, driverAvailable),
+                            Option::merge);
                 }
             } catch (Throwable failure) {
                 // One engine's catalogue failing must not close the screen for the others.
@@ -110,6 +111,7 @@ public final class WorksiteCatalogs {
                         catalog.getClass().getSimpleName(), site.id(), failure);
             }
         }
+        List<Option> out = new ArrayList<>(byProduct.values());
         addCategories(out);
         diagnostic.append(", final=").append(out.size());
         String summary = diagnostic.toString();
@@ -146,7 +148,7 @@ public final class WorksiteCatalogs {
         return new Option(option.output(), option.stationLabel(), option.stationIcon(),
                 false, blocker, option.makes(), option.needs(), option.missing(),
                 option.activity(), option.tag(), option.label(), option.commission(),
-                option.operated(), option.product());
+                option.operated(), option.product(), option.labelKey());
     }
 
     /**

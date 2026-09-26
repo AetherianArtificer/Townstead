@@ -1,0 +1,145 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "claim",
+  "groups": [
+    {
+      "variant": "argument",
+      "stance": "-",
+      "lines": {
+        "who_and_other2_were_shouting": "{who} and {other2} were shouting in the square.",
+        "who_went_at_other2_in": "{who} went at {other2} in front of everyone.",
+        "other2_finally_told_who_what": "{other2} finally told {who} what they think.",
+        "who_and_other2_arent_speaking": "{who} and {other2} aren't speaking anymore.",
+        "who_and_other2_had_a": "{who} and {other2} had a huge fight.",
+        "who_and_other2_had_words": "{who} and {other2} had words yesterday.",
+        "who_called_other2_a_nitwit": "{who} called {other2} a nitwit. To their face!",
+        "who_and_other2_are_fighting": "{who} and {other2} are fighting again.",
+        "who_stormed_off_after_arguing": "{who} stormed off after arguing with {other2}.",
+        "who_and_other2_had_a_2": "{who} and {other2} had a falling out.",
+        "other2_and_who_were_yelling": "{other2} and {who} were yelling at each other.",
+        "who_slammed_a_door_on": "{who} slammed a door on {other2}!",
+        "who_and_other2_cant_stand": "{who} and {other2} can't stand each other right now.",
+        "it_got_loud_between_who": {
+          "text": "It got loud between {who} and {other2} at the market.",
+          "requires": "here.building_tag:townstead:market"
+        }
+      }
+    },
+    {
+      "variant": "argument",
+      "persp": { "who": "you" },
+      "stance": "-",
+      "lines": {
+        "i_heard_you_and_other2": "I heard you and {other2} had words.",
+        "word_is_you_and_other2": "Word is you and {other2} had a row.",
+        "are_you_and_other2_fighting": "Are you and {other2} fighting?",
+        "i_heard_about_you_and": "I heard about you and {other2}."
+      }
+    },
+    {
+      "variant": "argument",
+      "persp": { "who": "me" },
+      "stance": "-",
+      "lines": {
+        "other2_and_i_had_words": "{other2} and I had words yesterday.",
+        "i_had_it_out_with": "I had it out with {other2} in the square.",
+        "other2_and_i_arent_speaking": "{other2} and I aren't speaking.",
+        "i_got_into_it_with": "I got into it with {other2}."
+      }
+    },
+    {
+      "variant": "mastery",
+      "stance": "+",
+      "lines": {
+        "who_made_master": "{who} made master.",
+        "who_finally_got_recognised_for": "{who} finally got recognised for their work.",
+        "theyre_calling_who_a_master": "They're calling {who} a master now.",
+        "who_earned_their_rank_at": "{who} earned their rank at last.",
+        "who_got_promoted": "{who} got promoted!",
+        "who_is_a_master_now": "{who} is a master now!",
+        "who_reached_the_top_of": "{who} reached the top of their trade.",
+        "did_you_know_who_made": "Did you know {who} made master?",
+        "who_finally_did_it_master": "{who} finally did it. Master!",
+        "who_is_officially_the_best": "{who} is officially the best at what they do."
+      }
+    },
+    {
+      "variant": "mastery",
+      "persp": { "who": "you" },
+      "stance": "+",
+      "lines": {
+        "i_heard_you_made_master": "I heard you made master!",
+        "congratulations_on_making_master": "Congratulations on making master!",
+        "is_it_true_you_got": "Is it true you got promoted?"
+      }
+    },
+    {
+      "variant": "mastery",
+      "persp": { "who": "me" },
+      "stance": "+",
+      "lines": {
+        "i_made_master": "I made master!",
+        "they_made_me_a_master": "They made me a master!",
+        "guess_who_got_promoted_me": "Guess who got promoted? Me!"
+      }
+    },
+    {
+      "variant": "birth",
+      "stance": "+",
+      "lines": {
+        "who_had_a_baby": "{who} had a baby!",
+        "theres_a_new_little_one": "There's a new little one at {who}'s house.",
+        "who_s_family_just_got": "{who}'s family just got bigger.",
+        "who_is_a_parent_now": "{who} is a parent now!",
+        "did_you_hear_who_had": "Did you hear? {who} had a baby!",
+        "who_has_a_brand_new": "{who} has a brand new baby.",
+        "the_village_has_one_more": "The village has one more little one, thanks to {who}.",
+        "who_just_had_the_cutest": "{who} just had the cutest baby."
+      }
+    },
+    {
+      "variant": "birth",
+      "persp": { "who": "you" },
+      "stance": "+",
+      "lines": {
+        "i_heard_about_the_baby": "I heard about the baby!",
+        "congratulations_on_the_little_one": "Congratulations on the little one!"
+      }
+    },
+    {
+      "variant": "birth",
+      "persp": { "who": "me" },
+      "stance": "+",
+      "lines": { "we_had_a_baby": "We had a baby!", "im_a_parent_now": "I'm a parent now!" }
+    },
+    {
+      "variant": "marriage",
+      "stance": "+",
+      "lines": {
+        "who_and_other2_are_getting": "{who} and {other2} are getting married.",
+        "who_married_other2": "{who} married {other2}!",
+        "who_and_other2_finally_did": "{who} and {other2} finally did it. Married.",
+        "who_and_other2_tied_the": "{who} and {other2} tied the knot!",
+        "wedding_bells_for_who_and": "Wedding bells for {who} and {other2}!",
+        "who_and_other2_are_married": "{who} and {other2} are married now!",
+        "did_you_hear_who_married": "Did you hear? {who} married {other2}!",
+        "who_and_other2_are_husband": "{who} and {other2} are husband and wife. Or wife and wife. Or husband and husband."
+      }
+    },
+    {
+      "variant": "marriage",
+      "persp": { "who": "you" },
+      "stance": "+",
+      "lines": {
+        "i_heard_you_and_other2_2": "I heard you and {other2} got married!",
+        "congratulations_on_marrying_other2": "Congratulations on marrying {other2}!"
+      }
+    },
+    {
+      "variant": "marriage",
+      "persp": { "who": "me" },
+      "stance": "+",
+      "lines": { "other2_and_i_got_married": "{other2} and I got married!", "i_married_other2": "I married {other2}!" }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:conversation_subject/v1",
+  "source": {
+    "type": "townstead:quest_board"
+  },
+  "register": "commerce",
+  "slots": {
+    "quest": {
+      "type": "topic_phrase",
+      "from": "quest.topic"
+    },
+    "quest_title": {
+      "type": "title",
+      "from": "quest.title"
+    }
+  }
+}

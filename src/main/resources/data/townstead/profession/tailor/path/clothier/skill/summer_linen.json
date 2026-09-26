@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.clothier.summer_linen"
+  },
+  "icon": "minecraft:paper",
+  "description": {
+    "translate": "skill.townstead.tailor.clothier.summer_linen.description"
+  },
+  "cost": 1,
+  "requires": [
+    "winter_coat"
+  ],
+  "power": {
+    "type": "pheno:thermal_tolerance",
+    "cold": 1.0,
+    "heat": 0.3
+  }
+}

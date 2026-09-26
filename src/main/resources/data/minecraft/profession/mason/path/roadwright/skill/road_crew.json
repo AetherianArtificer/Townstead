@@ -1,0 +1,34 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.roadwright.road_crew"
+  },
+  "icon": "minecraft:iron_shovel",
+  "description": {
+    "translate": "skill.townstead.mason.roadwright.road_crew.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:road_crew",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "always",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:haste",
+        "duration": 600,
+        "amplifier": 0
+      }
+    }
+  }
+}

@@ -110,9 +110,9 @@ public final class ChronicleEmitter {
         }
 
         Map<String, String> params = new HashMap<>(extraParams);
-        params.putIfAbsent(primaryRole, actor.getName().getString());
+        params.putIfAbsent(primaryRole, nameOf(actor));
         if (other != null && secondRole != null) {
-            params.putIfAbsent(secondRole, other.getName().getString());
+            params.putIfAbsent(secondRole, nameOf(other));
         }
 
         ChronicleEvent draft = new ChronicleEvent(
@@ -121,7 +121,10 @@ public final class ChronicleEmitter {
                 villageId, template.category(), magnitude, template.reach(),
                 ChronicleEvent.NONE, ChronicleEvent.NONE, template.keep(),
                 participations, params);
-        long eventId = Chronicles.record(server, draft);
+        // With chronicles off nothing is written, but counter grants still land: careers unlock on them.
+        boolean chronicling = com.aetherianartificer.townstead.switchboard.Systems.on(
+                com.aetherianartificer.townstead.switchboard.Systems.CHRONICLES);
+        long eventId = chronicling ? Chronicles.record(server, draft) : 0L;
 
         for (ChronicleEventTemplate.CounterGrant grant : template.counters()) {
             if (grant.role().equals(primaryRole)) {
@@ -136,6 +139,7 @@ public final class ChronicleEmitter {
         if (template.cooldownDays() > 0) {
             data.putCounterRaw(actor.getUUID(), cooldownKey(template), (int) today);
         }
+        if (!chronicling) return OptionalLong.empty();
 
         if (template.keep() && villageId != ChronicleEvent.VILLAGE_NONE) {
             Chronicles.recordDigestEntry(server,
@@ -205,8 +209,15 @@ public final class ChronicleEmitter {
         return witnesses;
     }
 
+    /** A reborn player is recorded under the name of their current life, not the account. */
+    private static String nameOf(LivingEntity entity) {
+        return entity instanceof ServerPlayer player
+                ? com.aetherianartificer.townstead.rebirth.Rebirth.nameOf(player)
+                : entity.getDisplayName().getString();
+    }
+
     private static ChronicleRef refFor(LivingEntity entity) {
-        String name = entity.getName().getString();
+        String name = nameOf(entity);
         if (entity instanceof ServerPlayer player) {
             return ChronicleRef.player(player.getUUID(), name);
         }
@@ -218,11 +229,14 @@ public final class ChronicleEmitter {
     }
 
     public static int resolveVillageId(LivingEntity actor) {
-        if (!(actor instanceof VillagerEntityMCA villager)) return ChronicleEvent.VILLAGE_NONE;
+        if (actor == null) return ChronicleEvent.VILLAGE_NONE;
         try {
-            Optional<Village> home = villager.getResidency().getHomeVillage();
-            if (home.isPresent()) return home.get().getId();
-            return Village.findNearest(villager).map(Village::getId)
+            if (actor instanceof VillagerEntityMCA villager) {
+                Optional<Village> home = villager.getResidency().getHomeVillage();
+                if (home.isPresent()) return home.get().getId();
+            }
+            // Players and other actors belong to the village they are standing in, if any.
+            return Village.findNearest(actor).filter(v -> v.isWithinBorder(actor)).map(Village::getId)
                     .orElse(ChronicleEvent.VILLAGE_NONE);
         } catch (Throwable t) {
             return ChronicleEvent.VILLAGE_NONE;

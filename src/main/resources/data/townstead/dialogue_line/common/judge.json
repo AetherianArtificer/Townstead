@@ -1,0 +1,101 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "judge",
+  "groups": [
+    {
+      "persp": { "who": "they" },
+      "state": { "stance": "+" },
+      "lines": {
+        "good_for_them": "Good for them.",
+        "about_time": "About time.",
+        "im_happy_for_them": "I'm happy for them.",
+        "they_deserve_it": "They deserve it.",
+        "thats_lovely": "That's lovely.",
+        "isnt_that_nice": "Isn't that nice?",
+        "everyones_so_happy": "Everyone's so happy.",
+        "well_done_to_them": "Well done to them."
+      }
+    },
+    {
+      "persp": { "who": "they" },
+      "lines": {
+        "everyones_talking_about_it": "Everyone's talking about it.",
+        "its_all_over_the_village": "It's all over the village."
+      }
+    },
+    {
+      "persp": { "who": "they" },
+      "state": { "variant": "mastery" },
+      "lines": { "they_earned_it": "They earned it.", "they_worked_so_hard_for": "They worked so hard for it." }
+    },
+    {
+      "persp": { "who": "they" },
+      "state": { "variant": "birth" },
+      "lines": {
+        "i_bet_the_babys_adorable": "I bet the baby's adorable.",
+        "another_little_one_in_the": "Another little one in the village!"
+      }
+    },
+    {
+      "persp": { "who": "they" },
+      "state": { "variant": "marriage" },
+      "lines": {
+        "they_make_a_cute_couple": "They make a cute couple.",
+        "i_give_it_a_year": { "text": "I give it a year.", "personalities": ["crabby", "grumpy", "playful", "witty"] }
+      }
+    },
+    {
+      "persp": { "who": "they" },
+      "state": { "stance": "-" },
+      "lines": {
+        "nobody_came_out_of_it": "Nobody came out of it well.",
+        "embarrassing_really": "Embarrassing, really.",
+        "i_hope_they_sort_it": "I hope they sort it out.",
+        "not_my_business_but_still": "Not my business, but still.",
+        "over_nothing_too": "Over nothing, too.",
+        "its_such_a_shame": "It's such a shame.",
+        "theyll_make_up_probably": "They'll make up. Probably.",
+        "what_a_scene": "What a scene."
+      }
+    },
+    {
+      "persp": { "who": "you" },
+      "state": { "stance": "+" },
+      "lines": {
+        "congratulations": "Congratulations!",
+        "you_must_be_so_happy": "You must be so happy.",
+        "well_done": "Well done!",
+        "thats_amazing_for_you": "That's amazing for you!",
+        "im_so_happy_for_you": "I'm so happy for you!"
+      }
+    },
+    {
+      "persp": { "who": "you" },
+      "state": { "stance": "-" },
+      "lines": {
+        "are_you_all_right": { "text": "Are you all right?", "asks": "townstead:okay" },
+        "are_you_okay": { "text": "Are you okay?", "asks": "townstead:okay" },
+        "i_hope_its_settled_now": "I hope it's settled now.",
+        "that_must_have_been_rough": "That must have been rough."
+      }
+    },
+    {
+      "persp": { "who": "me" },
+      "state": { "stance": "+" },
+      "lines": {
+        "i_still_cant_believe_it": "I still can't believe it.",
+        "im_so_happy": "I'm so happy!",
+        "its_a_dream_come_true": "It's a dream come true."
+      }
+    },
+    {
+      "persp": { "who": "me" },
+      "state": { "stance": "-" },
+      "lines": {
+        "im_still_angry_about_it": "I'm still angry about it.",
+        "i_shouldnt_have_said_what": "I shouldn't have said what I said.",
+        "it_was_all_so_silly": "It was all so silly."
+      }
+    }
+  ]
+}

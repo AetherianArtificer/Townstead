@@ -1,0 +1,25 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.exorcist.smite"
+  },
+  "icon": "minecraft:golden_sword",
+  "description": {
+    "translate": "skill.townstead.cleric.exorcist.smite.description"
+  },
+  "cost": 1,
+  "requires": [
+    "hallowed_ground"
+  ],
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 1.5,
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:entity_group",
+        "group": "undead"
+      }
+    }
+  }
+}

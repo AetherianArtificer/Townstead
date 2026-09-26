@@ -1,0 +1,41 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "infection_claim",
+  "groups": [
+    {
+      "persp": { "who": "me" },
+      "variant": "bitten",
+      "lines": {
+        "a_zombie_bit_me_its": "A zombie bit me. It's nothing, right?",
+        "i_got_bitten_last_night": "I got bitten last night. It's just a scratch.",
+        "a_zombie_got_me_on": "A zombie got me on the arm. I'm trying not to think about it.",
+        "i_think_i_was_bitten": "I think I was bitten. I don't feel any different. Yet.",
+        "i_was_bitten_what_do": { "text": "I was bitten! What do I do? What do I do?", "personalities": ["anxious"] },
+        "a_zombie_bit_me_dont": { "text": "A zombie bit me. Don't tell Mum.", "stages": "child" }
+      }
+    },
+    {
+      "persp": { "who": "me" },
+      "variant": "fever",
+      "lines": {
+        "i_dont_feel_right_ever": "I don't feel right. Ever since that bite.",
+        "i_cant_stop_coughing": "I can't stop coughing.",
+        "im_burning_up_i_think": "I'm burning up. I think it's the bite.",
+        "my_skin_looks_wrong_greenish": "My skin looks wrong. Greenish.",
+        "im_scared_i_think_its": "I'm scared. I think it's spreading.",
+        "i_think_this_is_how": { "text": "I think this is how it ends for me.", "personalities": ["gloomy"] }
+      }
+    },
+    {
+      "persp": { "who": "you" },
+      "variant": "fever",
+      "lines": {
+        "you_dont_look_well_were": "You don't look well. Were you bitten?",
+        "youre_burning_up_was_it": "You're burning up. Was it a zombie?",
+        "your_skins_gone_a_bit": "Your skin's gone a bit green.",
+        "that_cough_sounds_bad_is": "That cough sounds bad. Is it the bite?",
+        "stay_back_please_youre_sick": { "text": "Stay back, please. You're sick.", "personalities": ["anxious", "shy"] }
+      }
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.farming;
 
+import com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
@@ -130,6 +131,13 @@ public final class GridScanner {
                     continue;
                 }
 
+                // The top-of-column pass lands on the top of a trellis pole or climbing crop.
+                // Show the ground the column stands on, with the column as its crop.
+                if (FarmerCropCompatRegistry.isColumnBlock(groundState)) {
+                    groundPos = FarmerCropCompatRegistry.columnBase(level, groundPos).below();
+                    groundState = level.getBlockState(groundPos);
+                }
+
                 // Check one block above ground for crops/water
                 BlockPos abovePos = groundPos.above();
                 BlockState aboveState = level.getBlockState(abovePos);
@@ -166,6 +174,21 @@ public final class GridScanner {
                     Item product = resolver.getCropProduct(aboveState, level, abovePos);
                     if (product != null && product != Items.AIR) {
                         cropItemIds[idx] = BuiltInRegistries.ITEM.getId(product);
+                    }
+                } else if (FarmerCropCompatRegistry.isColumnBlock(aboveState)) {
+                    // Ripest segment of the column stands for the whole cell.
+                    cellFlags |= GridSnapshot.FLAG_HAS_CROP;
+                    BlockPos segment = abovePos;
+                    for (int i = 0; i < FarmerCropCompatRegistry.MAX_COLUMN_HEIGHT; i++, segment = segment.above()) {
+                        BlockState segmentState = level.getBlockState(segment);
+                        if (!FarmerCropCompatRegistry.isColumnBlock(segmentState)) break;
+                        if (FarmerCropCompatRegistry.shouldPartialHarvest(segmentState)) cellFlags |= GridSnapshot.FLAG_MATURE;
+                        if (cropItemIds[idx] == 0) {
+                            Item product = FarmerCropCompatRegistry.columnProduct(segmentState);
+                            if (product != null && product != Items.AIR) {
+                                cropItemIds[idx] = BuiltInRegistries.ITEM.getId(product);
+                            }
+                        }
                     }
                 } else if (aboveState.getBlock() instanceof BushBlock) {
                     cellFlags |= GridSnapshot.FLAG_HAS_CROP;

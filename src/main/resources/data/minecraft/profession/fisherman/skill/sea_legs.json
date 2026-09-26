@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.sea_legs"
+  },
+  "icon": "minecraft:heart_of_the_sea",
+  "description": {
+    "translate": "skill.townstead.fisherman.sea_legs.description"
+  },
+  "tier": 2,
+  "cost": 1,
+  "requires": [
+    "patient_line"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 25
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:dolphins_grace",
+          "duration": 300,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:speed",
+          "duration": 300,
+          "amplifier": 0
+        }
+      ]
+    }
+  }
+}

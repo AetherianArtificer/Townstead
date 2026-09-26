@@ -74,6 +74,23 @@ public final class RootGenes {
         return ORDERED.length;
     }
 
+    /** Read one MCA gene from a fixed-order editor snapshot; returns 0.5 for an invalid snapshot/type. */
+    public static float readSnapshot(float[] snapshot, Genetics.GeneType type) {
+        int index = indexOf(type);
+        return snapshot != null && index >= 0 && index < snapshot.length ? snapshot[index] : 0.5f;
+    }
+
+    /** Write one MCA gene in a fixed-order editor snapshot; no-op for an invalid snapshot/type. */
+    public static void writeSnapshot(float[] snapshot, Genetics.GeneType type, float value) {
+        int index = indexOf(type);
+        if (snapshot != null && index >= 0 && index < snapshot.length) snapshot[index] = value;
+    }
+
+    private static int indexOf(Genetics.GeneType type) {
+        for (int i = 0; i < ORDERED.length; i++) if (ORDERED[i] == type) return i;
+        return -1;
+    }
+
     /**
      * Write a {@link #snapshot}'s floats into a player's stored MCA data under MCA's own gene
      * keys (the keys the dummy's save would use), leaving every other key untouched; no-op on
@@ -83,6 +100,25 @@ public final class RootGenes {
         if (entityData == null || snapshot == null || snapshot.length != ORDERED.length) return;
         for (int i = 0; i < ORDERED.length; i++) {
             entityData.putFloat(ORDERED[i].key(), snapshot[i]);
+        }
+    }
+
+    /** Read a player's stored MCA floats into a {@link #snapshot}-ordered array; a missing key reads as 0.5. */
+    public static float[] readFromPlayerData(net.minecraft.nbt.CompoundTag entityData) {
+        float[] out = new float[ORDERED.length];
+        for (int i = 0; i < ORDERED.length; i++) {
+            String key = ORDERED[i].key();
+            out[i] = entityData != null && entityData.contains(key) ? entityData.getFloat(key) : 0.5f;
+        }
+        return out;
+    }
+
+    /** {@link #apply} onto a {@link #snapshot}-ordered array instead of a live villager. */
+    public static void apply(float[] snapshot, Map<String, GeneRange> targetRanges, RandomSource random) {
+        if (snapshot == null || targetRanges == null) return;
+        for (Map.Entry<String, GeneRange> entry : targetRanges.entrySet()) {
+            Genetics.GeneType type = BY_KEY.get(entry.getKey());
+            if (type != null) writeSnapshot(snapshot, type, entry.getValue().sample(random));
         }
     }
 

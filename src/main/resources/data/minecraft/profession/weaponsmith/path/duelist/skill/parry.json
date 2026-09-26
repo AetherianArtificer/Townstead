@@ -1,0 +1,38 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.duelist.parry"
+  },
+  "icon": "minecraft:iron_sword",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.duelist.parry.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_hurt",
+    "target": "other",
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "or",
+        "conditions": [
+          {
+            "type": "ingredient",
+            "tag": "minecraft:swords"
+          },
+          {
+            "type": "ingredient",
+            "tag": "minecraft:axes"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:damage",
+      "amount": 2,
+      "source": "other"
+    }
+  }
+}

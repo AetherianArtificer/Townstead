@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AuthoredTavernDataTest {
@@ -59,6 +60,7 @@ class AuthoredTavernDataTest {
                 "/data/townstead/hangout_activity/tavern_supper.json"));
 
         assertEquals(HangoutActivity.Kind.DRINK, round.kind());
+        assertNull(round.startWhen(), "a recreational round must not require thirst");
         assertNotNull(round.participantWhen());
         assertNotNull(round.serviceWhen());
         assertNotNull(round.serviceCourses().get(0).eligibleWhen());

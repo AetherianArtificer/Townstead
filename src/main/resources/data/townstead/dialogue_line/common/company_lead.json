@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "company_lead",
+  "groups": [
+    {
+      "lines": {
+        "hey_so": "Hey, so.",
+        "i_was_thinking": "I was thinking.",
+        "you_know_what_we_should": "You know what we should do?",
+        "listen": "Listen.",
+        "i_have_an_idea": "I have an idea.",
+        "um_so": { "text": "Um. So.", "personalities": ["introverted", "shy"] },
+        "ooh_idea": { "text": "Ooh! Idea!", "personalities": ["upbeat", "peppy"] },
+        "darling": { "text": "Darling.", "personalities": "flirty" },
+        "hey_hey": { "text": "Hey! Hey!", "stages": "child" }
+      }
+    }
+  ]
+}

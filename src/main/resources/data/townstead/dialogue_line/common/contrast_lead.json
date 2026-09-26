@@ -1,0 +1,87 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "contrast_lead",
+  "groups": [
+    {
+      "state": { "stance": "+" },
+      "lines": {
+        "speak_for_yourself": "Speak for yourself.",
+        "lovely_for_some": "Lovely for some.",
+        "if_you_say_so": "If you say so.",
+        "hm_not_for_me": "Hm. Not for me.",
+        "really_i_dont_see_it": "Really? I don't see it.",
+        "eh_im_not_so_sure": "Eh. I'm not so sure.",
+        "i_wouldnt_go_that_far": "I wouldn't go that far.",
+        "you_think_so": "You think so?",
+        "not_really_my_thing": "Not really my thing.",
+        "hmm_maybe_for_you": "Hmm. Maybe for you.",
+        "i_guess_if_you_like": "I guess, if you like that.",
+        "is_it_though": "Is it, though?",
+        "thats_one_way_to_see": "That's one way to see it."
+      }
+    },
+    {
+      "state": { "stance": "-" },
+      "lines": {
+        "i_dont_mind_it": "I don't mind it.",
+        "really_i_like_it": "Really? I like it.",
+        "i_actually_kind_of_like": "I actually kind of like it.",
+        "eh_its_fine": "Eh, it's fine.",
+        "oh_stop_it_its_nice": "Oh, stop it, it's nice.",
+        "oh_its_not_so_bad": { "text": "Oh, it's not so bad.", "responds": ["opinion", "complaint"] },
+        "cheer_up": { "text": "Cheer up.", "responds": ["opinion", "complaint"] },
+        "come_on_its_not_that": { "text": "Come on, it's not that bad.", "responds": ["opinion", "complaint"] },
+        "could_be_worse": { "text": "Could be worse.", "responds": ["opinion", "complaint"] },
+        "look_on_the_bright_side": { "text": "Look on the bright side.", "responds": ["opinion", "complaint"] },
+        "its_not_all_bad": { "text": "It's not all bad.", "responds": ["opinion", "complaint"] },
+        "theres_worse_things": { "text": "There's worse things.", "responds": ["opinion", "complaint"] },
+        "you_worry_too_much": "You worry too much."
+      }
+    },
+    { "lines": {"hmph_youre_wrong": {"text": "Hmph. You're wrong.", "personalities": ["crabby", "grumpy"]}} },
+    {
+      "state": { "stance": "-" },
+      "lines": {
+        "oh_but_theres_always_a": {
+          "text": "Oh, but there's always a bright side!",
+          "personalities": ["upbeat", "peppy"],
+          "responds": ["opinion", "complaint"]
+        }
+      }
+    },
+    {
+      "state": { "stance": "+" },
+      "lines": { "its_all_bad_really": {"text": "It's all bad, really.", "personalities": "gloomy"} }
+    },
+    {
+      "lines": {
+        "hmm_hard_disagree": { "text": "Hmm. Hard disagree.", "personalities": ["playful", "witty"] },
+        "youre_cute_when_youre_wrong": { "text": "You're cute when you're wrong.", "personalities": "flirty" },
+        "um_i_dont_know_about": { "text": "Um, I don't know about that.", "personalities": ["introverted", "shy"] }
+      }
+    },
+    {
+      "state": { "stance": "-" },
+      "lines": {
+        "nah_its_all_good": {
+          "text": "Nah, it's all good.",
+          "personalities": ["relaxed", "lazy"],
+          "responds": ["opinion", "complaint"]
+        }
+      }
+    },
+    {
+      "subjects": "project",
+      "state": { "stance": "+" },
+      "lines": {
+        "its_taking_forever_though": "It's taking forever, though.",
+        "is_it_though_its_been": "Is it, though? It's been months."
+      }
+    },
+    {
+      "subjects": "project",
+      "state": { "stance": "-" },
+      "lines": { "give_them_time": "Give them time.", "itll_be_worth_it": "It'll be worth it." }
+    }
+  ]
+}

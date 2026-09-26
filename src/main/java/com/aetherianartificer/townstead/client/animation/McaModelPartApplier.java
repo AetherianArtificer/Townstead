@@ -8,6 +8,7 @@ import net.minecraft.world.entity.LivingEntity;
 import java.util.List;
 
 public final class McaModelPartApplier {
+    private static final ApplyStats NO_STATS = new ApplyStats(0, 0.0F);
     private McaModelPartApplier() {}
 
     public static <T extends LivingEntity> void apply(
@@ -15,13 +16,20 @@ public final class McaModelPartApplier {
             AnimationTargetMap<T> targetMap,
             List<AnimationTransform> transforms
     ) {
-        applyWithStats(sourceId, targetMap, transforms);
+        apply(sourceId, targetMap, transforms, false);
     }
 
     public static <T extends LivingEntity> ApplyStats applyWithStats(
             String sourceId,
             AnimationTargetMap<T> targetMap,
             List<AnimationTransform> transforms
+    ) {
+        return apply(sourceId, targetMap, transforms, true);
+    }
+
+    private static <T extends LivingEntity> ApplyStats apply(
+            String sourceId, AnimationTargetMap<T> targetMap,
+            List<AnimationTransform> transforms, boolean collectStats
     ) {
         int applied = 0;
         float largest = 0.0F;
@@ -35,9 +43,13 @@ public final class McaModelPartApplier {
                 continue;
             }
 
-            ApplyStats stats = apply(part, transform);
-            if (stats.appliedParts() > 0) applied++;
-            largest = Math.max(largest, stats.largestDelta());
+            if (collectStats) {
+                ApplyStats stats = applyWithStats(part, transform);
+                if (stats.appliedParts() > 0) applied++;
+                largest = Math.max(largest, stats.largestDelta());
+            } else {
+                applyPose(part, transform);
+            }
 
             // Bend the wear-layer companions (MCA's leftArmwear / rightArmwear /
             // etc.) with the same bend value, so the outer wear mesh follows
@@ -49,10 +61,10 @@ public final class McaModelPartApplier {
                 }
             }
         }
-        return new ApplyStats(applied, largest);
+        return collectStats ? new ApplyStats(applied, largest) : NO_STATS;
     }
 
-    private static ApplyStats apply(ModelPart part, AnimationTransform transform) {
+    private static ApplyStats applyWithStats(ModelPart part, AnimationTransform transform) {
         float beforeX = part.xRot;
         float beforeY = part.yRot;
         float beforeZ = part.zRot;
@@ -60,6 +72,18 @@ public final class McaModelPartApplier {
         float beforeTy = part.y;
         float beforeTz = part.z;
 
+        applyPose(part, transform);
+
+        float largest = Math.max(
+                Math.max(Math.abs(part.xRot - beforeX), Math.abs(part.yRot - beforeY)),
+                Math.abs(part.zRot - beforeZ));
+        largest = Math.max(largest, Math.max(
+                Math.max(Math.abs(part.x - beforeTx), Math.abs(part.y - beforeTy)),
+                Math.abs(part.z - beforeTz)));
+        return new ApplyStats(largest > 0.00001F ? 1 : 0, largest);
+    }
+
+    private static void applyPose(ModelPart part, AnimationTransform transform) {
         AnimationTransform.Operation operation = transform.operation();
         if (transform.applyTranslation()) {
             part.x = apply(part.x, transform.x(), operation);
@@ -78,13 +102,6 @@ public final class McaModelPartApplier {
             invokeBend(part, transform.bend(), transform.bendDirection());
         }
 
-        float largest = Math.max(
-                Math.max(Math.abs(part.xRot - beforeX), Math.abs(part.yRot - beforeY)),
-                Math.abs(part.zRot - beforeZ));
-        largest = Math.max(largest, Math.max(
-                Math.max(Math.abs(part.x - beforeTx), Math.abs(part.y - beforeTy)),
-                Math.abs(part.z - beforeTz)));
-        return new ApplyStats(largest > 0.00001F ? 1 : 0, largest);
     }
 
     private static float apply(float current, Float value, AnimationTransform.Operation operation) {

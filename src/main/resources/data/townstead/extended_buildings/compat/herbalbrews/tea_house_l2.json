@@ -1,1 +1,3 @@
-{"schema":"townstead:extended_building/v1","catalog":{"node_item":"herbalbrews:black_tea"},"spirit":{"commercial":6,"tourism":5,"natural":2}}
+{"schema":"townstead:extended_building/v1","catalog":{"node_item":"herbalbrews:black_tea"},"spirit":{"commercial":6,"tourism":5,"natural":2},
+  "talk": { "tags": ["townstead:cafe"] }
+}

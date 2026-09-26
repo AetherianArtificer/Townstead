@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.hunger;
 
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+
 import com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry;
 import com.aetherianartificer.townstead.compat.farming.FarmerRemovableWeedCompatRegistry;
 import com.aetherianartificer.townstead.farming.CropProductResolver;
@@ -119,6 +121,8 @@ public final class HarvestWorkIndex {
         List<BlockPos> hydratedTillTargets = new ArrayList<>();
         List<BlockPos> waterTargets = new ArrayList<>();
         List<BlockPos> groomTargets = new ArrayList<>();
+        List<BlockPos> supportTargets = new ArrayList<>();
+        List<BlockPos> ropeTargets = new ArrayList<>();
         Set<Long> groomSeen = new HashSet<>();
 
         for (PlannedCell cell : blueprint.cells()) {
@@ -201,7 +205,7 @@ public final class HarvestWorkIndex {
                 if (!hasWater) {
                     if (isWaterPlaceable(soilState)) {
                         waterTargets.add(soilPos.immutable());
-                    } else if (com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+                    } else if (Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI)) {
                         org.slf4j.LoggerFactory.getLogger("townstead/HarvestWorkIndex").info(
                                 "WATER cell {} dry but not placeable: block={}", soilPos, soilState.getBlock());
                     }
@@ -219,7 +223,7 @@ public final class HarvestWorkIndex {
                 boolean matches = seedMatchesSoil(level, cell);
                 if (seedAllowed && plantable && matches) {
                     plantTargets.add(plantPos.immutable());
-                } else if (com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get() && seedAllowed) {
+                } else if (Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI) && seedAllowed) {
                     org.slf4j.LoggerFactory.getLogger("townstead/HarvestWorkIndex").info(
                             "WATER cell {} has water but no plant target: seed={}, plantPos={}, blockThere={}, blockBelow={}, plantable={}, matches={}",
                             soilPos, cell.seedAssignment(), plantPos,
@@ -230,12 +234,47 @@ public final class HarvestWorkIndex {
                 continue;
             }
 
+            // TRELLIS-painted cells: the ground stays solid, the farmer builds the support to the
+            // cell's height, plants each bare segment, and picks each ripe one.
+            if (cell.desiredSoil() == SoilType.TRELLIS) {
+                scanTrellisCell(level, blueprint, cell, harvestTargets, plantTargets, supportTargets);
+                continue;
+            }
+
             // 1. HARVEST — mature crop on this cell (vanilla) or adjacent melon/pumpkin fruit
             for (BlockPos candidate : harvestCandidatesNear(level, cropPos)) {
                 BlockState candState = level.getBlockState(candidate);
                 if (isHarvestTargetValid(level, candidate, candState, blueprint)) {
                     harvestTargets.add(candidate.immutable());
                 }
+            }
+
+            // 1b. PLANT ON SUPPORT — bare trellis segments in this cell's column (Vinery stems).
+            // The seed goes onto the support block itself, one seed per segment.
+            if (!SeedAssignment.NONE.equals(cell.seedAssignment())) {
+                ItemStack assignedSeed = assignedSeedStack(cell);
+                BlockPos segment = cropPos;
+                for (int i = 0; i < FarmerCropCompatRegistry.MAX_COLUMN_HEIGHT; i++, segment = segment.above()) {
+                    BlockState segmentState = level.getBlockState(segment);
+                    if (!FarmerCropCompatRegistry.isColumnBlock(segmentState)) break;
+                    if (blueprint.isProtected(segment)) continue;
+                    boolean accepts = assignedSeed.isEmpty()
+                            ? FarmerCropCompatRegistry.isBareSupport(level, segment, segmentState)
+                            : FarmerCropCompatRegistry.canPlantOnSupport(level, segment, segmentState, assignedSeed);
+                    if (accepts) plantTargets.add(segment.immutable());
+                }
+            }
+
+            // 1c. ROPE — the top segment of a climbing crop that has a rope block hanging above it.
+            BlockPos columnTop = null;
+            for (int i = 0; i < FarmerCropCompatRegistry.MAX_COLUMN_HEIGHT; i++) {
+                BlockPos segment = cropPos.above(i);
+                if (!FarmerCropCompatRegistry.isColumnBlock(level.getBlockState(segment))) break;
+                columnTop = segment;
+            }
+            if (columnTop != null && !blueprint.isProtected(columnTop)
+                    && FarmerCropCompatRegistry.needsRope(level, columnTop, level.getBlockState(columnTop))) {
+                ropeTargets.add(columnTop.immutable());
             }
 
             boolean soilIsFarmland = soilState.getBlock() instanceof FarmBlock;
@@ -286,8 +325,60 @@ public final class HarvestWorkIndex {
                 List.copyOf(hydratedTillTargets),
                 List.copyOf(waterTargets),
                 List.copyOf(groomTargets),
+                List.copyOf(supportTargets),
+                List.copyOf(ropeTargets),
                 gameTime + FARM_TTL_TICKS
         );
+    }
+
+    /**
+     * One TRELLIS cell. Walks up from the ground, through the support and past any air gap, so an
+     * upright stack and a panel hung over the cell are both found. The next missing support
+     * segment, if any, becomes a support target.
+     */
+    private static void scanTrellisCell(ServerLevel level, FarmBlueprint blueprint, PlannedCell cell,
+                                        List<BlockPos> harvestTargets, List<BlockPos> plantTargets,
+                                        List<BlockPos> supportTargets) {
+        BlockPos cropPos = cell.cropPos();
+        ItemStack assignedSeed = assignedSeedStack(cell);
+        boolean mayPlant = !SeedAssignment.NONE.equals(cell.seedAssignment());
+        com.aetherianartificer.townstead.farming.cellplan.TrellisSpec spec = cell.trellisSpec();
+
+        int builtFromGround = 0;
+        boolean contiguous = true;
+        for (int dy = 0; dy < FarmerCropCompatRegistry.MAX_COLUMN_HEIGHT; dy++) {
+            BlockPos segment = cropPos.above(dy);
+            BlockState segmentState = level.getBlockState(segment);
+            if (!FarmerCropCompatRegistry.isColumnBlock(segmentState)) {
+                if (!segmentState.isAir() && !segmentState.canBeReplaced()) break;
+                contiguous = false;
+                continue;
+            }
+            if (contiguous && FarmerCropCompatRegistry.isTrellisSupportBlock(segmentState, assignedSeed)) builtFromGround++;
+            if (blueprint.isProtected(segment)) continue;
+            if (FarmerCropCompatRegistry.shouldPartialHarvest(segmentState)) {
+                harvestTargets.add(segment.immutable());
+            } else if (mayPlant) {
+                boolean accepts = assignedSeed.isEmpty()
+                        ? FarmerCropCompatRegistry.isBareSupport(level, segment, segmentState)
+                        : FarmerCropCompatRegistry.canPlantOnSupport(level, segment, segmentState, assignedSeed);
+                if (accepts) plantTargets.add(segment.immutable());
+            }
+        }
+
+        BlockPos next;
+        if (spec.flat()) {
+            next = cropPos.above(spec.height() - 1);
+            if (FarmerCropCompatRegistry.isColumnBlock(level.getBlockState(next))) return;
+        } else {
+            if (builtFromGround >= spec.height()) return;
+            next = cropPos.above(builtFromGround);
+        }
+        BlockState nextState = level.getBlockState(next);
+        if (blueprint.isProtected(next)) return;
+        if (nextState.isAir() || (nextState.canBeReplaced() && nextState.getFluidState().isEmpty())) {
+            supportTargets.add(next.immutable());
+        }
     }
 
     /**
@@ -334,6 +425,22 @@ public final class HarvestWorkIndex {
         return compatible.contains(cell.desiredSoil());
     }
 
+    /** The cell's specific seed as a stack, or EMPTY for AUTO / NONE / unresolved assignments. */
+    private static ItemStack assignedSeedStack(PlannedCell cell) {
+        String seed = cell.seedAssignment();
+        if (seed == null || SeedAssignment.AUTO.equals(seed) || SeedAssignment.NONE.equals(seed)) return ItemStack.EMPTY;
+        ResourceLocation rl;
+        try {
+            //? if >=1.21 {
+            rl = ResourceLocation.parse(seed);
+            //?} else {
+            /*rl = new ResourceLocation(seed);
+            *///?}
+        } catch (Exception e) { return ItemStack.EMPTY; }
+        Item seedItem = BuiltInRegistries.ITEM.get(rl);
+        return seedItem == null ? ItemStack.EMPTY : new ItemStack(seedItem);
+    }
+
     /**
      * True if the cell's assigned seed is a surface water crop (planted on top of the water source,
      * at soilPos.above()) rather than submerged in it. AUTO / NONE / unresolved seeds are not.
@@ -361,6 +468,12 @@ public final class HarvestWorkIndex {
         // BuddingTomatoBlock base. YH tea is a DoubleCropBlock with an upper half. Without scanning
         // up, the fruiting/perennial part is invisible to the farmer.
         candidates.add(cropPos.above());
+        // Crop columns (trellis poles, climbing crops): every segment above the first two.
+        for (int dy = 2; dy < FarmerCropCompatRegistry.MAX_COLUMN_HEIGHT; dy++) {
+            BlockPos segment = cropPos.above(dy);
+            if (!FarmerCropCompatRegistry.isColumnBlock(level.getBlockState(segment))) break;
+            candidates.add(segment);
+        }
         BlockState state = level.getBlockState(cropPos);
         if (state.getBlock() instanceof StemBlock || state.getBlock() instanceof AttachedStemBlock) {
             for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.Plane.HORIZONTAL) {
@@ -379,7 +492,7 @@ public final class HarvestWorkIndex {
             return crop.isMaxAge(state);
         }
         if (FarmerCropCompatRegistry.shouldPartialHarvest(state)) {
-            return findPlannedSoilBelow(blueprint, pos, 2) != null;
+            return findPlannedSoilBelow(blueprint, FarmerCropCompatRegistry.columnBase(level, pos), 2) != null;
         }
         if (isGenericMatureCrop(state)) {
             return findPlannedSoilBelow(blueprint, pos, 2) != null;
@@ -401,6 +514,8 @@ public final class HarvestWorkIndex {
     static boolean isGenericMatureCrop(BlockState state) {
         Block block = state.getBlock();
         if (block instanceof CropBlock || block instanceof StemBlock || block instanceof AttachedStemBlock) return false;
+        // Column segments are only ever picked through their compat provider, never broken.
+        if (FarmerCropCompatRegistry.isColumnBlock(state)) return false;
         if (state.is(Blocks.SUGAR_CANE) || state.is(Blocks.CACTUS)
                 || state.is(Blocks.BAMBOO) || state.is(Blocks.BAMBOO_SAPLING)
                 || state.is(Blocks.KELP) || state.is(Blocks.TWISTING_VINES) || state.is(Blocks.WEEPING_VINES)
@@ -518,7 +633,7 @@ public final class HarvestWorkIndex {
     }
 
     static final class FarmSnapshot {
-        static final FarmSnapshot EMPTY = new FarmSnapshot(List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), Long.MIN_VALUE);
+        static final FarmSnapshot EMPTY = new FarmSnapshot(List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), Long.MIN_VALUE);
 
         private final List<BlockPos> harvestTargets;
         private final List<BlockPos> plantTargets;
@@ -526,11 +641,16 @@ public final class HarvestWorkIndex {
         private final List<BlockPos> hydratedTillTargets;
         private final List<BlockPos> waterTargets;
         private final List<BlockPos> groomTargets;
+        private final List<BlockPos> supportTargets;
+        private final List<BlockPos> ropeTargets;
         private final long expiresAt;
 
         private FarmSnapshot(List<BlockPos> harvestTargets, List<BlockPos> plantTargets,
                              List<BlockPos> tillTargets, List<BlockPos> hydratedTillTargets,
-                             List<BlockPos> waterTargets, List<BlockPos> groomTargets, long expiresAt) {
+                             List<BlockPos> waterTargets, List<BlockPos> groomTargets,
+                             List<BlockPos> supportTargets, List<BlockPos> ropeTargets, long expiresAt) {
+            this.supportTargets = supportTargets;
+            this.ropeTargets = ropeTargets;
             this.harvestTargets = harvestTargets;
             this.plantTargets = plantTargets;
             this.tillTargets = tillTargets;
@@ -580,6 +700,22 @@ public final class HarvestWorkIndex {
 
         int groomTargetCount() {
             return groomTargets.size();
+        }
+
+        List<BlockPos> supportTargets() {
+            return supportTargets;
+        }
+
+        int ropeTargetCount() {
+            return ropeTargets.size();
+        }
+
+        @Nullable BlockPos nearestSupportTarget(VillagerEntityMCA villager, Predicate<BlockPos> filter) {
+            return nearestTo(villager, supportTargets, filter);
+        }
+
+        @Nullable BlockPos nearestRopeTarget(VillagerEntityMCA villager, Predicate<BlockPos> filter) {
+            return nearestTo(villager, ropeTargets, filter);
         }
 
         boolean hasWaterTargets() {

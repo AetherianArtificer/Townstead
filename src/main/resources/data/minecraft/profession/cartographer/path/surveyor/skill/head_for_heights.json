@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.surveyor.head_for_heights"
+  },
+  "icon": "minecraft:feather",
+  "description": {
+    "translate": "skill.townstead.cartographer.surveyor.head_for_heights.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.5,
+    "damage_type": "minecraft:fall"
+  }
+}

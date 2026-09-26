@@ -68,7 +68,7 @@ public final class TownsteadAPI {
         }
         return new TownsteadVillagerSnapshot(
                 villager.getUUID().toString(),
-                villager.getName().getString(),
+                villager.getDisplayName().getString(),
                 villager.getType().toString(),
                 life.rootId(),
                 life.currentStageId(),
@@ -100,7 +100,9 @@ public final class TownsteadAPI {
                         needs.thirstExhaustion(),
                         needs.fatigue(),
                         needs.collapsed(),
-                        needs.gated()),
+                        needs.gated(),
+                        needs.bodyTempTenths(),
+                        needs.ambientTenths()),
                 mapStringString(life.carriedVariants()),
                 List.copyOf(life.expressedAlleles()),
                 mapResourceFloat(life.heritage().fractions())
@@ -128,7 +130,7 @@ public final class TownsteadAPI {
                 0f,
                 new TownsteadAgeSnapshot("", 0L, 0, false, false, false),
                 new TownsteadScheduleSnapshot("", "", false, false, 0, 6, 0, "", "", "", List.of(), List.of()),
-                new TownsteadNeedsSnapshot(0, 0f, 0f, 0, 0, 0f, 0, false, false),
+                new TownsteadNeedsSnapshot(0, 0f, 0f, 0, 0, 0f, 0, false, false, 0, 0),
                 Map.of(),
                 List.of(),
                 Map.of()
@@ -169,7 +171,7 @@ public final class TownsteadAPI {
                     village.getId(),
                     com.aetherianartificer.townstead.compat.mca.McaBuildingCompat
                             .effectiveType(village, building),
-                    building.getSize(),
+                    com.aetherianartificer.townstead.compat.mca.McaBuildings.size(building),
                     center.getX(),
                     center.getY(),
                     center.getZ(),

@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.taste_test"
+  },
+  "icon": "minecraft:glass_bottle",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.taste_test.description"
+  },
+  "tier": 1,
+  "cost": 1,
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_item_use",
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 200,
+      "amplifier": 0
+    },
+    "item_condition": {
+      "type": "ingredient",
+      "tag": "townstead:drinks"
+    }
+  }
+}

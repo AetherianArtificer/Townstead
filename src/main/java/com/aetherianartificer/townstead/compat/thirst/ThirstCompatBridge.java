@@ -16,6 +16,8 @@ public interface ThirstCompatBridge {
     int PURITY_PURIFIED = 3;
 
     boolean isActive();
+    /** Live backend toggle, separate from installation/API availability. */
+    default boolean isThirstEnabled() { return true; }
     boolean itemRestoresThirst(ItemStack stack);
     boolean isDrink(ItemStack stack);
     boolean isPurityWaterContainer(ItemStack stack);
@@ -23,11 +25,17 @@ public interface ThirstCompatBridge {
     int quenched(ItemStack stack);
     int purity(ItemStack stack);
     float exhaustionBiomeModifier(Level level, BlockPos pos);
+    default float exhaustionBiomeModifier(Level level, BlockPos pos, ThermalHydrationContext thermal) {
+        return exhaustionBiomeModifier(level, pos);
+    }
+    default float thermalExhaustionPerTick(ThermalHydrationContext thermal) { return 0; }
     boolean extraHydrationToQuenched();
     PurityResult evaluatePurity(int purity, RandomSource random);
     ResourceLocation iconTexture();
 
     boolean supportsPurification();
+    /** Whether the shared boiling workflow can process this vessel. */
+    default boolean canBoil(ItemStack stack) { return isPurityWaterContainer(stack); }
 
     /**
      * The item an ordered purification line wears and counts, or null for the vanilla water
@@ -51,6 +59,15 @@ public interface ThirstCompatBridge {
 
     /** Current player thirst, or NaN when the active compat cannot read it. */
     default double playerThirst(Player player) { return Double.NaN; }
+
+    /**
+     * Restores player thirst through the active backend, the write twin of
+     * {@link #playerThirst}. {@code immediate} raises the thirst bar itself and
+     * {@code lasting} the saturation-style reserve behind it, matching the two halves a
+     * villager's {@code applyDrink} takes. Returns false when the backend exposes no way
+     * to write, so a caller can tell "restored nothing" from "cannot restore".
+     */
+    default boolean restorePlayerThirst(Player player, int immediate, int lasting) { return false; }
 
     record PurityResult(boolean applyHydration, boolean sickness, boolean poison, int purity) {}
 

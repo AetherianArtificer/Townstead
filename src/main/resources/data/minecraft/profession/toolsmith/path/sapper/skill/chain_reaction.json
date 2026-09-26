@@ -1,0 +1,52 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.sapper.chain_reaction"
+  },
+  "icon": "minecraft:tnt_minecart",
+  "description": {
+    "translate": "skill.townstead.toolsmith.sapper.chain_reaction.description"
+  },
+  "cost": 1,
+  "requires": [
+    "blasting_cap"
+  ],
+  "skill_group": "townstead:sapper_charge",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:knack",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 10,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:delay",
+            "ticks": 20,
+            "action": {
+              "type": "pheno:explode",
+              "power": 1.5,
+              "fire": false,
+              "destroy": false
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.tnt.primed",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

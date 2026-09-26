@@ -1,0 +1,22 @@
+{
+  "schema": "townstead:workstation/v1",
+  "mods": "legendarysurvivaloverhaul",
+  "type": "craft_surface",
+  "adapter": "townstead:lso_sewing_table",
+  "work_task": "townstead_work:craft",
+  "blocks": ["legendarysurvivaloverhaul:sewing_table"],
+  "recipe_type": "legendarysurvivaloverhaul:sewing",
+  "cook_time": 60,
+  "orderable": "all",
+  "produces": [
+    { "inputs": ["legendarysurvivaloverhaul:heating_coat_1"], "output": "legendarysurvivaloverhaul:heating_coat_1", "modifies": "armor", "time": 100, "name": "townstead.produce.sew_onto_armor" },
+    { "inputs": ["legendarysurvivaloverhaul:heating_coat_2"], "output": "legendarysurvivaloverhaul:heating_coat_2", "modifies": "armor", "time": 100, "name": "townstead.produce.sew_onto_armor" },
+    { "inputs": ["legendarysurvivaloverhaul:heating_coat_3"], "output": "legendarysurvivaloverhaul:heating_coat_3", "modifies": "armor", "time": 100, "name": "townstead.produce.sew_onto_armor" },
+    { "inputs": ["legendarysurvivaloverhaul:cooling_coat_1"], "output": "legendarysurvivaloverhaul:cooling_coat_1", "modifies": "armor", "time": 100, "name": "townstead.produce.sew_onto_armor" },
+    { "inputs": ["legendarysurvivaloverhaul:cooling_coat_2"], "output": "legendarysurvivaloverhaul:cooling_coat_2", "modifies": "armor", "time": 100, "name": "townstead.produce.sew_onto_armor" },
+    { "inputs": ["legendarysurvivaloverhaul:cooling_coat_3"], "output": "legendarysurvivaloverhaul:cooling_coat_3", "modifies": "armor", "time": 100, "name": "townstead.produce.sew_onto_armor" },
+    { "inputs": ["legendarysurvivaloverhaul:thermal_coat_1"], "output": "legendarysurvivaloverhaul:thermal_coat_1", "modifies": "armor", "time": 100, "name": "townstead.produce.sew_onto_armor" },
+    { "inputs": ["legendarysurvivaloverhaul:thermal_coat_2"], "output": "legendarysurvivaloverhaul:thermal_coat_2", "modifies": "armor", "time": 100, "name": "townstead.produce.sew_onto_armor" },
+    { "inputs": ["legendarysurvivaloverhaul:thermal_coat_3"], "output": "legendarysurvivaloverhaul:thermal_coat_3", "modifies": "armor", "time": 100, "name": "townstead.produce.sew_onto_armor" }
+  ]
+}

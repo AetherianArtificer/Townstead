@@ -11,7 +11,11 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import com.aetherianartificer.townstead.client.gui.common.BlockSpriteResolver;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,6 +33,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class RequirementNameResolver {
     private static final ConcurrentHashMap<ResourceLocation, String> CACHE = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<ResourceLocation, java.util.List<TagMember>> TAG_MEMBERS =
+            new ConcurrentHashMap<>();
     private static final AtomicBoolean ASYNC_WARM_RUNNING = new AtomicBoolean(false);
     /**
      * Set true once a full BuildingTypes warm has finished. The catalog-open
@@ -49,48 +55,82 @@ public final class RequirementNameResolver {
         return result;
     }
 
+    /** One block or item a tag accepts, with the icon and the label that go together. */
+    private record TagMember(RequirementIcon icon) {}
+
     /**
      * Concrete icon for a requirement. Direct block/item ids stay fixed; a tag cycles through
      * the installed members it actually accepts. Shared by the catalog and the pinned checklist
      * so those two views never explain the same requirement differently.
      */
-    public static ItemStack displayStack(ResourceLocation id, long ticker, int salt) {
+    public static RequirementIcon displayIcon(ResourceLocation id, long ticker, int salt) {
         if (BuiltInRegistries.BLOCK.containsKey(id)) {
-            Item item = BuiltInRegistries.BLOCK.get(id).asItem();
-            return item == null || item == Items.AIR ? ItemStack.EMPTY : new ItemStack(item);
+            return iconFor(BuiltInRegistries.BLOCK.get(id));
         }
         if (BuiltInRegistries.ITEM.containsKey(id)) {
             Item item = BuiltInRegistries.ITEM.get(id);
-            return item == null || item == Items.AIR ? ItemStack.EMPTY : new ItemStack(item);
+            if (item == null || item == Items.AIR) return RequirementIcon.EMPTY;
+            return RequirementIcon.of(new ItemStack(item), displayName(id));
         }
 
-        java.util.List<Item> candidates = new java.util.ArrayList<>();
-        TagKey<Block> blockTag = TagKey.create(Registries.BLOCK, id);
-        for (Block block : BuiltInRegistries.BLOCK) {
-            Item item = block.asItem();
-            if (block.defaultBlockState().is(blockTag) && item != null && item != Items.AIR) {
-                candidates.add(item);
-            }
-        }
-        if (candidates.isEmpty()) {
-            TagKey<Item> itemTag = TagKey.create(Registries.ITEM, id);
-            for (Item item : BuiltInRegistries.ITEM) {
-                if (item != Items.AIR && item.builtInRegistryHolder().is(itemTag)) candidates.add(item);
-            }
-        }
-        if (candidates.isEmpty()) return ItemStack.EMPTY;
-        int index = (int) Math.floorMod((ticker / 20L) + salt, candidates.size());
-        return new ItemStack(candidates.get(index));
+        java.util.List<TagMember> members = tagMembers(id);
+        if (members.isEmpty()) return RequirementIcon.EMPTY;
+        int index = (int) Math.floorMod((ticker / 20L) + salt, members.size());
+        return members.get(index).icon();
     }
 
-    /** The concrete member's name for a tag, or the ordinary resolved name for a direct id. */
-    public static String displayName(ResourceLocation id, ItemStack shown) {
-        if (!shown.isEmpty()
-                && !BuiltInRegistries.BLOCK.containsKey(id)
-                && !BuiltInRegistries.ITEM.containsKey(id)) {
-            return shown.getHoverName().getString();
-        }
-        return displayName(id);
+    /**
+     * Members of a tag, resolved once. Both views ask for this every frame while an icon
+     * cycles, and answering it walks the whole block registry.
+     */
+    private static java.util.List<TagMember> tagMembers(ResourceLocation id) {
+        java.util.List<TagMember> members = TAG_MEMBERS.computeIfAbsent(id, key -> {
+            java.util.List<TagMember> out = new java.util.ArrayList<>();
+            TagKey<Block> blockTag = TagKey.create(Registries.BLOCK, key);
+            for (Block block : BuiltInRegistries.BLOCK) {
+                if (!block.defaultBlockState().is(blockTag)) continue;
+                RequirementIcon icon = iconFor(block);
+                if (!icon.isEmpty()) out.add(new TagMember(icon));
+            }
+            if (out.isEmpty()) {
+                TagKey<Item> itemTag = TagKey.create(Registries.ITEM, key);
+                for (Item item : BuiltInRegistries.ITEM) {
+                    if (item == Items.AIR || !item.builtInRegistryHolder().is(itemTag)) continue;
+                    out.add(new TagMember(RequirementIcon.of(new ItemStack(item),
+                            Component.translatable(item.getDescriptionId()).getString())));
+                }
+            }
+            return java.util.List.copyOf(out);
+        });
+        // Block tags arrive on their own schedule, so an empty answer may only mean "not yet".
+        if (members.isEmpty()) TAG_MEMBERS.remove(id);
+        return members;
+    }
+
+    /**
+     * A block's icon is its item. Water and lava have none, so those draw from the block atlas,
+     * tinted the way the player sees them where they are standing.
+     */
+    private static RequirementIcon iconFor(Block block) {
+        String label = Component.translatable(block.getDescriptionId()).getString();
+        Item item = block.asItem();
+        if (item != null && item != Items.AIR) return RequirementIcon.of(new ItemStack(item), label);
+
+        BlockState state = block.defaultBlockState();
+        TextureAtlasSprite sprite = BlockSpriteResolver.getTopSprite(state);
+        if (sprite == null) return RequirementIcon.EMPTY;
+        Minecraft minecraft = Minecraft.getInstance();
+        int tint = minecraft.level == null || minecraft.player == null
+                ? 0xFFFFFFFF
+                : BlockSpriteResolver.getTint(state, minecraft.level, minecraft.player.blockPosition());
+        return RequirementIcon.of(sprite, tint, label);
+    }
+
+    /** Data packs decide what a tag holds, so a reload has to retire these answers. */
+    public static void invalidate() {
+        CACHE.clear();
+        TAG_MEMBERS.clear();
+        WARMED.set(false);
     }
 
     /**

@@ -1,0 +1,190 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "biome_remark",
+  "groups": [
+    {
+      "stance": "+",
+      "lines": {
+        "people_call_biome_dull_theyre": { "text": "People call {biome} dull. They're wrong.", "thread": "biome.small" },
+        "id_never_live_anywhere_but": { "text": "I'd never live anywhere but {biome}.", "thread": "biome.home" }
+      }
+    },
+    {
+      "stance": "-",
+      "lines": {
+        "nothing_but_biome_as_far": { "text": "Nothing but {biome} as far as you can see.", "thread": "biome.small" }
+      }
+    },
+    {
+      "stance": "-",
+      "form": "musing",
+      "lines": {
+        "sometimes_i_wonder_whats_past": { "text": "Sometimes I wonder what's past {biome}.", "opens": "musing", "thread": "biome.elsewhere" }
+      }
+    },
+    {
+      "stance": "+",
+      "lines": {
+        "you_grow_up_in_biome": { "text": "You grow up in {biome}, it stays with you.", "thread": "biome.home" },
+        "biome_isnt_for_everyone_its": { "text": "{biome} {biome.number:plural=aren't|*=isn't} for everyone. {biome.number:plural=They're|*=It's} for me, though.", "thread": "biome.home" }
+      }
+    },
+    {
+      "lines": {
+        "grew_up_here_this_land": { "text": "Grew up here. This land gets into you.", "thread": "biome.home" },
+        "good_soil_out_here_whatever": { "text": "Good soil out here, whatever else you say.", "thread": "biome.land" },
+        "you_can_see_the_whole": { "text": "You can see the whole sky from here.", "thread": "biome.land" },
+        "some_days_this_place_feels": { "text": "Some days this place feels very small.", "thread": "biome.small" },
+        "i_love_this_place": { "text": "I love this place.", "thread": "biome.home" },
+        "its_peaceful_out_here": { "text": "It's peaceful out here.", "thread": "biome.home" },
+        "theres_nowhere_like_home": { "text": "There's nowhere like home.", "thread": "biome.home" },
+        "the_sunsets_here_are_the": { "text": "The sunsets here are the best.", "thread": "biome.land" }
+      }
+    },
+    {
+      "form": "musing",
+      "lines": {
+        "i_wonder_what_its_like": { "text": "I wonder what it's like in other villages.", "opens": "musing", "thread": "biome.elsewhere" },
+        "do_you_ever_want_to": { "text": "Do you ever want to travel?", "opens": "musing", "thread": "biome.elsewhere" }
+      }
+    },
+    {
+      "lines": {
+        "not_much_happens_out_here": { "text": "Not much happens out here. I like that.", "thread": "biome.small" },
+        "this_village_has_everything_i": { "text": "This village has everything I need.", "thread": "biome.home" }
+      }
+    },
+    {
+      "stance": "+",
+      "lines": {
+        "someday_ill_see_the_whole": { "text": "Someday I'll see the whole world!", "stages": "child", "thread": "biome.elsewhere" }
+      }
+    },
+    {
+      "stance": "-",
+      "lines": {
+        "theres_nothing_to_do_here": {
+          "text": "There's nothing to do here.",
+          "stages": "teen",
+          "opens": "complaint",
+          "thread": "biome.small"
+        }
+      }
+    },
+    {
+      "stance": "+",
+      "lines": {
+        "ive_watched_this_place_grow": { "text": "I've watched this place grow my whole life.", "stages": "senior", "thread": "biome.family" }
+      }
+    },
+    {
+      "lines": {
+        "sand_everywhere_always": {
+          "text": "Sand. Everywhere. Always.",
+          "requires": "here.biome_tag:c:is_desert",
+          "thread": "biome.land"
+        },
+        "the_desert_is_warm_all": {
+          "text": "The desert is warm all year round.",
+          "requires": "here.biome_tag:c:is_desert",
+          "thread": "biome.land"
+        },
+        "at_least_we_never_need": {
+          "text": "At least we never need to worry about snow.",
+          "requires": "here.biome_tag:c:is_desert",
+          "thread": "biome.land"
+        },
+        "the_nights_out_here_get": {
+          "text": "The nights out here get so cold, though.",
+          "requires": "here.biome_tag:c:is_desert",
+          "thread": "biome.land"
+        },
+        "one_downside_about_living_here": {
+          "text": "One downside about living here are the husks.",
+          "requires": "here.biome_tag:c:is_desert",
+          "thread": "biome.land"
+        },
+        "the_pines_smell_so_nice": {
+          "text": "The pines smell so nice in the morning.",
+          "requires": "here.biome_tag:minecraft:is_taiga",
+          "thread": "biome.land"
+        },
+        "the_sweet_berries_here_are": {
+          "text": "The sweet berries here are the best, if they don't prick you.",
+          "requires": "here.biome_tag:minecraft:is_taiga",
+          "thread": "biome.land"
+        },
+        "the_rain_here_in_the": {
+          "text": "The rain here in the taiga is cold, but so peaceful.",
+          "requires": "here.biome_tag:minecraft:is_taiga",
+          "thread": "biome.land"
+        },
+        "the_wolves_are_pretty_tame": {
+          "text": "The wolves are pretty tame with us.",
+          "requires": "here.biome_tag:minecraft:is_taiga",
+          "thread": "biome.land"
+        },
+        "the_morning_sunrise_is_so": {
+          "text": "The morning sunrise is so pretty in the plains.",
+          "requires": "here.biome_tag:c:is_plains",
+          "thread": "biome.land"
+        },
+        "times_like_this_id_just": {
+          "text": "Times like this, I'd just lie down and look at the clouds.",
+          "requires": "here.biome_tag:c:is_plains",
+          "thread": "biome.land"
+        },
+        "the_flowers_here_are_everywhere": {
+          "text": "The flowers here are everywhere in spring.",
+          "requires": "here.biome_tag:c:is_plains",
+          "thread": "biome.land"
+        },
+        "the_swamp_keeps_visitors_away": {
+          "text": "The swamp keeps visitors away. I don't mind.",
+          "requires": "here.biome_tag:c:is_swamp",
+          "thread": "biome.land"
+        },
+        "watch_your_step_out_there": {
+          "text": "Watch your step out there. The water's deeper than it looks.",
+          "requires": "here.biome_tag:c:is_swamp",
+          "thread": "biome.elsewhere"
+        },
+        "ive_heard_theres_a_witch": {
+          "text": "I've heard there's a witch hut somewhere out there.",
+          "requires": "here.biome_tag:c:is_swamp",
+          "thread": "biome.elsewhere"
+        },
+        "the_acacia_trees_here_are": {
+          "text": "The acacia trees here are my favourite.",
+          "requires": "here.biome_tag:minecraft:is_savanna",
+          "thread": "biome.land"
+        },
+        "its_so_hot_but_the": {
+          "text": "It's so hot, but the sunsets make up for it.",
+          "requires": "here.biome_tag:minecraft:is_savanna",
+          "thread": "biome.land"
+        },
+        "when_it_snows_it_takes": {
+          "text": "When it snows, it takes me back to snowball fights as a kid.",
+          "requires": "here.biome_tag:c:is_snowy",
+          "thread": "biome.land"
+        },
+        "the_cold_here_gets_into": {
+          "text": "The cold here gets into your bones.",
+          "requires": "here.biome_tag:c:is_snowy",
+          "thread": "biome.land"
+        },
+        "i_love_the_sound_of": {
+          "text": "I love the sound of the leaves.",
+          "requires": "here.biome_tag:minecraft:is_forest",
+          "thread": "biome.elsewhere"
+        },
+        "the_forest_gets_so_dark": {
+          "text": "The forest gets so dark at night. I stay inside.",
+          "requires": "here.biome_tag:minecraft:is_forest",
+          "thread": "biome.land"
+        }
+      }
+    }
+  ]
+}

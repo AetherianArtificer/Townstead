@@ -15,6 +15,7 @@ import com.aetherianartificer.townstead.work.recipe.StationType;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.work.WorkBuildingNav;
 import com.aetherianartificer.townstead.work.WorkNavigationMetrics;
 import com.aetherianartificer.townstead.work.WorkSiteView;
@@ -1163,7 +1164,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     @Override
     protected void debugTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         maintainStickyBoardVisuals(villager);
-        if (!TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
+        if (!Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) return;
         if (gameTime < nextDebugTick) return;
         if (!(level.getNearestPlayer(villager, REQUEST_RANGE) instanceof ServerPlayer player)) return;
         String cookName = villager.getName().getString();

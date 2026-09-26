@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.confessor.martyr"
+  },
+  "icon": "minecraft:shield",
+  "description": {
+    "translate": "skill.townstead.cleric.confessor.martyr.description"
+  },
+  "cost": 1,
+  "requires": [
+    "grace"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_hurt",
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:faith",
+      "min": 75
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": false,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:resistance",
+        "duration": 100,
+        "amplifier": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.bartender.heavy_hand"
+  },
+  "icon": "minecraft:iron_ingot",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.bartender.heavy_hand.description"
+  },
+  "cost": 1,
+  "requires": [
+    "running_tab"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "target": "other",
+    "action": {
+      "type": "pheno:add_velocity",
+      "away_from_other": 1.4,
+      "y": 0.3
+    }
+  }
+}

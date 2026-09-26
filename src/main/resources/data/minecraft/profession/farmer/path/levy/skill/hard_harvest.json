@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.hard_harvest"
+  },
+  "icon": "minecraft:bone",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.hard_harvest.description"
+  },
+  "cost": 1,
+  "requires": [
+    "toil"
+  ],
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 1.5,
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "ingredient",
+            "tag": "minecraft:hoes"
+          }
+        },
+        {
+          "type": "pheno:time_of_day",
+          "min": 13000,
+          "max": 23000
+        }
+      ]
+    },
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:entity_group",
+        "group": "undead"
+      }
+    }
+  }
+}

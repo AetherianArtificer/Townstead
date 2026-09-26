@@ -7,5 +7,9 @@
   "description": {
     "text": "Keep the village equipped to build a history of toolsmithing mastery."
   },
+  "skills": [
+    "well_kept_tools",
+    "hard_graft"
+  ],
   "unlock_model": "experiential"
 }

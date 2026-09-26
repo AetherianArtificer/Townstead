@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "mob_claim",
+  "thread": "danger.mob",
+  "groups": [
+    {
+      "lines": {
+        "theres_been_a_mob_around_seen": "There's been {a_mob} around the village.",
+        "someone_saw_a_mob_out": "Someone saw {a_mob} out past the houses.",
+        "a_mob_was_prowling_around": "{a_mob} was prowling around last night.",
+        "watch_out_theres_a_mob": "Watch out, there's {a_mob} about.",
+        "i_heard_a_mob_got": "I heard {a_mob} got close to the village.",
+        "keep_an_eye_out_a": "Keep an eye out. {a_mob} was spotted nearby.",
+        "a_mob_near_the_village": { "text": "{a_mob}! Near the village! I'm not going out tonight.", "personalities": "anxious" },
+        "a_mob_near_the_village_2": { "text": "{a_mob}. Near the village. Of course.", "personalities": "gloomy" },
+        "i_saw_a_mob_it_seen": { "text": "I saw {a_mob}! It was huge!", "stages": "child" }
+      }
+    },
+    {
+      "persp": { "who": "me" },
+      "lines": {
+        "i_saw_a_mob_with": "I saw {a_mob} with my own eyes.",
+        "i_nearly_walked_right_into": "I nearly walked right into {a_mob}.",
+        "a_mob_was_staring_at": "{a_mob} was staring at me from the dark.",
+        "i_spotted_a_mob_just": "I spotted {a_mob} just outside the village."
+      }
+    },
+    {
+      "persp": { "who": "they" },
+      "lines": {
+        "who_saw_a_mob_near": "{who} saw {a_mob} near the village.",
+        "who_says_a_mob_was": "{who} says {a_mob} was lurking nearby.",
+        "who_ran_into_a_mob_seen": "{who} ran into {a_mob} out there."
+      }
+    }
+  ]
+}

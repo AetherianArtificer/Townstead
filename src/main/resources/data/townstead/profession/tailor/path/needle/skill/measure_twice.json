@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.needle.measure_twice"
+  },
+  "icon": "minecraft:paper",
+  "description": {
+    "translate": "skill.townstead.tailor.needle.measure_twice.description"
+  },
+  "cost": 1,
+  "requires": [
+    "pinpoint"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:stitch",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "ingredient",
+            "item": "minecraft:shears"
+          }
+        },
+        {
+          "type": "pheno:entity_in_radius",
+          "radius": 8,
+          "condition": {
+            "type": "pheno:hostile"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:stitch",
+      "amount": 3
+    }
+  }
+}

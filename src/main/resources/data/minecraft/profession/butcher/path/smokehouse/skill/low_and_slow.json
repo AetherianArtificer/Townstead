@@ -1,0 +1,44 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.smokehouse.low_and_slow"
+  },
+  "icon": "minecraft:smoker",
+  "description": {
+    "translate": "skill.townstead.butcher.smokehouse.low_and_slow.description"
+  },
+  "cost": 1,
+  "requires": [
+    "stoke"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:cut",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:block_in_radius",
+      "radius": 6,
+      "block_condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:block",
+            "block": "minecraft:smoker"
+          },
+          {
+            "type": "pheno:in_tag",
+            "tag": "minecraft:campfires"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:cut",
+      "amount": 3
+    }
+  }
+}

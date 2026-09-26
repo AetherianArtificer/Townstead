@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.broomrider.light_as_a_feather"
+  },
+  "icon": "minecraft:feather",
+  "description": {
+    "translate": "skill.townstead.witch.broomrider.light_as_a_feather.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.5,
+    "damage_type": "minecraft:fall"
+  }
+}

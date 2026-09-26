@@ -237,6 +237,10 @@ public final class CropProductResolver {
         if ("rice_paddy".equals(hint)) {
             return EnumSet.of(SoilType.WATER);
         }
+        // Vine crops grow on a farmer-built support over solid ground, never on tilled soil.
+        if (FarmerCropCompatRegistry.growsOnTrellis(stack)) {
+            return EnumSet.of(SoilType.TRELLIS);
+        }
         // Mushrooms grow on untilled rich soil (plain dirt variant).
         if (placedBlock instanceof net.minecraft.world.level.block.MushroomBlock) {
             return EnumSet.of(SoilType.RICH_SOIL);

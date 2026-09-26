@@ -1,0 +1,85 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.field_mender.armory"
+  },
+  "icon": "minecraft:netherite_ingot",
+  "description": {
+    "translate": "skill.townstead.armorer.field_mender.armory.description"
+  },
+  "cost": 1,
+  "requires": [
+    "full_refit"
+  ],
+  "skill_group": "townstead:mender_repair",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 3600,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:temper",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 16,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "head",
+                "item_action": {
+                  "type": "pheno:damage",
+                  "amount": -60
+                }
+              },
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "chest",
+                "item_action": {
+                  "type": "pheno:damage",
+                  "amount": -60
+                }
+              },
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "legs",
+                "item_action": {
+                  "type": "pheno:damage",
+                  "amount": -60
+                }
+              },
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "feet",
+                "item_action": {
+                  "type": "pheno:damage",
+                  "amount": -60
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.anvil.use",
+          "volume": 0.7,
+          "pitch": 1.2
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.bell.use",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.herder.tally"
+  },
+  "icon": "minecraft:paper",
+  "description": {
+    "translate": "skill.townstead.shepherd.herder.tally.description"
+  },
+  "cost": 1,
+  "requires": [
+    "keep_pace"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:flock",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:entity_in_radius",
+      "radius": 8,
+      "condition": {
+        "type": "pheno:entity_type",
+        "tag": "townstead:livestock"
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:flock",
+      "amount": 3
+    }
+  }
+}

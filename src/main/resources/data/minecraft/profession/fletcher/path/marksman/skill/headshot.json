@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.marksman.headshot"
+  },
+  "icon": "minecraft:skeleton_skull",
+  "description": {
+    "translate": "skill.townstead.fletcher.marksman.headshot.description"
+  },
+  "cost": 1,
+  "requires": [
+    "called_shot"
+  ],
+  "skill_group": "townstead:marksman_aimed",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:draw",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:damage",
+          "amount": 10,
+          "source": "other",
+          "on": {
+            "type": "pheno:ray",
+            "distance": 32
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.arrow.shoot",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

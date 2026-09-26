@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.tenderizer.momentum"
+  },
+  "icon": "minecraft:piston",
+  "description": {
+    "translate": "skill.townstead.butcher.tenderizer.momentum.description"
+  },
+  "cost": 1,
+  "requires": [
+    "rhythm"
+  ],
+  "power": {
+    "type": "pheno:stacking_effect",
+    "effect": "minecraft:strength",
+    "min_stacks": 0,
+    "max_stacks": 120,
+    "stacks_per_level": 60,
+    "condition": {
+      "type": "pheno:entity_in_radius",
+      "radius": 8,
+      "condition": {
+        "type": "pheno:hostile"
+      }
+    }
+  }
+}

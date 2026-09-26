@@ -81,7 +81,20 @@ class ProfessionProgressTest {
         long gameTime = 24000L; // day 1
 
         assertEquals(230, ProfessionProgress.addXp(store, COOK, 230, gameTime).appliedXp());
-        assertEquals(0, ProfessionProgress.addXp(store, COOK, 10, gameTime).appliedXp());
+        assertEquals(2, ProfessionProgress.addXp(store, COOK, 10, gameTime).appliedXp(),
+                "past the cap, a quarter of the work still counts");
+    }
+
+    @Test
+    void smallAwardsPastTheCapAddUp() {
+        FakeStore store = new FakeStore();
+        long gameTime = 24000L;
+        ProfessionProgress.addXp(store, COOK, 230, gameTime);
+        int applied = 0;
+        for (int i = 0; i < 8; i++) {
+            applied += ProfessionProgress.addXp(store, COOK, 1, gameTime).appliedXp();
+        }
+        assertEquals(2, applied, "eight 1-XP awards at 25% land as two, not zero");
     }
 
     @Test
@@ -90,7 +103,7 @@ class ProfessionProgressTest {
         long day1 = 24000L;
 
         ProfessionProgress.addXp(store, COOK, 230, day1);
-        assertEquals(0, ProfessionProgress.addXp(store, COOK, 10, day1).appliedXp());
+        assertEquals(2, ProfessionProgress.addXp(store, COOK, 10, day1).appliedXp());
 
         long day2 = 48000L;
         assertEquals(10, ProfessionProgress.addXp(store, COOK, 10, day2).appliedXp());

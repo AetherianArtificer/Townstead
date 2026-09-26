@@ -1,0 +1,91 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.butcher.path.smokehouse"
+  },
+  "title": {
+    "translate": "career.townstead.butcher.title.smokehouse"
+  },
+  "color": "#5A5550",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:cut",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:butcher/smokehouse/low_and_slow"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:butcher/smokehouse/smoke_out"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:butcher/smokehouse/hot_coals"
+              }
+            ]
+          },
+          {
+            "type": "pheno:block_in_radius",
+            "radius": 6,
+            "block_condition": {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:smoker"
+                },
+                {
+                  "type": "pheno:in_tag",
+                  "tag": "minecraft:campfires"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:cut",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "cured_skin",
+      "puff",
+      "singe"
+    ],
+    [
+      "stoke",
+      "smoulder",
+      "brand"
+    ],
+    [
+      "low_and_slow",
+      "smoke_out",
+      "hot_coals"
+    ],
+    [
+      "cure",
+      "chimney",
+      "flare_up"
+    ],
+    [
+      "smoke_screen",
+      "smokehouse_fog",
+      "burnt_ends"
+    ]
+  ]
+}

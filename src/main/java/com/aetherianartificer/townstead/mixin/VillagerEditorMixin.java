@@ -18,6 +18,8 @@ import com.aetherianartificer.townstead.calendar.CalendarClientStore;
 import com.aetherianartificer.townstead.calendar.LifeClientStore;
 import com.aetherianartificer.townstead.calendar.LifeData;
 import com.aetherianartificer.townstead.client.gui.McaEditorCompat;
+import com.aetherianartificer.townstead.naming.NameClientStore;
+import com.aetherianartificer.townstead.naming.NamingTradition;
 import com.aetherianartificer.townstead.client.gui.life.LifeAgeSlider;
 import com.aetherianartificer.townstead.client.skin.SeniorHairDesat;
 import com.aetherianartificer.townstead.root.LifeStageScale;
@@ -76,6 +78,12 @@ public abstract class VillagerEditorMixin extends Screen {
     @Unique private boolean townstead$lifeBuilt;
     @Unique private String townstead$lifeSig;
 
+    // The surname the player has typed, and whether they have touched it at all. Untouched means
+    // the field is only ever a display of what the server said, so opening the page never commits.
+    @Unique private net.minecraft.client.gui.components.EditBox townstead$surnameField;
+    @Unique private String townstead$surname = "";
+    @Unique private boolean townstead$surnameDirty;
+
     @Inject(method = "setPage", remap = false, at = @At("TAIL"))
     private void townstead$addHungerDebug(String page, CallbackInfo ci) {
         // Clean up callback when switching pages
@@ -85,6 +93,7 @@ public abstract class VillagerEditorMixin extends Screen {
         townstead$hungerDirty = false;
         townstead$thirstDirty = false;
         townstead$fatigueDirty = false;
+        townstead$surnameField = null;
         HungerClientStore.clearOnChange();
         ThirstClientStore.clearOnChange();
         FatigueClientStore.clearOnChange();
@@ -226,6 +235,8 @@ public abstract class VillagerEditorMixin extends Screen {
             );
         }
 
+        townstead$addNamingRows(rowY, dataWidth);
+
         // Register callback: when server sync arrives, update the display
         // (only if user hasn't manually edited yet)
         if (hungerAvailable) {
@@ -363,16 +374,18 @@ public abstract class VillagerEditorMixin extends Screen {
     @Unique
     private void townstead$buildMortalLife(LifeClientStore.Snapshot snap, int sx, int sy, int sw, int sh) {
         CalendarClientStore.Snapshot cal = CalendarClientStore.get();
-        int sliderW = Math.max(40, sw - TOWNSTEAD_AGE_W - 4);
+        // Players who hide villager ages get the slider across the whole row, with no age readout.
+        boolean showAge = com.aetherianartificer.townstead.TownsteadConfig.SHOW_VILLAGER_AGE.get();
+        int sliderW = showAge ? Math.max(40, sw - TOWNSTEAD_AGE_W - 4) : sw;
 
-        Button ageField = addRenderableWidget(Button.builder(Component.empty(), b -> {})
-                .pos(sx + sw - TOWNSTEAD_AGE_W, sy).size(TOWNSTEAD_AGE_W, sh).build());
+        Button ageField = showAge ? addRenderableWidget(Button.builder(Component.empty(), b -> {})
+                .pos(sx + sw - TOWNSTEAD_AGE_W, sy).size(TOWNSTEAD_AGE_W, sh).build()) : null;
         int[] ymd = townstead$seedYmd(snap, cal);
         int total = snap.totalDays();
         // Apparent ("narrative") years for the current biological age, mirroring the
         // inspect screen. Boxed so the slider/DOB callbacks can both refresh it.
         int[] bioRef = {0};
-        Runnable ageRefresh = () -> ageField.setMessage(Component.translatable(
+        Runnable ageRefresh = ageField == null ? () -> {} : () -> ageField.setMessage(Component.translatable(
                 "townstead.life_stage.age_short", Math.round(snap.narrativeAgeForBio(bioRef[0]))));
 
         // Initial biological age: an in-progress slider edit wins, else the snapshot.
@@ -569,12 +582,16 @@ public abstract class VillagerEditorMixin extends Screen {
         return Component.translatable("townstead.life_stage.editor_slider", stage);
     }
 
-    //? if neoforge {
-    @Inject(method = "removed", at = @At("TAIL"))
-    //?} else {
-    /*@Inject(method = "m_7861_", remap = false, at = @At("TAIL"))
-    *///?}
-    private void townstead$cleanupOnClose(CallbackInfo ci) {
+    // VillagerEditorScreen inherits removed() from Screen, so it is overridden here rather than
+    // injected; Mixin merges this override into the editor (and Destiny, which extends it).
+    @Override
+    public void removed() {
+        super.removed();
+        townstead$cleanupOnClose();
+    }
+
+    @Unique
+    private void townstead$cleanupOnClose() {
         HungerClientStore.clearOnChange();
         ThirstClientStore.clearOnChange();
         FatigueClientStore.clearOnChange();
@@ -628,6 +645,88 @@ public abstract class VillagerEditorMixin extends Screen {
         *///?}
     }
 
+    /**
+     * The naming rows: what this villager's culture is, which rule decides their family name, and
+     * the family name itself.
+     *
+     * <p>The rule is shown because it is the only thing that says what editing the name will do.
+     * An inherited rule passes the new name to children born afterwards; a patronymic one builds a
+     * child's name from the parent's given name instead, so editing the surname reaches nobody
+     * else. Without that on screen the same field looks broken under one culture and works under
+     * another.</p>
+     */
+    @Unique
+    private void townstead$addNamingRows(int rowY, int dataWidth) {
+        VillagerEntityMCA real = townstead$realVillager();
+        int realId = real == null ? -1 : real.getId();
+
+        // Unknown rather than none: a villager the client has never been told about has no rule to
+        // report, and offering to edit a name we could not read would write over a real one.
+        if (realId < 0) {
+            addRenderableWidget(Button.builder(
+                            Component.translatable("gui.townstead.naming.unavailable"), b -> {})
+                    .pos(width / 2, rowY).size(dataWidth, 20).build()).active = false;
+            return;
+        }
+
+        NamingTradition.FamilyType rule = NameClientStore.rule(realId);
+        String tradition = NameClientStore.tradition(realId);
+        String culture = NameClientStore.culture(realId);
+        if (!townstead$surnameDirty) townstead$surname = NameClientStore.family(realId);
+
+        // The tradition is what builds the surname, so that is what the row reports. A culture is
+        // a separate axis most villagers do not have, and is named only when there is one.
+        Component ruleLabel = Component.translatable(
+                "gui.townstead.naming.rule." + rule.name().toLowerCase(java.util.Locale.ROOT));
+        Component label;
+        if (tradition.isEmpty()) {
+            label = Component.translatable("gui.townstead.naming.no_tradition");
+        } else if (culture.isEmpty()) {
+            label = Component.translatable("gui.townstead.naming.tradition", tradition, ruleLabel);
+        } else {
+            label = Component.translatable("gui.townstead.naming.tradition_culture",
+                    tradition, ruleLabel, culture);
+        }
+        addRenderableWidget(Button.builder(label, b -> {})
+                .pos(width / 2, rowY).size(dataWidth, 20).build()).active = false;
+
+        net.minecraft.client.gui.components.EditBox field = addRenderableWidget(
+                new net.minecraft.client.gui.components.EditBox(this.font, width / 2, rowY + 24,
+                        dataWidth, 18, Component.translatable("gui.townstead.naming.surname")));
+        field.setMaxLength(com.aetherianartificer.townstead.villager.TownsteadEditorCommitPayload.MAX_NAME_LENGTH);
+        field.setValue(townstead$surname);
+        field.setHint(Component.translatable("gui.townstead.naming.surname"));
+        field.setTooltip(net.minecraft.client.gui.components.Tooltip.create(
+                Component.translatable("gui.townstead.naming.tooltip."
+                        + rule.name().toLowerCase(java.util.Locale.ROOT))));
+        // A tradition that gives no family names has nothing to edit, and the label above already
+        // says so. Left visible rather than hidden, so the row does not appear and disappear.
+        field.setEditable(rule != NamingTradition.FamilyType.NONE);
+        field.setResponder(value -> {
+            townstead$surnameDirty = true;
+            townstead$surname = value;
+        });
+        townstead$surnameField = field;
+    }
+
+    /**
+     * The real villager behind the editor's preview dummy, found by UUID among the loaded entities.
+     *
+     * <p>The screen's own {@code villager} is a throwaway client entity whose id matches nothing on
+     * the server and nothing in any client store. The real one is loaded whenever a player is close
+     * enough to have opened this screen on them, which is every ordinary case.</p>
+     */
+    @Unique
+    private VillagerEntityMCA townstead$realVillager() {
+        if (this.minecraft == null || this.minecraft.level == null) return null;
+        for (net.minecraft.world.entity.Entity entity : this.minecraft.level.entitiesForRendering()) {
+            if (entity instanceof VillagerEntityMCA found && villagerUUID.equals(entity.getUUID())) {
+                return found;
+            }
+        }
+        return null;
+    }
+
     @Unique
     private TownsteadEditorCommitPayload townstead$editorCommitPayload() {
         boolean hasHunger = townstead$hungerDirty && villagerData.contains(HungerData.EDITOR_KEY_HUNGER);
@@ -659,7 +758,7 @@ public abstract class VillagerEditorMixin extends Screen {
                 : snap != null ? snap.birthDayOfMonth() : 1;
         return new TownsteadEditorCommitPayload(villagerUUID, hasHunger, hunger, saturation, hungerExhaustion,
                 hasThirst, thirst, quenched, thirstExhaustion, hasFatigue, fatigue, hasBioAge, bioAge,
-                hasBirthday, birthMonth, birthDay);
+                hasBirthday, birthMonth, birthDay, townstead$surnameDirty, townstead$surname);
     }
 
     @Unique

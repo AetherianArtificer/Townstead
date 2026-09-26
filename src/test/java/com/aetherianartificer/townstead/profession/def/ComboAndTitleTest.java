@@ -117,17 +117,18 @@ class ComboAndTitleTest {
         for (Expected e : new Expected[]{
                 new Expected("cook", new String[]{
                         "pizzaiolo"}),
-                new Expected("scribe", new String[]{"chronicler"})}) {
+                new Expected("scribe", new String[]{"journalist", "diplomat"})}) {
             try (var in = ComboAndTitleTest.class.getResourceAsStream(
                     "/data/townstead/profession/" + e.profession() + "/profession.json")) {
                 assertNotNull(in, "shipped def missing: " + e.profession());
                 var def = JsonParser.parseReader(new java.io.InputStreamReader(
                         in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
-                if ("cook".equals(e.profession())) {
+                for (String pathId : e.titleIds()) {
                     try (var pathIn = ComboAndTitleTest.class.getResourceAsStream(
-                            "/data/townstead/profession/cook/path/pizzaiolo/path.json")) {
-                        assertNotNull(pathIn);
-                        ProfessionPathDocument.apply(def, "pizzaiolo", JsonParser.parseReader(
+                            "/data/townstead/profession/" + e.profession() + "/path/" + pathId
+                                    + "/path.json")) {
+                        assertNotNull(pathIn, "shipped path missing: " + pathId);
+                        ProfessionPathDocument.apply(def, pathId, JsonParser.parseReader(
                                 new java.io.InputStreamReader(pathIn,
                                         java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject());
                     }

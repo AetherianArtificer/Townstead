@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "arrival_welcome",
+  "groups": [
+    {
+      "lines": {
+        "saved_you_a_seat": { "text": "Saved you a seat.", "requires": ["venue.amenity:seating"] },
+        "there_you_are_sit_down": { "text": "There you are. Sit down.", "requires": ["venue.amenity:seating"] },
+        "pull_up_a_chair": { "text": "Pull up a chair!", "requires": ["venue.amenity:seating"] },
+        "oh_good_its_you": "Oh good, it's you.",
+        "i_was_hoping_someone_would": "I was hoping someone would come by.",
+        "hey_sit_sit": { "text": "Hey! Sit, sit.", "requires": ["venue.amenity:seating"] },
+        "take_a_seat": { "text": "Take a seat!", "requires": ["venue.amenity:seating"] },
+        "join_me": "Join me!",
+        "oh_hi_sit_down": { "text": "Oh, hi! Sit down!", "requires": ["venue.amenity:seating"] },
+        "come_on_sit": { "text": "Come on, sit!", "requires": ["venue.amenity:seating"] },
+        "perfect_timing_sit": { "text": "Perfect timing. Sit!", "requires": ["venue.amenity:seating"] },
+        "grab_a_chair": { "text": "Grab a chair!", "requires": ["venue.amenity:seating"] },
+        "hmph_sit_then": {
+          "text": "Hmph. Sit, then.",
+          "personalities": ["crabby", "grumpy"],
+          "requires": ["venue.amenity:seating"]
+        },
+        "oh_hi_sit_yay": {
+          "text": "Oh! Hi! Sit! Yay!",
+          "personalities": ["upbeat", "peppy"],
+          "requires": ["venue.amenity:seating"]
+        }
+      }
+    },
+    {
+      "lines": {
+        "hey_over_here": "Hey, over here!",
+        "come_join_me": "Come join me!",
+        "oh_good_you_came": "Oh good, you came!",
+        "look_who_it_is": "Look who it is!",
+        "there_you_are_come_here": "There you are! Come here.",
+        "hmph_fine_join_me": { "text": "Hmph. Fine, join me.", "personalities": ["crabby", "grumpy"] },
+        "oh_hi_you_came_yay": { "text": "Oh! Hi! You came! Yay!", "personalities": ["upbeat", "peppy"] }
+      }
+    }
+  ]
+}

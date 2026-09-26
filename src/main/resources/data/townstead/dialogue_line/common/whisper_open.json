@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "whisper_open",
+  "lines": {
+    "keep_this_between_us": "Keep this between us.",
+    "dont_repeat_this": "Don't repeat this.",
+    "come_closer": "Come closer.",
+    "you_didnt_hear_this_from": "You didn't hear this from me.",
+    "quietly_now": "Quietly, now.",
+    "just_between_you_and_me": "Just between you and me.",
+    "dont_tell_anyone_i_said": "Don't tell anyone I said this.",
+    "okay_lean_in": "Okay, lean in."
+  }
+}

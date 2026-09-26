@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.cleaver.butchers_apron"
+  },
+  "icon": "minecraft:leather_chestplate",
+  "description": {
+    "translate": "skill.townstead.butcher.cleaver.butchers_apron.description"
+  },
+  "cost": 1,
+  "requires": [
+    "aged_cut"
+  ],
+  "skill_group": "townstead:cleaver_menace",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:cut",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 400,
+          "amplifier": 1
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:absorption",
+          "duration": 400,
+          "amplifier": 0
+        }
+      ]
+    }
+  }
+}

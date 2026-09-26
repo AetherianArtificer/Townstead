@@ -1,6 +1,5 @@
 package com.aetherianartificer.townstead.mixin;
 
-import com.aetherianartificer.townstead.compat.mca.SyntheticBuildingTypes;
 import com.aetherianartificer.townstead.recognition.BuildingEnclosurePolicies;
 import net.conczin.mca.server.world.data.Building;
 import net.minecraft.core.BlockPos;
@@ -13,24 +12,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.Set;
 
 /**
- * Short-circuits {@link Building#validateBuilding} for open-air Townstead
- * types: docks (prefix {@code dock_}) and any type registered via the
- * data-driven enclosure index ({@code pen}, {@code compat/butchery/slaughter_pen},
- * and anything else authors flag with {@code townsteadEnclosure}). These all
- * have companion synthesizers (DockBuildingSync / EnclosureBuildingSync) that
- * actively build the Building from the detected shape; MCA's default
- * flood-fill-from-a-door-plus-roof would reject them as unroofed.
+ * Short-circuits {@link Building#validateBuilding} for the open-air form of a building type
+ * whose {@code enclosure} is optional or none. MCA's flood-fill-from-a-door-plus-roof would
+ * reject these as unroofed; {@code OptionalBuildingRecognition} has already decided they are
+ * complete, so validation only prunes blocks that are gone.
  *
- * <p>Using MCA's native grouped path instead would double-dip: MCA would
- * auto-create its own Building from the tracked blocks in parallel with our
- * synthetic, and every rescan would multiply the instance count. So these
- * types stay on this mixin and the synthesizers own the instance.
- *
- * <p>HEAD cancellable — per Townstead's mixin policy, vanilla and MCA
- * method call sites aren't stable targets across remap configs.
+ * <p>HEAD cancellable, per Townstead's mixin policy: vanilla and MCA method call sites aren't
+ * stable targets across remap configs.
  *
  * <p>Pre-v2 MCA only (gated in TownsteadMixinPlugin): floor-system v2 removed
- * {@code validateBuilding} — synthetics live as ExternalBuildings there, which room
+ * {@code validateBuilding}, and open-air records live as ExternalBuildings there, which room
  * validation never touches.
  */
 @Mixin(Building.class)
@@ -41,7 +32,7 @@ public abstract class BuildingValidateOpenAirMixin {
         Building self = (Building) (Object) this;
         boolean optionalOutdoorForm = BuildingEnclosurePolicies.allowsOpenAir(self.getType())
                 && !self.isStrictScan();
-        if (!SyntheticBuildingTypes.isSynthetic(self.getType()) && !optionalOutdoorForm) return;
+        if (!optionalOutdoorForm) return;
         // Inlined equivalent of MCA's Building.validateBlocks (prune stored
         // positions whose world block no longer matches). Not called directly
         // because not every MCA build exposes it on Building; this mixin only

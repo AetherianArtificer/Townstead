@@ -203,8 +203,8 @@ public final class ProfessionScanner {
         // (slots_per_tier on the def) and the occupancy rule was already generic — employed()
         // counts by shared work task, which is what made a Baker fill a kitchen seat.
         if (def == null) return new int[]{0, 0};
-        boolean hasBuildingSites = def.jobSites().stream().anyMatch(provider ->
-                provider instanceof com.aetherianartificer.townstead.profession.def.JobSiteProvider.Building);
+        boolean hasBuildingSites = def.jobSites().stream().anyMatch(
+                com.aetherianartificer.townstead.profession.def.JobSiteProvider::ownsSeats);
         if (!hasBuildingSites) return new int[]{0, 0};
         if (isTradeUnavailable(professionId)) return new int[]{0, 0};
         return new int[]{

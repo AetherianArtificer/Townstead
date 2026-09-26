@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.confessor.shield_of_faith"
+  },
+  "icon": "minecraft:shield",
+  "description": {
+    "translate": "skill.townstead.cleric.confessor.shield_of_faith.description"
+  },
+  "cost": 1,
+  "requires": [
+    "stay_your_hand"
+  ],
+  "skill_group": "townstead:confessor_stand",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 360,
+    "slot": 2,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:resistance",
+        "duration": 160,
+        "amplifier": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.sapper.demolitionist"
+  },
+  "icon": "minecraft:tnt_minecart",
+  "description": {
+    "translate": "skill.townstead.toolsmith.sapper.demolitionist.description"
+  },
+  "cost": 1,
+  "requires": [
+    "shock_absorber"
+  ],
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.0,
+    "damage_tag": "minecraft:is_explosion",
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:knack",
+      "min": 75
+    }
+  }
+}

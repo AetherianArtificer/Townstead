@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.happy_hour"
+  },
+  "icon": "minecraft:clock",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.happy_hour.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sea_breeze"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:tan",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:block_in_radius",
+      "radius": 6,
+      "block_condition": {
+        "type": "pheno:block",
+        "block": "beachparty:palm_bar"
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:tan",
+      "amount": 3
+    }
+  }
+}

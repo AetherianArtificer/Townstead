@@ -1,25 +1,10 @@
 package com.aetherianartificer.townstead.mixin;
 
-import com.aetherianartificer.townstead.dock.Dock;
-import com.aetherianartificer.townstead.dock.DockBuildingSync;
-import com.aetherianartificer.townstead.dock.DockLocationIndex;
-import com.aetherianartificer.townstead.dock.DockScanner;
-import com.aetherianartificer.townstead.dock.DockSuppression;
-import com.aetherianartificer.townstead.enclosure.Enclosure;
-import com.aetherianartificer.townstead.enclosure.EnclosureBuildingSync;
-import com.aetherianartificer.townstead.enclosure.EnclosureClassifier;
-import com.aetherianartificer.townstead.enclosure.EnclosureScanner;
-import com.aetherianartificer.townstead.enclosure.EnclosureSuppression;
-import com.aetherianartificer.townstead.enclosure.EnclosureTypeIndex;
 import com.aetherianartificer.townstead.compat.mca.McaFloorCompat;
 import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
-import com.aetherianartificer.townstead.recognition.BuildingRecognitionTracker;
 import com.aetherianartificer.townstead.recognition.BuildingEnclosurePolicies;
 import com.aetherianartificer.townstead.recognition.OptionalBuildingRecognition;
-import com.aetherianartificer.townstead.spirit.SpiritReconciler;
-import com.aetherianartificer.townstead.upgrade.BuildingTierReconciler;
 import net.conczin.mca.network.c2s.ReportBuildingMessage;
-import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
 import net.minecraft.core.BlockPos;
@@ -50,11 +35,14 @@ public abstract class ReportBuildingMessageMixin {
     // constants directly throws NoSuchFieldError on whichever generation
     // dropped one, so match on the name instead and stay generation-agnostic.
     private static final Set<String> TOWNSTEAD$REMOVE_ACTIONS = Set.of("REMOVE", "REMOVE_ROOM");
-    private static final String TOWNSTEAD$AUTO_SCAN = "AUTO_SCAN";
 
-    /** Actions where the player may be standing on an open-air dock or in a pen. */
-    private static final Set<String> TOWNSTEAD$SYNTHETIC_SCAN_ACTIONS =
-            Set.of("ADD", "ADD_BUILDING", "ADD_ROOM", "AUTO_SCAN");
+    /**
+     * Actions where the player may be standing at an open-air building. AUTO_SCAN is not one of
+     * them: in MCA it only toggles a village flag, and recognising on it would quietly bring
+     * back a building the player had just removed.
+     */
+    private static final Set<String> TOWNSTEAD$OPEN_AIR_SCAN_ACTIONS =
+            Set.of("ADD", "ADD_BUILDING", "ADD_ROOM");
 
     /**
      * Actions that can change what buildings a village has. ADD_FLOOR and
@@ -63,7 +51,7 @@ public abstract class ReportBuildingMessageMixin {
      */
     private static final Set<String> TOWNSTEAD$RECONCILE_ACTIONS =
             Set.of("ADD", "ADD_BUILDING", "ADD_ROOM", "ADD_FLOOR", "ADD_BASEMENT",
-                    "UPDATE_ROOM", "REMOVE", "REMOVE_ROOM", "FULL_SCAN", "AUTO_SCAN",
+                    "UPDATE_ROOM", "REMOVE", "REMOVE_ROOM", "REMOVE_FLOOR", "FULL_SCAN", "AUTO_SCAN",
                     "FORCE_TYPE", "SET_MAIN_ROOM", "SET_ROOM_INHERITANCE");
 
     //? if <1.21 {
@@ -76,7 +64,7 @@ public abstract class ReportBuildingMessageMixin {
     //?} else {
     /*@Inject(method = "receive", at = @At("HEAD"), cancellable = true, remap = false)
     *///?}
-    private void townstead$interceptDockAction(ServerPlayer player, CallbackInfo ci) {
+    private void townstead$interceptOpenAirAction(ServerPlayer player, CallbackInfo ci) {
         //? if >=1.21 {
         ReportBuildingMessage self = (ReportBuildingMessage) (Object) this;
         ReportBuildingMessage.Action act = self.action();
@@ -98,15 +86,6 @@ public abstract class ReportBuildingMessageMixin {
         }
 
         if (TOWNSTEAD$REMOVE_ACTIONS.contains(actName)) {
-            VillageManager.get(level).findNearestVillage(player).ifPresent(v -> {
-                Building dock = townstead$findDockAt(level, v, pos);
-                if (dock != null) {
-                    DockSuppression.suppress(level, v, dock);
-                    return;
-                }
-                Building enclosure = townstead$findEnclosureAt(level, v, pos);
-                if (enclosure != null) EnclosureSuppression.suppress(level, v, enclosure);
-            });
             Optional<OptionalBuildingRecognition.Removed> removed =
                     OptionalBuildingRecognition.remove(level, pos);
             TOWNSTEAD$LOG.info("Optional building removal action={} pos={} result={}",
@@ -114,7 +93,7 @@ public abstract class ReportBuildingMessageMixin {
             if (removed.isPresent()) {
                 Village village = removed.get().village();
                 com.aetherianartificer.townstead.compat.mca.BuildingReportReconciler.reconcile(
-                        level, pos, village, false, TOWNSTEAD$LOG);
+                        level, pos, village, TOWNSTEAD$LOG);
                 player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
                         "blueprint.buildingRemoved"), true);
                 McaFloorCompat.pushVillageResponse(player);
@@ -123,7 +102,7 @@ public abstract class ReportBuildingMessageMixin {
             return;
         }
 
-        if (TOWNSTEAD$SYNTHETIC_SCAN_ACTIONS.contains(actName)) {
+        if (TOWNSTEAD$OPEN_AIR_SCAN_ACTIONS.contains(actName)) {
             Optional<OptionalBuildingRecognition.Candidate> optionalCandidate =
                     OptionalBuildingRecognition.find(level, pos);
             if (optionalCandidate.isPresent()) {
@@ -138,112 +117,18 @@ public abstract class ReportBuildingMessageMixin {
                     if (registration != OptionalBuildingRecognition.Registration.FAILED) {
                         manager.findNearestVillage(player).ifPresent(v -> {
                             com.aetherianartificer.townstead.compat.mca.BuildingReportReconciler.reconcile(
-                                    level, pos, v, false, TOWNSTEAD$LOG);
+                                    level, pos, v, TOWNSTEAD$LOG);
                         });
-                        if (!TOWNSTEAD$AUTO_SCAN.equals(actName)) {
-                            String message = registration == OptionalBuildingRecognition.Registration.CREATED
-                                    ? "blueprint.buildingAdded" : "blueprint.scan.identical";
-                            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(message), true);
-                            McaFloorCompat.pushVillageResponse(player);
-                            ci.cancel();
-                        }
+                        String message = registration == OptionalBuildingRecognition.Registration.CREATED
+                                ? "blueprint.buildingAdded" : "blueprint.scan.identical";
+                        player.displayClientMessage(net.minecraft.network.chat.Component.translatable(message), true);
+                        McaFloorCompat.pushVillageResponse(player);
+                        ci.cancel();
                         return;
                     }
                 }
             }
-
-            // MCA's flood-fill validation fails on open-air structures and
-            // shows "Building too small" before our TAIL hook runs. For
-            // direct Add/Add Room clicks, if the player is on a dock or
-            // inside a fenced enclosure, do our synthetic sync ourselves and
-            // cancel so MCA never attempts flood-fill for this click. For
-            // 1.20.1's AUTO_SCAN path, still sync open-air structures, but
-            // let MCA continue so the auto-scan toggle/normal refresh works.
-            Dock dock;
-            try {
-                dock = DockScanner.scanForReport(level, pos, TOWNSTEAD$REPORT_SCAN_RADIUS);
-            } catch (Throwable t) {
-                TOWNSTEAD$LOG.warn("Dock detection for ADD failed: {}", t.toString());
-                return;
-            }
-            if (dock != null) {
-                Optional<Village> villageOpt = VillageManager.get(level).findNearestVillage(player);
-                boolean insideHouse = villageOpt
-                        .map(v -> townstead$insideEnclosedBuilding(level, v, pos))
-                        .orElse(false);
-                if (!insideHouse) {
-                    villageOpt.ifPresent(v ->
-                            DockSuppression.clearAllOverlapping(level, v, dock.bounds()));
-                    DockBuildingSync.sync(level, dock, pos);
-                    villageOpt.ifPresent(v -> {
-                        com.aetherianartificer.townstead.compat.mca.BuildingReportReconciler.reconcile(
-                                level, pos, v, false, TOWNSTEAD$LOG);
-                    });
-                    if (!TOWNSTEAD$AUTO_SCAN.equals(actName)) {
-                        // Floor-system MCA clients no longer request their own
-                        // village refresh after actions; the handler we're
-                        // cancelling would have pushed one in its finally.
-                        McaFloorCompat.pushVillageResponse(player);
-                        ci.cancel();
-                    }
-                    return;
-                }
-                // Player is standing inside an existing enclosed building, so
-                // this footprint is a house, not a dock. Fall through to
-                // enclosure / MCA handling rather than injecting a phantom dock.
-            }
-
-            Enclosure enclosure;
-            EnclosureTypeIndex.Spec classified;
-            try {
-                enclosure = EnclosureScanner.scan(level, pos);
-                classified = enclosure != null ? EnclosureClassifier.classify(enclosure) : null;
-            } catch (Throwable t) {
-                TOWNSTEAD$LOG.warn("Enclosure detection for ADD failed: {}", t.toString());
-                return;
-            }
-            if (enclosure == null) return;
-            if (classified == null) {
-                TOWNSTEAD$LOG.info("Enclosure scanned at {} (interior={} fences={} gates={} walls={} content={}) but no registered type matched",
-                        pos, enclosure.interiorSize(), enclosure.fenceCount(),
-                        enclosure.fenceGateCount(), enclosure.wallCount(),
-                        enclosure.interiorContent());
-                return;
-            }
-            VillageManager.get(level).findNearestVillage(player).ifPresent(v ->
-                    EnclosureSuppression.clearAllOverlapping(level, v, enclosure.bounds()));
-            EnclosureBuildingSync.sync(level, enclosure, classified.buildingType());
-            VillageManager.get(level).findNearestVillage(player).ifPresent(v -> {
-                com.aetherianartificer.townstead.compat.mca.BuildingReportReconciler.reconcile(
-                        level, pos, v, false, TOWNSTEAD$LOG);
-            });
-            if (!TOWNSTEAD$AUTO_SCAN.equals(actName)) {
-                McaFloorCompat.pushVillageResponse(player);
-                ci.cancel();
-            }
         }
-    }
-
-    private static Building townstead$findEnclosureAt(
-            ServerLevel level, Village village, BlockPos pos) {
-        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
-            String t = b.getType();
-            if (t == null || !EnclosureTypeIndex.isEnclosureType(t)) continue;
-            if (com.aetherianartificer.townstead.compat.mca.McaBuildingCompat
-                    .contains(level, village, b, pos)) return b;
-        }
-        return null;
-    }
-
-    private static Building townstead$findDockAt(
-            ServerLevel level, Village village, BlockPos pos) {
-        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
-            String t = b.getType();
-            if (t == null || !t.startsWith("dock_")) continue;
-            if (com.aetherianartificer.townstead.compat.mca.McaBuildingCompat
-                    .contains(level, village, b, pos)) return b;
-        }
-        return null;
     }
 
     @Unique
@@ -284,51 +169,27 @@ public abstract class ReportBuildingMessageMixin {
         VillageManager.get(level)
                 .findNearestVillage(player)
                 .ifPresent(v -> {
+                    if ("FULL_SCAN".equals(actName)) {
+                        OptionalBuildingRecognition.RefreshResult refreshed =
+                                OptionalBuildingRecognition.reconcileVillage(level, v);
+                        int decorations = com.aetherianartificer.townstead.decoration.DecorationRecognizer
+                                .reconcileVillage(level, v);
+                        TOWNSTEAD$LOG.info("Village refresh imported {} open-air buildings, refreshed {}, and imported {} decorations",
+                                refreshed.created(), refreshed.refreshed(), decorations);
+                        var catalog = com.aetherianartificer.townstead.client.catalog.CatalogSyncS2CPayload
+                                .snapshot(level, v);
+                        //? if neoforge {
+                        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, catalog);
+                        //?} else if forge {
+                        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(player, catalog);
+                        *///?}
+                    }
                     com.aetherianartificer.townstead.compat.mca.BuildingReportReconciler.reconcile(
-                            level, player, v, !TOWNSTEAD$REMOVE_ACTIONS.contains(actName), TOWNSTEAD$LOG);
+                            level, player, v, TOWNSTEAD$LOG);
                     // Floor-system MCA pushed its snapshot in the handler's
                     // finally, which runs before this hook — push again so
                     // the client sees the reconciled state.
                     McaFloorCompat.pushVillageResponse(player);
                 });
-    }
-
-    // Larger than the fisherman's default scan radius because the player may
-    // trigger a report from any corner of a sizable deck. 24 covers a ~48-
-    // block footprint, well past a max-practical Wharf. Partial scans produce
-    // an undersized plank component and false-downgrade the tier.
-    private static final int TOWNSTEAD$REPORT_SCAN_RADIUS = 24;
-
-    private static void townstead$detectAndSyncDockFromReport(ServerLevel level, ServerPlayer player, Village village) {
-        try {
-            BlockPos pos = player.blockPosition();
-            // Don't double-classify: a report fired from inside an existing
-            // enclosed building is that house, not a dock at the player's feet.
-            if (townstead$insideEnclosedBuilding(level, village, pos)) return;
-            Dock dock = DockScanner.scanForReport(level, pos, TOWNSTEAD$REPORT_SCAN_RADIUS);
-            if (dock != null) {
-                DockBuildingSync.sync(level, dock, pos);
-            }
-        } catch (Throwable t) {
-            TOWNSTEAD$LOG.warn("Dock detection from report-building failed: {}", t.toString());
-        }
-    }
-
-    /**
-     * Is this position inside an existing enclosed building (a house or other
-     * roofed MCA building)? Dock and open-air enclosure types are excluded,
-     * since those are open structures a player can legitimately stand on.
-     */
-    private static boolean townstead$insideEnclosedBuilding(
-            ServerLevel level, Village village, BlockPos pos) {
-        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
-            String t = b.getType();
-            if (t == null) continue;
-            if (t.startsWith("dock_")) continue;
-            if (EnclosureTypeIndex.isEnclosureType(t)) continue;
-            if (com.aetherianartificer.townstead.compat.mca.McaBuildingCompat
-                    .contains(level, village, b, pos)) return true;
-        }
-        return false;
     }
 }

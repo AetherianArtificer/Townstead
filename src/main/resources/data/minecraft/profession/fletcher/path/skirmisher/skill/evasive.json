@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.skirmisher.evasive"
+  },
+  "icon": "minecraft:arrow",
+  "description": {
+    "translate": "skill.townstead.fletcher.skirmisher.evasive.description"
+  },
+  "cost": 1,
+  "requires": [
+    "hit_and_run"
+  ],
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.6,
+    "damage_tag": "minecraft:is_projectile",
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:draw",
+      "min": 50
+    }
+  }
+}

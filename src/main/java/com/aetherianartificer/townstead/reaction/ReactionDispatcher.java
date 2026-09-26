@@ -62,6 +62,10 @@ public final class ReactionDispatcher {
         long gameTime = level.getGameTime();
         RandomSource random = level.getRandom();
         boolean forced = context.source() == ReactionContext.TriggerSource.COMMAND;
+        if (!forced && !com.aetherianartificer.townstead.switchboard.Systems.on(
+                com.aetherianartificer.townstead.switchboard.Systems.REACTIONS)) return false;
+        if (villager instanceof VillagerEntityMCA mca
+                && com.aetherianartificer.townstead.performance.CollapsePlayback.active(mca)) return false;
 
         if (!forced) {
             if (ReactionLockTracker.isLocked(villager, gameTime)) return false;

@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.compat.mca;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
 import net.conczin.mca.resources.BuildingTypes;
 import net.conczin.mca.resources.data.BuildingType;
@@ -44,7 +45,7 @@ public final class McaBuildingDiscovery {
             BlockPos pos,
             @Nullable BlockState oldState,
             @Nullable BlockState newState) {
-        if (level == null || pos == null || !TownsteadConfig.ENABLE_MCA_BUILDING_DISCOVERY.get()) return;
+        if (level == null || pos == null || !Switchboard.get(TownsteadConfig.ENABLE_MCA_BUILDING_DISCOVERY)) return;
         // The analyze/commit room APIs are a floor-system capability. Older MCA keeps its own POI
         // report behaviour until an equivalent transactional update API is available there.
         if (!McaFloorCompat.hasFloorSystem()) return;
@@ -59,7 +60,7 @@ public final class McaBuildingDiscovery {
     }
 
     public static void tick(MinecraftServer server) {
-        if (server == null || !TownsteadConfig.ENABLE_MCA_BUILDING_DISCOVERY.get()) return;
+        if (server == null || !Switchboard.get(TownsteadConfig.ENABLE_MCA_BUILDING_DISCOVERY)) return;
         Map<PendingKey, Pending> pending;
         synchronized (PENDING) {
             pending = PENDING.get(server);
@@ -119,14 +120,14 @@ public final class McaBuildingDiscovery {
         Building room = village == null ? null : McaBuildingCompat.functionalRoomAt(level, village, source);
         Building.validationResult result;
         if (room != null) {
-            RegisteredRoomUpdate update = manager.analyzeRegisteredRoomUpdate(village, room.getId(), source);
+            RegisteredRoomUpdate update = McaRoomWorkflow.analyzeRegisteredRoomUpdate(level, village, room.getId(), source);
             if (update.result() != Building.validationResult.SUCCESS || update.isAmbiguous()) {
-                diagnostic("update", source, update.result(), update.playerMatchingTypes());
+                diagnostic("update", source, update.result(), update.matchingTypes());
                 return;
             }
             result = manager.commitRegisteredRoomUpdate(update, null);
         } else if (village != null) {
-            BuildingScanResult addition = manager.analyzeRoom(source);
+            BuildingScanResult addition = McaRoomWorkflow.analyzeRoom(level, source);
             if (addition.result() == Building.validationResult.SUCCESS) {
                 if (addition.isAmbiguous()) {
                     diagnostic("add-room", source, addition.result(), addition.matchingTypes());
@@ -147,13 +148,13 @@ public final class McaBuildingDiscovery {
             diagnostic("commit", source, result, java.util.List.of());
             return;
         }
-        BuildingReportReconciler.reconcileNearest(level, source, false, Townstead.LOGGER);
+        BuildingReportReconciler.reconcileNearest(level, source, Townstead.LOGGER);
         //?}
     }
 
     private static void diagnostic(
             String operation, BlockPos source, Building.validationResult result, java.util.List<String> candidates) {
-        if (TownsteadConfig.DEBUG_LOGGING.get()) {
+        if (Switchboard.get(TownsteadConfig.DEBUG_LOGGING)) {
             Townstead.LOGGER.info("MCA building discovery {} at {}: result={} candidates={}",
                     operation, source, result, candidates);
         }

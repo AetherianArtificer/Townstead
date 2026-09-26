@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.roadwright.paved_way"
+  },
+  "icon": "minecraft:dirt_path",
+  "description": {
+    "translate": "skill.townstead.mason.roadwright.paved_way.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:block",
+      "y": -1,
+      "block_condition": {
+        "type": "in_tag",
+        "tag": "townstead:roads"
+      }
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 30,
+      "amplifier": 0
+    }
+  }
+}

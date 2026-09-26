@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.heavyweight.living_fortress"
+  },
+  "icon": "minecraft:beacon",
+  "description": {
+    "translate": "skill.townstead.armorer.heavyweight.living_fortress.description"
+  },
+  "cost": 1,
+  "requires": [
+    "anchor"
+  ],
+  "skill_group": "townstead:heavy_plate",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:temper",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 200,
+          "amplifier": 3
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:absorption",
+          "duration": 200,
+          "amplifier": 2
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.bell.use",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

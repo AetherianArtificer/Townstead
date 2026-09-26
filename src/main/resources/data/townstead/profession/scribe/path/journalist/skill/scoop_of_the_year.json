@@ -1,0 +1,40 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.journalist.scoop_of_the_year"
+  },
+  "icon": "minecraft:nether_star",
+  "description": {
+    "translate": "skill.townstead.scribe.journalist.scoop_of_the_year.description"
+  },
+  "cost": 1,
+  "requires": [
+    "beat_reporter"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "resource_cost": {
+      "resource": "townstead:scoop",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:scoop",
+      "min": 75
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:heal",
+          "amount": 1.0
+        },
+        {
+          "type": "pheno:energize",
+          "amount": 1
+        }
+      ]
+    }
+  }
+}

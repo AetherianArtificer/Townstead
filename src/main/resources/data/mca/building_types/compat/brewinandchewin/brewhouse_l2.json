@@ -8,7 +8,7 @@
   "noBeds": true,
   "blocks": {
     "brewinandchewin:keg": 2,
-    "brewinandchewin:item_mat": 1,
+    "#townstead:compat/brewinandchewin/drink_mats": 1,
     "#townstead:kitchen/storage": 2
   }
 }

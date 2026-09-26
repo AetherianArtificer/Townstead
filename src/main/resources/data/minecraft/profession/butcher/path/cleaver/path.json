@@ -1,0 +1,103 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.butcher.path.cleaver"
+  },
+  "title": {
+    "translate": "career.townstead.butcher.title.cleaver"
+  },
+  "color": "#9A3A34",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:cut",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:butcher/cleaver/bloodlust"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:butcher/cleaver/butchers_block"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:butcher/cleaver/aged_cut"
+              }
+            ]
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:equipped_item",
+                "slot": "mainhand",
+                "item_condition": {
+                  "type": "or",
+                  "conditions": [
+                    {
+                      "type": "ingredient",
+                      "tag": "townstead:butcher_cleavers"
+                    },
+                    {
+                      "type": "ingredient",
+                      "tag": "minecraft:axes"
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 8,
+                "condition": {
+                  "type": "pheno:hostile"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:cut",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "keen_edge",
+      "hack",
+      "glare"
+    ],
+    [
+      "butchers_grip",
+      "cleave",
+      "hang_em_up"
+    ],
+    [
+      "bloodlust",
+      "butchers_block",
+      "aged_cut"
+    ],
+    [
+      "deep_cuts",
+      "carve_up",
+      "butchers_apron"
+    ],
+    [
+      "hemorrhage",
+      "slaughterhouse",
+      "grim_trade"
+    ]
+  ]
+}

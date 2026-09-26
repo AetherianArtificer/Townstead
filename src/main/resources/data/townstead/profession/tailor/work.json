@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "register_profession": true,
+  "poi": [
+    { "type": "townstead:job_block", "block": "accents:sewing_station" },
+    { "type": "townstead:job_block", "block": "legendarysurvivaloverhaul:sewing_table" },
+    { "type": "townstead:job_block", "block": "weaversparadise:spinning_jenny" },
+    { "type": "townstead:job_block", "block": "weaversparadise:clothcrafting_station" },
+    { "type": "townstead:building", "type_prefix": "tailors_shop_l", "slots_per_tier": [1, 2, 3] }
+  ],
+  "tasks": [
+    {
+      "type": "townstead_work:craft",
+      "workstations": [
+        "accents:sewing_station",
+        "legendarysurvivaloverhaul:sewing_table",
+        "weaversparadise:spinning_jenny",
+        "weaversparadise:clothcrafting_station"
+      ],
+      "weight": 10,
+      "order": { "name": "Sew clothing", "icon": "minecraft:shears" }
+    },
+    {
+      "type": "townstead_work:craft",
+      "workstations": ["minecraft:crafting_table"],
+      "recipes": ["clothing", "mca:needle_and_thread"],
+      "weight": 8,
+      "order": { "name": "Assemble garments", "icon": "minecraft:string" }
+    },
+    { "type": "townstead_work:store", "weight": 9 }
+  ],
+  "storage": { "preferred_roles": ["townstead:finished_goods"] }
+}

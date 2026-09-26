@@ -69,6 +69,16 @@ public final class NearbyItemSources {
                 .findBestDrinkNearbySlot(villager, center, horizontalRadius, verticalRadius, scorer);
     }
 
+    /** Re-resolve access and contents after travel; never debit a detached or newly restricted container. */
+    public static ItemStack extractOneFor(ServerLevel level, VillagerEntityMCA villager, ContainerSlot expected,
+                                         Predicate<ItemStack> matcher) {
+        if (expected == null || !level.isLoaded(expected.pos())) return ItemStack.EMPTY;
+        NearbyStorageIndex.invalidate(level, expected.pos());
+        ContainerSlot current = NearbyStorageIndex.snapshot(level, expected.pos(), 0, 0)
+                .revalidate(villager, expected, matcher);
+        return current == null ? ItemStack.EMPTY : extractOne(level, current);
+    }
+
     public static ItemStack extractOne(ServerLevel level, ContainerSlot slotRef) {
         if (slotRef == null || slotRef.slot() < 0 || slotRef.pos() == null) return ItemStack.EMPTY;
 

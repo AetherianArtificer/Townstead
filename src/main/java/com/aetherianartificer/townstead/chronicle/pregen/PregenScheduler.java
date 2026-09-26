@@ -46,6 +46,7 @@ public final class PregenScheduler {
     }
 
     public static void tick(MinecraftServer server) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CHRONICLES)) return;
         Job job = QUEUE.poll();
         if (job == null) return;
         if (ChronicleEventRegistry.isEmpty()) return;

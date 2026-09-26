@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:founding_profile/v1",
+  "name": {
+    "translate": "founding_profile.townstead.player_faction"
+  },
+  "weight": 0,
+  "government": {
+    "organization_kind": "townstead:player_faction",
+    "name_pattern": "{village}",
+    "seats": [
+      {
+        "roles": [
+          "townstead:faction_leader",
+          "townstead:member"
+        ],
+        "count": 1
+      }
+    ]
+  }
+}

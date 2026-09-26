@@ -1,0 +1,56 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.hexer.hex"
+  },
+  "icon": "minecraft:ender_eye",
+  "description": {
+    "translate": "skill.townstead.witch.hexer.hex.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:hexer_curse",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 200,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:invert",
+              "action": {
+                "type": "pheno:change_collection",
+                "collection": "townstead:hexed",
+                "operation": "add"
+              }
+            },
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:weakness",
+              "duration": 200,
+              "amplifier": 0
+            }
+          ],
+          "on": {
+            "type": "pheno:ray",
+            "distance": 16
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.witch.ambient",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

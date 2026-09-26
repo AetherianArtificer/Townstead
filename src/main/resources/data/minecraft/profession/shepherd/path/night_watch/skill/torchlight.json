@@ -1,0 +1,54 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.night_watch.torchlight"
+  },
+  "icon": "minecraft:torch",
+  "description": {
+    "translate": "skill.townstead.shepherd.night_watch.torchlight.description"
+  },
+  "cost": 1,
+  "requires": [
+    "alarm"
+  ],
+  "skill_group": "townstead:watch_alarm",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 360,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 8,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:blindness",
+            "duration": 60,
+            "amplifier": 0
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 8,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:night_vision",
+            "duration": 600,
+            "amplifier": 0
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "laugh",
+  "lines": {
+    "ha": "Ha!",
+    "hah": "Hah.",
+    "pfft": "Pfft.",
+    "oh_thats_good": "Oh, that's good.",
+    "hahaha": "Hahaha!",
+    "heh": "Heh.",
+    "ha_oh_no": "Ha! Oh no.",
+    "bahaha": "Bahaha!",
+    "hee_hee": { "text": "Hee hee!", "stages": "child" },
+    "hmph_heh": { "text": "Hmph. Heh.", "personalities": ["crabby", "grumpy"] }
+  }
+}

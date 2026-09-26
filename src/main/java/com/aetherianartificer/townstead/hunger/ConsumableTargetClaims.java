@@ -98,6 +98,19 @@ public final class ConsumableTargetClaims {
         }
     }
 
+    public static void releaseCategory(UUID owner, String category) {
+        synchronized (CLAIM_LOCK) {
+            var keys = OWNER_TO_KEYS.get(owner);
+            if (keys == null) return;
+            for (String key : new HashSet<>(keys))
+                if (key.split("\\|", 3)[1].equals(category)) release(owner, key);
+        }
+    }
+
+    public static void releasePos(ServerLevel level, UUID owner, String category, BlockPos pos) {
+        release(owner, ConsumableClaimKeys.posClaimKey(level.dimension().location().toString(), category, pos.asLong()));
+    }
+
     private static boolean tryClaim(ServerLevel level, UUID owner, String key, long untilTick) {
         synchronized (CLAIM_LOCK) {
             pruneExpired(level, key);

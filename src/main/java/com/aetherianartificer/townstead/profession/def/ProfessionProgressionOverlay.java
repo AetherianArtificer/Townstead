@@ -63,9 +63,9 @@ public final class ProfessionProgressionOverlay {
             levels.add(ranks[i]);
         }
         profession.add("levels", levels);
-        profession.addProperty("max_xp", thresholds[thresholds.length - 1]);
-        if (progression.has("daily_cap")) {
-            profession.add("daily_cap", progression.get("daily_cap").deepCopy());
+        // No max_xp: XP keeps counting past the top rank, where it still pays slow Insight.
+        for (String key : new String[]{"daily_cap", "checkpoints_per_rank", "over_cap_percent"}) {
+            if (progression.has(key)) profession.add(key, progression.get(key).deepCopy());
         }
     }
 }

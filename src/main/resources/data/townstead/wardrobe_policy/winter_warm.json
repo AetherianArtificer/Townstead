@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:wardrobe_policy/v1",
+  "scope": "villager",
+  "priority": 0,
+  "layers": {
+    "base": {
+      "select": {
+        "thermal": "warm"
+      }
+    },
+    "outerwear": {
+      "require": "required",
+      "select": {
+        "thermal": "warm",
+        "slot": "body"
+      }
+    },
+    "accessory": {
+      "require": "preferred",
+      "select": {
+        "thermal": "warm",
+        "slot": "head"
+      }
+    }
+  }
+}

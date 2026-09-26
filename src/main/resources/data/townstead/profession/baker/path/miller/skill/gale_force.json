@@ -1,0 +1,53 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.miller.gale_force"
+  },
+  "icon": "minecraft:phantom_membrane",
+  "description": {
+    "translate": "skill.townstead.baker.miller.gale_force.description"
+  },
+  "cost": 1,
+  "requires": [
+    "windmill"
+  ],
+  "skill_group": "townstead:miller_wind",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 8,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:add_velocity",
+            "away_from_other": 1.6,
+            "y": 0.6
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 8,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:slow_falling",
+            "duration": 200,
+            "amplifier": 0
+          }
+        }
+      ]
+    }
+  }
+}

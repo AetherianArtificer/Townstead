@@ -1,0 +1,54 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.prospector.flare"
+  },
+  "icon": "minecraft:glowstone_dust",
+  "description": {
+    "translate": "skill.townstead.cartographer.prospector.flare.description"
+  },
+  "cost": 1,
+  "requires": [
+    "shore_up"
+  ],
+  "skill_group": "townstead:prospector_lamp",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:bearing",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 8,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:blindness",
+            "duration": 100,
+            "amplifier": 0
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 8,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:night_vision",
+            "duration": 1200,
+            "amplifier": 0
+          }
+        }
+      ]
+    }
+  }
+}

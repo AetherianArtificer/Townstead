@@ -77,6 +77,23 @@ class LocalizationCoverageTest {
     }
 
     @Test
+    void everyBundledDecorationCatalogEntryHasARealNameAndDescription() {
+        JsonObject english = resource("assets/townstead/lang/en_us.json");
+        Path decorationRoot = resourcePath("data/townstead/decoration");
+        try (var files = Files.walk(decorationRoot)) {
+            for (Path path : files.filter(Files::isRegularFile)
+                    .filter(file -> file.getFileName().toString().endsWith(".json")).toList()) {
+                String id = decorationRoot.relativize(path).toString().replace('\\', '/');
+                id = id.substring(0, id.length() - ".json".length()).replace('/', '.');
+                assertNonBlankEnglish(english, "decoration.townstead." + id, id);
+                assertNonBlankEnglish(english, "decoration.townstead." + id + ".description", id);
+            }
+        } catch (IOException exception) {
+            throw new AssertionError("failed to enumerate bundled decorations", exception);
+        }
+    }
+
+    @Test
     void everyBundledCareerAndSkillIdentityUsesSyncedTranslationKeys() {
         JsonObject client = resource("assets/townstead/lang/en_us.json");
         JsonObject synced = resource("data/townstead/lang/en_us.json");
