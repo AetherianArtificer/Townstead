@@ -3,6 +3,10 @@ package com.aetherianartificer.townstead.politics.definition;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.data.DataPackLang;
 import com.aetherianartificer.townstead.data.ModGate;
+import com.aetherianartificer.townstead.pheno.lang.PhenoDiagnostics;
+import com.aetherianartificer.townstead.pheno.lang.compile.Diagnostic;
+import com.aetherianartificer.townstead.social.BondKind;
+import com.aetherianartificer.townstead.social.BondKinds;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -15,24 +19,29 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Reader;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Loads roles, policies, and kinds together so a reload publishes one coherent snapshot. */
+/**
+ * Loads bonds and faction kinds together so a reload publishes one coherent set. Bonds come from
+ * {@code bond/}, and from the older {@code bond_kind/} folder when {@code bond/} has no file of
+ * the same id.
+ */
 public final class PoliticalDefinitionLoader
         extends SimplePreparableReloadListener<PoliticalDefinitionLoader.Prepared> {
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/PoliticalDefinitions");
 
-    public record Prepared(Map<ResourceLocation, JsonObject> roles,
-                           Map<ResourceLocation, JsonObject> policies,
-                           Map<ResourceLocation, JsonObject> kinds) {}
+    public record Prepared(Map<ResourceLocation, JsonObject> bonds,
+                           Map<ResourceLocation, JsonObject> legacyBonds,
+                           Map<ResourceLocation, JsonObject> kinds,
+                           int legacyKinds) {}
 
     @Override
     protected Prepared prepare(ResourceManager resourceManager, ProfilerFiller profiler) {
-        return new Prepared(read(resourceManager, "organization_role"),
-                read(resourceManager, "membership_policy"),
-                read(resourceManager, "organization_kind"));
+        return new Prepared(read(resourceManager, "bond"), read(resourceManager, "bond_kind"),
+                read(resourceManager, "faction"), read(resourceManager, "organization_kind").size());
     }
 
     private static Map<ResourceLocation, JsonObject> read(ResourceManager manager, String directory) {
@@ -59,81 +68,44 @@ public final class PoliticalDefinitionLoader
     @Override
     protected void apply(Prepared prepared, ResourceManager resourceManager, ProfilerFiller profiler) {
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
-        Map<ResourceLocation, OrganizationRoleDefinition> roles = parseRoles(prepared.roles(), lang);
-        Map<ResourceLocation, MembershipPolicyDefinition> policies = parsePolicies(prepared.policies());
-        Map<ResourceLocation, OrganizationKindDefinition> kinds = parseKinds(prepared.kinds(), lang);
+        List<Diagnostic> diagnostics = new ArrayList<>();
+        Map<ResourceLocation, JsonObject> rawBonds = new LinkedHashMap<>(prepared.legacyBonds());
+        rawBonds.putAll(prepared.bonds());
+        Map<ResourceLocation, BondKind> bonds = new LinkedHashMap<>();
+        rawBonds.forEach((id, json) -> {
+            if (!enabled(id, json)) return;
+            try {
+                bonds.put(id, BondKind.parse(id, json, lang));
+            } catch (RuntimeException error) {
+                LOGGER.warn("Bond {} rejected: {}", id, error.getMessage());
+                diagnostics.add(Diagnostic.error(id, "$", error.getMessage() == null
+                        ? error.getClass().getSimpleName() : error.getMessage()));
+            }
+        });
+        BondKinds.replaceAll(bonds);
+        PhenoDiagnostics.replace("bond_kind", diagnostics);
 
-        // A broken dependency invalidates its direct owner, not the entire political pack.
-        policies.entrySet().removeIf(entry -> {
-            for (ResourceLocation role : entry.getValue().referencedRoles()) {
-                if (!roles.containsKey(role)) {
-                    LOGGER.warn("Membership policy {} rejected: unknown role {}", entry.getKey(), role);
-                    return true;
+        Map<ResourceLocation, FactionKind> kinds = new LinkedHashMap<>();
+        prepared.kinds().forEach((id, json) -> {
+            if (!enabled(id, json)) return;
+            try {
+                FactionKind kind = FactionKind.parse(id, json, lang);
+                List<String> errors = PoliticalDefinitions.validate(kind, bonds);
+                if (!errors.isEmpty()) {
+                    LOGGER.warn("Faction kind {} rejected: {}", id, String.join("; ", errors));
+                    return;
                 }
-            }
-            return false;
-        });
-        kinds.entrySet().removeIf(entry -> {
-            OrganizationKindDefinition kind = entry.getValue();
-            if (!policies.containsKey(kind.membershipPolicy())) {
-                LOGGER.warn("Organization kind {} rejected: unknown membership policy {}",
-                        entry.getKey(), kind.membershipPolicy());
-                return true;
-            }
-            for (OrganizationKindDefinition.RoleBinding binding : kind.roles()) {
-                if (!roles.containsKey(binding.role())) {
-                    LOGGER.warn("Organization kind {} rejected: unknown role {}", entry.getKey(), binding.role());
-                    return true;
-                }
-            }
-            return false;
-        });
-
-        PoliticalDefinitions.replace(roles, policies, kinds);
-        LOGGER.info("Loaded {} organization roles, {} membership policies, and {} organization kinds",
-                roles.size(), policies.size(), kinds.size());
-    }
-
-    private static Map<ResourceLocation, OrganizationRoleDefinition> parseRoles(
-            Map<ResourceLocation, JsonObject> raw, Map<String, String> lang) {
-        Map<ResourceLocation, OrganizationRoleDefinition> out = new LinkedHashMap<>();
-        raw.forEach((id, json) -> {
-            if (!enabled(id, json)) return;
-            try {
-                out.put(id, OrganizationRoleDefinition.parse(id, json, lang));
+                kinds.put(id, kind);
             } catch (RuntimeException error) {
-                LOGGER.warn("Organization role {} rejected: {}", id, error.getMessage());
+                LOGGER.warn("Faction kind {} rejected: {}", id, error.getMessage());
             }
         });
-        return out;
-    }
-
-    private static Map<ResourceLocation, MembershipPolicyDefinition> parsePolicies(
-            Map<ResourceLocation, JsonObject> raw) {
-        Map<ResourceLocation, MembershipPolicyDefinition> out = new LinkedHashMap<>();
-        raw.forEach((id, json) -> {
-            if (!enabled(id, json)) return;
-            try {
-                out.put(id, MembershipPolicyDefinition.parse(id, json));
-            } catch (RuntimeException error) {
-                LOGGER.warn("Membership policy {} rejected: {}", id, error.getMessage());
-            }
-        });
-        return out;
-    }
-
-    private static Map<ResourceLocation, OrganizationKindDefinition> parseKinds(
-            Map<ResourceLocation, JsonObject> raw, Map<String, String> lang) {
-        Map<ResourceLocation, OrganizationKindDefinition> out = new LinkedHashMap<>();
-        raw.forEach((id, json) -> {
-            if (!enabled(id, json)) return;
-            try {
-                out.put(id, OrganizationKindDefinition.parse(id, json, lang));
-            } catch (RuntimeException error) {
-                LOGGER.warn("Organization kind {} rejected: {}", id, error.getMessage());
-            }
-        });
-        return out;
+        PoliticalDefinitions.replace(kinds);
+        if (prepared.legacyKinds() > 0) {
+            LOGGER.warn("{} organization_kind files were ignored: faction kinds now live in faction/ with schema {}",
+                    prepared.legacyKinds(), FactionKind.SCHEMA);
+        }
+        LOGGER.info("Loaded {} bonds and {} faction kinds", bonds.size(), kinds.size());
     }
 
     private static boolean enabled(ResourceLocation id, JsonObject json) {

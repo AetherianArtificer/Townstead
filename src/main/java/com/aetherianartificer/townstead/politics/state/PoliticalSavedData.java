@@ -1,58 +1,46 @@
 package com.aetherianartificer.townstead.politics.state;
 
 import com.aetherianartificer.townstead.api.impl.v1.PoliticalEvents;
+import com.aetherianartificer.townstead.culture.FactionNaming;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
-import org.jetbrains.annotations.Nullable;
 //? if >=1.21 {
 import net.minecraft.core.HolderLookup;
 //?}
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+import java.util.Set;
 
-/** Server-wide persistent political identities and person-to-actor relationships. */
+/** Server-wide factions, the bonds between parties, and what hangs off a faction: Seats, names, legitimacy. */
 public final class PoliticalSavedData extends SavedData {
     public static final String FILE_ID = "townstead_politics";
-    private static final int SCHEMA_VERSION = 5;
-    private final Map<ResourceLocation, com.aetherianartificer.townstead.culture.FactionNaming.Name> factionNames = new LinkedHashMap<>();
-    public com.aetherianartificer.townstead.culture.FactionNaming.Name factionName(ResourceLocation id) { return factionNames.get(id); }
-    public void putFactionName(ResourceLocation id, com.aetherianartificer.townstead.culture.FactionNaming.Name name) {
-        factionNames.put(id, name); setDirty();
-    }
-    private final java.util.Set<ResourceLocation> externalGovernments = new java.util.HashSet<>();
-    public void markExternalGovernment(ResourceLocation polity) { if (externalGovernments.add(polity)) setDirty(); }
-    private MinecraftServer server;
-    public boolean externalGovernment(ResourceLocation polity) {
-        if (externalGovernments.contains(polity)) return true;
-        PolityInstance value = polities.get(polity);
-        if (server != null && value != null && value.settlements().stream().anyMatch(settlement ->
-                com.aetherianartificer.townstead.politics.charter.CivicProviders.ownsGovernment(server, settlement))) {
-            markExternalGovernment(polity);
-            return true;
-        }
-        return false;
-    }
-    public boolean supersededGovernment(ResourceLocation organization) {
-        return polities.values().stream().anyMatch(p -> organization.equals(p.governmentOrganization()) && externalGovernment(p.id()));
-    }
+    static final int SCHEMA_VERSION = 6;
 
-    private final Map<ResourceLocation, OrganizationInstance> organizations = new LinkedHashMap<>();
-    private final Map<ResourceLocation, PolityInstance> polities = new LinkedHashMap<>();
-    private final Map<ResourceLocation, AffiliationInstance> affiliations = new LinkedHashMap<>();
-    private final Map<ResourceLocation, MembershipInstance> memberships = new LinkedHashMap<>();
+    private final Map<ResourceLocation, Faction> factions = new LinkedHashMap<>();
+    private final Map<ResourceLocation, BondInstance> bonds = new LinkedHashMap<>();
+    private final Map<Party, Set<ResourceLocation>> bondsByParty = new HashMap<>();
     private final Map<SettlementRef, SettlementFoundingRecord> foundingRecords = new LinkedHashMap<>();
-    private final Map<PoliticalActorRef, SeatInstance> seats = new LinkedHashMap<>();
+    private final Map<ResourceLocation, SeatInstance> seats = new LinkedHashMap<>();
     private final Map<ResourceLocation, Double> legitimacy = new LinkedHashMap<>();
+    private final Map<ResourceLocation, FactionNaming.Name> factionNames = new LinkedHashMap<>();
+    private final Set<ResourceLocation> externalGovernments = new HashSet<>();
+    /** Pre-faction organization and polity ids, mapped to the faction that replaced them. */
+    private final Map<ResourceLocation, ResourceLocation> legacyIds = new LinkedHashMap<>();
+    private MinecraftServer server;
 
     public PoliticalSavedData() {}
 
@@ -69,152 +57,154 @@ public final class PoliticalSavedData extends SavedData {
         return data;
     }
 
-    public @Nullable OrganizationInstance organization(ResourceLocation id) { return organizations.get(id); }
-    public @Nullable PolityInstance polity(ResourceLocation id) { return polities.get(id); }
+    public @Nullable Faction faction(@Nullable ResourceLocation id) {
+        if (id == null) return null;
+        Faction direct = factions.get(id);
+        if (direct != null) return direct;
+        ResourceLocation mapped = legacyIds.get(id);
+        return mapped == null ? null : factions.get(mapped);
+    }
 
-    public @Nullable PolityInstance polity(SettlementRef settlement) {
-        PolityInstance archived = null;
-        for (PolityInstance polity : polities.values()) {
-            if (!polity.settlements().contains(settlement)) continue;
-            if (polity.status() != PoliticalStatus.Polity.DISSOLVED) return polity;
-            archived = polity;
+    /** The faction holding this settlement: an active one if any, else the last dissolved one. */
+    public @Nullable Faction faction(SettlementRef settlement) {
+        Faction archived = null;
+        for (Faction faction : factions.values()) {
+            if (!faction.settlements().contains(settlement)) continue;
+            if (faction.status() != Faction.Status.DISSOLVED) return faction;
+            archived = faction;
         }
         return archived;
     }
-    public @Nullable AffiliationInstance affiliation(ResourceLocation id) { return affiliations.get(id); }
-    public @Nullable MembershipInstance membership(ResourceLocation id) { return memberships.get(id); }
+
+    public Collection<Faction> factions() { return List.copyOf(factions.values()); }
+
+    /** The current id for an id that may predate factions. */
+    public ResourceLocation canonical(ResourceLocation id) {
+        if (id == null || factions.containsKey(id)) return id;
+        return legacyIds.getOrDefault(id, id);
+    }
+
+    public @Nullable BondInstance bond(ResourceLocation id) { return bonds.get(id); }
+
+    public Collection<BondInstance> bonds() { return List.copyOf(bonds.values()); }
+
+    public List<BondInstance> bonds(Party party) {
+        Set<ResourceLocation> ids = bondsByParty.get(party);
+        if (ids == null) return List.of();
+        List<BondInstance> out = new ArrayList<>(ids.size());
+        for (ResourceLocation id : ids) {
+            BondInstance bond = bonds.get(id);
+            if (bond != null) out.add(bond);
+        }
+        return out;
+    }
+
+    public List<BondInstance> activeBonds(Party party) {
+        List<BondInstance> out = new ArrayList<>();
+        for (BondInstance bond : bonds(party)) if (bond.active()) out.add(bond);
+        return out;
+    }
+
+    /** Active bonds of one kind between these two parties. */
+    public List<BondInstance> activeBetween(Party a, Party b, ResourceLocation kind) {
+        List<BondInstance> out = new ArrayList<>();
+        for (BondInstance bond : bonds(a)) if (bond.active() && bond.kind().equals(kind) && bond.involves(b)) out.add(bond);
+        return out;
+    }
+
     public @Nullable SettlementFoundingRecord founding(SettlementRef settlement) { return foundingRecords.get(settlement); }
 
-    public Collection<OrganizationInstance> organizations() { return List.copyOf(organizations.values()); }
-    public Collection<PolityInstance> polities() { return List.copyOf(polities.values()); }
-    public Collection<AffiliationInstance> directAffiliations() { return List.copyOf(affiliations.values()); }
-    public Collection<MembershipInstance> memberships() { return List.copyOf(memberships.values()); }
     public Collection<SettlementFoundingRecord> foundingRecords() { return List.copyOf(foundingRecords.values()); }
-    public @Nullable SeatInstance seat(PoliticalActorRef actor) { return seats.get(actor); }
+
+    public @Nullable SeatInstance seat(ResourceLocation faction) { return seats.get(canonical(faction)); }
+
     public Collection<SeatInstance> seats() { return List.copyOf(seats.values()); }
-    /** A government's stored legitimacy (0 to 100), or null before it was first computed. */
-    public @Nullable Double legitimacy(ResourceLocation government) { return legitimacy.get(government); }
-    public void setLegitimacy(ResourceLocation government, double value) {
-        legitimacy.put(government, Math.max(0.0, Math.min(100.0, value)));
+
+    /** A faction's stored legitimacy (0 to 100), or null before it was first computed. */
+    public @Nullable Double legitimacy(ResourceLocation faction) { return legitimacy.get(canonical(faction)); }
+
+    public void setLegitimacy(ResourceLocation faction, double value) {
+        legitimacy.put(faction, Math.max(0.0, Math.min(100.0, value)));
         setDirty();
     }
 
-    /** Includes ordinary affiliations and the affiliation carried by every membership. */
-    public List<AffiliationInstance> affiliations(UUID person) {
-        List<AffiliationInstance> out = new ArrayList<>();
-        for (AffiliationInstance value : affiliations.values()) if (value.person().equals(person)) out.add(value);
-        for (MembershipInstance value : memberships.values()) {
-            if (value.affiliation().person().equals(person)) out.add(value.affiliation());
-        }
-        return List.copyOf(out);
+    public void clearLegitimacy(ResourceLocation faction) {
+        if (legitimacy.remove(faction) != null) setDirty();
     }
 
-    public List<MembershipInstance> memberships(UUID person) {
-        List<MembershipInstance> out = new ArrayList<>();
-        for (MembershipInstance value : memberships.values()) {
-            if (value.affiliation().person().equals(person)) out.add(value);
-        }
-        return List.copyOf(out);
+    public @Nullable FactionNaming.Name factionName(ResourceLocation id) { return factionNames.get(id); }
+
+    public void putFactionName(ResourceLocation id, FactionNaming.Name name) {
+        factionNames.put(id, name);
+        setDirty();
     }
 
-    public List<MembershipInstance> memberships(PoliticalActorRef actor) {
-        List<MembershipInstance> out = new ArrayList<>();
-        for (MembershipInstance value : memberships.values()) {
-            if (value.affiliation().actor().equals(actor)) out.add(value);
-        }
-        return List.copyOf(out);
+    public void markExternalGovernment(ResourceLocation faction) {
+        if (externalGovernments.add(faction)) setDirty();
     }
 
-    public @Nullable MembershipInstance membership(UUID person, ResourceLocation organizationId) {
-        PoliticalActorRef actor = new PoliticalActorRef(PoliticalActorRef.Kind.ORGANIZATION, organizationId);
-        MembershipInstance newest = null;
-        for (MembershipInstance value : memberships.values()) {
-            if (value.affiliation().person().equals(person) && value.affiliation().actor().equals(actor)
-                    && (newest == null || value.affiliation().startedAt() >= newest.affiliation().startedAt())) {
-                newest = value;
+    /** True when another mod, such as MCA Capitals, governs this faction's settlement instead. */
+    public boolean externalGovernment(ResourceLocation id) {
+        if (externalGovernments.contains(id)) return true;
+        Faction value = factions.get(id);
+        if (server != null && value != null && value.settlements().stream().anyMatch(settlement ->
+                com.aetherianartificer.townstead.politics.charter.CivicProviders.ownsGovernment(server, settlement))) {
+            markExternalGovernment(id);
+            return true;
+        }
+        return false;
+    }
+
+    public void putFaction(Faction value) {
+        PoliticalEvents.beforeFactionWrite(this);
+        Faction before = factions.put(value.id(), value);
+        PoliticalEvents.faction(this, before, value);
+        setDirty();
+    }
+
+    /** Stores a bond as given. Rules for forming and ending bonds live in {@link FactionBonds}. */
+    public void putBond(BondInstance value) {
+        for (BondInstance.Side side : value.sides()) {
+            if (side.party().isFaction() && !factions.containsKey(side.party().faction())) {
+                throw new IllegalArgumentException("Unknown faction " + side.party().id());
             }
         }
-        return newest;
-    }
-
-    public void putOrganization(OrganizationInstance value) {
-        OrganizationInstance before = organizations.put(value.id(), value);
-        PoliticalEvents.organization(this, before, value);
-        setDirty();
-    }
-
-    public void putPolity(PolityInstance value) {
-        if (value.governmentOrganization() != null && !organizations.containsKey(value.governmentOrganization())) {
-            throw new IllegalArgumentException("Unknown government organization " + value.governmentOrganization());
-        }
-        PoliticalEvents.beforePolityWrite(this);
-        PolityInstance before = polities.put(value.id(), value);
-        PoliticalEvents.polity(before, value);
-        setDirty();
-    }
-
-    public void putAffiliation(AffiliationInstance value) {
-        requireActor(value.actor());
-        if (memberships.containsKey(value.id())) throw new IllegalArgumentException("Affiliation id already belongs to a membership");
-        AffiliationInstance before = affiliations.put(value.id(), value);
-        PoliticalEvents.affiliation(before, value);
-        setDirty();
-    }
-
-    public void putMembership(MembershipInstance value) {
-        requireActor(value.affiliation().actor());
-        if (affiliations.containsKey(value.id())) throw new IllegalArgumentException("Membership id already belongs to an affiliation");
-        for (MembershipInstance existing : memberships.values()) {
-            if (existing.id().equals(value.id())) continue;
-            if (existing.affiliation().person().equals(value.affiliation().person())
-                    && existing.affiliation().actor().equals(value.affiliation().actor())
-                    && !terminal(existing.affiliation().status()) && !terminal(value.affiliation().status())) {
-                throw new IllegalArgumentException("Person already has a current membership record for "
-                        + value.affiliation().actor().id());
-            }
-        }
-        MembershipInstance before = memberships.put(value.id(), value);
-        PoliticalEvents.membership(before, value);
+        BondInstance before = bonds.put(value.id(), value);
+        index(value);
+        PoliticalEvents.bond(before, value);
         setDirty();
     }
 
     public void putFounding(SettlementFoundingRecord value) {
-        if (polity(value.settlement()) == null) {
-            throw new IllegalArgumentException("Founding record has no polity for " + value.settlement());
-        }
-        if (value.government() != null && !organizations.containsKey(value.government())) {
-            throw new IllegalArgumentException("Founding record has unknown government " + value.government());
+        if (faction(value.settlement()) == null) {
+            throw new IllegalArgumentException("Founding record has no faction for " + value.settlement());
         }
         SettlementFoundingRecord before = foundingRecords.put(value.settlement(), value);
         PoliticalEvents.founding(before, value);
         setDirty();
     }
 
-    /** An actor has at most one Seat; writing a Seat for an actor that has one moves it. */
+    /** A faction has at most one Seat; writing a Seat for a faction that has one moves it. */
     public void putSeat(SeatInstance value) {
-        requireActor(value.actor());
-        SeatInstance before = seats.put(value.actor(), value);
+        if (!factions.containsKey(value.faction())) throw new IllegalArgumentException("Unknown faction " + value.faction());
+        SeatInstance before = seats.put(value.faction(), value);
         PoliticalEvents.seat(before, value);
         com.aetherianartificer.townstead.politics.seat.SeatNotices.changed(before, value);
         setDirty();
     }
 
-    public void removeSeat(PoliticalActorRef actor, String reason) {
-        SeatInstance before = seats.remove(actor);
+    public void removeSeat(ResourceLocation faction, String reason) {
+        SeatInstance before = seats.remove(faction);
         if (before == null) return;
         PoliticalEvents.seatLost(before, reason);
         com.aetherianartificer.townstead.politics.seat.SeatNotices.lost(before, reason);
         setDirty();
     }
 
-    private void requireActor(PoliticalActorRef actor) {
-        boolean exists = actor.kind() == PoliticalActorRef.Kind.ORGANIZATION
-                ? organizations.containsKey(actor.id()) : polities.containsKey(actor.id());
-        if (!exists) throw new IllegalArgumentException("Unknown political actor " + actor.kind().id() + ":" + actor.id());
-    }
-
-    private static boolean terminal(PoliticalStatus.Affiliation status) {
-        return status == PoliticalStatus.Affiliation.FORMER || status == PoliticalStatus.Affiliation.REJECTED;
+    private void index(BondInstance bond) {
+        for (BondInstance.Side side : bond.sides()) {
+            bondsByParty.computeIfAbsent(side.party(), key -> new LinkedHashSet<>()).add(bond.id());
+        }
     }
 
     //? if >=1.21 {
@@ -223,13 +213,18 @@ public final class PoliticalSavedData extends SavedData {
     /*public static PoliticalSavedData load(CompoundTag tag) {
     *///?}
         PoliticalSavedData data = new PoliticalSavedData();
-        load(tag, "organizations", PoliticalNbt::organization, value -> data.organizations.put(value.id(), value));
-        load(tag, "polities", PoliticalNbt::polity, value -> data.polities.put(value.id(), value));
-        load(tag, "affiliations", PoliticalNbt::affiliation, value -> data.affiliations.put(value.id(), value));
-        load(tag, "memberships", PoliticalNbt::membership, value -> data.memberships.put(value.id(), value));
-        load(tag, "founding_records", PoliticalNbt::founding,
-                value -> data.foundingRecords.put(value.settlement(), value));
-        load(tag, "seats", PoliticalNbt::seat, value -> data.seats.put(value.actor(), value));
+        if (tag.getInt("schema_version") < SCHEMA_VERSION && !tag.contains("factions", Tag.TAG_LIST)) {
+            LegacyPolitics.migrate(tag, data);
+            data.setDirty();
+            return data;
+        }
+        read(tag, "factions", PoliticalNbt::faction, value -> data.factions.put(value.id(), value));
+        read(tag, "bonds", PoliticalNbt::bond, value -> {
+            data.bonds.put(value.id(), value);
+            data.index(value);
+        });
+        read(tag, "founding_records", PoliticalNbt::founding, value -> data.foundingRecords.put(value.settlement(), value));
+        read(tag, "seats", PoliticalNbt::seat, value -> data.seats.put(value.faction(), value));
         CompoundTag legitimacy = tag.getCompound("legitimacy");
         for (String key : legitimacy.getAllKeys()) {
             ResourceLocation id = ResourceLocation.tryParse(key);
@@ -237,16 +232,19 @@ public final class PoliticalSavedData extends SavedData {
         }
         ListTag external = tag.getList("external_governments", Tag.TAG_STRING);
         for (int i = 0; i < external.size(); i++) {
-            ResourceLocation actor = ResourceLocation.tryParse(external.getString(i));
-            if (actor != null) data.externalGovernments.add(actor);
+            ResourceLocation id = ResourceLocation.tryParse(external.getString(i));
+            if (id != null) data.externalGovernments.add(id);
         }
         CompoundTag names = tag.getCompound("faction_names");
         for (String key : names.getAllKeys()) {
             ResourceLocation id = ResourceLocation.tryParse(key);
-            if (id != null && data.polities.containsKey(id)) data.factionNames.put(id,
-                    com.aetherianartificer.townstead.culture.FactionNaming.Name.load(names.getCompound(key)));
+            if (id != null && data.factions.containsKey(id)) data.factionNames.put(id, FactionNaming.Name.load(names.getCompound(key)));
         }
-        if (tag.getInt("schema_version") < SCHEMA_VERSION) data.setDirty();
+        CompoundTag legacy = tag.getCompound("legacy_ids");
+        for (String key : legacy.getAllKeys()) {
+            ResourceLocation from = ResourceLocation.tryParse(key), to = ResourceLocation.tryParse(legacy.getString(key));
+            if (from != null && to != null) data.legacyIds.put(from, to);
+        }
         return data;
     }
 
@@ -257,25 +255,45 @@ public final class PoliticalSavedData extends SavedData {
     /*public CompoundTag save(CompoundTag tag) {
     *///?}
         tag.putInt("schema_version", SCHEMA_VERSION);
-        CompoundTag names = new CompoundTag();
-        factionNames.forEach((id, name) -> names.put(id.toString(), name.save()));
-        tag.put("faction_names", names);
-        ListTag external = new ListTag();
-        externalGovernments.forEach(id -> external.add(net.minecraft.nbt.StringTag.valueOf(id.toString())));
-        tag.put("external_governments", external);
-        tag.put("organizations", save(organizations.values(), PoliticalNbt::save));
-        tag.put("polities", save(polities.values(), PoliticalNbt::save));
-        tag.put("affiliations", save(affiliations.values(), PoliticalNbt::save));
-        tag.put("memberships", save(memberships.values(), PoliticalNbt::save));
-        tag.put("founding_records", save(foundingRecords.values(), PoliticalNbt::save));
-        tag.put("seats", save(seats.values(), PoliticalNbt::save));
+        tag.put("factions", write(factions.values(), PoliticalNbt::save));
+        tag.put("bonds", write(bonds.values(), PoliticalNbt::save));
+        tag.put("founding_records", write(foundingRecords.values(), PoliticalNbt::save));
+        tag.put("seats", write(seats.values(), PoliticalNbt::save));
         CompoundTag legitimacyTag = new CompoundTag();
         legitimacy.forEach((id, value) -> legitimacyTag.putDouble(id.toString(), value));
         tag.put("legitimacy", legitimacyTag);
+        ListTag external = new ListTag();
+        externalGovernments.forEach(id -> external.add(StringTag.valueOf(id.toString())));
+        tag.put("external_governments", external);
+        CompoundTag names = new CompoundTag();
+        factionNames.forEach((id, name) -> names.put(id.toString(), name.save()));
+        tag.put("faction_names", names);
+        CompoundTag legacy = new CompoundTag();
+        legacyIds.forEach((from, to) -> legacy.putString(from.toString(), to.toString()));
+        tag.put("legacy_ids", legacy);
         return tag;
     }
 
-    private static <T> void load(CompoundTag root, String key, Decoder<T> decoder, Sink<T> sink) {
+    /** Raw writes for the one-time conversion of an older save; no events. */
+    void restore(Faction faction) { factions.put(faction.id(), faction); }
+
+    void restore(BondInstance bond) { bonds.put(bond.id(), bond); index(bond); }
+
+    void restore(SettlementFoundingRecord record) { foundingRecords.put(record.settlement(), record); }
+
+    void restore(SeatInstance seat) { seats.put(seat.faction(), seat); }
+
+    void restoreLegitimacy(ResourceLocation faction, double value) { legitimacy.put(faction, value); }
+
+    void restoreName(ResourceLocation faction, FactionNaming.Name name) { factionNames.put(faction, name); }
+
+    void restoreExternal(ResourceLocation faction) { externalGovernments.add(faction); }
+
+    void restoreLegacy(ResourceLocation from, ResourceLocation to) { if (!from.equals(to)) legacyIds.put(from, to); }
+
+    boolean hasFaction(ResourceLocation id) { return factions.containsKey(id); }
+
+    private static <T> void read(CompoundTag root, String key, Decoder<T> decoder, Sink<T> sink) {
         ListTag list = root.getList(key, Tag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++) {
             T decoded = decoder.read(list.getCompound(i));
@@ -283,13 +301,13 @@ public final class PoliticalSavedData extends SavedData {
         }
     }
 
-    private static <T> ListTag save(Collection<T> values, Encoder<T> encoder) {
+    private static <T> ListTag write(Collection<T> values, Encoder<T> encoder) {
         ListTag list = new ListTag();
         for (T value : values) list.add(encoder.write(value));
         return list;
     }
 
-    @FunctionalInterface private interface Decoder<T> { @Nullable T read(CompoundTag tag); }
+    @FunctionalInterface interface Decoder<T> { @Nullable T read(CompoundTag tag); }
     @FunctionalInterface private interface Encoder<T> { CompoundTag write(T value); }
-    @FunctionalInterface private interface Sink<T> { void accept(T value); }
+    @FunctionalInterface interface Sink<T> { void accept(T value); }
 }

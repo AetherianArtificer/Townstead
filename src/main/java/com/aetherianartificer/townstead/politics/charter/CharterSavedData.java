@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.politics.charter;
 
+import com.aetherianartificer.townstead.culture.FactionNaming;
 import com.aetherianartificer.townstead.politics.state.SettlementRef;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -14,17 +15,21 @@ import org.jetbrains.annotations.Nullable;
 import net.minecraft.core.HolderLookup;
 //?}
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
-/** Server-owned Charter Bell bindings and prepared, exactly-once founding intents. */
+/** Server-owned Charter Bell bindings, founding intents, and each faction's draft amendment. */
 public final class CharterSavedData extends SavedData {
     public static final String FILE_ID = "townstead_charters";
-    private static final int SCHEMA = 4;
+    private static final int SCHEMA = 5;
     private final Map<String, String> externalGovernments = new LinkedHashMap<>();
-    private final java.util.List<Binding> archivedBindings = new java.util.ArrayList<>();
-    private final Map<String, Amendment> amendments = new LinkedHashMap<>();
+    private final List<Binding> archivedBindings = new ArrayList<>();
+    private final Map<String, Draft> drafts = new LinkedHashMap<>();
     private final Map<String, Binding> bindings = new LinkedHashMap<>();
     private final Map<String, Proposal> proposals = new LinkedHashMap<>();
 
@@ -71,55 +76,75 @@ public final class CharterSavedData extends SavedData {
     }
 
     /** Removes the proposal before publishing the binding, making repeat ring delivery harmless. */
-    public boolean commit(Proposal proposal, SettlementRef settlement, ResourceLocation polity, long now) {
+    public boolean commit(Proposal proposal, SettlementRef settlement, ResourceLocation faction, long now) {
         String key = key(proposal.dimension(), proposal.lectern());
         Proposal current = proposals.get(key);
         if (current == null || !current.token().equals(proposal.token())) return false;
         proposals.remove(key);
         bindings.put(key, new Binding(proposal.dimension(), proposal.lectern(), proposal.bell(), settlement,
-                polity, proposal.initiator(), now));
+                faction, proposal.initiator(), now));
         setDirty();
         return true;
     }
 
     /** Explicitly binds an already-known settlement without creating or changing political records. */
     public boolean bindExisting(ResourceLocation dimension, BlockPos lectern, BlockPos bell,
-                                SettlementRef settlement, ResourceLocation polity, UUID actor, long now) {
+                                SettlementRef settlement, ResourceLocation faction, UUID actor, long now) {
         String key = key(dimension, lectern);
         if (bindings.containsKey(key) || proposals.containsKey(key)) return false;
-        bindings.put(key, new Binding(dimension, lectern.immutable(), bell.immutable(), settlement, polity, actor, now));
+        bindings.put(key, new Binding(dimension, lectern.immutable(), bell.immutable(), settlement, faction, actor, now));
         setDirty();
         return true;
     }
 
-    public java.util.List<Binding> bindings() { return java.util.List.copyOf(bindings.values()); }
+    public List<Binding> bindings() { return List.copyOf(bindings.values()); }
 
-    public record Amendment(UUID token, UUID initiator, ResourceLocation polity, ResourceLocation dimension,
-                            BlockPos lectern, BlockPos bell, String operation, String expectedName, String argument, long expiresAt) {}
-    public void prepareAmendment(Amendment value) { amendments.put(value.polity().toString(), value); setDirty(); }
-    public Amendment amendment(ResourceLocation polity) { return amendments.get(polity.toString()); }
-    public Amendment amendmentAtBell(ResourceLocation dimension, BlockPos bell) {
-        return amendments.values().stream().filter(a -> a.dimension().equals(dimension) && a.bell().equals(bell)).findFirst().orElse(null);
-    }
-    public boolean removeAmendment(Amendment value) {
-        boolean removed = amendments.remove(value.polity().toString(), value);
-        if (removed) setDirty(); return removed;
-    }
-    public java.util.List<Binding> unbind(ResourceLocation polity) {
-        var removed = bindings.values().stream().filter(b -> b.polity().equals(polity)).toList();
+    public List<Binding> unbind(ResourceLocation faction) {
+        var removed = bindings.values().stream().filter(b -> b.faction().equals(faction)).toList();
         archivedBindings.addAll(removed);
-        bindings.values().removeIf(b -> b.polity().equals(polity));
-        amendments.remove(polity.toString()); setDirty(); return removed;
+        bindings.values().removeIf(b -> b.faction().equals(faction));
+        drafts.remove(faction.toString());
+        setDirty();
+        return removed;
     }
 
-    public java.util.List<Binding> archivedBindings() { return java.util.List.copyOf(archivedBindings); }
+    public List<Binding> archivedBindings() { return List.copyOf(archivedBindings); }
 
+    public @Nullable Draft draft(ResourceLocation faction) { return drafts.get(faction.toString()); }
+
+    public void putDraft(Draft draft) {
+        drafts.put(draft.faction().toString(), draft);
+        setDirty();
+    }
+
+    public boolean removeDraft(ResourceLocation faction, UUID token) {
+        Draft current = drafts.get(faction.toString());
+        if (current == null || !current.token().equals(token)) return false;
+        drafts.remove(faction.toString());
+        setDirty();
+        return true;
+    }
+
+    /** The prepared draft waiting at this bell, if any. */
+    public @Nullable Draft draftAtBell(ResourceLocation dimension, BlockPos bell) {
+        for (Draft value : drafts.values()) {
+            if (value.prepared() && value.dimension().equals(dimension) && value.bell().equals(bell)) return value;
+        }
+        return null;
+    }
+
+    /** A prepared draft that lapses returns to an unsigned draft rather than vanishing. */
     public void expire(long now) {
-        if (amendments.values().removeIf(value -> value.expiresAt() <= now)) setDirty();
+        for (Draft value : List.copyOf(drafts.values())) {
+            if (value.prepared() && value.expiresAt() <= now) putDraft(value.unsigned());
+        }
         if (proposals.values().removeIf(value -> value.expiresAt() <= now)) setDirty();
     }
 
-    public String externalGovernment(SettlementRef settlement) { return externalGovernments.getOrDefault(settlement.dimension() + "|" + settlement.villageId(), ""); }
+    public String externalGovernment(SettlementRef settlement) {
+        return externalGovernments.getOrDefault(settlement.dimension() + "|" + settlement.villageId(), "");
+    }
+
     public void observeGovernment(SettlementRef settlement, String actor) {
         String key = settlement.dimension() + "|" + settlement.villageId();
         if (!actor.equals(externalGovernments.put(key, actor))) setDirty();
@@ -152,18 +177,10 @@ public final class CharterSavedData extends SavedData {
             Proposal value = readProposal(proposals.getCompound(i));
             if (value != null) data.proposals.put(key(value.dimension(), value.lectern()), value);
         }
-        ListTag amendments = tag.getList("amendments", Tag.TAG_COMPOUND);
-        for (int i = 0; i < amendments.size(); i++) {
-            CompoundTag t = amendments.getCompound(i);
-            try {
-                var polity = ResourceLocation.tryParse(t.getString("polity"));
-                var dimension = ResourceLocation.tryParse(t.getString("dimension"));
-                if (polity == null || dimension == null || !t.hasUUID("token") || !t.hasUUID("initiator")) continue;
-                var a = new Amendment(t.getUUID("token"), t.getUUID("initiator"), polity, dimension,
-                        BlockPos.of(t.getLong("lectern")), BlockPos.of(t.getLong("bell")), t.getString("operation"),
-                        t.getString("expected_name"), t.getString("argument"), t.getLong("expires_at"));
-                data.amendments.put(polity.toString(), a);
-            } catch (RuntimeException ignored) { }
+        ListTag drafts = tag.getList("drafts", Tag.TAG_COMPOUND);
+        for (int i = 0; i < drafts.size(); i++) {
+            Draft value = Draft.read(drafts.getCompound(i));
+            if (value != null) data.drafts.put(value.faction().toString(), value);
         }
         if (tag.getInt("schema") < SCHEMA) data.setDirty();
         return data;
@@ -188,15 +205,9 @@ public final class CharterSavedData extends SavedData {
         ListTag savedProposals = new ListTag();
         proposals.values().forEach(value -> savedProposals.add(save(value)));
         tag.put("proposals", savedProposals);
-        ListTag savedAmendments = new ListTag();
-        for (var a : amendments.values()) {
-            CompoundTag t = base(a.dimension(), a.lectern(), a.bell());
-            t.putUUID("token", a.token()); t.putUUID("initiator", a.initiator());
-            t.putString("polity", a.polity().toString()); t.putString("operation", a.operation());
-            t.putString("expected_name", a.expectedName()); t.putString("argument", a.argument());
-            t.putLong("expires_at", a.expiresAt()); savedAmendments.add(t);
-        }
-        tag.put("amendments", savedAmendments);
+        ListTag savedDrafts = new ListTag();
+        drafts.values().forEach(value -> savedDrafts.add(value.save()));
+        tag.put("drafts", savedDrafts);
         return tag;
     }
 
@@ -204,7 +215,7 @@ public final class CharterSavedData extends SavedData {
         CompoundTag tag = base(value.dimension(), value.lectern(), value.bell());
         tag.putString("settlement_dimension", value.settlement().dimension().toString());
         tag.putInt("settlement_village", value.settlement().villageId());
-        tag.putString("polity", value.polity().toString());
+        tag.putString("faction", value.faction().toString());
         tag.putUUID("founder", value.founder());
         tag.putLong("founded_at", value.foundedAt());
         return tag;
@@ -234,10 +245,10 @@ public final class CharterSavedData extends SavedData {
     private static @Nullable Binding readBinding(CompoundTag tag) {
         ResourceLocation dimension = ResourceLocation.tryParse(tag.getString("dimension"));
         ResourceLocation settlementDimension = ResourceLocation.tryParse(tag.getString("settlement_dimension"));
-        ResourceLocation polity = ResourceLocation.tryParse(tag.getString("polity"));
-        if (dimension == null || settlementDimension == null || polity == null || !tag.hasUUID("founder")) return null;
+        ResourceLocation faction = ResourceLocation.tryParse(tag.getString(tag.contains("faction") ? "faction" : "polity"));
+        if (dimension == null || settlementDimension == null || faction == null || !tag.hasUUID("founder")) return null;
         return new Binding(dimension, BlockPos.of(tag.getLong("lectern")), BlockPos.of(tag.getLong("bell")),
-                new SettlementRef(settlementDimension, tag.getInt("settlement_village")), polity,
+                new SettlementRef(settlementDimension, tag.getInt("settlement_village")), faction,
                 tag.getUUID("founder"), tag.getLong("founded_at"));
     }
 
@@ -251,28 +262,150 @@ public final class CharterSavedData extends SavedData {
             return new Proposal(tag.getUUID("token"), tag.getUUID("initiator"), dimension,
                     BlockPos.of(tag.getLong("lectern")), BlockPos.of(tag.getLong("bell")), tag.getString("name"),
                     profile, culture, tag.getLong("prepared_at"), tag.getLong("expires_at"),
-                    tag.contains("faction_name") ? com.aetherianartificer.townstead.culture.FactionNaming.Name.load(tag.getCompound("faction_name"))
-                            : com.aetherianartificer.townstead.culture.FactionNaming.Name.custom(tag.getString("name")));
+                    tag.contains("faction_name") ? FactionNaming.Name.load(tag.getCompound("faction_name"))
+                            : FactionNaming.Name.custom(tag.getString("name")));
         } catch (RuntimeException ignored) {
             return null;
         }
     }
 
     public record Binding(ResourceLocation dimension, BlockPos lectern, BlockPos bell,
-                          SettlementRef settlement, ResourceLocation polity, UUID founder, long foundedAt) {}
+                          SettlementRef settlement, ResourceLocation faction, UUID founder, long foundedAt) {}
 
     public record Proposal(UUID token, UUID initiator, ResourceLocation dimension, BlockPos lectern,
                            BlockPos bell, String name, ResourceLocation profile,
                            @Nullable ResourceLocation culture, long preparedAt, long expiresAt,
-                           com.aetherianartificer.townstead.culture.FactionNaming.Name factionName) {
+                           FactionNaming.Name factionName) {
         public Proposal(UUID token, UUID initiator, ResourceLocation dimension, BlockPos lectern,
                         BlockPos bell, String name, ResourceLocation profile, ResourceLocation culture, long preparedAt, long expiresAt) {
             this(token, initiator, dimension, lectern, bell, name, profile, culture, preparedAt, expiresAt,
-                    com.aetherianartificer.townstead.culture.FactionNaming.Name.custom(name));
+                    FactionNaming.Name.custom(name));
         }
+
         public Proposal {
             name = name == null ? "" : name.trim();
             if (name.isEmpty() || name.length() > 48) throw new IllegalArgumentException("Invalid settlement name");
+        }
+    }
+
+    /**
+     * One proposed change. {@code type} is {@code rename}, {@code heraldry}, {@code seat},
+     * {@code transfer_leadership} or {@code dissolve}; {@code target} and {@code argument} are that
+     * change's own values; {@code expected} is what the target read when drafted, rechecked at the bell.
+     */
+    public record Clause(String type, String target, String argument, String expected) {
+        public Clause {
+            target = target == null ? "" : target;
+            argument = argument == null ? "" : argument;
+            expected = expected == null ? "" : expected;
+        }
+
+        CompoundTag save() {
+            CompoundTag tag = new CompoundTag();
+            tag.putString("type", type);
+            tag.putString("target", target);
+            tag.putString("argument", argument);
+            tag.putString("expected", expected);
+            return tag;
+        }
+
+        static Clause read(CompoundTag tag) {
+            return new Clause(tag.getString("type"), tag.getString("target"), tag.getString("argument"), tag.getString("expected"));
+        }
+    }
+
+    /**
+     * A faction's amendment in the making. Clauses gather at the lectern; the people governance names
+     * sign it; once signed it is prepared for its bell until {@code expiresAt}. Changing a clause
+     * clears the signatures. {@code signedOn} holds each signer's calendar day, for the mark.
+     */
+    public record Draft(UUID token, ResourceLocation faction, UUID author, ResourceLocation dimension,
+                        BlockPos lectern, BlockPos bell, List<Clause> clauses, Set<UUID> signatures,
+                        long expiresAt, Map<UUID, Long> signedOn) {
+        public static final long UNSIGNED = 0L;
+
+        public Draft {
+            clauses = List.copyOf(clauses);
+            signatures = Set.copyOf(new LinkedHashSet<>(signatures));
+            Map<UUID, Long> days = new LinkedHashMap<>(signedOn);
+            days.keySet().retainAll(signatures);
+            signedOn = Map.copyOf(days);
+        }
+
+        public Draft(UUID token, ResourceLocation faction, UUID author, ResourceLocation dimension,
+                     BlockPos lectern, BlockPos bell, List<Clause> clauses, Set<UUID> signatures, long expiresAt) {
+            this(token, faction, author, dimension, lectern, bell, clauses, signatures, expiresAt, Map.of());
+        }
+
+        public boolean prepared() {
+            return expiresAt != UNSIGNED;
+        }
+
+        public Draft withClauses(List<Clause> value) {
+            return new Draft(UUID.randomUUID(), faction, author, dimension, lectern, bell, value, Set.of(), UNSIGNED);
+        }
+
+        public Draft signed(UUID person) {
+            return signed(person, -1L);
+        }
+
+        /** {@code day} is the calendar day of the signature, or -1 when unknown. */
+        public Draft signed(UUID person, long day) {
+            Set<UUID> next = new LinkedHashSet<>(signatures);
+            next.add(person);
+            Map<UUID, Long> days = new LinkedHashMap<>(signedOn);
+            if (day >= 0) days.put(person, day);
+            return new Draft(token, faction, author, dimension, lectern, bell, clauses, next, expiresAt, days);
+        }
+
+        public Draft preparedUntil(long time) {
+            return new Draft(token, faction, author, dimension, lectern, bell, clauses, signatures, time, signedOn);
+        }
+
+        public Draft unsigned() {
+            return new Draft(token, faction, author, dimension, lectern, bell, clauses, Set.of(), UNSIGNED);
+        }
+
+        CompoundTag save() {
+            CompoundTag tag = base(dimension, lectern, bell);
+            tag.putUUID("token", token);
+            tag.putString("faction", faction.toString());
+            tag.putUUID("author", author);
+            ListTag list = new ListTag();
+            clauses.forEach(clause -> list.add(clause.save()));
+            tag.put("clauses", list);
+            ListTag signed = new ListTag();
+            for (UUID person : signatures) {
+                CompoundTag entry = new CompoundTag();
+                entry.putUUID("person", person);
+                Long day = signedOn.get(person);
+                if (day != null) entry.putLong("day", day);
+                signed.add(entry);
+            }
+            tag.put("signatures", signed);
+            tag.putLong("expires_at", expiresAt);
+            return tag;
+        }
+
+        static @Nullable Draft read(CompoundTag tag) {
+            ResourceLocation faction = ResourceLocation.tryParse(tag.getString("faction"));
+            ResourceLocation dimension = ResourceLocation.tryParse(tag.getString("dimension"));
+            if (faction == null || dimension == null || !tag.hasUUID("token") || !tag.hasUUID("author")) return null;
+            List<Clause> clauses = new ArrayList<>();
+            ListTag list = tag.getList("clauses", Tag.TAG_COMPOUND);
+            for (int i = 0; i < list.size(); i++) clauses.add(Clause.read(list.getCompound(i)));
+            Set<UUID> signatures = new LinkedHashSet<>();
+            Map<UUID, Long> days = new LinkedHashMap<>();
+            ListTag signed = tag.getList("signatures", Tag.TAG_COMPOUND);
+            for (int i = 0; i < signed.size(); i++) {
+                CompoundTag entry = signed.getCompound(i);
+                UUID person = entry.getUUID("person");
+                signatures.add(person);
+                if (entry.contains("day")) days.put(person, entry.getLong("day"));
+            }
+            return new Draft(tag.getUUID("token"), faction, tag.getUUID("author"), dimension,
+                    BlockPos.of(tag.getLong("lectern")), BlockPos.of(tag.getLong("bell")), clauses, signatures,
+                    tag.getLong("expires_at"), days);
         }
     }
 }

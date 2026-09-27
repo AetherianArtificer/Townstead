@@ -1,222 +1,217 @@
 package com.aetherianartificer.townstead.politics.definition;
 
-import com.aetherianartificer.townstead.data.DataPackLang;
-import com.aetherianartificer.townstead.pheno.condition.ConditionTypes;
-import com.aetherianartificer.townstead.pheno.condition.types.ConstantConditionType;
 import com.aetherianartificer.townstead.politics.founding.FoundingProfileDefinition;
 import com.aetherianartificer.townstead.politics.founding.FoundingProfiles;
+import com.aetherianartificer.townstead.social.BondKind;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.resources.ResourceLocation;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Set;
 
+import static com.aetherianartificer.townstead.politics.definition.PoliticsFixtures.id;
+import static com.aetherianartificer.townstead.politics.definition.PoliticsFixtures.json;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PoliticalDefinitionsTest {
     @BeforeAll
     static void registerPhenoVocabulary() {
-        ConditionTypes.register(new ConstantConditionType());
-        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
-                new com.aetherianartificer.townstead.pheno.value.types.StandingValueType());
-        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
-                new com.aetherianartificer.townstead.pheno.value.types.VillageNeedsValueType());
-        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
-                new com.aetherianartificer.townstead.pheno.value.types.VillageSpiritTierValueType());
+        PoliticsFixtures.registerPheno();
     }
 
     @AfterEach
     void clearDefinitions() {
-        PoliticalDefinitions.replace(Map.of(), Map.of(), Map.of());
+        PoliticsFixtures.clear();
     }
 
     @Test
-    void bundledPoliticalDefinitionsFormOneCoherentSnapshot() throws Exception {
-        Map<ResourceLocation, OrganizationRoleDefinition> roles = parseDirectory(
-                "organization_role", (id, json) -> OrganizationRoleDefinition.parse(id, json, Map.of()));
-        Map<ResourceLocation, MembershipPolicyDefinition> policies = parseDirectory(
-                "membership_policy", MembershipPolicyDefinition::parse);
-        Map<ResourceLocation, OrganizationKindDefinition> kinds = parseDirectory(
-                "organization_kind", (id, json) -> OrganizationKindDefinition.parse(id, json, Map.of()));
+    void bundledBondsAndFactionKindsFormOneCoherentSet() throws Exception {
+        Map<ResourceLocation, BondKind> bonds = PoliticsFixtures.bonds();
+        Map<ResourceLocation, FactionKind> kinds = PoliticsFixtures.kinds();
 
-        assertEquals(6, roles.size());
-        assertEquals(4, policies.size());
-        assertEquals(4, kinds.size());
-        assertTrue(PoliticalDefinitions.validate(roles, policies, kinds).isEmpty(),
-                () -> String.join("\n", PoliticalDefinitions.validate(roles, policies, kinds)));
+        assertEquals(Set.of(id("townstead:friendship"), id("townstead:marriage"), id("townstead:citizenship"),
+                id("townstead:faction_leader"), id("townstead:presiding_councilor"), id("townstead:councilor")), bonds.keySet());
+        assertEquals(Set.of(id("townstead:village_council"), id("townstead:player_faction"), id("townstead:free_settlement")), kinds.keySet());
+        for (FactionKind kind : kinds.values()) {
+            assertTrue(PoliticalDefinitions.validate(kind, bonds).isEmpty(),
+                    () -> kind.id() + ": " + PoliticalDefinitions.validate(kind, bonds));
+        }
 
-        OrganizationKindDefinition civic = kinds.get(id("townstead:civic_faction"));
-        assertTrue(civic.tags().contains(id("townstead:political")));
-        assertTrue(civic.roles().stream().anyMatch(binding -> binding.founder()
-                && binding.role().equals(id("townstead:founder"))));
-
-        OrganizationKindDefinition guild = kinds.get(id("townstead:guild"));
-        assertTrue(guild.tags().contains(id("townstead:nonexclusive")));
-
-        OrganizationKindDefinition playerFaction = kinds.get(id("townstead:player_faction"));
-        assertEquals(id("townstead:player_faction"), playerFaction.membershipPolicy());
-        assertTrue(playerFaction.roles().stream().anyMatch(binding -> binding.founder()
-                && binding.role().equals(id("townstead:faction_leader"))
-                && binding.minimum() == 1 && binding.maximum() == 1));
-        MembershipPolicyDefinition playerPolicy = policies.get(playerFaction.membershipPolicy());
-        assertEquals(id("townstead:faction_leader"), playerPolicy.admission().decision().role());
-        assertEquals(java.util.List.of(id("townstead:member")), playerPolicy.admission().initialRoles());
+        FactionKind playerFaction = kinds.get(id("townstead:player_faction"));
+        assertEquals(FactionKind.APPLICATION, playerFaction.membership().admission());
+        assertEquals(id("townstead:citizenship"), playerFaction.membership().bond());
+        FactionKind.Office leader = playerFaction.office(id("townstead:faction_leader"));
+        assertTrue(leader.founder());
+        assertEquals(1, leader.minimum());
+        assertEquals(1, leader.maximum());
         assertEquals(id("townstead:faction_leader"), playerFaction.governance().head());
         assertEquals(GovernanceRoutes.FAVOR, playerFaction.governance().succession());
 
-        GovernanceDefinition council = kinds.get(id("townstead:village_council")).governance();
+        FactionKind councilKind = kinds.get(id("townstead:village_council"));
+        assertTrue(councilKind.generated());
+        assertEquals(FactionKind.RESIDENCE, councilKind.membership().admission());
+        GovernanceDefinition council = councilKind.governance();
         assertEquals(id("townstead:presiding_councilor"), council.head());
         assertEquals(GovernanceRoutes.COUNCIL_VOTE, council.succession());
         assertEquals(50, council.legitimacy().base());
         assertEquals(2, council.legitimacy().sources().size());
         assertEquals(2, council.routes().size());
 
-        PoliticalDefinitions.replace(roles, policies, kinds);
-        Path profileFile = Path.of(Objects.requireNonNull(PoliticalDefinitionsTest.class.getClassLoader()
-                .getResource("data/townstead/founding_profile/default_village.json")).toURI());
+        FactionKind free = kinds.get(id("townstead:free_settlement"));
+        assertTrue(free.offices().isEmpty());
+        assertNull(free.governance());
+
+        BondKind leaderBond = bonds.get(id("townstead:faction_leader"));
+        assertTrue(leaderBond.officeShaped());
+        assertTrue(leaderBond.roleFor(BondKind.Party.FACTION).gives().contains(id("townstead:govern_faction")));
+        assertEquals(id("townstead:citizenship"), leaderBond.roleFor(BondKind.Party.PERSON).requires());
+
+        PoliticalDefinitions.replace(kinds);
         FoundingProfileDefinition profile = FoundingProfileDefinition.parse(id("townstead:default_village"),
-                JsonParser.parseString(Files.readString(profileFile)).getAsJsonObject(), Map.of());
-        assertTrue(FoundingProfiles.validate(profile).isEmpty(),
-                () -> String.join("\n", FoundingProfiles.validate(profile)));
-        assertEquals(id("townstead:village_council"), profile.government().organizationKind());
-        assertEquals(3, profile.government().seats().stream().mapToInt(FoundingProfileDefinition.Seat::count).sum());
+                PoliticsFixtures.resource("data/townstead/founding_profile/default_village.json"), Map.of());
+        assertTrue(FoundingProfiles.validate(profile).isEmpty(), () -> String.join("\n", FoundingProfiles.validate(profile)));
+        assertEquals(id("townstead:village_council"), profile.faction().kind());
+        assertEquals(3, profile.faction().bundles().size());
+        assertEquals(Set.of(id("townstead:presiding_councilor"), id("townstead:councilor")), profile.faction().bundles().get(0));
         assertEquals(id("townstead:cultural_affinity"), profile.population().strategy());
         assertTrue(profile.population().adjustments().isEmpty(), "the starter population is an open strategy, not an allowlist");
     }
 
     @Test
-    void noGovernmentProfileIsAValidFirstClassDefinition() {
-        FoundingProfileDefinition profile = FoundingProfileDefinition.parse(id("townstead:no_formal_government"),
-                JsonParser.parseString("""
-                        {
-                          "schema":"townstead:founding_profile/v1",
-                          "name":"No Formal Government",
-                          "weight":0
-                        }
-                        """).getAsJsonObject(), Map.of());
+    void anOlderGovernmentBlockStillLoads() {
+        PoliticalDefinitions.replace(PoliticsFixtures.kinds());
+        FoundingProfileDefinition profile = FoundingProfileDefinition.parse(id("test:tusk_horde"), json("""
+                {
+                  "schema":"townstead:founding_profile/v1",
+                  "government":{
+                    "organization_kind":"townstead:village_council",
+                    "name_pattern":"{village} Council",
+                    "seats":[
+                      {"roles":["townstead:presiding_councilor","townstead:councilor"],"count":1},
+                      {"roles":["townstead:councilor"],"count":2}
+                    ]
+                  }
+                }
+                """), Map.of());
 
-        assertEquals(null, profile.government());
+        assertTrue(profile.faction().legacy());
+        assertEquals(id("townstead:village_council"), profile.faction().kind());
+        assertEquals(3, profile.faction().bundles().size());
         assertTrue(FoundingProfiles.validate(profile).isEmpty());
     }
 
     @Test
-    void unknownPhenoEligibilityFailsClosed() {
-        JsonObject json = JsonParser.parseString("""
-                {
-                  "schema":"townstead:membership_policy/v1",
-                  "admission":{
-                    "procedure":"townstead:open_admission",
-                    "eligibility":{"type":"example:not_registered"}
-                  },
-                  "departure":{"procedure":"townstead:free_resignation"}
-                }
-                """).getAsJsonObject();
+    void aProfileWithoutAFactionIsValid() {
+        FoundingProfileDefinition profile = FoundingProfileDefinition.parse(id("townstead:no_formal_government"), json("""
+                {"schema":"townstead:founding_profile/v1","name":"No Formal Government","weight":0}
+                """), Map.of());
 
-        assertThrows(IllegalArgumentException.class,
-                () -> MembershipPolicyDefinition.parse(id("test:closed"), json));
+        assertNull(profile.faction());
+        assertTrue(FoundingProfiles.validate(profile).isEmpty());
+    }
+
+    @Test
+    void aSeatNamingAnOfficeTheKindLacksIsReported() {
+        PoliticalDefinitions.replace(PoliticsFixtures.kinds());
+        FoundingProfileDefinition profile = FoundingProfileDefinition.parse(id("test:empire"), json("""
+                {"schema":"townstead:founding_profile/v1",
+                 "faction":{"kind":"townstead:village_council","seats":[{"offices":["test:emperor"]}]}}
+                """), Map.of());
+
+        List<String> errors = FoundingProfiles.validate(profile);
+        assertEquals(1, errors.size());
+        assertTrue(errors.get(0).contains("test:emperor"));
+    }
+
+    @Test
+    void unknownPhenoEligibilityFailsClosed() {
+        JsonObject json = kind(null);
+        json.getAsJsonObject("membership").add("eligibility", JsonParser.parseString("{\"type\":\"example:not_registered\"}"));
+
+        assertThrows(IllegalArgumentException.class, () -> FactionKind.parse(id("test:closed"), json, Map.of()));
+    }
+
+    @Test
+    void anUnknownAdmissionIsRejected() {
+        JsonObject json = kind(null);
+        json.getAsJsonObject("membership").addProperty("admission", "test:by_lottery");
+
+        assertThrows(IllegalArgumentException.class, () -> FactionKind.parse(id("test:lottery"), json, Map.of()));
     }
 
     @Test
     void governanceNamesOnlyImplementedRoutes() {
-        JsonObject json = governanceKind("""
-                {"head":"townstead:member","succession":"test:trial_by_lottery"}
-                """);
-
-        assertThrows(IllegalArgumentException.class,
-                () -> OrganizationKindDefinition.parse(id("test:lottery"), json, Map.of()));
+        assertThrows(IllegalArgumentException.class, () -> FactionKind.parse(id("test:lottery"),
+                kind("{\"head\":\"test:warden\",\"succession\":\"test:trial_by_lottery\"}"), Map.of()));
     }
 
     @Test
-    void governanceOfficesMustBeRolesOfTheKind() {
-        JsonObject json = governanceKind("""
-                {"head":"test:emperor","succession":"townstead:favor"}
-                """);
-
-        assertThrows(IllegalArgumentException.class,
-                () -> OrganizationKindDefinition.parse(id("test:empire"), json, Map.of()));
-    }
-
-    private static JsonObject governanceKind(String governance) {
-        JsonObject json = JsonParser.parseString("""
-                {
-                  "schema":"townstead:organization_kind/v1",
-                  "membership_policy":"townstead:open",
-                  "roles":[{"role":"townstead:member","min":1,"max":1}],
-                  "founding":{"procedure":"townstead:charter"}
-                }
-                """).getAsJsonObject();
-        json.add("governance", JsonParser.parseString(governance));
-        return json;
+    void governanceOfficesMustBeOfficesOfTheKind() {
+        assertThrows(IllegalArgumentException.class, () -> FactionKind.parse(id("test:empire"),
+                kind("{\"head\":\"test:emperor\",\"succession\":\"townstead:favor\"}"), Map.of()));
     }
 
     @Test
-    void malformedRoleCardinalityIsRejected() {
-        JsonObject json = JsonParser.parseString("""
-                {
-                  "schema":"townstead:organization_kind/v1",
-                  "membership_policy":"townstead:open",
-                  "roles":[{"role":"townstead:member","min":2,"max":1}],
-                  "founding":{"procedure":"townstead:charter"}
-                }
-                """).getAsJsonObject();
+    void malformedOfficeCardinalityIsRejected() {
+        JsonObject json = kind(null);
+        json.getAsJsonArray("offices").get(0).getAsJsonObject().addProperty("min", 2);
 
-        assertThrows(IllegalArgumentException.class,
-                () -> OrganizationKindDefinition.parse(id("test:broken"), json, Map.of()));
+        assertThrows(IllegalArgumentException.class, () -> FactionKind.parse(id("test:broken"), json, Map.of()));
     }
 
     @Test
-    void unresolvedReferencesAreReportedWithTheirOwner() {
-        MembershipPolicyDefinition policy = MembershipPolicyDefinition.parse(id("test:policy"),
-                JsonParser.parseString("""
-                        {
-                          "schema":"townstead:membership_policy/v1",
-                          "admission":{
-                            "procedure":"townstead:open_admission",
-                            "initial_roles":["test:missing"]
-                          },
-                          "departure":{"procedure":"townstead:free_resignation"}
-                        }
-                        """).getAsJsonObject());
+    void aKindWhoseOfficeIsNotAnOfficeShapedBondIsReported() {
+        FactionKind kind = FactionKind.parse(id("test:wardens"), kind(null), Map.of());
+        Map<ResourceLocation, BondKind> bonds = Map.of(id("townstead:citizenship"), PoliticsFixtures.bonds().get(id("townstead:citizenship")),
+                id("test:warden"), BondKind.personal(id("test:warden"), "Warden", 0, true, true, null));
 
-        var errors = PoliticalDefinitions.validate(Map.of(), Map.of(policy.id(), policy), Map.of());
+        List<String> errors = PoliticalDefinitions.validate(kind, bonds);
         assertEquals(1, errors.size());
-        assertTrue(errors.get(0).contains("test:policy"));
-        assertTrue(errors.get(0).contains("test:missing"));
+        assertTrue(errors.get(0).contains("test:warden"));
     }
 
-    private static <T> Map<ResourceLocation, T> parseDirectory(String directory, Parser<T> parser)
-            throws Exception {
-        Path root = Path.of(Objects.requireNonNull(PoliticalDefinitionsTest.class.getClassLoader()
-                .getResource("data/townstead/" + directory)).toURI());
-        Map<ResourceLocation, T> out = new LinkedHashMap<>();
-        try (var files = Files.list(root)) {
-            for (Path file : files.filter(path -> path.toString().endsWith(".json")).sorted().toList()) {
-                String name = file.getFileName().toString();
-                ResourceLocation id = id("townstead:" + name.substring(0, name.length() - 5));
-                JsonObject json = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
-                out.put(id, parser.parse(id, json));
-            }
-        }
-        return out;
+    @Test
+    void aRoleThatGivesLandMustBeASingleParent() {
+        assertThrows(IllegalArgumentException.class, () -> BondKind.parse(id("test:vassalage"), json("""
+                {"schema":"townstead:bond/v2","roles":{
+                  "liege":{"party":"faction"},
+                  "vassal":{"party":"faction","gives":["townstead:land"]}}}
+                """), Map.of()));
     }
 
-    private static ResourceLocation id(String value) {
-        ResourceLocation parsed = DataPackLang.parseId(value);
-        if (parsed == null) throw new IllegalArgumentException(value);
-        return parsed;
+    @Test
+    void versionOneBondKindsLoadAsTiesBetweenPeople() {
+        BondKind marriage = BondKind.parse(id("test:marriage"), json("""
+                {"schema":"townstead:bond_kind/v1","max_active":1,"unique_per_pair":true,"symmetric":true,"source":"mca:marriage"}
+                """), Map.of());
+
+        assertTrue(marriage.personal());
+        assertTrue(marriage.symmetric());
+        assertEquals(1, marriage.maxActive());
+        assertTrue(marriage.uniquePerPair());
+        assertEquals("mca:marriage", marriage.source());
+        assertFalse(marriage.officeShaped());
     }
 
-    @FunctionalInterface
-    private interface Parser<T> {
-        T parse(ResourceLocation id, JsonObject json);
+    /** A faction kind with one office, {@code test:warden}. */
+    private static JsonObject kind(String governance) {
+        JsonObject json = json("""
+                {
+                  "schema":"townstead:faction/v1",
+                  "membership":{"bond":"townstead:citizenship","admission":"townstead:open"},
+                  "offices":[{"bond":"test:warden","min":1,"max":1}]
+                }
+                """);
+        if (governance != null) json.add("governance", JsonParser.parseString(governance));
+        return json;
     }
 }

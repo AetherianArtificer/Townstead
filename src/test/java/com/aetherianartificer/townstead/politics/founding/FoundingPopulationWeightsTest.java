@@ -22,8 +22,7 @@ class FoundingPopulationWeightsTest {
                 Component.literal("Marsh Founders"), culture, 1.0F, SpawnBias.EMPTY, Conditions.ALWAYS,
                 new FoundingProfileDefinition.Population(FoundingProfileDefinition.CULTURAL_AFFINITY,
                         0.1F, Map.of(traveller, 2.0F)),
-                new FoundingProfileDefinition.Government(id("townstead:village_council"),
-                        "{village} Council", List.of()));
+                new FoundingProfileDefinition.FactionSpec(id("townstead:village_council"), List.of(), false));
         CulturalSpawnBias affinity = new CulturalSpawnBias(Map.of(
                 culture.toString(), 4.0F,
                 "any", 1.0F));

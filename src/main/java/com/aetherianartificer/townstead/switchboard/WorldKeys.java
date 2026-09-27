@@ -8,7 +8,7 @@ import java.util.Locale;
 
 /**
  * Switchboard settings that are keyed by loaded content rather than defined in the config file:
- * who can have each Root, how often it spawns, the same for whole species, ancestries, lineages and
+ * who can have each Root, how often it spawns, whether it is at peace, the same for whole species, ancestries, lineages and
  * packs, and the same for cultures. A key names content by id, so a key for content that is not
  * loaded is kept and simply does nothing.
  */
@@ -17,6 +17,7 @@ public final class WorldKeys {
 
     public static final String ROOT_STATE = "roots.state.";
     public static final String ROOT_RATE = "roots.rate.";
+    public static final String ROOT_PEACEFUL = "roots.peaceful.";
     public static final String GROUP_ON = "roots.group.";
     public static final String GROUP_RATE = "roots.groupRate.";
     public static final String CULTURE_ON = "cultures.enabled.";
@@ -37,13 +38,14 @@ public final class WorldKeys {
 
     public static String rootState(String rootId) { return ROOT_STATE + rootId; }
     public static String rootRate(String rootId) { return ROOT_RATE + rootId; }
+    public static String rootPeaceful(String rootId) { return ROOT_PEACEFUL + rootId; }
     public static String groupOn(String dimension, String id) { return GROUP_ON + dimension + "." + id; }
     public static String groupRate(String dimension, String id) { return GROUP_RATE + dimension + "." + id; }
     public static String cultureOn(String cultureId) { return CULTURE_ON + cultureId; }
     public static String cultureRate(String cultureId) { return CULTURE_RATE + cultureId; }
 
     public static boolean isKey(String key) {
-        return key != null && (key.startsWith(ROOT_STATE) || key.startsWith(ROOT_RATE)
+        return key != null && (key.startsWith(ROOT_STATE) || key.startsWith(ROOT_RATE) || key.startsWith(ROOT_PEACEFUL)
                 || groupDimension(key) != null || key.startsWith(CULTURE_ON) || key.startsWith(CULTURE_RATE));
     }
 
@@ -51,6 +53,7 @@ public final class WorldKeys {
     public static @Nullable Object defaultValue(String key) {
         if (key.startsWith(ROOT_STATE)) return RootState.EVERYONE;
         if (key.startsWith(GROUP_ON) || key.startsWith(CULTURE_ON)) return Boolean.TRUE;
+        if (key.startsWith(ROOT_PEACEFUL)) return Boolean.FALSE;
         if (key.startsWith(ROOT_RATE) || key.startsWith(GROUP_RATE) || key.startsWith(CULTURE_RATE)) return 1.0;
         return null;
     }
@@ -61,7 +64,7 @@ public final class WorldKeys {
             if (key.startsWith(ROOT_STATE)) {
                 return RootState.valueOf(json.getAsString().trim().toUpperCase(Locale.ROOT));
             }
-            if (key.startsWith(GROUP_ON) || key.startsWith(CULTURE_ON)) {
+            if (key.startsWith(GROUP_ON) || key.startsWith(CULTURE_ON) || key.startsWith(ROOT_PEACEFUL)) {
                 return json.getAsJsonPrimitive().isBoolean() ? json.getAsBoolean() : null;
             }
             double rate = json.getAsDouble();
@@ -89,7 +92,7 @@ public final class WorldKeys {
             String prefix = key.startsWith(GROUP_ON) ? GROUP_ON : GROUP_RATE;
             return key.substring(prefix.length() + dimension.length() + 1);
         }
-        for (String prefix : List.of(ROOT_STATE, ROOT_RATE, CULTURE_ON, CULTURE_RATE)) {
+        for (String prefix : List.of(ROOT_STATE, ROOT_RATE, ROOT_PEACEFUL, CULTURE_ON, CULTURE_RATE)) {
             if (key.startsWith(prefix)) return key.substring(prefix.length());
         }
         return key;

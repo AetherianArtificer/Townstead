@@ -265,6 +265,7 @@ public final class TownsteadClient {
         com.aetherianartificer.townstead.client.expression.ExpressionCueClientStore.tick();
         com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge.ensureRegistered();
         com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardScreen.tickPending();
+        com.aetherianartificer.townstead.client.gui.charter.CharterCeremonyClient.tick();
     }
     //?} else if forge {
     /*private static void onClientTick(net.minecraftforge.event.TickEvent.ClientTickEvent event) {
@@ -277,6 +278,7 @@ public final class TownsteadClient {
         com.aetherianartificer.townstead.client.expression.ExpressionCueClientStore.tick();
         com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge.ensureRegistered();
         com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardScreen.tickPending();
+        com.aetherianartificer.townstead.client.gui.charter.CharterCeremonyClient.tick();
     }
     *///?}
 

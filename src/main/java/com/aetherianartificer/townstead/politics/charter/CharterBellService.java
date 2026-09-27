@@ -1,41 +1,49 @@
 package com.aetherianartificer.townstead.politics.charter;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.calendar.CalendarDateFormatter;
+import com.aetherianartificer.townstead.calendar.TownsteadCalendar;
 import com.aetherianartificer.townstead.culture.Culture;
 import com.aetherianartificer.townstead.culture.Cultures;
 import com.aetherianartificer.townstead.emote.AiEmoteScheduler;
 import com.aetherianartificer.townstead.naming.Naming;
-import com.aetherianartificer.townstead.politics.definition.OrganizationKindDefinition;
-import com.aetherianartificer.townstead.politics.definition.OrganizationRoleDefinition;
+import com.aetherianartificer.townstead.politics.definition.FactionKind;
+import com.aetherianartificer.townstead.politics.definition.GovernanceDefinition;
 import com.aetherianartificer.townstead.politics.definition.PoliticalDefinitions;
 import com.aetherianartificer.townstead.politics.founding.FoundingProfileApplier;
 import com.aetherianartificer.townstead.politics.founding.FoundingProfileDefinition;
 import com.aetherianartificer.townstead.politics.founding.FoundingProfiles;
+import com.aetherianartificer.townstead.politics.heraldry.HeraldryService;
+import com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService;
+import com.aetherianartificer.townstead.politics.seat.SeatBuildings;
 import com.aetherianartificer.townstead.politics.seat.SeatService;
-import com.aetherianartificer.townstead.politics.state.AffiliationInstance;
-import com.aetherianartificer.townstead.politics.state.MembershipInstance;
-import com.aetherianartificer.townstead.politics.state.OrganizationInstance;
-import com.aetherianartificer.townstead.politics.state.PoliticalSavedData;
-import com.aetherianartificer.townstead.politics.state.PoliticalStatus;
+import com.aetherianartificer.townstead.politics.state.Faction;
+import com.aetherianartificer.townstead.politics.state.FactionBonds;
 import com.aetherianartificer.townstead.politics.state.PoliticalAuthority;
-import com.aetherianartificer.townstead.politics.state.PolityInstance;
+import com.aetherianartificer.townstead.politics.state.PoliticalSavedData;
 import com.aetherianartificer.townstead.politics.state.SeatInstance;
 import com.aetherianartificer.townstead.politics.state.SettlementFoundingRecord;
 import com.aetherianartificer.townstead.politics.state.SettlementRef;
+import com.aetherianartificer.townstead.social.BondKind;
+import com.aetherianartificer.townstead.social.BondKinds;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BellBlock;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LecternBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -50,12 +58,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Recognition, authoritative founding, presentation snapshots and celebration for Charter Bells. */
+/** Recognition, founding, the Charter book's snapshot, drafts at the lectern, and proclamation at the bell. */
 public final class CharterBellService {
     private static final long PROPOSAL_LIFETIME = 20L * 60L * 10L;
     private static final double USE_DISTANCE_SQUARED = 64.0D;
-    private static final ResourceLocation GOVERN_POLITY = id("townstead:govern_polity");
-    private static final String DESIGNATE_SEAT = "designate_seat";
+    private static final int ROSTER_LIMIT = 128;
+    private static final ResourceLocation PLAYER_FACTION = id("townstead:player_faction");
     //? if >=1.21 {
     private static final ResourceLocation CLAP = ResourceLocation.fromNamespaceAndPath("townstead", "clap");
     //?} else {
@@ -70,26 +78,32 @@ public final class CharterBellService {
         ServerLevel level = player.serverLevel();
         BlockState state = level.getBlockState(pos);
         if (state.is(Blocks.LECTERN)) {
-            if (state.getValue(LecternBlock.HAS_BOOK)
-                    && CharterSavedData.get(level.getServer()).binding(level.dimension().location(), pos) == null
-                    && CharterSavedData.get(level.getServer()).proposal(level.dimension().location(), pos) == null) {
-                return false;
-            }
-            Assembly assembly = assembly(level, pos);
             CharterSavedData saved = CharterSavedData.get(level.getServer());
-            if (assembly == null && saved.binding(level.dimension().location(), pos) == null
-                    && saved.proposal(level.dimension().location(), pos) == null) return false;
+            boolean known = saved.binding(level.dimension().location(), pos) != null
+                    || saved.proposal(level.dimension().location(), pos) != null;
+            if (state.getValue(LecternBlock.HAS_BOOK) && !known) return false;
+            if (assembly(level, pos) == null && !known) return false;
             send(player, pos, true, "");
             return true;
         }
         if (state.is(CharterBellBlocks.ELIGIBLE)) {
             // The platform interaction event proves this was a direct normal player use. Validation
             // below binds it to the exact prepared bell; automated/projectile rings never enter here.
-            if (!(state.getBlock() instanceof BellBlock) || properBellHit(state, hitFace, hitHeight)) {
-                ring(player, pos);
-            }
+            if (!(state.getBlock() instanceof BellBlock) || properBellHit(state, hitFace, hitHeight)) ring(player, pos);
         }
         return false;
+    }
+
+    /**
+     * Whether using this lectern opens the Charter. It reads only what the client also has, so the
+     * client cancels its own use of the held item or block with it and the lectern opens cleanly.
+     */
+    public static boolean claimsUse(Level level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        if (!state.is(Blocks.LECTERN)) return false;
+        if (level.getBlockEntity(pos) instanceof CharterLecternAccess access
+                && access.townstead$charterState() != CharterLecternAccess.NONE) return true;
+        return !state.getValue(LecternBlock.HAS_BOOK) && assembly(level, pos) != null;
     }
 
     public static void handle(CharterActionC2SPayload request, ServerPlayer player) {
@@ -100,134 +114,126 @@ public final class CharterBellService {
         }
         CharterSavedData saved = CharterSavedData.get(player.server);
         ResourceLocation dimension = player.serverLevel().dimension().location();
-        if (request.action() == CharterActionC2SPayload.MEMBERSHIP || request.action() == CharterActionC2SPayload.CIVIC) {
+        int action = request.action();
+        if (action == CharterActionC2SPayload.MEMBERSHIP || action == CharterActionC2SPayload.CIVIC
+                || action == CharterActionC2SPayload.DRAFT || action == CharterActionC2SPayload.HERALDRY) {
             var binding = saved.binding(dimension, request.lectern());
             if (binding == null || !player.serverLevel().getBlockState(request.lectern()).is(Blocks.LECTERN)
                     || !player.serverLevel().mayInteract(player, request.lectern())) return;
-            var polity = PoliticalSavedData.get(player.server).polity(binding.polity());
+            Faction faction = PoliticalSavedData.get(player.server).faction(binding.faction());
+            if (faction == null) return;
             var civic = CivicProviders.read(player, binding.settlement());
-            if (request.revision() != CivicProviders.revision(player, civic)) { send(player, request.lectern(), false, "The records have changed. Please review them again."); return; }
-            if (request.action() == CharterActionC2SPayload.CIVIC) {
-                boolean executed = CivicProviders.execute(player, binding.settlement(), civic, request.target(), request.operation());
-                if (!executed) player.displayClientMessage(Component.translatable("charter.townstead.membership.denied"), false);
-                if (!executed || !CivicProviders.opensScreen(civic, request.operation())) send(player, request.lectern(), false, "");
-                return;
-            }
-            if (request.operation().equals(DESIGNATE_SEAT)) {
-                if (polity == null || !request.target().equals(polity.id().toString())
-                        || !mayLink(player, polity, binding.settlement())) return;
-                Component result = seatResult(SeatService.designate(player.serverLevel(), binding, true));
-                player.displayClientMessage(result, false);
-                send(player, request.lectern(), false, result.getString());
-                return;
-            }
-            if (civic != null && civic.controlsGovernment() && polity != null && polity.governmentOrganization() != null
-                    && request.target().equals(polity.governmentOrganization().toString())) return;
-            var nativeIntent = new CharterActionC2SPayload(request.lectern(), request.action(), request.name(), request.profile(), request.culture(),
-                    request.operation(), request.target(), request.argument(), CharterMemberships.revision(player.server));
-            boolean amendment = request.operation().equals("transfer_leadership") || request.operation().equals("dissolve_faction") || request.operation().equals("cancel_amendment");
             Component result;
-            if (amendment) {
-                if (polity == null || polity.governmentOrganization() == null || !request.target().equals(polity.governmentOrganization().toString())) return;
-                var structure = assembly(player.serverLevel(), request.lectern());
-                if (!request.operation().equals("cancel_amendment") && (structure == null || !structure.bell().equals(binding.bell()))) return;
-                result = FactionLifecycle.prepare(player, binding, request.operation(), polity.name(), request.argument());
-            } else result = CharterMemberships.handle(player, polity, nativeIntent);
+            if (action == CharterActionC2SPayload.DRAFT) {
+                Assembly structure = assembly(player.serverLevel(), request.lectern());
+                if (structure == null || !structure.bell().equals(binding.bell())) {
+                    result = CharterDrafts.message("repair");
+                } else {
+                    result = CharterDrafts.handle(player, binding, faction, request);
+                }
+            } else if (action == CharterActionC2SPayload.HERALDRY) {
+                result = HeraldryService.handle(player, binding, request);
+            } else {
+                if (request.revision() != CivicProviders.revision(player, civic)) {
+                    send(player, request.lectern(), false, Component.translatable("charter.townstead.membership.stale").getString());
+                    return;
+                }
+                if (action == CharterActionC2SPayload.CIVIC) {
+                    boolean executed = CivicProviders.execute(player, binding.settlement(), civic, request.target(), request.operation());
+                    if (!executed) player.displayClientMessage(Component.translatable("charter.townstead.membership.denied"), false);
+                    if (!executed || !CivicProviders.opensScreen(civic, request.operation())) send(player, request.lectern(), false, "");
+                    return;
+                }
+                if (civic != null && civic.controlsGovernment()) return;
+                result = CharterMemberships.handle(player, faction, new CharterActionC2SPayload(request.lectern(), action,
+                        request.name(), request.profile(), request.culture(), request.operation(), request.target(),
+                        request.argument(), CharterMemberships.revision(player.server)));
+            }
             player.displayClientMessage(result, false);
             send(player, request.lectern(), false, result.getString());
             return;
         }
-        if (request.action() == CharterActionC2SPayload.IDENTITY) {
-            var binding = saved.binding(dimension, request.lectern());
-            if (binding == null || !player.serverLevel().getBlockState(request.lectern()).is(Blocks.LECTERN)
-                    || !player.serverLevel().mayInteract(player, request.lectern())) return;
-            var structure = assembly(player.serverLevel(), request.lectern());
-            if (structure == null || !structure.bell().equals(binding.bell())) return;
-            Component result = CharterIdentityService.handle(player, binding, request);
-            player.displayClientMessage(result, false);
-            send(player, request.lectern(), false, result.getString()); return;
-        }
-        if (request.action() == CharterActionC2SPayload.HERALDRY) {
-            var binding = saved.binding(dimension, request.lectern());
-            if (binding == null || !player.serverLevel().getBlockState(request.lectern()).is(Blocks.LECTERN)
-                    || !player.serverLevel().mayInteract(player, request.lectern())) return;
-            Component result = com.aetherianartificer.townstead.politics.heraldry.HeraldryService.handle(player, binding, request);
-            player.displayClientMessage(result, false);
-            send(player, request.lectern(), false, result.getString()); return;
-        }
-        if (request.action() == CharterActionC2SPayload.CANCEL) {
+        if (action == CharterActionC2SPayload.CANCEL) {
             if (saved.cancel(dimension, request.lectern(), player.getUUID())) {
                 setLecternState(player.serverLevel(), request.lectern(), CharterLecternAccess.NONE);
             }
-            send(player, request.lectern(), false, "Proclamation cancelled.");
+            send(player, request.lectern(), false, Component.translatable("charter.townstead.proclamation_cancelled").getString());
             return;
         }
         if (!player.mayBuild() || !player.serverLevel().mayInteract(player, request.lectern())) return;
         Assembly assembly = assembly(player.serverLevel(), request.lectern());
         if (assembly == null) {
-            send(player, request.lectern(), false, "Restore the lectern, support, and bell before preparing.");
+            send(player, request.lectern(), false, Component.translatable("charter.townstead.repair").getString());
             return;
         }
-        if (request.action() == CharterActionC2SPayload.LINK_EXISTING) {
+        if (action == CharterActionC2SPayload.LINK_EXISTING) {
             Existing existing = existing(player.serverLevel(), assembly.bell());
-            if (existing == null) {
-                send(player, request.lectern(), false, "That settlement record is no longer available.");
-                return;
-            }
-            if (!mayLink(player, existing.polity(), existing.settlement())) {
-                send(player, request.lectern(), false, "You cannot bind a Charter Bell for this polity.");
+            if (existing == null || !mayLink(player, existing.faction(), existing.settlement())) {
+                send(player, request.lectern(), false, Component.translatable("charter.townstead.link_denied").getString());
                 return;
             }
             if (saved.bindExisting(dimension, request.lectern(), assembly.bell(), existing.settlement(),
-                    existing.polity().id(), player.getUUID(), player.serverLevel().getGameTime())) {
+                    existing.faction().id(), player.getUUID(), player.serverLevel().getGameTime())) {
                 setLecternState(player.serverLevel(), request.lectern(), CharterLecternAccess.FOUNDED);
                 SeatService.designate(player.serverLevel(), saved.binding(dimension, request.lectern()), false);
             }
-            send(player, request.lectern(), false, "Charter Bell linked.");
+            send(player, request.lectern(), false, Component.translatable("charter.townstead.linked").getString());
             return;
         }
-        if (request.action() != CharterActionC2SPayload.PREPARE) return;
-        if (saved.binding(dimension, request.lectern()) != null) {
-            send(player, request.lectern(), false, "This Charter Bell is already founded.");
-            return;
-        }
+        if (action != CharterActionC2SPayload.PREPARE) return;
+        if (saved.binding(dimension, request.lectern()) != null) return;
         String name = normalizeName(request.name());
-        ResourceLocation profileId = id("townstead:player_faction");
-        FoundingProfileDefinition profile = FoundingProfiles.get(profileId);
+        FoundingProfileDefinition profile = FoundingProfiles.get(PLAYER_FACTION);
         ResourceLocation culture = request.culture().isBlank() ? null : ResourceLocation.tryParse(request.culture());
-        if (name == null || profile == null || profile.government() == null || !FoundingProfiles.validate(profile).isEmpty()
+        if (name == null || profile == null || profile.faction() == null || !FoundingProfiles.validate(profile).isEmpty()
                 || (!request.culture().isBlank() && (culture == null || Cultures.get(culture) == null))) {
-            send(player, request.lectern(), false, "One of the charter choices is no longer available.");
+            send(player, request.lectern(), false, Component.translatable("charter.townstead.definition_changed").getString());
             return;
         }
-        var factionName = com.aetherianartificer.townstead.culture.FactionNaming.review(
-                culture, profile.government() == null ? null : profile.government().organizationKind(),
+        var factionName = com.aetherianartificer.townstead.culture.FactionNaming.review(culture, profile.faction().kind(),
                 request.target(), request.operation(), request.argument().isBlank() ? name : request.argument());
-        if (factionName == null) { send(player, request.lectern(), false, Component.translatable("charter.townstead.identity.invalid").getString()); return; }
+        if (factionName == null) {
+            send(player, request.lectern(), false, Component.translatable("charter.townstead.identity.invalid").getString());
+            return;
+        }
         long now = player.serverLevel().getGameTime();
         saved.prepare(new CharterSavedData.Proposal(UUID.randomUUID(), player.getUUID(), dimension,
                 request.lectern().immutable(), assembly.bell().immutable(), name, profile.id(), culture,
                 now, now + PROPOSAL_LIFETIME, factionName));
         setLecternState(player.serverLevel(), request.lectern(), CharterLecternAccess.PREPARED);
         gather(player.serverLevel(), assembly.bell());
-        send(player, request.lectern(), false, "The proclamation is prepared. Ring the bell.");
+        send(player, request.lectern(), false, Component.translatable("charter.townstead.ring_to_found").getString());
     }
 
     private static void ring(ServerPlayer player, BlockPos bell) {
         ServerLevel level = player.serverLevel();
         CharterSavedData saved = CharterSavedData.get(level.getServer());
         saved.expire(level.getGameTime());
-        var amendment = saved.amendmentAtBell(level.dimension().location(), bell);
-        if (amendment != null) {
-            if (!amendment.initiator().equals(player.getUUID())) return;
-            var binding = saved.binding(amendment.dimension(), amendment.lectern());
-            var structure = assembly(level, amendment.lectern());
-            if (binding == null || !binding.polity().equals(amendment.polity()) || !binding.bell().equals(bell)
-                    || structure == null || !structure.bell().equals(bell) || !near(player, bell) || !near(player, amendment.lectern())
-                    || !player.mayBuild() || !level.mayInteract(player, bell) || !level.mayInteract(player, amendment.lectern())) return;
-            var result = FactionLifecycle.commit(player, amendment);
-            player.displayClientMessage(result, false);
-            send(player, amendment.lectern(), false, result.getString());
+        var draft = saved.draftAtBell(level.dimension().location(), bell);
+        if (draft != null) {
+            if (!draft.signatures().contains(player.getUUID())) return;
+            var binding = saved.binding(draft.dimension(), draft.lectern());
+            var structure = assembly(level, draft.lectern());
+            if (binding == null || !binding.faction().equals(draft.faction()) || !binding.bell().equals(bell)
+                    || structure == null || !structure.bell().equals(bell) || !near(player, bell)
+                    || !player.mayBuild() || !level.mayInteract(player, bell)) return;
+            PoliticalSavedData politics = PoliticalSavedData.get(level.getServer());
+            Faction before = politics.faction(draft.faction());
+            if (before == null) return;
+            List<Component> clauses = new ArrayList<>();
+            for (CharterSavedData.Clause clause : draft.clauses()) clauses.add(clauseView(player, politics, before, clause).label().component());
+            CharterDrafts.Proclamation result = CharterDrafts.proclaim(player, draft);
+            player.displayClientMessage(result.message(), false);
+            if (result.done()) {
+                Faction after = politics.faction(draft.faction());
+                String name = after == null ? before.name() : after.name();
+                Component summary = clauses.size() == 1 ? clauses.get(0)
+                        : Component.translatable("charter.townstead.draft.proclaimed_many", clauses.size());
+                celebrate(level, bell, Component.literal(name), summary, waveRadius(level, binding.settlement()));
+                LegitimacyService.notifyMembers(level.getServer(), politics, after == null ? before : after,
+                        Component.translatable("charter.townstead.draft.proclaimed_notice", name, summary));
+            }
+            gather(level, bell);
             return;
         }
         CharterSavedData.Proposal proposal = saved.proposalAtBell(level.dimension().location(), bell);
@@ -252,12 +258,11 @@ public final class CharterBellService {
             return;
         }
         FoundingProfileDefinition profile = FoundingProfiles.get(proposal.profile());
-        if (profile == null || profile.government() == null || !profile.id().equals(id("townstead:player_faction"))
+        if (profile == null || profile.faction() == null || !profile.id().equals(PLAYER_FACTION)
                 || !FoundingProfiles.validate(profile).isEmpty() || (proposal.culture() != null && Cultures.get(proposal.culture()) == null)) {
             player.displayClientMessage(Component.translatable("charter.townstead.definition_changed"), false);
             return;
         }
-
         VillageManager manager = VillageManager.get(level);
         Village village = manager.findNearestVillage(bell, Village.MERGE_MARGIN).orElse(null);
         if (village == null) {
@@ -269,9 +274,8 @@ public final class CharterBellService {
                 return;
             }
         }
-
-        SettlementRef candidate = new SettlementRef(level.dimension().location(), village.getId());
-        if (CivicProviders.ownsGovernment(level.getServer(), candidate)) {
+        SettlementRef settlement = new SettlementRef(level.dimension().location(), village.getId());
+        if (CivicProviders.ownsGovernment(level.getServer(), settlement)) {
             saved.cancel(proposal.dimension(), proposal.lectern(), proposal.initiator());
             setLecternState(level, proposal.lectern(), CharterLecternAccess.NONE);
             player.displayClientMessage(Component.translatable("charter.townstead.founding_location_changed"), false);
@@ -284,17 +288,16 @@ public final class CharterBellService {
             return;
         }
         var politics = PoliticalSavedData.get(level.getServer());
-        var founded = politics.polity(result.polity());
+        Faction founded = politics.faction(result.faction());
         if (founded != null) {
-            politics.putPolity(new PolityInstance(founded.id(), proposal.factionName().display(), founded.color(), founded.emblem(),
-                    founded.createdAt(), founded.provenance(), founded.status(), founded.settlements(), founded.governmentOrganization()));
+            politics.putFaction(founded.withName(proposal.factionName().display()));
             politics.putFactionName(founded.id(), proposal.factionName());
         }
-        SettlementRef settlement = new SettlementRef(level.dimension().location(), village.getId());
-        if (!saved.commit(proposal, settlement, result.polity(), level.getGameTime())) return;
+        if (!saved.commit(proposal, settlement, result.faction(), level.getGameTime())) return;
         SeatService.designate(level, saved.binding(proposal.dimension(), proposal.lectern()), false);
         setLecternState(level, proposal.lectern(), CharterLecternAccess.FOUNDED);
-        celebrate(level, bell, proposal.factionName().display());
+        celebrate(level, bell, Component.literal(proposal.factionName().display()),
+                Component.translatable("charter.townstead.founded_title"), waveRadius(level, settlement));
         level.getServer().getPlayerList().broadcastSystemMessage(Component.translatable(
                 "charter.townstead.faction_announced", player.getDisplayName(), proposal.factionName().display()), false);
     }
@@ -315,232 +318,336 @@ public final class CharterBellService {
         saved.expire(level.getGameTime());
         CharterSavedData.Binding binding = saved.binding(dimension, lectern);
         CharterSavedData.Proposal proposal = saved.proposal(dimension, lectern);
-        if (binding != null && saved.amendment(binding.polity()) != null && message.isBlank())
-            message = Component.translatable("charter.townstead.lifecycle.prepared").getString();
         setLecternState(level, lectern, binding != null ? CharterLecternAccess.FOUNDED
                 : proposal != null ? CharterLecternAccess.PREPARED : CharterLecternAccess.NONE);
         Assembly assembly = assembly(level, lectern);
-        BlockPos bell = binding != null ? binding.bell() : proposal != null ? proposal.bell()
-                : assembly != null ? assembly.bell() : lectern;
+        BlockPos bell = binding != null ? binding.bell() : proposal != null ? proposal.bell() : assembly != null ? assembly.bell() : lectern;
         boolean editable = player.mayBuild() && level.mayInteract(player, lectern);
         if (binding == null && proposal == null && assembly == null) {
-            return empty(lectern, bell, CharterSnapshotS2CPayload.UNAVAILABLE, false,
-                    message.isBlank() ? "The Charter Bell assembly is unavailable." : message);
+            return empty(lectern, bell, message.isBlank() ? Component.translatable("charter.townstead.unavailable").getString() : message);
         }
         if (binding == null) {
-            if (proposal == null && assembly != null) {
+            if (proposal == null) {
                 Existing existing = existing(level, assembly.bell());
                 if (existing != null) {
-                    OrganizationInstance government = existing.polity().governmentOrganization() == null ? null
-                            : PoliticalSavedData.get(level.getServer()).organization(existing.polity().governmentOrganization());
-                    Component governance = governanceName(government);
+                    Component form = kindName(existing.faction());
                     var external = CivicProviders.read(player, existing.settlement());
-                    if (external != null && external.controlsGovernment()) governance = external.governance().component();
+                    if (external != null && external.controlsGovernment()) form = external.governance().component();
                     return new CharterSnapshotS2CPayload(lectern, bell, CharterSnapshotS2CPayload.EXISTING,
-                            editable && mayLink(player, existing.polity(), existing.settlement()), existing.village().getName(), existing.polity().name(),
-                            CharterSnapshotS2CPayload.Text.of(governance),
-                            text("charter.townstead.existing_help", "Link this Charter Bell without changing the settlement."),
-                            text("charter.townstead.no_founding_culture", "No founding culture"), message,
-                            List.of(), List.of(), List.of(), List.of(), List.of(), 0);
+                            editable && mayLink(player, existing.faction(), existing.settlement()), message, 0,
+                            existing.village().getName(), existing.faction().name(), text(form),
+                            text(Component.translatable("charter.townstead.existing_help")),
+                            text(Component.translatable("charter.townstead.no_founding_culture")), List.of(), List.of(), null);
                 }
             }
             List<CharterSnapshotS2CPayload.Option> profiles = profileOptions();
-            if (profiles.isEmpty()) return empty(lectern, bell, CharterSnapshotS2CPayload.UNAVAILABLE,
-                    false, "No valid founding governance is loaded.");
+            if (profiles.isEmpty()) return empty(lectern, bell, Component.translatable("charter.townstead.no_profile").getString());
             List<CharterSnapshotS2CPayload.Option> cultures = cultureOptions();
             if (proposal == null) {
-                return new CharterSnapshotS2CPayload(lectern, bell, CharterSnapshotS2CPayload.UNFOUNDED,
-                        editable, "", "", text("charter.townstead.not_founded", "Not founded"),
-                        text("charter.townstead.review_help", "Review the charter before preparing it."),
-                        text("charter.townstead.no_founding_culture", "No founding culture"), message,
-                        profiles, cultures, List.of(), List.of(), List.of(), 0);
+                return new CharterSnapshotS2CPayload(lectern, bell, CharterSnapshotS2CPayload.UNFOUNDED, editable, message, 0,
+                        "", "", text(Component.translatable("charter.townstead.not_founded")),
+                        text(Component.translatable("charter.townstead.review_help")),
+                        text(Component.translatable("charter.townstead.no_founding_culture")), profiles, cultures, null);
             }
             FoundingProfileDefinition profile = FoundingProfiles.get(proposal.profile());
-            Component government = profile == null ? Component.literal(proposal.profile().toString()) : profile.displayName();
-            Component culture = cultureName(proposal.culture());
+            Component form = profile == null ? Component.literal(proposal.profile().toString()) : kindName(profile.faction() == null ? null : profile.faction().kind());
             return new CharterSnapshotS2CPayload(lectern, bell,
                     assembly == null ? CharterSnapshotS2CPayload.REPAIR : CharterSnapshotS2CPayload.PREPARED,
-                    editable && proposal.initiator().equals(player.getUUID()), proposal.name(), proposal.factionName().display(),
-                    CharterSnapshotS2CPayload.Text.of(government),
-                    text("charter.townstead.ring_to_found", "Ring the associated bell to found this settlement."),
-                    CharterSnapshotS2CPayload.Text.of(culture), message, profiles, cultures,
-                    List.of(), List.of(), List.of(), 0);
+                    editable && proposal.initiator().equals(player.getUUID()), message, 0, proposal.name(),
+                    proposal.factionName().display(), text(form), text(Component.translatable("charter.townstead.ring_to_found")),
+                    text(cultureName(proposal.culture())), profiles, cultures, null);
         }
 
         PoliticalSavedData politics = PoliticalSavedData.get(level.getServer());
-        PolityInstance polity = politics.polity(binding.polity());
+        Faction faction = politics.faction(binding.faction());
         Village village = VillageManager.get(level).getOrEmpty(binding.settlement().villageId()).orElse(null);
-        if (polity == null || village == null) {
-            return empty(lectern, bell, CharterSnapshotS2CPayload.UNAVAILABLE, false,
-                    "The civic record could not be loaded. Try again shortly.");
+        if (faction == null || village == null) {
+            return empty(lectern, bell, Component.translatable("charter.townstead.record_unavailable").getString());
         }
         boolean intact = assembly != null && assembly.bell().equals(binding.bell());
         SettlementFoundingRecord founding = politics.founding(binding.settlement());
-        OrganizationInstance government = polity.governmentOrganization() == null ? null
-                : politics.organization(polity.governmentOrganization());
-        Component governance = governanceName(government);
-        Component authority = authority(government, politics);
-        Component tradition = cultureName(founding == null ? null : founding.culture());
-        List<CharterSnapshotS2CPayload.Organization> organizations = organizations(player, politics, polity);
+        Component form = kindName(faction);
         var civic = CivicProviders.read(player, binding.settlement());
-        if (civic != null && civic.controlsGovernment()) {
-            governance = civic.governance().component();
-            authority = civic.description().component();
-            organizations = organizations.stream().filter(o -> !o.governing()).toList();
-            if (civic.state().equals("active") || !saved.externalGovernment(binding.settlement()).isEmpty()) politics.markExternalGovernment(polity.id());
+        boolean external = civic != null && civic.controlsGovernment();
+        if (external) {
+            form = civic.governance().component();
+            if (civic.state().equals("active") || !saved.externalGovernment(binding.settlement()).isEmpty()) politics.markExternalGovernment(faction.id());
         }
-        List<CharterSnapshotS2CPayload.Tie> ties = ties(player, politics, polity);
-        Census census = census(level, village);
-        return new CharterSnapshotS2CPayload(lectern, bell,
-                intact ? CharterSnapshotS2CPayload.FOUNDED : CharterSnapshotS2CPayload.REPAIR,
-                editable, village.getName(), polity.name(), CharterSnapshotS2CPayload.Text.of(governance),
-                CharterSnapshotS2CPayload.Text.of(authority), CharterSnapshotS2CPayload.Text.of(tradition),
-                message, List.of(), List.of(), organizations, ties, census.groups(), census.total(),
-                CharterMemberships.requests(player, politics, polity), CivicProviders.revision(player, civic), censusScopes(level, village, polity, census), civic, com.aetherianartificer.townstead.politics.heraldry.HeraldryService.views(player, binding, village.getName()),
-                seatView(player, level, binding, polity, editable), standingView(player, binding),
-                legitimacyView(player.server, politics, polity));
+        boolean mayDraft = !external && intact && editable && CharterDrafts.mayDraft(player, faction);
+        CharterSnapshotS2CPayload.Book book = new CharterSnapshotS2CPayload.Book(faction.id().toString(),
+                text(proclaimed(player, faction, binding)),
+                text(mayDraft ? editingAs(player, politics, faction) : Component.empty()),
+                external ? null : legitimacyValue(politics, faction),
+                external ? text(Component.empty()) : legitimacyDetail(player, faction, village),
+                seatView(level, binding, faction, mayDraft),
+                censusScopes(level, village, faction),
+                external ? civic.history() : List.of(),
+                HeraldryService.views(player, binding, village.getName()),
+                mayDraft,
+                external ? civicOffices(civic) : offices(player, politics, faction, mayDraft),
+                members(player, politics, faction, external),
+                external ? List.of() : CharterMemberships.requests(player, politics, faction),
+                draftView(player, politics, faction),
+                civic);
+        return new CharterSnapshotS2CPayload(lectern, bell, intact ? CharterSnapshotS2CPayload.FOUNDED : CharterSnapshotS2CPayload.REPAIR,
+                editable, message, CivicProviders.revision(player, civic), village.getName(), faction.name(), text(form),
+                text(Component.empty()), text(cultureName(founding == null ? null : founding.culture())), List.of(), List.of(), book);
+    }
+
+    /** "Proclaimed at the bell of Merry Hollow, Autumn 3, Year 41." */
+    private static Component proclaimed(ServerPlayer player, Faction faction, CharterSavedData.Binding binding) {
+        String place = settlementName(player.serverLevel(), binding.settlement());
+        long daysAgo = Math.max(0, (player.serverLevel().getGameTime() - faction.createdAt()) / 24000L);
+        Component date = CalendarDateFormatter.format(player.server,
+                Math.max(0, TownsteadCalendar.worldDay(player.server) - daysAgo), CalendarDateFormatter.Style.LONG);
+        return date.getString().isBlank() ? Component.translatable("charter.townstead.proclaimed_undated", place)
+                : Component.translatable("charter.townstead.proclaimed", place, date);
+    }
+
+    private static List<CharterSnapshotS2CPayload.Office> offices(ServerPlayer player, PoliticalSavedData data, Faction faction, boolean mayDraft) {
+        FactionKind kind = PoliticalDefinitions.snapshot().kind(faction.kind());
+        if (kind == null) return List.of();
+        ResourceLocation head = CharterDrafts.headOffice(faction);
+        boolean transferable = mayDraft && !kind.membership().admission().equals(FactionKind.RESIDENCE);
+        List<CharterSnapshotS2CPayload.Office> out = new ArrayList<>();
+        for (FactionKind.Office office : kind.offices()) {
+            List<CharterSnapshotS2CPayload.Holder> holders = new ArrayList<>();
+            for (UUID holder : FactionBonds.holders(data, faction.id(), office.bond())) {
+                holders.add(new CharterSnapshotS2CPayload.Holder(holder.toString(), text(CharterPeople.name(player, holder)),
+                        holder.equals(player.getUUID())));
+            }
+            BondKind bond = BondKinds.byId(office.bond());
+            out.add(new CharterSnapshotS2CPayload.Office(office.bond().toString(), text(bond.displayName()),
+                    office.minimum(), office.maximum(), holders, transferable && office.bond().equals(head)));
+        }
+        return out;
+    }
+
+    private static List<CharterSnapshotS2CPayload.Office> civicOffices(CharterSnapshotS2CPayload.Civic civic) {
+        List<CharterSnapshotS2CPayload.Office> out = new ArrayList<>();
+        for (CharterSnapshotS2CPayload.Role role : civic.offices()) {
+            List<CharterSnapshotS2CPayload.Holder> holders = role.holders().stream()
+                    .map(name -> new CharterSnapshotS2CPayload.Holder("", name, false)).toList();
+            out.add(new CharterSnapshotS2CPayload.Office("", role.name(), 0, -1, holders, false));
+        }
+        return out;
+    }
+
+    /** Whom the viewer may amend the charter as: their office, or a server operator. */
+    private static Component editingAs(ServerPlayer player, PoliticalSavedData data, Faction faction) {
+        FactionKind kind = PoliticalDefinitions.snapshot().kind(faction.kind());
+        if (kind != null) {
+            for (ResourceLocation held : FactionBonds.kinds(data, player.getUUID(), faction.id())) {
+                if (kind.office(held) != null && PoliticalAuthority.allowed(data, player.getUUID(), faction.id(), CharterDrafts.GOVERN)) {
+                    return Component.translatable("charter.townstead.editing_as", BondKinds.byId(held).displayName());
+                }
+            }
+        }
+        return Component.translatable("charter.townstead.editing_as_operator");
+    }
+
+    /** One plain line on how people join: by living there, by application, or openly. */
+    private static Component joinHint(Faction faction, ServerLevel level) {
+        FactionKind kind = PoliticalDefinitions.snapshot().kind(faction.kind());
+        if (kind == null) return Component.empty();
+        ResourceLocation admission = kind.membership().admission();
+        if (admission.equals(FactionKind.RESIDENCE)) {
+            SettlementRef home = faction.seatSettlement();
+            return home == null ? Component.empty() : Component.translatable("charter.townstead.join.residence", settlementName(level, home));
+        }
+        if (admission.equals(FactionKind.APPLICATION)) return Component.translatable("charter.townstead.join.application");
+        return Component.translatable("charter.townstead.join.open");
+    }
+
+    private static CharterSnapshotS2CPayload.Members members(ServerPlayer player, PoliticalSavedData data, Faction faction, boolean external) {
+        FactionKind kind = PoliticalDefinitions.snapshot().kind(faction.kind());
+        ResourceLocation membership = kind == null ? FactionBonds.CITIZENSHIP : kind.membership().bond();
+        List<UUID> members = FactionBonds.holders(data, faction.id(), membership);
+        UUID self = player.getUUID();
+        boolean member = members.contains(self);
+        BondKind bond = BondKinds.byId(membership);
+        BondKind.Role citizen = bond.roleFor(BondKind.Party.PERSON);
+        boolean visible = member || player.hasPermissions(2) || citizen == null || !citizen.membersOnly();
+        List<CharterSnapshotS2CPayload.Person> people = new ArrayList<>();
+        if (visible) {
+            record Entry(UUID id, Component name, int rank, @Nullable Component office, boolean player) {}
+            List<Entry> entries = new ArrayList<>();
+            for (UUID person : members) {
+                Entity entity = findEntity(player, person);
+                boolean isPlayer = !(entity instanceof VillagerEntityMCA) && (player.server.getPlayerList().getPlayer(person) != null
+                        || player.server.getProfileCache() != null && player.server.getProfileCache().get(person).isPresent());
+                int rank = Integer.MAX_VALUE;
+                Component office = null;
+                if (kind != null) {
+                    for (int i = 0; i < kind.offices().size() && office == null; i++) {
+                        ResourceLocation officeBond = kind.offices().get(i).bond();
+                        if (FactionBonds.holders(data, faction.id(), officeBond).contains(person)) {
+                            rank = i;
+                            office = BondKinds.byId(officeBond).displayName();
+                        }
+                    }
+                }
+                entries.add(new Entry(person, CharterPeople.name(player, person), rank, office, isPlayer));
+            }
+            // Office holders by rank, then players, then everyone else, each by name.
+            entries.sort(Comparator.comparingInt(Entry::rank).thenComparing(e -> !e.player())
+                    .thenComparing(e -> e.name().getString()));
+            for (Entry entry : entries.subList(0, Math.min(ROSTER_LIMIT, entries.size()))) {
+                people.add(new CharterSnapshotS2CPayload.Person(entry.id().toString(), text(entry.name()),
+                        text(entry.office() == null ? Component.empty() : entry.office()), entry.player(), entry.id().equals(self)));
+            }
+        }
+        return new CharterSnapshotS2CPayload.Members(members.size(), visible, people, text(yourStatus(player, data, faction, member)),
+                text(external ? Component.empty() : joinHint(faction, player.serverLevel())),
+                external ? List.of() : CharterMemberships.actions(player, data, faction));
+    }
+
+    private static Component yourStatus(ServerPlayer player, PoliticalSavedData data, Faction faction, boolean member) {
+        FactionKind kind = PoliticalDefinitions.snapshot().kind(faction.kind());
+        MutableComponent offices = Component.empty();
+        if (kind != null) {
+            for (ResourceLocation held : FactionBonds.kinds(data, player.getUUID(), faction.id())) {
+                if (kind.office(held) == null) continue;
+                if (!offices.getSiblings().isEmpty()) offices.append(", ");
+                offices.append(BondKinds.byId(held).displayName());
+            }
+        }
+        if (!offices.getSiblings().isEmpty()) return Component.translatable("charter.townstead.status.office", offices);
+        boolean pending = CharterRequests.get(player.server).entries().stream()
+                .anyMatch(r -> r.open() && r.person().equals(player.getUUID()) && r.faction().equals(faction.id().toString()));
+        if (pending) return Component.translatable("charter.townstead.status.pending");
+        return Component.translatable(member ? "charter.townstead.status.member" : "charter.townstead.status.outsider");
+    }
+
+    private static @Nullable CharterSnapshotS2CPayload.Draft draftView(ServerPlayer player, PoliticalSavedData data, Faction faction) {
+        CharterSavedData.Draft draft = CharterSavedData.get(player.server).draft(faction.id());
+        if (draft == null) return null;
+        List<UUID> signers = CharterDrafts.signers(player, faction, draft.author());
+        if (!CharterDrafts.mayDraft(player, faction) && !signers.contains(player.getUUID())) return null;
+        List<CharterSnapshotS2CPayload.Clause> clauses = new ArrayList<>();
+        for (CharterSavedData.Clause clause : draft.clauses()) clauses.add(clauseView(player, data, faction, clause));
+        List<CharterSnapshotS2CPayload.Signer> signerViews = new ArrayList<>();
+        for (UUID signer : signers) {
+            boolean signed = draft.signatures().contains(signer);
+            Long day = draft.signedOn().get(signer);
+            Component date = signed && day != null
+                    ? CalendarDateFormatter.format(player.server, day, CalendarDateFormatter.Style.MEDIUM) : Component.empty();
+            signerViews.add(new CharterSnapshotS2CPayload.Signer(text(CharterPeople.name(player, signer)),
+                    text(signerOffice(data, faction, signer)), text(date),
+                    com.aetherianartificer.townstead.seal.PersonalSeals.of(player.server, signer), signed, signer.equals(player.getUUID())));
+        }
+        long remaining = draft.prepared() ? Math.max(0, draft.expiresAt() - player.serverLevel().getGameTime()) : 0;
+        boolean maySign = !draft.prepared() && signers.contains(player.getUUID()) && !draft.signatures().contains(player.getUUID());
+        return new CharterSnapshotS2CPayload.Draft(draft.token().toString(), clauses, signerViews, maySign,
+                draft.prepared(), remaining);
+    }
+
+    /** The signer's highest office. Only an operator can draft without one, so that is the fallback. */
+    private static Component signerOffice(PoliticalSavedData data, Faction faction, UUID signer) {
+        FactionKind kind = PoliticalDefinitions.snapshot().kind(faction.kind());
+        if (kind != null) {
+            for (FactionKind.Office office : kind.offices()) {
+                if (FactionBonds.holders(data, faction.id(), office.bond()).contains(signer)) return BondKinds.byId(office.bond()).displayName();
+            }
+        }
+        return Component.translatable("charter.townstead.draft.operator");
+    }
+
+    private static CharterSnapshotS2CPayload.Clause clauseView(ServerPlayer player, PoliticalSavedData data, Faction faction,
+                                                               CharterSavedData.Clause clause) {
+        return switch (clause.type()) {
+            case CharterDrafts.RENAME -> new CharterSnapshotS2CPayload.Clause(
+                    text(Component.translatable("charter.townstead.clause.rename", clause.argument())),
+                    text(Component.translatable("charter.townstead.clause.rename.detail", clause.expected())));
+            case CharterDrafts.HERALDRY -> new CharterSnapshotS2CPayload.Clause(
+                    text(Component.translatable(clause.target().startsWith("settlement:")
+                            ? "charter.townstead.clause.heraldry.settlement" : "charter.townstead.clause.heraldry.faction")),
+                    text(Component.translatable("charter.townstead.clause.heraldry.detail")));
+            case CharterDrafts.SEAT -> new CharterSnapshotS2CPayload.Clause(
+                    text(Component.translatable("charter.townstead.clause.seat")),
+                    text(Component.translatable("charter.townstead.clause.seat.detail")));
+            case CharterDrafts.TRANSFER_LEADERSHIP -> {
+                UUID recipient = CharterDrafts.uuid(clause.argument());
+                ResourceLocation head = CharterDrafts.headOffice(faction);
+                yield new CharterSnapshotS2CPayload.Clause(
+                        text(Component.translatable("charter.townstead.clause.transfer",
+                                head == null ? Component.empty() : BondKinds.byId(head).displayName(),
+                                recipient == null ? Component.empty() : CharterPeople.name(player, recipient))),
+                        text(Component.translatable("charter.townstead.clause.transfer.detail")));
+            }
+            case CharterDrafts.DISSOLVE -> new CharterSnapshotS2CPayload.Clause(
+                    text(Component.translatable("charter.townstead.clause.dissolve", faction.name())),
+                    text(Component.translatable("charter.townstead.clause.dissolve.detail")));
+            default -> new CharterSnapshotS2CPayload.Clause(text(Component.literal(clause.type())), text(Component.empty()));
+        };
+    }
+
+    private static @Nullable Entity findEntity(ServerPlayer viewer, UUID person) {
+        ServerPlayer online = viewer.server.getPlayerList().getPlayer(person);
+        if (online != null) return online;
+        for (ServerLevel level : viewer.server.getAllLevels()) {
+            Entity entity = level.getEntity(person);
+            if (entity != null) return entity;
+        }
+        return null;
     }
 
     private static List<CharterSnapshotS2CPayload.Option> profileOptions() {
-        var profile = FoundingProfiles.get(id("townstead:player_faction"));
-        if (profile == null || profile.government() == null || !FoundingProfiles.validate(profile).isEmpty()) return List.of();
-        return List.of(new CharterSnapshotS2CPayload.Option(profile.id().toString(),
-                CharterSnapshotS2CPayload.Text.of(profile.displayName()),
-                CharterSnapshotS2CPayload.Text.of(Component.translatable("charter.townstead.founding_leader_help")),
-                CharterSnapshotS2CPayload.Text.of(Component.translatable("charter.townstead.founding_leader_status")), true,
-                com.aetherianartificer.townstead.culture.FactionNaming.patterns(profile.government().organizationKind())));
+        var profile = FoundingProfiles.get(PLAYER_FACTION);
+        if (profile == null || profile.faction() == null || !FoundingProfiles.validate(profile).isEmpty()) return List.of();
+        return List.of(new CharterSnapshotS2CPayload.Option(profile.id().toString(), text(profile.displayName()),
+                text(Component.translatable("charter.townstead.founding_leader_help")),
+                text(Component.translatable("charter.townstead.founding_leader_status")), true,
+                com.aetherianartificer.townstead.culture.FactionNaming.patterns(profile.faction().kind())));
     }
 
     private static List<CharterSnapshotS2CPayload.Option> cultureOptions() {
         List<CharterSnapshotS2CPayload.Option> out = new ArrayList<>();
-        out.add(new CharterSnapshotS2CPayload.Option("", text("charter.townstead.no_founding_culture", "No founding culture"),
-                text("charter.townstead.no_culture_description", "Begin without naming one tradition as the settlement's origin."),
-                text("charter.townstead.consequences.no_culture",
-                        "Records no founding tradition · Residents keep their own cultures"), false));
+        out.add(new CharterSnapshotS2CPayload.Option("", text(Component.translatable("charter.townstead.no_founding_culture")),
+                text(Component.translatable("charter.townstead.no_culture_description")),
+                text(Component.translatable("charter.townstead.consequences.no_culture")), false, List.of()));
         Cultures.authoredIds().stream().sorted(Comparator.comparing(ResourceLocation::toString)).forEach(id -> {
             Culture culture = Cultures.get(id);
-            if (culture != null) out.add(new CharterSnapshotS2CPayload.Option(id.toString(),
-                    CharterSnapshotS2CPayload.Text.of(culture.displayName()),
-                    text("charter.townstead.founding_culture_description", "Records a founding tradition without changing any resident."),
-                    text("charter.townstead.consequences.founding_culture",
-                            "Saved as founding history · Does not assign or lock resident cultures"), false,
+            if (culture != null) out.add(new CharterSnapshotS2CPayload.Option(id.toString(), text(culture.displayName()),
+                    text(Component.translatable("charter.townstead.founding_culture_description")),
+                    text(Component.translatable("charter.townstead.consequences.founding_culture")), false,
                     com.aetherianartificer.townstead.culture.FactionNaming.suggestions(id)));
         });
         return List.copyOf(out);
     }
 
-    private static List<CharterSnapshotS2CPayload.Organization> organizations(
-            ServerPlayer player, PoliticalSavedData data, PolityInstance polity) {
-        List<CharterSnapshotS2CPayload.Organization> out = new ArrayList<>();
-        for (OrganizationInstance value : data.organizations()) {
-            if (data.supersededGovernment(value.id())) continue;
-            if ((!value.id().equals(polity.governmentOrganization()) && !polity.settlements().contains(value.home())) || !value.status().equals(com.aetherianartificer.townstead.politics.state.PoliticalStatus.Organization.ACTIVE)) continue;
-            OrganizationKindDefinition kind = PoliticalDefinitions.snapshot().organizationKind(value.kind());
-            Component kindName = kind == null ? Component.literal(value.kind().toString()) : kind.display().name();
-            Component description = kind == null || kind.display().description() == null
-                    ? Component.empty() : kind.display().description();
-            MembershipInstance membership = data.membership(player.getUUID(), value.id());
-            String relationship = membership == null ? "visitor" : membership.affiliation().status().id();
-            boolean member = membership != null && membership.affiliation().active();
-            List<CharterSnapshotS2CPayload.Text> ownRoles = membership == null ? List.of() : membership.roles().stream()
-                    .sorted(Comparator.comparing(ResourceLocation::toString)).map(roleId -> {
-                        OrganizationRoleDefinition role = PoliticalDefinitions.snapshot().role(roleId);
-                        return CharterSnapshotS2CPayload.Text.of(role == null ? Component.literal(roleId.toString()) : role.display().name());
-                    }).toList();
-            List<CharterSnapshotS2CPayload.Role> roles = new ArrayList<>();
-            if (kind != null) for (var binding : kind.roles()) {
-                OrganizationRoleDefinition role = PoliticalDefinitions.snapshot().role(binding.role());
-                if (role == null || (role.visibility() != OrganizationRoleDefinition.Visibility.PUBLIC
-                        && !(member && role.visibility() == OrganizationRoleDefinition.Visibility.MEMBERS))) continue;
-                List<CharterSnapshotS2CPayload.Text> holders = new ArrayList<>();
-                for (MembershipInstance entry : data.memberships(value.actor())) {
-                    if (!entry.affiliation().active() || !entry.roles().contains(binding.role())) continue;
-                    var affiliation = entry.affiliation();
-                    boolean visible = affiliation.person().equals(player.getUUID())
-                            || affiliation.visibility() == com.aetherianartificer.townstead.politics.state.PoliticalStatus.Visibility.PUBLIC
-                            || (member && affiliation.visibility() == com.aetherianartificer.townstead.politics.state.PoliticalStatus.Visibility.MEMBERS);
-                    if (!visible) continue;
-                    holders.add(CharterSnapshotS2CPayload.Text.of(CharterPeople.name(player, affiliation.person())));
-                }
-                roles.add(new CharterSnapshotS2CPayload.Role(CharterSnapshotS2CPayload.Text.of(role.display().name()), holders));
-            }
-            var policy = PoliticalDefinitions.snapshot().membershipPolicy(value.membershipPolicy());
-            var admission = policy == null ? Component.translatable("charter.townstead.admission_unknown")
-                    : admissionDescription(policy);
-            var departure = policy == null ? Component.translatable("charter.townstead.departure_unknown")
-                    : departureDescription(policy);
-            String icon = value.emblem() != null ? value.emblem().toString()
-                    : kind != null && kind.display().icon() != null ? kind.display().icon().toString() : "minecraft:paper";
-            out.add(new CharterSnapshotS2CPayload.Organization(value.id().toString(),
-                    CharterSnapshotS2CPayload.Text.of(Component.literal(value.name())),
-                    CharterSnapshotS2CPayload.Text.of(kindName), CharterSnapshotS2CPayload.Text.of(description), relationship,
-                    value.id().equals(polity.governmentOrganization()), icon, value.color(),
-                    CharterSnapshotS2CPayload.Text.of(admission), CharterSnapshotS2CPayload.Text.of(departure), ownRoles, roles, CharterMemberships.actions(player, data, value)));
-        }
-        out.sort(Comparator.comparing(value -> value.name().fallback()));
-        return List.copyOf(out);
+    private static Component kindName(@Nullable Faction faction) {
+        return kindName(faction == null ? null : faction.kind());
     }
 
-    private static List<CharterSnapshotS2CPayload.Tie> ties(ServerPlayer player, PoliticalSavedData data, PolityInstance scope) {
-        List<CharterSnapshotS2CPayload.Tie> out = new ArrayList<>();
-        for (AffiliationInstance affiliation : data.affiliations(player.getUUID())) {
-            String actor = affiliation.actor().id().toString();
-            if (affiliation.actor().kind() == com.aetherianartificer.townstead.politics.state.PoliticalActorRef.Kind.ORGANIZATION) {
-                if (data.supersededGovernment(affiliation.actor().id())) continue;
-                OrganizationInstance organization = data.organization(affiliation.actor().id());
-                if (!CharterMemberships.inScope(organization, scope)) continue;
-                if (organization != null) actor = organization.name();
-            } else {
-                if (!affiliation.actor().id().equals(scope.id())) continue;
-                PolityInstance polity = data.polity(affiliation.actor().id());
-                if (polity != null) actor = polity.name();
-            }
-            MembershipInstance membership = data.membership(affiliation.id());
-            String roles = membership == null ? "" : membership.roles().stream().map(id -> {
-                OrganizationRoleDefinition role = PoliticalDefinitions.snapshot().role(id);
-                return role == null ? id.getPath() : role.display().name().getString();
-            }).sorted().reduce((a, b) -> a + ", " + b).orElse("");
-            out.add(new CharterSnapshotS2CPayload.Tie(actor, title(affiliation.kind().getPath()), roles,
-                    title(affiliation.status().id())));
-        }
-        return List.copyOf(out);
-    }
-
-    private static Component governanceName(@Nullable OrganizationInstance government) {
-        if (government == null) return Component.translatable("charter.townstead.no_formal_government");
-        var kind = PoliticalDefinitions.snapshot().organizationKind(government.kind());
+    private static Component kindName(@Nullable ResourceLocation kindId) {
+        FactionKind kind = PoliticalDefinitions.snapshot().kind(kindId);
         return kind == null ? Component.translatable("charter.townstead.governance_unavailable") : kind.display().name();
     }
 
-    private static Component admissionDescription(com.aetherianartificer.townstead.politics.definition.MembershipPolicyDefinition policy) {
-        Component procedure = procedureName(policy.admission().procedure());
-        var decision = policy.admission().decision();
-        if (decision == null) return procedure;
-        if (!decision.procedure().equals(id("townstead:role_approval")))
-            return Component.translatable("charter.townstead.admission_decision", procedure, procedureName(decision.procedure()));
-        var role = decision.role() == null ? null : PoliticalDefinitions.snapshot().role(decision.role());
-        if (role != null && role.visibility() == OrganizationRoleDefinition.Visibility.PUBLIC)
-            return Component.translatable("charter.townstead.admission_role." + (decision.approvals() == 1 ? "one" : "many"),
-                    procedure, role.display().name(), decision.approvals());
-        return Component.translatable("charter.townstead.admission_approvals." + (decision.approvals() == 1 ? "one" : "many"), procedure, decision.approvals());
-    }
-
-    private static Component departureDescription(com.aetherianartificer.townstead.politics.definition.MembershipPolicyDefinition policy) {
-        int days = policy.departure().noticeDays();
-        Component procedure = procedureName(policy.departure().procedure());
-        if (days <= 0) return procedure;
-        if (policy.departure().procedure().equals(id("townstead:notice")))
-            return Component.translatable("charter.townstead.departure_notice." + (days == 1 ? "one" : "many"), days);
-        return Component.translatable("charter.townstead.departure_with_notice." + (days == 1 ? "one" : "many"), procedure, days);
-    }
-
-    private static Component procedureName(ResourceLocation id) {
-        return Component.translatableWithFallback("politics." + id.getNamespace() + ".procedure." + id.getPath().replace('/', '.'), title(id.getPath()));
-    }
-
-    private static Component authority(@Nullable OrganizationInstance government, PoliticalSavedData data) {
-        return government == null ? Component.translatable("charter.townstead.association_authority")
-                : Component.literal(government.name());
+    private static List<CharterSnapshotS2CPayload.CensusScope> censusScopes(ServerLevel level, Village local, Faction faction) {
+        List<CharterSnapshotS2CPayload.CensusScope> out = new ArrayList<>();
+        Census localCensus = census(level, local);
+        out.add(new CharterSnapshotS2CPayload.CensusScope("settlement",
+                text(Component.translatable("charter.townstead.census.local", local.getName())),
+                localCensus.groups(), localCensus.total(), localCensus.uncounted(), true));
+        if (faction.settlements().size() < 2) return List.copyOf(out);
+        Map<UUID, Entity> people = new LinkedHashMap<>();
+        boolean available = true;
+        for (var settlement : faction.settlements()) {
+            ServerLevel source = level.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, settlement.dimension()));
+            Village village = source == null ? null : VillageManager.get(source).getOrEmpty(settlement.villageId()).orElse(null);
+            if (village == null) { available = false; continue; }
+            for (UUID person : village.getResidentsUUIDs().toList()) if (person != null) {
+                Entity loaded = source.getEntity(person);
+                if (!people.containsKey(person) || loaded != null) people.put(person, loaded);
+            }
+        }
+        Census census = census(people);
+        out.add(new CharterSnapshotS2CPayload.CensusScope("faction",
+                text(Component.translatable("charter.townstead.census.faction", faction.name())),
+                census.groups(), census.total(), census.uncounted(), available));
+        return List.copyOf(out);
     }
 
     private static Census census(ServerLevel level, Village village) {
@@ -550,76 +657,61 @@ public final class CharterBellService {
         return census(people);
     }
 
-    private static List<CharterSnapshotS2CPayload.CensusScope> censusScopes(ServerLevel level, Village local, PolityInstance polity, Census localCensus) {
-        List<CharterSnapshotS2CPayload.CensusScope> out = new ArrayList<>();
-        out.add(new CharterSnapshotS2CPayload.CensusScope("settlement",
-                CharterSnapshotS2CPayload.Text.of(Component.translatable("charter.townstead.census.local", local.getName())),
-                localCensus.groups(), localCensus.total(), true));
-        Map<UUID, Entity> people = new LinkedHashMap<>();
-        boolean available = true;
-        for (var settlement : polity.settlements()) {
-            ServerLevel source = level.getServer().getLevel(net.minecraft.resources.ResourceKey.create(
-                    net.minecraft.core.registries.Registries.DIMENSION, settlement.dimension()));
-            Village village = source == null ? null : VillageManager.get(source).getOrEmpty(settlement.villageId()).orElse(null);
-            if (village == null) { available = false; continue; }
-            for (UUID person : village.getResidentsUUIDs().toList()) if (person != null) {
-                Entity loaded = source.getEntity(person);
-                if (!people.containsKey(person) || loaded != null) people.put(person, loaded);
-            }
-        }
-        Census census = census(people);
-        out.add(new CharterSnapshotS2CPayload.CensusScope("polity",
-                CharterSnapshotS2CPayload.Text.of(Component.translatable("charter.townstead.census.polity", polity.name())),
-                census.groups(), census.total(), available));
-        return List.copyOf(out);
-    }
-
+    /** Counts loaded villagers only; a resident whose entity is not loaded cannot be read and is left uncounted. */
     private static Census census(Map<UUID, Entity> people) {
         Map<String, Integer> counts = new LinkedHashMap<>();
+        int counted = 0;
         for (Entity entity : people.values()) {
-            String culture = entity instanceof VillagerEntityMCA villager ? Naming.cultureOf(villager) : "unavailable";
-            if (!culture.equals("unavailable") && (culture.isBlank() || Cultures.get(culture) == null)) culture = "";
+            if (!(entity instanceof VillagerEntityMCA villager)) continue;
+            String culture = Naming.cultureOf(villager);
+            if (culture.isBlank() || Cultures.get(culture) == null) culture = "";
             counts.merge(culture, 1, Integer::sum);
+            counted++;
         }
         List<CharterSnapshotS2CPayload.CensusGroup> groups = new ArrayList<>();
         for (Map.Entry<String, Integer> entry : counts.entrySet()) {
-            ResourceLocation id = entry.getKey().isBlank() || entry.getKey().equals("unavailable") ? null : ResourceLocation.tryParse(entry.getKey());
-            Culture culture = Cultures.get(id);
-            Component name = entry.getKey().equals("unavailable") ? Component.translatable("charter.townstead.census.unavailable_culture")
-                    : culture == null ? Component.translatable("charter.townstead.unrecorded_culture") : culture.displayName();
-            groups.add(new CharterSnapshotS2CPayload.CensusGroup(entry.getKey(),
-                    CharterSnapshotS2CPayload.Text.of(name), entry.getValue(), cultureColor(entry.getKey())));
+            Culture culture = entry.getKey().isBlank() ? null : Cultures.get(ResourceLocation.tryParse(entry.getKey()));
+            Component name = culture == null ? Component.translatable("charter.townstead.unrecorded_culture") : culture.displayName();
+            groups.add(new CharterSnapshotS2CPayload.CensusGroup(entry.getKey(), text(name), entry.getValue(), cultureColor(entry.getKey())));
         }
         groups.sort(Comparator.comparingInt(CharterSnapshotS2CPayload.CensusGroup::count).reversed());
-        return new Census(List.copyOf(groups), people.size());
+        return new Census(List.copyOf(groups), counted, people.size() - counted);
     }
 
     private static void gather(ServerLevel level, BlockPos bell) {
-        for (VillagerEntityMCA villager : level.getEntitiesOfClass(VillagerEntityMCA.class,
-                new AABB(bell).inflate(24.0D))) {
+        for (VillagerEntityMCA villager : level.getEntitiesOfClass(VillagerEntityMCA.class, new AABB(bell).inflate(24.0D))) {
             if (!villager.isAlive()) continue;
             villager.getNavigation().moveTo(bell.getX() + 0.5D, bell.getY(), bell.getZ() + 0.5D, 0.75D);
         }
     }
 
-    private static void celebrate(ServerLevel level, BlockPos bell, String name) {
+    /** How far the proclamation's wave runs: across the settlement's buildings, within sensible bounds. */
+    private static int waveRadius(ServerLevel level, SettlementRef settlement) {
+        Village village = VillageManager.get(level).getOrEmpty(settlement.villageId()).orElse(null);
+        if (village == null) return 24;
+        var box = village.getBox();
+        int span = Math.max(box.getXSpan(), box.getZSpan());
+        return Math.max(16, Math.min(96, span / 2 + 8));
+    }
+
+    private static void celebrate(ServerLevel level, BlockPos bell, Component title, Component subtitle, int radius) {
+        double reach = (radius + 32.0D) * (radius + 32.0D);
         for (ServerPlayer viewer : level.players()) {
-            if (viewer.distanceToSqr(bell.getX() + 0.5D, bell.getY() + 0.5D, bell.getZ() + 0.5D) > 4096.0D) continue;
-            CharterCeremonyS2CPayload cue = new CharterCeremonyS2CPayload(bell, name);
+            if (viewer.distanceToSqr(bell.getX() + 0.5D, bell.getY() + 0.5D, bell.getZ() + 0.5D) > reach) continue;
+            CharterCeremonyS2CPayload cue = new CharterCeremonyS2CPayload(bell, text(title), text(subtitle), radius);
             //? if neoforge {
             net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(viewer, cue);
             //?} else {
             /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(viewer, cue);
             *///?}
         }
-        for (VillagerEntityMCA villager : level.getEntitiesOfClass(VillagerEntityMCA.class,
-                new AABB(bell).inflate(20.0D))) {
+        for (VillagerEntityMCA villager : level.getEntitiesOfClass(VillagerEntityMCA.class, new AABB(bell).inflate(20.0D))) {
             villager.getLookControl().setLookAt(bell.getX() + 0.5D, bell.getY() + 0.5D, bell.getZ() + 0.5D);
             AiEmoteScheduler.playEmote(villager, CLAP);
         }
     }
 
-    private static @Nullable Assembly assembly(ServerLevel level, BlockPos lectern) {
+    private static @Nullable Assembly assembly(Level level, BlockPos lectern) {
         BlockState lecternState = level.getBlockState(lectern);
         if (!lecternState.is(Blocks.LECTERN)) return null;
         Direction facing = lecternState.getValue(LecternBlock.FACING);
@@ -629,8 +721,7 @@ public final class CharterBellService {
         if (supportState.isAir() || !supportState.isFaceSturdy(level, support, Direction.UP)
                 || !level.getBlockState(bell).is(CharterBellBlocks.ELIGIBLE)) return null;
         BlockState bellState = level.getBlockState(bell);
-        if (bellState.hasProperty(BellBlock.ATTACHMENT)
-                && bellState.getValue(BellBlock.ATTACHMENT) != BellAttachType.FLOOR) return null;
+        if (bellState.hasProperty(BellBlock.ATTACHMENT) && bellState.getValue(BellBlock.ATTACHMENT) != BellAttachType.FLOOR) return null;
         return new Assembly(lectern.immutable(), support.immutable(), bell.immutable());
     }
 
@@ -654,88 +745,71 @@ public final class CharterBellService {
         Village village = VillageManager.get(level).findNearestVillage(bell, Village.MERGE_MARGIN).orElse(null);
         if (village == null) return null;
         SettlementRef settlement = new SettlementRef(level.dimension().location(), village.getId());
-        PoliticalSavedData politics = PoliticalSavedData.get(level.getServer());
-        PolityInstance polity = politics.polity(settlement);
-        return polity == null || polity.status() == PoliticalStatus.Polity.DISSOLVED ? null : new Existing(village, settlement, polity);
+        Faction faction = PoliticalSavedData.get(level.getServer()).faction(settlement);
+        return faction == null || faction.status() == Faction.Status.DISSOLVED ? null : new Existing(village, settlement, faction);
     }
 
-    /** "Accepted (68). Heading toward it: Prosperity +10, Village spirit +4." Null without a governance block. */
-    private static @Nullable CharterSnapshotS2CPayload.Text legitimacyView(net.minecraft.server.MinecraftServer server,
-            PoliticalSavedData politics, PolityInstance polity) {
-        if (polity.governmentOrganization() == null) return null;
-        OrganizationInstance government = politics.organization(polity.governmentOrganization());
-        if (government == null || com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService.governance(government) == null) return null;
-        double value = com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService.current(politics, government);
-        var target = com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService.target(server, polity, government);
-        net.minecraft.network.chat.MutableComponent reasons = Component.empty();
-        for (var contribution : target.contributions()) {
-            long amount = Math.round(contribution.amount());
-            if (amount == 0) continue;
-            if (!reasons.getSiblings().isEmpty()) reasons.append(", ");
-            reasons.append(Component.translatable("townstead.legitimacy.source." + contribution.label().getNamespace()
-                    + "." + contribution.label().getPath())).append(" " + (amount > 0 ? "+" : "") + amount);
+    /** "Accepted (68)", or null for a faction without governance. */
+    private static @Nullable CharterSnapshotS2CPayload.Text legitimacyValue(PoliticalSavedData politics, Faction faction) {
+        if (LegitimacyService.governance(faction) == null) return null;
+        double value = LegitimacyService.current(politics, faction);
+        Component band = Component.translatable("townstead.legitimacy.band." + LegitimacyService.band(value));
+        return text(Component.translatable("charter.townstead.legitimacy.value", band, Math.round(value)));
+    }
+
+    /**
+     * What legitimacy rests on, named as the systems players already know: "Needs: steady ·
+     * Spirit: Homestead". Sources that are not a known system are left out.
+     */
+    private static CharterSnapshotS2CPayload.Text legitimacyDetail(ServerPlayer player, Faction faction, Village village) {
+        GovernanceDefinition governance = LegitimacyService.governance(faction);
+        if (governance == null) return text(Component.empty());
+        MutableComponent line = Component.empty();
+        for (var contribution : LegitimacyService.target(player.server, faction).contributions()) {
+            Component part = switch (contribution.label().getPath()) {
+                case "needs" -> Component.translatable("charter.townstead.legitimacy.needs",
+                        Component.translatable("charter.townstead.needs." + needsBand(contribution.raw())));
+                case "village_spirit" -> Component.translatable("charter.townstead.legitimacy.spirit", spiritName(player.serverLevel(), village));
+                case "leader_standing" -> Component.translatable("charter.townstead.legitimacy.leader_standing", Math.round(contribution.raw()));
+                default -> null;
+            };
+            if (part == null) continue;
+            if (!line.getSiblings().isEmpty()) line.append(" \u00b7 ");
+            line.append(part);
         }
-        Component band = Component.translatable("townstead.legitimacy.band." + com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService.band(value));
-        Component text = reasons.getSiblings().isEmpty()
-                ? Component.translatable("charter.townstead.legitimacy.detail", band, Math.round(value))
-                : Component.translatable("charter.townstead.legitimacy.detail_reasons", band, Math.round(value), reasons);
-        return CharterSnapshotS2CPayload.Text.of(text);
+        return text(line);
     }
 
-    /** "34: hearts 20, deeds 9, reputation 5" for the viewing player in this Charter's settlement. */
-    private static CharterSnapshotS2CPayload.Text standingView(ServerPlayer player, CharterSavedData.Binding binding) {
-        var standing = com.aetherianartificer.townstead.politics.standing.StandingService.of(
-                player.server, player.getUUID(), binding.settlement());
-        Component text = com.aetherianartificer.townstead.compat.otectus.OtectusStanding.available()
-                ? Component.translatable("charter.townstead.standing.detail_reputation", standing.total(),
-                        standing.hearts(), standing.deeds(), standing.reputation())
-                : Component.translatable("charter.townstead.standing.detail", standing.total(),
-                        standing.hearts(), standing.deeds());
-        return CharterSnapshotS2CPayload.Text.of(text);
+    /** The band a village's average need reading falls in, from -1 (all in crisis) to 1 (all thriving). */
+    private static String needsBand(double value) {
+        if (value > 0.75) return "thriving";
+        if (value > 0) return "steady";
+        if (value > -0.75) return "strained";
+        return "crisis";
     }
 
-    private static CharterSnapshotS2CPayload.Seat seatView(ServerPlayer player, ServerLevel level,
-            CharterSavedData.Binding binding, PolityInstance polity, boolean editable) {
-        SeatInstance seat = PoliticalSavedData.get(level.getServer()).seat(polity.actor());
-        boolean here = seat != null && seat.settlement().dimension().equals(binding.dimension())
-                && seat.lectern().equals(binding.lectern());
-        Component body = seat == null ? Component.translatable("charter.townstead.seat.none")
-                : here ? Component.translatable("charter.townstead.seat.here", seatBuildingName(level, seat))
-                : Component.translatable("charter.townstead.seat.elsewhere", seatBuildingName(level, seat), settlementName(level, seat));
-        if (seat != null) body = Component.empty().append(body).append(" ").append(seatDetail(level, seat));
-        List<CharterSnapshotS2CPayload.Action> actions = List.of();
-        if (!here && editable && mayLink(player, polity, binding.settlement())) {
-            if (SeatService.host(level, binding) == null) {
-                body = Component.empty().append(body).append(" ").append(Component.translatable("charter.townstead.seat.no_building"));
-            } else {
-                actions = List.of(new CharterSnapshotS2CPayload.Action(DESIGNATE_SEAT,
-                        CharterSnapshotS2CPayload.Text.of(Component.translatable("charter.townstead.seat.designate")),
-                        CharterSnapshotS2CPayload.Text.of(Component.translatable(seat == null
-                                ? "charter.townstead.seat.designate.description" : "charter.townstead.seat.move.description")),
-                        false));
-            }
-        }
-        return new CharterSnapshotS2CPayload.Seat(polity.id().toString(),
-                CharterSnapshotS2CPayload.Text.of(Component.translatable("charter.townstead.seat.title")),
-                CharterSnapshotS2CPayload.Text.of(body), actions);
+    private static Component spiritName(ServerLevel level, Village village) {
+        var cached = com.aetherianartificer.townstead.spirit.VillageSpiritCache.get(level, village.getId());
+        var readout = cached != null ? cached.readout() : com.aetherianartificer.townstead.spirit.VillageSpiritAggregator.readoutFor(
+                com.aetherianartificer.townstead.spirit.VillageSpiritAggregator.snapshotFor(level, village).totals());
+        return readout.asComponent();
     }
 
-    /** "Tier 2. It provides Records, Audience, and Assembly." or what is damaged and how to repair it. */
-    private static Component seatDetail(ServerLevel level, SeatInstance seat) {
-        if (seat.damaged()) return Component.translatable("charter.townstead.seat.damaged." + seat.damage());
-        var spec = com.aetherianartificer.townstead.politics.seat.SeatBuildings.forType(seatBuildingType(level, seat));
-        net.minecraft.network.chat.MutableComponent functions = Component.empty();
-        for (int i = 0; i < spec.functions().size(); i++) {
-            ResourceLocation function = spec.functions().get(i);
-            if (i > 0) functions.append(", ");
-            functions.append(Component.translatable("townstead.seat.function." + function.getNamespace() + "." + function.getPath()));
-        }
-        return Component.translatable("charter.townstead.seat.detail", spec.tier(), functions);
+    private static CharterSnapshotS2CPayload.SeatRow seatView(ServerLevel level, CharterSavedData.Binding binding, Faction faction, boolean mayDraft) {
+        SeatInstance seat = PoliticalSavedData.get(level.getServer()).seat(faction.id());
+        boolean here = seat != null && seat.settlement().dimension().equals(binding.dimension()) && seat.lectern().equals(binding.lectern());
+        Component value = seat == null ? Component.translatable("charter.townstead.seat.none_short") : seatBuildingName(level, seat);
+        Component detail;
+        if (seat == null) detail = Component.empty();
+        else if (seat.damaged()) detail = Component.translatable("charter.townstead.seat.damaged." + seat.damage());
+        else if (here) detail = Component.empty();
+        else detail = Component.translatable("charter.townstead.seat.elsewhere_short", settlementName(level, seat.settlement()));
+        boolean mayMove = mayDraft && !here && SeatService.host(level, binding) != null;
+        return new CharterSnapshotS2CPayload.SeatRow(text(value), text(detail), seat != null && seat.damaged(), mayMove);
     }
 
     private static @Nullable String seatBuildingType(ServerLevel level, SeatInstance seat) {
-        ServerLevel seatLevel = level.getServer().getLevel(net.minecraft.resources.ResourceKey.create(
-                net.minecraft.core.registries.Registries.DIMENSION, seat.settlement().dimension()));
+        ServerLevel seatLevel = level.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, seat.settlement().dimension()));
         return seatLevel == null ? null : VillageManager.get(seatLevel).getOrEmpty(seat.settlement().villageId())
                 .map(v -> com.aetherianartificer.townstead.compat.mca.McaBuildings.byId(v, seat.buildingId()))
                 .map(Building::getType).orElse(null);
@@ -744,29 +818,24 @@ public final class CharterBellService {
     /** The host building's type name, or "Meeting Place" when that type has no Seat data. */
     private static Component seatBuildingName(ServerLevel level, SeatInstance seat) {
         String type = seatBuildingType(level, seat);
-        if (!com.aetherianartificer.townstead.politics.seat.SeatBuildings.isSeatBuilding(type)) {
-            return Component.translatable("charter.townstead.seat.meeting_place");
-        }
+        if (!SeatBuildings.isSeatBuilding(type)) return Component.translatable("charter.townstead.seat.meeting_place");
         return Component.translatable("buildingType." + type);
     }
 
-    private static String settlementName(ServerLevel level, SeatInstance seat) {
-        ServerLevel seatLevel = level.getServer().getLevel(net.minecraft.resources.ResourceKey.create(
-                net.minecraft.core.registries.Registries.DIMENSION, seat.settlement().dimension()));
-        if (seatLevel == null) return "";
-        return VillageManager.get(seatLevel).getOrEmpty(seat.settlement().villageId()).map(Village::getName).orElse("");
+    private static String settlementName(ServerLevel level, SettlementRef settlement) {
+        ServerLevel source = level.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, settlement.dimension()));
+        if (source == null) return "";
+        return VillageManager.get(source).getOrEmpty(settlement.villageId()).map(Village::getName).orElse("");
     }
 
-    private static Component seatResult(SeatService.Result result) {
-        return Component.translatable("charter.townstead.seat.result." + result.name().toLowerCase(java.util.Locale.ROOT));
-    }
-
-    private static boolean mayLink(ServerPlayer player, PolityInstance polity, SettlementRef settlement) {
+    /** Linking a new Charter Bell to a faction needs its authority, unless it has no government at all. */
+    private static boolean mayLink(ServerPlayer player, Faction faction, SettlementRef settlement) {
         var civic = CivicProviders.read(player, settlement);
         if (civic != null && civic.controlsGovernment()) return civic.mayManage() || player.hasPermissions(2);
-        if (player.hasPermissions(2) || polity.governmentOrganization() == null) return true;
-        return PoliticalAuthority.mayAct(PoliticalSavedData.get(player.server), player.getUUID(),
-                polity.actor(), GOVERN_POLITY).allowed();
+        if (player.hasPermissions(2)) return true;
+        FactionKind kind = PoliticalDefinitions.snapshot().kind(faction.kind());
+        if (kind == null || kind.offices().isEmpty()) return true;
+        return PoliticalAuthority.allowed(PoliticalSavedData.get(player.server), player.getUUID(), faction.id(), CharterDrafts.GOVERN);
     }
 
     static void setLecternState(ServerLevel level, BlockPos pos, int state) {
@@ -790,25 +859,18 @@ public final class CharterBellService {
         return culture == null ? Component.translatable("charter.townstead.no_founding_culture") : culture.displayName();
     }
 
-    private static CharterSnapshotS2CPayload empty(BlockPos lectern, BlockPos bell, int state,
-                                                    boolean editable, String message) {
-        return new CharterSnapshotS2CPayload(lectern, bell, state, editable, "", "",
-                text("charter.townstead.unavailable", "Unavailable"), text("", ""), text("", ""), message,
-                List.of(), List.of(), List.of(), List.of(), List.of(), 0);
+    private static CharterSnapshotS2CPayload empty(BlockPos lectern, BlockPos bell, String message) {
+        return new CharterSnapshotS2CPayload(lectern, bell, CharterSnapshotS2CPayload.UNAVAILABLE, false, message, 0, "", "",
+                text(Component.translatable("charter.townstead.unavailable")), text(Component.empty()), text(Component.empty()),
+                List.of(), List.of(), null);
     }
 
-    private static CharterSnapshotS2CPayload.Text text(String key, String fallback) {
-        return new CharterSnapshotS2CPayload.Text(key, fallback);
-    }
-
-    private static String title(String value) {
-        if (value == null || value.isBlank()) return "";
-        String spaced = value.replace('_', ' ');
-        return Character.toUpperCase(spaced.charAt(0)) + spaced.substring(1);
+    private static CharterSnapshotS2CPayload.Text text(Component value) {
+        return CharterSnapshotS2CPayload.Text.of(value);
     }
 
     private static int cultureColor(String id) {
-        if (id == null || id.isBlank() || id.equals("unavailable")) return 0xFF918C82;
+        if (id == null || id.isBlank()) return 0xFF918C82;
         int[] colors = {0xFF97623F, 0xFF557F72, 0xFFB08A3E, 0xFF697D9C, 0xFF966480, 0xFF71854B, 0xFFB36650};
         return colors[Math.floorMod(id.hashCode(), colors.length)];
     }
@@ -820,6 +882,8 @@ public final class CharterBellService {
     }
 
     private record Assembly(BlockPos lectern, BlockPos support, BlockPos bell) {}
-    private record Existing(Village village, SettlementRef settlement, PolityInstance polity) {}
-    private record Census(List<CharterSnapshotS2CPayload.CensusGroup> groups, int total) {}
+
+    private record Existing(Village village, SettlementRef settlement, Faction faction) {}
+
+    private record Census(List<CharterSnapshotS2CPayload.CensusGroup> groups, int total, int uncounted) {}
 }

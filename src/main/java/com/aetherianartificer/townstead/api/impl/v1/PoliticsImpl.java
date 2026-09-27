@@ -1,98 +1,127 @@
 package com.aetherianartificer.townstead.api.impl.v1;
 
 import com.aetherianartificer.townstead.api.v1.PoliticsApi;
-import com.aetherianartificer.townstead.api.v1.model.AffiliationSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.AuthorityDecision;
+import com.aetherianartificer.townstead.api.v1.model.BondSnapshot;
+import com.aetherianartificer.townstead.api.v1.model.FactionSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.FoundingProfileSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.GovernanceSnapshot;
-import com.aetherianartificer.townstead.api.v1.model.MembershipSnapshot;
-import com.aetherianartificer.townstead.api.v1.model.OrganizationSnapshot;
-import com.aetherianartificer.townstead.api.v1.model.PoliticalActorRef;
-import com.aetherianartificer.townstead.api.v1.model.PolitySnapshot;
+import com.aetherianartificer.townstead.api.v1.model.PartyRef;
 import com.aetherianartificer.townstead.api.v1.model.SeatSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.SettlementFoundingSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.VillageId;
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
-import com.aetherianartificer.townstead.politics.seat.SeatBuildings;
-import com.aetherianartificer.townstead.politics.state.AffiliationInstance;
-import com.aetherianartificer.townstead.politics.state.MembershipInstance;
-import com.aetherianartificer.townstead.politics.state.OrganizationInstance;
-import com.aetherianartificer.townstead.politics.state.PoliticalAuthority;
-import com.aetherianartificer.townstead.politics.state.PoliticalSavedData;
-import com.aetherianartificer.townstead.politics.state.PolityInstance;
-import com.aetherianartificer.townstead.politics.state.SeatInstance;
-import com.aetherianartificer.townstead.politics.state.SettlementRef;
-import com.aetherianartificer.townstead.politics.state.SettlementFoundingRecord;
+import com.aetherianartificer.townstead.politics.definition.FactionKind;
+import com.aetherianartificer.townstead.politics.definition.PoliticalDefinitions;
 import com.aetherianartificer.townstead.politics.founding.FoundingProfileDefinition;
 import com.aetherianartificer.townstead.politics.founding.FoundingProfiles;
+import com.aetherianartificer.townstead.politics.land.FactionLand;
+import com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService;
+import com.aetherianartificer.townstead.politics.seat.SeatBuildings;
+import com.aetherianartificer.townstead.politics.state.BondInstance;
+import com.aetherianartificer.townstead.politics.state.Faction;
+import com.aetherianartificer.townstead.politics.state.FactionBonds;
+import com.aetherianartificer.townstead.politics.state.Party;
+import com.aetherianartificer.townstead.politics.state.PoliticalAuthority;
+import com.aetherianartificer.townstead.politics.state.PoliticalSavedData;
+import com.aetherianartificer.townstead.politics.state.SeatInstance;
+import com.aetherianartificer.townstead.politics.state.SettlementFoundingRecord;
+import com.aetherianartificer.townstead.politics.state.SettlementRef;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.OptionalLong;
 import java.util.UUID;
 
 final class PoliticsImpl implements PoliticsApi {
     @Override
-    public Optional<OrganizationSnapshot> organization(MinecraftServer server, ResourceLocation id) {
+    public Optional<FactionSnapshot> faction(MinecraftServer server, ResourceLocation id) {
         try {
             if (server == null || id == null) return Optional.empty();
-            OrganizationInstance value = PoliticalSavedData.get(server).organization(id);
-            return value == null ? Optional.empty() : Optional.of(organization(PoliticalSavedData.get(server), value));
+            PoliticalSavedData data = PoliticalSavedData.get(server);
+            Faction value = data.faction(id);
+            return value == null ? Optional.empty() : Optional.of(faction(data, value));
         } catch (Throwable error) {
-            ApiSupport.swallow("politics.organization", error);
+            ApiSupport.swallow("politics.faction", error);
             return Optional.empty();
         }
     }
 
     @Override
-    public List<OrganizationSnapshot> organizations(MinecraftServer server) {
-        List<OrganizationSnapshot> out = new ArrayList<>();
+    public Optional<FactionSnapshot> faction(MinecraftServer server, VillageId settlement) {
+        try {
+            if (server == null || settlement == null) return Optional.empty();
+            PoliticalSavedData data = PoliticalSavedData.get(server);
+            Faction value = data.faction(new SettlementRef(settlement.dimension(), settlement.villageId()));
+            return value == null ? Optional.empty() : Optional.of(faction(data, value));
+        } catch (Throwable error) {
+            ApiSupport.swallow("politics.factionForSettlement", error);
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public List<FactionSnapshot> factions(MinecraftServer server) {
+        List<FactionSnapshot> out = new ArrayList<>();
         try {
             if (server == null) return out;
             PoliticalSavedData data = PoliticalSavedData.get(server);
-            for (OrganizationInstance value : data.organizations()) out.add(organization(data, value));
+            for (Faction value : data.factions()) out.add(faction(data, value));
         } catch (Throwable error) {
-            ApiSupport.swallow("politics.organizations", error);
+            ApiSupport.swallow("politics.factions", error);
         }
         return List.copyOf(out);
     }
 
     @Override
-    public Optional<PolitySnapshot> polity(MinecraftServer server, ResourceLocation id) {
+    public Optional<ResourceLocation> landHolder(MinecraftServer server, ResourceLocation dimension, BlockPos pos) {
+        try {
+            return FactionLand.holder(server, dimension, pos);
+        } catch (Throwable error) {
+            ApiSupport.swallow("politics.landHolder", error);
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<ResourceLocation> sovereign(MinecraftServer server, ResourceLocation id) {
         try {
             if (server == null || id == null) return Optional.empty();
-            PolityInstance value = PoliticalSavedData.get(server).polity(id);
-            return value == null ? Optional.empty() : Optional.of(polity(value));
+            PoliticalSavedData data = PoliticalSavedData.get(server);
+            Faction value = data.faction(id);
+            return value == null ? Optional.empty() : Optional.of(FactionBonds.sovereign(data, value.id()));
         } catch (Throwable error) {
-            ApiSupport.swallow("politics.polity", error);
+            ApiSupport.swallow("politics.sovereign", error);
             return Optional.empty();
         }
     }
 
     @Override
-    public Optional<PolitySnapshot> polity(MinecraftServer server, VillageId settlement) {
+    public Optional<BondSnapshot> bond(MinecraftServer server, ResourceLocation id) {
         try {
-            if (server == null || settlement == null) return Optional.empty();
-            PolityInstance value = PoliticalSavedData.get(server).polity(
-                    new SettlementRef(settlement.dimension(), settlement.villageId()));
-            return value == null ? Optional.empty() : Optional.of(polity(value));
+            if (server == null || id == null) return Optional.empty();
+            BondInstance value = PoliticalSavedData.get(server).bond(id);
+            return value == null ? Optional.empty() : Optional.of(bond(value));
         } catch (Throwable error) {
-            ApiSupport.swallow("politics.polityForSettlement", error);
+            ApiSupport.swallow("politics.bond", error);
             return Optional.empty();
         }
     }
 
     @Override
-    public List<PolitySnapshot> polities(MinecraftServer server) {
-        List<PolitySnapshot> out = new ArrayList<>();
+    public List<BondSnapshot> bonds(MinecraftServer server, PartyRef party) {
+        List<BondSnapshot> out = new ArrayList<>();
         try {
-            if (server == null) return out;
-            for (PolityInstance value : PoliticalSavedData.get(server).polities()) out.add(polity(value));
+            Party internal = party(party);
+            if (server == null || internal == null) return out;
+            for (BondInstance value : PoliticalSavedData.get(server).bonds(internal)) out.add(bond(value));
         } catch (Throwable error) {
-            ApiSupport.swallow("politics.polities", error);
+            ApiSupport.swallow("politics.bonds", error);
         }
         return List.copyOf(out);
     }
@@ -133,83 +162,36 @@ final class PoliticsImpl implements PoliticsApi {
     }
 
     @Override
-    public List<AffiliationSnapshot> affiliations(MinecraftServer server, UUID person) {
-        List<AffiliationSnapshot> out = new ArrayList<>();
-        try {
-            if (server == null || person == null) return out;
-            PoliticalSavedData data = PoliticalSavedData.get(server);
-            for (AffiliationInstance value : data.affiliations(person)) {
-                out.add(affiliation(value, data.membership(value.id()) != null));
-            }
-        } catch (Throwable error) {
-            ApiSupport.swallow("politics.affiliations", error);
-        }
-        return List.copyOf(out);
-    }
-
-    @Override
-    public Optional<MembershipSnapshot> membership(MinecraftServer server, ResourceLocation id) {
+    public Optional<GovernanceSnapshot> governance(MinecraftServer server, ResourceLocation id) {
         try {
             if (server == null || id == null) return Optional.empty();
-            MembershipInstance value = PoliticalSavedData.get(server).membership(id);
-            return value == null ? Optional.empty() : Optional.of(membership(value));
-        } catch (Throwable error) {
-            ApiSupport.swallow("politics.membership", error);
-            return Optional.empty();
-        }
-    }
-
-    @Override
-    public List<MembershipSnapshot> memberships(MinecraftServer server, UUID person) {
-        List<MembershipSnapshot> out = new ArrayList<>();
-        try {
-            if (server == null || person == null) return out;
-            for (MembershipInstance value : PoliticalSavedData.get(server).memberships(person)) out.add(membership(value));
-        } catch (Throwable error) {
-            ApiSupport.swallow("politics.memberships", error);
-        }
-        return List.copyOf(out);
-    }
-
-    @Override
-    public Optional<GovernanceSnapshot> governance(MinecraftServer server, ResourceLocation polityId) {
-        try {
-            if (server == null || polityId == null) return Optional.empty();
             PoliticalSavedData data = PoliticalSavedData.get(server);
-            PolityInstance polity = data.polity(polityId);
-            if (polity == null || polity.governmentOrganization() == null) return Optional.empty();
-            OrganizationInstance government = data.organization(polity.governmentOrganization());
-            if (government == null) return Optional.empty();
-            var kind = com.aetherianartificer.townstead.politics.definition.PoliticalDefinitions.snapshot()
-                    .organizationKind(government.kind());
+            Faction faction = data.faction(id);
+            if (faction == null) return Optional.empty();
+            FactionKind kind = PoliticalDefinitions.snapshot().kind(faction.kind());
             var governance = kind == null ? null : kind.governance();
             List<GovernanceSnapshot.Office> offices = new ArrayList<>();
             if (kind != null) {
-                for (var binding : kind.roles()) {
-                    List<UUID> holders = new ArrayList<>();
-                    for (MembershipInstance membership : data.memberships(government.actor())) {
-                        if (membership.affiliation().active() && membership.roles().contains(binding.role())) {
-                            holders.add(membership.affiliation().person());
-                        }
-                    }
-                    offices.add(new GovernanceSnapshot.Office(binding.role(), binding.minimum(), binding.maximum(), holders));
+                for (FactionKind.Office office : kind.offices()) {
+                    offices.add(new GovernanceSnapshot.Office(office.bond(), office.minimum(), office.maximum(),
+                            FactionBonds.holders(data, faction.id(), office.bond())));
                 }
             }
-            java.util.OptionalInt legitimacy = java.util.OptionalInt.empty();
+            OptionalInt legitimacy = OptionalInt.empty();
             Optional<String> band = Optional.empty();
             Optional<UUID> head = Optional.empty();
             if (governance != null) {
-                double value = com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService.current(data, government);
-                legitimacy = java.util.OptionalInt.of((int) Math.round(value));
-                band = Optional.of(com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService.band(value));
-                head = Optional.ofNullable(com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService.holder(data, government, governance.head()));
+                double value = LegitimacyService.current(data, faction);
+                legitimacy = OptionalInt.of((int) Math.round(value));
+                band = Optional.of(LegitimacyService.band(value));
+                head = FactionBonds.holders(data, faction.id(), governance.head()).stream().findFirst();
             }
             Optional<String> provider = Optional.empty();
-            for (SettlementRef settlement : polity.settlements()) {
+            for (SettlementRef settlement : faction.settlements()) {
                 provider = com.aetherianartificer.townstead.politics.charter.CivicProviders.governingProvider(server, settlement);
                 if (provider.isPresent()) break;
             }
-            return Optional.of(new GovernanceSnapshot(polity.id(), government.id(), government.kind(),
+            return Optional.of(new GovernanceSnapshot(faction.id(), faction.kind(),
                     Optional.ofNullable(governance == null ? null : governance.head()), head, offices, legitimacy, band,
                     Optional.ofNullable(governance == null ? null : governance.succession()), provider));
         } catch (Throwable error) {
@@ -219,11 +201,10 @@ final class PoliticsImpl implements PoliticsApi {
     }
 
     @Override
-    public Optional<SeatSnapshot> seat(MinecraftServer server, PoliticalActorRef actor) {
+    public Optional<SeatSnapshot> seat(MinecraftServer server, ResourceLocation faction) {
         try {
-            com.aetherianartificer.townstead.politics.state.PoliticalActorRef internal = actor(actor);
-            if (server == null || internal == null) return Optional.empty();
-            SeatInstance value = PoliticalSavedData.get(server).seat(internal);
+            if (server == null || faction == null) return Optional.empty();
+            SeatInstance value = PoliticalSavedData.get(server).seat(faction);
             return value == null ? Optional.empty() : Optional.of(seat(server, value));
         } catch (Throwable error) {
             ApiSupport.swallow("politics.seat", error);
@@ -247,28 +228,34 @@ final class PoliticsImpl implements PoliticsApi {
     }
 
     @Override
-    public AuthorityDecision mayAct(MinecraftServer server, UUID person, PoliticalActorRef actor,
+    public AuthorityDecision mayAct(MinecraftServer server, UUID person, ResourceLocation faction,
                                     ResourceLocation capability) {
         try {
-            com.aetherianartificer.townstead.politics.state.PoliticalActorRef internal = actor(actor);
-            if (server == null || person == null || internal == null || capability == null) {
-                return denied("invalid_request");
-            }
-            PoliticalAuthority.Decision result = PoliticalAuthority.mayAct(
-                    PoliticalSavedData.get(server), person, internal, capability);
-            return new AuthorityDecision(result.allowed(), result.reason(), Optional.ofNullable(result.grantingRole()));
+            if (server == null || person == null || faction == null || capability == null) return denied("invalid_request");
+            PoliticalAuthority.Decision result = PoliticalAuthority.mayAct(PoliticalSavedData.get(server), person, faction, capability);
+            return new AuthorityDecision(result.allowed(), result.reason(), Optional.ofNullable(result.grantingBond()));
         } catch (Throwable error) {
             ApiSupport.swallow("politics.mayAct", error);
             return denied("internal_error");
         }
     }
 
-    static OrganizationSnapshot organization(PoliticalSavedData data, OrganizationInstance value) {
-        int members = (int) data.memberships(value.actor()).stream()
-                .filter(membership -> membership.affiliation().active()).count();
-        return new OrganizationSnapshot(value.id(), value.kind(), value.membershipPolicy(), value.name(),
-                value.shortName(), value.color(), Optional.ofNullable(value.emblem()), value.createdAt(),
-                value.provenance(), value.status().id(), Optional.ofNullable(village(value.home())), members);
+    static FactionSnapshot faction(PoliticalSavedData data, Faction value) {
+        FactionKind kind = PoliticalDefinitions.snapshot().kind(value.kind());
+        ResourceLocation membership = kind == null ? FactionBonds.CITIZENSHIP : kind.membership().bond();
+        int members = FactionBonds.holders(data, value.id(), membership).size();
+        return new FactionSnapshot(value.id(), value.kind(), value.name(), value.color(), Optional.ofNullable(value.emblem()),
+                value.createdAt(), value.provenance(), value.status().id(),
+                value.settlements().stream().map(PoliticsImpl::village).toList(), Optional.ofNullable(village(value.home())),
+                Optional.ofNullable(FactionBonds.parent(data, value.id())),
+                kind == null ? !value.settlements().isEmpty() : kind.holdsLand(), members);
+    }
+
+    static BondSnapshot bond(BondInstance value) {
+        List<BondSnapshot.Side> sides = value.sides().stream()
+                .map(side -> new BondSnapshot.Side(side.role(), party(side.party()))).toList();
+        return new BondSnapshot(value.id(), value.kind(), sides, value.startedAt(),
+                value.active() ? OptionalLong.empty() : OptionalLong.of(value.endedAt()), value.endedBy(), value.provenance());
     }
 
     static SeatSnapshot seat(MinecraftServer server, SeatInstance value) {
@@ -278,63 +265,36 @@ final class PoliticsImpl implements PoliticsApi {
                 .map(building -> building.getType())
                 .orElse("");
         SeatBuildings.Spec spec = SeatBuildings.forType(type);
-        return new SeatSnapshot(actor(value.actor()), village, value.lectern(), value.buildingId(), type,
+        return new SeatSnapshot(value.faction(), village, value.lectern(), value.buildingId(), type,
                 spec.tier(), value.damaged() ? List.of() : spec.functions(), value.designatedAt(), value.damage());
     }
 
     static SettlementFoundingSnapshot founding(SettlementFoundingRecord value) {
         return new SettlementFoundingSnapshot(village(value.settlement()), value.profile(),
-                Optional.ofNullable(value.culture()), Optional.ofNullable(value.government()),
+                Optional.ofNullable(value.culture()), Optional.ofNullable(value.factionKind()),
                 Optional.ofNullable(value.foundingBiome()), value.naturalWeight(), value.foundedAt());
     }
 
-    static PolitySnapshot polity(PolityInstance value) {
-        List<VillageId> settlements = value.settlements().stream().map(PoliticsImpl::village).toList();
-        return new PolitySnapshot(value.id(), value.name(), value.color(), Optional.ofNullable(value.emblem()),
-                value.createdAt(), value.provenance(), value.status().id(), settlements,
-                Optional.ofNullable(value.governmentOrganization()));
-    }
-
     private static FoundingProfileSnapshot foundingProfile(FoundingProfileDefinition value) {
-        FoundingProfileDefinition.Government government = value.government();
-        List<FoundingProfileSnapshot.GovernmentSeat> seats = government == null ? List.of()
-                : government.seats().stream()
-                .map(seat -> new FoundingProfileSnapshot.GovernmentSeat(seat.roles(), seat.count())).toList();
+        FoundingProfileDefinition.FactionSpec spec = value.faction();
+        List<FoundingProfileSnapshot.Seat> seats = spec == null ? List.of()
+                : spec.seats().stream().map(seat -> new FoundingProfileSnapshot.Seat(seat.offices(), seat.count())).toList();
         return new FoundingProfileSnapshot(value.id(), value.displayName().getString(),
                 Optional.ofNullable(value.culture()), value.weight(),
                 Optional.ofNullable(value.spawnBias().defaultWeight()), value.spawnBias().biomes(),
                 value.spawnBias().biomeTags(), value.spawnBias().dimensions(), value.population().strategy(),
                 value.population().outsiderBaseline(), value.population().adjustments(),
-                Optional.ofNullable(government == null ? null : government.organizationKind()),
-                Optional.ofNullable(government == null ? null : government.namePattern()), seats);
+                Optional.ofNullable(spec == null ? null : spec.kind()), seats);
     }
 
-    static AffiliationSnapshot affiliation(AffiliationInstance value, boolean membership) {
-        OptionalLong ended = value.endedAt() == AffiliationInstance.NOT_ENDED
-                ? OptionalLong.empty() : OptionalLong.of(value.endedAt());
-        return new AffiliationSnapshot(value.id(), value.person(), actor(value.actor()), value.kind(),
-                value.status().id(), value.startedAt(), ended, value.provenance(), value.visibility().id(), membership);
+    static PartyRef party(Party value) {
+        return value.isPerson() ? new PartyRef(PartyRef.PERSON, value.id()) : new PartyRef(PartyRef.FACTION, value.id());
     }
 
-    static MembershipSnapshot membership(MembershipInstance value) {
-        return new MembershipSnapshot(affiliation(value.affiliation(), true), value.membershipPolicy(),
-                value.admissionProcedure(), value.departureProcedure(), value.roles());
-    }
-
-    private static PoliticalActorRef actor(
-            com.aetherianartificer.townstead.politics.state.PoliticalActorRef value) {
-        return new PoliticalActorRef(value.kind().id(), value.id());
-    }
-
-    private static com.aetherianartificer.townstead.politics.state.PoliticalActorRef actor(PoliticalActorRef value) {
+    private static Party party(PartyRef value) {
         if (value == null) return null;
-        com.aetherianartificer.townstead.politics.state.PoliticalActorRef.Kind kind;
-        if (PoliticalActorRef.ORGANIZATION.equals(value.kind())) {
-            kind = com.aetherianartificer.townstead.politics.state.PoliticalActorRef.Kind.ORGANIZATION;
-        } else if (PoliticalActorRef.POLITY.equals(value.kind())) {
-            kind = com.aetherianartificer.townstead.politics.state.PoliticalActorRef.Kind.POLITY;
-        } else return null;
-        return new com.aetherianartificer.townstead.politics.state.PoliticalActorRef(kind, value.id());
+        if (value.asPerson().isPresent()) return Party.person(value.asPerson().get());
+        return value.asFaction().map(Party::faction).orElse(null);
     }
 
     static VillageId village(SettlementRef value) {

@@ -17,7 +17,8 @@ import java.util.Set;
 
 /** The server's Roots and cultures as the Switchboard shows them, parsed from the open packet. */
 final class ContentCatalog {
-    record RootRow(String id, Component name, Map<String, String> groups, @Nullable String discoveredBy) {}
+    record RootRow(String id, Component name, Map<String, String> groups, @Nullable String discoveredBy,
+                   boolean hostile) {}
 
     record CultureRow(String id, Component name) {}
 
@@ -33,7 +34,8 @@ final class ContentCatalog {
                 Map<String, String> groups = new LinkedHashMap<>();
                 row.getAsJsonObject("groups").entrySet().forEach(g -> groups.put(g.getKey(), g.getValue().getAsString()));
                 roots.add(new RootRow(row.get("id").getAsString(), name(row.getAsJsonObject("name")), groups,
-                        row.has("discoveredBy") ? row.get("discoveredBy").getAsString() : null));
+                        row.has("discoveredBy") ? row.get("discoveredBy").getAsString() : null,
+                        row.has("hostile") && row.get("hostile").getAsBoolean()));
             }
             JsonObject names = root.getAsJsonObject("groupNames");
             for (String dimension : WorldKeys.DIMENSIONS) {
@@ -66,6 +68,7 @@ final class ContentCatalog {
         for (RootRow root : roots) {
             out.add(WorldKeys.rootState(root.id()));
             out.add(WorldKeys.rootRate(root.id()));
+            if (root.hostile()) out.add(WorldKeys.rootPeaceful(root.id()));
             root.groups().forEach((dimension, id) -> {
                 out.add(WorldKeys.groupOn(dimension, id));
                 out.add(WorldKeys.groupRate(dimension, id));

@@ -8,14 +8,13 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 class SettlementFoundingRecordTest {
     @Test
-    void generatedGovernmentIdentityIncludesDimensionAndProfile() {
+    void aVillageFactionIdentityIncludesItsDimension() {
         SettlementRef overworld = new SettlementRef(id("minecraft:overworld"), 7);
         SettlementRef nether = new SettlementRef(id("minecraft:the_nether"), 7);
 
-        assertNotEquals(PoliticalIds.villageGovernment(overworld, id("example:marshside")),
-                PoliticalIds.villageGovernment(nether, id("example:marshside")));
-        assertNotEquals(PoliticalIds.villageGovernment(overworld, id("example:marshside")),
-                PoliticalIds.villageGovernment(overworld, id("example:deepers")));
+        assertNotEquals(PoliticalIds.villageFaction(overworld), PoliticalIds.villageFaction(nether));
+        assertNotEquals(PoliticalIds.villageFaction(overworld),
+                PoliticalIds.villageFaction(new SettlementRef(id("minecraft:overworld"), 8)));
     }
 
     private static ResourceLocation id(String value) {

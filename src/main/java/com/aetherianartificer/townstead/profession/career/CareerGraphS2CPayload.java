@@ -63,8 +63,12 @@ public record CareerGraphS2CPayload(String title, boolean inspect,
      * rather than resolved at render time, so a renamed village does not rewrite old records.</p>
      */
     public record Stamp(boolean present, int x, int y, float rotation, String authority,
-                         String date, String textureId, String sourcePack, String label) {
-        public static final Stamp NONE = new Stamp(false, 0, 0, 0f, "", "", "", "", "");
+                         String date, String textureId, String sourcePack, String label,
+                         String device, int dye) {
+        public static final Stamp NONE = new Stamp(false, 0, 0, 0f, "", "", "", "", "", "", -1);
+
+        /** Pressed with a personal seal; otherwise an older cartouche mark. */
+        public boolean sealed() { return !device.isEmpty() && dye >= 0; }
     }
 
     /**
@@ -208,6 +212,8 @@ public record CareerGraphS2CPayload(String title, boolean inspect,
                 buf.writeUtf(node.stamp().textureId());
                 buf.writeUtf(node.stamp().sourcePack());
                 buf.writeUtf(node.stamp().label());
+                buf.writeUtf(node.stamp().device());
+                buf.writeVarInt(node.stamp().dye() + 1);
             }
             buf.writeBoolean(node.ability().present());
             if (node.ability().present()) {
@@ -282,7 +288,8 @@ public record CareerGraphS2CPayload(String title, boolean inspect,
             Stamp stamp = Stamp.NONE;
             if (buf.readBoolean()) {
                 stamp = new Stamp(true, buf.readVarInt(), buf.readVarInt(), buf.readFloat(),
-                        buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf());
+                        buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf(),
+                        buf.readUtf(), buf.readVarInt() - 1);
             }
             Ability ability = Ability.NONE;
             if (buf.readBoolean()) {

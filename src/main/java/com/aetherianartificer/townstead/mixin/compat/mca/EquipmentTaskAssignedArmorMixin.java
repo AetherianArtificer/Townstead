@@ -32,7 +32,9 @@ public abstract class EquipmentTaskAssignedArmorMixin {
             target = "Lnet/conczin/mca/entity/VillagerEntityMCA;m_8061_(Lnet/minecraft/world/entity/EquipmentSlot;Lnet/minecraft/world/item/ItemStack;)V"), require = 1)
     *///?}
     private void townstead$keepAssignedArmor(VillagerEntityMCA villager, EquipmentSlot slot, ItemStack stack) {
-        if (!AssignedArmor.protects(villager, slot)) villager.setItemSlot(slot, stack);
+        // The standard-issue shield is conjured here too, so this is where it takes the villager's arms.
+        if (!AssignedArmor.protects(villager, slot)) villager.setItemSlot(slot,
+                com.aetherianartificer.townstead.politics.heraldry.GuardHeraldry.dress(villager, stack));
     }
 
     @Inject(method = "checkExtraStartConditions(Lnet/minecraft/server/level/ServerLevel;Lnet/conczin/mca/entity/VillagerEntityMCA;)Z",

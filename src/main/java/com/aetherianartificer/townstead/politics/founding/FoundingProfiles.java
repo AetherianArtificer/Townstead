@@ -1,7 +1,7 @@
 package com.aetherianartificer.townstead.politics.founding;
 
 import com.aetherianartificer.townstead.culture.Cultures;
-import com.aetherianartificer.townstead.politics.definition.OrganizationKindDefinition;
+import com.aetherianartificer.townstead.politics.definition.FactionKind;
 import com.aetherianartificer.townstead.politics.definition.PoliticalDefinitions;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
@@ -55,19 +55,16 @@ public final class FoundingProfiles {
         if (profile.culture() != null && Cultures.get(profile.culture()) == null) {
             errors.add("unknown culture " + profile.culture());
         }
-        if (profile.government() == null) return List.copyOf(errors);
-        PoliticalDefinitions.Snapshot definitions = PoliticalDefinitions.snapshot();
-        OrganizationKindDefinition kind = definitions.organizationKind(profile.government().organizationKind());
+        if (profile.faction() == null) return List.copyOf(errors);
+        FactionKind kind = PoliticalDefinitions.snapshot().kind(profile.faction().kind());
         if (kind == null) {
-            errors.add("unknown government organization kind " + profile.government().organizationKind());
+            errors.add("unknown faction kind " + profile.faction().kind());
             return List.copyOf(errors);
         }
-        var bound = kind.roles().stream().map(OrganizationKindDefinition.RoleBinding::role)
-                .collect(java.util.stream.Collectors.toSet());
-        for (FoundingProfileDefinition.Seat seat : profile.government().seats()) {
-            for (ResourceLocation role : seat.roles()) {
-                if (!bound.contains(role)) errors.add("government seat uses role " + role
-                        + " which is not bound by " + kind.id());
+        if (profile.faction().legacy()) return List.copyOf(errors);
+        for (FoundingProfileDefinition.Seat seat : profile.faction().seats()) {
+            for (ResourceLocation office : seat.offices()) {
+                if (kind.office(office) == null) errors.add("seat names " + office + " which is not an office of " + kind.id());
             }
         }
         return List.copyOf(errors);

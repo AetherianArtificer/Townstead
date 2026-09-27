@@ -1,54 +1,46 @@
 package com.aetherianartificer.townstead.politics.state;
 
 import com.aetherianartificer.townstead.data.DataPackLang;
-import com.aetherianartificer.townstead.politics.definition.OrganizationRoleDefinition;
-import com.aetherianartificer.townstead.politics.definition.PoliticalDefinitions;
+import com.aetherianartificer.townstead.social.BondKind;
+import com.aetherianartificer.townstead.social.BondKinds;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
-/** Actor-scoped capability resolution shared by Townstead commands and add-on API reads. */
+/**
+ * Whether a person may act for a faction: they hold an active bond with it whose faction role gives
+ * the capability. Bonds with every other faction are ignored.
+ */
 public final class PoliticalAuthority {
     private PoliticalAuthority() {}
 
-    public static Decision mayAct(PoliticalSavedData data, UUID person, PoliticalActorRef actor,
+    public static Decision mayAct(PoliticalSavedData data, UUID person, ResourceLocation factionId,
                                   ResourceLocation capability) {
-        if (data == null || person == null || actor == null || capability == null) {
+        if (data == null || person == null || factionId == null || capability == null) {
             return deny("invalid_request");
         }
-
-        if (actor.kind() == PoliticalActorRef.Kind.POLITY && data.externalGovernment(actor.id())
-                || actor.kind() == PoliticalActorRef.Kind.ORGANIZATION && data.supersededGovernment(actor.id())) return deny("external_authority");
-        ResourceLocation organizationId;
-        if (actor.kind() == PoliticalActorRef.Kind.ORGANIZATION) {
-            OrganizationInstance organization = data.organization(actor.id());
-            if (organization == null) return deny("unknown_actor");
-            if (organization.status() != PoliticalStatus.Organization.ACTIVE) return deny("inactive_actor");
-            organizationId = organization.id();
-        } else {
-            PolityInstance polity = data.polity(actor.id());
-            if (polity == null) return deny("unknown_actor");
-            if (polity.status() != PoliticalStatus.Polity.ACTIVE) return deny("inactive_actor");
-            if (polity.governmentOrganization() == null) return deny("no_government");
-            organizationId = polity.governmentOrganization();
-            OrganizationInstance government = data.organization(organizationId);
-            if (government == null) return deny("no_government");
-            if (government.status() != PoliticalStatus.Organization.ACTIVE) return deny("inactive_government");
-        }
-
-        MembershipInstance membership = data.membership(person, organizationId);
-        if (membership == null) return deny("not_affiliated");
-        if (!membership.affiliation().active()) return deny("inactive_membership");
-
-        PoliticalDefinitions.Snapshot definitions = PoliticalDefinitions.snapshot();
-        for (ResourceLocation roleId : membership.roles()) {
-            OrganizationRoleDefinition role = definitions.role(roleId);
-            if (role != null && role.capabilities().contains(capability)) {
-                return new Decision(true, reason("allowed"), roleId);
+        Faction faction = data.faction(factionId);
+        if (faction == null) return deny("unknown_faction");
+        if (!faction.active()) return deny("inactive_faction");
+        if (data.externalGovernment(faction.id())) return deny("external_authority");
+        Party self = Party.faction(faction.id());
+        boolean bonded = false;
+        for (BondInstance bond : data.activeBonds(Party.person(person))) {
+            if (!bond.involves(self)) continue;
+            bonded = true;
+            BondKind kind = BondKinds.all().get(bond.kind());
+            String role = bond.roleOf(self);
+            BondKind.Role definition = kind == null || role == null ? null : kind.role(role);
+            if (definition != null && definition.gives().contains(capability)) {
+                return new Decision(true, reason("allowed"), bond.kind());
             }
         }
-        return deny("missing_capability");
+        return deny(bonded ? "missing_capability" : "no_bond");
+    }
+
+    public static boolean allowed(PoliticalSavedData data, UUID person, ResourceLocation faction, ResourceLocation capability) {
+        return mayAct(data, person, faction, capability).allowed();
     }
 
     private static Decision deny(String reason) {
@@ -61,5 +53,6 @@ public final class PoliticalAuthority {
         return id;
     }
 
-    public record Decision(boolean allowed, ResourceLocation reason, @Nullable ResourceLocation grantingRole) {}
+    /** {@code grantingBond} is the kind of bond, such as an office, that granted the capability. */
+    public record Decision(boolean allowed, ResourceLocation reason, @Nullable ResourceLocation grantingBond) {}
 }

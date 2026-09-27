@@ -35,6 +35,7 @@ final class SettingsListScreen extends MenuBackgroundScreen {
     /** Roots and Cultures rows share two columns: who may have it, and its spawn rate. */
     private static final int WHO_WIDTH = 140;
     private static final int RATE_WIDTH = 90;
+    private static final int PEACE_WIDTH = 44;
 
     private final Screen parent;
     private final SwitchboardModel model;
@@ -180,6 +181,7 @@ final class SettingsListScreen extends MenuBackgroundScreen {
         Object current = client ? model.deviceValue(entry) : model.value(entry.key());
         List<AbstractWidget> controls = SettingControls.build(entry, current, label, CONTROL_WIDTH, v -> {
             if (client) model.setDevice(entry, v);
+            else if (kind == Kind.ROOTS) content(entry.key(), v);
             else model.set(entry.key(), v);
         });
         boolean locked = !client && model.isLocked(entry.key());
@@ -188,12 +190,26 @@ final class SettingsListScreen extends MenuBackgroundScreen {
     }
 
     private void fillRoots(String needle) {
-        SettingIndex.Entry choice = SettingIndex.get(SettingIndex.keyOf(TownsteadConfig.ALLOW_ROOT_CHOICE_IN_DESTINY));
-        if (choice != null && needle.isEmpty()) list.add(settingRow(choice, SettingLabels.label(choice), false));
+        boolean anyHostile = model.catalog.roots.stream().anyMatch(ContentCatalog.RootRow::hostile);
+        if (needle.isEmpty()) {
+            worldRow(TownsteadConfig.ALLOW_ROOT_CHOICE_IN_DESTINY);
+            if (anyHostile) {
+                worldRow(TownsteadConfig.ROOT_HOSTILITY);
+                worldRow(TownsteadConfig.PEACEFUL_ROOTS_SHARE_VILLAGES);
+            }
+        }
 
         String dimension = WorldKeys.DIMENSIONS.get(groupBy);
         if (!model.catalog.roots.isEmpty()) {
-            list.add(columns("townstead.switchboard.column.who", "townstead.switchboard.column.rate.roots.tip"));
+            List<SettingList.Columns.Column> columns = new ArrayList<>();
+            if (anyHostile) {
+                columns.add(new SettingList.Columns.Column(Component.translatable("townstead.switchboard.column.peaceful"),
+                        PEACE_WIDTH, Component.translatable("townstead.switchboard.column.peaceful.tip")));
+            }
+            columns.add(new SettingList.Columns.Column(Component.translatable("townstead.switchboard.column.who"), WHO_WIDTH, null));
+            columns.add(new SettingList.Columns.Column(Component.translatable("townstead.switchboard.column.rate"), RATE_WIDTH,
+                    Component.translatable("townstead.switchboard.column.rate.roots.tip")));
+            list.add(new SettingList.Columns(this, columns));
         }
         Map<String, List<ContentCatalog.RootRow>> groups = new LinkedHashMap<>();
         for (ContentCatalog.RootRow root : model.catalog.roots) {
@@ -213,6 +229,11 @@ final class SettingsListScreen extends MenuBackgroundScreen {
             }
             for (ContentCatalog.RootRow root : members) list.add(rootRow(root));
         }
+    }
+
+    private void worldRow(Object value) {
+        SettingIndex.Entry entry = SettingIndex.get(SettingIndex.keyOf(value));
+        if (entry != null) list.add(settingRow(entry, SettingLabels.label(entry), false));
     }
 
     private SettingList.Setting groupRow(String dimension, String groupId, int count) {
@@ -269,10 +290,26 @@ final class SettingsListScreen extends MenuBackgroundScreen {
             tip = tip.copy().append("\n").append(Component.translatable("townstead.switchboard.root.overall",
                     RateSlider.format(overall)));
         }
-        List<AbstractWidget> controls = new ArrayList<>(stateControls);
+        List<AbstractWidget> controls = new ArrayList<>();
+        if (root.hostile()) controls.add(peaceToggle(root));
+        controls.addAll(stateControls);
         controls.add(rate);
         return new SettingList.Setting(this, Component.literal("  ").append(root.name()), tip, controls,
                 blocked || state == RootState.OFF);
+    }
+
+    private CycleButton<Boolean> peaceToggle(ContentCatalog.RootRow root) {
+        String key = WorldKeys.rootPeaceful(root.id());
+        CycleButton<Boolean> toggle = SettingControls.onOff((Boolean) model.value(key), PEACE_WIDTH, root.name(),
+                v -> content(key, v));
+        toggle.setTooltip(Tooltip.create(Component.translatable("townstead.switchboard.root.peaceful.tip")));
+        if (model.isLocked(key)) {
+            lock(toggle);
+        } else if (!(Boolean) model.value(SettingIndex.keyOf(TownsteadConfig.ROOT_HOSTILITY))) {
+            toggle.active = false;
+            toggle.setTooltip(Tooltip.create(Component.translatable("townstead.switchboard.root.peaceful.all")));
+        }
+        return toggle;
     }
 
     private void fillCultures(String needle) {

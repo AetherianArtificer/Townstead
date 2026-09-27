@@ -17,7 +17,7 @@ import net.minecraft.nbt.CompoundTag;
  * rather than a village.</p>
  */
 public record CareerStamp(int x, int y, float rotation, String authority, String date,
-                          String textureId, String sourcePack, String label) {
+                          String textureId, String sourcePack, String label, String device, int dye) {
 
     /** Centre bounds of the pinned registry field, in record-panel coordinates. */
     public static final int MIN_X = 7;
@@ -27,7 +27,12 @@ public record CareerStamp(int x, int y, float rotation, String authority, String
 
     /** Compatibility constructor for records written before selectable career stamp heads. */
     public CareerStamp(int x, int y, float rotation, String authority, String date) {
-        this(x, y, rotation, authority, date, "", "", "");
+        this(x, y, rotation, authority, date, "", "", "", "", -1);
+    }
+
+    /** Whether this mark was pressed with a personal seal. Older marks carry a cartouche instead. */
+    public boolean sealed() {
+        return !device.isEmpty() && dye >= 0;
     }
 
     public static CareerStamp sanitized(int x, int y, float rotation, String authority, String date) {
@@ -36,6 +41,18 @@ public record CareerStamp(int x, int y, float rotation, String authority, String
 
     public static CareerStamp sanitized(int x, int y, float rotation, String authority, String date,
                                         String textureId, String sourcePack, String label) {
+        return sanitized(x, y, rotation, authority, date, textureId, sourcePack, label, "", -1);
+    }
+
+    /**
+     * A mark pressed with a personal seal. The device and ink are copied in as they were that day,
+     * so changing one's seal later does not change what an old record shows.
+     */
+    public static CareerStamp sanitized(int x, int y, float rotation, String authority, String date,
+                                        String textureId, String sourcePack, String label,
+                                        String device, int dye) {
+        com.aetherianartificer.townstead.seal.PersonalSeal seal =
+                com.aetherianartificer.townstead.seal.PersonalSeal.sanitized(device, dye);
         return new CareerStamp(
                 Math.max(MIN_X, Math.min(MAX_X, x)),
                 Math.max(MIN_Y, Math.min(MAX_Y, y)),
@@ -44,7 +61,9 @@ public record CareerStamp(int x, int y, float rotation, String authority, String
                 date == null ? "" : date,
                 sanitizeTexture(textureId),
                 truncate(sourcePack, 80),
-                truncate(label, 48));
+                truncate(label, 48),
+                seal == null ? "" : seal.device(),
+                seal == null ? -1 : seal.dye());
     }
 
     public CompoundTag toTag() {
@@ -57,13 +76,18 @@ public record CareerStamp(int x, int y, float rotation, String authority, String
         if (!textureId.isEmpty()) tag.putString("texture", textureId);
         if (!sourcePack.isEmpty()) tag.putString("source_pack", sourcePack);
         if (!label.isEmpty()) tag.putString("label", label);
+        if (sealed()) {
+            tag.putString("seal", device);
+            tag.putInt("seal_dye", dye);
+        }
         return tag;
     }
 
     public static CareerStamp fromTag(CompoundTag tag) {
         return sanitized(tag.getInt("x"), tag.getInt("y"), tag.getFloat("rot"),
                 tag.getString("authority"), tag.getString("date"),
-                tag.getString("texture"), tag.getString("source_pack"), tag.getString("label"));
+                tag.getString("texture"), tag.getString("source_pack"), tag.getString("label"),
+                tag.getString("seal"), tag.contains("seal_dye") ? tag.getInt("seal_dye") : -1);
     }
 
     /** Career art is deliberately separate from the Calendar's unrestricted decorative stamps. */

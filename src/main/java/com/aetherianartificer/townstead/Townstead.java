@@ -607,7 +607,16 @@ public class Townstead {
             }
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickBlock e) -> {
-            if (e.getLevel().isClientSide) return;
+            if (e.getLevel().isClientSide) {
+                // The server opens the Charter from the same use; this keeps the held item from acting first.
+                if (e.getHand() == net.minecraft.world.InteractionHand.MAIN_HAND
+                        && com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.POLITICS)
+                        && com.aetherianartificer.townstead.politics.charter.CharterBellService.claimsUse(e.getLevel(), e.getPos())) {
+                    e.setCanceled(true);
+                    e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
+                }
+                return;
+            }
             if (!(e.getEntity() instanceof net.minecraft.server.level.ServerPlayer player)) return;
             if (com.aetherianartificer.townstead.politics.charter.CharterBellService
                     .onUse(player, e.getPos(), e.getHand(), e.getFace(),
@@ -699,6 +708,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.rebirth.Rebirth.onLogin(sp);
                 com.aetherianartificer.townstead.root.ability.AbilityToggles.syncTo(sp);
                 com.aetherianartificer.townstead.root.ability.ActiveAbilities.syncView(sp);
+                com.aetherianartificer.townstead.seal.PersonalSeals.sync(sp);
                 townstead$sendShiftTemplateSync(sp);
                 townstead$sendWeekPlanSync(sp);
                 PacketDistributor.sendToPlayer(sp, townstead$calendarSync(sp));
@@ -1112,7 +1122,16 @@ public class Townstead {
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock e) -> {
-            if (e.getLevel().isClientSide) return;
+            if (e.getLevel().isClientSide) {
+                // The server opens the Charter from the same use; this keeps the held item from acting first.
+                if (e.getHand() == net.minecraft.world.InteractionHand.MAIN_HAND
+                        && com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.POLITICS)
+                        && com.aetherianartificer.townstead.politics.charter.CharterBellService.claimsUse(e.getLevel(), e.getPos())) {
+                    e.setCanceled(true);
+                    e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
+                }
+                return;
+            }
             if (!(e.getEntity() instanceof net.minecraft.server.level.ServerPlayer player)) return;
             if (com.aetherianartificer.townstead.politics.charter.CharterBellService
                     .onUse(player, e.getPos(), e.getHand(), e.getFace(),
@@ -1206,6 +1225,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.rebirth.Rebirth.onLogin(sp);
                 com.aetherianartificer.townstead.root.ability.AbilityToggles.syncTo(sp);
                 com.aetherianartificer.townstead.root.ability.ActiveAbilities.syncView(sp);
+                com.aetherianartificer.townstead.seal.PersonalSeals.sync(sp);
                 TownsteadNetwork.sendShiftTemplateSync(sp);
                 TownsteadNetwork.sendWeekPlanSync(sp);
                 TownsteadNetwork.sendToPlayer(sp, townstead$calendarSync(sp));
@@ -1645,6 +1665,7 @@ public class Townstead {
             com.aetherianartificer.townstead.compat.otectus.OtectusBridge.init();
             com.aetherianartificer.townstead.politics.standing.StandingDeeds.init();
             com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService.init();
+            com.aetherianartificer.townstead.politics.state.PoliticalVillageBootstrap.init();
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
                     new com.aetherianartificer.townstead.reaction.trigger.types.GestureTriggerType());
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
@@ -2552,7 +2573,6 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.profession.def.ProfessionDataLoader());
         event.addListener(new com.aetherianartificer.townstead.work.feedback.ProfessionFeedbackJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.profession.def.ComboSkills.Loader());
-        event.addListener(new com.aetherianartificer.townstead.social.BondKindJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.social.RelationshipQualityJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.social.SocialMemoryJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.social.SocialInclinationJsonLoader());
@@ -3117,6 +3137,21 @@ public class Townstead {
                 com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload.TYPE,
                 com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload.STREAM_CODEC,
                 this::handleCareerStamp
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.seal.SealC2SPayload.TYPE,
+                com.aetherianartificer.townstead.seal.SealC2SPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof ServerPlayer sp) {
+                        com.aetherianartificer.townstead.seal.PersonalSeals.choose(sp, payload.device(), payload.dye());
+                    }
+                })
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.seal.SealS2CPayload.TYPE,
+                com.aetherianartificer.townstead.seal.SealS2CPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.client.seal.ClientSeal.set(payload.seal()))
         );
         registrar.playToClient(
                 FishermanHookLinkPayload.TYPE,

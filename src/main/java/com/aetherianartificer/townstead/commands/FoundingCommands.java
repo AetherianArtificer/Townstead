@@ -98,7 +98,7 @@ public final class FoundingCommands {
         for (FoundingProfileDefinition profile : profiles) {
             line(source, "command.townstead.founding.profile", profile.id(), profile.displayName(),
                     profile.culture() == null ? "-" : profile.culture(),
-                    profile.government() == null ? "-" : profile.government().organizationKind());
+                    profile.faction() == null ? "-" : profile.faction().kind());
         }
         return profiles.isEmpty() ? 0 : profiles.size();
     }
@@ -114,7 +114,7 @@ public final class FoundingCommands {
             return 0;
         }
         line(source, "command.townstead.founding.inspect", village.get().getName(), record.profile(),
-                record.culture() == null ? "-" : record.culture(), record.government(),
+                record.culture() == null ? "-" : record.culture(), record.factionKind() == null ? "-" : record.factionKind(),
                 record.foundingBiome() == null ? "-" : record.foundingBiome(), record.naturalWeight());
         return 1;
     }
@@ -136,7 +136,7 @@ public final class FoundingCommands {
             return 0;
         }
         line(source, "command.townstead.founding.applied", profile.id(), village.get().getName(),
-                result.polity(), result.government(), result.governmentMembersCreated(), result.naturalWeight());
+                result.faction(), result.officesFilled(), result.naturalWeight());
         if (profile.culture() != null) line(source, "command.townstead.founding.residents_unchanged");
         return 1;
     }
@@ -155,7 +155,7 @@ public final class FoundingCommands {
         }
         line(source, "command.townstead.founding.spawned", result.structure(), result.village().getName(),
                 result.village().getId(), profile.id(), result.buildings(), result.residents(),
-                result.founding().governmentMembersCreated());
+                result.founding().officesFilled());
         return 1;
     }
 
@@ -190,7 +190,7 @@ public final class FoundingCommands {
         }
         line(source, "command.townstead.founding.repopulated", result.village().getName(),
                 result.village().getId(), profile.id(), result.removedResidents(), result.residents(),
-                result.founding().governmentMembersCreated());
+                result.founding().officesFilled());
         return 1;
     }
 

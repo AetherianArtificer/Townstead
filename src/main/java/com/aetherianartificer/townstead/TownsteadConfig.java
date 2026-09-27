@@ -139,6 +139,8 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_LINEAGES;
     public static final ModConfigSpec.BooleanValue ALLOW_ROOT_CHOICE_IN_DESTINY;
     public static final ModConfigSpec.IntValue ROOT_DISCOVERY_HEARTS;
+    public static final ModConfigSpec.BooleanValue ROOT_HOSTILITY;
+    public static final ModConfigSpec.BooleanValue PEACEFUL_ROOTS_SHARE_VILLAGES;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.rebirth.RebirthMode> REBIRTH_MODE;
     public static final ModConfigSpec.IntValue REBIRTH_RELEARN_SPEED;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.naming.NameStyle> NAME_STYLE;
@@ -246,6 +248,8 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_LINEAGES;
     public static final ForgeConfigSpec.BooleanValue ALLOW_ROOT_CHOICE_IN_DESTINY;
     public static final ForgeConfigSpec.IntValue ROOT_DISCOVERY_HEARTS;
+    public static final ForgeConfigSpec.BooleanValue ROOT_HOSTILITY;
+    public static final ForgeConfigSpec.BooleanValue PEACEFUL_ROOTS_SHARE_VILLAGES;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.rebirth.RebirthMode> REBIRTH_MODE;
     public static final ForgeConfigSpec.IntValue REBIRTH_RELEARN_SPEED;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.naming.NameStyle> NAME_STYLE;
@@ -625,6 +629,15 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.roots.discoveryHearts")
                 .comment("Hearts a player needs with a villager of a Discoverable Root to discover it for the whole server.")
                 .defineInRange("discoveryHearts", 50, 1, 100);
+        ROOT_HOSTILITY = b
+                .translation("townstead.configuration.roots.hostility")
+                .comment("Let Roots that are hostile to each other act on it: unarmed villagers flee, guards attack.",
+                         "When false, villagers and players of every Root get along. Wild mobs stay hostile.")
+                .define("hostility", true);
+        PEACEFUL_ROOTS_SHARE_VILLAGES = b
+                .translation("townstead.configuration.roots.peacefulShareVillages")
+                .comment("Let Roots at peace spawn in the same village even if their packs make them enemies.")
+                .define("peacefulShareVillages", true);
         b.pop();
 
         b.push("rebirth");

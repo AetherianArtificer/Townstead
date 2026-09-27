@@ -13,18 +13,21 @@ class HeraldryTest {
         var saved = new HeraldrySavedData(); var author = UUID.randomUUID();
         var first = EmblemRecipe.DEFAULT;
         var second = new EmblemRecipe(14, "", 0, "minecraft:circle", 4);
-        assertTrue(saved.publish("polity:test:one", first, 0, author, 1), "First publication rejected");
-        assertTrue(!saved.publish("polity:test:one", second, 0, author, 2), "Stale draft overwrote published design");
-        assertTrue(saved.get("organization:test:one").revision() == 0, "Faction publication leaked into organization");
-        assertTrue(saved.publish("polity:test:one", second, 1, author, 2), "Current revision rejected");
-        assertTrue(saved.publish("polity:test:one", second, 2, author, 3) && saved.get("polity:test:one").revision() == 2, "Repeated identical publication advanced revision");
+        assertTrue(saved.publish("faction:test:one", first, 0, author, 1), "First publication rejected");
+        assertTrue(!saved.publish("faction:test:one", second, 0, author, 2), "Stale draft overwrote published design");
+        assertTrue(saved.get("settlement:test:one").revision() == 0, "Faction publication leaked into the settlement");
+        assertTrue(saved.publish("faction:test:one", second, 1, author, 2), "Current revision rejected");
+        assertTrue(saved.publish("faction:test:one", second, 2, author, 3) && saved.get("faction:test:one").revision() == 2, "Repeated identical publication advanced revision");
         //? if >=1.21 {
         var tag = saved.save(new CompoundTag(), null); var copy = HeraldrySavedData.load(tag, null);
         //?} else {
         /*var tag = saved.save(new CompoundTag()); var copy = HeraldrySavedData.load(tag);
         *///?}
-        assertTrue(copy.get("polity:test:one").equals(saved.get("polity:test:one")), "Recipe/author/revision lost on reload");
+        assertTrue(copy.get("faction:test:one").equals(saved.get("faction:test:one")), "Recipe/author/revision lost on reload");
         assertTrue(tag.getList("actors", 10).getCompound(0).getList("history", 10).size() == 1, "Previous design lost");
+        var older = new HeraldrySavedData();
+        older.publish("polity:test:two", second, 0, author, 1);
+        assertTrue(older.get("faction:test:two").recipe().equals(second), "An emblem published for a polity is lost once it is a faction");
         for (String bad : new String[]{"2;0;;0;;0", "1;16;;0;;0", "1;-1;;0;;0", "1;0;not an id;0;;0", "1;0;;0;;0;extra"}) {
             boolean rejected = false;
             try { EmblemRecipe.decode(bad); } catch (RuntimeException expected) { rejected = true; }

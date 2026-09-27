@@ -11,18 +11,23 @@ import com.aetherianartificer.townstead.root.RootRegistry;
 import com.aetherianartificer.townstead.root.RootRules;
 import com.aetherianartificer.townstead.root.Species;
 import com.aetherianartificer.townstead.root.SpeciesRegistry;
+import com.aetherianartificer.townstead.root.disposition.DispositionGroups;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EntityType;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The loaded Roots and cultures the Switchboard can configure, sent with the open packet: each Root's
- * group ids, and a translate key plus English text for every group and culture name.
+ * group ids, whether it takes part in any hostility between loaded Roots, and a translate key plus English text for every group and culture name.
  */
 public final class SwitchboardCatalog {
     private SwitchboardCatalog() {}
@@ -32,6 +37,9 @@ public final class SwitchboardCatalog {
         JsonArray roots = new JsonArray();
         JsonObject names = new JsonObject();
         for (String dimension : WorldKeys.DIMENSIONS) names.add(dimension, new JsonObject());
+        Map<ResourceLocation, String> dispositionGroups = new HashMap<>();
+        for (Root r : RootRegistry.all()) dispositionGroups.put(r.id(), DispositionGroups.ofRoot(r.id(), EntityType.VILLAGER));
+        Set<String> liveGroups = new HashSet<>(dispositionGroups.values());
         for (Root r : RootRegistry.all()) {
             JsonObject row = new JsonObject();
             row.addProperty("id", r.id().toString());
@@ -46,6 +54,10 @@ public final class SwitchboardCatalog {
                 }
             }
             row.add("groups", groups);
+            String group = dispositionGroups.get(r.id());
+            if (liveGroups.stream().anyMatch(other -> DispositionGroups.clash(group, other))) {
+                row.addProperty("hostile", true);
+            }
             String discoveredBy = com.aetherianartificer.townstead.root.RootDiscovery.discoveredBy(r.id().toString());
             if (discoveredBy != null) row.addProperty("discoveredBy", discoveredBy);
             roots.add(row);

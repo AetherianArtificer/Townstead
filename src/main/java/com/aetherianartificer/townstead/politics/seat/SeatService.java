@@ -2,16 +2,15 @@ package com.aetherianartificer.townstead.politics.seat;
 
 import com.aetherianartificer.townstead.compat.mca.McaBuildingCompat;
 import com.aetherianartificer.townstead.politics.charter.CharterSavedData;
-import com.aetherianartificer.townstead.politics.state.PoliticalActorRef;
+import com.aetherianartificer.townstead.politics.state.Faction;
 import com.aetherianartificer.townstead.politics.state.PoliticalSavedData;
-import com.aetherianartificer.townstead.politics.state.PoliticalStatus;
-import com.aetherianartificer.townstead.politics.state.PolityInstance;
 import com.aetherianartificer.townstead.politics.state.SeatInstance;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
@@ -22,7 +21,7 @@ import java.util.Map;
 
 /**
  * Designates, moves, and checks Seats. A founded Charter lectern inside a recognized MCA building
- * makes that building the Seat of the polity the Charter speaks for.
+ * makes that building the Seat of the faction the Charter speaks for.
  */
 public final class SeatService {
     /** Damage: the Seat keeps its place and is repaired by rebuilding what broke. */
@@ -30,26 +29,26 @@ public final class SeatService {
     public static final String LECTERN_MISSING = "lectern_missing";
     /** Loss: the Seat record ends. */
     public static final String CHARTER_REMOVED = "charter_removed";
-    public static final String ACTOR_DISSOLVED = "actor_dissolved";
+    public static final String FACTION_DISSOLVED = "faction_dissolved";
 
     private static final int CHECK_INTERVAL = 100;
     // A Seat is damaged only after two failed checks in a row, so a room rescan cannot flicker it.
     private static final int STRIKES_TO_DAMAGE = 2;
-    private static final Map<PoliticalActorRef, Integer> STRIKES = new HashMap<>();
+    private static final Map<ResourceLocation, Integer> STRIKES = new HashMap<>();
 
-    public enum Result { DESIGNATED, MOVED, ALREADY_HERE, SEAT_ELSEWHERE, NO_BUILDING, NO_POLITY }
+    public enum Result { DESIGNATED, MOVED, ALREADY_HERE, SEAT_ELSEWHERE, NO_BUILDING, NO_FACTION }
 
     private SeatService() {}
 
-    /** With {@code allowMove} false, an actor that already has a Seat elsewhere keeps it. */
+    /** With {@code allowMove} false, a faction that already has a Seat elsewhere keeps it. */
     public static Result designate(ServerLevel level, CharterSavedData.Binding binding, boolean allowMove) {
         PoliticalSavedData data = PoliticalSavedData.get(level.getServer());
-        PolityInstance polity = data.polity(binding.polity());
-        if (polity == null || polity.status() == PoliticalStatus.Polity.DISSOLVED) return Result.NO_POLITY;
+        Faction faction = data.faction(binding.faction());
+        if (faction == null || faction.status() == Faction.Status.DISSOLVED) return Result.NO_FACTION;
         Building building = host(level, binding);
         if (building == null) return Result.NO_BUILDING;
-        SeatInstance existing = data.seat(polity.actor());
-        SeatInstance candidate = new SeatInstance(polity.actor(), binding.settlement(), binding.lectern(),
+        SeatInstance existing = data.seat(faction.id());
+        SeatInstance candidate = new SeatInstance(faction.id(), binding.settlement(), binding.lectern(),
                 building.getId(), level.getGameTime());
         if (candidate.sameHost(existing)) return Result.ALREADY_HERE;
         if (existing != null && !allowMove) return Result.SEAT_ELSEWHERE;
@@ -78,19 +77,19 @@ public final class SeatService {
         for (SeatInstance seat : data.seats()) {
             String failure = check(server, data, charters, seat);
             if (failure == null) {
-                STRIKES.remove(seat.actor());
-                SeatInstance current = data.seat(seat.actor());
+                STRIKES.remove(seat.faction());
+                SeatInstance current = data.seat(seat.faction());
                 if (current != null && current.damaged()) data.putSeat(current.repaired());
                 continue;
             }
             if (failure.isEmpty()) continue;
-            if (failure.equals(ACTOR_DISSOLVED) || failure.equals(CHARTER_REMOVED)) {
-                STRIKES.remove(seat.actor());
-                data.removeSeat(seat.actor(), failure);
+            if (failure.equals(FACTION_DISSOLVED) || failure.equals(CHARTER_REMOVED)) {
+                STRIKES.remove(seat.faction());
+                data.removeSeat(seat.faction(), failure);
             } else if (failure.equals(seat.damage())) {
-                STRIKES.remove(seat.actor());
-            } else if (STRIKES.merge(seat.actor(), 1, Integer::sum) >= STRIKES_TO_DAMAGE) {
-                STRIKES.remove(seat.actor());
+                STRIKES.remove(seat.faction());
+            } else if (STRIKES.merge(seat.faction(), 1, Integer::sum) >= STRIKES_TO_DAMAGE) {
+                STRIKES.remove(seat.faction());
                 data.putSeat(seat.withDamage(failure, server.overworld().getGameTime()));
             }
         }
@@ -104,14 +103,12 @@ public final class SeatService {
     /** Null when the Seat is intact, empty when it cannot be checked now, else the reason it failed. */
     private static @Nullable String check(MinecraftServer server, PoliticalSavedData data,
                                           CharterSavedData charters, SeatInstance seat) {
-        if (seat.actor().kind() == PoliticalActorRef.Kind.POLITY) {
-            PolityInstance polity = data.polity(seat.actor().id());
-            if (polity == null || polity.status() == PoliticalStatus.Polity.DISSOLVED) return ACTOR_DISSOLVED;
-        }
+        Faction faction = data.faction(seat.faction());
+        if (faction == null || faction.status() == Faction.Status.DISSOLVED) return FACTION_DISSOLVED;
         ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION, seat.settlement().dimension()));
         if (level == null || !level.isLoaded(seat.lectern())) return "";
         CharterSavedData.Binding binding = charters.binding(seat.settlement().dimension(), seat.lectern());
-        if (binding == null || !binding.polity().equals(seat.actor().id())) return CHARTER_REMOVED;
+        if (binding == null || !binding.faction().equals(seat.faction())) return CHARTER_REMOVED;
         if (!level.getBlockState(seat.lectern()).is(Blocks.LECTERN)) return LECTERN_MISSING;
         Building building = host(level, binding);
         if (building == null) return BUILDING_MISSING;

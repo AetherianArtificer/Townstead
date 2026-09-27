@@ -22,8 +22,8 @@ class FoundingProfileLegacyIdsTest {
 
     @Test
     void oldProfileIdResolvesWithoutAppearingInProfileSuggestions() {
-        var government = new FoundingProfileDefinition.Government(
-                ResourceLocation.tryParse("test:council"), "{village} Council", List.of());
+        var government = new FoundingProfileDefinition.FactionSpec(
+                ResourceLocation.tryParse("test:council"), List.of(), false);
         var profile = new FoundingProfileDefinition(CURRENT, Component.literal("Rosaguarda"),
                 null, 1.0F, null, null, null, government);
         FoundingProfiles.replace(Map.of(CURRENT, profile), Map.of(OLD, CURRENT));

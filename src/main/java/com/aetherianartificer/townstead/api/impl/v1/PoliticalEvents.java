@@ -1,33 +1,25 @@
 package com.aetherianartificer.townstead.api.impl.v1;
 
 import com.aetherianartificer.townstead.Townstead;
-import com.aetherianartificer.townstead.api.v1.event.AffiliationChangedEvent;
-import com.aetherianartificer.townstead.api.v1.event.MembershipChangedEvent;
-import com.aetherianartificer.townstead.api.v1.event.OrganizationFoundedEvent;
-import com.aetherianartificer.townstead.api.v1.event.OrganizationIdentityChangedEvent;
-import com.aetherianartificer.townstead.api.v1.event.OrganizationStatusChangedEvent;
-import com.aetherianartificer.townstead.api.v1.event.PolityFoundedEvent;
-import com.aetherianartificer.townstead.api.v1.event.PolityGovernmentChangedEvent;
-import com.aetherianartificer.townstead.api.v1.event.PolityIdentityChangedEvent;
-import com.aetherianartificer.townstead.api.v1.event.PolityStatusChangedEvent;
+import com.aetherianartificer.townstead.api.v1.event.BondChangedEvent;
+import com.aetherianartificer.townstead.api.v1.event.FactionFoundedEvent;
+import com.aetherianartificer.townstead.api.v1.event.FactionIdentityChangedEvent;
+import com.aetherianartificer.townstead.api.v1.event.FactionKindChangedEvent;
+import com.aetherianartificer.townstead.api.v1.event.FactionStatusChangedEvent;
 import com.aetherianartificer.townstead.api.v1.event.SeatDamagedEvent;
 import com.aetherianartificer.townstead.api.v1.event.SeatDesignatedEvent;
 import com.aetherianartificer.townstead.api.v1.event.SeatLostEvent;
 import com.aetherianartificer.townstead.api.v1.event.SeatMovedEvent;
 import com.aetherianartificer.townstead.api.v1.event.SeatRepairedEvent;
+import com.aetherianartificer.townstead.api.v1.event.SettlementFactionChangedEvent;
 import com.aetherianartificer.townstead.api.v1.event.SettlementFoundedEvent;
-import com.aetherianartificer.townstead.api.v1.event.SettlementPolityChangedEvent;
 import com.aetherianartificer.townstead.api.v1.event.TownsteadEvent;
-import com.aetherianartificer.townstead.api.v1.model.AffiliationSnapshot;
-import com.aetherianartificer.townstead.api.v1.model.MembershipSnapshot;
-import com.aetherianartificer.townstead.api.v1.model.OrganizationSnapshot;
-import com.aetherianartificer.townstead.api.v1.model.PolitySnapshot;
+import com.aetherianartificer.townstead.api.v1.model.BondSnapshot;
+import com.aetherianartificer.townstead.api.v1.model.FactionSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.SettlementFoundingSnapshot;
-import com.aetherianartificer.townstead.politics.state.AffiliationInstance;
-import com.aetherianartificer.townstead.politics.state.MembershipInstance;
-import com.aetherianartificer.townstead.politics.state.OrganizationInstance;
+import com.aetherianartificer.townstead.politics.state.BondInstance;
+import com.aetherianartificer.townstead.politics.state.Faction;
 import com.aetherianartificer.townstead.politics.state.PoliticalSavedData;
-import com.aetherianartificer.townstead.politics.state.PolityInstance;
 import com.aetherianartificer.townstead.politics.state.SeatInstance;
 import com.aetherianartificer.townstead.politics.state.SettlementFoundingRecord;
 import com.aetherianartificer.townstead.politics.state.SettlementRef;
@@ -56,74 +48,38 @@ public final class PoliticalEvents {
 
     private PoliticalEvents() {}
 
-    public static void organization(PoliticalSavedData data, @Nullable OrganizationInstance before,
-                                    OrganizationInstance after) {
+    public static void faction(PoliticalSavedData data, @Nullable Faction before, Faction after) {
         safe(() -> {
-            OrganizationSnapshot next = PoliticsImpl.organization(data, after);
+            FactionSnapshot next = PoliticsImpl.faction(data, after);
             if (before == null) {
-                queue(server -> new OrganizationFoundedEvent(server, next));
+                queue(server -> new FactionFoundedEvent(server, next));
                 return;
             }
-            OrganizationSnapshot prev = PoliticsImpl.organization(data, before);
-            if (before.status() != after.status()) {
-                queue(server -> new OrganizationStatusChangedEvent(server, prev, next));
+            FactionSnapshot prev = PoliticsImpl.faction(data, before);
+            if (before.status() != after.status()) queue(server -> new FactionStatusChangedEvent(server, prev, next));
+            if (!before.name().equals(after.name()) || before.color() != after.color()
+                    || !Objects.equals(before.emblem(), after.emblem())) {
+                queue(server -> new FactionIdentityChangedEvent(server, prev, next));
             }
-            if (!before.name().equals(after.name()) || !before.shortName().equals(after.shortName())
-                    || before.color() != after.color() || !Objects.equals(before.emblem(), after.emblem())) {
-                queue(server -> new OrganizationIdentityChangedEvent(server, prev, next));
-            }
-        });
-    }
-
-    public static void polity(@Nullable PolityInstance before, PolityInstance after) {
-        safe(() -> {
-            PolitySnapshot next = PoliticsImpl.polity(after);
-            if (before == null) {
-                queue(server -> new PolityFoundedEvent(server, next));
-            } else {
-                PolitySnapshot prev = PoliticsImpl.polity(before);
-                if (before.status() != after.status()) {
-                    queue(server -> new PolityStatusChangedEvent(server, prev, next));
-                }
-                if (!before.name().equals(after.name()) || before.color() != after.color()
-                        || !Objects.equals(before.emblem(), after.emblem())) {
-                    queue(server -> new PolityIdentityChangedEvent(server, prev, next));
-                }
-                if (!Objects.equals(before.governmentOrganization(), after.governmentOrganization())) {
-                    Optional<ResourceLocation> from = Optional.ofNullable(before.governmentOrganization());
-                    Optional<ResourceLocation> to = Optional.ofNullable(after.governmentOrganization());
-                    queue(server -> new PolityGovernmentChangedEvent(server, next, from, to));
-                }
-            }
+            if (!before.kind().equals(after.kind())) queue(server -> new FactionKindChangedEvent(server, prev, next));
         });
     }
 
     /**
-     * Call before a polity write lands. A move spans two writes (one polity loses the settlement,
+     * Call before a faction write lands. A move spans two writes (one faction loses the settlement,
      * another gains it), so ownership is captured once per tick and compared at flush.
      */
-    public static void beforePolityWrite(PoliticalSavedData data) {
+    public static void beforeFactionWrite(PoliticalSavedData data) {
         if (settlementBaseline != null) return;
         safe(() -> settlementBaseline = ownership(data));
     }
 
-    public static void affiliation(@Nullable AffiliationInstance before, AffiliationInstance after) {
+    public static void bond(@Nullable BondInstance before, BondInstance after) {
         safe(() -> {
-            if (before != null && before.status() == after.status()) return;
-            Optional<AffiliationSnapshot> prev = Optional.ofNullable(before)
-                    .map(value -> PoliticsImpl.affiliation(value, false));
-            AffiliationSnapshot next = PoliticsImpl.affiliation(after, false);
-            queue(server -> new AffiliationChangedEvent(server, prev, next));
-        });
-    }
-
-    public static void membership(@Nullable MembershipInstance before, MembershipInstance after) {
-        safe(() -> {
-            if (before != null && before.affiliation().status() == after.affiliation().status()
-                    && before.roles().equals(after.roles())) return;
-            Optional<MembershipSnapshot> prev = Optional.ofNullable(before).map(PoliticsImpl::membership);
-            MembershipSnapshot next = PoliticsImpl.membership(after);
-            queue(server -> new MembershipChangedEvent(server, prev, next));
+            if (before != null && before.active() == after.active()) return;
+            Optional<BondSnapshot> prev = Optional.ofNullable(before).map(PoliticsImpl::bond);
+            BondSnapshot next = PoliticsImpl.bond(after);
+            queue(server -> new BondChangedEvent(server, prev, next));
         });
     }
 
@@ -178,16 +134,16 @@ public final class PoliticalEvents {
             Optional<ResourceLocation> from = Optional.ofNullable(before.get(settlement));
             Optional<ResourceLocation> to = Optional.ofNullable(after.get(settlement));
             if (from.equals(to)) continue;
-            queue(server -> new SettlementPolityChangedEvent(server, PoliticsImpl.village(settlement), from, to));
+            queue(server -> new SettlementFactionChangedEvent(server, PoliticsImpl.village(settlement), from, to));
         }
     }
 
     private static Map<SettlementRef, ResourceLocation> ownership(PoliticalSavedData data) {
         Map<SettlementRef, ResourceLocation> out = new LinkedHashMap<>();
-        for (PolityInstance polity : data.polities()) {
-            for (SettlementRef settlement : polity.settlements()) {
+        for (Faction faction : data.factions()) {
+            for (SettlementRef settlement : faction.settlements()) {
                 if (out.containsKey(settlement)) continue;
-                PolityInstance holder = data.polity(settlement);
+                Faction holder = data.faction(settlement);
                 if (holder != null) out.put(settlement, holder.id());
             }
         }

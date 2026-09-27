@@ -8,13 +8,13 @@ import java.util.Optional;
 public record SettlementFoundingSnapshot(VillageId settlement,
                                          ResourceLocation profile,
                                          Optional<ResourceLocation> culture,
-                                         Optional<ResourceLocation> government,
+                                         Optional<ResourceLocation> factionKind,
                                          Optional<ResourceLocation> foundingBiome,
                                          float naturalWeight,
                                          long foundedAt) {
     public SettlementFoundingSnapshot {
         culture = culture == null ? Optional.empty() : culture;
-        government = government == null ? Optional.empty() : government;
+        factionKind = factionKind == null ? Optional.empty() : factionKind;
         foundingBiome = foundingBiome == null ? Optional.empty() : foundingBiome;
     }
 }

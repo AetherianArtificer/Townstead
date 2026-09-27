@@ -19,24 +19,23 @@ public record FoundingProfileSnapshot(ResourceLocation id,
                                       ResourceLocation populationStrategy,
                                       float outsiderBaseline,
                                       Map<ResourceLocation, Float> rootAdjustments,
-                                      Optional<ResourceLocation> governmentOrganizationKind,
-                                      Optional<String> governmentNamePattern,
-                                      List<GovernmentSeat> governmentSeats) {
+                                      Optional<ResourceLocation> factionKind,
+                                      List<Seat> seats) {
     public FoundingProfileSnapshot {
         culture = culture == null ? Optional.empty() : culture;
         defaultEnvironmentWeight = defaultEnvironmentWeight == null ? Optional.empty() : defaultEnvironmentWeight;
-        governmentOrganizationKind = governmentOrganizationKind == null ? Optional.empty() : governmentOrganizationKind;
-        governmentNamePattern = governmentNamePattern == null ? Optional.empty() : governmentNamePattern;
+        factionKind = factionKind == null ? Optional.empty() : factionKind;
         biomeWeights = Map.copyOf(biomeWeights);
         biomeTagWeights = Map.copyOf(biomeTagWeights);
         dimensionWeights = Map.copyOf(dimensionWeights);
         rootAdjustments = Map.copyOf(rootAdjustments);
-        governmentSeats = List.copyOf(governmentSeats);
+        seats = List.copyOf(seats);
     }
 
-    public record GovernmentSeat(Set<ResourceLocation> roles, int count) {
-        public GovernmentSeat {
-            roles = Set.copyOf(roles);
+    /** {@code count} residents each take this set of offices when the settlement is founded. */
+    public record Seat(Set<ResourceLocation> offices, int count) {
+        public Seat {
+            offices = Set.copyOf(offices);
         }
     }
 }

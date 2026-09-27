@@ -265,7 +265,7 @@ public final class CareerGraphBuilder {
         return mark == null ? CareerGraphS2CPayload.Stamp.NONE
                 : new CareerGraphS2CPayload.Stamp(true, mark.x(), mark.y(), mark.rotation(),
                         mark.authority(), mark.date(), mark.textureId(), mark.sourcePack(),
-                        mark.label());
+                        mark.label(), mark.device(), mark.dye());
     }
 
     /**

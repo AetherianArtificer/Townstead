@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:bond/v2",
+  "display": { "translate": "bond.townstead.faction_leader" },
+  "roles": {
+    "faction": {
+      "party": "faction",
+      "gives": [
+        "townstead:govern_faction",
+        "townstead:edit_heraldry",
+        "townstead:invite_member",
+        "townstead:review_membership_requests",
+        "townstead:view_member_information",
+        "townstead:manage_members",
+        "townstead:assign_roles"
+      ]
+    },
+    "leader": {
+      "party": "person",
+      "requires": "townstead:citizenship",
+      "gives": ["townstead:service"]
+    }
+  }
+}

@@ -13,29 +13,28 @@ import java.util.*;
 /** Capture subjects before dissolution ends their relationships; archive only after it succeeds. */
 public final class FactionChronicles {
     private FactionChronicles() {}
-    public static List<ChronicleEvent> dissolution(ServerPlayer actor, PolityInstance polity, CharterSavedData.Amendment amendment) {
+    public static List<ChronicleEvent> dissolution(ServerPlayer actor, Faction faction, ResourceLocation dimension,
+                                                   net.minecraft.core.BlockPos bell) {
         var server = actor.server; var data = PoliticalSavedData.get(server);
         var template = ResourceLocation.tryParse("townstead:faction_dissolved");
         var out = new ArrayList<ChronicleEvent>();
-        for (var settlement : polity.settlements()) {
+        for (var settlement : faction.settlements()) {
             var level = server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, settlement.dimension()));
             var village = level == null ? null : VillageManager.get(level).getOrEmpty(settlement.villageId()).orElse(null);
             String villageName = village == null ? Integer.toString(settlement.villageId()) : village.getName();
             var participants = new ArrayList<Participation>();
             participants.add(new Participation("leader", ChronicleRef.player(actor.getUUID(), actor.getGameProfile().getName())));
-            participants.add(new Participation("faction", ChronicleRef.concept("polity:" + polity.id(), polity.name())));
+            participants.add(new Participation("faction", ChronicleRef.concept("faction:" + faction.id(), faction.name())));
             participants.add(new Participation("settlement", ChronicleRef.village(settlement.villageId(), villageName)));
             var residents = new LinkedHashSet<UUID>();
             if (village != null) residents.addAll(village.getResidentsUUIDs().toList());
             var people = new LinkedHashMap<UUID, String>();
             for (var resident : residents) if (resident != null) people.put(resident, "resident");
-            for (var a : data.directAffiliations()) if (a.active() && a.actor().equals(polity.actor())) people.putIfAbsent(a.person(), "affiliate");
-            for (var org : data.organizations()) if (org.id().equals(polity.governmentOrganization()) || settlement.equals(org.home())) {
-                if (org.status() != PoliticalStatus.Organization.ACTIVE) continue;
-                participants.add(new Participation("organization", ChronicleRef.concept("organization:" + org.id(), org.name())));
-                for (var member : data.memberships(org.actor())) if (member.affiliation().active()) people.putIfAbsent(member.affiliation().person(), "member");
+            for (var bond : data.activeBonds(Party.faction(faction.id()))) {
+                var other = bond.other(Party.faction(faction.id()));
+                if (other != null && other.person() != null) people.putIfAbsent(other.person(), "member");
             }
-            for (var request : CharterRequests.get(server).entries()) if (request.open() && request.organization().equals(String.valueOf(polity.governmentOrganization())))
+            for (var request : CharterRequests.get(server).entries()) if (request.open() && request.faction().equals(faction.id().toString()))
                 people.putIfAbsent(request.person(), "applicant");
             people.remove(actor.getUUID());
             for (var person : people.entrySet()) {
@@ -47,13 +46,13 @@ public final class FactionChronicles {
                         ? ChronicleRef.villager(person.getKey(), name) : player != null || profile != null ? ChronicleRef.player(person.getKey(), name)
                         : new ChronicleRef(ChronicleRef.Kind.CONCEPT, person.getKey(), 0, 0, "person:" + person.getKey(), name)));
             }
-            for (var bell : CharterSavedData.get(server).bindings()) if (bell.polity().equals(polity.id()) && bell.settlement().equals(settlement))
-                participants.add(new Participation("charter", ChronicleRef.concept("charter:" + bell.dimension() + "/" + bell.lectern().asLong(), "Charter Bell")));
+            for (var binding : CharterSavedData.get(server).bindings()) if (binding.faction().equals(faction.id()) && binding.settlement().equals(settlement))
+                participants.add(new Participation("charter", ChronicleRef.concept("charter:" + binding.dimension() + "/" + binding.lectern().asLong(), "Charter Bell")));
             out.add(new ChronicleEvent(0, template, TownsteadCalendar.worldDay(server), server.overworld().getGameTime(),
-                    settlement.dimension(), settlement.dimension().equals(amendment.dimension()) ? amendment.bell().asLong() : 0,
+                    settlement.dimension(), settlement.dimension().equals(dimension) ? bell.asLong() : 0,
                     settlement.villageId(), "politics.dissolution", 1, ChronicleEvent.REACH_WORLD,
                     ChronicleEvent.NONE, ChronicleEvent.NONE, true, participants,
-                    Map.of("faction", polity.name(), "leader", actor.getGameProfile().getName(), "settlement", villageName)));
+                    Map.of("faction", faction.name(), "leader", actor.getGameProfile().getName(), "settlement", villageName)));
         }
         return List.copyOf(out);
     }

@@ -28,7 +28,7 @@ public record FoundingProfileDefinition(ResourceLocation id,
                                         SpawnBias spawnBias,
                                         Condition when,
                                         Population population,
-                                        @Nullable Government government) {
+                                        @Nullable FactionSpec faction) {
     public static final String SCHEMA = "townstead:founding_profile/v1";
     public static final ResourceLocation CULTURAL_AFFINITY = id("townstead:cultural_affinity");
 
@@ -57,7 +57,8 @@ public record FoundingProfileDefinition(ResourceLocation id,
         }
         return new FoundingProfileDefinition(id, name, culture, weight, parseSpawnBias(json), when,
                 Population.parse(object(json, "population", false)),
-                json.has("government") ? Government.parse(object(json, "government", true)) : null);
+                json.has("faction") ? FactionSpec.parse(object(json, "faction", true), false)
+                        : json.has("government") ? FactionSpec.parse(object(json, "government", true), true) : null);
     }
 
     public record Population(ResourceLocation strategy,
@@ -101,53 +102,56 @@ public record FoundingProfileDefinition(ResourceLocation id,
         }
     }
 
-    public record Government(ResourceLocation organizationKind,
-                             String namePattern,
-                             List<Seat> seats) {
-        public Government {
-            namePattern = namePattern == null || namePattern.isBlank() ? "{village} Government" : namePattern.trim();
+    /**
+     * The faction a founded settlement starts as: its kind and who fills its offices first. The older
+     * {@code government} block ({@code organization_kind}, seats of {@code roles}) still loads; a role
+     * that is not an office of the kind, such as {@code member}, is dropped when the profile is applied.
+     */
+    public record FactionSpec(ResourceLocation kind, List<Seat> seats, boolean legacy) {
+        public FactionSpec {
             seats = List.copyOf(seats);
         }
 
-        public String name(String village) {
-            return namePattern.replace("{village}", village);
+        public List<Set<ResourceLocation>> bundles() {
+            List<Set<ResourceLocation>> out = new ArrayList<>();
+            for (Seat seat : seats) for (int i = 0; i < seat.count(); i++) out.add(seat.offices());
+            return List.copyOf(out);
         }
 
-        static Government parse(JsonObject json) {
-            ResourceLocation kind = requiredId(json, "organization_kind");
-            String pattern = GsonHelper.getAsString(json, "name_pattern", "{village} Government");
+        static FactionSpec parse(JsonObject json, boolean legacy) {
+            ResourceLocation kind = requiredId(json, legacy ? "organization_kind" : "kind");
             List<Seat> seats = new ArrayList<>();
             JsonArray array = array(json, "seats", false);
             if (array != null) {
                 for (JsonElement element : array) {
-                    if (!element.isJsonObject()) throw new IllegalArgumentException("Every government seat must be an object");
-                    seats.add(Seat.parse(element.getAsJsonObject()));
+                    if (!element.isJsonObject()) throw new IllegalArgumentException("Every seat must be an object");
+                    seats.add(Seat.parse(element.getAsJsonObject(), legacy ? "roles" : "offices"));
                 }
             }
-            return new Government(kind, pattern, seats);
+            return new FactionSpec(kind, seats, legacy);
         }
     }
 
-    /** One or more residents receive this exact role bundle. */
-    public record Seat(Set<ResourceLocation> roles, int count) {
+    /** One or more residents take this exact set of offices. */
+    public record Seat(Set<ResourceLocation> offices, int count) {
         public Seat {
-            roles = Set.copyOf(new LinkedHashSet<>(roles));
-            if (roles.isEmpty()) throw new IllegalArgumentException("A government seat must grant at least one role");
-            if (count < 1) throw new IllegalArgumentException("A government seat count must be at least one");
+            offices = Set.copyOf(new LinkedHashSet<>(offices));
+            if (offices.isEmpty()) throw new IllegalArgumentException("A seat must hold at least one office");
+            if (count < 1) throw new IllegalArgumentException("A seat count must be at least one");
         }
 
-        static Seat parse(JsonObject json) {
-            JsonArray values = array(json, "roles", true);
-            Set<ResourceLocation> roles = new LinkedHashSet<>();
+        static Seat parse(JsonObject json, String field) {
+            JsonArray values = array(json, field, true);
+            Set<ResourceLocation> offices = new LinkedHashSet<>();
             for (JsonElement element : values) {
                 if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
-                    throw new IllegalArgumentException("Seat roles must be resource ids");
+                    throw new IllegalArgumentException("Seat " + field + " must be resource ids");
                 }
-                ResourceLocation role = DataPackLang.parseId(element.getAsString());
-                if (role == null) throw new IllegalArgumentException("Seat role is not a resource id");
-                if (!roles.add(role)) throw new IllegalArgumentException("Seat role " + role + " is repeated");
+                ResourceLocation office = DataPackLang.parseId(element.getAsString());
+                if (office == null) throw new IllegalArgumentException("Seat entry is not a resource id");
+                if (!offices.add(office)) throw new IllegalArgumentException("Seat entry " + office + " is repeated");
             }
-            return new Seat(roles, GsonHelper.getAsInt(json, "count", 1));
+            return new Seat(offices, GsonHelper.getAsInt(json, "count", 1));
         }
     }
 

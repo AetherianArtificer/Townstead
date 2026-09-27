@@ -4,8 +4,8 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.Optional;
 
-/** Explainable result of an actor-scoped capability query. */
+/** Explainable result of a faction-scoped capability query; {@code grantingBond} is the bond kind, such as an office, that allowed it. */
 public record AuthorityDecision(boolean allowed,
                                 ResourceLocation reason,
-                                Optional<ResourceLocation> grantingRole) {
+                                Optional<ResourceLocation> grantingBond) {
 }

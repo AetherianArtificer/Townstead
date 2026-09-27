@@ -12,7 +12,17 @@ public final class HeraldrySavedData extends SavedData {
     public record Entry(EmblemRecipe recipe, long revision, UUID author, long time) {}
     private final Map<String, Entry> entries = new LinkedHashMap<>();
     private final Map<String, List<Entry>> history = new LinkedHashMap<>();
-    public Entry get(String actor) { return entries.getOrDefault(actor, new Entry(EmblemRecipe.DEFAULT, 0, new UUID(0, 0), 0)); }
+    public Entry get(String actor) {
+        Entry direct = entries.get(actor);
+        if (direct != null) return direct;
+        // Emblems published before factions were keyed by polity or organization.
+        if (actor.startsWith("faction:")) {
+            Entry legacy = entries.get("polity:" + actor.substring(8));
+            if (legacy == null) legacy = entries.get("organization:" + actor.substring(8));
+            if (legacy != null) return legacy;
+        }
+        return new Entry(EmblemRecipe.DEFAULT, 0, new UUID(0, 0), 0);
+    }
     public boolean publish(String actor, EmblemRecipe recipe, long expected, UUID author, long time) {
         Entry previous = get(actor);
         if (previous.revision() != expected) return false;

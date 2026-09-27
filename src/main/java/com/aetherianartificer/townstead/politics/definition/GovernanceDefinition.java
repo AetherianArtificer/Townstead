@@ -43,16 +43,16 @@ public record GovernanceDefinition(ResourceLocation head,
     /** One thing legitimacy rests on, such as victories or shared food; {@code label} names it on the Charter. */
     public record Source(ResourceLocation label, Value value, double weight) {}
 
-    static GovernanceDefinition parse(JsonObject json, Set<ResourceLocation> roles) {
+    static GovernanceDefinition parse(JsonObject json, Set<ResourceLocation> offices) {
         ResourceLocation head = PoliticalJson.requiredId(json, "head");
-        if (!roles.contains(head)) throw new IllegalArgumentException("'governance.head' " + head + " is not a role of this kind");
+        if (!offices.contains(head)) throw new IllegalArgumentException("'governance.head' " + head + " is not an office of this kind");
         List<Route> routes = new ArrayList<>();
         for (JsonElement element : arrayOrEmpty(json, "routes")) {
             if (!element.isJsonObject()) throw new IllegalArgumentException("Every governance route must be an object");
             JsonObject routeJson = element.getAsJsonObject();
             ResourceLocation route = knownRoute(PoliticalJson.requiredId(routeJson, "route"));
             ResourceLocation office = PoliticalJson.requiredId(routeJson, "office");
-            if (!roles.contains(office)) throw new IllegalArgumentException("Route office " + office + " is not a role of this kind");
+            if (!offices.contains(office)) throw new IllegalArgumentException("Route office " + office + " is not an office of this kind");
             Condition eligibility = Conditions.ALWAYS;
             if (routeJson.has("eligibility")) {
                 eligibility = Conditions.parse(routeJson.get("eligibility"));

@@ -98,6 +98,15 @@ class SwitchboardTest {
         assertEquals(3, Switchboard.overrides().size());
     }
 
+    @Test void peacefulKeyParsesAndDefaultsOff() {
+        String peaceful = WorldKeys.rootPeaceful("townstead_skeleton:skeletownie");
+        assertEquals("townstead_skeleton:skeletownie", WorldKeys.subject(peaceful));
+        assertNull(WorldKeys.parse(peaceful, new JsonPrimitive("yes")));
+        assertEquals(false, Switchboard.content(peaceful));
+        Switchboard.apply(Map.of(peaceful, new JsonPrimitive(true)));
+        assertEquals(true, Switchboard.content(peaceful));
+    }
+
     @Test void presetShareCodeRoundTrips() {
         var preset = new SwitchboardPreset("Hardcore", "No mercy",
                 Map.of("farming.farmerFarmRadius", new JsonPrimitive(20), "needs.hunger.enableVillagerHunger", new JsonPrimitive(false)));

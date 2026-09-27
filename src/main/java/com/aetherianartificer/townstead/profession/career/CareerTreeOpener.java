@@ -177,8 +177,14 @@ public final class CareerTreeOpener {
                     .canonicalId(parsed);
         }
         net.minecraft.server.MinecraftServer server = player.getServer();
-        CareerStamp mark = CareerStamp.sanitized(x, y, rotation, authorityFor(player),
-                server == null ? "" : todayFor(server, player), textureId, sourcePack, label);
+        // Pressed with the player's own seal, flat, and with their initial for the initial device.
+        com.aetherianartificer.townstead.seal.PersonalSeal seal = server == null
+                ? com.aetherianartificer.townstead.seal.PersonalSeal.DEFAULT
+                : com.aetherianartificer.townstead.seal.PersonalSeals.of(server, player.getUUID());
+        String name = player.getGameProfile().getName();
+        String initial = name.isEmpty() ? "" : name.substring(0, name.offsetByCodePoints(0, 1));
+        CareerStamp mark = CareerStamp.sanitized(x, y, 0f, authorityFor(player),
+                server == null ? "" : todayFor(server, player), "", "", initial, seal.device(), seal.dye());
         PlayerCareers.mutate(player, stored -> stored.stamp(canonical, mark));
         player.playNotifySound(net.minecraft.sounds.SoundEvents.WOODEN_BUTTON_CLICK_ON,
                 net.minecraft.sounds.SoundSource.PLAYERS, 0.7f, 0.7f);

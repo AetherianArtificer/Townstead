@@ -1,0 +1,76 @@
+{
+  "schema": "townstead:faction/v1",
+  "display": {
+    "name": {
+      "translate": "faction.townstead.village_council"
+    },
+    "description": {
+      "translate": "faction.townstead.village_council.description"
+    }
+  },
+  "tags": [
+    "townstead:political",
+    "townstead:government",
+    "townstead:generated"
+  ],
+  "holds_land": true,
+  "membership": {
+    "bond": "townstead:citizenship",
+    "admission": "townstead:residence"
+  },
+  "offices": [
+    {
+      "bond": "townstead:presiding_councilor",
+      "min": 1,
+      "max": 1
+    },
+    {
+      "bond": "townstead:councilor",
+      "min": 2,
+      "max": 8
+    }
+  ],
+  "founding": {
+    "procedure": "townstead:generated_village_government"
+  },
+  "presentation": {
+    "faction_name_patterns": [
+      "{name} Commune",
+      "Commonwealth of {name}",
+      "{name} Community"
+    ]
+  },
+  "governance": {
+    "head": "townstead:presiding_councilor",
+    "routes": [
+      {
+        "route": "townstead:council_vote",
+        "office": "townstead:councilor"
+      },
+      {
+        "route": "townstead:council_vote",
+        "office": "townstead:presiding_councilor"
+      }
+    ],
+    "succession": "townstead:council_vote",
+    "legitimacy": {
+      "base": 50,
+      "sources": [
+        {
+          "label": "townstead:needs",
+          "value": {
+            "type": "pheno:village_needs"
+          },
+          "weight": 20
+        },
+        {
+          "label": "townstead:village_spirit",
+          "value": {
+            "type": "pheno:village_spirit_tier"
+          },
+          "weight": 4
+        }
+      ]
+    }
+  }
+}

@@ -189,6 +189,7 @@ final class SwitchboardModel {
         if (entry != null) return SettingLabels.label(entry);
         Component subject = catalog.label(key);
         String part = key.startsWith(WorldKeys.ROOT_STATE) ? "state"
+                : key.startsWith(WorldKeys.ROOT_PEACEFUL) ? "peaceful"
                 : key.startsWith(WorldKeys.GROUP_ON) || key.startsWith(WorldKeys.CULTURE_ON) ? "enabled" : "rate";
         return Component.translatable("townstead.switchboard.change." + part, subject);
     }

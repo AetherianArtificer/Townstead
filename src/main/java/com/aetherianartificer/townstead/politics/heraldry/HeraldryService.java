@@ -5,51 +5,39 @@ import com.aetherianartificer.townstead.politics.state.*;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.*;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.item.*;
 import java.util.*;
 
+/**
+ * The emblems a Charter shows: the settlement's and its faction's. Changing one is a clause on the
+ * faction's draft; stamping an item with a published emblem is immediate.
+ */
 public final class HeraldryService {
     private HeraldryService() {}
+
     public static String settlement(SettlementRef ref) { return "settlement:" + ref.dimension() + "|" + ref.villageId(); }
-    public static String polity(ResourceLocation id) { return "polity:" + id; }
-    public static String organization(ResourceLocation id) { return "organization:" + id; }
-    private static ResourceLocation capability(String name) { return ResourceLocation.tryParse("townstead:" + name); }
+
+    public static String faction(ResourceLocation id) { return "faction:" + id; }
+
     public static List<CharterSnapshotS2CPayload.Heraldry> views(ServerPlayer player, CharterSavedData.Binding binding, String settlementName) {
-        var data = PoliticalSavedData.get(player.server); var polity = data.polity(binding.polity());
-        if (polity == null) return List.of();
-        boolean ruler = CharterIdentityService.mayManage(player, binding);
-        var out = new ArrayList<CharterSnapshotS2CPayload.Heraldry>();
-        out.add(view(player, settlement(binding.settlement()), Component.translatable("charter.townstead.heraldry.settlement", settlementName), ruler));
-        out.add(view(player, polity(polity.id()), Component.translatable("charter.townstead.heraldry.polity", polity.name()), ruler));
-        for (var org : data.organizations()) {
-            if (org.status() != PoliticalStatus.Organization.ACTIVE || data.supersededGovernment(org.id())) continue;
-            if (!org.id().equals(polity.governmentOrganization()) && !polity.settlements().contains(org.home())) continue;
-            boolean edit = PoliticalAuthority.mayAct(data, player.getUUID(), org.actor(), capability("edit_heraldry")).allowed();
-            out.add(view(player, organization(org.id()), Component.translatable("charter.townstead.heraldry.organization", org.name()), edit));
-        }
-        return List.copyOf(out);
+        var data = PoliticalSavedData.get(player.server);
+        var faction = data.faction(binding.faction());
+        if (faction == null) return List.of();
+        boolean ruler = CharterDrafts.mayDraft(player, faction);
+        return List.of(view(player, settlement(binding.settlement()), Component.translatable("charter.townstead.heraldry.settlement", settlementName), ruler),
+                view(player, faction(faction.id()), Component.translatable("charter.townstead.heraldry.faction", faction.name()), ruler));
     }
+
     private static CharterSnapshotS2CPayload.Heraldry view(ServerPlayer player, String actor, Component name, boolean edit) {
         var entry = HeraldrySavedData.get(player.server).get(actor);
         return new CharterSnapshotS2CPayload.Heraldry(actor, CharterSnapshotS2CPayload.Text.of(name), entry.recipe().encode(), entry.revision(), edit);
     }
+
+    /** Stamps the published emblem onto an item the player holds. */
     public static Component handle(ServerPlayer player, CharterSavedData.Binding binding, CharterActionC2SPayload request) {
         var target = views(player, binding, "").stream().filter(v -> v.actor().equals(request.target())).findFirst().orElse(null);
         if (target == null) return message("denied");
-        if (target.revision() != request.revision()) return message("stale");
-        var saved = HeraldrySavedData.get(player.server);
-        if (request.operation().equals("publish")) {
-            if (!target.editable()) return message("denied");
-            EmblemRecipe recipe;
-            try { recipe = EmblemRecipe.decode(request.argument()); } catch (RuntimeException error) { return message("invalid"); }
-            if (!EmblemItems.valid(player.serverLevel().registryAccess(), recipe)) return message("invalid");
-            if (!saved.publish(target.actor(), recipe, request.revision(), player.getUUID(), player.serverLevel().getGameTime())) return message("stale");
-            refreshCloths(player);
-            return message("published");
-        }
         if (!request.operation().equals("stamp")) return message("invalid");
-        var entry = saved.get(target.actor());
+        var entry = HeraldrySavedData.get(player.server).get(target.actor());
         if (entry.revision() == 0 || !EmblemItems.valid(player.serverLevel().registryAccess(), entry.recipe())) return message("unpublished");
         String[] selection = request.argument().split("\\|", 2);
         int slot;
@@ -64,14 +52,29 @@ public final class HeraldryService {
         else { held.shrink(1); if (!player.addItem(stamped)) player.drop(stamped, false); }
         player.getInventory().setChanged(); player.containerMenu.broadcastChanges(); return message("stamped");
     }
+
+    /** True when {@code actor} is one of the emblems this Charter shows. */
+    public static boolean shows(CharterSavedData.Binding binding, String actor) {
+        return actor.equals(settlement(binding.settlement())) || actor.equals(faction(binding.faction()));
+    }
+
+    /** Publishes a proclaimed emblem; false when it changed since it was drafted. */
+    public static boolean publish(ServerPlayer author, String actor, EmblemRecipe recipe, long expected) {
+        if (!HeraldrySavedData.get(author.server).publish(actor, recipe, expected, author.getUUID(), author.serverLevel().getGameTime())) return false;
+        refreshCloths(author);
+        return true;
+    }
+
     private static Component message(String key) { return Component.translatable("charter.townstead.heraldry." + key); }
+
     public static String clothRecipe(ServerLevel level, net.minecraft.core.BlockPos pos) {
         var binding = CharterSavedData.get(level.getServer()).binding(level.dimension().location(), pos);
         if (binding == null) return "";
         var saved = HeraldrySavedData.get(level.getServer());
         var local = saved.get(settlement(binding.settlement()));
-        return (local.revision() > 0 ? local : saved.get(polity(binding.polity()))).recipe().encode();
+        return (local.revision() > 0 ? local : saved.get(faction(binding.faction()))).recipe().encode();
     }
+
     private static void refreshCloths(ServerPlayer player) {
         for (var binding : CharterSavedData.get(player.server).bindings()) {
             for (ServerLevel level : player.server.getAllLevels()) {

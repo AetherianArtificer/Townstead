@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:bond/v2",
+  "display": { "translate": "bond.townstead.friendship" },
+  "roles": {
+    "friend": { "party": "person" }
+  }
+}

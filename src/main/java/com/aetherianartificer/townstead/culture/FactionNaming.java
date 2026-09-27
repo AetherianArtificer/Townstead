@@ -27,9 +27,9 @@ public final class FactionNaming {
         if (result.isEmpty() || result.size() > 64) throw new IllegalArgumentException("Expected 1–64 faction naming patterns");
         return List.copyOf(result);
     }
-    public static List<String> patterns(ResourceLocation governmentKind) {
-        var kind = governmentKind == null ? null : PoliticalDefinitions.snapshot().organizationKind(governmentKind);
-        return kind == null || kind.presentation() == null ? List.of("{name}") : kind.presentation().factionNamePatterns();
+    public static List<String> patterns(ResourceLocation factionKind) {
+        var kind = factionKind == null ? null : PoliticalDefinitions.snapshot().kind(factionKind);
+        return kind == null ? List.of("{name}") : kind.presentation().factionNamePatterns();
     }
     public static List<String> suggestions(ResourceLocation cultureId) {
         var culture = Cultures.get(cultureId);
@@ -61,13 +61,12 @@ public final class FactionNaming {
     }
     private static String pick(List<String> list) { return list.get(ThreadLocalRandom.current().nextInt(list.size())); }
     /** Only called for a newly founded identity. Existing saves and government changes retain their name. */
-    public static void initialize(PoliticalSavedData data, ResourceLocation polityId, Name name) {
-        if (data.factionName(polityId) != null) return;
-        var polity = data.polity(polityId);
-        if (polity == null) return;
-        data.putPolity(new PolityInstance(polity.id(), name.display(), polity.color(), polity.emblem(), polity.createdAt(),
-                polity.provenance(), polity.status(), polity.settlements(), polity.governmentOrganization()));
-        data.putFactionName(polityId, name);
+    public static void initialize(PoliticalSavedData data, ResourceLocation factionId, Name name) {
+        if (data.factionName(factionId) != null) return;
+        var faction = data.faction(factionId);
+        if (faction == null) return;
+        data.putFaction(faction.withName(name.display()));
+        data.putFactionName(factionId, name);
     }
     public record Name(String base, String pattern, String culture, String government, boolean custom) {
         public String display() { return pattern.replace("{name}", base); }

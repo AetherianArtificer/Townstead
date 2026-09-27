@@ -10,17 +10,17 @@ import net.minecraft.core.HolderLookup;
 //?}
 import java.util.*;
 
-/** Durable requests. Memberships themselves remain in PoliticalSavedData. */
+/** Durable membership requests: applications, invitations and notices. The bonds themselves live in PoliticalSavedData. */
 public final class CharterRequests extends SavedData {
     private final Map<UUID, Entry> entries = new LinkedHashMap<>();
     private long revision;
-    public record Entry(UUID id, String organization, UUID person, String personName, UUID initiator,
-                        String kind, String state, String policy, String membership, long due, Set<UUID> approvals) {
+    public record Entry(UUID id, String faction, UUID person, String personName, UUID initiator,
+                        String kind, String state, String bond, String membership, long due, Set<UUID> approvals) {
         public Entry { approvals = Set.copyOf(approvals); }
-        public Entry state(String value) { return new Entry(id, organization, person, personName, initiator, kind, value, policy, membership, due, approvals); }
+        public Entry state(String value) { return new Entry(id, faction, person, personName, initiator, kind, value, bond, membership, due, approvals); }
         public Entry approve(UUID voter) {
             Set<UUID> votes = new LinkedHashSet<>(approvals); votes.add(voter);
-            return new Entry(id, organization, person, personName, initiator, kind, state, policy, membership, due, votes);
+            return new Entry(id, faction, person, personName, initiator, kind, state, bond, membership, due, votes);
         }
         public boolean open() { return state.equals("pending") || state.equals("offered") || state.equals("notice"); }
     }
@@ -48,8 +48,9 @@ public final class CharterRequests extends SavedData {
             Set<UUID> votes = new LinkedHashSet<>();
             ListTag voteTags = t.getList("approvals", Tag.TAG_COMPOUND);
             for (int j = 0; j < voteTags.size(); j++) votes.add(voteTags.getCompound(j).getUUID("person"));
-            Entry e = new Entry(t.getUUID("id"), t.getString("organization"), t.getUUID("person"), t.getString("name"),
-                    t.getUUID("initiator"), t.getString("kind"), t.getString("state"), t.getString("policy"), t.getString("membership"), t.getLong("due"), votes);
+            Entry e = new Entry(t.getUUID("id"), t.getString(t.contains("faction") ? "faction" : "organization"), t.getUUID("person"),
+                    t.getString("name"), t.getUUID("initiator"), t.getString("kind"), t.getString("state"),
+                    t.getString(t.contains("bond") ? "bond" : "policy"), t.getString("membership"), t.getLong("due"), votes);
             data.entries.put(e.id(), e);
         }
         return data;
@@ -64,9 +65,9 @@ public final class CharterRequests extends SavedData {
         ListTag list = new ListTag();
         for (Entry e : entries.values()) {
             CompoundTag t = new CompoundTag();
-            t.putUUID("id", e.id()); t.putString("organization", e.organization()); t.putUUID("person", e.person());
+            t.putUUID("id", e.id()); t.putString("faction", e.faction()); t.putUUID("person", e.person());
             t.putString("name", e.personName()); t.putUUID("initiator", e.initiator()); t.putString("kind", e.kind());
-            t.putString("state", e.state()); t.putString("policy", e.policy()); t.putLong("due", e.due()); t.putString("membership", e.membership());
+            t.putString("state", e.state()); t.putString("bond", e.bond()); t.putLong("due", e.due()); t.putString("membership", e.membership());
             ListTag votes = new ListTag();
             for (UUID person : e.approvals()) { CompoundTag v = new CompoundTag(); v.putUUID("person", person); votes.add(v); }
             t.put("approvals", votes); list.add(t);

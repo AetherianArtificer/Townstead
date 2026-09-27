@@ -9,7 +9,7 @@ import java.util.Objects;
 public record SettlementFoundingRecord(SettlementRef settlement,
                                        ResourceLocation profile,
                                        @Nullable ResourceLocation culture,
-                                       @Nullable ResourceLocation government,
+                                       @Nullable ResourceLocation factionKind,
                                        @Nullable ResourceLocation foundingBiome,
                                        float naturalWeight,
                                        long foundedAt) {

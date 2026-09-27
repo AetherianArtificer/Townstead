@@ -18,41 +18,67 @@ class CharterWireTest {
     void snapshotSurvivesWireRoundTrip() {
         var text = CharterSnapshotS2CPayload.Text.of(Component.translatableWithFallback(
                 "charter.test.holders", "%s representatives: %s", 3,
-                Component.translatableWithFallback("charter.test.name", "Mira %s", "Reed")).append(Component.literal(" — ").append(Component.translatableWithFallback("test.event", "appointed"))));
+                Component.translatableWithFallback("charter.test.name", "Mira %s", "Reed")).append(Component.literal(", ").append(Component.translatableWithFallback("test.event", "appointed"))));
         var action = new CharterSnapshotS2CPayload.Action("apply", literal("Apply"), text, false);
-        var organizations = new ArrayList<CharterSnapshotS2CPayload.Organization>();
-        for (int i = 0; i < 100; i++) organizations.add(new CharterSnapshotS2CPayload.Organization(
-                "test:group_" + i, literal("Organization " + i), literal("Unknown modded organization"),
-                literal("A description retained for the detail view"), "visitor", i == 0,
-                "minecraft:paper", 0xff43655f, literal("Invitation"), literal("Notice"), List.of(),
-                List.of(new CharterSnapshotS2CPayload.Role(literal("Representative"), List.of(text))), List.of(action)));
-        var original = new CharterSnapshotS2CPayload(BlockPos.ZERO, new BlockPos(0, 1, 1),
-                CharterSnapshotS2CPayload.FOUNDED, false, "Settlement", "Polity", text, text,
-                literal("Founding tradition"), "", List.of(new CharterSnapshotS2CPayload.Option("test:profile", text, text, text, true, List.of("League of {name}"))),
-                List.of(new CharterSnapshotS2CPayload.Option("test:culture", text, text, text, false, List.of("Thorncourt"))), organizations, List.of(),
-                List.of(new CharterSnapshotS2CPayload.CensusGroup("test:culture", literal("Culture"), 12, 0xff397f79)), 12,
-                List.of(new CharterSnapshotS2CPayload.Request("request", text, literal("Applicant"), "application", "pending", 1, 2, List.of(action))), 42, List.of(new CharterSnapshotS2CPayload.CensusScope("polity", literal("Faction population"),
-                        List.of(), 0, false)), new CharterSnapshotS2CPayload.Civic("test:provider", "test:actor", "active", true, false,
+        var people = new ArrayList<CharterSnapshotS2CPayload.Person>();
+        for (int i = 0; i < 100; i++) people.add(new CharterSnapshotS2CPayload.Person(
+                "00000000-0000-0000-0000-" + String.format("%012d", i), literal("Citizen " + i), literal("Culture"), i == 0, i == 0));
+        var office = new CharterSnapshotS2CPayload.Office("townstead:faction_leader", literal("Leader"), 1, -1,
+                List.of(new CharterSnapshotS2CPayload.Holder("00000000-0000-0000-0000-000000000000", text, true)), true);
+        var draft = new CharterSnapshotS2CPayload.Draft("token", List.of(new CharterSnapshotS2CPayload.Clause(text, literal("Now: Reedwater"))),
+                List.of(new CharterSnapshotS2CPayload.Signer(literal("Mira"), literal("Leader"), literal("Autumn 3"),
+                        new com.aetherianartificer.townstead.seal.PersonalSeal("townstead:key", 3), true, false)),
+                false, true, 11000L);
+        var book = new CharterSnapshotS2CPayload.Book("test:faction", text, literal("Amending as Leader"), literal("Accepted (68)"),
+                literal("Needs: steady"), new CharterSnapshotS2CPayload.SeatRow(literal("Town Hall"), text, false, true),
+                List.of(new CharterSnapshotS2CPayload.CensusScope("faction", literal("Faction population"),
+                        List.of(new CharterSnapshotS2CPayload.CensusGroup("test:culture", literal("Culture"), 12, 0xff397f79)), 12, 3, true)),
+                List.of(text), List.of(new CharterSnapshotS2CPayload.Heraldry("faction:test:one", text,
+                        com.aetherianartificer.townstead.politics.heraldry.EmblemRecipe.DEFAULT.encode(), 7, true)),
+                true, List.of(office),
+                new CharterSnapshotS2CPayload.Members(100, true, people, literal("You hold: Leader"), literal("Anyone may join."), List.of(action)),
+                List.of(new CharterSnapshotS2CPayload.Request("request", text, literal("Applicant"), "application", "pending", 1, 2, List.of(action))),
+                draft, new CharterSnapshotS2CPayload.Civic("test:provider", "test:actor", "active", true, false,
                         literal("Modded governance"), text, text, List.of(new CharterSnapshotS2CPayload.Role(text, List.of(text))),
-                        List.of(text), List.of(action)), List.of(new CharterSnapshotS2CPayload.Heraldry("polity:test:one", text,
-                                com.aetherianartificer.townstead.politics.heraldry.EmblemRecipe.DEFAULT.encode(), 7, true)));
+                        List.of(text), List.of(action)));
+        var original = new CharterSnapshotS2CPayload(BlockPos.ZERO, new BlockPos(0, 1, 1), CharterSnapshotS2CPayload.FOUNDED, false,
+                "", 42, "Settlement", "Faction", text, literal(""), literal("Founding tradition"),
+                List.of(new CharterSnapshotS2CPayload.Option("test:profile", text, text, text, true, List.of("League of {name}"))),
+                List.of(new CharterSnapshotS2CPayload.Option("test:culture", text, text, text, false, List.of("Thorncourt"))), book);
         FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
         try {
             original.write(buf);
             var decoded = CharterSnapshotS2CPayload.read(buf);
             assertTrue(original.equals(decoded), "Snapshot changed during wire round trip");
             assertTrue(buf.readableBytes() == 0, "Snapshot decoder left unread bytes");
-            assertTrue(decoded.authority().component().getString().equals("3 representatives: Mira Reed — appointed"),
+            assertTrue(decoded.form().component().getString().equals("3 representatives: Mira Reed, appointed"),
                     "Nested translation arguments were lost");
-            assertTrue(decoded.civic() != null && decoded.civic().controlsGovernment() && !decoded.civic().mayManage(), "External governance authority changed");
-            assertTrue(decoded.organizations().size() == 100, "Large directory was truncated");
+            assertTrue(decoded.book().civic() != null && decoded.book().civic().controlsGovernment() && !decoded.book().civic().mayManage(),
+                    "External governance authority changed");
+            assertTrue(decoded.book().members().people().size() == 100, "Large roster was truncated");
+            assertTrue(decoded.book().offices().get(0).maximum() == -1, "An unlimited office came back limited");
+            assertTrue(decoded.book().census().get(0).uncounted() == 3, "Uncounted residents were lost");
+            assertTrue(decoded.book().draft().signers().get(0).date().fallback().equals("Autumn 3"), "A seal lost its date");
+            assertTrue(decoded.book().draft().signers().get(0).seal().device().equals("townstead:key"), "A seal lost its device");
+        } finally { buf.release(); }
+    }
+
+    @Test
+    void anUnfoundedSnapshotHasNoBook() {
+        var original = new CharterSnapshotS2CPayload(BlockPos.ZERO, BlockPos.ZERO, CharterSnapshotS2CPayload.UNFOUNDED, true,
+                "", 0, "", "", literal("Not founded"), literal(""), literal("No founding culture"), List.of(), List.of(), null);
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            original.write(buf);
+            var decoded = CharterSnapshotS2CPayload.read(buf);
+            assertTrue(original.equals(decoded) && decoded.book() == null, "An unfounded snapshot changed during wire round trip");
         } finally { buf.release(); }
     }
 
     @Test
     void actionIntentSurvivesWireRoundTrip() {
-        var intent = new CharterActionC2SPayload(BlockPos.ZERO, CharterActionC2SPayload.MEMBERSHIP,
-                "", "", "", "approve", "request-id", "", 42);
+        var intent = new CharterActionC2SPayload(BlockPos.ZERO, CharterActionC2SPayload.DRAFT,
+                "", "", "", "remove", "draft-token", "2", 42);
         FriendlyByteBuf actionBuffer = new FriendlyByteBuf(Unpooled.buffer());
         try {
             intent.write(actionBuffer);

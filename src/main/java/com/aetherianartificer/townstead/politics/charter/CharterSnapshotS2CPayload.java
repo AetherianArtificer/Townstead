@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.politics.charter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import org.jetbrains.annotations.Nullable;
 //? if neoforge {
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -12,118 +13,44 @@ import net.minecraft.resources.ResourceLocation;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Server-filtered presentation model for the native Charter screen. */
+/**
+ * Server-filtered presentation model for the Charter book. Every string is already written and
+ * every permission already decided; the client only lays it out.
+ */
 //? if neoforge {
-public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int state, boolean editable,
-                                        String settlement, String polity, Text governance,
-                                        Text authority, Text foundingCulture, String message,
-                                        List<Option> profiles, List<Option> cultures,
-                                        List<Organization> organizations, List<Tie> ties,
-                                        List<CensusGroup> census, int population, List<Request> requests, long revision, List<CensusScope> censusScopes, Civic civic, List<Heraldry> heraldry, Seat seat, Text standing, Text legitimacy) implements CustomPacketPayload {
+public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int state, boolean editable, String message,
+                                        long revision, String settlement, String faction, Text form, Text note,
+                                        Text tradition, List<Option> profiles, List<Option> cultures,
+                                        @Nullable Book book) implements CustomPacketPayload {
     public static final Type<CharterSnapshotS2CPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath("townstead", "charter_snapshot"));
     public static final StreamCodec<FriendlyByteBuf, CharterSnapshotS2CPayload> STREAM_CODEC =
             StreamCodec.of((buf, value) -> value.write(buf), CharterSnapshotS2CPayload::read);
     @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
 //?} else {
-/*public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int state, boolean editable,
-                                        String settlement, String polity, Text governance,
-                                        Text authority, Text foundingCulture, String message,
-                                        List<Option> profiles, List<Option> cultures,
-                                        List<Organization> organizations, List<Tie> ties,
-                                        List<CensusGroup> census, int population, List<Request> requests, long revision, List<CensusScope> censusScopes, Civic civic, List<Heraldry> heraldry, Seat seat, Text standing, Text legitimacy) {
+/*public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int state, boolean editable, String message,
+                                        long revision, String settlement, String faction, Text form, Text note,
+                                        Text tradition, List<Option> profiles, List<Option> cultures,
+                                        @Nullable Book book) {
 *///?}
-    public static final int UNAVAILABLE = 0, UNFOUNDED = 1, PREPARED = 2, FOUNDED = 3, REPAIR = 4,
-            EXISTING = 5;
-
-    public CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int state, boolean editable,
-            String settlement, String polity, Text governance, Text authority, Text foundingCulture, String message,
-            List<Option> profiles, List<Option> cultures, List<Organization> organizations, List<Tie> ties,
-            List<CensusGroup> census, int population) {
-        this(lectern, bell, state, editable, settlement, polity, governance, authority, foundingCulture, message,
-                profiles, cultures, organizations, ties, census, population, List.of(), 0);
-    }
-
-    public CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int state, boolean editable,
-            String settlement, String polity, Text governance, Text authority, Text foundingCulture, String message,
-            List<Option> profiles, List<Option> cultures, List<Organization> organizations, List<Tie> ties,
-            List<CensusGroup> census, int population, List<Request> requests, long revision) {
-        this(lectern, bell, state, editable, settlement, polity, governance, authority, foundingCulture, message,
-                profiles, cultures, organizations, ties, census, population, requests, revision, List.of());
-    }
-
-    public CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int state, boolean editable,
-            String settlement, String polity, Text governance, Text authority, Text foundingCulture, String message,
-            List<Option> profiles, List<Option> cultures, List<Organization> organizations, List<Tie> ties,
-            List<CensusGroup> census, int population, List<Request> requests, long revision, List<CensusScope> censusScopes) {
-        this(lectern, bell, state, editable, settlement, polity, governance, authority, foundingCulture, message,
-                profiles, cultures, organizations, ties, census, population, requests, revision, censusScopes, null);
-    }
-
-    public CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int state, boolean editable,
-            String settlement, String polity, Text governance, Text authority, Text foundingCulture, String message,
-            List<Option> profiles, List<Option> cultures, List<Organization> organizations, List<Tie> ties,
-            List<CensusGroup> census, int population, List<Request> requests, long revision, List<CensusScope> censusScopes, Civic civic) {
-        this(lectern, bell, state, editable, settlement, polity, governance, authority, foundingCulture, message,
-                profiles, cultures, organizations, ties, census, population, requests, revision, censusScopes, civic, List.of());
-    }
-
-    public CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int state, boolean editable,
-            String settlement, String polity, Text governance, Text authority, Text foundingCulture, String message,
-            List<Option> profiles, List<Option> cultures, List<Organization> organizations, List<Tie> ties,
-            List<CensusGroup> census, int population, List<Request> requests, long revision, List<CensusScope> censusScopes, Civic civic,
-            List<Heraldry> heraldry) {
-        this(lectern, bell, state, editable, settlement, polity, governance, authority, foundingCulture, message,
-                profiles, cultures, organizations, ties, census, population, requests, revision, censusScopes, civic, heraldry, null);
-    }
-
-    public CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int state, boolean editable,
-            String settlement, String polity, Text governance, Text authority, Text foundingCulture, String message,
-            List<Option> profiles, List<Option> cultures, List<Organization> organizations, List<Tie> ties,
-            List<CensusGroup> census, int population, List<Request> requests, long revision, List<CensusScope> censusScopes, Civic civic,
-            List<Heraldry> heraldry, Seat seat) {
-        this(lectern, bell, state, editable, settlement, polity, governance, authority, foundingCulture, message,
-                profiles, cultures, organizations, ties, census, population, requests, revision, censusScopes, civic, heraldry, seat, null, null);
-    }
-
-    public CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int state, boolean editable,
-            String settlement, String polity, Text governance, Text authority, Text foundingCulture, String message,
-            List<Option> profiles, List<Option> cultures, List<Organization> organizations, List<Tie> ties,
-            List<CensusGroup> census, int population, List<Request> requests, long revision, List<CensusScope> censusScopes, Civic civic,
-            List<Heraldry> heraldry, Seat seat, Text standing) {
-        this(lectern, bell, state, editable, settlement, polity, governance, authority, foundingCulture, message,
-                profiles, cultures, organizations, ties, census, population, requests, revision, censusScopes, civic, heraldry, seat, standing, null);
-    }
+    public static final int UNAVAILABLE = 0, UNFOUNDED = 1, PREPARED = 2, FOUNDED = 3, REPAIR = 4, EXISTING = 5;
 
     public CharterSnapshotS2CPayload {
-        heraldry = List.copyOf(heraldry);
-        requests = List.copyOf(requests);
-        censusScopes = List.copyOf(censusScopes);
         profiles = List.copyOf(profiles);
         cultures = List.copyOf(cultures);
-        organizations = List.copyOf(organizations);
-        ties = List.copyOf(ties);
-        census = List.copyOf(census);
     }
 
     public void write(FriendlyByteBuf buf) {
         buf.writeBlockPos(lectern); buf.writeBlockPos(bell); buf.writeVarInt(state); buf.writeBoolean(editable);
-        buf.writeUtf(settlement, 128); buf.writeUtf(polity, 128);
-        governance.write(buf); authority.write(buf); foundingCulture.write(buf); buf.writeUtf(message, 512);
+        buf.writeUtf(message, 512); buf.writeLong(revision); buf.writeUtf(settlement, 128); buf.writeUtf(faction, 128);
+        form.write(buf); note.write(buf); tradition.write(buf);
         writeList(buf, profiles, Option::write); writeList(buf, cultures, Option::write);
-        writeList(buf, organizations, Organization::write); writeList(buf, ties, Tie::write);
-        writeList(buf, census, CensusGroup::write); buf.writeVarInt(population); writeList(buf, requests, Request::write); buf.writeLong(revision); writeList(buf, censusScopes, CensusScope::write); buf.writeBoolean(civic != null); if (civic != null) civic.write(buf); writeList(buf, heraldry, Heraldry::write);
-        buf.writeBoolean(seat != null); if (seat != null) seat.write(buf);
-        buf.writeBoolean(standing != null); if (standing != null) standing.write(buf);
-        buf.writeBoolean(legitimacy != null); if (legitimacy != null) legitimacy.write(buf);
+        buf.writeBoolean(book != null); if (book != null) book.write(buf);
     }
 
     public static CharterSnapshotS2CPayload read(FriendlyByteBuf buf) {
         return new CharterSnapshotS2CPayload(buf.readBlockPos(), buf.readBlockPos(), buf.readVarInt(), buf.readBoolean(),
-                buf.readUtf(128), buf.readUtf(128), Text.read(buf), Text.read(buf), Text.read(buf), buf.readUtf(512),
-                readList(buf, Option::read), readList(buf, Option::read), readList(buf, Organization::read),
-                readList(buf, Tie::read), readList(buf, CensusGroup::read), buf.readVarInt(), readList(buf, Request::read), buf.readLong(), readList(buf, CensusScope::read), buf.readBoolean() ? Civic.read(buf) : null, readList(buf, Heraldry::read),
-                buf.readBoolean() ? Seat.read(buf) : null, buf.readBoolean() ? Text.read(buf) : null,
-                buf.readBoolean() ? Text.read(buf) : null);
+                buf.readUtf(512), buf.readLong(), buf.readUtf(128), buf.readUtf(128), Text.read(buf), Text.read(buf),
+                Text.read(buf), readList(buf, Option::read), readList(buf, Option::read), buf.readBoolean() ? Book.read(buf) : null);
     }
 
     private static <T> void writeList(FriendlyByteBuf buf, List<T> values, Writer<T> writer) {
@@ -137,6 +64,15 @@ public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int sta
         List<T> values = new ArrayList<>(size);
         for (int i = 0; i < size; i++) values.add(reader.read(buf));
         return List.copyOf(values);
+    }
+
+    private static void writeOptional(FriendlyByteBuf buf, @Nullable Text value) {
+        buf.writeBoolean(value != null);
+        if (value != null) value.write(buf);
+    }
+
+    private static @Nullable Text readOptional(FriendlyByteBuf buf) {
+        return buf.readBoolean() ? Text.read(buf) : null;
     }
 
     public record Text(String key, String fallback, List<Text> arguments, List<Text> siblings) {
@@ -175,12 +111,91 @@ public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int sta
     }
 
     public record Option(String id, Text name, Text description, Text consequences, boolean government, List<String> naming) {
-        public Option(String id, Text name, Text description, Text consequences, boolean government) {
-            this(id, name, description, consequences, government, List.of());
-        }
         public Option { naming = List.copyOf(naming); }
         void write(FriendlyByteBuf buf) { buf.writeUtf(id, 256); name.write(buf); description.write(buf); consequences.write(buf); buf.writeBoolean(government); writeList(buf, naming, (v, b) -> b.writeUtf(v, 128)); }
         static Option read(FriendlyByteBuf buf) { return new Option(buf.readUtf(256), Text.read(buf), Text.read(buf), Text.read(buf), buf.readBoolean(), readList(buf, b -> b.readUtf(128))); }
+    }
+
+    /**
+     * Everything a founded Charter shows across its pages. {@code editingAs} is empty unless the
+     * viewer may amend the charter; {@code joinHint} says plainly how someone becomes a member.
+     */
+    public record Book(String id, Text proclaimed, Text editingAs, @Nullable Text legitimacy, Text legitimacyDetail,
+                       SeatRow seat, List<CensusScope> census, List<Text> history, List<Heraldry> heraldry, boolean mayDraft,
+                       List<Office> offices, Members members, List<Request> requests,
+                       @Nullable Draft draft, @Nullable Civic civic) {
+        public Book {
+            census = List.copyOf(census); history = List.copyOf(history); heraldry = List.copyOf(heraldry);
+            offices = List.copyOf(offices); requests = List.copyOf(requests);
+        }
+        void write(FriendlyByteBuf b) {
+            b.writeUtf(id, 256); proclaimed.write(b); editingAs.write(b); writeOptional(b, legitimacy); legitimacyDetail.write(b); seat.write(b);
+            writeList(b, census, CensusScope::write); writeList(b, history, Text::write); writeList(b, heraldry, Heraldry::write);
+            b.writeBoolean(mayDraft); writeList(b, offices, Office::write); members.write(b);
+            writeList(b, requests, Request::write);
+            b.writeBoolean(draft != null); if (draft != null) draft.write(b);
+            b.writeBoolean(civic != null); if (civic != null) civic.write(b);
+        }
+        static Book read(FriendlyByteBuf b) {
+            return new Book(b.readUtf(256), Text.read(b), Text.read(b), readOptional(b), Text.read(b), SeatRow.read(b),
+                    readList(b, CensusScope::read), readList(b, Text::read), readList(b, Heraldry::read), b.readBoolean(),
+                    readList(b, Office::read), Members.read(b), readList(b, Request::read),
+                    b.readBoolean() ? Draft.read(b) : null, b.readBoolean() ? Civic.read(b) : null);
+        }
+    }
+
+    /** The Seat of Power row: the building, a line of detail, and whether this lectern can propose moving it here. */
+    public record SeatRow(Text value, Text detail, boolean damaged, boolean mayMoveHere) {
+        void write(FriendlyByteBuf b) { value.write(b); detail.write(b); b.writeBoolean(damaged); b.writeBoolean(mayMoveHere); }
+        static SeatRow read(FriendlyByteBuf b) { return new SeatRow(Text.read(b), Text.read(b), b.readBoolean(), b.readBoolean()); }
+    }
+
+    /** One office and its holders; {@code editable} means the viewer may draft a new holder. */
+    public record Office(String id, Text name, int minimum, int maximum, List<Holder> holders, boolean editable) {
+        public Office { holders = List.copyOf(holders); }
+        void write(FriendlyByteBuf b) { b.writeUtf(id, 256); name.write(b); b.writeVarInt(minimum); b.writeVarInt(maximum + 1); writeList(b, holders, Holder::write); b.writeBoolean(editable); }
+        static Office read(FriendlyByteBuf b) { return new Office(b.readUtf(256), Text.read(b), b.readVarInt(), b.readVarInt() - 1, readList(b, Holder::read), b.readBoolean()); }
+    }
+
+    public record Holder(String id, Text name, boolean you) {
+        void write(FriendlyByteBuf b) { b.writeUtf(id, 64); name.write(b); b.writeBoolean(you); }
+        static Holder read(FriendlyByteBuf b) { return new Holder(b.readUtf(64), Text.read(b), b.readBoolean()); }
+    }
+
+    /**
+     * The roster. {@code visible} is false for a viewer who may only see the count. {@code status}
+     * says where the viewer stands, {@code joinHint} how one joins, {@code actions} what they may do.
+     */
+    public record Members(int count, boolean visible, List<Person> people, Text status, Text joinHint, List<Action> actions) {
+        public Members { people = List.copyOf(people); actions = List.copyOf(actions); }
+        void write(FriendlyByteBuf b) { b.writeVarInt(count); b.writeBoolean(visible); writeList(b, people, Person::write); status.write(b); joinHint.write(b); writeList(b, actions, Action::write); }
+        static Members read(FriendlyByteBuf b) { return new Members(b.readVarInt(), b.readBoolean(), readList(b, Person::read), Text.read(b), Text.read(b), readList(b, Action::read)); }
+    }
+
+    public record Person(String id, Text name, Text detail, boolean player, boolean you) {
+        void write(FriendlyByteBuf b) { b.writeUtf(id, 64); name.write(b); detail.write(b); b.writeBoolean(player); b.writeBoolean(you); }
+        static Person read(FriendlyByteBuf b) { return new Person(b.readUtf(64), Text.read(b), Text.read(b), b.readBoolean(), b.readBoolean()); }
+    }
+
+    /** The faction's amendment in the making, as this viewer sees it. {@code expiresIn} is ticks until a prepared draft lapses. */
+    public record Draft(String token, List<Clause> clauses, List<Signer> signers, boolean maySign,
+                        boolean prepared, long expiresIn) {
+        public Draft { clauses = List.copyOf(clauses); signers = List.copyOf(signers); }
+        void write(FriendlyByteBuf b) { b.writeUtf(token, 64); writeList(b, clauses, Clause::write); writeList(b, signers, Signer::write); b.writeBoolean(maySign); b.writeBoolean(prepared); b.writeVarLong(expiresIn); }
+        static Draft read(FriendlyByteBuf b) { return new Draft(b.readUtf(64), readList(b, Clause::read), readList(b, Signer::read), b.readBoolean(), b.readBoolean(), b.readVarLong()); }
+    }
+
+    public record Clause(Text label, Text detail) {
+        void write(FriendlyByteBuf b) { label.write(b); detail.write(b); }
+        static Clause read(FriendlyByteBuf b) { return new Clause(Text.read(b), Text.read(b)); }
+    }
+
+    /** One signature line: who, in what office, their seal, and the day they pressed it (empty until signed). */
+    public record Signer(Text name, Text office, Text date, com.aetherianartificer.townstead.seal.PersonalSeal seal, boolean signed, boolean you) {
+        void write(FriendlyByteBuf b) { name.write(b); office.write(b); date.write(b); seal.write(b); b.writeBoolean(signed); b.writeBoolean(you); }
+        static Signer read(FriendlyByteBuf b) {
+            return new Signer(Text.read(b), Text.read(b), Text.read(b), com.aetherianartificer.townstead.seal.PersonalSeal.read(b), b.readBoolean(), b.readBoolean());
+        }
     }
 
     public record Role(Text name, List<Text> holders) {
@@ -189,44 +204,20 @@ public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int sta
         static Role read(FriendlyByteBuf buf) { return new Role(Text.read(buf), readList(buf, Text::read)); }
     }
 
-    public record Organization(String id, Text name, Text kind, Text description, String relationship,
-                               boolean governing, String icon, int color, Text admission, Text departure,
-                               List<Text> yourRoles, List<Role> roles, List<Action> actions) {
-        public Organization(String id, Text name, Text kind, Text description, String relationship, boolean governing,
-                String icon, int color, Text admission, Text departure, List<Text> yourRoles, List<Role> roles) {
-            this(id, name, kind, description, relationship, governing, icon, color, admission, departure, yourRoles, roles, List.of());
-        }
-        public Organization { actions = List.copyOf(actions); yourRoles = List.copyOf(yourRoles); roles = List.copyOf(roles); }
-        void write(FriendlyByteBuf buf) {
-            buf.writeUtf(id, 256); name.write(buf); kind.write(buf); description.write(buf); buf.writeUtf(relationship, 256);
-            buf.writeBoolean(governing); buf.writeUtf(icon, 512); buf.writeInt(color); admission.write(buf); departure.write(buf);
-            writeList(buf, yourRoles, Text::write); writeList(buf, roles, Role::write); writeList(buf, actions, Action::write);
-        }
-        static Organization read(FriendlyByteBuf buf) {
-            return new Organization(buf.readUtf(256), Text.read(buf), Text.read(buf), Text.read(buf), buf.readUtf(256),
-                    buf.readBoolean(), buf.readUtf(512), buf.readInt(), Text.read(buf), Text.read(buf),
-                    readList(buf, Text::read), readList(buf, Role::read), readList(buf, Action::read));
-        }
-    }
-
     public record Action(String id, Text label, Text description, boolean personInput) {
         void write(FriendlyByteBuf buf) { buf.writeUtf(id, 256); label.write(buf); description.write(buf); buf.writeBoolean(personInput); }
         static Action read(FriendlyByteBuf buf) { return new Action(buf.readUtf(256), Text.read(buf), Text.read(buf), buf.readBoolean()); }
     }
-    public record Request(String id, Text organization, Text person, String kind, String state, int approvals,
+
+    public record Request(String id, Text faction, Text person, String kind, String state, int approvals,
                           int required, List<Action> actions) {
         public Request { actions = List.copyOf(actions); }
         void write(FriendlyByteBuf buf) {
-            buf.writeUtf(id, 256); organization.write(buf); person.write(buf); buf.writeUtf(kind, 64); buf.writeUtf(state, 64);
+            buf.writeUtf(id, 256); faction.write(buf); person.write(buf); buf.writeUtf(kind, 64); buf.writeUtf(state, 64);
             buf.writeVarInt(approvals); buf.writeVarInt(required); writeList(buf, actions, Action::write);
         }
         static Request read(FriendlyByteBuf buf) { return new Request(buf.readUtf(256), Text.read(buf), Text.read(buf),
                 buf.readUtf(64), buf.readUtf(64), buf.readVarInt(), buf.readVarInt(), readList(buf, Action::read)); }
-    }
-
-    public record Tie(String actor, String kind, String roles, String status) {
-        void write(FriendlyByteBuf buf) { buf.writeUtf(actor, 256); buf.writeUtf(kind, 256); buf.writeUtf(roles, 512); buf.writeUtf(status, 128); }
-        static Tie read(FriendlyByteBuf buf) { return new Tie(buf.readUtf(256), buf.readUtf(256), buf.readUtf(512), buf.readUtf(128)); }
     }
 
     public record Heraldry(String actor, Text name, String recipe, long revision, boolean editable) {
@@ -246,20 +237,16 @@ public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int sta
                 Text.read(b), Text.read(b), Text.read(b), readList(b, Role::read), readList(b, Text::read), readList(b, Action::read)); }
     }
 
-    /** The Seat of Power as this Charter presents it; the server writes the text. */
-    public record Seat(String actor, Text heading, Text body, List<Action> actions) {
-        public Seat { actions = List.copyOf(actions); }
-        void write(FriendlyByteBuf b) { b.writeUtf(actor, 256); heading.write(b); body.write(b); writeList(b, actions, Action::write); }
-        static Seat read(FriendlyByteBuf b) { return new Seat(b.readUtf(256), Text.read(b), Text.read(b), readList(b, Action::read)); }
-    }
-
-    public record CensusScope(String id, Text label, List<CensusGroup> groups, int population, boolean available) {
+    /** Residents by culture. Only loaded residents can be read, so {@code uncounted} says how many were left out. */
+    public record CensusScope(String id, Text label, List<CensusGroup> groups, int population, int uncounted, boolean available) {
         public CensusScope { groups = List.copyOf(groups); }
         void write(FriendlyByteBuf buf) {
-            buf.writeUtf(id, 256); label.write(buf); writeList(buf, groups, CensusGroup::write); buf.writeVarInt(population); buf.writeBoolean(available);
+            buf.writeUtf(id, 256); label.write(buf); writeList(buf, groups, CensusGroup::write); buf.writeVarInt(population);
+            buf.writeVarInt(uncounted); buf.writeBoolean(available);
         }
         static CensusScope read(FriendlyByteBuf buf) {
-            return new CensusScope(buf.readUtf(256), Text.read(buf), readList(buf, CensusGroup::read), buf.readVarInt(), buf.readBoolean());
+            return new CensusScope(buf.readUtf(256), Text.read(buf), readList(buf, CensusGroup::read), buf.readVarInt(),
+                    buf.readVarInt(), buf.readBoolean());
         }
     }
 

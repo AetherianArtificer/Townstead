@@ -210,6 +210,14 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload::read,
                 TownsteadNetwork::handleCareerStamp);
+        registerC2S(com.aetherianartificer.townstead.seal.SealC2SPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.seal.SealC2SPayload::read,
+                (p, sp) -> com.aetherianartificer.townstead.seal.PersonalSeals.choose(sp, p.device(), p.dye()));
+        registerS2C(com.aetherianartificer.townstead.seal.SealS2CPayload.class,
+                com.aetherianartificer.townstead.seal.SealS2CPayload::write,
+                com.aetherianartificer.townstead.seal.SealS2CPayload::read,
+                p -> com.aetherianartificer.townstead.client.seal.ClientSeal.set(p.seal()));
         registerS2C(FishermanHookLinkPayload.class, FishermanHookLinkPayload::write, FishermanHookLinkPayload::read,
                 TownsteadNetwork::handleFishermanHookLink);
 

@@ -6,13 +6,13 @@ import net.minecraft.resources.ResourceLocation;
 import java.util.List;
 
 /**
- * The building a political actor governs from: a Seat of Power for a polity, a Headquarters for
- * an organization. {@code buildingType} is the host's MCA building type, empty when the building
+ * The building a faction governs from: a Seat of Power for a faction with land, a Headquarters for
+ * one without. {@code buildingType} is the host's MCA building type, empty when the building
  * is gone. The tier and {@code functions} come from that building type; a building type with no
  * Seat data gives a Meeting Place. A damaged Seat names its {@code damage}
  * ({@code building_missing} or {@code lectern_missing}) and lists no functions until repaired.
  */
-public record SeatSnapshot(PoliticalActorRef actor,
+public record SeatSnapshot(ResourceLocation faction,
                            VillageId settlement,
                            BlockPos lectern,
                            int buildingId,
