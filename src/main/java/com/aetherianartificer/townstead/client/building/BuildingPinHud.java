@@ -17,7 +17,15 @@ import net.minecraft.world.item.ItemStack;
 public final class BuildingPinHud {
     private BuildingPinHud() {}
 
+    /** Bottom edge of the panel drawn this frame, or 0 when none was drawn; HUDs below stack under it. */
+    private static int lastBottom;
+
+    public static int lastBottom() {
+        return lastBottom;
+    }
+
     public static void render(GuiGraphics graphics) {
+        lastBottom = 0;
         Minecraft minecraft = Minecraft.getInstance();
         BuildingPinProgressS2CPayload pin = BuildingPinClientStore.current();
         if (!pin.active() || minecraft.player == null || minecraft.level == null || minecraft.screen != null
@@ -46,6 +54,7 @@ public final class BuildingPinHud {
 
         graphics.fill(x, y, x + width, y + height, 0xC8120E0A);
         graphics.fill(x, y + titleHeight, x + width, y + titleHeight + dividerHeight, 0x667F6840);
+        lastBottom = y + height;
 
         ItemStack buildingIcon = buildingIcon(pin);
         if (!buildingIcon.isEmpty()) graphics.renderItem(buildingIcon, x + 4, y + 1);

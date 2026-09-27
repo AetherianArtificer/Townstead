@@ -28,12 +28,24 @@ neoForge {
             additionalRuntimeClasspathConfiguration.dependencies.add(
                 project.dependencies.create("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")
             )
+            additionalRuntimeClasspathConfiguration.dependencies.add(
+                project.dependencies.create("com.bladecoder.ink:blade-ink:${property("blade_ink_version")}")
+            )
+            additionalRuntimeClasspathConfiguration.dependencies.add(
+                project.dependencies.create("com.bladecoder.ink:blade-ink-compiler:${property("blade_ink_version")}")
+            )
         }
         register("server") {
             server()
             gameDirectory = rootProject.file("run")
             additionalRuntimeClasspathConfiguration.dependencies.add(
                 project.dependencies.create("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")
+            )
+            additionalRuntimeClasspathConfiguration.dependencies.add(
+                project.dependencies.create("com.bladecoder.ink:blade-ink:${property("blade_ink_version")}")
+            )
+            additionalRuntimeClasspathConfiguration.dependencies.add(
+                project.dependencies.create("com.bladecoder.ink:blade-ink-compiler:${property("blade_ink_version")}")
             )
         }
     }
@@ -89,6 +101,9 @@ dependencies {
     compileOnly("curse.maven:jade-324717:8591319")
     // Pure-Java Chronicle archive backend, embedded without SQLite's native binaries.
     implementation(jarJar("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")!!)
+    // Ink runtime and compiler for villager stories; .ink files compile on datapack reload.
+    implementation(jarJar("com.bladecoder.ink:blade-ink:${property("blade_ink_version")}")!!)
+    implementation(jarJar("com.bladecoder.ink:blade-ink-compiler:${property("blade_ink_version")}")!!)
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     // Pheno unit tests touch Minecraft types (ResourceLocation, GsonHelper); moddev keeps MC as a
@@ -230,4 +245,35 @@ tasks.register<Jar>("apiJar") {
     from(sourceSets.main.get().output) { include("com/aetherianartificer/townstead/api/v1/**") }
     from(sourceSets.main.get().allSource) { include("com/aetherianartificer/townstead/api/v1/**") }
     dependsOn(tasks.named("classes"))
+}
+// Opt-in headless sizing tests. Test entities/resources never enter the distributable jar.
+if (providers.gradleProperty("bodySizeGameTests").isPresent) {
+    val bodySizeGameTest by sourceSets.creating {
+        java.setSrcDirs(listOf(rootProject.file("src/bodySizeGameTest/java")))
+        resources.setSrcDirs(listOf(rootProject.file("src/bodySizeGameTest/resources")))
+        compileClasspath += sourceSets.main.get().compileClasspath + sourceSets.main.get().output
+        runtimeClasspath += sourceSets.main.get().runtimeClasspath
+    }
+    neoForge {
+        mods {
+            register("townstead_size_tests") { sourceSet(bodySizeGameTest) }
+        }
+        runs {
+            register("bodySizeGameTest") {
+                type = "gameTestServer"
+                sourceSet = bodySizeGameTest
+                gameDirectory = rootProject.file(".cache/body-size-gametest")
+                systemProperty("neoforge.enabledGameTestNamespaces", "townstead_size_tests")
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink:${property("blade_ink_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink-compiler:${property("blade_ink_version")}")
+                )
+            }
+        }
+    }
 }

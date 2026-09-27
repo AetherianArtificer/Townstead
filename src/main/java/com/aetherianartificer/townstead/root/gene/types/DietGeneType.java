@@ -7,10 +7,12 @@ import com.google.gson.JsonObject;
 import net.minecraft.util.GsonHelper;
 
 /**
- * What a race eats (omnivore, herbivore, carnivore, …), or {@code "none"} for a race that does not
- * eat at all (e.g. undead sustained by magic). The {@code "none"} value switches off the hunger
- * need entirely: the hunger bar is pinned full server-side (no decay, so the refuel task never
- * fires) and its interact-screen icon is hidden. Other diets are display-only for now.
+ * What a race eats: the id of a {@code townstead:diet/v1} file ({@code "townstead:lithovore"}), a
+ * bare built-in name ({@code "omnivore"}, {@code "carnivore"}, {@code "herbivore"}), or
+ * {@code "none"} for a race that does not eat at all (e.g. undead sustained by magic). The
+ * {@code "none"} value switches off the hunger need entirely: the hunger bar is pinned full
+ * server-side (no decay, so the refuel task never fires) and its interact-screen icon is hidden.
+ * A diet naming no loaded file leaves eating as vanilla.
  *
  * <p>JSON: {@code { "type":"townstead_roots:diet", "diet":"omnivore" }} (or {@code "diet":"none"}).</p>
  */
@@ -46,7 +48,6 @@ public final class DietGeneType implements GeneType {
         String diet = GsonHelper.getAsString(json, "diet", "");
         if (diet.isBlank()) return null;
         return new Instance(diet);
-        // TODO(effects): gate which foods nourish the villager by this diet.
     }
 
     @Override

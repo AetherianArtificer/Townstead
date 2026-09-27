@@ -13,9 +13,6 @@ import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.entity.ai.relationship.AgeState;
 import net.minecraft.core.BlockPos;
-//? if >=1.21 {
-import net.minecraft.core.component.DataComponents;
-//?}
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
@@ -25,7 +22,6 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.schedule.Activity;
-import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -265,12 +261,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
             return;
         }
 
-        //? if >=1.21 {
-        FoodProperties props = food.get(DataComponents.FOOD);
-        //?} else {
-        /*FoodProperties props = food.getFoodProperties(null);
-        *///?}
-        if (props == null) {
+        if (FoodSafety.nutritionFor(childTarget, food) <= 0) {
             doStop(level, caregiver, gameTime);
             return;
         }
@@ -359,25 +350,21 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         int bestNutrition = 0;
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
-            if (!FoodSafety.isSafeNutritiousFood(stack)
-                    || !VillagerConsumptionManager.permitsManagedVillagerConsumption(stack)) continue;
-            //? if >=1.21 {
-            FoodProperties food = stack.get(DataComponents.FOOD);
-            if (food.nutrition() > bestNutrition) {
-                bestNutrition = food.nutrition();
-            //?} else {
-            /*FoodProperties food = stack.getFoodProperties(null);
-            if (food.getNutrition() > bestNutrition) {
-                bestNutrition = food.getNutrition();
-            *///?}
+            if (!townstead$isFood(stack)) continue;
+            int nutrition = FoodSafety.nutritionFor(childTarget, stack);
+            if (nutrition > bestNutrition) {
+                bestNutrition = nutrition;
                 best = stack;
             }
         }
         return best;
     }
 
+    // The child's diet decides what counts as food, but sapient flesh stays behind the strictest
+    // (eater-less) gate: children are never fed it on a cannibal parent's say-so.
     private boolean townstead$isFood(ItemStack stack) {
-        return FoodSafety.isSafeNutritiousFood(stack)
+        if (FoodSafety.isCannibalFare(stack) && !CannibalismPolicy.mayEat(null, stack)) return false;
+        return FoodSafety.isSafeNutritiousFood(stack, childTarget)
                 && VillagerConsumptionManager.permitsManagedVillagerConsumption(stack);
     }
 
@@ -414,19 +401,8 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     private boolean townstead$findContainerFood(ServerLevel level, VillagerEntityMCA villager) {
         List<ReachableTargetSelector.Candidate<NearbyItemSources.ContainerSlot>> candidates = new ArrayList<>();
         NearbyItemSources.collectMatchingSlots(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
-                FoodSafety::isSafeNutritiousFood,
-                stack -> {
-                    //? if >=1.21 {
-                    FoodProperties food = stack.get(DataComponents.FOOD);
-                    //?} else {
-                    /*FoodProperties food = stack.getFoodProperties(null);
-                    *///?}
-                    //? if >=1.21 {
-                    return food != null ? food.nutrition() : 0;
-                    //?} else {
-                    /*return food != null ? food.getNutrition() : 0;
-                    *///?}
-                },
+                this::townstead$isFood,
+                stack -> FoodSafety.nutritionFor(childTarget, stack),
                 villager.blockPosition(),
                 slot -> {
                     if (!ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, slot)) {

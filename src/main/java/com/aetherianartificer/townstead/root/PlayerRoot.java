@@ -70,6 +70,8 @@ public final class PlayerRoot {
             }
         }
         store(player, tag);
+        // Root selection changes physical dimensions on the authoritative server too.
+        if (changed && player.getAttributes() != null) player.refreshDimensions();
     }
 
     /** The player's stored genotype (empty if none rolled yet). */

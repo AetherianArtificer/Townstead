@@ -158,7 +158,9 @@ public final class RootCatalog {
                         v.id(), v.displayName().getString(), v.weight(), keyOf(v.displayName()),
                         variantTint(v.instance()), variantTexture(v.instance()), variantGlow(v.instance()),
                         variantAttachment(v.instance()), channelEntries(v.instance()),
-                        paletteEntries(v.instance())));
+                        paletteEntries(v.instance()),
+                        v.instance() instanceof com.aetherianartificer.townstead.root.gene.types.SkinToneGeneType.Instance st ? st.blend() : 0,
+                        v.instance() instanceof com.aetherianartificer.townstead.root.gene.types.SkinToneGeneType.Instance st ? st.strength() : 1f));
             }
         }
         List<GeneCatalogEntry.Channel> channels = channelEntries(gene.instance());
@@ -282,6 +284,7 @@ public final class RootCatalog {
         if (instance instanceof com.aetherianartificer.townstead.root.gene.types.EyeColorGeneType.Instance) return "eye_color";
         // This synced slot also preserves the concrete render kind of a generic VARIANTS gene.
         if (instance instanceof com.aetherianartificer.townstead.root.gene.types.SkinOverlayGeneType.Instance) return "skin_overlay";
+        if (instance instanceof com.aetherianartificer.townstead.root.gene.types.SkinToneGeneType.Instance) return "skin_tone";
         return "";
     }
 

@@ -94,7 +94,8 @@ public final class LifeStageProgression {
 
     private static boolean freezesAging(@Nullable VillagerEntityMCA villager, TownsteadVillager.Life life) {
         return freezesAging(life) || (villager != null
-                && com.aetherianartificer.townstead.root.trait.TraitEffects.isImmortal(villager));
+                && (com.aetherianartificer.townstead.root.trait.TraitEffects.isImmortal(villager)
+                || expressesAgeless(villager)));
     }
 
     /**
@@ -197,6 +198,16 @@ public final class LifeStageProgression {
         return cycle != null && cycle.ageless(); // intrinsic to the species' life cycle
     }
 
+    /** {@link #isAgeless(TownsteadVillager.Life)}, plus an expressed ageless gene (granted by a state). */
+    public static boolean isAgeless(VillagerEntityMCA villager, TownsteadVillager.Life life) {
+        return isAgeless(life) || expressesAgeless(villager);
+    }
+
+    private static boolean expressesAgeless(VillagerEntityMCA villager) {
+        return !ExpressedGenes.instancesOf(villager,
+                com.aetherianartificer.townstead.root.gene.types.AgelessGeneType.Instance.class).isEmpty();
+    }
+
     /**
      * Operational immortality: the potion/gene flag ({@link TownsteadVillager.Life#immortal}) or a
      * config-driven MCA trait conferring it. Immortal villagers are frozen in time like the ageless
@@ -209,7 +220,7 @@ public final class LifeStageProgression {
 
     /** Whether this villager's life stage is held fixed, by immortality or by an ageless life cycle. */
     private static boolean isStageFrozen(VillagerEntityMCA villager, TownsteadVillager.Life life) {
-        return isImmortal(villager, life) || isAgeless(life);
+        return isImmortal(villager, life) || isAgeless(villager, life);
     }
 
     /**

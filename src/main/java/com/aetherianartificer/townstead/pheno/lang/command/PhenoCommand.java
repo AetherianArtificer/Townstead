@@ -59,12 +59,81 @@ public final class PhenoCommand {
     private static final int MAX_LINES = 60;
     private static final Gson PRETTY = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
+    private static final SuggestionProvider<CommandSourceStack> SUGGEST_STATES = (c, builder) ->
+            SharedSuggestionProvider.suggest(com.aetherianartificer.townstead.pheno.state.EntityStates.definitions()
+                    .keySet().stream().map(id -> "\"" + id + "\""), builder);
+
     private PhenoCommand() {}
+
+    private static int stateGet(CommandSourceStack source, Entity target, String raw) {
+        if (!(target instanceof LivingEntity living)) {
+            source.sendFailure(Component.translatable("command.pheno.explain.invalid_target"));
+            return 0;
+        }
+        ResourceLocation id = ResourceLocation.tryParse(raw);
+        if (id == null || com.aetherianartificer.townstead.pheno.state.EntityStates.definition(id) == null) {
+            source.sendFailure(Component.translatable("command.pheno.state.unknown", raw));
+            return 0;
+        }
+        var resolved = com.aetherianartificer.townstead.pheno.state.EntityStates.resolve(living, id);
+        if (!com.aetherianartificer.townstead.pheno.state.EntityStates.eligible(living, id)) {
+            source.sendSuccess(() -> Component.translatable("command.pheno.state.ineligible",
+                    target.getDisplayName(), id.toString()).withStyle(ChatFormatting.GRAY), false);
+        } else if (!resolved.active()) {
+            source.sendSuccess(() -> Component.translatable("command.pheno.state.inactive",
+                    target.getDisplayName(), id.toString()).withStyle(ChatFormatting.GRAY), false);
+        } else {
+            source.sendSuccess(() -> Component.translatable("command.pheno.state.value",
+                    target.getDisplayName(), id.toString(),
+                    String.format(Locale.ROOT, "%.2f", resolved.amount()),
+                    resolved.tier() == null ? "-" : resolved.tier(),
+                    resolved.source() == null ? "-" : resolved.source().toString()), false);
+        }
+        return 1;
+    }
+
+    private static int stateSet(CommandSourceStack source, Entity target, String raw, Double amount, boolean add) {
+        if (!(target instanceof LivingEntity living)) {
+            source.sendFailure(Component.translatable("command.pheno.explain.invalid_target"));
+            return 0;
+        }
+        ResourceLocation id = ResourceLocation.tryParse(raw);
+        if (id == null || com.aetherianartificer.townstead.pheno.state.EntityStates.definition(id) == null) {
+            source.sendFailure(Component.translatable("command.pheno.state.unknown", raw));
+            return 0;
+        }
+        boolean done = amount == null
+                ? com.aetherianartificer.townstead.pheno.state.EntityStates.clear(living, id, null)
+                : add ? com.aetherianartificer.townstead.pheno.state.EntityStates.add(living, id, amount, 0, null)
+                : com.aetherianartificer.townstead.pheno.state.EntityStates.set(living, id, amount, 0, null);
+        if (!done) {
+            source.sendFailure(Component.translatable("command.pheno.state.unwritable", id.toString(), target.getDisplayName()));
+            return 0;
+        }
+        return stateGet(source, target, raw);
+    }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext ctx) {
         dispatcher.register(Commands.literal("pheno")
                 .requires(s -> s.hasPermission(2))
                 .then(Commands.literal("validate").executes(c -> validate(c.getSource())))
+                .then(Commands.literal("state")
+                        .then(Commands.argument("target", EntityArgument.entity())
+                                .then(Commands.argument("state", StringArgumentType.string()).suggests(SUGGEST_STATES)
+                                        .executes(c -> stateGet(c.getSource(), EntityArgument.getEntity(c, "target"),
+                                                StringArgumentType.getString(c, "state")))
+                                        .then(Commands.literal("clear").executes(c -> stateSet(c.getSource(),
+                                                EntityArgument.getEntity(c, "target"), StringArgumentType.getString(c, "state"), null, false)))
+                                        .then(Commands.literal("set").then(Commands.argument("amount",
+                                                com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg())
+                                                .executes(c -> stateSet(c.getSource(), EntityArgument.getEntity(c, "target"),
+                                                        StringArgumentType.getString(c, "state"),
+                                                        com.mojang.brigadier.arguments.DoubleArgumentType.getDouble(c, "amount"), false))))
+                                        .then(Commands.literal("add").then(Commands.argument("amount",
+                                                com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg())
+                                                .executes(c -> stateSet(c.getSource(), EntityArgument.getEntity(c, "target"),
+                                                        StringArgumentType.getString(c, "state"),
+                                                        com.mojang.brigadier.arguments.DoubleArgumentType.getDouble(c, "amount"), true)))))))
                 .then(Commands.literal("explain")
                         .then(Commands.argument("target", EntityArgument.entity())
                                 .executes(c -> explain(c.getSource(), EntityArgument.getEntity(c, "target")))))

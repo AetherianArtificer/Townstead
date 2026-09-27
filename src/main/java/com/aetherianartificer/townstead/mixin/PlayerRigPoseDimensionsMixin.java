@@ -10,11 +10,11 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Makes a rig's declared hitbox drive POSE SELECTION, not just collision.
+ * Makes a rig's declared hitbox drive pose selection and collision through the same size policy.
  *
  * <p>{@link RigHitboxes} reaches the entity through {@code EntityEvent.Size}, which vanilla only fires
  * from {@code refreshDimensions} -- it replaces the CURRENT cached box. The per-pose query
- * ({@code Player.getDefaultDimensions} / 1.20.1 {@code Player.getDimensions}) is untouched, so
+ * ({@code Player.getDefaultDimensions} / 1.20.1 {@code Player.getDimensions}) would otherwise stay vanilla, so
  * {@code updatePlayerPose} still measures every candidate pose with vanilla's 0.6x1.8 standing box.
  * A rig shorter than a block therefore "cannot stand" under a 1-block ceiling, and vanilla's last
  * resort is {@code Pose.SWIMMING} (crawl) -- whereupon {@code PlayerRenderer.setupRotations} pitches
@@ -36,7 +36,7 @@ public abstract class PlayerRigPoseDimensionsMixin {
     /*@Inject(method = "m_6972_", at = @At("HEAD"), cancellable = true, remap = false, require = 0)
     *///?}
     private void townstead$rigPoseDimensions(Pose pose, CallbackInfoReturnable<EntityDimensions> cir) {
-        EntityDimensions rig = RigHitboxes.dimensionsFor((Player) (Object) this, pose);
+        EntityDimensions rig = RigHitboxes.defaultDimensionsFor((Player) (Object) this, pose);
         if (rig != null) cir.setReturnValue(rig);
     }
 }

@@ -86,7 +86,7 @@ import java.util.function.Function;
 public final class TownsteadNetwork {
     private TownsteadNetwork() {}
 
-    private static final String PROTOCOL_VERSION = "15";
+    private static final String PROTOCOL_VERSION = "17";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(Townstead.MOD_ID, "main"),
             () -> PROTOCOL_VERSION,
@@ -97,6 +97,18 @@ public final class TownsteadNetwork {
     private static int nextId = 0;
 
     public static void register() {
+        registerC2S(com.aetherianartificer.townstead.story.net.StoryC2SPayload.class,
+                com.aetherianartificer.townstead.story.net.StoryC2SPayload::write,
+                com.aetherianartificer.townstead.story.net.StoryC2SPayload::read,
+                (payload, sp) -> com.aetherianartificer.townstead.story.StoryService.handle(sp, payload));
+        registerS2C(com.aetherianartificer.townstead.story.net.StoryS2CPayload.class,
+                com.aetherianartificer.townstead.story.net.StoryS2CPayload::write,
+                com.aetherianartificer.townstead.story.net.StoryS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.story.StoryClient.handle(payload));
+        registerS2C(com.aetherianartificer.townstead.story.net.StoryQuestSyncS2CPayload.class,
+                com.aetherianartificer.townstead.story.net.StoryQuestSyncS2CPayload::write,
+                com.aetherianartificer.townstead.story.net.StoryQuestSyncS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.story.StoryClient.setQuests(payload));
         registerS2C(com.aetherianartificer.townstead.naming.NameSyncPayload.class,
                 com.aetherianartificer.townstead.naming.NameSyncPayload::encode,
                 com.aetherianartificer.townstead.naming.NameSyncPayload::decode,

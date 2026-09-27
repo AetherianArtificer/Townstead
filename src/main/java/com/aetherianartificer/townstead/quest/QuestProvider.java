@@ -21,6 +21,11 @@ public interface QuestProvider {
         return null;
     }
 
+    /** True when the source has no tracker of its own, so Track uses Townstead's tracker. */
+    default boolean usesLocalTracker() {
+        return false;
+    }
+
     default String capabilityNote() {
         return "";
     }

@@ -35,14 +35,27 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class EntityStates {
     private static final String STORAGE_KEY = "PhenoEntityStates";
     private static final String BACKINGS_KEY = "backings";
+    private static final String PENDING_KEY = "pending";
     private static volatile Map<ResourceLocation, EntityStateDefinition> definitions = Map.of();
     private static volatile List<StateBacking> backings = List.of();
     private static volatile List<StateEffect> effects = List.of();
+    private static volatile List<StateEffect> geneEffects = List.of();
     private static final Map<UUID, Map<ResourceLocation, Stored>> SESSION = new ConcurrentHashMap<>();
     private static final Map<UUID, Map<ResourceLocation, Resolved>> PREVIOUS = new ConcurrentHashMap<>();
     private static final Map<UUID, Map<ResourceLocation, Long>> NEXT_PERIODIC = new ConcurrentHashMap<>();
 
+    // Who may hold which state (Roots register their declarations); everyone by default.
+    private static volatile java.util.function.BiPredicate<LivingEntity, ResourceLocation> eligibility = (e, s) -> true;
+
     private EntityStates() {}
+
+    public static void setEligibility(java.util.function.BiPredicate<LivingEntity, ResourceLocation> rule) {
+        eligibility = rule == null ? (e, s) -> true : rule;
+    }
+
+    public static boolean eligible(LivingEntity entity, ResourceLocation state) {
+        return eligibility.test(entity, state);
+    }
 
     public record Resolved(ResourceLocation state, boolean active, double amount,
                            @Nullable String tier, int tierIndex, long remaining,
@@ -77,7 +90,76 @@ public final class EntityStates {
     static void replaceEffects(List<StateEffect> next) {
         effects = next.stream().sorted(Comparator.comparingInt(StateEffect::priority).reversed()
                 .thenComparing(effect -> effect.id().toString())).toList();
+        List<StateEffect> genes = new ArrayList<>(effects.stream().filter(effect -> effect.genes() != null).toList());
+        java.util.Collections.reverse(genes);
+        geneEffects = List.copyOf(genes);
         resetRuntime();
+    }
+
+    /**
+     * Gene overlays currently matching {@code entity}, lowest priority first so a later entry
+     * wins a contested locus. Empty without any gene-bearing effect, which keeps the common
+     * case free.
+     */
+    public static List<StateEffect> activeGeneEffects(LivingEntity entity) {
+        List<StateEffect> candidates = geneEffects;
+        if (candidates.isEmpty() || entity.level().isClientSide) return List.of();
+        List<StateEffect> out = null;
+        Map<ResourceLocation, Resolved> resolved = new HashMap<>();
+        for (StateEffect effect : candidates) {
+            Resolved state = resolved.computeIfAbsent(effect.state(), id -> resolve(entity, id));
+            if (!state.active() || !matches(entity, effect, state)) continue;
+            if (out == null) out = new ArrayList<>();
+            out.add(effect);
+        }
+        return out == null ? List.of() : out;
+    }
+
+    /**
+     * Records the aspects a newborn receives from its parents. Applied on the child's next state
+     * tick, since a birth hook can run before the child is spawned or its backings apply.
+     */
+    public static void receiveAtBirth(LivingEntity child, List<? extends net.minecraft.world.entity.Entity> candidates) {
+        if (child.level().isClientSide) return;
+        List<LivingEntity> parents = new ArrayList<>(2);
+        for (var candidate : candidates) {
+            if (candidate instanceof LivingEntity living && !parents.contains(living)) parents.add(living);
+        }
+        CompoundTag pending = new CompoundTag();
+        for (EntityStateDefinition definition : definitions.values()) {
+            EntityStateDefinition.Inheritance inheritance = definition.aspect() == null ? null
+                    : definition.aspect().inheritance();
+            if (inheritance == null || parents.isEmpty()) continue;
+            long carriers = parents.stream().filter(parent -> resolve(parent, definition.id()).active()).count();
+            boolean eligible = inheritance.parents() == EntityStateDefinition.Parents.BOTH
+                    ? carriers == parents.size() && parents.size() > 1 : carriers > 0;
+            if (!eligible || child.getRandom().nextDouble() >= inheritance.chance()) continue;
+            EntityStateDefinition received = definitions.get(inheritance.aspect());
+            if (received == null) continue;
+            double amount = received.receivedAmount();
+            if (pending.getDouble(received.id().toString()) < amount) pending.putDouble(received.id().toString(), amount);
+        }
+        CompoundTag root = child.getPersistentData().getCompound(STORAGE_KEY);
+        if (pending.isEmpty()) root.remove(PENDING_KEY);
+        else root.put(PENDING_KEY, pending);
+        child.getPersistentData().put(STORAGE_KEY, root);
+    }
+
+    private static void applyPending(LivingEntity entity) {
+        CompoundTag root = entity.getPersistentData().getCompound(STORAGE_KEY);
+        if (!root.contains(PENDING_KEY, Tag.TAG_COMPOUND)) return;
+        CompoundTag pending = root.getCompound(PENDING_KEY);
+        for (String key : List.copyOf(pending.getAllKeys())) {
+            ResourceLocation state = ResourceLocation.tryParse(key);
+            if (state == null || !definitions.containsKey(state) || !eligible(entity, state)
+                    || set(entity, state, pending.getDouble(key), 0, null)) {
+                pending.remove(key);
+            }
+        }
+        root = entity.getPersistentData().getCompound(STORAGE_KEY);
+        if (pending.isEmpty()) root.remove(PENDING_KEY);
+        else root.put(PENDING_KEY, pending);
+        entity.getPersistentData().put(STORAGE_KEY, root);
     }
 
     static void resetRuntime() {
@@ -88,6 +170,7 @@ public final class EntityStates {
     public static Resolved resolve(LivingEntity entity, ResourceLocation stateId) {
         EntityStateDefinition definition = definitions.get(stateId);
         if (definition == null) return new Resolved(stateId, false, 0, null, -1, 0, null, 0);
+        if (!eligible(entity, stateId)) return Resolved.inactive(definition);
         long now = entity.level().getGameTime();
         List<Sample> samples = new ArrayList<>();
         for (StateBacking backing : backings) {
@@ -132,7 +215,7 @@ public final class EntityStates {
     public static boolean set(LivingEntity entity, ResourceLocation state, double amount,
                               long duration, @Nullable ResourceLocation source) {
         EntityStateDefinition definition = definitions.get(state);
-        if (definition == null || !Double.isFinite(amount)) return false;
+        if (definition == null || !Double.isFinite(amount) || !eligible(entity, state)) return false;
         StateBacking target = writableBacking(entity, state, source);
         if (target == null) return false;
         double clamped = definition.clamp(amount);
@@ -163,6 +246,7 @@ public final class EntityStates {
     /** Runs transition and periodic contributions. Called from the existing villager server tick. */
     public static void tick(LivingEntity entity) {
         if (entity.level().isClientSide) return;
+        applyPending(entity);
         UUID uuid = entity.getUUID();
         Map<ResourceLocation, Resolved> previous = PREVIOUS.computeIfAbsent(uuid, ignored -> new HashMap<>());
         long now = entity.level().getGameTime();
@@ -171,14 +255,14 @@ public final class EntityStates {
             Resolved current = resolve(entity, definition.id());
             for (StateEffect effect : effects) {
                 if (!effect.state().equals(definition.id())) continue;
-                if (!before.active() && current.active() && matches(effect, current) && effect.onEnter() != null) {
+                if (!before.active() && current.active() && matches(entity, effect, current) && effect.onEnter() != null) {
                     effect.onEnter().run(new ActionContext(entity));
                 }
                 if (before.active() && current.active() && before.tierIndex() != current.tierIndex()
-                        && matches(effect, current) && effect.onTierChange() != null) {
+                        && matches(entity, effect, current) && effect.onTierChange() != null) {
                     effect.onTierChange().run(new ActionContext(entity));
                 }
-                if (before.active() && !current.active() && matches(effect, before) && effect.onExit() != null) {
+                if (before.active() && !current.active() && matches(entity, effect, before) && effect.onExit() != null) {
                     effect.onExit().run(new ActionContext(entity));
                 }
                 runPeriodic(entity, effect, current, now);
@@ -230,7 +314,7 @@ public final class EntityStates {
     private static void runPeriodic(LivingEntity entity, StateEffect effect, Resolved current, long now) {
         if (effect.whileActive() == null) return;
         Map<ResourceLocation, Long> dueByEffect = NEXT_PERIODIC.computeIfAbsent(entity.getUUID(), ignored -> new HashMap<>());
-        if (!current.active() || !matches(effect, current)) {
+        if (!current.active() || !matches(entity, effect, current)) {
             dueByEffect.remove(effect.id());
             return;
         }
@@ -245,8 +329,10 @@ public final class EntityStates {
         }
     }
 
-    private static boolean matches(StateEffect effect, Resolved state) {
-        return effect.tier() == null || effect.tier().equals(state.tier());
+    private static boolean matches(LivingEntity entity, StateEffect effect, Resolved state) {
+        EntityStateDefinition definition = definitions.get(effect.state());
+        if (definition == null || !effect.admitsTier(definition, state.tier(), state.tierIndex())) return false;
+        return effect.condition() == null || effect.condition().test(new ConditionContext(entity));
     }
 
     private static boolean applies(StateBacking backing, LivingEntity entity) {
@@ -283,6 +369,13 @@ public final class EntityStates {
             double amount = definition.persistence() == EntityStateDefinition.Persistence.SESSION
                     ? stored.amount() : ResourceValues.get(entity, backing.ownedResource());
             return new Sample(backing, definition.clamp(amount), remaining, stored.modified());
+        }
+        if (backing.type() == StateBacking.SourceType.PROVIDER) {
+            Double reading = StateProviders.read(backing.provider(), entity);
+            if (reading == null) return null;
+            double amount = backing.amplifierLevels().isEmpty() ? reading
+                    : mappedAmount(definition, backing, (int) Math.floor(reading));
+            return new Sample(backing, definition.clamp(amount), Long.MAX_VALUE, now);
         }
         MobEffectInstance instance = statusEffect(entity, backing.statusEffect());
         if (instance == null) return null;

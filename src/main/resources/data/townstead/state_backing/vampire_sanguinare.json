@@ -1,0 +1,6 @@
+{
+  "schema": "pheno:state_backing/v1",
+  "mods": "vampirism",
+  "state": "townstead_state:vampire",
+  "source": { "type": "pheno:status_effect", "effect": "vampirism:sanguinare", "amplifier": { "0": "turning" } }
+}

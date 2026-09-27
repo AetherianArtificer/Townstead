@@ -83,6 +83,13 @@ dependencies {
     "jarJar"("com.h2database:h2-mvstore:[${property("h2_mvstore_version")},2.5.0)") {
         jarJar.pin(this, property("h2_mvstore_version") as String)
     }
+    // Ink runtime and compiler for villager stories; .ink files compile on datapack reload.
+    for (artifact in listOf("blade-ink", "blade-ink-compiler")) {
+        "minecraftLibrary"("com.bladecoder.ink:$artifact:${property("blade_ink_version")}")
+        "jarJar"("com.bladecoder.ink:$artifact:[${property("blade_ink_version")},1.4.0)") {
+            jarJar.pin(this, property("blade_ink_version") as String)
+        }
+    }
     compileOnly("dev.architectury:architectury-forge:9.2.14")
     // JEI plugin API (runtime optional; the plugin class is only loaded by JEI's scan)
     compileOnly(fg.deobf("mezz.jei:jei-1.20.1-common-api:15.20.0.135"))

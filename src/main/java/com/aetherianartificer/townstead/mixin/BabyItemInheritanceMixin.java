@@ -35,6 +35,7 @@ public abstract class BabyItemInheritanceMixin {
         if (child == null || child.level().isClientSide) return;
         List<Entity> parents = child.getRelationships().getParents().toList();
         Heredity.inheritFromEntities(TownsteadVillagers.get(child).life(), parents, child.getRandom());
+        com.aetherianartificer.townstead.pheno.state.EntityStates.receiveAtBirth(child, parents);
         com.aetherianartificer.townstead.root.appearance.HairColors.inherit(child, parents);
         // Re-align stage durations to the (possibly newly inherited) origin's cycle.
         RootSpawnHandler.backfillIfMissing(child);

@@ -54,7 +54,7 @@ public final class CharacterEditorResolver {
             if (!g.isVariants() && !g.channels().isEmpty()) return new Field(Kind.SLIDER, null, g);
             // A palette skin-tone gene (tinted variants, no face slot) gets the draggable swatch;
             // face/other variant genes are plain cyclers.
-            boolean tone = g.faceSlot().isEmpty() && hasTintedVariant(g);
+            boolean tone = g.isSkinTone() && hasTintedVariant(g);
             return new Field(tone ? Kind.TONE : Kind.CYCLER, null, g);
         }
     }

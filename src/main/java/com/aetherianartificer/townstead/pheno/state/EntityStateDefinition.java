@@ -24,15 +24,23 @@ public record EntityStateDefinition(
         List<Tier> tiers,
         MergePolicy merge,
         Persistence persistence,
-        DeathPolicy deathPolicy) {
+        DeathPolicy deathPolicy,
+        @Nullable Aspect aspect) {
 
     public static final String SCHEMA = "pheno:entity_state/v1";
 
     public enum MergePolicy { FIRST, MAX, SUM, LATEST }
     public enum Persistence { PERSISTENT, SESSION }
     public enum DeathPolicy { KEEP, CLEAR }
+    public enum Parents { ANY, BOTH }
 
     public record Tier(String id, double min) {}
+
+    /** Marks a lasting identity state (vampire, dhampir) as opposed to a passing one (drunk). */
+    public record Aspect(boolean display, @Nullable Inheritance inheritance) {}
+
+    /** A child born to carriers of this aspect receives {@code aspect} with {@code chance}. */
+    public record Inheritance(ResourceLocation aspect, double chance, Parents parents) {}
 
     public EntityStateDefinition {
         tiers = List.copyOf(tiers);
@@ -99,7 +107,44 @@ public record EntityStateDefinition(
         return new EntityStateDefinition(id, min, max, initial, tiers,
                 enumValue(json, "merge", MergePolicy.MAX, MergePolicy.class),
                 enumValue(json, "persistence", Persistence.PERSISTENT, Persistence.class),
-                enumValue(json, "death", DeathPolicy.CLEAR, DeathPolicy.class));
+                enumValue(json, "death", DeathPolicy.CLEAR, DeathPolicy.class),
+                json.has("aspect") ? aspect(id, json.get("aspect")) : null);
+    }
+
+    /** The amount a newly received aspect starts at: its first tier, else fully present. */
+    public double receivedAmount() {
+        for (Tier tier : tiers) if (tier.min() > min) return tier.min();
+        return max;
+    }
+
+    private static Aspect aspect(ResourceLocation self, JsonElement element) {
+        if (!element.isJsonObject()) throw new IllegalArgumentException("'aspect' must be an object");
+        JsonObject json = element.getAsJsonObject();
+        Inheritance inheritance = null;
+        if (json.has("inheritance")) {
+            if (!json.get("inheritance").isJsonObject()) throw new IllegalArgumentException("'inheritance' must be an object");
+            JsonObject inherit = json.getAsJsonObject("inheritance");
+            String mode = GsonHelper.getAsString(inherit, "mode", "none").toLowerCase(Locale.ROOT);
+            ResourceLocation target = switch (mode) {
+                case "none" -> null;
+                case "same" -> self;
+                case "child_aspect" -> {
+                    ResourceLocation parsed = DataPackLang.parseId(GsonHelper.getAsString(inherit, "aspect", ""));
+                    if (parsed == null) throw new IllegalArgumentException("child_aspect inheritance requires an 'aspect' id");
+                    yield parsed;
+                }
+                default -> throw new IllegalArgumentException("unknown inheritance mode '" + mode + "'");
+            };
+            double chance = GsonHelper.getAsDouble(inherit, "chance", 1);
+            if (!Double.isFinite(chance) || chance < 0 || chance > 1) {
+                throw new IllegalArgumentException("inheritance chance must be in [0,1]");
+            }
+            if (target != null) {
+                inheritance = new Inheritance(target, chance,
+                        enumValue(inherit, "parents", Parents.ANY, Parents.class));
+            }
+        }
+        return new Aspect(GsonHelper.getAsBoolean(json, "display", true), inheritance);
     }
 
     private static <E extends Enum<E>> E enumValue(JsonObject json, String key, E fallback, Class<E> type) {

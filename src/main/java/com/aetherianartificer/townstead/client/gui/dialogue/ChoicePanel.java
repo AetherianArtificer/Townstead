@@ -350,7 +350,42 @@ public class ChoicePanel {
      */
     public static final String CAREERS_ANSWER = "townstead:career_tree";
 
+    /** The villager's story, shown first on the main hub when they have one for this player. */
+    public static final String STORY_ANSWER = "townstead:story";
+    /** Question id for a story's own choices; answers are {@link #STORY_CHOICE_PREFIX} plus the index. */
+    public static final String STORY_QUESTION = "townstead:story";
+    public static final String STORY_CHOICE_PREFIX = "townstead:story_choice:";
+
     private boolean showCareersEntry;
+    private Component storyEntry;
+
+    public void setStoryEntry(Component label) {
+        this.storyEntry = label;
+    }
+
+    public boolean isMainHub() {
+        return hubMode && currentSubMenu == null;
+    }
+
+    /** A story's choices, shown as written. */
+    public void setLiteralChoices(List<String> choices, Font font) {
+        this.questionId = STORY_QUESTION;
+        this.hubMode = false;
+        this.currentSubMenu = null;
+        this.hoveredIndex = -1;
+        this.selectedIndex = 0;
+        this.scrollOffset = 0;
+        List<String> answers = new ArrayList<>(choices.size());
+        displayEntries = new ArrayList<>(choices.size());
+        for (int i = 0; i < choices.size(); i++) {
+            answers.add(STORY_CHOICE_PREFIX + i);
+            String text = com.aetherianartificer.townstead.client.gui.dialogue.effect.EffectTagParser.stripTags(choices.get(i));
+            displayEntries.add(new DisplayEntry(Component.literal(text), STORY_CHOICE_PREFIX + i, null, false));
+        }
+        this.rawAnswers = answers;
+        wrapEntries(font);
+        recomputeBounds();
+    }
 
     public void setShowCareersEntry(boolean show) {
         this.showCareersEntry = show;
@@ -358,9 +393,10 @@ public class ChoicePanel {
 
     private java.util.List<DialogueMenuOrganizer.HubEntry> townstead$withCareersEntry(
             java.util.List<DialogueMenuOrganizer.HubEntry> entries) {
-        if (!showCareersEntry) return entries;
-        java.util.List<DialogueMenuOrganizer.HubEntry> out = new java.util.ArrayList<>(entries.size() + 1);
-        out.add(new DialogueMenuOrganizer.HubEntry("townstead.dialogue.main.careers", CAREERS_ANSWER, null));
+        if (!showCareersEntry && storyEntry == null) return entries;
+        java.util.List<DialogueMenuOrganizer.HubEntry> out = new java.util.ArrayList<>(entries.size() + 2);
+        if (storyEntry != null) out.add(new DialogueMenuOrganizer.HubEntry("", STORY_ANSWER, null, storyEntry));
+        if (showCareersEntry) out.add(new DialogueMenuOrganizer.HubEntry("townstead.dialogue.main.careers", CAREERS_ANSWER, null));
         out.addAll(entries);
         return out;
     }

@@ -1,0 +1,18 @@
+{
+  "attach": {
+    "profession": "minecraft:farmer"
+  },
+  "bind": "player",
+  "goals": {
+    "field_post": {
+      "text": "Put a Field Post by {teller}'s fields",
+      "condition": { "type": "pheno:in_work_area", "area": "townstead:field_post", "at": "job_site" }
+    },
+    "first_harvest": {
+      "text": "{teller} harvests {count} crops",
+      "event": "townstead:work_completed",
+      "where": { "worker": "teller", "verb": "townstead:harvested" },
+      "count": 16
+    }
+  }
+}

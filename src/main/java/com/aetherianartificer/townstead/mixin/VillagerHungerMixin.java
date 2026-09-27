@@ -60,9 +60,23 @@ public abstract class VillagerHungerMixin extends Villager {
     // Inert on older MCA without the method (require=0).
     @Inject(method = "canEat", remap = false, require = 0, at = @At("RETURN"), cancellable = true)
     private static void townstead$filterRecoveryFoodSelection(ItemStack stack, CallbackInfoReturnable<Boolean> cir) {
-        if (cir.getReturnValueZ() && !FoodSafety.isSafeToEat(stack)) {
+        if (cir.getReturnValueZ() && !FoodSafety.isSafeToEat(stack, townstead$recoveryEater.get())) {
             cir.setReturnValue(false);
         }
+    }
+
+    // canEat is static, so the recovering villager is carried across it for its diet.
+    @Unique
+    private static final ThreadLocal<VillagerEntityMCA> townstead$recoveryEater = new ThreadLocal<>();
+
+    @Inject(method = "startRecoveryFoodUse()Z", remap = false, require = 0, at = @At("HEAD"))
+    private void townstead$markRecoveryEater(CallbackInfoReturnable<Boolean> cir) {
+        townstead$recoveryEater.set((VillagerEntityMCA) (Object) this);
+    }
+
+    @Inject(method = "startRecoveryFoodUse()Z", remap = false, require = 0, at = @At("RETURN"))
+    private void townstead$clearRecoveryEater(CallbackInfoReturnable<Boolean> cir) {
+        townstead$recoveryEater.remove();
     }
 
     @SuppressWarnings("unchecked")

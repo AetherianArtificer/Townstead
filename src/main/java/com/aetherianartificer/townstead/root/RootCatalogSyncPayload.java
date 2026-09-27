@@ -119,6 +119,8 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
                 buf.writeUtf(v.attachment());
                 writeChannels(buf, v.channels());
                 writePalette(buf, v.palette());
+                buf.writeVarInt(v.blend());
+                buf.writeFloat(v.strength());
             }
             buf.writeUtf(g.nameKey());
             buf.writeUtf(g.descriptionKey());
@@ -232,8 +234,10 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
                 String vattachment = buf.readUtf();
                 List<GeneCatalogEntry.Channel> vchannels = readChannels(buf);
                 List<Integer> vpalette = readPalette(buf);
+                int vblend = buf.readVarInt();
+                float vstrength = buf.readFloat();
                 variants.add(new GeneCatalogEntry.Variant(vid, localize(vlabelKey, vlabel), vweight, vlabelKey,
-                        vtint, vtexture, vglow, vattachment, vchannels, vpalette));
+                        vtint, vtexture, vglow, vattachment, vchannels, vpalette, vblend, vstrength));
             }
             String gNameKey = buf.readUtf();
             String gDescKey = buf.readUtf();
@@ -481,6 +485,9 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
             buf.writeFloat(hb.width());
             buf.writeFloat(hb.height());
             buf.writeFloat(hb.crouchHeight());
+            buf.writeFloat(hb.swimHeight());
+            buf.writeFloat(hb.eyeHeight());
+            buf.writeBoolean(hb.scaleWithEntity());
         }
         buf.writeVarInt(r.disabledSlots().size());
         for (net.minecraft.world.entity.EquipmentSlot slot : r.disabledSlots()) buf.writeByte(slot.ordinal());
@@ -664,7 +671,8 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         }
         RigDefinition.Hitbox hitbox = null;
         if (buf.readBoolean()) {
-            hitbox = new RigDefinition.Hitbox(buf.readFloat(), buf.readFloat(), buf.readFloat());
+            hitbox = new RigDefinition.Hitbox(buf.readFloat(), buf.readFloat(), buf.readFloat(),
+                    buf.readFloat(), buf.readFloat(), buf.readBoolean());
         }
         int disabledCount = buf.readVarInt();
         java.util.Set<net.minecraft.world.entity.EquipmentSlot> disabledSlots = disabledCount == 0

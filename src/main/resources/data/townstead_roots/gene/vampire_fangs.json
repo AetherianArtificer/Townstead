@@ -1,0 +1,49 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "townstead_roots:skin_overlay",
+  "display_name": {
+    "translate": "gene.townstead_roots.vampire_fangs"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.vampire_fangs.desc"
+  },
+  "category": "Appearance",
+  "variants": {
+    "fangs0": {
+      "weight": 1,
+      "texture": "vampirism:textures/entity/vanilla/fangs0.png",
+      "layer": "over_face"
+    },
+    "fangs1": {
+      "weight": 1,
+      "texture": "vampirism:textures/entity/vanilla/fangs1.png",
+      "layer": "over_face"
+    },
+    "fangs2": {
+      "weight": 1,
+      "texture": "vampirism:textures/entity/vanilla/fangs2.png",
+      "layer": "over_face"
+    },
+    "fangs3": {
+      "weight": 1,
+      "texture": "vampirism:textures/entity/vanilla/fangs3.png",
+      "layer": "over_face"
+    },
+    "fangs4": {
+      "weight": 1,
+      "texture": "vampirism:textures/entity/vanilla/fangs4.png",
+      "layer": "over_face"
+    },
+    "fangs5": {
+      "weight": 1,
+      "texture": "vampirism:textures/entity/vanilla/fangs5.png",
+      "layer": "over_face"
+    },
+    "fangs6": {
+      "weight": 1,
+      "texture": "vampirism:textures/entity/vanilla/fangs6.png",
+      "layer": "over_face"
+    }
+  }
+}

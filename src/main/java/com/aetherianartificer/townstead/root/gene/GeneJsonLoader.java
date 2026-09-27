@@ -56,6 +56,11 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
             ResourceLocation file = entry.getKey();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
+                if (obj.has("mods") && com.aetherianartificer.townstead.data.ModGate.evaluate(obj.get("mods")) == null) {
+                    LOGGER.warn("Skipping gene {} — malformed 'mods' gate", file);
+                    continue;
+                }
+                if (!com.aetherianartificer.townstead.data.ModGate.allows(obj)) continue;
                 obj = PhenoNormalizer.normalize(obj);
                 PhenoValidator.validateGene(file, obj, diagnostics);
                 Map<ResourceLocation, JsonObject> companionConfigs = GeneCompanions.extract(file, obj);

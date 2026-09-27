@@ -12,9 +12,6 @@ import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
-//? if >=1.21 {
-import net.minecraft.core.component.DataComponents;
-//?}
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.ai.behavior.Behavior;
@@ -23,7 +20,6 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.schedule.Activity;
-import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -302,7 +298,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (!FoodSafety.isSafeNutritiousFood(stack, villager)) continue;
-            int n = getNutrition(stack);
+            int n = getNutrition(villager, stack);
             if (n > bestNutrition) { bestNutrition = n; best = i; }
         }
         return best;
@@ -355,7 +351,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
             AABB box = villager.getBoundingBox().inflate(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS);
             for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, box, e -> !e.isRemoved() && FoodSafety.isSafeNutritiousFood(e.getItem(), villager))) {
                 if (ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, item)) continue;
-                candidates.add(new ScoredCandidate(TargetType.GROUND_ITEM, getNutrition(item.getItem()), item, null, null));
+                candidates.add(new ScoredCandidate(TargetType.GROUND_ITEM, getNutrition(villager, item.getItem()), item, null, null));
             }
         }
         if (Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING)) {
@@ -372,7 +368,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
                 if (ConsumableTargetClaims.isClaimedByOtherPos(level, villager.getUUID(), CLAIM_CATEGORY, candidate.pos())) continue;
                 ItemStack serving = candidate.serving(level);
                 if (serving.isEmpty() || !FoodSafety.isSafeNutritiousFood(serving, villager)) continue;
-                candidates.add(new ScoredCandidate(TargetType.AMENITY, getNutrition(serving) + SERVED_BONUS, null, null, candidate));
+                candidates.add(new ScoredCandidate(TargetType.AMENITY, getNutrition(villager, serving) + SERVED_BONUS, null, null, candidate));
             }
         }
         return selectAndClaim(level, villager, candidates, claimUntil);
@@ -550,14 +546,8 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
 
     // --- Scoring ---
 
-    private static int getNutrition(ItemStack stack) {
-        //? if >=1.21 {
-        FoodProperties food = stack.get(DataComponents.FOOD);
-        return food != null ? food.nutrition() : 0;
-        //?} else {
-        /*FoodProperties food = stack.getFoodProperties(null);
-        return food != null ? food.getNutrition() : 0;
-        *///?}
+    private static int getNutrition(VillagerEntityMCA villager, ItemStack stack) {
+        return FoodSafety.nutritionFor(villager, stack);
     }
 
     private static int thirstScore(ItemStack stack, ThirstCompatBridge bridge) {

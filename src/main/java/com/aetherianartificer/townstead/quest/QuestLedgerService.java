@@ -20,9 +20,15 @@ public final class QuestLedgerService {
     private final Map<String, QuestProvider> byId;
     private final Map<String, Object> changeTokens = new LinkedHashMap<>();
     private final Set<String> localPins = new HashSet<>();
+    private final LocalTracker tracker;
     private QuestLedgerSnapshot snapshot = new QuestLedgerSnapshot(List.of(), List.of());
 
     public QuestLedgerService(List<QuestProvider> providers) {
+        this(providers, LocalTracker.NONE);
+    }
+
+    public QuestLedgerService(List<QuestProvider> providers, LocalTracker tracker) {
+        this.tracker = tracker;
         LinkedHashMap<String, QuestProvider> unique = new LinkedHashMap<>();
         for (QuestProvider provider : providers) unique.putIfAbsent(provider.id(), provider);
         this.providers = List.copyOf(unique.values());
@@ -51,6 +57,7 @@ public final class QuestLedgerService {
                 List<QuestEntry> loaded = provider.loadQuests();
                 for (QuestEntry entry : loaded) {
                     if (!provider.id().equals(entry.providerId())) continue;
+                    if (provider.usesLocalTracker()) entry = locallyTracked(entry);
                     quests.add(entry.withPinned(entry.pinned() || localPins.contains(entry.key())));
                 }
                 info.add(new QuestProviderInfo(provider.id(), provider.displayName(), true, loaded.size(),
@@ -101,11 +108,32 @@ public final class QuestLedgerService {
     public QuestActionResult perform(QuestAction action, QuestEntry quest) {
         QuestProvider provider = byId.get(quest.providerId());
         if (provider == null) return QuestActionResult.unavailable("Quest provider is no longer registered.");
+        if (action == QuestAction.TRACK && provider.usesLocalTracker()) {
+            boolean tracked = tracker.toggle(quest.key());
+            // Tracking a fourth quest drops the oldest, so every row's flag is re-read.
+            List<QuestEntry> changed = new ArrayList<>(snapshot.quests().size());
+            for (QuestEntry entry : snapshot.quests()) {
+                QuestProvider owner = byId.get(entry.providerId());
+                changed.add(owner != null && owner.usesLocalTracker()
+                        ? entry.withTracked(tracker.isTracked(entry.key())) : entry);
+            }
+            snapshot = new QuestLedgerSnapshot(changed, snapshot.providers());
+            return QuestActionResult.ok(tracked ? "Tracking quest." : "Stopped tracking quest.");
+        }
         try {
             return provider.perform(action, quest);
         } catch (Throwable failure) {
             return QuestActionResult.unavailable(concise(failure));
         }
+    }
+
+    private QuestEntry locallyTracked(QuestEntry entry) {
+        Set<QuestCapability> capabilities = new HashSet<>(entry.capabilities());
+        if (entry.state() != QuestState.COMPLETE) capabilities.add(QuestCapability.TRACK);
+        return new QuestEntry(entry.providerId(), entry.providerName(), entry.id(), entry.title(),
+                entry.description(), entry.group(), entry.iconItemId(), entry.state(), entry.objectives(),
+                entry.rewards(), capabilities, tracker.isTracked(entry.key()), entry.pinned(), entry.tags(),
+                entry.metadata());
     }
 
     private void replace(QuestEntry replacement) {

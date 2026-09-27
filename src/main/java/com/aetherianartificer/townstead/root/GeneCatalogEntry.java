@@ -80,12 +80,18 @@ public record GeneCatalogEntry(
      */
     public record Variant(String id, String label, int weight, String labelKey, int tint,
                           String texture, boolean glow, String attachment, List<Channel> channels,
-                          List<Integer> palette) {
+                          List<Integer> palette, int blend, float strength) {
         public Variant {
             texture = texture == null ? "" : texture;
             attachment = attachment == null ? "" : attachment;
             channels = channels == null ? List.of() : List.copyOf(channels);
             palette = palette == null ? List.of() : List.copyOf(palette);
+        }
+
+        public Variant(String id, String label, int weight, String labelKey, int tint,
+                       String texture, boolean glow, String attachment, List<Channel> channels,
+                       List<Integer> palette) {
+            this(id, label, weight, labelKey, tint, texture, glow, attachment, channels, palette, 0, 1f);
         }
     }
 
@@ -191,6 +197,18 @@ public record GeneCatalogEntry(
 
     public boolean isColor() {
         return displayKind == GeneDisplay.Kind.COLOR.ordinal();
+    }
+
+    /**
+     * A skin tone, single-colour or a palette of tinted variants. Older catalogs sent a palette
+     * with no face slot, so a tinted variant gene with none still counts.
+     */
+    public boolean isSkinTone() {
+        if ("skin_tone".equals(faceSlot)) return true;
+        if (!faceSlot.isEmpty()) return false;
+        if (isColor()) return true;
+        for (Variant variant : variants) if (variant.tint() >= 0) return true;
+        return false;
     }
 
     public boolean isAttachment() {
@@ -405,6 +423,16 @@ public record GeneCatalogEntry(
     public float skinOverlayTintStrength() {
         try { return Math.max(0f, Math.min(1f, Float.parseFloat(skinOverlayPart(4, "1")))); }
         catch (NumberFormatException e) { return 1f; }
+    }
+
+    /** A SKIN_OVERLAY drawn above MCA's face layer (eyes) rather than on the skin under it. */
+    public boolean skinOverlayOverFace() {
+        return "1".equals(skinOverlayPart(5, "0"));
+    }
+
+    /** A SKIN_OVERLAY drawn emissive, full-bright. */
+    public boolean skinOverlayGlow() {
+        return "1".equals(skinOverlayPart(6, "0"));
     }
 
     private String skinOverlayPart(int index, String fallback) {

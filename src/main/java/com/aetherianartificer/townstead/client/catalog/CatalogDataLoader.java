@@ -170,7 +170,13 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         // The icon-to-type index and node-item overrides are now both complete.
         // Clear any negative result cached while parallel reload listeners ran.
         BuildingIconResolver.invalidate();
-        RequirementNameResolver.invalidate();
+        // This reload listener also runs on dedicated servers; the GUI resolver links ClientLevel.
+        // An unset dist (test harness, no FML boot) is not a dedicated server.
+        //? if neoforge {
+        if (net.neoforged.fml.loading.FMLEnvironment.dist == null || net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) RequirementNameResolver.invalidate();
+        //?} else {
+        /*if (net.minecraftforge.fml.loading.FMLEnvironment.dist == null || net.minecraftforge.fml.loading.FMLEnvironment.dist.isClient()) RequirementNameResolver.invalidate();
+        *///?}
         com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.invalidateSignatures();
         DATA_THEME = THEME;
         CLIENT_THEME_RESOURCE_MANAGER = null;
@@ -707,7 +713,13 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         com.aetherianartificer.townstead.recognition.BuildingChecks.replaceAll(payload.checks());
         com.aetherianartificer.townstead.politics.seat.SeatBuildings.replaceAll(payload.seats());
         BuildingIconResolver.invalidate();
-        RequirementNameResolver.invalidate();
+        // This reload listener also runs on dedicated servers; the GUI resolver links ClientLevel.
+        // An unset dist (test harness, no FML boot) is not a dedicated server.
+        //? if neoforge {
+        if (net.neoforged.fml.loading.FMLEnvironment.dist == null || net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) RequirementNameResolver.invalidate();
+        //?} else {
+        /*if (net.minecraftforge.fml.loading.FMLEnvironment.dist == null || net.minecraftforge.fml.loading.FMLEnvironment.dist.isClient()) RequirementNameResolver.invalidate();
+        *///?}
         com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.invalidateSignatures();
     }
 

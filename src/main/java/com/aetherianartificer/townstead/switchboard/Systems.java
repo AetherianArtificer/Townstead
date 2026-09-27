@@ -37,6 +37,7 @@ public final class Systems {
     public static final String SPIRIT = "spirit";
     public static final String CALENDAR = "calendar";
     public static final String QUESTS = "quests";
+    public static final String STORIES = "stories";
 
     /** Never throws: a system counts as on until the config and the world say otherwise. */
     public static boolean on(String system) {

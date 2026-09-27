@@ -1,0 +1,20 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "mods": "vampirism",
+  "state": "townstead_state:vampire",
+  "min_tier": "vampire",
+  "priority": 30,
+  "condition": {
+    "type": "pheno:not",
+    "condition": {
+      "type": "pheno:entity_type",
+      "entity_type": "minecraft:player"
+    }
+  },
+  "genes": {
+    "grant": [
+      "townstead_roots:vampire_sun_burn",
+      "townstead_roots:vampire_ageless"
+    ]
+  }
+}

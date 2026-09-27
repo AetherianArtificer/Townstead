@@ -79,6 +79,8 @@
     "WalkNodeEvaluatorFenceGateVanillaMixin",
     "PlayerElytraGeneMixin",
     "PlayerRigPoseDimensionsMixin",
+    "VillagerBodyDimensionsMixin",
+    "LivingBodySizeTickMixin",
     "LivingEntityElytraKeepMixin",
     "EntityFallFlightMixin",
     "InventoryKeepInventoryMixin",

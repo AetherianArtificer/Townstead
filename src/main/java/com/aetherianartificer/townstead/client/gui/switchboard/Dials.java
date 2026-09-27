@@ -195,9 +195,9 @@ final class Dials {
                 key -> key.startsWith("rebirth.")));
 
         out.add(new Dial(QUESTS, label("quests"), List.of(
-                onOff(false, systems(List.of(Systems.QUESTS), false)),
-                onOff(true, systems(List.of(Systems.QUESTS), true))),
-                key -> key.equals(Systems.key(Systems.QUESTS))));
+                onOff(false, systems(List.of(Systems.QUESTS, Systems.STORIES), false)),
+                onOff(true, systems(List.of(Systems.QUESTS, Systems.STORIES), true))),
+                key -> key.equals(Systems.key(Systems.QUESTS)) || key.equals(Systems.key(Systems.STORIES))));
         return out;
     }
 

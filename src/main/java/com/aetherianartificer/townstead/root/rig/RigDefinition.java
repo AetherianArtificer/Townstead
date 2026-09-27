@@ -102,13 +102,27 @@ public record RigDefinition(
      * {@code crouchHeight} is the box while crouching; 0 derives it from {@code height} at vanilla's
      * ratio (a player's 1.8 standing becomes 1.5), so a rig only declares it to tune the squeeze.
      */
-    public record Hitbox(float width, float height, float crouchHeight) {
+    public record Hitbox(float width, float height, float crouchHeight,
+                         float swimHeight, float eyeHeight, boolean scaleWithEntity) {
+        public Hitbox(float width, float height, float crouchHeight) {
+            this(width, height, crouchHeight, 0, 0, true);
+        }
 
-        /** Vanilla's crouch ratio (1.5 / 1.8), used when a rig declares no explicit crouch height. */
-        private static final float CROUCH_RATIO = 1.5f / 1.8f;
+        public Hitbox {
+            if (!Float.isFinite(width) || width <= 0 || !Float.isFinite(height) || height <= 0
+                    || !Float.isFinite(crouchHeight) || crouchHeight < 0
+                    || !Float.isFinite(swimHeight) || swimHeight < 0
+                    || !Float.isFinite(eyeHeight) || eyeHeight < 0) {
+                throw new IllegalArgumentException("Hitbox dimensions must be finite and positive (optional heights may be zero)");
+            }
+        }
 
         public float crouchedHeight() {
-            return crouchHeight > 0f ? crouchHeight : height * CROUCH_RATIO;
+            return Math.min(height, crouchHeight > 0 ? crouchHeight : height * (1.5f / 1.8f));
+        }
+
+        public float swimmingHeight() {
+            return Math.min(height, swimHeight > 0 ? swimHeight : .6f);
         }
     }
 

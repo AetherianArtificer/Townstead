@@ -14,3 +14,8 @@ is distributed under the Mozilla Public License 2.0 or Eclipse Public License 1.
 
 - https://h2database.com/
 - https://github.com/h2database/h2database
+
+Townstead embeds **blade-ink** (runtime and compiler) to run Ink stories. blade-ink is
+distributed under the Apache License 2.0:
+
+- https://github.com/bladecoder/blade-ink

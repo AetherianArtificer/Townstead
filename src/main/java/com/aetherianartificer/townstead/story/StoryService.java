@@ -1,0 +1,428 @@
+package com.aetherianartificer.townstead.story;
+
+import com.aetherianartificer.townstead.api.v1.TownsteadApiV1;
+import com.aetherianartificer.townstead.api.v1.event.TownsteadEvent;
+import com.aetherianartificer.townstead.story.goal.Goal;
+import com.aetherianartificer.townstead.story.goal.GoalContext;
+import com.aetherianartificer.townstead.story.net.StoryC2SPayload;
+import com.aetherianartificer.townstead.story.net.StoryQuestSyncS2CPayload;
+import com.aetherianartificer.townstead.story.net.StoryS2CPayload;
+import com.aetherianartificer.townstead.switchboard.Systems;
+import com.bladecoder.ink.runtime.Story;
+import net.conczin.mca.entity.VillagerEntityMCA;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * Server side of stories: which villager offers which story, the open conversations, and each
+ * player's quests. Counter goals advance on Townstead events; state goals are re-read on a slow
+ * timer and after events that can change them. Everything runs on the server thread.
+ */
+public final class StoryService {
+    private StoryService() {}
+
+    private static final double TALK_RANGE_SQ = 10.0 * 10.0;
+    private static final int REFRESH_TICKS = 100;
+
+    private static final Map<UUID, PlayerStories> PLAYERS = new HashMap<>();
+    private static final Map<UUID, StorySession> SESSIONS = new HashMap<>();
+    private static final Set<UUID> DIRTY = new HashSet<>();
+    private static boolean subscribed;
+    private static final Set<Class<?>> SUBSCRIBED = new HashSet<>();
+    private static boolean recheckSoon;
+    private static @Nullable MinecraftServer server;
+    private static int ticks;
+
+    /** Called once at mod construction. Event subscriptions follow the loaded goals, see {@link #onReload}. */
+    public static void init() {
+        subscribed = true;
+    }
+
+    /** Listens for every event a loaded goal counts. A subscription stays once made; it is cheap. */
+    private static void subscribeGoalEvents() {
+        for (StoryDefinition story : Stories.all().values()) {
+            for (StoryDefinition.Quest quest : story.quests().values()) {
+                for (Goal goal : quest.goals()) {
+                    Class<?> type = goal.event();
+                    if (type != null && SUBSCRIBED.add(type)) subscribe(type, StoryService::onCountedEvent);
+                }
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void subscribe(Class<?> type, java.util.function.Consumer<TownsteadEvent> listener) {
+        TownsteadApiV1.get().events().subscribe((Class<TownsteadEvent>) type, listener);
+    }
+
+    static void onReload() {
+        if (subscribed) subscribeGoalEvents();
+        for (StorySession session : new ArrayList<>(SESSIONS.values())) {
+            session.finish();
+            send(session.player, new StoryS2CPayload(session.villager.getId(), StoryS2CPayload.END, "", List.of(), false));
+            save(session.player);
+        }
+        SESSIONS.clear();
+        recheckSoon = true;
+    }
+
+    // ---- player state ----
+
+    static PlayerStories stories(ServerPlayer player) {
+        return PLAYERS.computeIfAbsent(player.getUUID(), id -> PlayerStories.load(player));
+    }
+
+    private static void save(ServerPlayer player) {
+        stories(player).save(player);
+    }
+
+    public static void onLogin(ServerPlayer player) {
+        PLAYERS.remove(player.getUUID());
+        sync(player);
+    }
+
+    public static void onLogout(ServerPlayer player) {
+        StorySession session = SESSIONS.remove(player.getUUID());
+        if (session != null) session.finish();
+        if (PLAYERS.containsKey(player.getUUID())) save(player);
+        PLAYERS.remove(player.getUUID());
+        DIRTY.remove(player.getUUID());
+    }
+
+    /** Drops a player's state for one story, or all of them. Returns whether anything was removed. */
+    public static boolean reset(ServerPlayer player, @Nullable ResourceLocation story) {
+        StorySession session = SESSIONS.remove(player.getUUID());
+        if (session != null) session.finish();
+        PlayerStories stories = stories(player);
+        boolean removed;
+        if (story == null) {
+            removed = !stories.entries().isEmpty();
+            stories.entries().clear();
+        } else {
+            removed = stories.remove(story);
+        }
+        save(player);
+        sync(player);
+        return removed;
+    }
+
+    // ---- network ----
+
+    public static void handle(ServerPlayer player, StoryC2SPayload payload) {
+        if (payload.action() == StoryC2SPayload.CLOSE) {
+            closeSession(player);
+            return;
+        }
+        if (!Systems.on(Systems.STORIES)) {
+            if (payload.action() == StoryC2SPayload.OFFER) offer(player, payload.villagerId(), null);
+            return;
+        }
+        VillagerEntityMCA villager = villager(player, payload.villagerId());
+        switch (payload.action()) {
+            case StoryC2SPayload.OFFER -> offer(player, payload.villagerId(),
+                    villager == null ? null : storyFor(player, villager));
+            case StoryC2SPayload.TALK -> {
+                if (villager != null) talk(player, villager);
+            }
+            case StoryC2SPayload.NEXT -> {
+                StorySession session = SESSIONS.get(player.getUUID());
+                if (session != null && session.villager == villager) session.next();
+            }
+            case StoryC2SPayload.CHOOSE -> {
+                StorySession session = SESSIONS.get(player.getUUID());
+                if (session != null && session.villager == villager) session.choose(payload.index());
+            }
+            default -> {}
+        }
+    }
+
+    private static @Nullable VillagerEntityMCA villager(ServerPlayer player, int entityId) {
+        if (player.serverLevel().getEntity(entityId) instanceof VillagerEntityMCA villager
+                && villager.isAlive() && villager.distanceToSqr(player) <= TALK_RANGE_SQ) {
+            return villager;
+        }
+        return null;
+    }
+
+    private static void offer(ServerPlayer player, int villagerId, @Nullable StoryDefinition story) {
+        String label = "";
+        if (story != null) {
+            VillagerEntityMCA villager = villager(player, villagerId);
+            label = villager == null ? story.label() : labelFor(player, villager, story);
+        }
+        send(player, new StoryS2CPayload(villagerId, StoryS2CPayload.OFFER, label, List.of(), story != null));
+    }
+
+    /** The villager's story for this player, unless another villager is already telling it to them. */
+    private static @Nullable StoryDefinition storyFor(ServerPlayer player, VillagerEntityMCA villager) {
+        StoryDefinition story = Stories.forVillager(villager, player);
+        if (story == null) return null;
+        PlayerStories.Entry entry = stories(player).get(PlayerStories.key(story, villager.getUUID()));
+        return entry == null || entry.villager.equals(villager.getUUID()) ? story : null;
+    }
+
+    private static String labelFor(ServerPlayer player, VillagerEntityMCA villager, StoryDefinition story) {
+        PlayerStories.Entry entry = stories(player).get(PlayerStories.key(story, villager.getUUID()));
+        if (entry != null && entry.villager.equals(villager.getUUID())) {
+            for (PlayerStories.QuestRecord record : entry.quests.values()) {
+                StoryDefinition.Quest quest = story.quests().get(record.knot);
+                if (quest != null && quest.label() != null && record.state != PlayerStories.QuestState.COMPLETE) {
+                    return quest.label();
+                }
+            }
+        }
+        return story.label();
+    }
+
+    private static void talk(ServerPlayer player, VillagerEntityMCA villager) {
+        closeSession(player);
+        StoryDefinition story = storyFor(player, villager);
+        if (story == null) {
+            send(player, new StoryS2CPayload(villager.getId(), StoryS2CPayload.END, "", List.of(), false));
+            return;
+        }
+        String name = StorySession.displayName(villager);
+        String key = PlayerStories.key(story, villager.getUUID());
+        PlayerStories.Entry entry = stories(player).getOrCreate(key, story, villager.getUUID(), name);
+        entry.villagerName = name;
+        entry.givenName = com.aetherianartificer.townstead.naming.VillagerNames.parts(villager).given();
+        StorySession session;
+        try {
+            session = StorySession.open(player, villager, story, entry);
+        } catch (Exception e) {
+            com.aetherianartificer.townstead.Townstead.LOGGER.warn("Story {} could not start: {}", story.id(), e.getMessage());
+            send(player, new StoryS2CPayload(villager.getId(), StoryS2CPayload.END, "", List.of(), false));
+            return;
+        }
+        refresh(player.server, player.getUUID(), entry, story, session.villager);
+        SESSIONS.put(player.getUUID(), session);
+        session.start(entryPath(entry, story));
+        DIRTY.add(player.getUUID());
+    }
+
+    /**
+     * Where a conversation starts: a quest ready to hand back first, then an open quest's waiting
+     * lines, otherwise the greeting.
+     */
+    private static String entryPath(PlayerStories.Entry entry, StoryDefinition story) {
+        for (PlayerStories.QuestRecord record : entry.quests.values()) {
+            StoryDefinition.Quest quest = story.quests().get(record.knot);
+            if (quest == null || record.state != PlayerStories.QuestState.READY) continue;
+            record.state = PlayerStories.QuestState.COMPLETE;
+            if (record.skipped && quest.hasSkipped()) return quest.knot() + ".skipped";
+            if (quest.hasDone()) return quest.knot() + ".done";
+        }
+        for (PlayerStories.QuestRecord record : entry.quests.values()) {
+            StoryDefinition.Quest quest = story.quests().get(record.knot);
+            if (quest != null && record.state == PlayerStories.QuestState.ACTIVE && quest.hasWaiting()) {
+                return quest.knot() + ".waiting";
+            }
+        }
+        return "greet";
+    }
+
+    private static void closeSession(ServerPlayer player) {
+        StorySession session = SESSIONS.remove(player.getUUID());
+        if (session == null) return;
+        session.finish();
+        save(player);
+        sync(player);
+    }
+
+    static void sessionEnded(StorySession session) {
+        if (SESSIONS.get(session.player.getUUID()) == session) SESSIONS.remove(session.player.getUUID());
+        save(session.player);
+        sync(session.player);
+    }
+
+    /**
+     * Starts every quest whose knot the story has now entered, and completes a ready quest once the
+     * story has told its {@code done} or {@code skipped} lines.
+     */
+    static void startEnteredQuests(StorySession session, Story story) throws Exception {
+        for (StoryDefinition.Quest quest : session.definition.quests().values()) {
+            PlayerStories.QuestRecord existing = session.entry.quests.get(quest.knot());
+            if (existing != null) {
+                if (existing.state == PlayerStories.QuestState.READY && session.toldHandBack(quest, story)) {
+                    existing.state = PlayerStories.QuestState.COMPLETE;
+                    DIRTY.add(session.player.getUUID());
+                }
+                continue;
+            }
+            if (story.getState().visitCountAtPathString(quest.knot()) <= 0) continue;
+            PlayerStories.QuestRecord record = session.entry.quest(quest.knot(), quest.goals().size());
+            GoalContext ctx = session.goalContext();
+            if (quest.skipIf() != null) {
+                long value = quest.skipIf().read(ctx);
+                if (value != Goal.UNKNOWN && value >= quest.skipIf().total()) {
+                    record.state = PlayerStories.QuestState.READY;
+                    record.skipped = true;
+                }
+            }
+            if (record.state == PlayerStories.QuestState.ACTIVE) settle(record, quest, ctx);
+            DIRTY.add(session.player.getUUID());
+        }
+    }
+
+    // ---- goals ----
+
+    public static void tick(MinecraftServer server) {
+        StoryService.server = server;
+        if (++ticks % 20 == 0 && !DIRTY.isEmpty()) {
+            for (UUID id : new ArrayList<>(DIRTY)) {
+                ServerPlayer player = server.getPlayerList().getPlayer(id);
+                if (player != null) {
+                    save(player);
+                    sync(player);
+                }
+            }
+            DIRTY.clear();
+        }
+        if (!recheckSoon && ticks % REFRESH_TICKS != 0) return;
+        recheckSoon = false;
+        if (!Systems.on(Systems.STORIES)) return;
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            PlayerStories stories = PLAYERS.get(player.getUUID());
+            if (stories == null) continue;
+            boolean changed = false;
+            for (PlayerStories.Entry entry : stories.entries()) {
+                StoryDefinition story = Stories.byId(entry.story);
+                if (story != null && hasOpenQuest(entry)) changed |= refresh(server, player.getUUID(), entry, story, find(server, entry.villager));
+            }
+            if (changed) DIRTY.add(player.getUUID());
+        }
+    }
+
+    private static void onCountedEvent(TownsteadEvent event) {
+        MinecraftServer server = StoryService.server;
+        if (server == null || !Systems.on(Systems.STORIES)) return;
+        recheckSoon = true;
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            PlayerStories stories = PLAYERS.get(player.getUUID());
+            if (stories == null) continue;
+            boolean changed = false;
+            for (PlayerStories.Entry entry : stories.entries()) {
+                StoryDefinition story = Stories.byId(entry.story);
+                if (story == null) continue;
+                for (PlayerStories.QuestRecord record : entry.quests.values()) {
+                    if (record.state != PlayerStories.QuestState.ACTIVE) continue;
+                    StoryDefinition.Quest quest = story.quests().get(record.knot);
+                    if (quest == null) continue;
+                    GoalContext ctx = null;
+                    for (int i = 0; i < quest.goals().size() && i < record.values.length; i++) {
+                        Goal goal = quest.goals().get(i);
+                        if (!goal.isCounter() || goal.event() == null || !goal.event().isInstance(event)) continue;
+                        if (ctx == null) ctx = context(server, player.getUUID(), entry);
+                        long add = goal.increment(event, ctx);
+                        if (add <= 0 || record.values[i] >= goal.total()) continue;
+                        record.values[i] = Math.min(goal.total(), record.values[i] + add);
+                        changed = true;
+                    }
+                    if (changed && ctx != null) settle(record, quest, ctx);
+                }
+            }
+            if (changed) DIRTY.add(player.getUUID());
+        }
+    }
+
+    /** Re-reads the state goals of every open quest in one story. Returns whether anything moved. */
+    private static boolean refresh(MinecraftServer server, UUID player, PlayerStories.Entry entry,
+                                   StoryDefinition story, @Nullable VillagerEntityMCA speaker) {
+        boolean changed = false;
+        GoalContext ctx = new GoalContext(server, player, entry.villager, entry.villagerName, speaker);
+        for (PlayerStories.QuestRecord record : entry.quests.values()) {
+            if (record.state != PlayerStories.QuestState.ACTIVE) continue;
+            StoryDefinition.Quest quest = story.quests().get(record.knot);
+            if (quest == null) continue;
+            for (int i = 0; i < quest.goals().size() && i < record.values.length; i++) {
+                Goal goal = quest.goals().get(i);
+                if (goal.isCounter()) continue;
+                long value = goal.read(ctx);
+                if (value == Goal.UNKNOWN || value == record.values[i]) continue;
+                record.values[i] = value;
+                changed = true;
+            }
+            changed |= settle(record, quest, ctx);
+        }
+        return changed;
+    }
+
+    /** Marks a quest ready once every goal is met. A quest with nothing to say back completes. */
+    private static boolean settle(PlayerStories.QuestRecord record, StoryDefinition.Quest quest, GoalContext ctx) {
+        if (record.state != PlayerStories.QuestState.ACTIVE) return false;
+        for (int i = 0; i < quest.goals().size(); i++) {
+            if (i >= record.values.length || record.values[i] < quest.goals().get(i).total()) return false;
+        }
+        record.state = quest.hasDone() ? PlayerStories.QuestState.READY : PlayerStories.QuestState.COMPLETE;
+        return true;
+    }
+
+    private static boolean hasOpenQuest(PlayerStories.Entry entry) {
+        for (PlayerStories.QuestRecord record : entry.quests.values()) {
+            if (record.state == PlayerStories.QuestState.ACTIVE) return true;
+        }
+        return false;
+    }
+
+    private static GoalContext context(MinecraftServer server, UUID player, PlayerStories.Entry entry) {
+        return new GoalContext(server, player, entry.villager, entry.villagerName, find(server, entry.villager));
+    }
+
+    private static @Nullable VillagerEntityMCA find(MinecraftServer server, UUID id) {
+        for (ServerLevel level : server.getAllLevels()) {
+            if (level.getEntity(id) instanceof VillagerEntityMCA villager && villager.isAlive()) return villager;
+        }
+        return null;
+    }
+
+    // ---- quest ledger ----
+
+    public static void sync(ServerPlayer player) {
+        List<StoryQuestSyncS2CPayload.Quest> quests = new ArrayList<>();
+        if (Systems.on(Systems.STORIES)) {
+            for (PlayerStories.Entry entry : stories(player).entries()) {
+                StoryDefinition story = Stories.byId(entry.story);
+                if (story == null) continue;
+                for (PlayerStories.QuestRecord record : entry.quests.values()) {
+                    StoryDefinition.Quest quest = story.quests().get(record.knot);
+                    if (quest == null) continue;
+                    List<StoryQuestSyncS2CPayload.Objective> objectives = new ArrayList<>();
+                    boolean complete = record.state == PlayerStories.QuestState.COMPLETE;
+                    for (int i = 0; i < quest.goals().size(); i++) {
+                        Goal goal = quest.goals().get(i);
+                        long current = i < record.values.length ? record.values[i] : 0L;
+                        objectives.add(new StoryQuestSyncS2CPayload.Objective(
+                                goal.label(entry.givenName.isEmpty() ? entry.villagerName : entry.givenName,
+                                        player.getGameProfile().getName()),
+                                Math.min(current, goal.total()), goal.total(),
+                                complete || record.skipped || current >= goal.total()));
+                    }
+                    quests.add(new StoryQuestSyncS2CPayload.Quest(entry.story + "/" + record.knot + "@" + entry.villager,
+                            quest.title(), quest.about(), entry.villagerName, (byte) record.state.ordinal(),
+                            quest.hasDone() || (record.skipped && quest.hasSkipped()), List.copyOf(objectives)));
+                }
+            }
+        }
+        send(player, new StoryQuestSyncS2CPayload(List.copyOf(quests)));
+    }
+
+    static void send(ServerPlayer player, Object payload) {
+        //? if neoforge {
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
+                (net.minecraft.network.protocol.common.custom.CustomPacketPayload) payload);
+        //?} else {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(player, payload);
+        *///?}
+    }
+}

@@ -37,9 +37,6 @@ import com.aetherianartificer.townstead.storage.WorksiteStorageIndex;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.minecraft.core.BlockPos;
-//? if >=1.21 {
-import net.minecraft.core.component.DataComponents;
-//?}
 import net.minecraft.network.chat.Component;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -53,7 +50,6 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.schedule.Activity;
-import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.HoeItem;
 import net.minecraft.world.item.ItemStack;
@@ -1199,7 +1195,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     private java.util.function.Predicate<ItemStack> townstead$stockMatcher(
             VillagerEntityMCA villager, boolean endOfWork) {
         SimpleContainer inventory = villager.getInventory();
-        int foodSlot = townstead$findBestFoodSlot(inventory);
+        int foodSlot = townstead$findBestFoodSlot(villager, inventory);
         ItemStack keptFood = foodSlot >= 0 ? inventory.getItem(foodSlot) : ItemStack.EMPTY;
         return stack -> {
             if (stack == null || stack.isEmpty()) return false;
@@ -1442,21 +1438,15 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return FarmerStockDroppableCompatRegistry.isForcedStockDroppable(stack);
     }
 
-    private int townstead$findBestFoodSlot(SimpleContainer inv) {
+    private int townstead$findBestFoodSlot(VillagerEntityMCA villager, SimpleContainer inv) {
         int best = -1;
         int nutrition = -1;
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
-            if (!FoodSafety.isSafeNutritiousFood(stack)) continue;
-            //? if >=1.21 {
-            FoodProperties food = stack.get(DataComponents.FOOD);
-            if (food.nutrition() > nutrition) {
-                nutrition = food.nutrition();
-            //?} else {
-            /*FoodProperties food = stack.getFoodProperties(null);
-            if (food.getNutrition() > nutrition) {
-                nutrition = food.getNutrition();
-            *///?}
+            if (!FoodSafety.isSafeNutritiousFood(stack, villager)) continue;
+            int value = FoodSafety.nutritionFor(villager, stack);
+            if (value > nutrition) {
+                nutrition = value;
                 best = i;
             }
         }

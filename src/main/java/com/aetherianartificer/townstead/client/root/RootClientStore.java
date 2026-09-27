@@ -39,7 +39,7 @@ public final class RootClientStore {
         // interaction box is wrong even though the model (which re-resolves every frame) renders correctly.
         // When the root first arrives (or changes) re-run refreshDimensions so the rig's declared hitbox
         // finally takes effect. Deferred to the client thread so it is safe to call from the sync handler.
-        if (!normalized.isEmpty() && !normalized.equals(previous)) {
+        if (!normalized.equals(previous)) {
             refreshEntityDimensions(entityId);
         }
     }

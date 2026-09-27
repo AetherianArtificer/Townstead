@@ -119,7 +119,8 @@ public final class VillagerConsumptionManager {
                                           int holdTicks) {
         if (stack.isEmpty() || isConsuming(villager)) return false;
         if (!permitsManagedVillagerConsumption(stack)) return false;
-        if (!isConsumable(stack) && !com.aetherianartificer.townstead.temperature.ThermalConsumables.hasEffects(stack, villager)) return false;
+        if (!isConsumable(stack) && !isDietFood(villager, stack)
+                && !com.aetherianartificer.townstead.temperature.ThermalConsumables.hasEffects(stack, villager)) return false;
 
         //? if >=1.21 {
         ItemStack oneUnit = stack.copyWithCount(1);
@@ -144,6 +145,12 @@ public final class VillagerConsumptionManager {
         villager.setItemInHand(InteractionHand.MAIN_HAND, oneUnit);
         if (holdTicks == 0) villager.startUsingItem(InteractionHand.MAIN_HAND);
         return true;
+    }
+
+    /** A food only this villager's diet gives values to (a gem for a stone eater, blood for a vampire). */
+    private static boolean isDietFood(VillagerEntityMCA villager, ItemStack stack) {
+        var nourishment = com.aetherianartificer.townstead.hunger.diet.Diets.nourishment(villager, stack);
+        return nourishment != null && !nourishment.nativeValues();
     }
 
     private static boolean isConsumable(ItemStack stack) {
@@ -339,6 +346,20 @@ public final class VillagerConsumptionManager {
                                              TownsteadVillager.Needs needs,
                                              boolean attributes, boolean statuses,
                                              boolean teleport) {
+        var nourishment = com.aetherianartificer.townstead.hunger.diet.Diets.nourishment(recipient, stack);
+        if (nourishment != null && !nourishment.nativeValues()) {
+            int before = needs.hunger();
+            if (attributes) {
+                float foodScale = com.aetherianartificer.townstead.root.hook.PhenoHooks.foodMultiplier(recipient);
+                needs.applyFood(nourishment.nutrition(), nourishment.saturation(), foodScale);
+                needs.setLastAteTime(recipient.level().getGameTime());
+            }
+            recordSapientMeal(recipient, stack);
+            if (statuses && nourishment.food().effects() != null) {
+                nourishment.food().effects().run(new com.aetherianartificer.townstead.pheno.action.ActionContext(recipient));
+            }
+            return needs.hunger() != before;
+        }
         //? if >=1.21 {
         FoodProperties food = stack.get(DataComponents.FOOD);
         //?} else {
@@ -468,6 +489,10 @@ public final class VillagerConsumptionManager {
                                         ConsumptionPolicy policy) {
         boolean debug = Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI);
         ItemStack remainder = remainder(stack, policy);
+        if (remainder.isEmpty() && policy == null) {
+            var nourishment = com.aetherianartificer.townstead.hunger.diet.Diets.nourishment(villager, stack);
+            if (nourishment != null) remainder = com.aetherianartificer.townstead.hunger.diet.Diets.remainder(nourishment);
+        }
         if (remainder.isEmpty()) {
             if (debug) {
                 com.aetherianartificer.townstead.Townstead.LOGGER.info(

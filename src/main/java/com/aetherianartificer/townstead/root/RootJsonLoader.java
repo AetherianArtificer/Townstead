@@ -38,6 +38,7 @@ public final class RootJsonLoader extends SimpleJsonResourceReloadListener {
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
         Map<ResourceLocation, Root> parsed = new LinkedHashMap<>();
         outfitStaging = new LinkedHashMap<>();
+        stateStaging = new LinkedHashMap<>();
         loadLegacyOrigins(resourceManager, lang, parsed);
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
@@ -51,6 +52,8 @@ public final class RootJsonLoader extends SimpleJsonResourceReloadListener {
         RootRegistry.replaceAll(parsed);
         com.aetherianartificer.townstead.root.outfit.RootOutfits.setRoot(outfitStaging);
         outfitStaging = null;
+        RootStates.replace(RootStates.Kind.ROOT, stateStaging);
+        stateStaging = null;
         LOGGER.info("Loaded {} roots", parsed.size());
     }
 
@@ -79,6 +82,9 @@ public final class RootJsonLoader extends SimpleJsonResourceReloadListener {
         }
     }
 
+    // Allowed states parsed during one apply() pass, committed with the roots.
+    private static Map<ResourceLocation, Map<ResourceLocation, Boolean>> stateStaging;
+
     // Outfits parsed during one apply() pass, committed with the roots.
     private static Map<ResourceLocation, Map<String, com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit>> outfitStaging;
 
@@ -103,6 +109,7 @@ public final class RootJsonLoader extends SimpleJsonResourceReloadListener {
                     culturalSpawnBias,
                     kinFlesh, eatsSapients));
             if (outfitStaging != null) outfitStaging.put(file, com.aetherianartificer.townstead.root.outfit.RootOutfits.parse(obj));
+            if (stateStaging != null) stateStaging.put(file, RootStates.parse(obj));
         } catch (Exception ex) {
             LOGGER.warn("Failed to parse root {}: {}", file, ex.getMessage());
         }

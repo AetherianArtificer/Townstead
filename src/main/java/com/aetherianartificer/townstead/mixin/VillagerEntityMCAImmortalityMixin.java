@@ -38,7 +38,7 @@ public abstract class VillagerEntityMCAImmortalityMixin {
         if (com.aetherianartificer.townstead.root.LifeStageProgression.isDrivingAge()) return;
         if (TownsteadVillagers.get(self).life().immortal()
                 || com.aetherianartificer.townstead.root.trait.TraitEffects.isImmortal(self)
-                || com.aetherianartificer.townstead.root.LifeStageProgression.isAgeless(TownsteadVillagers.get(self).life())) {
+                || com.aetherianartificer.townstead.root.LifeStageProgression.isAgeless(self, TownsteadVillagers.get(self).life())) {
             ci.cancel();
         }
     }

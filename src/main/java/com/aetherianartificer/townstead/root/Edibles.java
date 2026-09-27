@@ -31,6 +31,21 @@ public final class Edibles {
             player.swing(hand);
             return true;
         }
-        return false;
+        return tryEatDietFood(player, stack, hand);
+    }
+
+    /** A diet food with authored values (a gem, a blood bottle) that vanilla would not let a player eat. */
+    private static boolean tryEatDietFood(Player player, ItemStack stack, InteractionHand hand) {
+        var nourishment = com.aetherianartificer.townstead.hunger.diet.Diets.nourishment(player, stack);
+        if (nourishment == null || nourishment.nativeValues()) return false;
+        player.getFoodData().eat(nourishment.nutrition(), nourishment.saturation());
+        if (nourishment.food().effects() != null) nourishment.food().effects().run(new ActionContext(player));
+        if (!player.getAbilities().instabuild) {
+            stack.shrink(1);
+            ItemStack left = com.aetherianartificer.townstead.hunger.diet.Diets.remainder(nourishment);
+            if (!left.isEmpty() && !player.getInventory().add(left)) player.drop(left, false);
+        }
+        player.swing(hand);
+        return true;
     }
 }

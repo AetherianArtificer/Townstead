@@ -311,6 +311,11 @@ public final class TownsteadVillager {
             /*int rawNutrition = food.getNutrition();
             float satMod = food.getSaturationModifier();
             *///?}
+            return applyFood(rawNutrition, satMod, nutritionMultiplier);
+        }
+
+        /** As above, for a food whose values come from a diet rather than the item. */
+        public int applyFood(int rawNutrition, float satMod, float nutritionMultiplier) {
             int nutrition = Math.max(0, Math.round(rawNutrition * nutritionMultiplier));
             int hungerRestored = (int)(nutrition * HungerData.FOOD_SCALE);
             hunger = Math.min(hunger + hungerRestored, HungerData.MAX_HUNGER);

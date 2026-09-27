@@ -15,6 +15,7 @@ class RigCameraWireTest {
         var rig = (RigDefinition) parse.invoke(null, "test:frog", JsonParser.parseString("""
           {"model":{"type":"geometry","file":"test:geo/frog.geo.json"},
           "camera":{"bone":"body","height_offset":8},
+          "hitbox":{"width":0.5,"height":0.75,"crouch_height":0.625,"swim_height":0.4,"eye_height":0.625,"scale_with_entity":false},
           "wearables":{"back":{"offset":[0,-3.5,4],"scale":0.5,"items":{"backpack":{"scale":0.8,"scale_axes":[1.05,0.3,1.9]}}}},
           "armor":{"type":"custom","inner":"test:geo/inner.geo.json","outer":"test:geo/outer.geo.json"}}
           """).getAsJsonObject());
@@ -24,6 +25,7 @@ class RigCameraWireTest {
             packet.write(buf); buf.writeInt(0x12345678);
             var result = RootCatalogSyncPayload.read(buf).rigs().get(0);
             assertEquals(8f, result.cameraHeightOffset());
+            assertEquals(new RigDefinition.Hitbox(.5f,.75f,.625f,.4f,.625f,false), result.hitbox());
             assertEquals("body", result.cameraBone());
             assertEquals(RigDefinition.ArmorType.CUSTOM, result.armorType());
             assertEquals("test:geo/outer.geo.json", result.armorOuter());

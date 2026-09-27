@@ -25,6 +25,11 @@ public final class VanillaAdvancementProvider implements QuestProvider {
     @Override public String displayName() { return "Advancements"; }
 
     @Override
+    public boolean usesLocalTracker() {
+        return true;
+    }
+
+    @Override
     public boolean isAvailable() {
         return Minecraft.getInstance().getConnection() != null;
     }

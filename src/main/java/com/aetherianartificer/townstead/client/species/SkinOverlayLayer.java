@@ -34,9 +34,16 @@ import java.util.Set;
  * MCA's {@code FaceLayer} on a shell dilated between the skin and face layers.
  */
 public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>> extends VillagerLayer<T, M> {
+    // A second instance sits after MCA's FaceLayer for overlays declared {@code "layer":"over_face"}.
+    private final boolean overFace;
 
     public SkinOverlayLayer(RenderLayerParent<T, M> renderer, M model) {
+        this(renderer, model, false);
+    }
+
+    public SkinOverlayLayer(RenderLayerParent<T, M> renderer, M model, boolean overFace) {
         super(renderer, model);
+        this.overFace = overFace;
     }
 
     @Override
@@ -50,10 +57,29 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
         int overlay = LivingEntityRenderer.getOverlayCoords(entity, 0);
         for (String geneId : orderedOverlayGenes(entity)) {
             GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
+            if (gene.skinOverlayOverFace() != overFace) continue;
             Material material = materialFor(entity, gene);
             if (material == null) continue;
+            if (gene.skinOverlayGlow()) {
+                if (visible) drawGlow(transform, provider, material.texture(), material.color());
+                continue;
+            }
             draw(transform, provider, light, overlay, material.texture(), material.color(), visible, glowing);
         }
+    }
+
+    /** Emissive, full-bright pass (glowing eyes), the same render type vanilla uses for spider eyes. */
+    private void drawGlow(PoseStack transform, MultiBufferSource provider, ResourceLocation texture, int color) {
+        com.mojang.blaze3d.vertex.VertexConsumer buffer = provider.getBuffer(RenderType.eyes(texture));
+        int fullBright = 0xF000F0;
+        //? if neoforge {
+        model.renderToBuffer(transform, buffer, fullBright, OverlayTexture.NO_OVERLAY, 0xFF000000 | (color & 0xFFFFFF));
+        //?} else {
+        /*float r = ((color >> 16) & 0xFF) / 255f;
+        float g = ((color >> 8) & 0xFF) / 255f;
+        float b = (color & 0xFF) / 255f;
+        model.renderToBuffer(transform, buffer, fullBright, OverlayTexture.NO_OVERLAY, r, g, b, 1f);
+        *///?}
     }
 
     // Drawn by hand (the shipped MCA jars have no renderModel helper); only the

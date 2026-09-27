@@ -1,0 +1,6 @@
+{
+  "schema": "townstead:diet/v1",
+  "foods": [
+    { "items": ["*"], "nutrition": "native" }
+  ]
+}

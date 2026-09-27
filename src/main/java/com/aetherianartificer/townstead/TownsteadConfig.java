@@ -42,7 +42,7 @@ public final class TownsteadConfig {
     /** Every system a world can switch off, in the order the setup screen lists them. */
     public static final List<String> SYSTEM_NAMES = List.of("careers", "work", "farming", "fishing", "shepherding",
             "hospitality", "clothing", "shifts", "hangouts", "reactions", "roots", "cultures", "naming",
-            "chronicles", "politics", "spirit", "calendar", "quests");
+            "chronicles", "politics", "spirit", "calendar", "quests", "stories");
     public static final Map<String, Supplier<Boolean>> SYSTEMS;
 
     //? if neoforge {

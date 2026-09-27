@@ -42,6 +42,32 @@ class GeneCatalogEntryTest {
     }
 
     @Test
+    void paletteSkinToneIsASkinToneAndKeepsEachVariantsBlend() {
+        GeneCatalogEntry tone = new GeneCatalogEntry(
+                "test:tone", "Tone", "", "appearance",
+                GeneDisplay.Kind.VARIANTS.ordinal(), 0f, 1f, "", 0f,
+                0, "", 1,
+                List.of(new GeneCatalogEntry.Variant("red", "Red", 1, "", 0xE11425,
+                                "", false, "", List.of(), List.of(), 0, 1f),
+                        new GeneCatalogEntry.Variant("blue", "Blue", 1, "", 0x1E7EEB,
+                                "", false, "", List.of(), List.of(), 3, 0.6f)),
+                "", "", "skin_tone", "", "", List.of(), List.of(), "");
+        assertTrue(tone.isSkinTone());
+        assertFalse(tone.isColor());
+        assertEquals(3, tone.variants().get(1).blend());
+        assertEquals(0.6f, tone.variants().get(1).strength());
+
+        GeneCatalogEntry eyeColor = new GeneCatalogEntry(
+                "test:eye_color", "Eye Color", "", "appearance",
+                GeneDisplay.Kind.VARIANTS.ordinal(), 0f, 1f, "", 0f,
+                0, "", 1,
+                List.of(new GeneCatalogEntry.Variant("amber", "Amber", 1, "", 0xAA7700,
+                        "", false, "", List.of(), List.of())),
+                "", "", "eye_color", "", "", List.of(), List.of(), "");
+        assertFalse(eyeColor.isSkinTone());
+    }
+
+    @Test
     void skinOverlayReadsPackedOrder() {
         GeneCatalogEntry entry = new GeneCatalogEntry(
                 "test:marks", "Marks", "", "appearance",

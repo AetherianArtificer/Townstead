@@ -83,7 +83,8 @@ public final class GeneExpression {
     }
 
     public static List<Allele> activeAlleles(LivingEntity entity) {
-        List<Allele> inherited = Heredity.expressedAlleles(ExpressedGenes.genotypeOf(entity));
+        List<Allele> inherited = AspectOverlay.apply(entity,
+                Heredity.expressedAlleles(ExpressedGenes.genotypeOf(entity)));
         if (evaluating.get()) return inherited;
         evaluating.set(true);
         try {

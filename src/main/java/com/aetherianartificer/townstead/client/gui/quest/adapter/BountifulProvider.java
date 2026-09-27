@@ -26,11 +26,17 @@ import java.util.Set;
  */
 public final class BountifulProvider implements QuestProvider {
     private static final String LEGACY_DATA_CLASS = "io.ejekta.bountiful.bounty.BountyData";
+    private static final String LEGACY_INFO_CLASS = "io.ejekta.bountiful.bounty.BountyInfo";
     private static final String STACK_CLASS = "io.ejekta.bountiful.components.BountyStack";
     private static final String BOUNTY_ITEM = "bountiful:bounty";
 
     @Override public String id() { return "bountiful"; }
     @Override public String displayName() { return "Bountiful"; }
+
+    @Override
+    public boolean usesLocalTracker() {
+        return true;
+    }
 
     @Override
     public boolean isAvailable() {
@@ -53,6 +59,7 @@ public final class BountifulProvider implements QuestProvider {
                 ? new ComponentReader() : new LegacyReader();
 
         List<QuestEntry> result = new ArrayList<>();
+        java.util.Set<String> ids = new java.util.HashSet<>();
         Inventory inventory = player.getInventory();
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);
@@ -69,7 +76,10 @@ public final class BountifulProvider implements QuestProvider {
                     && bounty.objectives.stream().allMatch(QuestObjective::done);
             String metadata = ready ? "Ready to cash in at a bounty board" : "Inventory slot " + (slot + 1);
             if (!bounty.timeLeft.isBlank()) metadata += " • " + bounty.timeLeft;
-            result.add(new QuestEntry(id(), displayName(), "inventory-" + slot,
+            // The id follows the contract, not the slot, so a tracked bounty stays tracked when moved.
+            String id = "bounty-" + bounty.fingerprint;
+            for (int copy = 2; !ids.add(id); copy++) id = "bounty-" + bounty.fingerprint + "-" + copy;
+            result.add(new QuestEntry(id(), displayName(), id,
                     stack.getHoverName().getString(), "", "Held contracts", BOUNTY_ITEM,
                     QuestState.ACTIVE, bounty.objectives, bounty.rewards, Set.of(), false, false, List.of(),
                     metadata));
@@ -77,7 +87,25 @@ public final class BountifulProvider implements QuestProvider {
         return result;
     }
 
-    private record Bounty(List<QuestObjective> objectives, List<QuestReward> rewards, String timeLeft) {}
+    private record Bounty(List<QuestObjective> objectives, List<QuestReward> rewards, String timeLeft,
+                          String fingerprint) {}
+
+    /**
+     * Bountiful gives a contract no id, so one is made from what never changes on it: when it was
+     * generated, and each objective and reward with its amount. Progress is left out.
+     */
+    private static String fingerprint(long timeStarted, List<?> objectives, List<?> rewards) {
+        StringBuilder text = new StringBuilder().append(timeStarted);
+        for (List<?> entries : List.of(objectives, rewards)) {
+            text.append('|');
+            for (Object entry : entries) {
+                text.append(ReflectiveAccess.text(ReflectiveAccess.callOrNull(entry, "getId"))).append('/')
+                        .append(ReflectiveAccess.text(ReflectiveAccess.callOrNull(entry, "getContent"))).append('/')
+                        .append(ReflectiveAccess.number(ReflectiveAccess.callOrNull(entry, "getAmount"))).append(';');
+            }
+        }
+        return Long.toHexString(text.toString().hashCode() & 0xFFFFFFFFL) + Long.toHexString(timeStarted);
+    }
 
     private interface Reader {
         Bounty read(ItemStack stack, LocalPlayer player) throws ReflectiveOperationException;
@@ -94,12 +122,17 @@ public final class BountifulProvider implements QuestProvider {
         private final Class<?> dataType;
         private final Object companion;
         private final Method stackReader;
+        private final Object infoCompanion;
+        private final Method infoReader;
 
         LegacyReader() throws ReflectiveOperationException {
             dataType = Class.forName(LEGACY_DATA_CLASS, false, getClass().getClassLoader());
             companion = ReflectiveAccess.field(dataType, "Companion");
             stackReader = stackReader(companion.getClass(), dataType);
             if (stackReader == null) throw new NoSuchMethodException("BountyData companion ItemStack reader");
+            Class<?> infoType = ReflectiveAccess.classOrNull(LEGACY_INFO_CLASS);
+            infoCompanion = infoType == null ? null : ReflectiveAccess.field(infoType, "Companion");
+            infoReader = infoCompanion == null ? null : stackReader(infoCompanion.getClass(), infoType);
         }
 
         @Override
@@ -129,7 +162,11 @@ public final class BountifulProvider implements QuestProvider {
                 if (label.isBlank()) label = ReflectiveAccess.text(ReflectiveAccess.callOrNull(entry, "getTranslation"));
                 rewards.add(new QuestReward(label, ""));
             }
-            return new Bounty(objectives, rewards, "");
+            Object info = infoReader == null ? null : infoReader.invoke(infoCompanion, stack);
+            long started = info == null ? 0L : ReflectiveAccess.number(ReflectiveAccess.callOrNull(info, "getTimeStarted"));
+            return new Bounty(objectives, rewards, "", fingerprint(started,
+                    ReflectiveAccess.list(ReflectiveAccess.call(data, "getObjectives")),
+                    ReflectiveAccess.list(ReflectiveAccess.call(data, "getRewards"))));
         }
 
         private static Method stackReader(Class<?> companionType, Class<?> dataType) {
@@ -185,7 +222,10 @@ public final class BountifulProvider implements QuestProvider {
             if (info != null && player.level() != null) {
                 timeLeft = ReflectiveAccess.text(ReflectiveAccess.callOrNull(info, "formattedTimeLeft", player.level()));
             }
-            return new Bounty(objectives, rewards, timeLeft);
+            long started = info == null ? 0L : ReflectiveAccess.number(ReflectiveAccess.callOrNull(info, "getTimeStarted"));
+            return new Bounty(objectives, rewards, timeLeft, fingerprint(started,
+                    ReflectiveAccess.list(ReflectiveAccess.call(bounty, "getObjs")),
+                    ReflectiveAccess.list(ReflectiveAccess.call(bounty, "getRews"))));
         }
 
         /** First line of Bountiful's own tooltip for this entry, falling back to its display name. */

@@ -1,0 +1,32 @@
+{
+  "schema": "townstead:diet/v1",
+  "mods": "vampirism",
+  "foods": [
+    {
+      "items": [
+        "minecraft:beef"
+      ],
+      "nutrition": 6,
+      "saturation": 0.6,
+      "effects": {
+        "type": "pheno:add_state",
+        "state": "townstead_state:vampire_blood",
+        "amount": 2
+      }
+    },
+    {
+      "items": [
+        "minecraft:mutton",
+        "minecraft:porkchop",
+        "minecraft:rabbit"
+      ],
+      "nutrition": 3,
+      "saturation": 0.4,
+      "effects": {
+        "type": "pheno:add_state",
+        "state": "townstead_state:vampire_blood",
+        "amount": 1
+      }
+    }
+  ]
+}

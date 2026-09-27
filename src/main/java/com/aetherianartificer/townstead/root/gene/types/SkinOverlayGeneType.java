@@ -38,10 +38,14 @@ public final class SkinOverlayGeneType implements GeneType {
     public static final String KEY = "townstead_roots:skin_overlay";
 
     public record Instance(String texture, String tint, int order, int tintBlend,
-                           float tintStrength) implements GeneInstance {
+                           float tintStrength, boolean overFace, boolean glow) implements GeneInstance {
+        public Instance(String texture, String tint, int order, int tintBlend, float tintStrength) {
+            this(texture, tint, order, tintBlend, tintStrength, false, false);
+        }
+
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() {
-            return GeneDisplay.skinOverlay(texture, tint, order, tintBlend, tintStrength);
+            return GeneDisplay.skinOverlay(texture, tint, order, tintBlend, tintStrength, overFace, glow);
         }
     }
 
@@ -62,7 +66,10 @@ public final class SkinOverlayGeneType implements GeneType {
         };
         float strength = Math.max(0f, Math.min(1f,
                 GsonHelper.getAsFloat(json, "tint_strength", 1f)));
+        String layer = GsonHelper.getAsString(json, "layer", "skin");
+        if (!layer.equals("skin") && !layer.equals("over_face")) return null;
         return new Instance(texture, GsonHelper.getAsString(json, "tint", ""),
-                GsonHelper.getAsInt(json, "order", 0), blend, strength);
+                GsonHelper.getAsInt(json, "order", 0), blend, strength,
+                layer.equals("over_face"), GsonHelper.getAsBoolean(json, "glow", false));
     }
 }

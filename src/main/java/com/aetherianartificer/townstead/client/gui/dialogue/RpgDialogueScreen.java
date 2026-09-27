@@ -53,6 +53,9 @@ public class RpgDialogueScreen extends Screen {
     private boolean initialized;
     private boolean debugEffects;
     private int debugEffectIndex;
+    /** The main menu's answers, kept so a finished story can hand the player back to them. */
+    private List<String> mainAnswers;
+    private boolean storyActive;
 
     private enum DialogueState {
         AWAITING_DIALOGUE,
@@ -60,6 +63,8 @@ public class RpgDialogueScreen extends Screen {
         CHOICES_VISIBLE,
         AWAITING_RESPONSE,
         AWAITING_LATE_CONTENT,
+        /** A story line is shown and another follows; the player moves on when ready. */
+        STORY_NEXT,
         ENDING,
         CLOSING
     }
@@ -98,6 +103,7 @@ public class RpgDialogueScreen extends Screen {
             /*NetworkHandler.sendToServer(new InteractionDialogueInitMessage(villagerUUID));
             *///?}
             sendDialogueState(true);
+            sendStory(com.aetherianartificer.townstead.story.net.StoryC2SPayload.OFFER, 0);
         }
     }
 
@@ -113,7 +119,9 @@ public class RpgDialogueScreen extends Screen {
         switch (state) {
             case TYPEWRITER_PLAYING -> {
                 if (dialogueBox.getTypewriter().isComplete()) {
-                    if (dialogAnswers != null && !dialogAnswers.isEmpty()) {
+                    if (storyActive && (dialogAnswers == null || dialogAnswers.isEmpty())) {
+                        state = DialogueState.STORY_NEXT;
+                    } else if (dialogAnswers != null && !dialogAnswers.isEmpty()) {
                         // Choices are ready — show them alongside the current text
                         state = DialogueState.CHOICES_VISIBLE;
                         choicePanel.setVisible(true);
@@ -218,8 +226,13 @@ public class RpgDialogueScreen extends Screen {
             dialogueBox.getTypewriter().skipToEnd();
             return true;
         }
-        if (state == DialogueState.ENDING && dialogueBox.getTypewriter().hasMorePages()) {
+        if ((state == DialogueState.ENDING || state == DialogueState.STORY_NEXT)
+                && dialogueBox.getTypewriter().hasMorePages()) {
             dialogueBox.getTypewriter().advancePage();
+            return true;
+        }
+        if (state == DialogueState.STORY_NEXT) {
+            requestNextStoryLine();
             return true;
         }
         if (state == DialogueState.CHOICES_VISIBLE && choicePanel.mouseClicked(mouseX, mouseY)) {
@@ -245,9 +258,16 @@ public class RpgDialogueScreen extends Screen {
                 return true;
             }
         }
-        if (state == DialogueState.ENDING && dialogueBox.getTypewriter().hasMorePages()) {
+        if ((state == DialogueState.ENDING || state == DialogueState.STORY_NEXT)
+                && dialogueBox.getTypewriter().hasMorePages()) {
             if (keyCode == GLFW.GLFW_KEY_SPACE || keyCode == GLFW.GLFW_KEY_ENTER) {
                 dialogueBox.getTypewriter().advancePage();
+                return true;
+            }
+        }
+        if (state == DialogueState.STORY_NEXT) {
+            if (keyCode == GLFW.GLFW_KEY_SPACE || keyCode == GLFW.GLFW_KEY_ENTER) {
+                requestNextStoryLine();
                 return true;
             }
         }
@@ -328,7 +348,8 @@ public class RpgDialogueScreen extends Screen {
         if (userInitiatedClose) return;
 
         Minecraft mc = Minecraft.getInstance();
-        if (state == DialogueState.TYPEWRITER_PLAYING || state == DialogueState.ENDING) {
+        if (state == DialogueState.TYPEWRITER_PLAYING || state == DialogueState.ENDING
+                || state == DialogueState.STORY_NEXT) {
             // Content is rolling; re-open so the player can finish reading.
             dialogAnswers = null;
             choicePanel.setVisible(false);
@@ -368,6 +389,7 @@ public class RpgDialogueScreen extends Screen {
     private void sendDialogueState(boolean open) {
         Entity entity = villager.asEntity();
         if (entity == null) return;
+        if (!open) sendStory(com.aetherianartificer.townstead.story.net.StoryC2SPayload.CLOSE, 0);
         var payload = new com.aetherianartificer.townstead.reaction.net.DialogueStateC2SPayload(
                 entity.getId(), open);
         //? if neoforge {
@@ -380,6 +402,7 @@ public class RpgDialogueScreen extends Screen {
     // --- Called by ClientHandlerImplMixin ---
 
     public void setDialogue(String questionId, List<String> answers) {
+        if (DialogueMenuOrganizer.isMainQuestion(questionId)) mainAnswers = answers;
         this.dialogQuestionId = questionId;
         this.dialogAnswers = answers;
         choicePanel.setChoices(questionId, answers, font);
@@ -514,6 +537,22 @@ public class RpgDialogueScreen extends Screen {
 
     private void selectChoice(String choice) {
         if (choice == null || dialogQuestionId == null) return;
+        if (ChoicePanel.STORY_ANSWER.equals(choice)) {
+            sendStory(com.aetherianartificer.townstead.story.net.StoryC2SPayload.TALK, 0);
+            awaitStory();
+            return;
+        }
+        if (choice.startsWith(ChoicePanel.STORY_CHOICE_PREFIX)) {
+            int index;
+            try {
+                index = Integer.parseInt(choice.substring(ChoicePanel.STORY_CHOICE_PREFIX.length()));
+            } catch (NumberFormatException e) {
+                return;
+            }
+            sendStory(com.aetherianartificer.townstead.story.net.StoryC2SPayload.CHOOSE, index);
+            awaitStory();
+            return;
+        }
         if (ChoicePanel.CAREERS_ANSWER.equals(choice)) {
             int counsellorId = villager.asEntity().getId();
             onClose();
@@ -536,5 +575,100 @@ public class RpgDialogueScreen extends Screen {
         dialogQuestionId = null;
         state = DialogueState.AWAITING_RESPONSE;
         awaitingResponseTimer = CONVERSATION_TIMEOUT_TICKS;
+    }
+
+    // --- Stories (called by StoryClient) ---
+
+    public int villagerEntityId() {
+        return villager.asEntity().getId();
+    }
+
+    public void onStory(com.aetherianartificer.townstead.story.net.StoryS2CPayload payload) {
+        switch (payload.kind()) {
+            case com.aetherianartificer.townstead.story.net.StoryS2CPayload.OFFER -> {
+                Component label = !payload.more() ? null : payload.text().isEmpty()
+                        ? Component.translatable("townstead.story.talk") : Component.literal(payload.text());
+                choicePanel.setStoryEntry(label);
+                if (DialogueMenuOrganizer.isMainQuestion(dialogQuestionId) && dialogAnswers != null
+                        && choicePanel.isMainHub()) {
+                    boolean visible = choicePanel.isVisible();
+                    choicePanel.setChoices(dialogQuestionId, dialogAnswers, font);
+                    choicePanel.layout(width, height, dialogueBox.getY());
+                    choicePanel.setVisible(visible);
+                }
+            }
+            case com.aetherianartificer.townstead.story.net.StoryS2CPayload.LINE -> showStoryLine(payload);
+            default -> finishStory();
+        }
+    }
+
+    private void showStoryLine(com.aetherianartificer.townstead.story.net.StoryS2CPayload payload) {
+        boolean last = !payload.more() && payload.choices().isEmpty();
+        storyActive = !last;
+        choicePanel.setVisible(false);
+        if (payload.choices().isEmpty()) {
+            dialogAnswers = null;
+            dialogQuestionId = null;
+        } else {
+            dialogQuestionId = ChoicePanel.STORY_QUESTION;
+            dialogAnswers = new java.util.ArrayList<>();
+            for (int i = 0; i < payload.choices().size(); i++) dialogAnswers.add(ChoicePanel.STORY_CHOICE_PREFIX + i);
+            choicePanel.setLiteralChoices(payload.choices(), font);
+            choicePanel.layout(width, height, dialogueBox.getY());
+        }
+        if (last) restoreMainMenu();
+        awaitingResponseTimer = 0;
+        if (payload.text().isEmpty()) {
+            state = dialogAnswers != null && !dialogAnswers.isEmpty() ? DialogueState.CHOICES_VISIBLE : DialogueState.ENDING;
+            choicePanel.setVisible(state == DialogueState.CHOICES_VISIBLE);
+            return;
+        }
+        Component text = Component.literal(payload.text());
+        dialogueBox.setNameVisible(true);
+        dialogueBox.setText(text, font);
+        state = DialogueState.TYPEWRITER_PLAYING;
+        speakDisplayedText(text);
+        narrateText(text);
+    }
+
+    private void finishStory() {
+        storyActive = false;
+        restoreMainMenu();
+        if (dialogueBox.getTypewriter().isComplete() && dialogAnswers != null && !dialogAnswers.isEmpty()) {
+            state = DialogueState.CHOICES_VISIBLE;
+            choicePanel.setVisible(true);
+        } else if (dialogueBox.getTypewriter().isComplete()) {
+            state = DialogueState.ENDING;
+        }
+    }
+
+    /** Puts the villager's main menu back under the story's last line. */
+    private void restoreMainMenu() {
+        if (mainAnswers == null) return;
+        dialogQuestionId = "main";
+        dialogAnswers = mainAnswers;
+        choicePanel.setChoices("main", mainAnswers, font);
+        choicePanel.layout(width, height, dialogueBox.getY());
+        choicePanel.setVisible(false);
+    }
+
+    private void requestNextStoryLine() {
+        sendStory(com.aetherianartificer.townstead.story.net.StoryC2SPayload.NEXT, 0);
+        awaitStory();
+    }
+
+    private void awaitStory() {
+        choicePanel.setVisible(false);
+        dialogAnswers = null;
+        dialogQuestionId = null;
+        state = DialogueState.AWAITING_RESPONSE;
+        awaitingResponseTimer = CONVERSATION_TIMEOUT_TICKS;
+    }
+
+    private void sendStory(byte action, int index) {
+        Entity entity = villager.asEntity();
+        if (entity == null) return;
+        com.aetherianartificer.townstead.client.story.StoryClient.send(
+                new com.aetherianartificer.townstead.story.net.StoryC2SPayload(entity.getId(), action, index));
     }
 }
