@@ -19,12 +19,14 @@ import java.util.List;
 //? if neoforge {
 public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<AttachmentPointDef> slots,
                                            java.util.Map<String, String> namedTextures,
-                                           java.util.Map<String, String> namedGeo)
+                                           java.util.Map<String, String> namedGeo,
+                                           java.util.Map<String, String> namedAnimations)
         implements CustomPacketPayload {
 //?} else {
 /*public record AttachmentManifestS2CPayload(java.util.List<AttachmentDef> defs, java.util.List<AttachmentPointDef> slots,
                                            java.util.Map<String, String> namedTextures,
-                                           java.util.Map<String, String> namedGeo) {
+                                           java.util.Map<String, String> namedGeo,
+                                           java.util.Map<String, String> namedAnimations) {
 *///?}
 
     //? if neoforge {
@@ -154,6 +156,11 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
         }
         buf.writeVarInt(namedGeo.size());
         for (java.util.Map.Entry<String, String> e : namedGeo.entrySet()) {
+            buf.writeUtf(e.getKey());
+            buf.writeUtf(e.getValue());
+        }
+        buf.writeVarInt(namedAnimations.size());
+        for (java.util.Map.Entry<String, String> e : namedAnimations.entrySet()) {
             buf.writeUtf(e.getKey());
             buf.writeUtf(e.getValue());
         }
@@ -300,7 +307,13 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
             String key = buf.readUtf();
             namedGeo.put(key, buf.readUtf());
         }
-        return new AttachmentManifestS2CPayload(defs, slots, namedTextures, namedGeo);
+        int animCount = buf.readVarInt();
+        java.util.Map<String, String> namedAnimations = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < animCount; i++) {
+            String key = buf.readUtf();
+            namedAnimations.put(key, buf.readUtf());
+        }
+        return new AttachmentManifestS2CPayload(defs, slots, namedTextures, namedGeo, namedAnimations);
     }
 
     private static void writeVec(FriendlyByteBuf buf, float[] v) {

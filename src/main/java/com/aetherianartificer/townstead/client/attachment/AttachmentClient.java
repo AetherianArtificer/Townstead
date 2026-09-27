@@ -47,6 +47,10 @@ public final class AttachmentClient {
     // Named datapack geometry: logical id ("ns:geo/...") -> SHA-1, so a custom-geometry rig model resolves
     // to a synced baked ModelPart (twin of NAMED).
     private static final Map<String, String> NAMED_GEO = new ConcurrentHashMap<>();
+    // Named datapack animations: logical id ("ns:animations/...") -> SHA-1, for a rig's clips.
+    private static final Map<String, String> NAMED_ANIM = new ConcurrentHashMap<>();
+    // The parsed JSON of each geo blob, kept so a rig can graft bones from several geometry files.
+    private static final Map<String, com.google.gson.JsonObject> GEO_JSON = new ConcurrentHashMap<>();
 
     private AttachmentClient() {}
 
@@ -64,11 +68,13 @@ public final class AttachmentClient {
     }
 
     public static void onManifest(List<AttachmentDef> defs, List<AttachmentPointDef> slots,
-                                  Map<String, String> namedTextures, Map<String, String> namedGeo) {
+                                  Map<String, String> namedTextures, Map<String, String> namedGeo,
+                                  Map<String, String> namedAnimations) {
         DEFS.clear();
         SLOTS.clear();
         NAMED.clear();
         NAMED_GEO.clear();
+        NAMED_ANIM.clear();
         AttachmentPoses.onManifest();
         AttachmentPhysics.onManifest();
         AttachmentAnimations.onManifest();
@@ -76,6 +82,8 @@ public final class AttachmentClient {
         for (AttachmentPointDef slot : slots) SLOTS.put(slot.id(), slot);
         NAMED.putAll(namedTextures);
         NAMED_GEO.putAll(namedGeo);
+        NAMED_ANIM.putAll(namedAnimations);
+        com.aetherianartificer.townstead.client.species.RigAssets.clear();
 
         Map<String, Integer> needed = new LinkedHashMap<>();
         for (AttachmentDef def : defs) {
@@ -99,6 +107,9 @@ public final class AttachmentClient {
         }
         for (String sha1 : namedGeo.values()) {
             needed.putIfAbsent(sha1, AttachmentServerData.KIND_GEO);
+        }
+        for (String sha1 : namedAnimations.values()) {
+            needed.putIfAbsent(sha1, AttachmentServerData.KIND_ANIMATION);
         }
 
         List<String> request = new ArrayList<>();
@@ -140,6 +151,7 @@ public final class AttachmentClient {
                 // shift: Blockbench entity/avatar projects put the ground at y=0, Java at y=24.
                 ModelPart part = BedrockGeometryLoader.parse(json, true);
                 if (part != null) GEO.put(sha1, part);
+                GEO_JSON.put(sha1, json);
                 var geo = com.aetherianartificer.townstead.client.attachment.geo.AttachmentGeoLoader.parse(json);
                 if (geo != null) ATTACHMENT_GEO.put(sha1, geo);
             } else if (kind == AttachmentServerData.KIND_ANIMATION) {
@@ -395,11 +407,35 @@ public final class AttachmentClient {
         return sha1 == null ? null : GEO.get(sha1);
     }
 
+    /** Whether the server shipped a datapack geometry under this logical id (it may not have arrived yet). */
+    public static boolean hasNamedGeo(String id) {
+        return NAMED_GEO.containsKey(id);
+    }
+
+    /** The parsed JSON of a named datapack geometry, or null if it isn't one or hasn't materialized yet. */
+    public static com.google.gson.JsonObject namedGeoJson(String id) {
+        String sha1 = NAMED_GEO.get(id);
+        return sha1 == null ? null : GEO_JSON.get(sha1);
+    }
+
+    /** Whether the server shipped a datapack animation file under this logical id. */
+    public static boolean hasNamedAnimation(String id) {
+        return NAMED_ANIM.containsKey(id);
+    }
+
+    /** Every clip of a named datapack animation file, or null if it isn't one or hasn't materialized yet. */
+    public static Map<String, com.aetherianartificer.townstead.root.attachment.AttachmentAnimation.Clip>
+            namedAnimation(String id) {
+        String sha1 = NAMED_ANIM.get(id);
+        return sha1 == null ? null : ANIMATIONS.get(sha1);
+    }
+
     public static void clear() {
         DEFS.clear();
         SLOTS.clear();
         NAMED.clear();
         NAMED_GEO.clear();
+        NAMED_ANIM.clear();
         BUFFERS.clear();
         // Baked geometry and registered textures are kept: they're content-addressed
         // and reused if the same blobs appear again next session.

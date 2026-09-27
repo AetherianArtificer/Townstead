@@ -30,16 +30,25 @@ import java.util.function.ToDoubleFunction;
  *   "types":  [ { "select": { "material": "wool", "layer": "outerwear" }, "rate": 4,
  *                 "spirit": ["pastoral"] } ],
  *   "sets":   [ "townstead_classic:highhold_dress" ],
- *   "palette": [ "#5A3E2B", "#C9B37E" ]
+ *   "palette": [ "#5A3E2B", "#C9B37E" ],
+ *   "livery": "example_pack:lacquered_plate"
  * }
  * }</pre>
+ *
+ * <p>{@code livery} names the {@code livery_style} its people wear over their gear, the default for
+ * any faction whose settlement is mostly of this culture.</p>
  */
 public record CultureClothing(List<SkinBias> skins,
                               List<TypeBias> types,
                               List<ResourceLocation> sets,
-                              List<Integer> palette) {
+                              List<Integer> palette,
+                              @Nullable ResourceLocation livery) {
 
-    public static final CultureClothing NONE = new CultureClothing(List.of(), List.of(), List.of(), List.of());
+    public static final CultureClothing NONE = new CultureClothing(List.of(), List.of(), List.of(), List.of(), null);
+
+    public CultureClothing(List<SkinBias> skins, List<TypeBias> types, List<ResourceLocation> sets, List<Integer> palette) {
+        this(skins, types, sets, palette, null);
+    }
 
     public CultureClothing {
         skins = skins == null ? List.of() : List.copyOf(skins);
@@ -49,7 +58,7 @@ public record CultureClothing(List<SkinBias> skins,
     }
 
     public boolean isEmpty() {
-        return skins.isEmpty() && types.isEmpty() && sets.isEmpty() && palette.isEmpty();
+        return skins.isEmpty() && types.isEmpty() && sets.isEmpty() && palette.isEmpty() && livery == null;
     }
 
     /** A weighted claim on skins matching a pattern; a trailing {@code *} or {@code /} is a prefix. */
@@ -129,7 +138,8 @@ public record CultureClothing(List<SkinBias> skins,
             if (colour != null) palette.add(colour);
         }
 
-        CultureClothing parsed = new CultureClothing(skins, types, sets, palette);
+        ResourceLocation livery = json.has("livery") ? DataPackLang.parseId(GsonHelper.getAsString(json, "livery", "")) : null;
+        CultureClothing parsed = new CultureClothing(skins, types, sets, palette, livery);
         return parsed.isEmpty() ? NONE : parsed;
     }
 

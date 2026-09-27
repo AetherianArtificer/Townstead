@@ -76,7 +76,7 @@ public class WornItemLayer<T extends LivingEntity, M extends HumanoidModel<T>> e
                 renderWearable(wearable, stack, pose, buffers, light, entity);
             } else if (seatOrphans && !CuriosClientCompat.hasRenderer(stack) && !GraftedWearableLayers.claims(stack)) {
                 CurioItemSeat seat = CurioItemSeat.forSlot(slotId);
-                if (seat != null) renderSeatedItem(seat, stack, pose, buffers, light, entity);
+                if (seat != null) renderSeatedItem(slotId, seat, stack, pose, buffers, light, entity);
             }
         });
 
@@ -152,8 +152,9 @@ public class WornItemLayer<T extends LivingEntity, M extends HumanoidModel<T>> e
         if (rotation[2] != 0f) pose.mulPose(Axis.ZP.rotationDegrees(rotation[2]));
         if (rotation[1] != 0f) pose.mulPose(Axis.YP.rotationDegrees(rotation[1]));
         if (rotation[0] != 0f) pose.mulPose(Axis.XP.rotationDegrees(rotation[0]));
-        float scale = wearable.wornScale();
-        if (scale != 1f) pose.scale(scale, scale, scale);
+        float scale = wearable.wornScale() * (delta == null ? 1F : delta.scale());
+        if (delta != null) pose.scale(scale*delta.scaleAxes()[0], scale*delta.scaleAxes()[1], scale*delta.scaleAxes()[2]);
+        else if (scale != 1f) pose.scale(scale, scale, scale);
 
         VertexConsumer buffer = buffers.getBuffer(RenderType.entityCutoutNoCull(wearable.wornTexture()));
         renderPart(geometry, pose, buffer, light, wearable.wornColor(stack));
@@ -169,11 +170,11 @@ public class WornItemLayer<T extends LivingEntity, M extends HumanoidModel<T>> e
      * such mods' own player layers draw it. An ordinary item goes through the fixed item transform and
      * the seat's scale, which reads as the item pinned to the body.</p>
      */
-    private void renderSeatedItem(CurioItemSeat seat, ItemStack stack, PoseStack pose, MultiBufferSource buffers,
+    private void renderSeatedItem(String slotId, CurioItemSeat seat, ItemStack stack, PoseStack pose, MultiBufferSource buffers,
                                   int light, T entity) {
         ModelPart bone = boneFor(seat.channel());
         if (bone == null) return;
-        RigDefinition.Adjust delta = rigDelta(entity, seat.channel(), itemId(stack));
+        RigDefinition.Adjust delta = rigDelta(entity, seat.channel(), itemId(stack), "slot:" + slotId);
         float[] rotation = delta != null ? delta.rotation() : seat.rotation();
         var itemRenderer = Minecraft.getInstance().getItemRenderer();
         boolean ownRenderer = itemRenderer.getModel(stack, entity.level(), entity, 0).isCustomRenderer();
@@ -187,6 +188,7 @@ public class WornItemLayer<T extends LivingEntity, M extends HumanoidModel<T>> e
         if (rotation[2] != 0f) pose.mulPose(Axis.ZP.rotationDegrees(rotation[2]));
         if (rotation[1] != 0f) pose.mulPose(Axis.YP.rotationDegrees(rotation[1]));
         if (rotation[0] != 0f) pose.mulPose(Axis.XP.rotationDegrees(rotation[0]));
+        if (delta != null) pose.scale(delta.scale()*delta.scaleAxes()[0], delta.scale()*delta.scaleAxes()[1], delta.scale()*delta.scaleAxes()[2]);
         if (ownRenderer) {
             // Block space (Y up, Z forward) into entity space (Y down, Z back), at worn size.
             pose.mulPose(Axis.XP.rotationDegrees(180f));
@@ -214,6 +216,10 @@ public class WornItemLayer<T extends LivingEntity, M extends HumanoidModel<T>> e
      * caller falls back to the item's own seat.
      */
     private static RigDefinition.Adjust rigDelta(LivingEntity entity, String channel, String itemId) {
+        return rigDelta(entity, channel, itemId, "");
+    }
+
+    private static RigDefinition.Adjust rigDelta(LivingEntity entity, String channel, String itemId, String slotKey) {
         String rigBase = RigModels.rigBaseFor(entity);
         if (!RigModels.isGeneric(rigBase)) return null;
         RigDefinition def = RigModels.definition(rigBase);
@@ -221,6 +227,7 @@ public class WornItemLayer<T extends LivingEntity, M extends HumanoidModel<T>> e
         RigDefinition.WornAnchor anchor = channel.equals("body") ? def.back() : def.head();
         if (anchor == null) return RigDefinition.Adjust.ZERO;
         RigDefinition.Adjust delta = anchor.items().get(itemId);
+        if (delta == null) delta = anchor.items().get(slotKey);
         return delta != null ? delta : RigDefinition.Adjust.ZERO;
     }
 

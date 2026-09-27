@@ -56,7 +56,15 @@ public abstract class ReliableBackpackLayerMixin
     private void townstead$anchorBackpack(PoseStack pose, MultiBufferSource buffers, int light, LivingEntity entity,
                                           float limbSwing, float limbSwingAmount, float partialTick,
                                           float ageInTicks, float netHeadYaw, float headPitch, CallbackInfo ci) {
-        RigWearables.applyItem(entity, "backpack");
+        RigWearables.applyItem(entity, "reliable_backpacks:backpack");
+    }
+
+    @Inject(method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/world/entity/LivingEntity;FFFFFF)V",
+            at = @At("RETURN"), remap = false, require = 0)
+    private void townstead$anchorBackpackRestore(PoseStack pose, MultiBufferSource buffers, int light, LivingEntity entity,
+                                          float limbSwing, float limbSwingAmount, float partialTick,
+                                          float ageInTicks, float netHeadYaw, float headPitch, CallbackInfo ci) {
+        RigWearables.applyItem(entity, "");
     }
 
     @Redirect(method = "renderBaseLayer(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/world/entity/LivingEntity;FLnet/minecraft/world/item/ItemStack;Z)V",

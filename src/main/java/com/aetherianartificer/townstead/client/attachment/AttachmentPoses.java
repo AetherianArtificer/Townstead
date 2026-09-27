@@ -143,7 +143,7 @@ public final class AttachmentPoses {
     }
 
     /** Client resolution of a canonical pose-state name (shared with keyframe animation triggers). */
-    static boolean stateActive(LivingEntity entity, String state) {
+    public static boolean stateActive(LivingEntity entity, String state) {
         return switch (state) {
             case "sleeping" -> entity.isSleeping();
             case "sitting" -> entity.isPassenger();
@@ -151,6 +151,7 @@ public final class AttachmentPoses {
             case "sneaking" -> entity.isCrouching();
             case "swimming" -> entity.isSwimming();
             case "gliding" -> entity.isFallFlying();
+            case "flying" -> entity instanceof net.minecraft.world.entity.player.Player player && player.getAbilities().flying;
             case "moving" -> entity.walkAnimation.speed() > 0.1f;
             case "hurt" -> entity.hurtTime > 0;
             case "attacking" -> entity.swinging || (entity instanceof Mob mob && mob.isAggressive());

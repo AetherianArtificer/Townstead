@@ -35,6 +35,7 @@ public abstract class PlayerEntityExtendedModelAnimationMixin<T extends LivingEn
             CallbackInfo ci
     ) {
         HumanoidModel<?> model = (HumanoidModel<?>) (Object) this;
+        com.aetherianartificer.townstead.client.species.RigWearables.restoreHostScales(model);
         // The MCA/EMF model variant can differ from the one PlayerRenderer primed.
         // Set this before vanilla setupAnim so the body AND arms receive the crouch pose.
         model.crouching = player.isCrouching();
@@ -85,6 +86,7 @@ public abstract class PlayerEntityExtendedModelAnimationMixin<T extends LivingEn
             com.aetherianartificer.townstead.root.rig.RigDefinition def =
                     com.aetherianartificer.townstead.client.species.RigModels.definition(rigBase);
             if (def != null) {
+                com.aetherianartificer.townstead.client.species.RigWearables.prepare(player, def, limbAngle, limbDistance, animationProgress, headYaw, headPitch);
                 com.aetherianartificer.townstead.client.species.RigWearables.anchor(
                         (net.minecraft.client.model.HumanoidModel<?>) (Object) this, def, headYaw, headPitch);
             }

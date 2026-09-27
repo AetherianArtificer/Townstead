@@ -526,6 +526,7 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> {
             com.aetherianartificer.townstead.temperature.RoomHeat.tick(e.getServer());
             com.aetherianartificer.townstead.politics.charter.CharterMemberships.tick(e.getServer());
+            com.aetherianartificer.townstead.livery.LiverySync.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
             townstead$profile("server.village_startup_seed", () ->
@@ -709,6 +710,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.root.ability.AbilityToggles.syncTo(sp);
                 com.aetherianartificer.townstead.root.ability.ActiveAbilities.syncView(sp);
                 com.aetherianartificer.townstead.seal.PersonalSeals.sync(sp);
+                com.aetherianartificer.townstead.livery.LiverySync.onLogin(sp);
                 townstead$sendShiftTemplateSync(sp);
                 townstead$sendWeekPlanSync(sp);
                 PacketDistributor.sendToPlayer(sp, townstead$calendarSync(sp));
@@ -1047,6 +1049,7 @@ public class Townstead {
             if (e.phase == net.minecraftforge.event.TickEvent.Phase.END) {
                 com.aetherianartificer.townstead.temperature.RoomHeat.tick(e.getServer());
             com.aetherianartificer.townstead.politics.charter.CharterMemberships.tick(e.getServer());
+            com.aetherianartificer.townstead.livery.LiverySync.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.tick(e.getServer());
                 com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
                 townstead$profile("server.village_startup_seed", () ->
@@ -1226,6 +1229,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.root.ability.AbilityToggles.syncTo(sp);
                 com.aetherianartificer.townstead.root.ability.ActiveAbilities.syncView(sp);
                 com.aetherianartificer.townstead.seal.PersonalSeals.sync(sp);
+                com.aetherianartificer.townstead.livery.LiverySync.onLogin(sp);
                 TownsteadNetwork.sendShiftTemplateSync(sp);
                 TownsteadNetwork.sendWeekPlanSync(sp);
                 TownsteadNetwork.sendToPlayer(sp, townstead$calendarSync(sp));
@@ -2561,6 +2565,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.compat.clothing.LsoItemDataSource.Loader());
         event.addListener(new com.aetherianartificer.townstead.clothing.policy.WardrobePolicies.Loader());
         event.addListener(new com.aetherianartificer.townstead.culture.CultureJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.livery.LiveryStyles.Loader());
         event.addListener(new com.aetherianartificer.townstead.compat.mcacapitals.CapitalsSurnameRegisters());
         event.addListener(new com.aetherianartificer.townstead.root.HeritageJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.root.chronotype.ChronotypeCatalogLoader());
@@ -2931,6 +2936,7 @@ public class Townstead {
                                             rm -> {
                                                 com.aetherianartificer.townstead.client.animation.McaAnimationBridge.onResourcesReloaded();
                                                 com.aetherianartificer.townstead.client.input.KeybindDetails.reload(rm);
+                                                com.aetherianartificer.townstead.client.species.RigAssets.clear();
                                             })
             );
         } catch (Exception ignored) {
@@ -2948,6 +2954,7 @@ public class Townstead {
                                             rm -> {
                                                 com.aetherianartificer.townstead.client.animation.McaAnimationBridge.onResourcesReloaded();
                                                 com.aetherianartificer.townstead.client.input.KeybindDetails.reload(rm);
+                                                com.aetherianartificer.townstead.client.species.RigAssets.clear();
                                             })
             );
         } catch (Exception ignored) {
@@ -2983,7 +2990,7 @@ public class Townstead {
 
     //? if neoforge {
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar(MOD_ID).versioned("8");
+        var registrar = event.registrar(MOD_ID).versioned("11");
         boolean thirstAvailable = ThirstBridgeResolver.anyThirstModLoaded();
         registrar.playToClient(
                 com.aetherianartificer.townstead.switchboard.SwitchboardOpenS2CPayload.TYPE,
@@ -3146,6 +3153,12 @@ public class Townstead {
                         com.aetherianartificer.townstead.seal.PersonalSeals.choose(sp, payload.device(), payload.dye());
                     }
                 })
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.livery.LiveryS2CPayload.TYPE,
+                com.aetherianartificer.townstead.livery.LiveryS2CPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.client.livery.LiveryClientStore.accept(payload))
         );
         registrar.playToClient(
                 com.aetherianartificer.townstead.seal.SealS2CPayload.TYPE,
@@ -3856,7 +3869,8 @@ public class Townstead {
     ) {
         context.enqueueWork(() ->
                 com.aetherianartificer.townstead.client.attachment.AttachmentClient.onManifest(
-                        payload.defs(), payload.slots(), payload.namedTextures(), payload.namedGeo()));
+                        payload.defs(), payload.slots(), payload.namedTextures(), payload.namedGeo(),
+                        payload.namedAnimations()));
     }
 
     private void handleAttachmentChunk(
@@ -4927,6 +4941,7 @@ public class Townstead {
 
     private void onStartTracking(PlayerEvent.StartTracking event) {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
+        com.aetherianartificer.townstead.livery.LiverySync.onStartTracking(sp, event.getTarget());
 
         // Tracked player: send their origin keyed by network id so the observer's
         // skin-tint layer can paint their genetics model. Players don't receive the
@@ -5436,7 +5451,7 @@ public class Townstead {
             com.aetherianartificer.townstead.root.RootCatalogSyncPayload catalog =
                     new com.aetherianartificer.townstead.root.RootCatalogSyncPayload(
                             originSnap.origins(), originSnap.genes(), originSnap.traits(), originSnap.rigs(),
-                            originSnap.entityGroups());
+                            originSnap.entityGroups(), originSnap.looks());
             String selfRootId = com.aetherianartificer.townstead.root.PlayerRoot.getRootId(sp);
             com.aetherianartificer.townstead.root.RootSyncS2CPayload self =
                     new com.aetherianartificer.townstead.root.RootSyncS2CPayload(

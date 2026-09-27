@@ -86,6 +86,9 @@ public final class WardrobeVillagerTicker {
      */
     static void applyBase(VillagerEntityMCA villager, State state, WardrobeResolver.Plan plan, long day) {
         if (villager.isClothingLocked()) return;
+        // A rig villager wearing a skin painted for another body (MCA's spawn or profession pick) gets a
+        // fitted work skin first.
+        com.aetherianartificer.townstead.clothing.policy.RigSkinPicker.ensureFitted(villager);
         String current = villager.getClothes();
         boolean onShift = ShiftStateConditionType.stateOf(villager) == ShiftStateConditionType.State.ON_SHIFT;
         WardrobePolicy.LayerRule rule = plan.rule(ClothingLayer.BASE);

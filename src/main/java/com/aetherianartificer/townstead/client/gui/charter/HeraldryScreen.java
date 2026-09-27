@@ -9,7 +9,12 @@ import com.aetherianartificer.townstead.politics.heraldry.EmblemRecipe;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import com.aetherianartificer.townstead.livery.LiveryView;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.Items;
+import org.jetbrains.annotations.Nullable;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
@@ -22,7 +27,11 @@ import static com.aetherianartificer.townstead.client.gui.common.BookRenderer.*;
  * changes when the bell proclaims it. A proclaimed emblem can be copied onto a banner or shield.
  */
 public final class HeraldryScreen extends BookScreen {
-    private static final int PREVIEW = 48, PREVIEW_GAP = 32;
+    private static final int PREVIEW = 48, PREVIEW_GAP = 16;
+    /** The livery figure stands taller than the banner and shield beside it; they share its baseline. */
+    private static final int STAND_H = 64, STAND_SCALE = 28;
+    /** A network id no server entity will have, for the preview stand. */
+    private static final int PREVIEW_STAND = Integer.MIN_VALUE + 0x7057;
     private static final int FIELD = 0, DIVISION = 1, DIVISION_COLOR = 2, SYMBOL = 3, SYMBOL_COLOR = 4;
     private static final String[] KEYS = {"field", "division", "division_color", "symbol", "symbol_color"};
 
@@ -37,6 +46,10 @@ public final class HeraldryScreen extends BookScreen {
     private int itemSlot = -1;
     private String itemKey = "";
     private final List<PageZone> valueZones = new ArrayList<>();
+    private @Nullable ArmorStand stand;
+    // The livery being drafted: an empty style is the default, what the body inherits.
+    private String liveryStyle = "";
+    private int liveryPrimary, liverySecondary;
 
     public HeraldryScreen(Screen parent, CharterSnapshotS2CPayload snapshot) {
         super(tr("title"));
@@ -61,9 +74,21 @@ public final class HeraldryScreen extends BookScreen {
         baseRevision = target().revision();
         conflict = false;
         status = "";
+        var livery = target().livery();
+        liveryStyle = livery.style();
+        liveryPrimary = livery.primary();
+        liverySecondary = livery.secondary();
     }
 
     private boolean dirty() { return !draft.encode().equals(target().recipe()); }
+
+    private boolean liveryDirty() {
+        var livery = target().livery();
+        if (!liveryStyle.equals(livery.style())) return true;
+        return !liveryStyle.isEmpty() && (liveryPrimary != livery.primary() || liverySecondary != livery.secondary());
+    }
+
+    private boolean anyDirty() { return dirty() || liveryDirty(); }
 
     private boolean editable() { return target().editable() && !pending; }
 
@@ -113,7 +138,7 @@ public final class HeraldryScreen extends BookScreen {
             resetDraft();
             leaveArmed = stampArmed = false;
             rebuildWidgets();
-        }, !dirty() && !pending);
+        }, !anyDirty() && !pending);
         composeDesign();
         composePreview();
         composeBar();
@@ -134,34 +159,144 @@ public final class HeraldryScreen extends BookScreen {
             y += ROW;
         }
         y += SECTION;
+        composeLivery(x, y, w);
+    }
+
+    /** The item the emblem can be copied onto, on the right page under the previews. */
+    private int composeCopy(int x, int y, int w) {
         y = heading(tr("apply_heading"), x, y, w);
         var slots = itemSlots();
         if (!slots.contains(itemSlot)) itemSlot = slots.isEmpty() ? -1 : slots.get(0);
         itemKey = itemSlot < 0 ? "" : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack(itemSlot).getItem()).toString();
-        if (itemSlot < 0) {
-            plain(tr("no_item"), x, y, w, FADED);
-            return;
-        }
-        row(tr("item"), stack(itemSlot).getHoverName(), x, y, w, INK, slots.size() > 1 && !pending ? this::openItemMenu : null);
+        if (itemSlot < 0) return plain(tr("no_item"), x, y, w, FADED);
+        return row(tr("item"), stack(itemSlot).getHoverName(), x, y, w, INK, slots.size() > 1 && !pending ? this::openItemMenu : null);
     }
 
-    /** The right page: the design as a banner and as a shield, and what stands in its way. */
+    /**
+     * The livery: which style this body's people wear over their gear, and its two colours. Left at
+     * its default, the body wears what it inherits, named so it is clear what that is.
+     */
+    private int composeLivery(int x, int y, int w) {
+        y = heading(tr("livery_heading"), x, y, w);
+        var styles = styles();
+        if (styles.isEmpty()) return plain(tr("livery_none"), x, y, w, FADED);
+        Component style = liveryStyle.isEmpty() ? tr("livery_inherited", target().livery().inherited().component())
+                : styles.stream().filter(c -> c.id().equals(liveryStyle)).findFirst()
+                        .map(c -> c.name().component()).orElse(Component.literal(liveryStyle));
+        y = row(tr("livery_style"), style, x, y, w, INK, editable() ? this::openStyleMenu : null);
+        if (liveryStyle.isEmpty()) return y;
+        y = row(tr("livery_primary"), colourName(liveryPrimary), x, y, w, INK, editable() ? a -> openColourMenu(true, a) : null);
+        return row(tr("livery_secondary"), colourName(liverySecondary), x, y, w, INK, editable() ? a -> openColourMenu(false, a) : null);
+    }
+
+    private void openStyleMenu(Controls.Rect anchor) {
+        List<DropMenu.Entry> entries = new ArrayList<>();
+        entries.add(new DropMenu.Entry(tr("livery_inherited", target().livery().inherited().component()),
+                () -> { menu = null; liveryStyle = ""; rebuildWidgets(); }, false, liveryStyle.isEmpty(), 0));
+        for (var choice : snapshot.book().liveryStyles()) {
+            entries.add(new DropMenu.Entry(choice.name().component(), () -> {
+                menu = null;
+                // A first choice takes the emblem's own tinctures, so livery and arms agree.
+                if (liveryStyle.isEmpty()) {
+                    liveryPrimary = dyeRgb(draft.field());
+                    liverySecondary = dyeRgb(draft.symbolColor());
+                }
+                liveryStyle = choice.id();
+                rebuildWidgets();
+            }, false, choice.id().equals(liveryStyle), 0));
+        }
+        menu = menuBelow(tr("livery_style"), entries, anchor);
+    }
+
+    private void openColourMenu(boolean primary, Controls.Rect anchor) {
+        int current = primary ? liveryPrimary : liverySecondary;
+        List<DropMenu.Entry> entries = new ArrayList<>();
+        for (int dye = 0; dye < 16; dye++) {
+            int rgb = dyeRgb(dye);
+            entries.add(new DropMenu.Entry(color(dye), () -> {
+                menu = null;
+                if (primary) liveryPrimary = rgb;
+                else liverySecondary = rgb;
+                rebuildWidgets();
+            }, false, rgb == current, 0xFF000000 | rgb));
+        }
+        menu = menuBelow(tr(primary ? "livery_primary" : "livery_secondary"), entries, anchor);
+    }
+
+    private List<CharterSnapshotS2CPayload.StyleOption> styles() {
+        return snapshot.book() == null ? List.of() : snapshot.book().liveryStyles();
+    }
+
+    /** How the livery being drafted looks: the chosen style in the chosen colors, or what is inherited. */
+    private @Nullable LiveryView previewLivery() {
+        if (liveryStyle.isEmpty()) return target().livery().inheritedView();
+        var option = styles().stream().filter(o -> o.id().equals(liveryStyle)).findFirst().orElse(null);
+        if (option == null) return null;
+        LiveryView view = option.view();
+        return new LiveryView(view.style(), view.tint(), liveryPrimary, liverySecondary, view.trims());
+    }
+
+    /** A stand in full iron, only ever drawn here, so the preview shows what a guard would wear. */
+    private @Nullable ArmorStand stand() {
+        if (stand == null && minecraft.level != null) {
+            stand = new ArmorStand(minecraft.level, 0, 0, 0);
+            stand.setId(PREVIEW_STAND);
+            stand.setShowArms(true);
+            stand.setNoBasePlate(true);
+            stand.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
+            stand.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.IRON_CHESTPLATE));
+            stand.setItemSlot(EquipmentSlot.LEGS, new ItemStack(Items.IRON_LEGGINGS));
+            stand.setItemSlot(EquipmentSlot.FEET, new ItemStack(Items.IRON_BOOTS));
+        }
+        return stand;
+    }
+
+    private void drawStand(GuiGraphics g, int x, int y, int w, int h) {
+        ArmorStand figure = stand();
+        if (figure == null) return;
+        //? if >=1.21 {
+        net.minecraft.client.gui.screens.inventory.InventoryScreen.renderEntityInInventoryFollowsAngle(
+                g, x, y, x + w, y + h, STAND_SCALE, 0.0625f, 0.35f, -0.05f, figure);
+        //?} else {
+        /*net.minecraft.client.gui.screens.inventory.InventoryScreen.renderEntityInInventoryFollowsMouse(
+                g, x + w / 2, y + h, STAND_SCALE, 18f, 6f, figure);
+        *///?}
+    }
+
+    private static int dyeRgb(int dye) { return DyeColor.byId(dye).getFireworkColor() & 0xFFFFFF; }
+
+    private static Component colourName(int rgb) {
+        for (int dye = 0; dye < 16; dye++) if (dyeRgb(dye) == rgb) return color(dye);
+        return Component.literal(String.format(java.util.Locale.ROOT, "#%06X", rgb));
+    }
+
+    /**
+     * The right page: the emblem as a banner and a shield, the livery on a figure in iron, then the
+     * item the emblem can be copied onto, and what stands in the way at the foot.
+     */
     private void composePreview() {
         Controls.Rect p = rightPage;
         int x = x(p), w = w(p), y = y(p);
         runningHead(p, target().name().component(), true);
-        int bannerX = x + (w - 2 * PREVIEW - PREVIEW_GAP) / 2;
+        int bannerX = x + (w - 3 * PREVIEW - 2 * PREVIEW_GAP) / 2;
         int shieldX = bannerX + PREVIEW + PREVIEW_GAP;
-        int captionY = y + PREVIEW + HEAD_GAP;
-        String banner = tr("banner").getString(), shield = tr("shield").getString();
+        int standX = shieldX + PREVIEW + PREVIEW_GAP;
+        int captionY = y + STAND_H + HEAD_GAP;
+        String banner = tr("banner").getString(), shield = tr("shield").getString(), livery = tr("livery_heading").getString();
+        LiveryView preview = previewLivery();
+        com.aetherianartificer.townstead.client.livery.LiveryClientStore.preview(PREVIEW_STAND, preview);
+        int itemY = y + STAND_H - PREVIEW;
         op(g -> {
             if (minecraft.level == null) return;
             var access = minecraft.level.registryAccess();
-            preview(g, EmblemItems.banner(access, draft), bannerX, y);
-            preview(g, EmblemItems.shield(access, draft), shieldX, y);
+            preview(g, EmblemItems.banner(access, draft), bannerX, itemY);
+            preview(g, EmblemItems.shield(access, draft), shieldX, itemY);
+            drawStand(g, standX, y, PREVIEW, STAND_H);
             g.drawString(font, banner, bannerX + (PREVIEW - font.width(banner)) / 2, captionY, FADED, false);
             g.drawString(font, shield, shieldX + (PREVIEW - font.width(shield)) / 2, captionY, FADED, false);
+            g.drawString(font, livery, standX + (PREVIEW - font.width(livery)) / 2, captionY, FADED, false);
         });
+        composeCopy(x, captionY + 9 + SECTION, w);
         Component hint;
         int color = FADED;
         if (conflict) { hint = tr("stale"); color = RUBRIC; }
@@ -175,11 +310,17 @@ public final class HeraldryScreen extends BookScreen {
     private void composeBar() {
         Bar bar = new Bar();
         bar.left(leaveArmed ? tr("discard") : Component.translatable("gui.back"), this::leave).active = !pending;
-        if (dirty() || conflict) {
+        if (anyDirty() || conflict) {
             bar.left(tr("reset"), () -> { resetDraft(); leaveArmed = stampArmed = false; rebuildWidgets(); }).active = !pending;
         }
-        bar.right(tr("add_to_draft"), () -> { proposing = true; send("heraldry"); }).active =
-                target().editable() && !pending && !conflict && (dirty() || target().revision() == 0);
+        boolean emblem = dirty() || target().revision() == 0 && !liveryDirty();
+        bar.right(tr("add_to_draft"), () -> {
+            proposing = true;
+            if (liveryDirty()) sendDraft("livery", new com.aetherianartificer.townstead.politics.charter.CharterDrafts.LiveryChoice(
+                    liveryStyle.isEmpty() ? null : net.minecraft.resources.ResourceLocation.tryParse(liveryStyle),
+                    liveryPrimary, liverySecondary).encode());
+            if (emblem) send("heraldry");
+        }).active = target().editable() && !pending && !conflict && (emblem || liveryDirty());
         Component stampLabel = stampArmed && itemSlot >= 0 ? tr("stamp_confirm", stack(itemSlot).getHoverName()) : tr("stamp");
         bar.right(stampLabel, this::stamp).active = itemSlot >= 0 && target().revision() > 0 && !dirty() && !pending && !conflict;
     }
@@ -187,7 +328,7 @@ public final class HeraldryScreen extends BookScreen {
     /** Back asks once before throwing away an unproposed design. */
     private void leave() {
         if (pending) return;
-        if (dirty() && !leaveArmed) {
+        if (anyDirty() && !leaveArmed) {
             leaveArmed = true;
             rebuildWidgets();
             return;
@@ -364,6 +505,20 @@ public final class HeraldryScreen extends BookScreen {
         g.pose().scale(3, 3, 3);
         g.renderItem(stack, 0, 0);
         g.pose().popPose();
+    }
+
+    private void sendDraft(String operation, String argument) {
+        pending = true;
+        pendingTicks = 0;
+        status = tr("sending").getString();
+        rebuildWidgets();
+        var payload = new CharterActionC2SPayload(snapshot.lectern(), CharterActionC2SPayload.DRAFT, "", "", "", operation,
+                target().actor(), argument, 0);
+        //? if neoforge {
+        net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
+        //?} else {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(payload);
+        *///?}
     }
 
     private void send(String operation) {

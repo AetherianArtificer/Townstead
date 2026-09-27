@@ -84,6 +84,7 @@ public final class SpeciesFace {
             pose.scale(BABY_HEAD_SCALE, BABY_HEAD_SCALE, BABY_HEAD_SCALE);
             pose.translate(0f, BABY_HEAD_Y, 0f);
         }
+        RigModels.translateToParent(rigBase, face.bone(), pose);
         head.translateAndRotate(pose);
         if (eyes != null && !eyes.texture().isEmpty()) {
             int frame = FaceExpression.eyeFrame(entity);

@@ -39,11 +39,13 @@ public final class AncestryJsonLoader extends SimpleJsonResourceReloadListener {
         Map<ResourceLocation, Personalities> policies = new LinkedHashMap<>();
         Map<ResourceLocation, com.aetherianartificer.townstead.root.appearance.HairPolicy> hairPolicies = new LinkedHashMap<>();
         Map<ResourceLocation, com.aetherianartificer.townstead.clothing.BodyClothing> bodyClothing = new LinkedHashMap<>();
+        Map<ResourceLocation, Map<String, com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit>> outfits = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
             String ctx = file.toString();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), ctx);
+                if (!com.aetherianartificer.townstead.data.ModGate.allows(obj)) continue;
                 TownsteadSchema.validate(obj, "townstead:ancestry/v1");
                 Component displayName = DataPackLang.parseComponent(obj.get("display_name"), ctx, lang);
                 ResourceLocation species = RootJsonParsing.optionalId(obj, "species", ctx, LOGGER);
@@ -57,6 +59,7 @@ public final class AncestryJsonLoader extends SimpleJsonResourceReloadListener {
                 policies.put(file, PersonalityPolicies.parse(obj));
                 hairPolicies.put(file, com.aetherianartificer.townstead.root.appearance.HairPolicy.parse(obj, lang));
                 bodyClothing.put(file, com.aetherianartificer.townstead.clothing.BodyClothing.parse(obj));
+                outfits.put(file, com.aetherianartificer.townstead.root.outfit.RootOutfits.parse(obj));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse ancestry {}: {}", file, ex.getMessage());
             }
@@ -65,6 +68,7 @@ public final class AncestryJsonLoader extends SimpleJsonResourceReloadListener {
         PersonalityPolicyRegistry.setAncestry(policies);
         com.aetherianartificer.townstead.root.appearance.HairPolicyRegistry.setAncestry(hairPolicies);
         com.aetherianartificer.townstead.clothing.BodyClothingRegistry.setAncestry(bodyClothing);
+        com.aetherianartificer.townstead.root.outfit.RootOutfits.setAncestry(outfits);
         LOGGER.info("Loaded {} origin ancestries", parsed.size());
     }
 }

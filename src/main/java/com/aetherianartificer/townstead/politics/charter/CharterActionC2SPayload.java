@@ -23,7 +23,7 @@ public record CharterActionC2SPayload(BlockPos lectern, int action, String name,
     public CharterActionC2SPayload(BlockPos lectern, int action, String name, String profile, String culture) {
         this(lectern, action, name, profile, culture, "", "", "", 0);
     }
-    public static final int MEMBERSHIP = 4, CIVIC = 5, HERALDRY = 6, DRAFT = 7;
+    public static final int MEMBERSHIP = 4, CIVIC = 5, HERALDRY = 6, DRAFT = 7, WEAR_LIVERY = 8;
     public static final int REFRESH = 0, PREPARE = 1, CANCEL = 2, LINK_EXISTING = 3;
     public void write(FriendlyByteBuf buf) {
         buf.writeBlockPos(lectern);

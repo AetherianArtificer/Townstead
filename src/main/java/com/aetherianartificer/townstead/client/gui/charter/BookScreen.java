@@ -161,8 +161,12 @@ abstract class BookScreen extends Screen {
     }
 
     protected int centredDetail(Component text, int x, int y, int w) {
-        int lines = BookRenderer.lines(font, text, w, 2);
-        op(g -> BookRenderer.wrap(g, font, text, x, y, w, FADED, 2, true));
+        return centredDetail(text, x, y, w, 2);
+    }
+
+    protected int centredDetail(Component text, int x, int y, int w, int maxLines) {
+        int lines = BookRenderer.lines(font, text, w, maxLines);
+        if (lines > 0) op(g -> BookRenderer.wrap(g, font, text, x, y, w, FADED, lines, true));
         return y + lines * DETAIL;
     }
 
@@ -257,7 +261,10 @@ abstract class BookScreen extends Screen {
         }
         BookRenderer.draw(g, book);
         if (tab < tabs.size()) drawTab(g, tab);
+        // Whatever a page cannot fit is cut at the book's edge rather than spilling onto the desk.
+        g.enableScissor(book.x(), book.y(), book.right(), book.bottom());
         ops.forEach(op -> op.accept(g));
+        g.disableScissor();
         drawDesk(g);
         String status = status();
         int room = statusRight - statusLeft;

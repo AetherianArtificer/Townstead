@@ -23,13 +23,24 @@ public final class HeraldryService {
         var faction = data.faction(binding.faction());
         if (faction == null) return List.of();
         boolean ruler = CharterDrafts.mayDraft(player, faction);
-        return List.of(view(player, settlement(binding.settlement()), Component.translatable("charter.townstead.heraldry.settlement", settlementName), ruler),
-                view(player, faction(faction.id()), Component.translatable("charter.townstead.heraldry.faction", faction.name()), ruler));
+        var level = player.serverLevel();
+        var parent = com.aetherianartificer.townstead.politics.state.FactionBonds.parent(data, faction.id());
+        return List.of(view(player, settlement(binding.settlement()), Component.translatable("charter.townstead.heraldry.settlement", settlementName), ruler,
+                        com.aetherianartificer.townstead.livery.LiveryService.inherited(level, binding.settlement(), faction.id()),
+                        com.aetherianartificer.townstead.livery.LiveryService.inheritedView(level, binding.settlement(), faction.id())),
+                view(player, faction(faction.id()), Component.translatable("charter.townstead.heraldry.faction", faction.name()), ruler,
+                        com.aetherianartificer.townstead.livery.LiveryService.inherited(level, binding.settlement(), parent),
+                        com.aetherianartificer.townstead.livery.LiveryService.inheritedView(level, binding.settlement(), parent)));
     }
 
-    private static CharterSnapshotS2CPayload.Heraldry view(ServerPlayer player, String actor, Component name, boolean edit) {
+    private static CharterSnapshotS2CPayload.Heraldry view(ServerPlayer player, String actor, Component name, boolean edit, Component inherited,
+                                                           @org.jetbrains.annotations.Nullable com.aetherianartificer.townstead.livery.LiveryView inheritedView) {
         var entry = HeraldrySavedData.get(player.server).get(actor);
-        return new CharterSnapshotS2CPayload.Heraldry(actor, CharterSnapshotS2CPayload.Text.of(name), entry.recipe().encode(), entry.revision(), edit);
+        var livery = com.aetherianartificer.townstead.livery.LiverySavedData.get(player.server).get(actor);
+        var liveryView = new CharterSnapshotS2CPayload.Livery(livery == null || livery.style() == null ? "" : livery.style().toString(),
+                livery == null ? 0 : livery.primary(), livery == null ? 0 : livery.secondary(),
+                livery == null ? 0 : livery.revision(), CharterSnapshotS2CPayload.Text.of(inherited), inheritedView);
+        return new CharterSnapshotS2CPayload.Heraldry(actor, CharterSnapshotS2CPayload.Text.of(name), entry.recipe().encode(), entry.revision(), edit, liveryView);
     }
 
     /** Stamps the published emblem onto an item the player holds. */

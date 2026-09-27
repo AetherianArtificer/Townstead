@@ -146,12 +146,22 @@ public final class CharterScreen extends BookScreen {
         Controls.Rect p = leftPage;
         int x = x(p), w = w(p), y = y(p);
         runningHead(p, tr("running_head", snapshot.settlement()), false);
-        Controls.Rect emblem = new Controls.Rect(x + (w - EMBLEM) / 2, y, EMBLEM, EMBLEM);
-        PageZone emblemZone = b.heraldry().isEmpty() ? null : zone(emblem, tr("change.emblem"), this::openHeraldry);
-        op(g -> drawEmblem(g, b, emblem, emblemZone != null && emblemZone.hot()));
-        y += EMBLEM + HEAD_GAP;
+        var civicRows = b.civic();
+        int below = SECTION + HEADING + ROW;
+        if (civicRows != null && civicRows.controlsGovernment()) below += ROW;
+        else {
+            below += ROW + detailHeight(b.seat().detail().component(), w);
+            if (b.legitimacy() != null) below += ROW + detailHeight(b.legitimacyDetail().component(), w);
+        }
+        Title title = fit(bottom(p) - y, nameHeight(snapshot.faction(), w), BookRenderer.lines(font, b.proclaimed().component(), w, 2), below);
+        if (title.emblem() > 0) {
+            Controls.Rect emblem = new Controls.Rect(x + (w - title.emblem()) / 2, y, title.emblem(), title.emblem());
+            PageZone emblemZone = b.heraldry().isEmpty() ? null : zone(emblem, tr("change.emblem"), this::openHeraldry);
+            op(g -> drawEmblem(g, b, emblem, emblemZone != null && emblemZone.hot()));
+            y += title.emblem() + HEAD_GAP;
+        }
         y = composeName(snapshot.faction(), x, y, w, b.mayDraft());
-        y = centredDetail(b.proclaimed().component(), x, y, w);
+        y = centredDetail(b.proclaimed().component(), x, y, w, title.proclamation());
         y += SECTION;
         y = heading(tr("articles"), x, y, w);
         y = row(tr("row.form"), snapshot.form().component(), x, y, w, INK, null);
@@ -167,6 +177,45 @@ public final class CharterScreen extends BookScreen {
             y = row(tr("row.legitimacy"), b.legitimacy().component(), x, y, w, INK, null);
             detail(b.legitimacyDetail().component(), x, y, w, FADED);
         }
+    }
+
+    /** What the title block may take: the emblem's size (0 for none) and the proclamation's lines. */
+    private record Title(int emblem, int proclamation) {}
+
+    /**
+     * Fits the title block to a small page. With room short, the emblem shrinks from three times to
+     * twice its size, the proclamation drops to one line, and then the emblem goes. The name and
+     * whatever {@code below} reserves always stay. Scaling the page instead would blur its type.
+     */
+    private Title fit(int available, int nameH, int proclamation, int below) {
+        int room = available - below - nameH;
+        int[][] steps = {{EMBLEM, proclamation}, {32, proclamation}, {32, Math.min(1, proclamation)}, {32, 0}, {0, 0}};
+        for (int[] step : steps) {
+            int emblemH = step[0] == 0 ? 0 : step[0] + HEAD_GAP;
+            if (emblemH + step[1] * DETAIL <= room) return new Title(step[0], step[1]);
+        }
+        return new Title(0, 0);
+    }
+
+    private int plainEmblem(Title title, int x, int y, int w) {
+        if (title.emblem() == 0) return y;
+        Controls.Rect emblem = new Controls.Rect(x + (w - title.emblem()) / 2, y, title.emblem(), title.emblem());
+        op(g -> drawEmblem(g, null, emblem, false));
+        return y + title.emblem() + HEAD_GAP;
+    }
+
+    private int nameHeight(String name, int w) {
+        return renaming ? LineField.height(2) + HEAD_GAP : nameLines(name, w).size() * NAME_LINE + 2 + HEAD_GAP;
+    }
+
+    private int detailHeight(Component text, int w) {
+        int lines = BookRenderer.lines(font, text, w, 2);
+        return lines == 0 ? 0 : DETAIL_GAP + lines * DETAIL;
+    }
+
+    /** The lowest line a page can hold. */
+    private static int bottom(Controls.Rect page) {
+        return BookRenderer.foot(page) + 9;
     }
 
     /**
@@ -288,7 +337,7 @@ public final class CharterScreen extends BookScreen {
     }
 
     private int clauseHeight(CharterSnapshotS2CPayload.Clause clause) {
-        return ROW + (clause.detail().component().getString().isBlank() ? 0 : DETAIL);
+        return ROW + (clause.detail().component().getString().isBlank() ? 0 : DETAIL_GAP + DETAIL);
     }
 
     private int draftHeight(CharterSnapshotS2CPayload.Draft draft) {
@@ -314,7 +363,7 @@ public final class CharterScreen extends BookScreen {
                 BookRenderer.rowGround(g, x, cy, w, h, key.equals(selection), zone != null && zone.hot());
                 g.drawString(font, number, x, cy + TEXT_Y, RUBRIC, false);
                 g.drawString(font, BookRenderer.fit(font, label, w - 12), x + 12, cy + TEXT_Y, INK, false);
-                if (!detail.isBlank()) g.drawString(font, BookRenderer.fit(font, detail, w - 12), x + 12, cy + ROW, FADED, false);
+                if (!detail.isBlank()) g.drawString(font, BookRenderer.fit(font, detail, w - 12), x + 12, cy + ROW + DETAIL_GAP, FADED, false);
             });
             y += h;
         }
@@ -386,6 +435,12 @@ public final class CharterScreen extends BookScreen {
         y = heading(tr("standing_heading"), x, y, w);
         y = plain(members.status().component(), x, y, w, INK);
         y = detail(members.joinHint().component(), x, y, w, FADED);
+        if (members.livery() >= 0) {
+            // Wearing the faction's livery is the member's own choice; it restyles their armour's look only.
+            boolean worn = members.livery() == 1;
+            y = row(tr("livery_row"), tr(worn ? "livery.on" : "livery.off"), x, y, w, INK,
+                    rect -> send(CharterActionC2SPayload.WEAR_LIVERY, worn ? "off" : "on", "", "", 0));
+        }
         y += SECTION;
         y = composeSeal(x, y, w);
         y += SECTION;
@@ -486,21 +541,21 @@ public final class CharterScreen extends BookScreen {
         List<CharterSnapshotS2CPayload.Request> open = b.requests().stream().filter(r -> isOpen(r.state())).toList();
         if (open.isEmpty()) y = plain(tr("requests_open_empty"), x, y, w, FADED);
         for (var request : open) {
-            if (y + ROW + DETAIL > bottom) break;
+            if (y + ROW + DETAIL_GAP + DETAIL > bottom) break;
             String key = "request:" + request.id();
             boolean choosable = !request.actions().isEmpty();
             if (choosable) selectable.add(key);
-            PageZone zone = choosable ? zone(new Controls.Rect(x - 4, y, w + 8, ROW + DETAIL), request.person().component(), () -> select(key)) : null;
+            PageZone zone = choosable ? zone(new Controls.Rect(x - 4, y, w + 8, ROW + DETAIL_GAP + DETAIL), request.person().component(), () -> select(key)) : null;
             String person = request.person().component().getString();
             String state = requestState(request).getString();
             String kind = tr("request.kind." + request.kind()).getString();
             int ry = y;
             op(g -> {
-                BookRenderer.rowGround(g, x, ry, w, ROW + DETAIL, key.equals(selection), zone != null && zone.hot());
+                BookRenderer.rowGround(g, x, ry, w, ROW + DETAIL_GAP + DETAIL, key.equals(selection), zone != null && zone.hot());
                 BookRenderer.leader(g, font, person, state, x, ry, w, INK, FADED);
-                g.drawString(font, BookRenderer.fit(font, kind, w), x, ry + ROW, FADED, false);
+                g.drawString(font, BookRenderer.fit(font, kind, w), x, ry + ROW + DETAIL_GAP, FADED, false);
             });
-            y += ROW + DETAIL;
+            y += ROW + DETAIL_GAP + DETAIL;
         }
         List<CharterSnapshotS2CPayload.Request> past = b.requests().stream().filter(r -> !isOpen(r.state())).limit(PAST_MAX).toList();
         if (past.isEmpty() || y + SECTION + HEADING + ROW > bottom) return;
@@ -697,9 +752,8 @@ public final class CharterScreen extends BookScreen {
         Controls.Rect p = leftPage;
         int x = x(p), w = w(p), y = y(p);
         runningHead(p, tr("unfounded"), false);
-        Controls.Rect emblem = new Controls.Rect(x + (w - EMBLEM) / 2, y, EMBLEM, EMBLEM);
-        op(g -> drawEmblem(g, null, emblem, false));
-        y += EMBLEM + HEAD_GAP;
+        Title title = fit(bottom(p) - y, LineField.height(2) + HEAD_GAP, 2, SECTION + HEADING + 3 * ROW);
+        y = plainEmblem(title, x, y, w);
         if (draftName.isBlank()) draftName = tr("default_settlement").getString();
         if (draftFaction.isBlank()) suggestFaction();
         LineField name = addRenderableWidget(new LineField(font, x, y, w, tr("faction_name"), 2, true));
@@ -708,9 +762,9 @@ public final class CharterScreen extends BookScreen {
         name.setResponder(value -> { draftFaction = value; customFaction = true; updatePrepare(); });
         name.setEditable(snapshot.editable());
         y += LineField.height(2) + HEAD_GAP;
-        int py = y;
-        op(g -> BookRenderer.wrap(g, font, tr("to_be_proclaimed", draftName), x, py, w, FADED, 2, true));
-        y += 2 * DETAIL + SECTION;
+        int py = y, proclamationLines = title.proclamation();
+        if (proclamationLines > 0) op(g -> BookRenderer.wrap(g, font, tr("to_be_proclaimed", draftName), x, py, w, FADED, proclamationLines, true));
+        y += proclamationLines * DETAIL + SECTION;
         y = heading(tr("articles"), x, y, w);
         Component settlementLabel = tr("row.settlement");
         int fieldX = x + font.width(settlementLabel) + 8;
@@ -785,11 +839,12 @@ public final class CharterScreen extends BookScreen {
         Controls.Rect p = leftPage;
         int x = x(p), w = w(p), y = y(p);
         runningHead(p, tr("prepared_head"), false);
-        Controls.Rect emblem = new Controls.Rect(x + (w - EMBLEM) / 2, y, EMBLEM, EMBLEM);
-        op(g -> drawEmblem(g, null, emblem, false));
-        y += EMBLEM + HEAD_GAP;
+        Component proclaimed = tr("to_be_proclaimed", snapshot.settlement());
+        Title title = fit(bottom(p) - y, nameHeight(snapshot.faction(), w), BookRenderer.lines(font, proclaimed, w, 2),
+                SECTION + HEADING + 3 * ROW);
+        y = plainEmblem(title, x, y, w);
         y = composeName(snapshot.faction(), x, y, w, false);
-        y = centredDetail(tr("to_be_proclaimed", snapshot.settlement()), x, y, w);
+        y = centredDetail(proclaimed, x, y, w, title.proclamation());
         y += SECTION;
         y = heading(tr("articles"), x, y, w);
         y = row(tr("row.settlement"), Component.literal(snapshot.settlement()), x, y, w, INK, null);
@@ -807,9 +862,8 @@ public final class CharterScreen extends BookScreen {
         Controls.Rect p = leftPage;
         int x = x(p), w = w(p), y = y(p);
         runningHead(p, tr("existing_settlement"), false);
-        Controls.Rect emblem = new Controls.Rect(x + (w - EMBLEM) / 2, y, EMBLEM, EMBLEM);
-        op(g -> drawEmblem(g, null, emblem, false));
-        y += EMBLEM + HEAD_GAP;
+        Title title = fit(bottom(p) - y, nameHeight(snapshot.faction(), w), 0, SECTION + HEADING + 2 * ROW);
+        y = plainEmblem(title, x, y, w);
         y = composeName(snapshot.faction(), x, y, w, false);
         y += SECTION;
         y = heading(tr("articles"), x, y, w);
@@ -836,9 +890,10 @@ public final class CharterScreen extends BookScreen {
         boolean painted = emblem != null && emblem.revision() > 0 && minecraft.level != null;
         ItemStack stack = painted ? EmblemItems.banner(minecraft.level.registryAccess(), EmblemRecipe.safe(emblem.recipe()))
                 : new ItemStack(Items.WHITE_BANNER);
+        float scale = rect.w() / 16f;
         g.pose().pushPose();
         g.pose().translate(rect.x(), rect.y(), 0);
-        g.pose().scale(3, 3, 3);
+        g.pose().scale(scale, scale, scale);
         g.renderItem(stack, 0, 0);
         g.pose().popPose();
         g.flush();
@@ -848,7 +903,7 @@ public final class CharterScreen extends BookScreen {
             g.fill(rect.x(), rect.y(), rect.right(), rect.bottom(), 0x99F4E6C4);
             g.pose().popPose();
         }
-        if (hot) BookRenderer.line(g, rect.x() + 8, rect.bottom() + 1, rect.w() - 16, true, false);
+        if (hot) BookRenderer.line(g, rect.x() + rect.w() / 6, rect.bottom() + 1, rect.w() * 2 / 3, true, false);
     }
 
     private void draft(String operation, String target, String argument) {

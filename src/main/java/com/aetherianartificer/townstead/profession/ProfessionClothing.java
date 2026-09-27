@@ -32,6 +32,11 @@ public final class ProfessionClothing {
      */
     public static void afterProfessionChange(VillagerEntityMCA villager, String previousClothes) {
         if (villager == null || villager.level().isClientSide || villager.isClothingLocked()) return;
+        // A non-MCA body wears only skins fitted to it, chosen by the same profession-first rule.
+        if (com.aetherianartificer.townstead.clothing.policy.RigSkinPicker.applies(villager)) {
+            com.aetherianartificer.townstead.clothing.policy.RigSkinPicker.pick(villager).ifPresent(villager::setClothes);
+            return;
+        }
         ResourceLocation professionId = BuiltInRegistries.VILLAGER_PROFESSION
                 .getKey(villager.getVillagerData().getProfession());
         if (professionId == null) return;

@@ -72,6 +72,6 @@ class AnimationTargetMapTest {
     private static RigDefinition rig(Map<String, String> bones) {
         return new RigDefinition("test:rig", RigDefinition.ModelType.GEOMETRY, "test:rig", "main",
                 "test:texture", bones, RigDefinition.ArmorType.NONE, null, null, null, null, null,
-                List.of(), Hold.NONE, false, Map.of(), null, Set.of(), null, null);
+                List.of(), Hold.NONE, false, Map.of(), null, Set.of(), null, null, null, "", 0f);
     }
 }

@@ -37,6 +37,7 @@ public final class RootJsonLoader extends SimpleJsonResourceReloadListener {
                          ProfilerFiller profiler) {
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
         Map<ResourceLocation, Root> parsed = new LinkedHashMap<>();
+        outfitStaging = new LinkedHashMap<>();
         loadLegacyOrigins(resourceManager, lang, parsed);
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
@@ -48,6 +49,8 @@ public final class RootJsonLoader extends SimpleJsonResourceReloadListener {
             }
         }
         RootRegistry.replaceAll(parsed);
+        com.aetherianartificer.townstead.root.outfit.RootOutfits.setRoot(outfitStaging);
+        outfitStaging = null;
         LOGGER.info("Loaded {} roots", parsed.size());
     }
 
@@ -76,9 +79,13 @@ public final class RootJsonLoader extends SimpleJsonResourceReloadListener {
         }
     }
 
+    // Outfits parsed during one apply() pass, committed with the roots.
+    private static Map<ResourceLocation, Map<String, com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit>> outfitStaging;
+
     private static void parseRoot(ResourceLocation file, JsonObject obj, Map<String, String> lang,
             Map<ResourceLocation, Root> parsed, boolean currentSchema) {
         String ctx = file.toString();
+        if (!com.aetherianartificer.townstead.data.ModGate.allows(obj)) return;
         try {
             TownsteadSchema.validate(obj, currentSchema ? "townstead:root/v1" : "townstead:origin/v1");
             Component displayName = DataPackLang.parseComponent(obj.get("display_name"), ctx, lang);
@@ -95,6 +102,7 @@ public final class RootJsonLoader extends SimpleJsonResourceReloadListener {
             parsed.put(file, new Root(file, displayName, species, ancestry, lineage, demonym, backstory, genome, spawnBias,
                     culturalSpawnBias,
                     kinFlesh, eatsSapients));
+            if (outfitStaging != null) outfitStaging.put(file, com.aetherianartificer.townstead.root.outfit.RootOutfits.parse(obj));
         } catch (Exception ex) {
             LOGGER.warn("Failed to parse root {}: {}", file, ex.getMessage());
         }

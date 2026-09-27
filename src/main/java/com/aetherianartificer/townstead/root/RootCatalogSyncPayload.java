@@ -25,12 +25,12 @@ import java.util.Set;
 //? if neoforge {
 public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCatalogEntry> genes,
                                        List<TraitCatalogEntry> traits, List<RigDefinition> rigs,
-                                       List<String> entityGroups)
+                                       List<String> entityGroups, List<RootLook> looks)
         implements CustomPacketPayload {
 //?} else {
 /*public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCatalogEntry> genes,
                                        List<TraitCatalogEntry> traits, List<RigDefinition> rigs,
-                                       List<String> entityGroups) {
+                                       List<String> entityGroups, List<RootLook> looks) {
 *///?}
 
     //? if neoforge {
@@ -141,6 +141,8 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         for (RigDefinition r : rigs) writeRig(buf, r);
         buf.writeVarInt(entityGroups.size());
         for (String group : entityGroups) buf.writeUtf(group);
+        buf.writeVarInt(looks.size());
+        for (RootLook look : looks) writeLook(buf, look);
     }
 
     public static RootCatalogSyncPayload read(FriendlyByteBuf buf) {
@@ -260,7 +262,51 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         int groupCount = buf.readVarInt();
         List<String> entityGroups = new ArrayList<>(groupCount);
         for (int i = 0; i < groupCount; i++) entityGroups.add(buf.readUtf());
-        return new RootCatalogSyncPayload(entries, genes, traits, rigs, entityGroups);
+        int lookCount = buf.readVarInt();
+        List<RootLook> looks = new ArrayList<>(lookCount);
+        for (int i = 0; i < lookCount; i++) looks.add(readLook(buf));
+        return new RootCatalogSyncPayload(entries, genes, traits, rigs, entityGroups, looks);
+    }
+
+    private static void writeLook(FriendlyByteBuf buf, RootLook look) {
+        buf.writeUtf(look.rootId());
+        buf.writeVarInt(look.outfits().size());
+        for (com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit outfit : look.outfits()) {
+            buf.writeUtf(outfit.id());
+            buf.writeUtf(outfit.whenJson());
+            buf.writeVarInt(outfit.pieces().size());
+            for (com.aetherianartificer.townstead.root.outfit.RootOutfits.Piece piece : outfit.pieces()) {
+                buf.writeUtf(piece.model());
+                buf.writeVarInt(piece.bones().size());
+                for (String bone : piece.bones()) buf.writeUtf(bone);
+            }
+        }
+        buf.writeVarInt(look.skins().size());
+        for (String skin : look.skins()) buf.writeUtf(skin);
+    }
+
+    private static RootLook readLook(FriendlyByteBuf buf) {
+        String rootId = buf.readUtf();
+        int outfitCount = buf.readVarInt();
+        List<com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit> outfits = new ArrayList<>(outfitCount);
+        for (int i = 0; i < outfitCount; i++) {
+            String id = buf.readUtf();
+            String when = buf.readUtf();
+            int pieceCount = buf.readVarInt();
+            List<com.aetherianartificer.townstead.root.outfit.RootOutfits.Piece> pieces = new ArrayList<>(pieceCount);
+            for (int j = 0; j < pieceCount; j++) {
+                String model = buf.readUtf();
+                int boneCount = buf.readVarInt();
+                List<String> bones = new ArrayList<>(boneCount);
+                for (int k = 0; k < boneCount; k++) bones.add(buf.readUtf());
+                pieces.add(new com.aetherianartificer.townstead.root.outfit.RootOutfits.Piece(model, List.copyOf(bones)));
+            }
+            outfits.add(new com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit(id, when, List.copyOf(pieces)));
+        }
+        int skinCount = buf.readVarInt();
+        List<String> skins = new ArrayList<>(skinCount);
+        for (int i = 0; i < skinCount; i++) skins.add(buf.readUtf());
+        return new RootLook(rootId, List.copyOf(outfits), List.copyOf(skins));
     }
 
     private static void writeHairRanges(FriendlyByteBuf buf,
@@ -440,6 +486,20 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         for (net.minecraft.world.entity.EquipmentSlot slot : r.disabledSlots()) buf.writeByte(slot.ordinal());
         buf.writeUtf(r.cameraBone() == null ? "" : r.cameraBone());
         writeEmote(buf, r.emote());
+        buf.writeBoolean(r.animation() != null);
+        if (r.animation() != null) {
+            buf.writeUtf(r.animation().file());
+            buf.writeVarInt(r.animation().rules().size());
+            for (RigDefinition.AnimationRule rule : r.animation().rules()) {
+                buf.writeUtf(rule.state());
+                buf.writeUtf(rule.whenJson());
+                buf.writeUtf(rule.clip());
+                buf.writeFloat(rule.transitionTicks());
+                buf.writeFloat(rule.speed());
+            }
+        }
+        buf.writeUtf(r.modelClass() == null ? "" : r.modelClass());
+        buf.writeFloat(r.cameraHeightOffset());
     }
 
     /** Serialize the emote remap: present flag, body-motion gate, per-channel remaps, and policy. */
@@ -541,12 +601,16 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
     private static void writeAdjust(FriendlyByteBuf buf, RigDefinition.Adjust a) {
         for (int k = 0; k < 3; k++) buf.writeFloat(a.offset()[k]);
         for (int k = 0; k < 3; k++) buf.writeFloat(a.rotation()[k]);
+        buf.writeFloat(a.scale());
+        for (int k = 0; k < 3; k++) buf.writeFloat(a.scaleAxes()[k]);
     }
 
     private static RigDefinition.Adjust readAdjust(FriendlyByteBuf buf) {
         float[] offset = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
         float[] rotation = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
-        return new RigDefinition.Adjust(offset, rotation);
+        float scale = buf.readFloat();
+        float[] axes = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+        return new RigDefinition.Adjust(offset, rotation, scale, axes);
     }
 
     private static RigDefinition readRig(FriendlyByteBuf buf) {
@@ -611,7 +675,18 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         }
         String cameraBone = buf.readUtf();
         RigDefinition.EmoteMap emote = readEmote(buf);
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, java.util.Set.copyOf(disabledSlots), cameraBone, emote);
+        RigDefinition.Animation animation = null;
+        if (buf.readBoolean()) {
+            String file = buf.readUtf();
+            int ruleCount = buf.readVarInt();
+            List<RigDefinition.AnimationRule> rules = new ArrayList<>(ruleCount);
+            for (int i = 0; i < ruleCount; i++) {
+                rules.add(new RigDefinition.AnimationRule(buf.readUtf(), buf.readUtf(), buf.readUtf(),
+                        buf.readFloat(), buf.readFloat()));
+            }
+            animation = new RigDefinition.Animation(file, List.copyOf(rules));
+        }
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, java.util.Set.copyOf(disabledSlots), cameraBone, emote, animation, buf.readUtf(), buf.readFloat());
     }
 
     private static void writeNullableUtf(FriendlyByteBuf buf, String value) {

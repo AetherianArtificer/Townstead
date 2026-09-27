@@ -17,8 +17,23 @@ import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 
+import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.client.attachment.geo.BedrockGeometryLoader;
+import com.aetherianartificer.townstead.root.outfit.RootOutfits;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.mojang.blaze3d.vertex.PoseStack;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
+
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -42,8 +57,37 @@ public final class RigModels {
     private static final Map<String, Function<ModelPart, EntityModel<LivingEntity>>> GENERIC_FACTORIES =
             Map.of("minecraft:spider", root -> new SpiderModel<>(root));
     private static final Map<String, EntityModel<LivingEntity>> GENERIC_MODELS = new HashMap<>();
+    // Outfit variants of a geometry rig (base bones plus grafted outfit bones), keyed "rigBase|outfit ids".
+    private static final Map<String, EntityModel<LivingEntity>> VARIANTS = new HashMap<>();
+    private static final int MAX_VARIANTS = 64;
+    // Bone name -> parent name per baked geometry root, from its JSON. A vanilla layer has no entry: every
+    // bone it names is a direct child of the root.
+    private static final Map<ModelPart, Map<String, String>> PARENTS = new IdentityHashMap<>();
+    // Resolved bone paths per baked root: name -> parts from the root's child down to the bone.
+    private static final Map<ModelPart, Map<String, ModelPart[]>> BONE_PATHS = new IdentityHashMap<>();
+    // The root being drawn for a rig while its layer renders (an outfit variant), so bone lookups during
+    // that draw land on the parts actually posed and drawn.
+    private static final Map<String, ModelPart> ACTIVE = new HashMap<>();
+    // Model classes whose setupAnim threw with a foreign entity; drawn at rest from then on.
+    private static final Set<EntityModel<?>> STATIC_ONLY = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
 
     private RigModels() {}
+
+    /** Drop every baked rig model (rig defs or client assets changed); they re-bake on next use. */
+    public static void invalidate() {
+        MODELS.clear();
+        ROOTS.clear();
+        GENERIC_MODELS.clear();
+        VARIANTS.clear();
+        PARENTS.clear();
+        BONE_PATHS.clear();
+        ACTIVE.clear();
+        STATIC_ONLY.clear();
+        RigCamera.invalidate();
+        RigClips.clear();
+        RigGeometryArmor.clear();
+        RigArmorRenderer.clear();
+    }
 
     /**
      * Whether the entity is embodied as its species (renders its rig). Delegates to the canonical client
@@ -148,7 +192,8 @@ public final class RigModels {
         // A custom-geometry rig is always generic (static body, no humanoid assumptions).
         if (def.modelType() == RigDefinition.ModelType.GEOMETRY) return true;
         return def.modelType() == RigDefinition.ModelType.ENTITY_LAYER
-                && GENERIC_FACTORIES.containsKey(def.modelRef());
+                && (GENERIC_FACTORIES.containsKey(def.modelRef())
+                    || (def.modelClass() != null && !def.modelClass().isEmpty()));
     }
 
     /**
@@ -164,6 +209,10 @@ public final class RigModels {
         EntityModel<LivingEntity> model = null;
         if (def.modelType() == RigDefinition.ModelType.ENTITY_LAYER) {
             Function<ModelPart, EntityModel<LivingEntity>> factory = GENERIC_FACTORIES.get(def.modelRef());
+            if (factory == null && def.modelClass() != null && !def.modelClass().isEmpty()) {
+                String className = def.modelClass();
+                factory = root -> reflectModel(className, root);
+            }
             if (factory != null) {
                 ModelPart part = bakeLayer(new ModelLayerLocation(DataPackLang.parseId(def.modelRef()), def.modelLayer()));
                 if (part != null) {
@@ -174,10 +223,11 @@ public final class RigModels {
             // The vanilla-layer bake is deterministic, so cache the result (even null = unsupported).
             GENERIC_MODELS.put(rigBase, model);
         } else if (def.modelType() == RigDefinition.ModelType.GEOMETRY) {
-            // Custom Bedrock model, baked + synced through the attachment blob pipeline (modelRef is the
-            // geo's logical id, e.g. "townstead_spider:geo/egg.geo.json"). It may not have materialized
-            // yet, so only cache once it's ready — otherwise leave it out so the next frame retries.
-            ModelPart part = com.aetherianartificer.townstead.client.attachment.AttachmentClient.namedGeo(def.modelRef());
+            // A Bedrock model by logical id: a pack file synced over the blob pipeline, or another mod's
+            // own asset (see RigAssets). A pack blob may not have arrived yet, so only cache once baked;
+            // otherwise the next frame retries.
+            com.google.gson.JsonObject json = RigAssets.geometry(def.modelRef());
+            ModelPart part = json == null ? null : bakeGeometry(json);
             if (part != null) {
                 model = new StaticRigModel<>(part);
                 ROOTS.put(rigBase, part);
@@ -186,6 +236,216 @@ public final class RigModels {
         }
         return model;
     }
+
+    /**
+     * The generic model to draw for this entity: for a geometry rig, the variant with the outfits the
+     * entity wears right now grafted on; otherwise (and while an outfit's file is still in flight) the
+     * shared base model.
+     */
+    public static EntityModel<LivingEntity> genericModel(String rigBase, LivingEntity entity) {
+        EntityModel<LivingEntity> base = genericModel(rigBase);
+        if (base == null) return null;
+        RigDefinition def = RootCatalogClient.rig(rigBase);
+        if (def == null || def.modelType() != RigDefinition.ModelType.GEOMETRY) return base;
+        List<RootOutfits.Outfit> worn = RigOutfitState.worn(entity);
+        if (worn.isEmpty()) return base;
+        StringBuilder key = new StringBuilder(rigBase);
+        for (RootOutfits.Outfit outfit : worn) key.append('|').append(outfit.id());
+        EntityModel<LivingEntity> cached = VARIANTS.get(key.toString());
+        if (cached != null) return cached;
+        JsonObject grafted = graft(RigAssets.geometry(def.modelRef()), worn);
+        if (grafted == null) return base;
+        ModelPart part = bakeGeometry(grafted);
+        if (part == null) return base;
+        if (VARIANTS.size() >= MAX_VARIANTS) VARIANTS.clear();
+        EntityModel<LivingEntity> variant = new StaticRigModel<>(part);
+        VARIANTS.put(key.toString(), variant);
+        return variant;
+    }
+
+    /**
+     * The base geometry with each outfit piece's bones (and their descendants) appended, keeping their
+     * authored parents. A bone the body already has is left as is. Null while a pack piece is in flight;
+     * a piece nothing provides is skipped.
+     */
+    private static JsonObject graft(JsonObject base, List<RootOutfits.Outfit> worn) {
+        if (base == null) return null;
+        JsonObject merged = base.deepCopy();
+        JsonArray bones = bonesOf(merged);
+        if (bones == null) return null;
+        Set<String> present = new LinkedHashSet<>();
+        for (JsonElement element : bones) present.add(boneName(element));
+        for (RootOutfits.Outfit outfit : worn) {
+            for (RootOutfits.Piece piece : outfit.pieces()) {
+                if (RigAssets.geometryPending(piece.model())) return null;
+                JsonArray source = bonesOf(RigAssets.geometry(piece.model()));
+                if (source == null) continue;
+                Set<String> cut = new LinkedHashSet<>(piece.bones());
+                boolean grew = true;
+                while (grew) {
+                    grew = false;
+                    for (JsonElement element : source) {
+                        String parent = boneParent(element);
+                        if (!parent.isEmpty() && cut.contains(parent) && cut.add(boneName(element))) grew = true;
+                    }
+                }
+                for (JsonElement element : source) {
+                    String name = boneName(element);
+                    if (cut.contains(name) && present.add(name)) bones.add(element.deepCopy());
+                }
+            }
+        }
+        return merged;
+    }
+
+    private static JsonArray bonesOf(JsonObject json) {
+        if (json == null || !json.has("minecraft:geometry") || !json.get("minecraft:geometry").isJsonArray()) return null;
+        JsonArray geometries = json.getAsJsonArray("minecraft:geometry");
+        if (geometries.isEmpty() || !geometries.get(0).isJsonObject()) return null;
+        JsonObject geometry = geometries.get(0).getAsJsonObject();
+        return geometry.has("bones") && geometry.get("bones").isJsonArray() ? geometry.getAsJsonArray("bones") : null;
+    }
+
+    private static String boneName(JsonElement bone) {
+        return bone.isJsonObject() && bone.getAsJsonObject().has("name")
+                ? bone.getAsJsonObject().get("name").getAsString() : "";
+    }
+
+    private static String boneParent(JsonElement bone) {
+        return bone.isJsonObject() && bone.getAsJsonObject().has("parent")
+                ? bone.getAsJsonObject().get("parent").getAsString() : "";
+    }
+
+    /** Bake a full-body geometry and remember its bone parents so nested bones resolve by name. */
+    private static ModelPart bakeGeometry(JsonObject json) {
+        ModelPart part = BedrockGeometryLoader.parse(json, true);
+        if (part == null) return null;
+        Map<String, String> parents = new HashMap<>();
+        JsonArray bones = bonesOf(json);
+        if (bones != null) {
+            for (JsonElement element : bones) parents.put(boneName(element), boneParent(element));
+        }
+        PARENTS.put(part, parents);
+        return part;
+    }
+
+    /** Any mod's vanilla-style model class, built from the baked layer through its ModelPart constructor. */
+    @SuppressWarnings("unchecked")
+    private static EntityModel<LivingEntity> reflectModel(String className, ModelPart root) {
+        try {
+            Object model = Class.forName(className).getConstructor(ModelPart.class).newInstance(root);
+            if (model instanceof EntityModel<?> entityModel) return (EntityModel<LivingEntity>) entityModel;
+            Townstead.LOGGER.warn("Rig model class {} is not an entity model", className);
+        } catch (Throwable t) {
+            Townstead.LOGGER.warn("Rig model class {} could not be built: {}", className, t.toString());
+        }
+        return null;
+    }
+
+    /**
+     * Run a generic model's own setupAnim. A mod's model may cast the entity to its own type; if it throws
+     * with ours, the model is drawn at rest from then on (clips and poses still apply).
+     */
+    public static void setupAnim(EntityModel<LivingEntity> model, LivingEntity entity, float limbSwing,
+                                 float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
+        if (STATIC_ONLY.contains(model)) return;
+        try {
+            model.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+        } catch (RuntimeException e) {
+            STATIC_ONLY.add(model);
+            Townstead.LOGGER.warn("Rig model {} cannot animate this entity ({}); drawing it at rest",
+                    model.getClass().getName(), e.toString());
+        }
+    }
+
+    /** Mark the root drawn for a rig during its layer render (see {@link #ACTIVE}). */
+    public static void beginRender(String rigBase, ModelPart root) {
+        if (root != null) ACTIVE.put(rigBase, root);
+    }
+
+    public static void endRender(String rigBase) {
+        ACTIVE.remove(rigBase);
+    }
+
+    /**
+     * The parts from the root's child down to a named bone, or null if absent. Geometry bones resolve
+     * through their authored parents (so a hand under body under main is found); a vanilla layer's
+     * bones are direct children of the root.
+     */
+    public static ModelPart[] bonePath(ModelPart root, String name) {
+        if (root == null || name == null || name.isEmpty()) return null;
+        Map<String, ModelPart[]> paths = BONE_PATHS.computeIfAbsent(root, k -> new HashMap<>());
+        if (paths.containsKey(name)) return paths.get(name);
+        ModelPart[] path = resolvePath(root, name);
+        paths.put(name, path);
+        return path;
+    }
+
+    private static ModelPart[] resolvePath(ModelPart root, String name) {
+        Map<String, String> parents = PARENTS.get(root);
+        if (parents == null || !parents.containsKey(name)) {
+            return root.hasChild(name) ? new ModelPart[]{root.getChild(name)} : null;
+        }
+        List<String> chain = new ArrayList<>();
+        String cursor = name;
+        while (cursor != null && !cursor.isEmpty() && chain.size() < 64) {
+            chain.add(0, cursor);
+            cursor = parents.get(cursor);
+        }
+        ModelPart[] path = new ModelPart[chain.size()];
+        ModelPart part = root;
+        for (int i = 0; i < chain.size(); i++) {
+            if (!part.hasChild(chain.get(i))) return null;
+            part = part.getChild(chain.get(i));
+            path[i] = part;
+        }
+        return path;
+    }
+
+    /** The root a rig's bones resolve against right now: the variant being drawn, else the base. */
+    private static ModelPart lookupRoot(String rigBase) {
+        ModelPart active = ACTIVE.get(rigBase);
+        return active != null ? active : ROOTS.get(rigBase);
+    }
+
+    /**
+     * Move the pose stack from the model root to a bone's parent, so the caller's own
+     * {@code bone.translateAndRotate} lands in the right frame for a nested bone. A no-op for a bone
+     * directly under the root.
+     */
+    public static void translateToParent(String rigBase, String name, PoseStack pose) {
+        ModelPart[] path = bonePath(lookupRoot(rigBase), name);
+        if (path == null) return;
+        for (int i = 0; i < path.length - 1; i++) path[i].translateAndRotate(pose);
+    }
+
+    /**
+     * A bone's pose composed through its parents, in model pixels and radians
+     * ({@code x, y, z, xRot, yRot, zRot}), so a nested bone reads like a root child. Null if absent.
+     */
+    public static float[] boneModelPose(String rigBase, String name) {
+        return composedPose(rigBase, name, false);
+    }
+
+    public static float[] boneRestPose(String rigBase, String name) {
+        return composedPose(rigBase, name, true);
+    }
+
+    private static float[] composedPose(String rigBase, String name, boolean rest) {
+        ModelPart[] path = bonePath(lookupRoot(rigBase), name);
+        if (path == null) return null;
+        ModelPart bone = path[path.length - 1];
+        Matrix4f matrix = new Matrix4f();
+        for (ModelPart part : path) {
+            var p = rest ? part.getInitialPose() : part.storePose();
+            matrix.translate(p.x, p.y, p.z);
+            matrix.rotateZYX(p.zRot, p.yRot, p.xRot);
+        }
+        Vector3f position = matrix.getTranslation(new Vector3f());
+        Vector3f angles = matrix.getEulerAnglesZYX(new Vector3f());
+        return new float[]{position.x, position.y, position.z, angles.x, angles.y, angles.z};
+    }
+
 
     /**
      * Bake the rig's root part from its definition. An {@code entity_layer} rig bakes the named
@@ -238,12 +498,13 @@ public final class RigModels {
      */
     public static ModelPart bone(String rigBase, String name) {
         if (name == null || name.isEmpty()) return null;
-        ModelPart root = ROOTS.get(rigBase);
+        ModelPart root = lookupRoot(rigBase);
         if (root == null) {
             model(rigBase);
             root = ROOTS.get(rigBase);
         }
-        return root != null && root.hasChild(name) ? root.getChild(name) : null;
+        ModelPart[] path = bonePath(root, name);
+        return path == null ? null : path[path.length - 1];
     }
 
     /**
@@ -267,8 +528,8 @@ public final class RigModels {
      */
     public static ModelPart bakedBone(String rigBase, String name) {
         if (name == null || name.isEmpty()) return null;
-        ModelPart root = ROOTS.get(rigBase);
-        return root != null && root.hasChild(name) ? root.getChild(name) : null;
+        ModelPart[] path = bonePath(lookupRoot(rigBase), name);
+        return path == null ? null : path[path.length - 1];
     }
 
     /**
@@ -277,7 +538,7 @@ public final class RigModels {
      * that has happened (the generic render branch bakes it before reading this).
      */
     public static ModelPart bakedRoot(String rigBase) {
-        return ROOTS.get(rigBase);
+        return lookupRoot(rigBase);
     }
 
     /**
@@ -343,9 +604,7 @@ public final class RigModels {
         if (def == null || def.texture() == null || def.texture().isEmpty()) return null;
         // Prefer a datapack-synced texture (no resource pack needed); fall back to a plain resource
         // location for vanilla / resource-pack textures (e.g. minecraft:textures/entity/skeleton).
-        ResourceLocation synced =
-                com.aetherianartificer.townstead.client.attachment.AttachmentClient.namedTexture(def.texture());
-        return synced != null ? synced : DataPackLang.parseId(def.texture());
+        return RigAssets.texture(def.texture());
     }
 
     // All vanilla layer definitions, built once. Used to bake body and armor models by bakeRoot()
@@ -360,7 +619,27 @@ public final class RigModels {
      */
     public static ModelPart bakeArmorPart(String rigBase, boolean inner) {
         RigDefinition def = RootCatalogClient.rig(rigBase);
-        if (def == null || def.armorType() != RigDefinition.ArmorType.LAYERS) return null;
+        if (def == null) return null;
+        if (def.armorType() == RigDefinition.ArmorType.CUSTOM) {
+            JsonObject geo = RigAssets.geometry(inner ? def.armorInner() : def.armorOuter());
+            if (geo == null) return null;
+            ModelPart armor = BedrockGeometryLoader.parse(geo, true);
+            if (armor == null) return null;
+            JsonArray parts = bonesOf(geo);
+            if (parts != null) for (JsonElement entry : parts) {
+                JsonObject part = entry.getAsJsonObject();
+                String name = part.get("name").getAsString();
+                if (!armor.hasChild(name) || !part.has("scale")) continue;
+                JsonArray scale = part.getAsJsonArray("scale");
+                if (scale.size() != 3) continue;
+                ModelPart target = armor.getChild(name);
+                target.xScale = scale.get(0).getAsFloat();
+                target.yScale = scale.get(1).getAsFloat();
+                target.zScale = scale.get(2).getAsFloat();
+            }
+            return armor;
+        }
+        if (def.armorType() != RigDefinition.ArmorType.LAYERS) return null;
         return bakeLayerRef(inner ? def.armorInner() : def.armorOuter());
     }
 }

@@ -71,7 +71,10 @@ public final class SkinPicker {
         for (Map.Entry<String, Clothing> e : list.clothing.entrySet()) {
             String skin = e.getKey();
             Clothing clothing = e.getValue();
-            if (skin == null || clothing == null || clothing.exclude) continue;
+            if (skin == null || clothing == null) continue;
+            // Rig skins are excluded from MCA's own random picks (they don't fit its body); a body they
+            // fit may still wear them.
+            if (clothing.exclude && !(bodyOnly && fits(fitted, skin))) continue;
             if (!SkinSelection.matchesGender(clothing, gender)) continue;
             ClothingEntry entry = ClothingDefs.forSkin(skin);
             if (entry == null) entry = ClothingThermal.syntheticSkinEntry(skin);

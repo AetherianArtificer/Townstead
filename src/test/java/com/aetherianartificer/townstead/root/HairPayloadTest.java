@@ -32,7 +32,7 @@ class HairPayloadTest {
         var entry = new RootCatalogEntry("test:root", "Root", "", "", "", "", "", "",
                 List.of(), List.of(), "", "", "", "", "", "", "", "mca:villager", 1f,
                 Animations.DEFAULT, true, true, ranges, colors, gradients, List.of("test:adult"), null, true, false);
-        var original = new RootCatalogSyncPayload(List.of(entry), List.of(), List.of(), List.of(), List.of());
+        var original = new RootCatalogSyncPayload(List.of(entry), List.of(), List.of(), List.of(), List.of(), List.of());
         var buffer = new FriendlyByteBuf(Unpooled.buffer());
         try {
             original.write(buffer);

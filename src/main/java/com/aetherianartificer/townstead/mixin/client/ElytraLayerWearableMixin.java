@@ -29,4 +29,16 @@ public abstract class ElytraLayerWearableMixin {
                                         CallbackInfo ci) {
         RigWearables.applyItem(entity, "elytra");
     }
+
+    //? if neoforge {
+    @Inject(method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/world/entity/LivingEntity;FFFFFF)V", at = @At("RETURN"), require = 0)
+    //?} else {
+    /*@Inject(method = "m_6494_(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/world/entity/LivingEntity;FFFFFF)V", remap = false, at = @At("RETURN"), require = 0)
+    *///?}
+    private void townstead$anchorElytraRestore(PoseStack pose, MultiBufferSource buffers, int light,
+                                        LivingEntity entity, float limbSwing, float limbSwingAmount,
+                                        float partialTick, float ageInTicks, float netHeadYaw, float headPitch,
+                                        CallbackInfo ci) {
+        RigWearables.applyItem(entity, "");
+    }
 }

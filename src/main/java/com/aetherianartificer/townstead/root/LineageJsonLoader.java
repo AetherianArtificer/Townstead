@@ -40,11 +40,13 @@ public final class LineageJsonLoader extends SimpleJsonResourceReloadListener {
         Map<ResourceLocation, Personalities> policies = new LinkedHashMap<>();
         Map<ResourceLocation, com.aetherianartificer.townstead.root.appearance.HairPolicy> hairPolicies = new LinkedHashMap<>();
         Map<ResourceLocation, com.aetherianartificer.townstead.clothing.BodyClothing> bodyClothing = new LinkedHashMap<>();
+        Map<ResourceLocation, Map<String, com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit>> outfits = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
             String ctx = file.toString();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), ctx);
+                if (!com.aetherianartificer.townstead.data.ModGate.allows(obj)) continue;
                 TownsteadSchema.validate(obj, "townstead:lineage/v1");
                 Component displayName = DataPackLang.parseComponent(obj.get("display_name"), ctx, lang);
                 ResourceLocation ancestry = RootJsonParsing.optionalId(obj, "ancestry", ctx, LOGGER);
@@ -63,6 +65,7 @@ public final class LineageJsonLoader extends SimpleJsonResourceReloadListener {
                 policies.put(file, PersonalityPolicies.parse(obj));
                 hairPolicies.put(file, com.aetherianartificer.townstead.root.appearance.HairPolicy.parse(obj, lang));
                 bodyClothing.put(file, com.aetherianartificer.townstead.clothing.BodyClothing.parse(obj));
+                outfits.put(file, com.aetherianartificer.townstead.root.outfit.RootOutfits.parse(obj));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse lineage {}: {}", file, ex.getMessage());
             }
@@ -71,6 +74,7 @@ public final class LineageJsonLoader extends SimpleJsonResourceReloadListener {
         PersonalityPolicyRegistry.setLineage(policies);
         com.aetherianartificer.townstead.root.appearance.HairPolicyRegistry.setLineage(hairPolicies);
         com.aetherianartificer.townstead.clothing.BodyClothingRegistry.setLineage(bodyClothing);
+        com.aetherianartificer.townstead.root.outfit.RootOutfits.setLineage(outfits);
         LOGGER.info("Loaded {} Roots lineages", parsed.size());
     }
 }

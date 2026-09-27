@@ -34,13 +34,17 @@ class CharterWireTest {
                 List.of(new CharterSnapshotS2CPayload.CensusScope("faction", literal("Faction population"),
                         List.of(new CharterSnapshotS2CPayload.CensusGroup("test:culture", literal("Culture"), 12, 0xff397f79)), 12, 3, true)),
                 List.of(text), List.of(new CharterSnapshotS2CPayload.Heraldry("faction:test:one", text,
-                        com.aetherianartificer.townstead.politics.heraldry.EmblemRecipe.DEFAULT.encode(), 7, true)),
+                        com.aetherianartificer.townstead.politics.heraldry.EmblemRecipe.DEFAULT.encode(), 7, true,
+                        new CharterSnapshotS2CPayload.Livery("pack:plate", 0x8A1C1C, 0xC9A227, 2, literal("Culture default"), null))),
                 true, List.of(office),
-                new CharterSnapshotS2CPayload.Members(100, true, people, literal("You hold: Leader"), literal("Anyone may join."), List.of(action)),
+                new CharterSnapshotS2CPayload.Members(100, true, people, literal("You hold: Leader"), literal("Anyone may join."), List.of(action), 1),
                 List.of(new CharterSnapshotS2CPayload.Request("request", text, literal("Applicant"), "application", "pending", 1, 2, List.of(action))),
                 draft, new CharterSnapshotS2CPayload.Civic("test:provider", "test:actor", "active", true, false,
                         literal("Modded governance"), text, text, List.of(new CharterSnapshotS2CPayload.Role(text, List.of(text))),
-                        List.of(text), List.of(action)));
+                        List.of(text), List.of(action)),
+                List.of(new CharterSnapshotS2CPayload.StyleOption("pack:plate", literal("Plate"),
+                        new com.aetherianartificer.townstead.livery.LiveryView(net.minecraft.resources.ResourceLocation.tryParse("pack:plate"), true, 0x8A1C1C, 0xC9A227,
+                                java.util.Map.of("chest", new com.aetherianartificer.townstead.livery.LiveryView.Trim("minecraft:ward", "minecraft:gold"))))));
         var original = new CharterSnapshotS2CPayload(BlockPos.ZERO, new BlockPos(0, 1, 1), CharterSnapshotS2CPayload.FOUNDED, false,
                 "", 42, "Settlement", "Faction", text, literal(""), literal("Founding tradition"),
                 List.of(new CharterSnapshotS2CPayload.Option("test:profile", text, text, text, true, List.of("League of {name}"))),
@@ -58,6 +62,9 @@ class CharterWireTest {
             assertTrue(decoded.book().members().people().size() == 100, "Large roster was truncated");
             assertTrue(decoded.book().offices().get(0).maximum() == -1, "An unlimited office came back limited");
             assertTrue(decoded.book().census().get(0).uncounted() == 3, "Uncounted residents were lost");
+            assertTrue(decoded.book().heraldry().get(0).livery().primary() == 0x8A1C1C, "A livery lost its colour");
+            assertTrue(decoded.book().members().livery() == 1 && decoded.book().liveryStyles().size() == 1, "Livery state was lost");
+            assertTrue(decoded.book().liveryStyles().get(0).view().trims().get("chest").pattern().equals("minecraft:ward"), "A style lost its trims");
             assertTrue(decoded.book().draft().signers().get(0).date().fallback().equals("Autumn 3"), "A seal lost its date");
             assertTrue(decoded.book().draft().signers().get(0).seal().device().equals("townstead:key"), "A seal lost its device");
         } finally { buf.release(); }

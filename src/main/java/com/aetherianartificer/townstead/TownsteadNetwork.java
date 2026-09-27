@@ -86,7 +86,7 @@ import java.util.function.Function;
 public final class TownsteadNetwork {
     private TownsteadNetwork() {}
 
-    private static final String PROTOCOL_VERSION = "12";
+    private static final String PROTOCOL_VERSION = "15";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(Townstead.MOD_ID, "main"),
             () -> PROTOCOL_VERSION,
@@ -214,6 +214,10 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.seal.SealC2SPayload::read,
                 (p, sp) -> com.aetherianartificer.townstead.seal.PersonalSeals.choose(sp, p.device(), p.dye()));
+        registerS2C(com.aetherianartificer.townstead.livery.LiveryS2CPayload.class,
+                com.aetherianartificer.townstead.livery.LiveryS2CPayload::write,
+                com.aetherianartificer.townstead.livery.LiveryS2CPayload::read,
+                p -> com.aetherianartificer.townstead.client.livery.LiveryClientStore.accept(p));
         registerS2C(com.aetherianartificer.townstead.seal.SealS2CPayload.class,
                 com.aetherianartificer.townstead.seal.SealS2CPayload::write,
                 com.aetherianartificer.townstead.seal.SealS2CPayload::read,
@@ -639,7 +643,8 @@ public final class TownsteadNetwork {
     }
 
     private static void handleAttachmentManifest(com.aetherianartificer.townstead.root.attachment.AttachmentManifestS2CPayload payload) {
-        com.aetherianartificer.townstead.client.attachment.AttachmentClient.onManifest(payload.defs(), payload.slots(), payload.namedTextures(), payload.namedGeo());
+        com.aetherianartificer.townstead.client.attachment.AttachmentClient.onManifest(payload.defs(), payload.slots(), payload.namedTextures(), payload.namedGeo(),
+                payload.namedAnimations());
     }
 
     private static void handleAttachmentChunk(com.aetherianartificer.townstead.root.attachment.AttachmentChunkS2CPayload payload) {

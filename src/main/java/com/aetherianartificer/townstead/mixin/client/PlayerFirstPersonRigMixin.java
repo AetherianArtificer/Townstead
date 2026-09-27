@@ -135,10 +135,13 @@ public abstract class PlayerFirstPersonRigMixin {
         model.young = player.isBaby();
         model.riding = false;
         model.setupAnim(player, 0f, 0f, 0f, 0f, 0f);
-        ModelPart bone = RigModels.bakedBone(rigBase, grip.bone());
+        ModelPart[] armPath = model instanceof net.minecraft.client.model.HierarchicalModel<?> hierarchy
+                ? RigModels.bonePath(hierarchy.root(), grip.bone()) : null;
+        ModelPart bone = armPath == null ? null : armPath[armPath.length - 1];
         if (bone == null) return false;
         // Seat the leg into the first-person view: the authored first-person rotation orients it, then
         // the offset slides it into the corner. Both default to zero (leg drawn at the raw hand frame).
+        pose.pushPose();
         float[] rot = grip.fpRotation();
         if (rot[0] != 0f) pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(rot[0]));
         if (rot[1] != 0f) pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(rot[1]));
@@ -154,6 +157,7 @@ public abstract class PlayerFirstPersonRigMixin {
                 ((tone >> 16) & 0xFF) / 255f, ((tone >> 8) & 0xFF) / 255f, (tone & 0xFF) / 255f,
                 ((tone >>> 24) & 0xFF) / 255f);
         *///?}
+        pose.popPose();
         return true;
     }
 

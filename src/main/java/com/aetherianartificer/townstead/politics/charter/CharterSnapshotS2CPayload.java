@@ -123,10 +123,10 @@ public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int sta
     public record Book(String id, Text proclaimed, Text editingAs, @Nullable Text legitimacy, Text legitimacyDetail,
                        SeatRow seat, List<CensusScope> census, List<Text> history, List<Heraldry> heraldry, boolean mayDraft,
                        List<Office> offices, Members members, List<Request> requests,
-                       @Nullable Draft draft, @Nullable Civic civic) {
+                       @Nullable Draft draft, @Nullable Civic civic, List<StyleOption> liveryStyles) {
         public Book {
             census = List.copyOf(census); history = List.copyOf(history); heraldry = List.copyOf(heraldry);
-            offices = List.copyOf(offices); requests = List.copyOf(requests);
+            offices = List.copyOf(offices); requests = List.copyOf(requests); liveryStyles = List.copyOf(liveryStyles);
         }
         void write(FriendlyByteBuf b) {
             b.writeUtf(id, 256); proclaimed.write(b); editingAs.write(b); writeOptional(b, legitimacy); legitimacyDetail.write(b); seat.write(b);
@@ -135,12 +135,13 @@ public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int sta
             writeList(b, requests, Request::write);
             b.writeBoolean(draft != null); if (draft != null) draft.write(b);
             b.writeBoolean(civic != null); if (civic != null) civic.write(b);
+            writeList(b, liveryStyles, StyleOption::write);
         }
         static Book read(FriendlyByteBuf b) {
             return new Book(b.readUtf(256), Text.read(b), Text.read(b), readOptional(b), Text.read(b), SeatRow.read(b),
                     readList(b, CensusScope::read), readList(b, Text::read), readList(b, Heraldry::read), b.readBoolean(),
                     readList(b, Office::read), Members.read(b), readList(b, Request::read),
-                    b.readBoolean() ? Draft.read(b) : null, b.readBoolean() ? Civic.read(b) : null);
+                    b.readBoolean() ? Draft.read(b) : null, b.readBoolean() ? Civic.read(b) : null, readList(b, StyleOption::read));
         }
     }
 
@@ -166,10 +167,11 @@ public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int sta
      * The roster. {@code visible} is false for a viewer who may only see the count. {@code status}
      * says where the viewer stands, {@code joinHint} how one joins, {@code actions} what they may do.
      */
-    public record Members(int count, boolean visible, List<Person> people, Text status, Text joinHint, List<Action> actions) {
+    /** {@code livery} is whether the viewer wears the faction's livery: -1 when they cannot, 0 off, 1 on. */
+    public record Members(int count, boolean visible, List<Person> people, Text status, Text joinHint, List<Action> actions, int livery) {
         public Members { people = List.copyOf(people); actions = List.copyOf(actions); }
-        void write(FriendlyByteBuf b) { b.writeVarInt(count); b.writeBoolean(visible); writeList(b, people, Person::write); status.write(b); joinHint.write(b); writeList(b, actions, Action::write); }
-        static Members read(FriendlyByteBuf b) { return new Members(b.readVarInt(), b.readBoolean(), readList(b, Person::read), Text.read(b), Text.read(b), readList(b, Action::read)); }
+        void write(FriendlyByteBuf b) { b.writeVarInt(count); b.writeBoolean(visible); writeList(b, people, Person::write); status.write(b); joinHint.write(b); writeList(b, actions, Action::write); b.writeVarInt(livery + 1); }
+        static Members read(FriendlyByteBuf b) { return new Members(b.readVarInt(), b.readBoolean(), readList(b, Person::read), Text.read(b), Text.read(b), readList(b, Action::read), b.readVarInt() - 1); }
     }
 
     public record Person(String id, Text name, Text detail, boolean player, boolean you) {
@@ -220,9 +222,31 @@ public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int sta
                 buf.readUtf(64), buf.readUtf(64), buf.readVarInt(), buf.readVarInt(), readList(buf, Action::read)); }
     }
 
-    public record Heraldry(String actor, Text name, String recipe, long revision, boolean editable) {
-        void write(FriendlyByteBuf b) { b.writeUtf(actor, 512); name.write(b); b.writeUtf(recipe, 1024); b.writeLong(revision); b.writeBoolean(editable); }
-        static Heraldry read(FriendlyByteBuf b) { return new Heraldry(b.readUtf(512), Text.read(b), b.readUtf(1024), b.readLong(), b.readBoolean()); }
+    public record Heraldry(String actor, Text name, String recipe, long revision, boolean editable, Livery livery) {
+        void write(FriendlyByteBuf b) { b.writeUtf(actor, 512); name.write(b); b.writeUtf(recipe, 1024); b.writeLong(revision); b.writeBoolean(editable); livery.write(b); }
+        static Heraldry read(FriendlyByteBuf b) { return new Heraldry(b.readUtf(512), Text.read(b), b.readUtf(1024), b.readLong(), b.readBoolean(), Livery.read(b)); }
+    }
+
+    /**
+     * A body's proclaimed livery. {@code style} is empty when it wears what it would by default, which
+     * {@code inherited} names (the faction above's, or the culture's), so the desk can say so.
+     */
+    public record Livery(String style, int primary, int secondary, long revision, Text inherited,
+                         @Nullable com.aetherianartificer.townstead.livery.LiveryView inheritedView) {
+        void write(FriendlyByteBuf b) {
+            b.writeUtf(style, 256); b.writeInt(primary); b.writeInt(secondary); b.writeLong(revision); inherited.write(b);
+            b.writeBoolean(inheritedView != null); if (inheritedView != null) inheritedView.write(b);
+        }
+        static Livery read(FriendlyByteBuf b) {
+            return new Livery(b.readUtf(256), b.readInt(), b.readInt(), b.readLong(), Text.read(b),
+                    b.readBoolean() ? com.aetherianartificer.townstead.livery.LiveryView.read(b) : null);
+        }
+    }
+
+    /** A livery style the desk offers: its id, name, and how it looks at its own colors, for the preview. */
+    public record StyleOption(String id, Text name, com.aetherianartificer.townstead.livery.LiveryView view) {
+        void write(FriendlyByteBuf b) { b.writeUtf(id, 256); name.write(b); view.write(b); }
+        static StyleOption read(FriendlyByteBuf b) { return new StyleOption(b.readUtf(256), Text.read(b), com.aetherianartificer.townstead.livery.LiveryView.read(b)); }
     }
 
     public record Civic(String provider, String actor, String state, boolean controlsGovernment, boolean mayManage,

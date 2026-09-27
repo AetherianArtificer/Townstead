@@ -115,6 +115,19 @@ public final class CharterBellService {
         CharterSavedData saved = CharterSavedData.get(player.server);
         ResourceLocation dimension = player.serverLevel().dimension().location();
         int action = request.action();
+        if (action == CharterActionC2SPayload.WEAR_LIVERY) {
+            // A personal choice: any member may wear the faction's livery or put it away.
+            var binding = saved.binding(dimension, request.lectern());
+            Faction faction = binding == null ? null : PoliticalSavedData.get(player.server).faction(binding.faction());
+            if (faction == null || FactionBonds.membership(PoliticalSavedData.get(player.server), player.getUUID(), faction.id(),
+                    membershipBond(faction)) == null) return;
+            boolean wear = request.operation().equals("on");
+            com.aetherianartificer.townstead.livery.LiverySavedData.get(player.server).setWears(player.getUUID(), wear);
+            com.aetherianartificer.townstead.livery.LiverySync.refresh();
+            send(player, request.lectern(), false, Component.translatable(wear
+                    ? "charter.townstead.livery.worn" : "charter.townstead.livery.put_away").getString());
+            return;
+        }
         if (action == CharterActionC2SPayload.MEMBERSHIP || action == CharterActionC2SPayload.CIVIC
                 || action == CharterActionC2SPayload.DRAFT || action == CharterActionC2SPayload.HERALDRY) {
             var binding = saved.binding(dimension, request.lectern());
@@ -388,7 +401,8 @@ public final class CharterBellService {
                 members(player, politics, faction, external),
                 external ? List.of() : CharterMemberships.requests(player, politics, faction),
                 draftView(player, politics, faction),
-                civic);
+                civic,
+                liveryStyles());
         return new CharterSnapshotS2CPayload(lectern, bell, intact ? CharterSnapshotS2CPayload.FOUNDED : CharterSnapshotS2CPayload.REPAIR,
                 editable, message, CivicProviders.revision(player, civic), village.getName(), faction.name(), text(form),
                 text(Component.empty()), text(cultureName(founding == null ? null : founding.culture())), List.of(), List.of(), book);
@@ -459,6 +473,11 @@ public final class CharterBellService {
         return Component.translatable("charter.townstead.join.open");
     }
 
+    private static ResourceLocation membershipBond(Faction faction) {
+        FactionKind kind = PoliticalDefinitions.snapshot().kind(faction.kind());
+        return kind == null ? FactionBonds.CITIZENSHIP : kind.membership().bond();
+    }
+
     private static CharterSnapshotS2CPayload.Members members(ServerPlayer player, PoliticalSavedData data, Faction faction, boolean external) {
         FactionKind kind = PoliticalDefinitions.snapshot().kind(faction.kind());
         ResourceLocation membership = kind == null ? FactionBonds.CITIZENSHIP : kind.membership().bond();
@@ -497,9 +516,19 @@ public final class CharterBellService {
                         text(entry.office() == null ? Component.empty() : entry.office()), entry.player(), entry.id().equals(self)));
             }
         }
+        int livery = !member ? -1 : com.aetherianartificer.townstead.livery.LiverySavedData.get(player.server).wears(self) ? 1 : 0;
         return new CharterSnapshotS2CPayload.Members(members.size(), visible, people, text(yourStatus(player, data, faction, member)),
                 text(external ? Component.empty() : joinHint(faction, player.serverLevel())),
-                external ? List.of() : CharterMemberships.actions(player, data, faction));
+                external ? List.of() : CharterMemberships.actions(player, data, faction), livery);
+    }
+
+    /** Every loaded livery style, by name, for the heraldry desk's chooser. */
+    private static List<CharterSnapshotS2CPayload.StyleOption> liveryStyles() {
+        return com.aetherianartificer.townstead.livery.LiveryStyles.all().values().stream()
+                .sorted(Comparator.comparing(style -> style.name().getString()))
+                .map(style -> new CharterSnapshotS2CPayload.StyleOption(style.id().toString(), text(style.name()),
+                        com.aetherianartificer.townstead.livery.LiveryView.of(style, style.primary(), style.secondary())))
+                .toList();
     }
 
     private static Component yourStatus(ServerPlayer player, PoliticalSavedData data, Faction faction, boolean member) {
@@ -563,6 +592,14 @@ public final class CharterBellService {
                     text(Component.translatable(clause.target().startsWith("settlement:")
                             ? "charter.townstead.clause.heraldry.settlement" : "charter.townstead.clause.heraldry.faction")),
                     text(Component.translatable("charter.townstead.clause.heraldry.detail")));
+            case CharterDrafts.LIVERY -> {
+                var choice = CharterDrafts.LiveryChoice.decode(clause.argument());
+                var style = choice == null ? null : com.aetherianartificer.townstead.livery.LiveryStyles.get(choice.style());
+                yield new CharterSnapshotS2CPayload.Clause(
+                        text(Component.translatable(clause.target().startsWith("settlement:")
+                                ? "charter.townstead.clause.livery.settlement" : "charter.townstead.clause.livery.faction")),
+                        text(style == null ? Component.translatable("charter.townstead.clause.livery.default") : style.name()));
+            }
             case CharterDrafts.SEAT -> new CharterSnapshotS2CPayload.Clause(
                     text(Component.translatable("charter.townstead.clause.seat")),
                     text(Component.translatable("charter.townstead.clause.seat.detail")));

@@ -25,7 +25,8 @@ public final class RootCatalog {
     public record Snapshot(List<RootCatalogEntry> origins, List<GeneCatalogEntry> genes,
                            List<TraitCatalogEntry> traits,
                            List<com.aetherianartificer.townstead.root.rig.RigDefinition> rigs,
-                           List<String> entityGroups) {}
+                           List<String> entityGroups,
+                           List<RootLook> looks) {}
 
     public static Snapshot build() {
         List<RootCatalogEntry> origins = new ArrayList<>();
@@ -98,7 +99,30 @@ public final class RootCatalog {
         }
         return new Snapshot(origins, new ArrayList<>(genes.values()), traits,
                 com.aetherianartificer.townstead.root.rig.RigRegistry.all(),
-                PresentEntityGroups.keysFromRegistries());
+                PresentEntityGroups.keysFromRegistries(), looks());
+    }
+
+    /** Outfits and fitted skins per root; roots with neither are left out. */
+    private static List<RootLook> looks() {
+        List<RootLook> out = new ArrayList<>();
+        for (Root root : RootRegistry.all()) {
+            List<com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit> outfits =
+                    com.aetherianartificer.townstead.root.outfit.RootOutfits.resolve(root.id());
+            List<String> skins = new ArrayList<>();
+            ResourceLocation speciesId = RootRegistry.effectiveSpecies(root.id());
+            Species species = speciesId == null ? null : SpeciesRegistry.byId(speciesId);
+            boolean mcaBody = species == null || species.rig() == null || Rig.VILLAGER.base().equals(species.rig().base());
+            if (!mcaBody) {
+                for (com.aetherianartificer.townstead.clothing.ClothingEntry entry
+                        : com.aetherianartificer.townstead.clothing.BodyClothingResolver.fitted(root.id(), null)) {
+                    if (entry.skin() != null && !skins.contains(entry.skin())) skins.add(entry.skin());
+                }
+            }
+            if (!outfits.isEmpty() || !skins.isEmpty()) {
+                out.add(new RootLook(root.id().toString(), List.copyOf(outfits), List.copyOf(skins)));
+            }
+        }
+        return out;
     }
 
     /**

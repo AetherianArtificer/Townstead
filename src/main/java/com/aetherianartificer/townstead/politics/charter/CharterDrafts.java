@@ -30,7 +30,7 @@ import java.util.UUID;
  */
 public final class CharterDrafts {
     public static final ResourceLocation GOVERN = id("townstead:govern_faction");
-    public static final String RENAME = "rename", HERALDRY = "heraldry", SEAT = "seat",
+    public static final String RENAME = "rename", HERALDRY = "heraldry", LIVERY = "livery", SEAT = "seat",
             TRANSFER_LEADERSHIP = "transfer_leadership", DISSOLVE = "dissolve";
     /** How long a signed draft waits for its bell: half a Minecraft day. */
     static final long PREPARED_LIFETIME = 12000L;
@@ -138,6 +138,10 @@ public final class CharterDrafts {
                     ? new CharterSavedData.Clause(HERALDRY, request.target(), request.argument(),
                             Long.toString(HeraldrySavedData.get(player.server).get(request.target()).revision()))
                     : null;
+            case LIVERY -> HeraldryService.shows(binding, request.target())
+                    ? new CharterSavedData.Clause(LIVERY, request.target(), request.argument(),
+                            Long.toString(com.aetherianartificer.townstead.livery.LiverySavedData.get(player.server).revision(request.target())))
+                    : null;
             case SEAT -> new CharterSavedData.Clause(SEAT, binding.dimension() + "|" + binding.lectern().asLong(), "", "");
             case TRANSFER_LEADERSHIP -> new CharterSavedData.Clause(TRANSFER_LEADERSHIP, faction.id().toString(), request.argument(), "");
             case DISSOLVE -> new CharterSavedData.Clause(DISSOLVE, faction.id().toString(), "", faction.name());
@@ -165,6 +169,12 @@ public final class CharterDrafts {
                 try { recipe = EmblemRecipe.decode(clause.argument()); } catch (RuntimeException error) { yield "invalid"; }
                 if (!EmblemItems.valid(player.serverLevel().registryAccess(), recipe)) yield "invalid";
                 yield Long.toString(HeraldrySavedData.get(player.server).get(clause.target()).revision()).equals(clause.expected()) ? null : "stale";
+            }
+            case LIVERY -> {
+                LiveryChoice choice = LiveryChoice.decode(clause.argument());
+                if (choice == null) yield "invalid";
+                long revision = com.aetherianartificer.townstead.livery.LiverySavedData.get(player.server).revision(clause.target());
+                yield Long.toString(revision).equals(clause.expected()) ? null : "stale";
             }
             case SEAT -> {
                 CharterSavedData.Binding binding = seatBinding(player, clause);
@@ -209,6 +219,13 @@ public final class CharterDrafts {
                 case RENAME -> CharterIdentityService.rename(data, faction.id(), clause.expected(), clause.argument());
                 case HERALDRY -> HeraldryService.publish(player, clause.target(), EmblemRecipe.decode(clause.argument()),
                         Long.parseLong(clause.expected()));
+                case LIVERY -> {
+                    LiveryChoice choice = LiveryChoice.decode(clause.argument());
+                    var livery = com.aetherianartificer.townstead.livery.LiverySavedData.get(player.server);
+                    if (choice != null) livery.publish(clause.target(), choice.style(), choice.primary(), choice.secondary(),
+                            Long.parseLong(clause.expected()));
+                    com.aetherianartificer.townstead.livery.LiverySync.refresh();
+                }
                 case SEAT -> {
                     CharterSavedData.Binding binding = seatBinding(player, clause);
                     ServerLevel level = binding == null ? null : level(player, binding.dimension());
@@ -238,6 +255,29 @@ public final class CharterDrafts {
 
     private static @Nullable ServerLevel level(ServerPlayer player, ResourceLocation dimension) {
         return player.server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, dimension));
+    }
+
+    /**
+     * A drafted livery: a style and two colours, or the culture default when {@code style} is null.
+     * Encoded {@code style|primary|secondary} with hex colours; an empty argument is the default.
+     */
+    public record LiveryChoice(@Nullable ResourceLocation style, int primary, int secondary) {
+        public String encode() {
+            return style == null ? "" : style + "|" + Integer.toHexString(primary) + "|" + Integer.toHexString(secondary);
+        }
+
+        public static @Nullable LiveryChoice decode(String raw) {
+            if (raw == null || raw.isEmpty()) return new LiveryChoice(null, 0, 0);
+            String[] parts = raw.split("\\|", 3);
+            if (parts.length != 3) return null;
+            ResourceLocation style = ResourceLocation.tryParse(parts[0]);
+            if (style == null || com.aetherianartificer.townstead.livery.LiveryStyles.get(style) == null) return null;
+            try {
+                return new LiveryChoice(style, Integer.parseInt(parts[1], 16) & 0xFFFFFF, Integer.parseInt(parts[2], 16) & 0xFFFFFF);
+            } catch (NumberFormatException error) {
+                return null;
+            }
+        }
     }
 
     static @Nullable UUID uuid(String value) {
