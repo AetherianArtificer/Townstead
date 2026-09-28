@@ -327,4 +327,9 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
         active = true;
         Townstead.LOGGER.info("Cold Sweat temperature compatibility enabled.");
     }
+
+    @Override
+    public net.minecraft.resources.ResourceLocation playerImmunityEffect() {
+        return net.minecraft.resources.ResourceLocation.tryParse("cold_sweat:grace");
+    }
 }

@@ -46,11 +46,12 @@ public final class StoryQuestProvider implements QuestProvider {
             if (quest.handBack()) {
                 objectives.add(new QuestObjective(I18n.get("townstead.story.quest.talk_to", quest.teller()), 0L, 0L,
                         quest.state() == 2 ? QuestObjective.Status.DONE
-                                : quest.state() == 1 ? QuestObjective.Status.PENDING : QuestObjective.Status.UNAVAILABLE, ""));
+                                : quest.state() == 1 ? QuestObjective.Status.PENDING : QuestObjective.Status.UNAVAILABLE,
+                        com.aetherianartificer.townstead.client.gui.quest.QuestIcons.PREFIX + "talk"));
             }
             QuestState state = quest.state() == 2 ? QuestState.COMPLETE : QuestState.ACTIVE;
             out.add(new QuestEntry(id(), displayName(), quest.id(), quest.title(), quest.about(), quest.teller(),
-                    "minecraft:writable_book", state, objectives, List.of(), Set.of(),
+                    com.aetherianartificer.townstead.client.gui.quest.QuestIcons.PREFIX + "letter", state, objectives, List.of(), Set.of(),
                     false, false, List.of(), I18n.get("townstead.story.quest.teller", quest.teller())));
         }
         return out;

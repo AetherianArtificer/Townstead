@@ -21,7 +21,7 @@ class BedrockPerformanceClipTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"wave,32", "clap,48", "nod,20", "shrug,30", "cheer,40", "cheer_excited,40", "startled,30", "yawn,44", "shake_head,24", "point,30", "toast,28"})
+    @CsvSource({"wave,32", "clap,48", "nod,20", "shrug,30", "cheer,40", "cheer_excited,40", "startled,30", "yawn,44", "shake_head,24", "point,30", "toast,28", "bite,56", "bitten,56"})
     void loadsTheActualBlockbenchExport(String name, float duration) throws Exception {
         try (var stream = getClass().getResourceAsStream("/assets/townstead_performance/animations/townstead/" + name + ".animation.json")) {
             assertNotNull(stream);

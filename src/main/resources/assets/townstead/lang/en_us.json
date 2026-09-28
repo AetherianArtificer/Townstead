@@ -391,6 +391,12 @@
   "townstead.configuration.cannibalism.mode.tooltip": "Each tier includes the ones below it. OFF: nobody eats sapient flesh. PREDATORS: roots declaring eats_sapients may eat other kinds, never their own. TRAIT: predators, plus cannibals (born with the gene or broken by starvation) may eat anything. EVERYONE: anything goes.",
   "townstead.configuration.cannibalism.produce": "Produce Sapient Meat",
   "townstead.configuration.cannibalism.produce.tooltip": "Order sheets list sapient meat and butchers smoke and grind it. Separate from the mode so a village can hunt without selling, or trade without eating.",
+  "townstead.configuration.vampirism": "Vampirism",
+  "townstead.configuration.vampirism.tooltip": "How vampire villagers feed, and whether their bite spreads vampirism.",
+  "townstead.configuration.vampirism.feeding": "Vampire Feeding",
+  "townstead.configuration.vampirism.feeding.tooltip": "Each tier includes the ones below it. OFF: animals only. WILLING: also their spouse, who offers. ANYONE: any villager or player who is not a vampire. Vampires never drink from vampires.",
+  "townstead.configuration.vampirism.infection": "Bites Spread Vampirism",
+  "townstead.configuration.vampirism.infection.tooltip": "A vampire villager's bite can pass on Sanguinare, as a Vampirism vampire's does.",
   "townstead.configuration.caregiving": "Caregiving",
   "townstead.configuration.caregiving.tooltip": "Controls how villagers feed babies and children.",
   "townstead.configuration.caregiving.enableFeedingYoung": "Feed Babies And Children",
@@ -4905,5 +4911,8 @@
   "command.pheno.state.value": "Pheno: %s has %s at %s (tier %s, from %s).",
   "command.pheno.state.inactive": "Pheno: %s does not have %s.",
   "command.pheno.state.ineligible": "Pheno: %s's Root cannot have %s.",
-  "command.pheno.state.unwritable": "Pheno: %s cannot be written on %s (no writable backing, or the Root does not allow it)."
+  "command.pheno.state.unwritable": "Pheno: %s cannot be written on %s (no writable backing, or the Root does not allow it).",
+  "command.pheno.state.no_target": "Pheno: no villager in sight or nearby.",
+  "chronicle.townstead.turned_vampire": "%s became a vampire",
+  "chronicle.townstead.vampire_cured": "%s was cured of vampirism"
 }

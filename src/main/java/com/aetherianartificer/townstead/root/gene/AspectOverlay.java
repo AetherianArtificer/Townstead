@@ -11,9 +11,10 @@ import java.util.List;
 
 /**
  * Lays the gene overlays of an entity's active states over its expressed alleles. The
- * genotype is never touched, so leaving the state restores the carrier exactly. Every
- * suppression applies first, then every grant in priority order; a grant replaces
- * whatever the carrier expresses at the granted gene's locus.
+ * genotype is never touched, so leaving the state restores the carrier exactly. Overlays
+ * apply in priority order, each its suppressions and then its grants, so a higher tier can
+ * take back what a lower one gave; a grant replaces whatever the carrier expresses at the
+ * granted gene's locus.
  */
 public final class AspectOverlay {
     // Resolving a state can evaluate conditions that read expressed genes again.
@@ -86,8 +87,6 @@ public final class AspectOverlay {
                 ResourceLocation canonical = genes.canonical(id);
                 if (canonical != null) out.removeIf(allele -> canonical.equals(canonicalOf(allele, genes)));
             }
-        }
-        for (StateEffect.Genes overlay : overlays) {
             for (StateEffect.Grant grant : overlay.grant()) {
                 ResourceLocation canonical = genes.canonical(grant.gene());
                 if (canonical == null) continue;

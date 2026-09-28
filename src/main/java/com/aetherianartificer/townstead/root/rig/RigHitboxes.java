@@ -75,7 +75,7 @@ public final class RigHitboxes {
         if (pose == entity.getPose() && entity.tickCount > 1 && !entity.noPhysics
                 && entity.getBbWidth() >= BodySize.MIN_WIDTH && entity.getBbHeight() >= BodySize.MIN_HEIGHT
                 && (size.width() > entity.getBbWidth() + .001f || size.height() > entity.getBbHeight() + .001f)
-                && !entity.level().noBlockCollision(entity, dimensions(size).makeBoundingBox(entity.position()).deflate(1e-7))) {
+                && !noBlockCollision(entity, dimensions(size).makeBoundingBox(entity.position()).deflate(1e-7))) {
             size = size.deferGrowth(entity.getBbWidth(), entity.getBbHeight());
         }
         return dimensions(size);
@@ -141,6 +141,18 @@ public final class RigHitboxes {
             entity.refreshDimensions();
             if (!entity.level().isClientSide && entity instanceof Mob mob) mob.getNavigation().recomputePath();
         }
+    }
+
+    /** Whether {@code box} is clear of blocks for {@code entity}; 1.20.1 lacks the one-call form. */
+    public static boolean noBlockCollision(net.minecraft.world.entity.Entity entity, net.minecraft.world.phys.AABB box) {
+        //? if >=1.21 {
+        return entity.level().noBlockCollision(entity, box);
+        //?} else {
+        /*for (net.minecraft.world.phys.shapes.VoxelShape shape : entity.level().getBlockCollisions(entity, box)) {
+            if (!shape.isEmpty()) return false;
+        }
+        return true;
+        *///?}
     }
 
     public static RigDefinition definition(LivingEntity entity) {

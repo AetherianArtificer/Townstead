@@ -19,7 +19,7 @@ public final class ClientNeeds {
     private ClientNeeds() {}
 
     public static boolean suppresses(int entityId, String need) {
-        for (String geneId : RootClientStore.expressedGenes(entityId)) {
+        for (String geneId : RootClientStore.behaviorGenes(entityId)) {
             if (suppresses(geneId, need)) return true;
         }
         RootCatalogEntry origin = RootCatalogClient.origin(RootClientStore.get(entityId));

@@ -145,6 +145,7 @@ public abstract class VillagerHungerMixin extends Villager {
         coreBehaviors.add(Pair.of(67, new com.aetherianartificer.townstead.temperature.ThermalSupplyTask()));
         coreBehaviors.add(Pair.of(68, new com.aetherianartificer.townstead.temperature.SeekThermalReliefTask()));
         // One unified refuel behavior handles both hunger and thirst (eat/drink to satiety).
+        coreBehaviors.add(Pair.of(98, new com.aetherianartificer.townstead.compat.vampirism.VampireFeedTask()));
         coreBehaviors.add(Pair.of(99, new RefuelTask()));
         coreBehaviors.add(Pair.of(110, new CareForYoungTask()));
         if (ThirstBridgeResolver.isActive()) {

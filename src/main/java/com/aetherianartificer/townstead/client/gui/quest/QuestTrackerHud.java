@@ -101,9 +101,11 @@ public final class QuestTrackerHud {
                 graphics.fill(x, top, x + width, top + 1, 0x667F6840);
                 top += 1;
             }
-            ItemStack icon = icon(quest.iconItemId());
-            if (!icon.isEmpty()) graphics.renderItem(icon, x + 4, top + 1);
-            int titleX = x + (icon.isEmpty() ? 5 : 23);
+            QuestIcons.Icon named = QuestIcons.named(quest.iconItemId());
+            ItemStack icon = named != null ? ItemStack.EMPTY : icon(quest.iconItemId());
+            if (named != null) QuestIcons.draw(graphics, named, x + 4, top + 1);
+            else if (!icon.isEmpty()) graphics.renderItem(icon, x + 4, top + 1);
+            int titleX = x + (named == null && icon.isEmpty() ? 5 : 23);
             String title = font.plainSubstrByWidth(quest.title(), Math.max(24, x + width - 5 - titleX));
             int titleColor = rows.get(i).isEmpty() ? 0xFF7FCE70 : 0xFFF2E4C1;
             graphics.drawString(font, title, titleX, top + 5, titleColor, false);
@@ -111,8 +113,9 @@ public final class QuestTrackerHud {
             for (QuestObjective objective : rows.get(i)) {
                 String count = count(objective);
                 List<net.minecraft.util.FormattedCharSequence> lines = lines(font, objective, width);
+                QuestIcons.draw(graphics, QuestIcons.forObjective(objective), x + 7, top);
                 for (int line = 0; line < lines.size(); line++) {
-                    graphics.drawString(font, lines.get(line), x + 8, top + 1, 0xFFD8D0C2, false);
+                    graphics.drawString(font, lines.get(line), x + 19, top + 1, 0xFFD8D0C2, false);
                     if (line == 0 && !count.isEmpty()) {
                         graphics.drawString(font, count, x + width - 5 - font.width(count), top + 1, 0xFFB9A578, false);
                     }
@@ -130,7 +133,7 @@ public final class QuestTrackerHud {
     /** An objective's label wrapped to at most two lines beside its count. */
     private static List<net.minecraft.util.FormattedCharSequence> lines(Font font, QuestObjective objective, int width) {
         String count = count(objective);
-        int textWidth = Math.max(20, width - 13 - (count.isEmpty() ? 0 : font.width(count) + 4));
+        int textWidth = Math.max(20, width - 24 - (count.isEmpty() ? 0 : font.width(count) + 4));
         List<net.minecraft.util.FormattedCharSequence> lines =
                 font.split(net.minecraft.network.chat.Component.literal(objective.label()), textWidth);
         return lines.size() > 2 ? lines.subList(0, 2) : lines;

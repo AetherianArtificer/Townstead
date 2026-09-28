@@ -18,6 +18,8 @@ public final class ChronicleTapKeys {
     public static final String ZOMBIE_BITE = "townstead:zombie_bite";
     public static final String TURNED_ZOMBIE = "townstead:turned_zombie";
     public static final String INFECTION_CURED = "townstead:infection_cured";
+    public static final String TURNED_VAMPIRE = "townstead:turned_vampire";
+    public static final String VAMPIRE_CURED = "townstead:vampire_cured";
 
     private ChronicleTapKeys() {}
 }

@@ -38,14 +38,16 @@ public final class SkinOverlayGeneType implements GeneType {
     public static final String KEY = "townstead_roots:skin_overlay";
 
     public record Instance(String texture, String tint, int order, int tintBlend,
-                           float tintStrength, boolean overFace, boolean glow) implements GeneInstance {
+                           float tintStrength, boolean overFace, boolean glow,
+                           int offsetX, int offsetY) implements GeneInstance {
         public Instance(String texture, String tint, int order, int tintBlend, float tintStrength) {
-            this(texture, tint, order, tintBlend, tintStrength, false, false);
+            this(texture, tint, order, tintBlend, tintStrength, false, false, 0, 0);
         }
 
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() {
-            return GeneDisplay.skinOverlay(texture, tint, order, tintBlend, tintStrength, overFace, glow);
+            return GeneDisplay.skinOverlay(texture, tint, order, tintBlend, tintStrength, overFace, glow,
+                    offsetX, offsetY);
         }
     }
 
@@ -68,8 +70,16 @@ public final class SkinOverlayGeneType implements GeneType {
                 GsonHelper.getAsFloat(json, "tint_strength", 1f)));
         String layer = GsonHelper.getAsString(json, "layer", "skin");
         if (!layer.equals("skin") && !layer.equals("over_face")) return null;
+        int offsetX = 0;
+        int offsetY = 0;
+        if (json.has("offset")) {
+            var offset = GsonHelper.getAsJsonArray(json, "offset");
+            if (offset.size() != 2) return null;
+            offsetX = offset.get(0).getAsInt();
+            offsetY = offset.get(1).getAsInt();
+        }
         return new Instance(texture, GsonHelper.getAsString(json, "tint", ""),
                 GsonHelper.getAsInt(json, "order", 0), blend, strength,
-                layer.equals("over_face"), GsonHelper.getAsBoolean(json, "glow", false));
+                layer.equals("over_face"), GsonHelper.getAsBoolean(json, "glow", false), offsetX, offsetY);
     }
 }

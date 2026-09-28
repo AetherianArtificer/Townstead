@@ -23,7 +23,7 @@ public final class ClientAbilities {
     private ClientAbilities() {}
 
     public static boolean isActive(LivingEntity entity, Ability ability) {
-        Set<String> geneIds = RootClientStore.expressedGenes(entity.getId());
+        Set<String> geneIds = RootClientStore.behaviorGenes(entity.getId());
         if (geneIds.isEmpty()) return false;
         String key = ability.key();
         for (String geneId : geneIds) {

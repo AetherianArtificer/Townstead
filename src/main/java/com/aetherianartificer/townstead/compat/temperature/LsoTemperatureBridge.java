@@ -194,4 +194,9 @@ public final class LsoTemperatureBridge implements AmbientTemperatureBridge {
             coatAttributes = null;
         }
     }
+
+    @Override
+    public net.minecraft.resources.ResourceLocation playerImmunityEffect() {
+        return net.minecraft.resources.ResourceLocation.tryParse("legendarysurvivaloverhaul:temperature_immunity");
+    }
 }

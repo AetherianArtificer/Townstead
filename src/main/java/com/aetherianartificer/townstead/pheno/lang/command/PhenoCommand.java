@@ -65,6 +65,37 @@ public final class PhenoCommand {
 
     private PhenoCommand() {}
 
+    @FunctionalInterface
+    private interface TargetResolver {
+        Entity resolve(com.mojang.brigadier.context.CommandContext<CommandSourceStack> c) throws CommandSyntaxException;
+    }
+
+    private static com.mojang.brigadier.builder.ArgumentBuilder<CommandSourceStack, ?> stateTree(TargetResolver target) {
+        return Commands.argument("state", StringArgumentType.string()).suggests(SUGGEST_STATES)
+                .executes(c -> stateGet(c.getSource(), target.resolve(c), StringArgumentType.getString(c, "state")))
+                .then(Commands.literal("clear").executes(c -> stateSet(c.getSource(), target.resolve(c),
+                        StringArgumentType.getString(c, "state"), null, false)))
+                .then(Commands.literal("set").then(Commands.argument("amount",
+                        com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg())
+                        .executes(c -> stateSet(c.getSource(), target.resolve(c), StringArgumentType.getString(c, "state"),
+                                com.mojang.brigadier.arguments.DoubleArgumentType.getDouble(c, "amount"), false))))
+                .then(Commands.literal("add").then(Commands.argument("amount",
+                        com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg())
+                        .executes(c -> stateSet(c.getSource(), target.resolve(c), StringArgumentType.getString(c, "state"),
+                                com.mojang.brigadier.arguments.DoubleArgumentType.getDouble(c, "amount"), true))));
+    }
+
+    /** The villager the player is looking at, else the nearest one, as other Townstead commands pick. */
+    private static Entity lookedAt(com.mojang.brigadier.context.CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        Entity villager = com.aetherianartificer.townstead.commands.CommandTargets.lookedAtOrNearest(
+                c.getSource().getPlayerOrException(), null);
+        if (villager == null) {
+            throw new com.mojang.brigadier.exceptions.SimpleCommandExceptionType(
+                    Component.translatable("command.pheno.state.no_target")).create();
+        }
+        return villager;
+    }
+
     private static int stateGet(CommandSourceStack source, Entity target, String raw) {
         if (!(target instanceof LivingEntity living)) {
             source.sendFailure(Component.translatable("command.pheno.explain.invalid_target"));
@@ -118,22 +149,9 @@ public final class PhenoCommand {
                 .requires(s -> s.hasPermission(2))
                 .then(Commands.literal("validate").executes(c -> validate(c.getSource())))
                 .then(Commands.literal("state")
+                        .then(Commands.literal("looking").then(stateTree(PhenoCommand::lookedAt)))
                         .then(Commands.argument("target", EntityArgument.entity())
-                                .then(Commands.argument("state", StringArgumentType.string()).suggests(SUGGEST_STATES)
-                                        .executes(c -> stateGet(c.getSource(), EntityArgument.getEntity(c, "target"),
-                                                StringArgumentType.getString(c, "state")))
-                                        .then(Commands.literal("clear").executes(c -> stateSet(c.getSource(),
-                                                EntityArgument.getEntity(c, "target"), StringArgumentType.getString(c, "state"), null, false)))
-                                        .then(Commands.literal("set").then(Commands.argument("amount",
-                                                com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg())
-                                                .executes(c -> stateSet(c.getSource(), EntityArgument.getEntity(c, "target"),
-                                                        StringArgumentType.getString(c, "state"),
-                                                        com.mojang.brigadier.arguments.DoubleArgumentType.getDouble(c, "amount"), false))))
-                                        .then(Commands.literal("add").then(Commands.argument("amount",
-                                                com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg())
-                                                .executes(c -> stateSet(c.getSource(), EntityArgument.getEntity(c, "target"),
-                                                        StringArgumentType.getString(c, "state"),
-                                                        com.mojang.brigadier.arguments.DoubleArgumentType.getDouble(c, "amount"), true)))))))
+                                .then(stateTree(c -> EntityArgument.getEntity(c, "target")))))
                 .then(Commands.literal("explain")
                         .then(Commands.argument("target", EntityArgument.entity())
                                 .executes(c -> explain(c.getSource(), EntityArgument.getEntity(c, "target")))))

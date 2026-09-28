@@ -430,6 +430,17 @@ public record GeneCatalogEntry(
         return "1".equals(skinOverlayPart(5, "0"));
     }
 
+    /** A SKIN_OVERLAY's texel shift ({@code [x, y]} in 64x64 texels), for art drawn for another face layout. */
+    public int skinOverlayOffsetX() {
+        try { return Integer.parseInt(skinOverlayPart(7, "0").trim()); }
+        catch (NumberFormatException e) { return 0; }
+    }
+
+    public int skinOverlayOffsetY() {
+        try { return Integer.parseInt(skinOverlayPart(8, "0").trim()); }
+        catch (NumberFormatException e) { return 0; }
+    }
+
     /** A SKIN_OVERLAY drawn emissive, full-bright. */
     public boolean skinOverlayGlow() {
         return "1".equals(skinOverlayPart(6, "0"));

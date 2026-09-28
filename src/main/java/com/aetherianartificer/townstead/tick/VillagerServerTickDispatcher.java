@@ -98,6 +98,8 @@ public final class VillagerServerTickDispatcher {
                     com.aetherianartificer.townstead.hangout.HangoutEngine.tick(v)),
             new Step("villager.pheno_state", null, (v, t) ->
                     com.aetherianartificer.townstead.pheno.state.EntityStates.tick(v)),
+            new Step("villager.vampire_cure", null, (v, t) ->
+                    com.aetherianartificer.townstead.compat.vampirism.VampireVillagers.tick(v)),
             new Step("villager.chronicle_birth", Systems.CHRONICLES, (v, t) ->
                     com.aetherianartificer.townstead.chronicle.emit.PendingBirths.tick(v)),
             new Step("villager.chronicle_marriage", Systems.CHRONICLES, (v, t) ->

@@ -79,4 +79,12 @@ public interface AmbientTemperatureBridge {
      * own copy can clear it. Backends whose temperature decays on its own need nothing here.
      */
     default void onThermalInfluenceEnded(Player player) {}
+
+    /**
+     * The mod's own effect that makes a player immune to temperature, granted while their Root
+     * has {@code "climate": "any"}; null when the mod has none.
+     */
+    default @org.jetbrains.annotations.Nullable net.minecraft.resources.ResourceLocation playerImmunityEffect() {
+        return null;
+    }
 }

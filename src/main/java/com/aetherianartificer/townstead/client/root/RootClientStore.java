@@ -147,12 +147,11 @@ public final class RootClientStore {
     }
 
     /**
-     * Whether the entity expresses its species genes at all (renders its rig + runs gene effects):
-     * always for a villager/mob, but for a player only in MCA's full-genetics "Villager" model mode
-     * ({@code useVillagerRenderer}). In the "Player"/"Vanilla" model modes the player is a plain player
-     * and its genes are inheritance data only (they decide what its children inherit), so no gene effect
-     * (rig, abilities, buoyancy, needs, attachments, hidden features...) applies. The single client gate;
-     * {@code RigModels.embodied} delegates here so render and gene expression never disagree.
+     * Whether the entity wears its Root's body: always for a villager/mob, but for a player only in
+     * MCA's full-genetics "Villager" model mode ({@code useVillagerRenderer}). The "Player"/"Vanilla"
+     * modes draw a plain player, so what needs the body (rig, attachments, overlays, hidden features,
+     * wall climbing) waits for it; behavior genes apply in every mode through {@link #behaviorGenes}.
+     * {@code RigModels.embodied} delegates here so render and embodiment never disagree.
      */
     public static boolean expresses(LivingEntity entity) {
         if (entity instanceof net.minecraft.world.entity.player.Player player) {
@@ -164,6 +163,15 @@ public final class RootClientStore {
     /** The gene ids the entity expresses, or an empty set if not yet synced (or it does not express). */
     public static Set<String> expressedGenes(int entityId) {
         if (rootsOff() || !expressesById(entityId)) return Set.of();
+        return EXPRESSED.getOrDefault(entityId, Set.of());
+    }
+
+    /**
+     * The expressed gene ids for behavior (abilities, needs, buoyancy...), which apply in every
+     * model mode. Rendering keeps using {@link #expressedGenes}, gated to the Villager model.
+     */
+    public static Set<String> behaviorGenes(int entityId) {
+        if (rootsOff()) return Set.of();
         return EXPRESSED.getOrDefault(entityId, Set.of());
     }
 

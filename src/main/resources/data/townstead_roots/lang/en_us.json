@@ -54,5 +54,7 @@
   "gene.townstead_roots.vampire_ageless": "Undying Youth",
   "gene.townstead_roots.vampire_ageless.desc": "Stops aging, but can still be killed.",
   "gene.townstead_roots.vampire_deep_pallor": "Deathly Pallor",
-  "gene.townstead_roots.vampire_deep_pallor.desc": "Skin as pale as bone."
+  "gene.townstead_roots.vampire_deep_pallor.desc": "Skin as pale as bone.",
+  "gene.townstead_roots.vampire_thermal": "Cold Body",
+  "gene.townstead_roots.vampire_thermal.desc": "Heat and cold no longer affect them."
 }

@@ -593,6 +593,15 @@ public class Townstead {
         }
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.EntityInteract e) -> {
             if (e.getTarget() instanceof VillagerEntityMCA villager
+                    && com.aetherianartificer.townstead.compat.vampirism.VampireVillagers.isGarlicInjection(e.getItemStack())) {
+                e.setCanceled(true);
+                e.setCancellationResult(net.minecraft.world.InteractionResult.sidedSuccess(villager.level().isClientSide));
+                if (e.getEntity() instanceof ServerPlayer injector) {
+                    com.aetherianartificer.townstead.compat.vampirism.VampireVillagers.tryInjectCure(villager, injector, e.getItemStack());
+                }
+                return;
+            }
+            if (e.getTarget() instanceof VillagerEntityMCA villager
                     && e.getItemStack().getItem() instanceof com.aetherianartificer.townstead.item.ScarfItem) {
                 e.setCanceled(true);
                 e.setCancellationResult(net.minecraft.world.InteractionResult.sidedSuccess(villager.level().isClientSide));
@@ -860,6 +869,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.root.ability.ResourceValues.tick(sp);
                 com.aetherianartificer.townstead.root.collection.CollectionValues.tick(sp);
                 com.aetherianartificer.townstead.pheno.state.EntityStates.tick(sp);
+                com.aetherianartificer.townstead.temperature.ClimateImmunity.tick(sp);
                 com.aetherianartificer.townstead.root.ability.ResourceValues.syncTo(sp);
                 com.aetherianartificer.townstead.root.fx.RootOverlays.syncTo(sp);
                 com.aetherianartificer.townstead.temperature.PlayerThermal.tick(sp);
@@ -1121,6 +1131,15 @@ public class Townstead {
             });
         }
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.PlayerInteractEvent.EntityInteract e) -> {
+            if (e.getTarget() instanceof VillagerEntityMCA villager
+                    && com.aetherianartificer.townstead.compat.vampirism.VampireVillagers.isGarlicInjection(e.getItemStack())) {
+                e.setCanceled(true);
+                e.setCancellationResult(net.minecraft.world.InteractionResult.sidedSuccess(villager.level().isClientSide));
+                if (e.getEntity() instanceof ServerPlayer injector) {
+                    com.aetherianartificer.townstead.compat.vampirism.VampireVillagers.tryInjectCure(villager, injector, e.getItemStack());
+                }
+                return;
+            }
             if (e.getTarget() instanceof VillagerEntityMCA villager
                     && e.getItemStack().getItem() instanceof com.aetherianartificer.townstead.item.ScarfItem) {
                 e.setCanceled(true);
@@ -1409,6 +1428,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.root.ability.ResourceValues.tick(sp);
                 com.aetherianartificer.townstead.root.collection.CollectionValues.tick(sp);
                 com.aetherianartificer.townstead.pheno.state.EntityStates.tick(sp);
+                com.aetherianartificer.townstead.temperature.ClimateImmunity.tick(sp);
                 com.aetherianartificer.townstead.root.ability.ResourceValues.syncTo(sp);
                 com.aetherianartificer.townstead.root.fx.RootOverlays.syncTo(sp);
                 com.aetherianartificer.townstead.temperature.PlayerThermal.tick(sp);
@@ -1821,6 +1841,8 @@ public class Townstead {
                     new com.aetherianartificer.townstead.root.gene.types.MouthGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.root.gene.types.EyeColorGeneType());
+            com.aetherianartificer.townstead.root.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.root.gene.types.IrisGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.root.gene.types.TriggerGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(

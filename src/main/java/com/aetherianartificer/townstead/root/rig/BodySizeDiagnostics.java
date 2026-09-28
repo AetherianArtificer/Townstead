@@ -33,11 +33,11 @@ public final class BodySizeDiagnostics {
         if (requested != null) out.append(String.format(Locale.ROOT, "\nrequested=%.3fx%.3f growthPending=%s",
                 requested.width(), requested.height(), requested.width() > entity.getBbWidth() + .001f
                         || requested.height() > entity.getBbHeight() + .001f));
-        out.append("\nblockClear=").append(entity.level().noBlockCollision(entity, entity.getBoundingBox().deflate(1e-7)));
+        out.append("\nblockClear=").append(RigHitboxes.noBlockCollision(entity, entity.getBoundingBox().deflate(1e-7)));
         for (Pose pose : new Pose[]{Pose.STANDING, Pose.CROUCHING, Pose.SWIMMING}) {
             var size = entity.getDimensions(pose);
             out.append(' ').append(pose).append("Fits=")
-                    .append(entity.level().noBlockCollision(entity, size.makeBoundingBox(entity.position()).deflate(1e-7)));
+                    .append(RigHitboxes.noBlockCollision(entity, size.makeBoundingBox(entity.position()).deflate(1e-7)));
         }
         if (entity instanceof Mob mob) {
             var path = mob.getNavigation().getPath();

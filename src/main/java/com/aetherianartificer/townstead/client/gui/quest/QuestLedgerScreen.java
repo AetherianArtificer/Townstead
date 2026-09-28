@@ -38,6 +38,7 @@ import java.util.function.Consumer;
 
 /** Native Townstead presentation over normalized, independently optional quest providers. */
 public final class QuestLedgerScreen extends Screen {
+    private static final String STORY_PROVIDER = "townstead_stories";
     private static final int GUTTER = 10;
     private static final int FRAME = 6;
     private static final int TITLE_H = 20;
@@ -109,12 +110,12 @@ public final class QuestLedgerScreen extends Screen {
 
         int buttonGap = 4;
         int buttonW = Math.max(28, (rightW - 8 - buttonGap * 2) / 3);
-        trackButton = addRenderableWidget(Button.builder(Component.translatable("townstead.quest_ledger.track"), b -> trackSelected())
-                .bounds(rightX + 4, actionY, buttonW, 20).build());
-        pinButton = addRenderableWidget(Button.builder(Component.translatable("townstead.quest_ledger.pin"), b -> pinSelected())
-                .bounds(rightX + 4 + buttonW + buttonGap, actionY, buttonW, 20).build());
-        openButton = addRenderableWidget(Button.builder(Component.translatable("townstead.quest_ledger.open_source"), b -> openSelected())
-                .bounds(rightX + 4 + (buttonW + buttonGap) * 2, actionY, buttonW, 20).build());
+        trackButton = addRenderableWidget(new QuestIconButton(rightX + 4, actionY, buttonW, 20,
+                Component.translatable("townstead.quest_ledger.track"), b -> trackSelected(), QuestIcons.Icon.TRACKED));
+        pinButton = addRenderableWidget(new QuestIconButton(rightX + 4 + buttonW + buttonGap, actionY, buttonW, 20,
+                Component.translatable("townstead.quest_ledger.pin"), b -> pinSelected(), QuestIcons.Icon.PINNED));
+        openButton = addRenderableWidget(new QuestIconButton(rightX + 4 + (buttonW + buttonGap) * 2, actionY, buttonW, 20,
+                Component.translatable("townstead.quest_ledger.open_source"), b -> openSelected(), QuestIcons.Icon.DETAILS));
 
         applyFilter(false);
         if (!previousSelection.isBlank()) selectKey(previousSelection);
@@ -391,8 +392,13 @@ public final class QuestLedgerScreen extends Screen {
         y += 14;
         String source = selected.providerName() + " • " + selected.group();
         int tagLeft = drawTags(g, selected.tags(), x + contentW, y - 1);
-        int sourceW = Math.max(20, (int) ((tagLeft - x - 4) / 0.82f));
-        drawScaledString(g, trim(source.toUpperCase(Locale.ROOT), sourceW), x, y + 1,
+        int sourceX = x;
+        if (STORY_PROVIDER.equals(selected.providerId())) {
+            QuestIcons.draw(g, QuestIcons.Icon.STORY, x, y - 1);
+            sourceX += 12;
+        }
+        int sourceW = Math.max(20, (int) ((tagLeft - sourceX - 4) / 0.82f));
+        drawScaledString(g, trim(source.toUpperCase(Locale.ROOT), sourceW), sourceX, y + 1,
                 0.82f, 0xFF765D42);
         y += 14;
         g.fill(x, y, x + contentW, y + 1, 0x774F351D);
@@ -409,20 +415,15 @@ public final class QuestLedgerScreen extends Screen {
         if (!selected.objectives().isEmpty()) {
             String heading = Component.translatable("townstead.quest_ledger.objectives").getString()
                     .toUpperCase(Locale.ROOT);
-            drawScaledString(g, heading, x, y, 0.86f, 0xFF85551F);
+            QuestIcons.draw(g, QuestIcons.Icon.OBJECTIVES, x, y - 1);
+            drawScaledString(g, heading, x + 12, y, 0.86f, 0xFF85551F);
             y += 13;
             for (QuestObjective objective : selected.objectives()) {
-                String glyph = switch (objective.status()) {
-                    case DONE -> "✓";
-                    case UNAVAILABLE -> "‖";
-                    case FAILED -> "!";
-                    default -> "◇";
-                };
                 int color = objective.done() ? 0xFF26752B
                         : objective.status() == QuestObjective.Status.FAILED ? 0xFF9B2C2C : 0xFF302114;
                 int accent = objective.done() ? 0xFF3D8743
                         : objective.status() == QuestObjective.Status.FAILED ? 0xFFA33B2F : 0xFFA36D24;
-                drawScaledString(g, glyph, x, y, 1.08f, accent);
+                QuestIcons.draw(g, QuestIcons.forObjective(objective), x, y - 1);
                 String count = objective.total() > 0 ? objective.current() + " / " + objective.total() : "";
                 float countScale = 1.16f;
                 int countW = Math.round(font.width(count) * countScale);
@@ -442,10 +443,12 @@ public final class QuestLedgerScreen extends Screen {
         if (!selected.rewards().isEmpty()) {
             String heading = Component.translatable("townstead.quest_ledger.rewards").getString()
                     .toUpperCase(Locale.ROOT);
-            drawScaledString(g, heading, x, y, 0.86f, 0xFF85551F);
+            QuestIcons.draw(g, QuestIcons.Icon.REWARD, x, y - 1);
+            drawScaledString(g, heading, x + 12, y, 0.86f, 0xFF85551F);
             y += 13;
             for (QuestReward reward : selected.rewards()) {
-                g.drawString(font, "• " + trim(reward.label(), contentW - 8), x, y, 0xFF302417, false);
+                QuestIcons.draw(g, QuestIcons.Icon.REWARD, x, y - 1);
+                g.drawString(font, trim(reward.label(), contentW - 13), x + 13, y, 0xFF302417, false);
                 y += 11;
             }
             y += 4;
@@ -629,17 +632,25 @@ public final class QuestLedgerScreen extends Screen {
             int fill = chosen ? 0xE03B3022 : isHoveredOrFocused() ? 0xD02D261D : 0xC0181511;
             g.fill(getX(), getY(), getX() + getWidth(), getY() + getHeight(), border);
             g.fill(getX() + 1, getY() + 1, getX() + getWidth() - 1, getY() + getHeight() - 1, fill);
-            ItemStack icon = icon(quest.iconItemId());
-            g.renderItem(icon, getX() + 3, getY() + 4);
+            QuestIcons.Icon named = QuestIcons.named(quest.iconItemId());
+            if (named != null) QuestIcons.draw(g, named, getX() + 3, getY() + 4);
+            else g.renderItem(icon(quest.iconItemId()), getX() + 3, getY() + 4);
             int textX = getX() + 22;
             int right = getX() + getWidth() - 4;
             String progress = quest.objectives().isEmpty() ? "" : quest.completedObjectives() + "/" + quest.objectives().size();
             g.drawString(font, trim(quest.title(), right - textX - font.width(progress) - 4), textX, getY() + 4,
                     0xFFFFFFFF, false);
             if (!progress.isBlank()) g.drawString(font, progress, right - font.width(progress), getY() + 4, 0xFFE6E6E6, false);
-            String source = (quest.pinned() ? "★ " : "") + quest.providerName();
-            g.drawString(font, trim(source, right - textX), textX, getY() + 14,
-                    quest.tracked() ? 0xFFFFD84A : 0xFFB8B8B8, false);
+            int sourceX = textX;
+            if (quest.pinned()) {
+                QuestIcons.draw(g, QuestIcons.Icon.PINNED, sourceX, getY() + 13);
+                sourceX += 11;
+            }
+            if (quest.tracked()) {
+                QuestIcons.draw(g, QuestIcons.Icon.TRACKED, sourceX, getY() + 13);
+                sourceX += 11;
+            }
+            g.drawString(font, trim(quest.providerName(), right - sourceX), sourceX, getY() + 14, 0xFFB8B8B8, false);
         }
 
         @Override

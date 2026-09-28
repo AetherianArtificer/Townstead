@@ -297,4 +297,9 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
             Townstead.LOGGER.debug("Tough As Nails proximity modifier hook not available: {}", e.toString());
         }
     }
+
+    @Override
+    public net.minecraft.resources.ResourceLocation playerImmunityEffect() {
+        return net.minecraft.resources.ResourceLocation.tryParse("toughasnails:climate_clemency");
+    }
 }

@@ -285,6 +285,7 @@ public final class RootCatalog {
         // This synced slot also preserves the concrete render kind of a generic VARIANTS gene.
         if (instance instanceof com.aetherianartificer.townstead.root.gene.types.SkinOverlayGeneType.Instance) return "skin_overlay";
         if (instance instanceof com.aetherianartificer.townstead.root.gene.types.SkinToneGeneType.Instance) return "skin_tone";
+        if (instance instanceof com.aetherianartificer.townstead.root.gene.types.IrisGeneType.Instance iris) return iris.glow() ? "iris_glow" : "iris";
         return "";
     }
 

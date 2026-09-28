@@ -1,0 +1,12 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "mods": "vampirism",
+  "state": "townstead_state:vampire",
+  "min_tier": "vampire",
+  "priority": 30,
+  "genes": {
+    "grant": [
+      "townstead_roots:vampire_thermal"
+    ]
+  }
+}

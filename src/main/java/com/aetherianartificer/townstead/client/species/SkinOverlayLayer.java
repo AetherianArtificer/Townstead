@@ -158,6 +158,14 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
         String textureId = textureFor(entity, gene);
         ResourceLocation texture = resolveTexture(textureId);
         if (texture == null) return null;
+        int dx = gene.skinOverlayOffsetX();
+        int dy = gene.skinOverlayOffsetY();
+        if (dx != 0 || dy != 0) {
+            ResourceLocation shifted = com.aetherianartificer.townstead.client.skin.ShiftedTextures.get(textureId, texture, dx, dy);
+            if (shifted == null) return null;
+            // A shifted overlay keeps vertex tinting; baked blends apply to unshifted art only.
+            return new Material(shifted, resolveTint(entity, gene.skinOverlayTint()));
+        }
         int color = resolveTint(entity, gene.skinOverlayTint());
         int blend = gene.skinOverlayTintBlend();
         float strength = gene.skinOverlayTintStrength();

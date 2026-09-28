@@ -1,7 +1,7 @@
 {
   "schema": "townstead:gene/v2",
   "mods": "vampirism",
-  "type": "townstead_roots:skin_overlay",
+  "type": "townstead_roots:iris",
   "display_name": {
     "translate": "gene.townstead_roots.vampire_glowing_eyes"
   },
@@ -9,102 +9,6 @@
     "translate": "gene.townstead_roots.vampire_glowing_eyes.desc"
   },
   "category": "Appearance",
-  "variants": {
-    "eyes0": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes0.png",
-      "layer": "over_face",
-      "glow": true
-    },
-    "eyes1": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes1.png",
-      "layer": "over_face",
-      "glow": true
-    },
-    "eyes2": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes2.png",
-      "layer": "over_face",
-      "glow": true
-    },
-    "eyes3": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes3.png",
-      "layer": "over_face",
-      "glow": true
-    },
-    "eyes4": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes4.png",
-      "layer": "over_face",
-      "glow": true
-    },
-    "eyes5": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes5.png",
-      "layer": "over_face",
-      "glow": true
-    },
-    "eyes6": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes6.png",
-      "layer": "over_face",
-      "glow": true
-    },
-    "eyes7": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes7.png",
-      "layer": "over_face",
-      "glow": true
-    },
-    "eyes8": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes8.png",
-      "layer": "over_face",
-      "glow": true
-    },
-    "eyes9": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes9.png",
-      "layer": "over_face",
-      "glow": true
-    },
-    "eyes10": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes10.png",
-      "layer": "over_face",
-      "glow": true
-    },
-    "eyes11": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes11.png",
-      "layer": "over_face",
-      "glow": true
-    },
-    "eyes12": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes12.png",
-      "layer": "over_face",
-      "glow": true
-    },
-    "eyes13": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes13.png",
-      "layer": "over_face",
-      "glow": true
-    },
-    "eyes14": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes14.png",
-      "layer": "over_face",
-      "glow": true
-    },
-    "eyes15": {
-      "weight": 1,
-      "texture": "vampirism:textures/entity/vanilla/eyes15.png",
-      "layer": "over_face",
-      "glow": true
-    }
-  }
+  "tint": "#FF2A2A",
+  "glow": true
 }

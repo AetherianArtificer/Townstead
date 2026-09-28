@@ -158,11 +158,19 @@ public record GeneDisplay(Kind kind, float min, float max, String targetId, floa
 
     public static GeneDisplay skinOverlay(String texture, String tint, int order,
                                           int tintBlend, float tintStrength, boolean overFace, boolean glow) {
+        return skinOverlay(texture, tint, order, tintBlend, tintStrength, overFace, glow, 0, 0);
+    }
+
+    public static GeneDisplay skinOverlay(String texture, String tint, int order, int tintBlend,
+                                          float tintStrength, boolean overFace, boolean glow,
+                                          int offsetX, int offsetY) {
+        boolean extended = overFace || glow || offsetX != 0 || offsetY != 0;
         return new GeneDisplay(Kind.SKIN_OVERLAY, 0f, 1f,
                 (texture == null ? "" : texture) + ";" + (tint == null ? "" : tint)
                         + ";" + order + ";" + tintBlend + ";"
                         + Math.max(0f, Math.min(1f, tintStrength))
-                        + (overFace || glow ? ";" + (overFace ? 1 : 0) + ";" + (glow ? 1 : 0) : ""), 0f);
+                        + (extended ? ";" + (overFace ? 1 : 0) + ";" + (glow ? 1 : 0)
+                                + ";" + offsetX + ";" + offsetY : ""), 0f);
     }
 
     /**

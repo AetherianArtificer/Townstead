@@ -20,7 +20,7 @@ public final class ClientBuoyancy {
     private ClientBuoyancy() {}
 
     public static List<TagKey<Fluid>> ignoredFluids(LivingEntity entity) {
-        Set<String> geneIds = RootClientStore.expressedGenes(entity.getId());
+        Set<String> geneIds = RootClientStore.behaviorGenes(entity.getId());
         if (geneIds.isEmpty()) return List.of();
         List<TagKey<Fluid>> out = new ArrayList<>();
         for (String geneId : geneIds) {

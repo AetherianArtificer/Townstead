@@ -60,15 +60,23 @@ class AspectOverlayTest {
     }
 
     @Test
-    void suppressRemovesAndGrantWinsTheSameGene() {
+    void suppressRemovesAndItsOwnGrantStillApplies() {
         List<Allele> suppressed = AspectOverlay.apply(CARRIED,
                 List.of(genes(List.of(), List.of(id("test:hunger")))), LOOKUP, 42L);
         assertEquals(List.of("test:human_eyes#brown", "test:tall"), encoded(suppressed));
 
         List<Allele> regranted = AspectOverlay.apply(CARRIED, List.of(
-                genes(List.of(new StateEffect.Grant(id("test:tall"), null)), List.of()),
-                genes(List.of(), List.of(id("test:tall")))), LOOKUP, 42L);
+                genes(List.of(new StateEffect.Grant(id("test:tall"), null)), List.of(id("test:tall")))), LOOKUP, 42L);
         assertEquals(List.of("test:human_eyes#brown", "test:hunger", "test:tall"), encoded(regranted));
+    }
+
+    @Test
+    void aHigherOverlayTakesBackWhatALowerOneGranted() {
+        // The elder look suppressing the fledgling's plain eyes: the later overlay must win.
+        List<Allele> out = AspectOverlay.apply(CARRIED, List.of(
+                genes(List.of(new StateEffect.Grant(id("test:sun_burn"), null)), List.of()),
+                genes(List.of(), List.of(id("test:sun_burn")))), LOOKUP, 42L);
+        assertEquals(encoded(CARRIED), encoded(out));
     }
 
     @Test

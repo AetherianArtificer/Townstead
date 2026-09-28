@@ -163,6 +163,7 @@ final class SettingsListScreen extends MenuBackgroundScreen {
         String lastGroup = null;
         for (SettingIndex.Entry entry : client ? SettingIndex.client() : SettingIndex.all()) {
             if (kind == Kind.ALL && entry.key().startsWith("roots.")) continue;
+            if (!com.aetherianartificer.townstead.switchboard.CompatSections.present(entry.key())) continue;
             if (kind == Kind.CATEGORY && (keys == null || !keys.test(entry.key()))) continue;
             Component label = SettingLabels.label(entry);
             if (!matches(needle, label, entry.key())) continue;

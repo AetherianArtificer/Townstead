@@ -93,6 +93,8 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue PROCESS_TROPHY_OUTPUTS;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.hunger.CannibalismPolicy.Mode> CANNIBALISM_MODE;
     public static final ModConfigSpec.BooleanValue CANNIBALISM_PRODUCE;
+    public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.compat.vampirism.VampireFeeding> VAMPIRE_FEEDING;
+    public static final ModConfigSpec.BooleanValue VAMPIRE_INFECTION;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -202,6 +204,8 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue PROCESS_TROPHY_OUTPUTS;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.hunger.CannibalismPolicy.Mode> CANNIBALISM_MODE;
     public static final ForgeConfigSpec.BooleanValue CANNIBALISM_PRODUCE;
+    public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.compat.vampirism.VampireFeeding> VAMPIRE_FEEDING;
+    public static final ForgeConfigSpec.BooleanValue VAMPIRE_INFECTION;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -532,6 +536,20 @@ public final class TownsteadConfig {
                 .comment("Offer and work sapient meat at worksites: order sheets list it and eligible jobs may process it.",
                          "Separate from mode on purpose: a village can hunt without selling, or trade without eating.")
                 .define("produce", false);
+        b.pop();
+
+        // ── Vampirism (shown on the Switchboard only with Vampirism installed) ──
+        b.translation("townstead.configuration.vampirism").push("vampirism");
+        VAMPIRE_FEEDING = b
+                .translation("townstead.configuration.vampirism.feeding")
+                .comment("Whom vampire villagers may drink from besides animals. Each tier includes the ones below it:",
+                         "OFF: animals only. WILLING: also their spouse, who offers. ANYONE: any villager or player who is not a vampire.",
+                         "Vampires never drink from vampires.")
+                .defineEnum("feeding", com.aetherianartificer.townstead.compat.vampirism.VampireFeeding.WILLING);
+        VAMPIRE_INFECTION = b
+                .translation("townstead.configuration.vampirism.infection")
+                .comment("A vampire villager's bite can pass on Sanguinare, as a Vampirism vampire's does.")
+                .define("infection", true);
         b.pop();
 
         // ── Caregiving ──

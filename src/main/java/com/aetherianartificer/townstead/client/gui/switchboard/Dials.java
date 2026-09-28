@@ -136,7 +136,8 @@ final class Dials {
                 level("needs.gentle", pace(with(needSwitches, true), 0.5)),
                 level("needs.normal", pace(with(needSwitches, true), 1.0)),
                 level("needs.harsh", pace(with(needSwitches, true), 1.5))),
-                key -> key.startsWith("needs.") || key.startsWith("caregiving.") || key.startsWith("cannibalism.")));
+                key -> key.startsWith("needs.") || key.startsWith("caregiving.") || key.startsWith("cannibalism.")
+                        || key.startsWith("vampirism.")));
 
         List<String> trades = List.of(Systems.WORK, Systems.FARMING, Systems.FISHING, Systems.SHEPHERDING,
                 Systems.HOSPITALITY, Systems.CLOTHING, Systems.SHIFTS);
