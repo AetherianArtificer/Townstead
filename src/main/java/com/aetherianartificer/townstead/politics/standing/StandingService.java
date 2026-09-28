@@ -75,6 +75,27 @@ public final class StandingService {
         }
     }
 
+    /**
+     * One resident's hearts toward a person, from MCA's village record, which MCA refreshes from
+     * each loaded villager about once a minute. Zero when unknown.
+     */
+    @SuppressWarnings("unchecked")
+    public static int residentHearts(MinecraftServer server, UUID person, SettlementRef settlement, UUID resident) {
+        if (server == null || person == null || settlement == null || resident == null) return 0;
+        ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION, settlement.dimension()));
+        Village village = level == null ? null : VillageManager.get(level).getOrEmpty(settlement.villageId()).orElse(null);
+        Field field = reputationField();
+        if (village == null || field == null) return 0;
+        try {
+            Map<UUID, Map<UUID, Integer>> reputation = (Map<UUID, Map<UUID, Integer>>) field.get(village);
+            Map<UUID, Integer> byResident = reputation == null ? null : reputation.get(person);
+            Integer hearts = byResident == null ? null : byResident.get(resident);
+            return hearts == null ? 0 : hearts;
+        } catch (ReflectiveOperationException | ClassCastException error) {
+            return 0;
+        }
+    }
+
     private static synchronized @Nullable Field reputationField() {
         if (reputationFieldResolved) return reputationField;
         reputationFieldResolved = true;

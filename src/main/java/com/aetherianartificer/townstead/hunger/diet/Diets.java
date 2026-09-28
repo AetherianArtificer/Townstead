@@ -87,7 +87,8 @@ public final class Diets {
         if (diet == null) return nativeFood ? NATIVE : null;
         ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
         return nourishment(resolved.getOrDefault(diet.id(), List.of()), item,
-                tag -> stack.is(TagKey.create(Registries.ITEM, tag)), nativeFood);
+                tag -> stack.is(TagKey.create(Registries.ITEM, tag)), nativeFood,
+                food -> ItemFluids.holds(stack, food.fluid(), food.fluidTag(), food.amount()));
     }
 
     private static final Nourishment NATIVE = new Nourishment(null, 0f, null,
@@ -96,8 +97,14 @@ public final class Diets {
     static @Nullable Nourishment nourishment(List<Diet.Food> foods, ResourceLocation item,
                                              java.util.function.Predicate<ResourceLocation> inTag,
                                              boolean nativeFood) {
+        return nourishment(foods, item, inTag, nativeFood, food -> false);
+    }
+
+    static @Nullable Nourishment nourishment(List<Diet.Food> foods, ResourceLocation item,
+                                             java.util.function.Predicate<ResourceLocation> inTag,
+                                             boolean nativeFood, java.util.function.Predicate<Diet.Food> holds) {
         for (Diet.Food food : foods) {
-            if (food.matches(item, inTag, nativeFood)) {
+            if (food.matches(item, inTag, nativeFood, holds)) {
                 return new Nourishment(food.nutrition(), food.saturation(), food.remainder(), food);
             }
         }
@@ -105,6 +112,19 @@ public final class Diets {
     }
 
     /** The authored leftover of a diet food, or empty (native foods keep their own remainders). */
+    /**
+     * What is left of {@code consumed} after one helping: a fluid serving leaves its container with
+     * one serving drawn; any other food its authored remainder, or nothing.
+     */
+    public static ItemStack remainder(Nourishment nourishment, ItemStack consumed) {
+        Diet.Food food = nourishment.food();
+        if (food != null && food.fluidServing()) {
+            ItemStack left = ItemFluids.drain(consumed, food.fluid(), food.fluidTag(), food.amount(), false);
+            return left == null ? ItemStack.EMPTY : left;
+        }
+        return remainder(nourishment);
+    }
+
     public static ItemStack remainder(Nourishment nourishment) {
         if (nourishment.remainder() == null) return ItemStack.EMPTY;
         var item = BuiltInRegistries.ITEM.getOptional(nourishment.remainder());

@@ -153,9 +153,10 @@ public class VampireFeedTask extends Behavior<VillagerEntityMCA> {
         needs.setLastAteTime(level.getGameTime());
         EntityStates.add(villager, VampireVillagers.BLOOD, drawn, 0, null);
         if (isPerson(prey)) {
+            VampireChronicles.bitten(villager, prey, isSpouse(villager, prey) || Thralls.serves(villager, prey));
             com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.taboo(villager,
                     "townstead:fed_on_person", EntityType.getKey(prey.getType()),
-                    Map.of("willing", String.valueOf(isSpouse(villager, prey))));
+                    Map.of("willing", String.valueOf(isSpouse(villager, prey) || Thralls.serves(villager, prey))));
         }
     }
 
@@ -170,7 +171,7 @@ public class VampireFeedTask extends Behavior<VillagerEntityMCA> {
     private static boolean isPrey(VillagerEntityMCA villager, LivingEntity other, VampireFeeding feeding) {
         if (other instanceof VillagerEntityMCA person) {
             if (VampireVillagers.isVampire(person) || person.isBaby() || feeding == VampireFeeding.OFF) return false;
-            return feeding == VampireFeeding.ANYONE || isSpouse(villager, person);
+            return feeding == VampireFeeding.ANYONE || isSpouse(villager, person) || Thralls.serves(villager, person);
         }
         if (other instanceof ServerPlayer player) {
             if (feeding != VampireFeeding.ANYONE || player.isCreative() || player.isSpectator()) return false;

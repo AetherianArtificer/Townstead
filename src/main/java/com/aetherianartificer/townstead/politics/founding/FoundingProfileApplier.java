@@ -115,6 +115,7 @@ public final class FoundingProfileApplier {
         if (assignVillageCulture && foundingCulture != null) {
             CultureAssignment.assignVillage(level, village.getId(), foundingCulture.toString());
         }
+        for (String group : profile.faction().welcomes()) data.setWelcome(faction.id(), group, true);
         data.putFounding(new SettlementFoundingRecord(settlement, profile.id(), foundingCulture, kind.id(),
                 environment.biome(), environment.naturalWeight(), now));
         return new Result(true, "applied", faction.id(), base.createdFaction(), filled, environment.naturalWeight());

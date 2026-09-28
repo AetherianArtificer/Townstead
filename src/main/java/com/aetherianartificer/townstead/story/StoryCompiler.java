@@ -23,15 +23,19 @@ final class StoryCompiler {
     private StoryCompiler() {}
 
     /** Helpers the host binds for every story, with their Ink parameter lists. */
-    static final Map<String, String> EXTERNALS = Map.of(
-            "check", "what",
-            "count", "what",
-            "who", "role",
-            "rel", "quality",
-            "trust", "amount",
-            "contribute", "quality, amount, reason",
-            "memory", "id",
-            "act", "id");
+    static final Map<String, String> EXTERNALS = Map.ofEntries(
+            Map.entry("check", "what"),
+            Map.entry("count", "what"),
+            Map.entry("who", "role"),
+            Map.entry("building", "kind"),
+            Map.entry("rel", "quality"),
+            Map.entry("trust", "amount"),
+            Map.entry("contribute", "quality, amount, reason"),
+            Map.entry("memory", "id"),
+            Map.entry("act", "id"),
+            Map.entry("mod", "id"),
+            Map.entry("can_build", "building"),
+            Map.entry("demeanor", ""));
 
     private static final String ROOT = "<story>";
 

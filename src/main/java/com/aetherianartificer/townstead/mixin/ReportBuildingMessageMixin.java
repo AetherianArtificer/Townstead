@@ -31,7 +31,9 @@ public abstract class ReportBuildingMessageMixin {
 
     // MCA reshapes this enum between floor-system generations: ADD was split
     // into ADD_BUILDING (open ground) and ADD_ROOM (inside an existing
-    // structure), and ADD_FLOOR/ADD_BASEMENT were added. Referencing the
+    // structure), and ADD_FLOOR/ADD_BASEMENT were added. Later builds fold
+    // ADD_ROOM/UPDATE_ROOM into SCAN_ROOM and ADD_FLOOR/ADD_BASEMENT into
+    // ADD_ATTACHMENT. Referencing the
     // constants directly throws NoSuchFieldError on whichever generation
     // dropped one, so match on the name instead and stay generation-agnostic.
     private static final Set<String> TOWNSTEAD$REMOVE_ACTIONS = Set.of("REMOVE", "REMOVE_ROOM");
@@ -42,16 +44,16 @@ public abstract class ReportBuildingMessageMixin {
      * back a building the player had just removed.
      */
     private static final Set<String> TOWNSTEAD$OPEN_AIR_SCAN_ACTIONS =
-            Set.of("ADD", "ADD_BUILDING", "ADD_ROOM");
+            Set.of("ADD", "ADD_BUILDING", "ADD_ROOM", "SCAN_ROOM");
 
     /**
-     * Actions that can change what buildings a village has. ADD_FLOOR and
-     * ADD_BASEMENT attach to a structure the player is already inside, so they
+     * Actions that can change what buildings a village has. ADD_FLOOR, ADD_BASEMENT and
+     * ADD_ATTACHMENT attach to a structure the player is already inside, so they
      * reconcile but never take the synthetic path above.
      */
     private static final Set<String> TOWNSTEAD$RECONCILE_ACTIONS =
-            Set.of("ADD", "ADD_BUILDING", "ADD_ROOM", "ADD_FLOOR", "ADD_BASEMENT",
-                    "UPDATE_ROOM", "REMOVE", "REMOVE_ROOM", "REMOVE_FLOOR", "FULL_SCAN", "AUTO_SCAN",
+            Set.of("ADD", "ADD_BUILDING", "ADD_ROOM", "SCAN_ROOM", "ADD_FLOOR", "ADD_BASEMENT",
+                    "ADD_ATTACHMENT", "UPDATE_ROOM", "REMOVE", "REMOVE_ROOM", "REMOVE_FLOOR", "FULL_SCAN", "AUTO_SCAN",
                     "FORCE_TYPE", "SET_MAIN_ROOM", "SET_ROOM_INHERITANCE");
 
     //? if <1.21 {

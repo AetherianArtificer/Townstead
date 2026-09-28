@@ -50,6 +50,13 @@ final class ConversationRuntime {
         if (personality.startsWith("mca:")) personality = personality.substring(4);
         List<ResourceLocation> voices = data.voiceChain(culture(level, villager));
         DialogueVoice own = data.voices().get(voices.get(0));
+        ResourceLocation persona = com.aetherianartificer.townstead.persona.PersonaVoice.of(villager);
+        if (persona != null) {
+            List<ResourceLocation> withPersona = new java.util.ArrayList<>(voices.size() + 1);
+            withPersona.add(persona);
+            withPersona.addAll(voices);
+            voices = List.copyOf(withPersona);
+        }
         double target = own == null ? 0 : own.target(register, stage, stageId, facts);
         DialogueVoice.Children children = own == null ? DialogueVoice.Children.SIMPLE : own.children();
         return new LineComposer.Speaker(villager.getUUID(), stage, stageId, personality, voices, children, target);

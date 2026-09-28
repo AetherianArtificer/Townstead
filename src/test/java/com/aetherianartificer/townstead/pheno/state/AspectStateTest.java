@@ -122,4 +122,23 @@ class AspectStateTest {
                 {"schema":"pheno:state_effect/v1","state":"townstead_state:vampire","genes":{}}
                 """));
     }
+
+    @Test
+    void stateExcludesParse() {
+        EntityStateDefinition thrall = EntityStateDefinition.parse(ResourceLocation.tryParse("example:thrall"),
+                JsonParser.parseString("""
+                        {"schema":"pheno:entity_state/v1","id":"townstead_state:thrall","excludes":["townstead_state:vampire"]}
+                        """).getAsJsonObject());
+        assertTrue(thrall.excludes().contains(ResourceLocation.tryParse("townstead_state:vampire")));
+    }
+
+    @Test
+    void inheritanceCanRequireOnlyTheFather() {
+        EntityStateDefinition vampire = EntityStateDefinition.parse(ResourceLocation.tryParse("example:vampire"),
+                JsonParser.parseString("""
+                        {"schema":"pheno:entity_state/v1","id":"townstead_state:vampire",
+                         "aspect":{"inheritance":{"mode":"child_aspect","aspect":"townstead_state:dhampir","parents":"father_only"}}}
+                        """).getAsJsonObject());
+        assertEquals(EntityStateDefinition.Parents.FATHER_ONLY, vampire.aspect().inheritance().parents());
+    }
 }

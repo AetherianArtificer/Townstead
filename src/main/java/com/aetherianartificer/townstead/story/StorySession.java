@@ -240,6 +240,14 @@ final class StorySession {
         setIfDeclared("villager_name", entry.villagerName);
         setIfDeclared("village_name", villageName);
         setIfDeclared("profession", profession == null ? "" : profession.getPath());
+        setIfDeclared("today", (int) Math.min(Integer.MAX_VALUE, TownsteadCalendar.worldDay(player.server)));
+        var instance = com.aetherianartificer.townstead.persona.PersonaInstances.get(player.server).of(villager.getUUID());
+        var persona = instance == null ? null : com.aetherianartificer.townstead.persona.Personas.byId(instance.persona());
+        if (persona == null) return;
+        for (var rolled : com.aetherianartificer.townstead.persona.PersonaService.rolls(persona, player).entrySet()) {
+            setIfDeclared(rolled.getKey(), rolled.getValue().value());
+            rolled.getValue().vars().forEach(this::setIfDeclared);
+        }
     }
 
     private void setIfDeclared(String name, Object value) {
@@ -254,10 +262,12 @@ final class StorySession {
         story.bindExternalFunction("check", args -> check(string(args, 0)));
         story.bindExternalFunction("count", args -> {
             Goal goal = goal(string(args, 0));
+            if (goal != null && goal.isCounter()) return (int) Math.min(Integer.MAX_VALUE, entry.seen.getOrDefault(string(args, 0), 0L));
             long value = goal == null ? Goal.UNKNOWN : goal.read(goalContext());
             return (int) Math.max(0L, value);
         });
         story.bindExternalFunction("who", args -> who(string(args, 0)));
+        story.bindExternalFunction("building", args -> StoryWorld.building(string(args, 0), goalContext()));
         story.bindExternalFunction("rel", args -> (int) Math.round(rel(string(args, 0))));
         story.bindExternalFunction("trust", args -> {
             contribute("trust", number(args, 0), "trust");
@@ -275,6 +285,9 @@ final class StorySession {
             act(string(args, 0));
             return null;
         }, false);
+        story.bindExternalFunction("mod", args -> com.aetherianartificer.townstead.compat.ModCompat.isLoaded(string(args, 0)));
+        story.bindExternalFunction("can_build", args -> com.aetherianartificer.townstead.pheno.condition.types.CanBuildConditionType.possible(string(args, 0).toLowerCase(java.util.Locale.ROOT)));
+        story.bindExternalFunction("demeanor", args -> Demeanor.of(definition.demeanor(), this::rel));
     }
 
     private boolean check(String what) {

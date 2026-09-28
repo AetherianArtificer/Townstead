@@ -28,6 +28,15 @@
   "death": "keep",
   "aspect": {
     "display": true,
-    "level": true
-  }
+    "level": true,
+    "inheritance": {
+      "mode": "child_aspect",
+      "aspect": "townstead_state:dhampir",
+      "chance": 1,
+      "parents": "father_only"
+    }
+  },
+  "excludes": [
+    "townstead_state:thrall"
+  ]
 }

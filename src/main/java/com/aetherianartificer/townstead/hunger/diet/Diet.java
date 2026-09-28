@@ -36,17 +36,31 @@ public record Diet(ResourceLocation id, List<Food> foods, List<ResourceLocation>
 
     /**
      * One accepted group. A null {@code nutrition} means native: the item's own food values,
-     * and only items that have them.
+     * and only items that have them. A {@code fluid} food is a serving: {@code amount} of that
+     * fluid (an id, or a {@code #tag} with {@code fluidTag}) drawn from any container that holds
+     * it, the container kept.
      */
     public record Food(boolean anyFood, Set<ResourceLocation> items, Set<ResourceLocation> tags,
                        Set<ResourceLocation> excludeItems, Set<ResourceLocation> excludeTags,
                        @Nullable Integer nutrition, float saturation,
-                       @Nullable ResourceLocation remainder, @Nullable Action effects) {
+                       @Nullable ResourceLocation remainder, @Nullable Action effects,
+                       @Nullable ResourceLocation fluid, boolean fluidTag, int amount) {
         public Food {
             items = Set.copyOf(items);
             tags = Set.copyOf(tags);
             excludeItems = Set.copyOf(excludeItems);
             excludeTags = Set.copyOf(excludeTags);
+        }
+
+        public Food(boolean anyFood, Set<ResourceLocation> items, Set<ResourceLocation> tags,
+                    Set<ResourceLocation> excludeItems, Set<ResourceLocation> excludeTags,
+                    @Nullable Integer nutrition, float saturation,
+                    @Nullable ResourceLocation remainder, @Nullable Action effects) {
+            this(anyFood, items, tags, excludeItems, excludeTags, nutrition, saturation, remainder, effects, null, false, 0);
+        }
+
+        public boolean fluidServing() {
+            return fluid != null;
         }
 
         public boolean nativeValues() {
@@ -55,7 +69,14 @@ public record Diet(ResourceLocation id, List<Food> foods, List<ResourceLocation>
 
         /** Registry-free match: {@code inTag} answers tag membership, {@code isNativeFood} edibility. */
         public boolean matches(ResourceLocation item, Predicate<ResourceLocation> inTag, boolean isNativeFood) {
+            return matches(item, inTag, isNativeFood, food -> false);
+        }
+
+        /** As above; {@code holds} answers whether the stack can give this food's fluid serving. */
+        public boolean matches(ResourceLocation item, Predicate<ResourceLocation> inTag, boolean isNativeFood,
+                               Predicate<Food> holds) {
             if (excludeItems.contains(item)) return false;
+            if (fluidServing()) return holds.test(this);
             for (ResourceLocation tag : excludeTags) if (inTag.test(tag)) return false;
             if (nativeValues() && !isNativeFood) return false;
             if (anyFood && isNativeFood) return true;
@@ -96,7 +117,20 @@ public record Diet(ResourceLocation id, List<Food> foods, List<ResourceLocation>
         Set<ResourceLocation> items = new LinkedHashSet<>();
         Set<ResourceLocation> tags = new LinkedHashSet<>();
         boolean anyFood = selectors(json, "items", items, tags, true);
-        if (!anyFood && items.isEmpty() && tags.isEmpty()) throw new IllegalArgumentException("a food needs 'items'");
+        ResourceLocation fluid = null;
+        boolean fluidTag = false;
+        int amount = 0;
+        if (json.has("fluid")) {
+            String raw = GsonHelper.getAsString(json, "fluid").trim();
+            fluidTag = raw.startsWith("#");
+            fluid = id(fluidTag ? raw.substring(1) : raw);
+            amount = json.has("amount") && json.get("amount").isJsonPrimitive() ? json.get("amount").getAsInt() : 0;
+            if (amount <= 0) throw new IllegalArgumentException("a fluid serving needs a positive 'amount'");
+            if (!json.has("nutrition")) throw new IllegalArgumentException("a fluid serving needs a 'nutrition'");
+        }
+        if (!anyFood && items.isEmpty() && tags.isEmpty() && fluid == null) {
+            throw new IllegalArgumentException("a food needs 'items' or a 'fluid'");
+        }
         Set<ResourceLocation> excludeItems = new LinkedHashSet<>();
         Set<ResourceLocation> excludeTags = new LinkedHashSet<>();
         selectors(json, "exclude", excludeItems, excludeTags, false);
@@ -120,7 +154,8 @@ public record Diet(ResourceLocation id, List<Food> foods, List<ResourceLocation>
             effects = Actions.parse(json.get("effects"));
             if (effects == null) throw new IllegalArgumentException("'effects' is not a valid Pheno action");
         }
-        return new Food(anyFood, items, tags, excludeItems, excludeTags, nutrition, saturation, remainder, effects);
+        return new Food(anyFood, items, tags, excludeItems, excludeTags, nutrition, saturation, remainder, effects,
+                fluid, fluidTag, amount);
     }
 
     /** Fills ids and {@code #tags}; returns whether the {@code "*"} selector appeared. */

@@ -15,7 +15,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-/** Public identity and tier vocabulary for one open semantic entity state. */
+/**
+ * Public identity and tier vocabulary for one open semantic entity state. While it is active, the
+ * states it {@code excludes} cannot take hold (a thrall cannot be turned into a vampire).
+ */
 public record EntityStateDefinition(
         ResourceLocation id,
         double min,
@@ -25,14 +28,16 @@ public record EntityStateDefinition(
         MergePolicy merge,
         Persistence persistence,
         DeathPolicy deathPolicy,
-        @Nullable Aspect aspect) {
+        @Nullable Aspect aspect,
+        java.util.Set<ResourceLocation> excludes) {
 
     public static final String SCHEMA = "pheno:entity_state/v1";
 
     public enum MergePolicy { FIRST, MAX, SUM, LATEST }
     public enum Persistence { PERSISTENT, SESSION }
     public enum DeathPolicy { KEEP, CLEAR }
-    public enum Parents { ANY, BOTH }
+    /** Which parents must carry the aspect: any, both, or only the father (or mother) and not the other. */
+    public enum Parents { ANY, BOTH, FATHER_ONLY, MOTHER_ONLY }
 
     public record Tier(String id, double min) {}
 
@@ -47,6 +52,7 @@ public record EntityStateDefinition(
 
     public EntityStateDefinition {
         tiers = List.copyOf(tiers);
+        excludes = excludes == null ? java.util.Set.of() : java.util.Set.copyOf(excludes);
     }
 
     public double clamp(double value) {
@@ -111,7 +117,19 @@ public record EntityStateDefinition(
                 enumValue(json, "merge", MergePolicy.MAX, MergePolicy.class),
                 enumValue(json, "persistence", Persistence.PERSISTENT, Persistence.class),
                 enumValue(json, "death", DeathPolicy.CLEAR, DeathPolicy.class),
-                json.has("aspect") ? aspect(id, json.get("aspect")) : null);
+                json.has("aspect") ? aspect(id, json.get("aspect")) : null,
+                excludes(json));
+    }
+
+    private static java.util.Set<ResourceLocation> excludes(JsonObject json) {
+        if (!json.has("excludes")) return java.util.Set.of();
+        java.util.Set<ResourceLocation> out = new java.util.LinkedHashSet<>();
+        for (var element : GsonHelper.getAsJsonArray(json, "excludes")) {
+            ResourceLocation state = DataPackLang.parseId(element.getAsString());
+            if (state == null) throw new IllegalArgumentException("'" + element.getAsString() + "' is not a state id");
+            out.add(state);
+        }
+        return out;
     }
 
     /** The amount a newly received aspect starts at: its first tier, else fully present. */

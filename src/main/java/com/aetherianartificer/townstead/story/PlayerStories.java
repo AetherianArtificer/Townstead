@@ -46,6 +46,8 @@ public final class PlayerStories {
         public String hash = "";
         public int operations;
         public final Map<String, QuestRecord> quests = new LinkedHashMap<>();
+        /** How often each of the story's event goals has happened since the player met the villager. */
+        public final Map<String, Long> seen = new LinkedHashMap<>();
 
         Entry(ResourceLocation story, UUID villager, String villagerName) {
             this.story = story;
@@ -102,6 +104,8 @@ public final class PlayerStories {
                 record.rewarded = qt.getBoolean("rewarded");
                 entry.quests.put(record.knot, record);
             }
+            CompoundTag seen = tag.getCompound("seen");
+            for (String name : seen.getAllKeys()) entry.seen.put(name, seen.getLong(name));
             out.entries.put(tag.getString("key"), entry);
         }
         return out;
@@ -131,6 +135,9 @@ public final class PlayerStories {
                 quests.add(qt);
             }
             tag.put("quests", quests);
+            CompoundTag seen = new CompoundTag();
+            entry.seen.forEach(seen::putLong);
+            tag.put("seen", seen);
             list.add(tag);
         }
         CompoundTag root = data(player);

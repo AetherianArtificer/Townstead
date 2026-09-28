@@ -199,7 +199,7 @@ public final class MobReplacer {
         return id == null ? null : MobReplacements.byId(id);
     }
 
-    private static @Nullable EntityType<?> replacedType(LivingEntity entity) {
+    public static @Nullable EntityType<?> replacedType(LivingEntity entity) {
         ResourceLocation id = ResourceLocation.tryParse(entity.getPersistentData().getString(REPLACED));
         return id == null ? null : BuiltInRegistries.ENTITY_TYPE.getOptional(id).orElse(null);
     }

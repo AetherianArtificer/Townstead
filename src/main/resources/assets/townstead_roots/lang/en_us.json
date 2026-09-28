@@ -65,6 +65,8 @@
   "gene.townstead_roots.vampire_nocturnal.desc": "Sleeps by day and is awake at night.",
   "gene.townstead_roots.vampire_kin": "Vampire Kin",
   "gene.townstead_roots.vampire_kin.desc": "Other vampires treat this person as one of their own. Vampire hunters treat them as prey.",
+  "gene.townstead_roots.vampire_no_bearing": "Cannot Bear Children",
+  "gene.townstead_roots.vampire_no_bearing.desc": "This person cannot carry a child.",
   "gene.townstead_roots.vampire_no_thirst": "No Thirst for Water",
   "gene.townstead_roots.vampire_no_thirst.desc": "Drinks blood instead of water."
 }

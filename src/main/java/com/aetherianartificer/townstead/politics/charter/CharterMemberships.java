@@ -101,6 +101,13 @@ public final class CharterMemberships {
         if (self && entry.kind().equals("invitation")) actions.add(action("decline"));
         if (!entry.kind().equals("notice") && entry.initiator().equals(player.getUUID()) && !self) actions.add(action("withdraw"));
         if (kind == null || !faction.active()) return actions;
+        if (entry.kind().equals(CharterAccords.REQUEST_KIND)) {
+            if (CharterAccords.answers(data, player.getUUID(), faction)) {
+                actions.add(action("approve"));
+                actions.add(action("reject"));
+            }
+            return List.copyOf(actions);
+        }
         if (self && entry.kind().equals("invitation") && votes(entry, data, faction, kind) >= kind.membership().approvals()) {
             actions.add(action("accept"));
         }
@@ -122,10 +129,12 @@ public final class CharterMemberships {
         for (var entry : CharterRequests.get(player.server).entries()) {
             ResourceLocation target = ResourceLocation.tryParse(entry.faction());
             if (target == null || !data.canonical(target).equals(faction.id())) continue;
-            boolean decides = kind != null && deciding(data, player.getUUID(), faction, kind);
+            boolean accord = entry.kind().equals(CharterAccords.REQUEST_KIND);
+            boolean decides = accord ? CharterAccords.answers(data, player.getUUID(), faction)
+                    : kind != null && deciding(data, player.getUUID(), faction, kind);
             if (!entry.person().equals(player.getUUID()) && !entry.initiator().equals(player.getUUID()) && !decides) continue;
-            int required = kind == null ? 0 : kind.membership().approvals();
-            int approvalCount = kind == null ? 0 : (int) votes(entry, data, faction, kind);
+            int required = accord ? 1 : kind == null ? 0 : kind.membership().approvals();
+            int approvalCount = accord ? 0 : kind == null ? 0 : (int) votes(entry, data, faction, kind);
             String state = entry.state().equals("offered") && approvalCount < required ? "pending" : entry.state();
             out.add(new CharterSnapshotS2CPayload.Request(entry.id().toString(), text(Component.literal(faction.name())),
                     text(Component.literal(entry.personName())), entry.kind(), state, approvalCount, required,
@@ -180,6 +189,12 @@ public final class CharterMemberships {
         if (requestActions(player, data, faction, kind, entry).stream().noneMatch(a -> a.id().equals(operation))) return message("denied");
         if (operation.equals("withdraw") || operation.equals("decline") || operation.equals("reject")) {
             store.put(entry.state(operation.equals("withdraw") ? "withdrawn" : "rejected"));
+            return message("completed");
+        }
+        if (entry.kind().equals(CharterAccords.REQUEST_KIND)) {
+            String problem = CharterAccords.accept(player, faction, entry);
+            if (problem != null) return CharterDrafts.message(problem);
+            store.put(entry.state("completed"));
             return message("completed");
         }
         var updated = operation.equals("approve") ? entry.approve(player.getUUID()) : entry;

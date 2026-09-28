@@ -20,7 +20,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** A data-authored recipe for giving one recognized settlement its first civic identity. */
+/**
+ * A data-authored recipe for giving one recognized settlement its first civic identity.
+ * {@code resident_states} give a share of the villagers who come to live there a state, such as
+ * the vampires of a vampire court; each villager rolls once, on arrival.
+ */
 public record FoundingProfileDefinition(ResourceLocation id,
                                         Component displayName,
                                         @Nullable ResourceLocation culture,
@@ -28,7 +32,8 @@ public record FoundingProfileDefinition(ResourceLocation id,
                                         SpawnBias spawnBias,
                                         Condition when,
                                         Population population,
-                                        @Nullable FactionSpec faction) {
+                                        @Nullable FactionSpec faction,
+                                        List<ResidentState> residentStates) {
     public static final String SCHEMA = "townstead:founding_profile/v1";
     public static final ResourceLocation CULTURAL_AFFINITY = id("townstead:cultural_affinity");
 
@@ -39,6 +44,32 @@ public record FoundingProfileDefinition(ResourceLocation id,
         spawnBias = spawnBias == null ? SpawnBias.EMPTY : spawnBias;
         when = when == null ? Conditions.ALWAYS : when;
         population = population == null ? Population.DEFAULT : population;
+        residentStates = residentStates == null ? List.of() : List.copyOf(residentStates);
+    }
+
+    public FoundingProfileDefinition(ResourceLocation id, Component displayName, @Nullable ResourceLocation culture,
+                                     float weight, SpawnBias spawnBias, Condition when, Population population,
+                                     @Nullable FactionSpec faction) {
+        this(id, displayName, culture, weight, spawnBias, when, population, faction, List.of());
+    }
+
+    /** A {@code share} of arriving residents start in {@code state} at an amount between {@code min} and {@code max}. */
+    public record ResidentState(ResourceLocation state, float share, double min, double max) {
+        static ResidentState parse(JsonObject json) {
+            ResourceLocation state = requiredId(json, "state");
+            float share = GsonHelper.getAsFloat(json, "share");
+            if (!(share >= 0 && share <= 1)) throw new IllegalArgumentException("'share' must be in [0,1]");
+            double min, max;
+            JsonElement amount = json.has("amount") ? json.get("amount") : null;
+            if (amount != null && amount.isJsonArray()) {
+                min = amount.getAsJsonArray().get(0).getAsDouble();
+                max = amount.getAsJsonArray().get(1).getAsDouble();
+            } else {
+                min = max = amount == null ? 1 : amount.getAsDouble();
+            }
+            if (max < min) throw new IllegalArgumentException("'amount' range is reversed");
+            return new ResidentState(state, share, min, max);
+        }
     }
 
     public static FoundingProfileDefinition parse(ResourceLocation id, JsonObject json,
@@ -58,7 +89,19 @@ public record FoundingProfileDefinition(ResourceLocation id,
         return new FoundingProfileDefinition(id, name, culture, weight, parseSpawnBias(json), when,
                 Population.parse(object(json, "population", false)),
                 json.has("faction") ? FactionSpec.parse(object(json, "faction", true), false)
-                        : json.has("government") ? FactionSpec.parse(object(json, "government", true), true) : null);
+                        : json.has("government") ? FactionSpec.parse(object(json, "government", true), true) : null,
+                residentStates(json));
+    }
+
+    private static List<ResidentState> residentStates(JsonObject json) {
+        JsonArray array = array(json, "resident_states", false);
+        if (array == null) return List.of();
+        List<ResidentState> out = new ArrayList<>();
+        for (JsonElement element : array) {
+            if (!element.isJsonObject()) throw new IllegalArgumentException("Every resident state must be an object");
+            out.add(ResidentState.parse(element.getAsJsonObject()));
+        }
+        return out;
     }
 
     public record Population(ResourceLocation strategy,
@@ -107,9 +150,15 @@ public record FoundingProfileDefinition(ResourceLocation id,
      * {@code government} block ({@code organization_kind}, seats of {@code roles}) still loads; a role
      * that is not an office of the kind, such as {@code member}, is dropped when the profile is applied.
      */
-    public record FactionSpec(ResourceLocation kind, List<Seat> seats, boolean legacy) {
+    /** {@code welcomes} are the disposition groups the new faction declares welcome from the start. */
+    public record FactionSpec(ResourceLocation kind, List<Seat> seats, boolean legacy, Set<String> welcomes) {
         public FactionSpec {
             seats = List.copyOf(seats);
+            welcomes = welcomes == null ? Set.of() : Set.copyOf(welcomes);
+        }
+
+        public FactionSpec(ResourceLocation kind, List<Seat> seats, boolean legacy) {
+            this(kind, seats, legacy, Set.of());
         }
 
         public List<Set<ResourceLocation>> bundles() {
@@ -128,7 +177,10 @@ public record FoundingProfileDefinition(ResourceLocation id,
                     seats.add(Seat.parse(element.getAsJsonObject(), legacy ? "roles" : "offices"));
                 }
             }
-            return new FactionSpec(kind, seats, legacy);
+            Set<String> welcomes = new LinkedHashSet<>();
+            JsonArray welcome = array(json, "welcomes", false);
+            if (welcome != null) for (JsonElement group : welcome) welcomes.add(group.getAsString());
+            return new FactionSpec(kind, seats, legacy, welcomes);
         }
     }
 

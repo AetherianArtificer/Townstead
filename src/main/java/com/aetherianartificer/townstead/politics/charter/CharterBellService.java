@@ -83,6 +83,7 @@ public final class CharterBellService {
                     || saved.proposal(level.dimension().location(), pos) != null;
             if (state.getValue(LecternBlock.HAS_BOOK) && !known) return false;
             if (assembly(level, pos) == null && !known) return false;
+            if (leaveAccord(player, saved.binding(level.dimension().location(), pos))) return true;
             send(player, pos, true, "");
             return true;
         }
@@ -92,6 +93,17 @@ public final class CharterBellService {
             if (!(state.getBlock() instanceof BellBlock) || properBellHit(state, hitFace, hitHeight)) ring(player, pos);
         }
         return false;
+    }
+
+    /** An envoy holding an accord letter leaves it at the Charter it is addressed to. */
+    private static boolean leaveAccord(ServerPlayer player, @Nullable CharterSavedData.Binding binding) {
+        net.minecraft.world.item.ItemStack held = player.getMainHandItem();
+        if (binding == null || !(held.getItem() instanceof com.aetherianartificer.townstead.item.AccordLetterItem)) return false;
+        Faction faction = PoliticalSavedData.get(player.server).faction(binding.faction());
+        if (faction == null) return false;
+        Component message = CharterAccords.leave(player, faction, held);
+        if (!message.getString().isEmpty()) player.displayClientMessage(message, false);
+        return true;
     }
 
     /**
@@ -403,7 +415,8 @@ public final class CharterBellService {
                 draftView(player, politics, faction),
                 civic,
                 liveryStyles(),
-                external ? List.of() : welcomes(politics, faction));
+                external ? List.of() : welcomes(politics, faction),
+                external ? List.of() : accords(level, politics, faction, village));
         return new CharterSnapshotS2CPayload(lectern, bell, intact ? CharterSnapshotS2CPayload.FOUNDED : CharterSnapshotS2CPayload.REPAIR,
                 editable, message, CivicProviders.revision(player, civic), village.getName(), faction.name(), text(form),
                 text(Component.empty()), text(cultureName(founding == null ? null : founding.culture())), List.of(), List.of(), book);
@@ -524,6 +537,38 @@ public final class CharterBellService {
     }
 
     /** Every loaded livery style, by name, for the heraldry desk's chooser. */
+    private static final int ACCORD_CANDIDATES = 12;
+
+    /** Allies first, then the nearest factions someone could answer an offer for. */
+    private static List<CharterSnapshotS2CPayload.Accord> accords(ServerLevel level, PoliticalSavedData politics,
+                                                                 Faction faction, Village village) {
+        java.util.Set<ResourceLocation> allies = CharterAccords.allies(politics, faction);
+        List<CharterSnapshotS2CPayload.Accord> out = new java.util.ArrayList<>();
+        List<java.util.Map.Entry<Double, Faction>> candidates = new java.util.ArrayList<>();
+        net.minecraft.core.BlockPos here = new net.minecraft.core.BlockPos(village.getCenter());
+        for (Faction other : politics.factions()) {
+            if (allies.contains(other.id())) {
+                out.add(new CharterSnapshotS2CPayload.Accord(other.id().toString(), text(Component.literal(other.name())), true));
+                continue;
+            }
+            if (CharterAccords.problem(politics, faction, other) != null || CharterAccords.representatives(politics, other).isEmpty()) continue;
+            candidates.add(java.util.Map.entry(distance(level, other, here), other));
+        }
+        candidates.sort(java.util.Map.Entry.comparingByKey());
+        for (int i = 0; i < Math.min(ACCORD_CANDIDATES, candidates.size()); i++) {
+            Faction other = candidates.get(i).getValue();
+            out.add(new CharterSnapshotS2CPayload.Accord(other.id().toString(), text(Component.literal(other.name())), false));
+        }
+        return out;
+    }
+
+    private static double distance(ServerLevel level, Faction faction, net.minecraft.core.BlockPos from) {
+        var settlement = faction.seatSettlement();
+        if (settlement == null || !settlement.dimension().equals(level.dimension().location())) return Double.MAX_VALUE;
+        return VillageManager.get(level).getOrEmpty(settlement.villageId())
+                .map(v -> Math.sqrt(new net.minecraft.core.BlockPos(v.getCenter()).distSqr(from))).orElse(Double.MAX_VALUE);
+    }
+
     private static List<CharterSnapshotS2CPayload.Welcome> welcomes(PoliticalSavedData politics, Faction faction) {
         java.util.Set<String> current = politics.welcomes(faction.id());
         List<CharterSnapshotS2CPayload.Welcome> out = new java.util.ArrayList<>();
@@ -620,6 +665,14 @@ public final class CharterBellService {
                                 head == null ? Component.empty() : BondKinds.byId(head).displayName(),
                                 recipient == null ? Component.empty() : CharterPeople.name(player, recipient))),
                         text(Component.translatable("charter.townstead.clause.transfer.detail")));
+            }
+            case CharterDrafts.ACCORD, CharterDrafts.END_ACCORD -> {
+                Faction other = data.faction(ResourceLocation.tryParse(clause.target()));
+                Component name = Component.literal(other == null ? clause.target() : other.name());
+                boolean offer = clause.type().equals(CharterDrafts.ACCORD);
+                yield new CharterSnapshotS2CPayload.Clause(
+                        text(Component.translatable(offer ? "charter.townstead.clause.accord" : "charter.townstead.clause.end_accord", name)),
+                        text(Component.translatable(offer ? "charter.townstead.clause.accord.detail" : "charter.townstead.clause.end_accord.detail", name)));
             }
             case CharterDrafts.WELCOME -> {
                 var name = com.aetherianartificer.townstead.root.disposition.DispositionRelations.welcomable()

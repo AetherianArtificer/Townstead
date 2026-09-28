@@ -25,8 +25,11 @@ import java.util.Map;
  *     "good_standing"
  *   ],
  *   "arrival": "walk_in",
- *   "villager": { "profession": "minecraft:mason", "root": "townstead_roots:human", "gender": "female" },
+ *   "villager": { "profession": "minecraft:mason", "root": "townstead_roots:human", "gender": "female",
+ *                 "schedule": "townstead:long_days", "personality": ["friendly", "witty"] },
  *   "downed": true,
+ *   "rolls": { "hometown": [ { "value": "mill", "profession": "townstead:baker", "vars": { "gift": "minecraft:bread" } } ] },
+ *   "gifts": [ { "items": ["$gift"], "response": "loves", "knot": "gift_loved" } ],
  *   "requires_mods": ["farmersdelight"]
  * }
  * </pre>
@@ -87,7 +90,8 @@ public final class Personas {
                 issues.add("error: arrival must be \"walk_in\" or \"appear\"");
             }
         }
-        ResourceLocation profession = null, root = null;
+        ResourceLocation profession = null, root = null, schedule = null;
+        Map<String, Integer> personalities = new java.util.LinkedHashMap<>();
         String gender = null;
         if (json.has("villager") && json.get("villager").isJsonObject()) {
             JsonObject villager = json.getAsJsonObject("villager");
@@ -95,6 +99,19 @@ public final class Personas {
                 String raw = villager.get("profession").getAsString();
                 profession = ResourceLocation.tryParse(raw.contains(":") ? raw : "minecraft:" + raw);
                 if (profession == null) issues.add("error: villager.profession: '" + raw + "' is not an id");
+            }
+            if (villager.has("personality")) {
+                JsonElement raw = villager.get("personality");
+                if (raw.isJsonObject()) {
+                    for (Map.Entry<String, JsonElement> e : raw.getAsJsonObject().entrySet()) personalities.put(e.getKey(), e.getValue().getAsInt());
+                } else {
+                    for (String ref : strings(raw)) personalities.put(ref, 1);
+                }
+                if (personalities.isEmpty()) issues.add("error: villager.personality: name at least one personality");
+            }
+            if (villager.has("schedule")) {
+                schedule = ResourceLocation.tryParse(villager.get("schedule").getAsString());
+                if (schedule == null) issues.add("error: villager.schedule: not an id");
             }
             if (villager.has("root")) {
                 root = ResourceLocation.tryParse(villager.get("root").getAsString());
@@ -109,11 +126,34 @@ public final class Personas {
             }
         }
         boolean downed = !json.has("downed") || json.get("downed").getAsBoolean();
+        List<PersonaRoll> rolls = new ArrayList<>();
+        if (json.has("rolls")) {
+            if (!json.get("rolls").isJsonObject()) {
+                issues.add("error: rolls must be an object of named lists");
+            } else {
+                for (Map.Entry<String, JsonElement> entry : json.getAsJsonObject("rolls").entrySet()) {
+                    PersonaRoll roll = PersonaRoll.parse(entry.getKey(), entry.getValue(), issues);
+                    if (roll != null) rolls.add(roll);
+                }
+            }
+        }
+        List<PersonaGift> gifts = new ArrayList<>();
+        if (json.has("gifts")) {
+            if (!json.get("gifts").isJsonArray()) {
+                issues.add("error: gifts must be a list");
+            } else {
+                int index = 0;
+                for (JsonElement entry : json.getAsJsonArray("gifts")) {
+                    PersonaGift gift = PersonaGift.parse(entry, index++, issues);
+                    if (gift != null) gifts.add(gift);
+                }
+            }
+        }
         if (arrives.isEmpty() && arrivesJson == null) {
             issues.add("warning: no \"arrives\"; this Persona only comes through /townstead persona spawn");
         }
         if (issues.stream().anyMatch(i -> i.startsWith("error:"))) return null;
-        return new PersonaDefinition(id, storyId(id), name, List.copyOf(arrives), arrival, profession, root, gender, downed);
+        return new PersonaDefinition(id, storyId(id), name, List.copyOf(arrives), arrival, profession, root, gender, downed, List.copyOf(rolls), List.copyOf(gifts), schedule, Map.copyOf(personalities));
     }
 
     private static List<String> strings(@Nullable JsonElement element) {

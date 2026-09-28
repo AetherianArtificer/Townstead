@@ -54,8 +54,29 @@ public final class EntityStates {
     }
 
     public static boolean eligible(LivingEntity entity, ResourceLocation state) {
-        return eligibility.test(entity, state);
+        return eligibility.test(entity, state) && !excluded(entity, state);
     }
+
+    private static final ThreadLocal<java.util.Set<ResourceLocation>> CHECKING = ThreadLocal.withInitial(java.util.HashSet::new);
+
+    /** Whether another active state keeps this one from taking hold. */
+    private static boolean excluded(LivingEntity entity, ResourceLocation state) {
+        java.util.Set<ResourceLocation> by = excludedBy.get(state);
+        if (by == null || by.isEmpty()) return false;
+        java.util.Set<ResourceLocation> checking = CHECKING.get();
+        if (!checking.add(state)) return false;
+        try {
+            for (ResourceLocation other : by) {
+                if (resolve(entity, other).active()) return true;
+            }
+            return false;
+        } finally {
+            checking.remove(state);
+        }
+    }
+
+    /** For each state, the states whose presence excludes it. */
+    private static volatile Map<ResourceLocation, java.util.Set<ResourceLocation>> excludedBy = Map.of();
 
     public record Resolved(ResourceLocation state, boolean active, double amount,
                            @Nullable String tier, int tierIndex, long remaining,
@@ -78,6 +99,13 @@ public final class EntityStates {
 
     static void replaceDefinitions(Map<ResourceLocation, EntityStateDefinition> next) {
         definitions = Map.copyOf(next);
+        Map<ResourceLocation, java.util.Set<ResourceLocation>> index = new HashMap<>();
+        for (EntityStateDefinition definition : next.values()) {
+            for (ResourceLocation excluded : definition.excludes()) {
+                index.computeIfAbsent(excluded, key -> new java.util.LinkedHashSet<>()).add(definition.id());
+            }
+        }
+        excludedBy = Map.copyOf(index);
         resetRuntime();
     }
 
@@ -119,20 +147,32 @@ public final class EntityStates {
      * Records the aspects a newborn receives from its parents. Applied on the child's next state
      * tick, since a birth hook can run before the child is spawned or its backings apply.
      */
+    /** Parents in the order mother, father; a list of one parent is taken as the mother. */
     public static void receiveAtBirth(LivingEntity child, List<? extends net.minecraft.world.entity.Entity> candidates) {
+        LivingEntity mother = candidates.size() > 0 && candidates.get(0) instanceof LivingEntity living ? living : null;
+        LivingEntity father = candidates.size() > 1 && candidates.get(1) instanceof LivingEntity living ? living : null;
+        receiveAtBirth(child, mother, father);
+    }
+
+    public static void receiveAtBirth(LivingEntity child, @Nullable LivingEntity mother, @Nullable LivingEntity father) {
         if (child.level().isClientSide) return;
         List<LivingEntity> parents = new ArrayList<>(2);
-        for (var candidate : candidates) {
-            if (candidate instanceof LivingEntity living && !parents.contains(living)) parents.add(living);
-        }
+        if (mother != null) parents.add(mother);
+        if (father != null && father != mother) parents.add(father);
         CompoundTag pending = new CompoundTag();
         for (EntityStateDefinition definition : definitions.values()) {
             EntityStateDefinition.Inheritance inheritance = definition.aspect() == null ? null
                     : definition.aspect().inheritance();
             if (inheritance == null || parents.isEmpty()) continue;
             long carriers = parents.stream().filter(parent -> resolve(parent, definition.id()).active()).count();
-            boolean eligible = inheritance.parents() == EntityStateDefinition.Parents.BOTH
-                    ? carriers == parents.size() && parents.size() > 1 : carriers > 0;
+            boolean fatherCarries = father != null && resolve(father, definition.id()).active();
+            boolean motherCarries = mother != null && resolve(mother, definition.id()).active();
+            boolean eligible = switch (inheritance.parents()) {
+                case BOTH -> carriers == parents.size() && parents.size() > 1;
+                case FATHER_ONLY -> fatherCarries && !motherCarries;
+                case MOTHER_ONLY -> motherCarries && !fatherCarries;
+                default -> carriers > 0;
+            };
             if (!eligible || child.getRandom().nextDouble() >= inheritance.chance()) continue;
             EntityStateDefinition received = definitions.get(inheritance.aspect());
             if (received == null) continue;

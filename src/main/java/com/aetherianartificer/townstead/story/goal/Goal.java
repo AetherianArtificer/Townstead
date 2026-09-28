@@ -27,6 +27,7 @@ public final class Goal {
     private final @Nullable Value value;
     private final @Nullable Class<? extends TownsteadEvent> event;
     private final @Nullable EventMatcher matcher;
+    private @Nullable String marker;
 
     Goal(String text, long total, Subject subject, @Nullable Condition condition, @Nullable Value value,
          @Nullable Class<? extends TownsteadEvent> event, @Nullable EventMatcher matcher) {
@@ -40,6 +41,15 @@ public final class Goal {
     }
 
     public long total() { return total; }
+
+    /** The player marker whose position fills {@code {x}} and {@code {z}} in the text, if any. */
+    public @Nullable String marker() { return marker; }
+
+    Goal withMarker(@Nullable String marker) {
+        this.marker = marker;
+        return this;
+    }
+
     public boolean isCounter() { return event != null; }
     public @Nullable Class<? extends TownsteadEvent> event() { return event; }
 

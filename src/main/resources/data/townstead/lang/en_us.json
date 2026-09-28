@@ -1,4 +1,5 @@
 {
+  "disposition.townstead.vampire": "Vampires",
   "townstead.wardrobe.template.everyday.name": "Everyday",
   "townstead.wardrobe.template.winter_warm.name": "Winter Warm",
   "townstead.wardrobe.template.summer_light.name": "Summer Light",
@@ -2219,5 +2220,19 @@
   "bond.townstead.friendship.friend": "Friend",
   "bond.townstead.friendship.friend.plural": "Friends",
   "bond.townstead.marriage.spouse": "Spouse",
-  "bond.townstead.marriage.spouse.of": "Spouse of %s"
+  "bond.townstead.marriage.spouse.of": "Spouse of %s",
+  "townstead_voice.townstead.persona.village_builder.dialogue.main/1": "There you are. I was going to come and find you.",
+  "townstead_voice.townstead.persona.village_builder.dialogue.main/2": "Oh, good. Got a minute? I've always got a minute.",
+  "townstead_voice.townstead.persona.village_builder.dialogue.main/3": "I was just thinking about roofs. Don't ask.",
+  "townstead_voice.townstead.persona.village_builder.dialogue.main/4": "Hey, %1$s. What do you need?",
+  "townstead_voice.townstead.persona.village_builder.dialogue.main/5": "You look like someone with a plan. Or a headache.",
+  "townstead_voice.townstead.persona.village_builder.dialogue.main/6": "I'm listening. I'm also counting something, but I'm listening.",
+  "townstead_voice.townstead.persona.village_builder.dialogue.first.generic/1": "There you are. I was hoping I'd catch you.",
+  "townstead_voice.townstead.persona.village_builder.dialogue.first.generic/2": "Oh, good. You're the one everyone points at.",
+  "townstead_voice.townstead.persona.village_builder.dialogue.first.generic/3": "Hi. I've heard about you. Good things, mostly.",
+  "townstead_voice.townstead.persona.village_builder.welcome/1": "%1$s! How's it going?",
+  "townstead_voice.townstead.persona.village_builder.welcome/2": "Oh, hey. Back already?",
+  "townstead_voice.townstead.persona.village_builder.welcome/3": "There you are, %1$s.",
+  "townstead_voice.townstead.persona.village_builder.welcomeFoe/1": "Oh. It's you.",
+  "townstead_voice.townstead.persona.village_builder.welcomeFoe/2": "Not now, %1$s."
 }

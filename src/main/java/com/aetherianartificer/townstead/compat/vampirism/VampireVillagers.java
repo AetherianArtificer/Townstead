@@ -116,6 +116,9 @@ public final class VampireVillagers {
 
     /** Finishes a pending cure. Cheap for everyone else: one missing tag. */
     public static void tick(VillagerEntityMCA villager) {
+        if (EntityStates.definition(STATE) != null) VampireChronicles.observeRank(villager);
+        if (EntityStates.definition(STATE) != null) VampireGarlic.tick(villager);
+        DhampirAging.tick(villager);
         var data = villager.getPersistentData();
         if (!data.contains(CURE_AT) || villager.level().getGameTime() < data.getLong(CURE_AT)) return;
         data.remove(CURE_AT);

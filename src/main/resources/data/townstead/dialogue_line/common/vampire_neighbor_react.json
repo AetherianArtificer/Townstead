@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "vampire_neighbor_react",
+  "groups": [
+    {
+      "variant": "welcomed",
+      "lines": {
+        "theyre_one_of_us": "They're one of us.",
+        "i_like_them": "I like them."
+      }
+    },
+    {
+      "variant": "wary",
+      "lines": {
+        "i_noticed_too": "I noticed too.",
+        "maybe_they_just_sleep_late": "Maybe they just sleep late?"
+      }
+    }
+  ]
+}

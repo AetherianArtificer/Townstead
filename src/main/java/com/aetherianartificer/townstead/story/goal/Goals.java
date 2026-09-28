@@ -142,6 +142,7 @@ public final class Goals {
         JsonObject json = instance.json();
         if (!json.has("text")) return Parsed.fail("a goal needs \"text\", the line shown in the Quest Ledger");
         String text = fillParams(json.get("text").getAsString(), instance.values());
+        String marker = json.has("marker") ? json.get("marker").getAsString() : null;
         Goal.Subject subject;
         try {
             subject = Goal.Subject.valueOf((json.has("subject") ? json.get("subject").getAsString() : defaultSubject).toUpperCase(Locale.ROOT));
@@ -161,19 +162,19 @@ public final class Goals {
                         json.has("where") ? json.getAsJsonObject("where") : null,
                         json.has("entity") ? json.get("entity").getAsString() : null, condition);
                 long count = json.has("count") ? json.get("count").getAsLong() : 1L;
-                return new Parsed(new Goal(text, count, subject, null, null, event, matcher), null);
+                return new Parsed(new Goal(text, count, subject, null, null, event, matcher).withMarker(marker), null);
             }
             if (json.has("condition")) {
                 Condition condition = Conditions.parse(json.get("condition"));
                 if (condition == null) return Parsed.fail("condition is not a known Pheno condition");
-                return new Parsed(new Goal(text, 1, subject, condition, null, null, null), null);
+                return new Parsed(new Goal(text, 1, subject, condition, null, null, null).withMarker(marker), null);
             }
             if (json.has("value")) {
                 Value value = Values.parse(json.get("value"));
                 if (value == null) return Parsed.fail("value is not a known Pheno value");
                 if (!json.has("target")) return Parsed.fail("a value goal needs \"target\"");
                 return new Parsed(new Goal(text, (long) Math.ceil(json.get("target").getAsDouble()), subject,
-                        null, value, null, null), null);
+                        null, value, null, null).withMarker(marker), null);
             }
         } catch (RuntimeException e) {
             return Parsed.fail(e.getMessage() == null ? e.toString() : e.getMessage());

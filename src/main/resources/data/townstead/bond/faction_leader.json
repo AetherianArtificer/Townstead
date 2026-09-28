@@ -11,7 +11,8 @@
         "townstead:review_membership_requests",
         "townstead:view_member_information",
         "townstead:manage_members",
-        "townstead:assign_roles"
+        "townstead:assign_roles",
+        "townstead:represent_faction"
       ]
     },
     "leader": {

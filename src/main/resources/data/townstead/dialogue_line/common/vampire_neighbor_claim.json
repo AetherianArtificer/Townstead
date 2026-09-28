@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "vampire_neighbor_claim",
+  "groups": [
+    {
+      "persp": {
+        "who": "they"
+      },
+      "variant": "welcomed",
+      "lines": {
+        "who_keeps_odd_hours_good": "{who} keeps odd hours, but they've been good to us.",
+        "who_fixed_my_fence_at_night": "{who} fixed my fence in the middle of the night.",
+        "who_is_the_best_night_watch": "Nobody watches the night like {who}."
+      }
+    },
+    {
+      "persp": {
+        "who": "they"
+      },
+      "variant": "wary",
+      "lines": {
+        "dont_walk_past_who": "Don't walk past {who}'s house after dark.",
+        "who_never_eats_with_us": "{who} never eats with us. Have you noticed?",
+        "who_curtains_always_drawn": "{who}'s curtains are always drawn."
+      }
+    },
+    {
+      "persp": {
+        "who": "you"
+      },
+      "variant": "listener",
+      "lines": {
+        "no_offense_paler": "No offense, but you look paler every week.",
+        "you_never_come_out_by_day": "You never come out by day anymore."
+      }
+    }
+  ]
+}

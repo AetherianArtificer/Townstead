@@ -14,7 +14,7 @@ import net.minecraft.world.entity.Entity;
 import java.util.Optional;
 import java.util.UUID;
 
-/** World lookups for the Ink helpers that name people. */
+/** World lookups for the Ink helpers that name people and places. */
 final class StoryWorld {
     private StoryWorld() {}
 
@@ -37,6 +37,27 @@ final class StoryWorld {
                 .findFirst()
                 .map(v -> VillagerNames.display(v).getString())
                 .orElse("");
+    }
+
+    /**
+     * {@code building("raised")}: the building the player most recently raised in the teller's
+     * village, as a name token the client shows in the reader's language. {@code "upgraded"} for
+     * the last one upgraded, or {@code ""} for either. Empty when the player has done neither there.
+     */
+    static String building(String kind, GoalContext ctx) {
+        Optional<com.aetherianartificer.townstead.api.v1.model.VillageId> village = ctx.villageId(true);
+        if (village.isEmpty()) return "";
+        String prefix = kind.isBlank() ? "" : kind.trim().toLowerCase(java.util.Locale.ROOT) + ":";
+        var settlement = new com.aetherianartificer.townstead.politics.state.SettlementRef(
+                village.get().dimension(), village.get().villageId());
+        for (String key : com.aetherianartificer.townstead.politics.standing.DeedLedger.get(ctx.server())
+                .recent(settlement, ctx.playerId())) {
+            if (!key.startsWith("raised:") && !key.startsWith("upgraded:")) continue;
+            if (!prefix.isEmpty() && !key.startsWith(prefix)) continue;
+            String[] parts = key.split(":", 3);
+            if (parts.length == 3 && !parts[2].isEmpty()) return StoryText.building(parts[2]);
+        }
+        return "";
     }
 
     private static VillagerEntityMCA find(GoalContext ctx, UUID id) {

@@ -97,13 +97,15 @@ public class RpgDialogueScreen extends Screen {
             if (DialogueAccessibility.cameraEnabled()) {
                 cameraController = new DialogueCameraController(villager.asEntity());
             }
+            // The story offer goes first: for a Persona it also tells the server this player is
+            // someone they know, before MCA picks its opening from that memory.
+            sendStory(com.aetherianartificer.townstead.story.net.StoryC2SPayload.OFFER, 0);
             //? if neoforge {
             Network.sendToServer(new InteractionDialogueInitMessage(villagerUUID));
             //?} else {
             /*NetworkHandler.sendToServer(new InteractionDialogueInitMessage(villagerUUID));
             *///?}
             sendDialogueState(true);
-            sendStory(com.aetherianartificer.townstead.story.net.StoryC2SPayload.OFFER, 0);
         }
     }
 
@@ -613,7 +615,7 @@ public class RpgDialogueScreen extends Screen {
             dialogQuestionId = ChoicePanel.STORY_QUESTION;
             dialogAnswers = new java.util.ArrayList<>();
             for (int i = 0; i < payload.choices().size(); i++) dialogAnswers.add(ChoicePanel.STORY_CHOICE_PREFIX + i);
-            choicePanel.setLiteralChoices(payload.choices(), font);
+            choicePanel.setLiteralChoices(payload.choices().stream().map(RpgDialogueScreen::storyText).toList(), font);
             choicePanel.layout(width, height, dialogueBox.getY());
         }
         if (last) restoreMainMenu();
@@ -623,12 +625,17 @@ public class RpgDialogueScreen extends Screen {
             choicePanel.setVisible(state == DialogueState.CHOICES_VISIBLE);
             return;
         }
-        Component text = Component.literal(payload.text());
+        Component text = Component.literal(storyText(payload.text()));
         dialogueBox.setNameVisible(true);
         dialogueBox.setText(text, font);
         state = DialogueState.TYPEWRITER_PLAYING;
         speakDisplayedText(text);
         narrateText(text);
+    }
+
+    private static String storyText(String raw) {
+        return com.aetherianartificer.townstead.story.StoryText.resolve(raw,
+                key -> net.minecraft.client.resources.language.I18n.get(key));
     }
 
     private void finishStory() {

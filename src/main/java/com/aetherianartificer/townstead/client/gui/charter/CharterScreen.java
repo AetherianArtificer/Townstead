@@ -151,6 +151,8 @@ public final class CharterScreen extends BookScreen {
         int below = SECTION + HEADING + ROW;
         Component welcomed = welcomedNames(b);
         if (welcomed != null) below += ROW;
+        Component allies = allyNames(b);
+        if (allies != null) below += ROW;
         if (civicRows != null && civicRows.controlsGovernment()) below += ROW;
         else {
             below += ROW + detailHeight(b.seat().detail().component(), w);
@@ -180,7 +182,19 @@ public final class CharterScreen extends BookScreen {
             y = row(tr("row.legitimacy"), b.legitimacy().component(), x, y, w, INK, null);
             y = detail(b.legitimacyDetail().component(), x, y, w, FADED);
         }
-        if (welcomed != null) row(tr("row.welcomes"), welcomed, x, y, w, INK, null);
+        if (welcomed != null) y = row(tr("row.welcomes"), welcomed, x, y, w, INK, null);
+        if (allies != null) row(tr("row.allies"), allies, x, y, w, INK, null);
+    }
+
+    /** The factions this one holds an accord with, as one line; null when it has none. */
+    private @Nullable Component allyNames(Book b) {
+        MutableComponent out = null;
+        for (var accord : b.accords()) {
+            if (!accord.allied()) continue;
+            if (out == null) out = accord.name().component().copy();
+            else out.append(", ").append(accord.name().component());
+        }
+        return out;
     }
 
     /** The groups the faction welcomes, as one line; null when it welcomes none. */
@@ -678,9 +692,28 @@ public final class CharterScreen extends BookScreen {
         b.offices().stream().filter(CharterSnapshotS2CPayload.Office::editable).findFirst()
                 .ifPresent(office -> entries.add(new DropMenu.Entry(tr("change.successor"), () -> openSuccessorMenu(anchor, b, office))));
         if (!b.welcomes().isEmpty()) entries.add(new DropMenu.Entry(tr("change.welcome"), () -> openWelcomeMenu(anchor, b)));
+        if (b.accords().stream().anyMatch(a -> !a.allied())) {
+            entries.add(new DropMenu.Entry(tr("change.accord"), () -> openAccordMenu(anchor, b, false)));
+        }
+        if (b.accords().stream().anyMatch(CharterSnapshotS2CPayload.Accord::allied)) {
+            entries.add(new DropMenu.Entry(tr("change.end_accord"), () -> openAccordMenu(anchor, b, true)));
+        }
         entries.add(new DropMenu.Entry(tr("change.dissolve"), () -> { menu = null; draft("dissolve", "", ""); }, true, false, 0));
         Component amending = b.editingAs().component();
         menu = menuAbove(amending.getString().isBlank() ? null : amending, entries, anchor);
+    }
+
+    /** Factions to offer an accord to, nearest first; or, with {@code allied}, accords to end. */
+    private void openAccordMenu(Controls.Rect anchor, Book b, boolean allied) {
+        List<DropMenu.Entry> entries = new ArrayList<>();
+        for (var accord : b.accords()) {
+            if (accord.allied() != allied) continue;
+            entries.add(new DropMenu.Entry(accord.name().component(), () -> {
+                menu = null;
+                draft(allied ? "end_accord" : "accord", accord.id(), "");
+            }, allied, false, 0));
+        }
+        menu = menuAbove(tr(allied ? "picker.end_accord" : "picker.accord"), entries, anchor);
     }
 
     private void openWelcomeMenu(Controls.Rect anchor, Book b) {

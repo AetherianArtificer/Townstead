@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.story;
 import com.aetherianartificer.townstead.api.v1.TownsteadApiV1;
 import com.aetherianartificer.townstead.api.v1.event.TownsteadEvent;
 import com.aetherianartificer.townstead.story.goal.Goal;
+import com.aetherianartificer.townstead.story.goal.Goals;
 import com.aetherianartificer.townstead.story.goal.GoalContext;
 import com.aetherianartificer.townstead.story.net.StoryC2SPayload;
 import com.aetherianartificer.townstead.story.net.StoryQuestSyncS2CPayload;
@@ -50,7 +51,23 @@ public final class StoryService {
     }
 
     /** Listens for every event a loaded goal counts. A subscription stays once made; it is cheap. */
+    /**
+     * Every event goal in a story's own goals, by name. These count for each player from the
+     * moment they meet the villager, quest or not, so Ink can ask {@code count("collapsed")}.
+     */
+    private static volatile Map<ResourceLocation, Map<String, Goal>> WATCHED = Map.of();
+
     private static void subscribeGoalEvents() {
+        Map<ResourceLocation, Map<String, Goal>> watched = new HashMap<>();
+        for (StoryDefinition story : Stories.all().values()) {
+            for (String name : story.goals().keySet()) {
+                Goal goal = Goals.resolve(name, story.id().getNamespace(), story.goals()).goal();
+                if (goal == null || !goal.isCounter()) continue;
+                watched.computeIfAbsent(story.id(), k -> new HashMap<>()).put(name, goal);
+                if (SUBSCRIBED.add(goal.event())) subscribe(goal.event(), StoryService::onCountedEvent);
+            }
+        }
+        WATCHED = Map.copyOf(watched);
         for (StoryDefinition story : Stories.all().values()) {
             for (StoryDefinition.Quest quest : story.quests().values()) {
                 for (Goal goal : quest.goals()) {
@@ -124,6 +141,10 @@ public final class StoryService {
             closeSession(player);
             return;
         }
+        if (payload.action() == StoryC2SPayload.OFFER) {
+            VillagerEntityMCA opened = villager(player, payload.villagerId());
+            if (opened != null) com.aetherianartificer.townstead.persona.PersonaService.knows(player, opened);
+        }
         if (!Systems.on(Systems.STORIES)) {
             if (payload.action() == StoryC2SPayload.OFFER) offer(player, payload.villagerId(), null);
             return;
@@ -186,11 +207,24 @@ public final class StoryService {
     }
 
     private static void talk(ServerPlayer player, VillagerEntityMCA villager) {
+        talk(player, villager, null);
+    }
+
+    /**
+     * Opens the villager's story at a knot, as when a Persona answers a gift. False when stories
+     * are off, the villager has no story, or it could not start.
+     */
+    public static boolean play(ServerPlayer player, VillagerEntityMCA villager, String knot) {
+        if (!Systems.on(Systems.STORIES) || storyFor(player, villager) == null) return false;
+        return talk(player, villager, knot);
+    }
+
+    private static boolean talk(ServerPlayer player, VillagerEntityMCA villager, @Nullable String knot) {
         closeSession(player);
         StoryDefinition story = storyFor(player, villager);
         if (story == null) {
             send(player, new StoryS2CPayload(villager.getId(), StoryS2CPayload.END, "", List.of(), false));
-            return;
+            return false;
         }
         String name = StorySession.displayName(villager);
         String key = PlayerStories.key(story, villager.getUUID());
@@ -203,12 +237,13 @@ public final class StoryService {
         } catch (Exception e) {
             com.aetherianartificer.townstead.Townstead.LOGGER.warn("Story {} could not start: {}", story.id(), e.getMessage());
             send(player, new StoryS2CPayload(villager.getId(), StoryS2CPayload.END, "", List.of(), false));
-            return;
+            return false;
         }
         refresh(player.server, player.getUUID(), entry, story, session.villager);
         SESSIONS.put(player.getUUID(), session);
-        session.start(entryPath(entry, story));
+        session.start(knot != null ? knot : entryPath(entry, story));
         DIRTY.add(player.getUUID());
+        return true;
     }
 
     /**
@@ -333,6 +368,17 @@ public final class StoryService {
                     }
                     if (changed && ctx != null) settle(record, quest, ctx);
                 }
+                Map<String, Goal> watched = WATCHED.get(entry.story);
+                if (watched == null) continue;
+                GoalContext ctx = null;
+                for (Map.Entry<String, Goal> goal : watched.entrySet()) {
+                    if (!goal.getValue().event().isInstance(event)) continue;
+                    if (ctx == null) ctx = context(server, player.getUUID(), entry);
+                    long add = goal.getValue().increment(event, ctx);
+                    if (add <= 0) continue;
+                    entry.seen.merge(goal.getKey(), add, Long::sum);
+                    changed = true;
+                }
             }
             if (changed) DIRTY.add(player.getUUID());
         }
@@ -430,8 +476,8 @@ public final class StoryService {
                         Goal goal = quest.goals().get(i);
                         long current = i < record.values.length ? record.values[i] : 0L;
                         objectives.add(new StoryQuestSyncS2CPayload.Objective(
-                                goal.label(entry.givenName.isEmpty() ? entry.villagerName : entry.givenName,
-                                        player.getGameProfile().getName()),
+                                withMarker(goal.label(entry.givenName.isEmpty() ? entry.villagerName : entry.givenName,
+                                        player.getGameProfile().getName()), goal.marker(), player),
                                 Math.min(current, goal.total()), goal.total(),
                                 complete || record.skipped || current >= goal.total()));
                     }
@@ -450,6 +496,14 @@ public final class StoryService {
             }
         }
         send(player, new StoryQuestSyncS2CPayload(List.copyOf(quests)));
+    }
+
+    /** Fills {@code {x}} and {@code {z}} from the goal's marker, once the player has one. */
+    private static String withMarker(String text, @Nullable String marker, ServerPlayer player) {
+        if (marker == null) return text;
+        var pos = com.aetherianartificer.townstead.pheno.marker.PlayerMarkers.get(player, marker);
+        return text.replace("{x}", pos == null ? "?" : Integer.toString(pos.pos().getX()))
+                .replace("{z}", pos == null ? "?" : Integer.toString(pos.pos().getZ()));
     }
 
     static void send(ServerPlayer player, Object payload) {

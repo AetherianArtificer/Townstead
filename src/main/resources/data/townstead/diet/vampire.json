@@ -3,6 +3,17 @@
   "mods": "vampirism",
   "foods": [
     {
+      "fluid": "vampirism:blood",
+      "amount": 100,
+      "nutrition": 3,
+      "saturation": 0.4,
+      "effects": {
+        "type": "pheno:add_state",
+        "state": "townstead_state:vampire_blood",
+        "amount": 1
+      }
+    },
+    {
       "items": [
         "minecraft:beef"
       ],

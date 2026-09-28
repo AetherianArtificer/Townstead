@@ -157,6 +157,8 @@ public abstract class VillagerHungerMixin extends Villager {
         coreBehaviors.add(Pair.of(98, new com.aetherianartificer.townstead.compat.vampirism.VampireFeedTask()));
         coreBehaviors.add(Pair.of(99, new RefuelTask()));
         coreBehaviors.add(Pair.of(110, new CareForYoungTask()));
+        // After MCA's own rest behaviors, so a vampire's walk to its coffin is the one that stands.
+        coreBehaviors.add(Pair.of(150, new com.aetherianartificer.townstead.compat.vampirism.CoffinRestTask()));
         if (ThirstBridgeResolver.isActive()) {
             coreBehaviors.add(Pair.of(111, new HydrateYoungTask()));
         }

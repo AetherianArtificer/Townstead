@@ -307,6 +307,13 @@ public final class Stories {
             attach = StoryAttach.persona(persona);
             personaDefinition = com.aetherianartificer.townstead.persona.Personas.parse(persona,
                     json == null ? new JsonObject() : json, goals, issues);
+            if (personaDefinition != null) {
+                for (var gift : personaDefinition.gifts()) {
+                    for (String knot : gift.knots()) {
+                        if (!compiled.knots().containsKey(knot)) issues.add("error: gifts: no knot '" + knot + "' in the Ink");
+                    }
+                }
+            }
         } else {
             attach = json == null ? StoryAttach.NONE : attach(json, issues);
             if (attach.isEmpty()) issues.add("warning: attaches to no villager; add \"attach\" to story.json");
@@ -315,6 +322,7 @@ public final class Stories {
         Map<String, Action> actions = new LinkedHashMap<>();
         StoryDefinition.Bind bind = StoryDefinition.Bind.VILLAGER;
         int priority = 0;
+        List<Demeanor.Band> demeanor = Demeanor.DEFAULT;
         if (json != null) {
             if (json.has("conditions") && json.get("conditions").isJsonObject()) {
                 for (Map.Entry<String, JsonElement> e : json.getAsJsonObject("conditions").entrySet()) {
@@ -337,6 +345,10 @@ public final class Stories {
                 issues.add("error: story.json: bind must be \"villager\" or \"player\", not \"" + bindName + "\"");
             }
             if (json.has("priority")) priority = json.get("priority").getAsInt();
+            if (json.has("demeanor")) {
+                List<Demeanor.Band> parsed = Demeanor.parse(json.get("demeanor"), issues);
+                if (parsed != null) demeanor = parsed;
+            }
         }
         if (countErrors(issues) > errorsBefore) return null;
         if (persona != null) {
@@ -345,7 +357,7 @@ public final class Stories {
         }
         String label = greet == null ? "" : first(tagMap(greet.tags()), "label", "");
         return new StoryDefinition(id, compiled.json(), sha1(compiled.json()), attach, bind, priority, label,
-                Map.copyOf(quests), Map.copyOf(conditions), Map.copyOf(actions), Map.copyOf(goals));
+                Map.copyOf(quests), Map.copyOf(conditions), Map.copyOf(actions), Map.copyOf(goals), demeanor);
     }
 
     private static StoryAttach attach(JsonObject json, List<String> issues) {

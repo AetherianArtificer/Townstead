@@ -20,8 +20,10 @@ import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
 import com.aetherianartificer.townstead.root.disposition.DispositionRelations;
+import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -32,7 +34,8 @@ import java.util.UUID;
 public final class CharterDrafts {
     public static final ResourceLocation GOVERN = id("townstead:govern_faction");
     public static final String RENAME = "rename", HERALDRY = "heraldry", LIVERY = "livery", SEAT = "seat",
-            TRANSFER_LEADERSHIP = "transfer_leadership", DISSOLVE = "dissolve", WELCOME = "welcome";
+            TRANSFER_LEADERSHIP = "transfer_leadership", DISSOLVE = "dissolve", WELCOME = "welcome",
+            ACCORD = "accord", END_ACCORD = "end_accord";
     /** How long a signed draft waits for its bell: half a Minecraft day. */
     static final long PREPARED_LIFETIME = 12000L;
 
@@ -146,6 +149,8 @@ public final class CharterDrafts {
             case SEAT -> new CharterSavedData.Clause(SEAT, binding.dimension() + "|" + binding.lectern().asLong(), "", "");
             case TRANSFER_LEADERSHIP -> new CharterSavedData.Clause(TRANSFER_LEADERSHIP, faction.id().toString(), request.argument(), "");
             case DISSOLVE -> new CharterSavedData.Clause(DISSOLVE, faction.id().toString(), "", faction.name());
+            case ACCORD, END_ACCORD -> ResourceLocation.tryParse(request.target()) == null ? null
+                    : new CharterSavedData.Clause(request.operation(), request.target(), "", "");
             case WELCOME -> DispositionRelations.welcomable().containsKey(request.target())
                     ? new CharterSavedData.Clause(WELCOME, request.target(), "1".equals(request.argument()) ? "1" : "0",
                             welcomed(player, faction, request.target()))
@@ -196,6 +201,8 @@ public final class CharterDrafts {
                 yield FactionBonds.holders(data, faction.id(), head).contains(recipient) ? "recipient" : null;
             }
             case DISSOLVE -> faction.name().equals(clause.expected()) ? null : "stale";
+            case ACCORD -> CharterAccords.problem(data, faction, data.faction(ResourceLocation.tryParse(clause.target())));
+            case END_ACCORD -> CharterAccords.allies(data, faction).contains(ResourceLocation.tryParse(clause.target())) ? null : "stale";
             case WELCOME -> !DispositionRelations.welcomable().containsKey(clause.target()) ? "invalid"
                     : welcomed(player, faction, clause.target()).equals(clause.expected()) ? null : "stale";
             default -> "invalid";
@@ -223,7 +230,10 @@ public final class CharterDrafts {
         long now = player.serverLevel().getGameTime();
         for (CharterSavedData.Clause clause : draft.clauses()) {
             switch (clause.type()) {
-                case RENAME -> CharterIdentityService.rename(data, faction.id(), clause.expected(), clause.argument());
+                case RENAME -> {
+                    CharterIdentityService.rename(data, faction.id(), clause.expected(), clause.argument());
+                    FactionChronicles.proclaimed(player, data.faction(faction.id()), "faction_renamed", Map.of("old", clause.expected()));
+                }
                 case HERALDRY -> HeraldryService.publish(player, clause.target(), EmblemRecipe.decode(clause.argument()),
                         Long.parseLong(clause.expected()));
                 case LIVERY -> {
@@ -236,10 +246,33 @@ public final class CharterDrafts {
                 case SEAT -> {
                     CharterSavedData.Binding binding = seatBinding(player, clause);
                     ServerLevel level = binding == null ? null : level(player, binding.dimension());
-                    if (level != null) SeatService.designate(level, binding, true);
+                    if (level != null) {
+                        SeatService.designate(level, binding, true);
+                        FactionChronicles.proclaimed(player, faction, "faction_seat_moved", Map.of());
+                    }
                 }
-                case TRANSFER_LEADERSHIP -> FactionLifecycle.transferHead(data, faction, uuid(clause.argument()), now);
-                case WELCOME -> data.setWelcome(faction.id(), clause.target(), "1".equals(clause.argument()));
+                case TRANSFER_LEADERSHIP -> {
+                    UUID heir = uuid(clause.argument());
+                    FactionLifecycle.transferHead(data, faction, heir, now);
+                    FactionChronicles.proclaimed(player, faction, "faction_leadership_passed",
+                            Map.of("heir", heir == null ? "" : CharterPeople.name(player, heir).getString()));
+                }
+                case WELCOME -> {
+                    boolean welcome = "1".equals(clause.argument());
+                    data.setWelcome(faction.id(), clause.target(), welcome);
+                    FactionChronicles.proclaimed(player, faction, welcome ? "faction_welcomed" : "faction_unwelcomed",
+                            Map.of("group", groupName(clause.target())));
+                }
+                case ACCORD -> {
+                    // The ringer carries the offer; whoever they hand it to delivers it.
+                    ItemStack letter = CharterAccords.letter(player, data, faction, data.faction(ResourceLocation.tryParse(clause.target())));
+                    if (!player.getInventory().add(letter)) player.drop(letter, false);
+                }
+                case END_ACCORD -> {
+                    Faction ally = data.faction(ResourceLocation.tryParse(clause.target()));
+                    CharterAccords.end(player.server, data, faction, ResourceLocation.tryParse(clause.target()));
+                    FactionChronicles.proclaimed(player, faction, "accord_ended", Map.of("ally", ally == null ? clause.target() : ally.name()));
+                }
                 case DISSOLVE -> {
                     FactionLifecycle.dissolve(player, faction, draft);
                     return new Proclamation(message("dissolved"), true);
@@ -286,6 +319,15 @@ public final class CharterDrafts {
                 return null;
             }
         }
+    }
+
+    /** A welcomable group's English name, for a Chronicles headline. */
+    static String groupName(String group) {
+        var name = DispositionRelations.welcomable().get(group);
+        if (name != null && name.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents key) {
+            return com.aetherianartificer.townstead.data.DataPackLang.resolveFallback(key.getKey(), "en_us", group);
+        }
+        return name == null ? group : name.getString();
     }
 
     /** "1" when the faction welcomes this group now, else "0": what a welcome clause expects. */

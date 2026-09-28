@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:dialogue_pool/v1",
+  "mods": "vampirism",
+  "act": "assess",
+  "subjects": "thrall_life",
+  "stance": "-",
+  "opens": "complaint"
+}

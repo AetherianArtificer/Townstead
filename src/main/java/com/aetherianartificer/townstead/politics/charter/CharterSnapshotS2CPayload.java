@@ -124,11 +124,11 @@ public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int sta
                        SeatRow seat, List<CensusScope> census, List<Text> history, List<Heraldry> heraldry, boolean mayDraft,
                        List<Office> offices, Members members, List<Request> requests,
                        @Nullable Draft draft, @Nullable Civic civic, List<StyleOption> liveryStyles,
-                       List<Welcome> welcomes) {
+                       List<Welcome> welcomes, List<Accord> accords) {
         public Book {
             census = List.copyOf(census); history = List.copyOf(history); heraldry = List.copyOf(heraldry);
             offices = List.copyOf(offices); requests = List.copyOf(requests); liveryStyles = List.copyOf(liveryStyles);
-            welcomes = List.copyOf(welcomes);
+            welcomes = List.copyOf(welcomes); accords = List.copyOf(accords);
         }
         void write(FriendlyByteBuf b) {
             b.writeUtf(id, 256); proclaimed.write(b); editingAs.write(b); writeOptional(b, legitimacy); legitimacyDetail.write(b); seat.write(b);
@@ -139,14 +139,21 @@ public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int sta
             b.writeBoolean(civic != null); if (civic != null) civic.write(b);
             writeList(b, liveryStyles, StyleOption::write);
             writeList(b, welcomes, Welcome::write);
+            writeList(b, accords, Accord::write);
         }
         static Book read(FriendlyByteBuf b) {
             return new Book(b.readUtf(256), Text.read(b), Text.read(b), readOptional(b), Text.read(b), SeatRow.read(b),
                     readList(b, CensusScope::read), readList(b, Text::read), readList(b, Heraldry::read), b.readBoolean(),
                     readList(b, Office::read), Members.read(b), readList(b, Request::read),
                     b.readBoolean() ? Draft.read(b) : null, b.readBoolean() ? Civic.read(b) : null, readList(b, StyleOption::read),
-                    readList(b, Welcome::read));
+                    readList(b, Welcome::read), readList(b, Accord::read));
         }
+    }
+
+    /** Another faction: an ally, or one this faction could offer an accord to. */
+    public record Accord(String id, Text name, boolean allied) {
+        void write(FriendlyByteBuf b) { b.writeUtf(id, 256); name.write(b); b.writeBoolean(allied); }
+        static Accord read(FriendlyByteBuf b) { return new Accord(b.readUtf(256), Text.read(b), b.readBoolean()); }
     }
 
     /** A group the faction may declare welcome, and whether it does now. */

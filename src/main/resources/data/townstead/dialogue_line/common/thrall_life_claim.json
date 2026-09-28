@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "thrall_life_claim",
+  "groups": [
+    {
+      "lines": {
+        "my_master_sleeps_until_dusk": "My master sleeps until dusk. I keep the shutters closed.",
+        "i_do_the_errands_by_day": "I run all the errands by day. Someone has to.",
+        "my_master_is_kind_to_me": "My master is kind to me, whatever people say.",
+        "i_sleep_in_the_afternoon_now": "I sleep in the afternoons now, to keep my master's hours."
+      }
+    }
+  ]
+}

@@ -56,6 +56,32 @@ public final class FactionChronicles {
         }
         return List.copyOf(out);
     }
+    /**
+     * A proclamation from the faction's Charter, recorded at its seat: {@code template} names the
+     * event, {@code params} fill its headline alongside the leader, faction and settlement.
+     */
+    public static void proclaimed(ServerPlayer actor, Faction faction, String template, Map<String, String> params) {
+        var server = actor.server;
+        var settlement = faction.seatSettlement();
+        if (settlement == null) return;
+        var level = server.getLevel(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, settlement.dimension()));
+        var village = level == null ? null : VillageManager.get(level).getOrEmpty(settlement.villageId()).orElse(null);
+        String villageName = village == null ? Integer.toString(settlement.villageId()) : village.getName();
+        var participants = new ArrayList<Participation>();
+        participants.add(new Participation("leader", ChronicleRef.player(actor.getUUID(), actor.getGameProfile().getName())));
+        participants.add(new Participation("faction", ChronicleRef.concept("faction:" + faction.id(), faction.name())));
+        participants.add(new Participation("settlement", ChronicleRef.village(settlement.villageId(), villageName)));
+        var all = new LinkedHashMap<String, String>();
+        all.put("leader", actor.getGameProfile().getName());
+        all.put("faction", faction.name());
+        all.put("settlement", villageName);
+        all.putAll(params);
+        record(actor, List.of(new ChronicleEvent(0, ResourceLocation.tryParse("townstead:" + template),
+                TownsteadCalendar.worldDay(server), server.overworld().getGameTime(), settlement.dimension(), 0,
+                settlement.villageId(), "politics.proclamation", 1, ChronicleEvent.REACH_WORLD,
+                ChronicleEvent.NONE, ChronicleEvent.NONE, true, participants, Map.copyOf(all))));
+    }
+
     public static void record(ServerPlayer actor, List<ChronicleEvent> events) {
         long cause = ChronicleEvent.NONE;
         for (var e : events) {
@@ -67,8 +93,10 @@ public final class FactionChronicles {
                 if (template != null) com.aetherianartificer.townstead.chronicle.knowledge.AccountLedger.onRecorded(
                         actor.server, template, draft.withId(id), java.util.List.of(actor));
             }
+            var template = com.aetherianartificer.townstead.chronicle.template.ChronicleEventRegistry.byId(e.templateId());
+            String headline = template == null ? "chronicle.townstead.faction_dissolved" : template.display().headlineLangKey();
             Chronicles.recordDigestEntry(actor.server, new VillageKey(e.dimension(), e.villageId()),
-                    new VillageHistory.Entry(e.worldDay(), id, e.templateId().toString(), "", "chronicle.townstead.faction_dissolved", e.params()));
+                    new VillageHistory.Entry(e.worldDay(), id, e.templateId().toString(), "", headline, e.params()));
         }
     }
 }

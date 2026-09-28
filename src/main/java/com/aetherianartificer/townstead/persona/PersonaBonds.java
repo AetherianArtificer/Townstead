@@ -42,6 +42,34 @@ public final class PersonaBonds {
         return removed;
     }
 
+    private static final String GIFTS_KEY = "townstead_persona_first_gifts";
+
+    /** Whether the player has already given this Persona the gift at {@code index} once. */
+    public static boolean gaveFirst(Player player, ResourceLocation persona, int index) {
+        String key = persona + "#" + index;
+        ListTag list = data(player).getList(GIFTS_KEY, Tag.TAG_STRING);
+        for (int i = 0; i < list.size(); i++) if (list.getString(i).equals(key)) return true;
+        return false;
+    }
+
+    public static void markFirst(Player player, ResourceLocation persona, int index) {
+        if (gaveFirst(player, persona, index)) return;
+        CompoundTag root = data(player);
+        ListTag list = root.getList(GIFTS_KEY, Tag.TAG_STRING);
+        list.add(StringTag.valueOf(persona + "#" + index));
+        root.put(GIFTS_KEY, list);
+        store(player, root);
+    }
+
+    public static void forgetGifts(Player player, ResourceLocation persona) {
+        CompoundTag root = data(player);
+        ListTag list = root.getList(GIFTS_KEY, Tag.TAG_STRING);
+        if (list.removeIf(tag -> tag.getAsString().startsWith(persona + "#"))) {
+            root.put(GIFTS_KEY, list);
+            store(player, root);
+        }
+    }
+
     private static CompoundTag data(Player player) {
         //? if neoforge {
         return player.getData(com.aetherianartificer.townstead.Townstead.PLAYER_ROOT_DATA);

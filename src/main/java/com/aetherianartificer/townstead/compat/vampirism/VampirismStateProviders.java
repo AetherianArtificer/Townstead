@@ -85,6 +85,11 @@ public final class VampirismStateProviders {
         return ResourceLocation.tryParse(MOD_ID + ":" + path);
     }
 
+    /** A player who has joined the hunters, at any level. */
+    public static boolean isHunter(LivingEntity entity) {
+        return ModCompat.isLoaded(MOD_ID) && level(entity, HUNTER, false) != null;
+    }
+
     /** The player's level in {@code faction}, or null when they are not in it (or at level 0). */
     private static @Nullable Double level(LivingEntity entity, ResourceLocation faction, boolean lord) {
         if (!(entity instanceof Player player) || !ensureProbe()) return null;

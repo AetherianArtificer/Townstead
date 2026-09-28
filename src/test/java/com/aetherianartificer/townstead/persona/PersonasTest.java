@@ -60,4 +60,60 @@ class PersonasTest {
         assertNull(Personas.parse(ID, json("{ \"arrives\": \"good_standin\" }"), Map.of(), issues));
         assertTrue(issues.stream().anyMatch(i -> i.contains("good_standin")), issues.toString());
     }
+
+    @Test
+    void rollsKeepValuesProfessionsAndInkVariables() {
+        List<String> issues = new ArrayList<>();
+        PersonaDefinition persona = Personas.parse(ID, json("""
+                { "rolls": { "hometown": [
+                    { "value": "mill", "profession": "baker", "weight": 3,
+                      "vars": { "gift": "minecraft:bread", "cups": 2, "kind": true } },
+                    { "value": "mine" } ] } }
+                """), Map.of(), issues);
+        assertNotNull(persona, issues.toString());
+        PersonaRoll roll = persona.rolls().get(0);
+        assertEquals("hometown", roll.name());
+        PersonaRoll.Option mill = roll.option("mill");
+        assertNotNull(mill);
+        assertEquals(3, mill.weight());
+        assertEquals(ResourceLocation.tryParse("minecraft:baker"), mill.profession());
+        assertEquals("minecraft:bread", mill.vars().get("gift"));
+        assertEquals(2, mill.vars().get("cups"));
+        assertEquals(true, mill.vars().get("kind"));
+        assertEquals(1, roll.option("mine").weight());
+    }
+
+    @Test
+    void rollOptionsNeedAValue() {
+        List<String> issues = new ArrayList<>();
+        assertNull(Personas.parse(ID, json("{ \"rolls\": { \"hometown\": [ { \"weight\": 2 } ] } }"), Map.of(), issues));
+        assertTrue(issues.stream().anyMatch(i -> i.contains("rolls.hometown[0]: each option needs a \"value\"")), issues.toString());
+    }
+
+    @Test
+    void giftsReadResponsesDefaultsAndFirstTime() {
+        List<String> issues = new ArrayList<>();
+        PersonaDefinition persona = Personas.parse(ID, json("""
+                { "gifts": [
+                    { "items": ["$gift", "#minecraft:logs"], "response": "loves", "knot": "loved",
+                      "relationship": { "affection": 5 },
+                      "first": { "knot": "from_home", "relationship": { "affection": 10 } } },
+                    { "items": "minecraft:rotten_flesh", "response": "dislikes" } ] }
+                """), Map.of(), issues);
+        assertNotNull(persona, issues.toString());
+        PersonaGift loved = persona.gifts().get(0);
+        assertEquals(PersonaGift.Response.LOVES, loved.response());
+        assertEquals(30, loved.satisfaction());
+        assertEquals(5f, loved.relationship().get("affection"));
+        assertEquals(List.of("loved", "from_home"), loved.knots());
+        assertEquals(10f, loved.first().relationship().get("affection"));
+        assertEquals(-15, persona.gifts().get(1).satisfaction());
+    }
+
+    @Test
+    void giftResponsesAreChecked() {
+        List<String> issues = new ArrayList<>();
+        assertNull(Personas.parse(ID, json("{ \"gifts\": [ { \"items\": \"minecraft:stick\", \"response\": \"adores\" } ] }"), Map.of(), issues));
+        assertTrue(issues.contains("error: gifts[0].response must be \"loves\", \"likes\" or \"dislikes\""), issues.toString());
+    }
 }

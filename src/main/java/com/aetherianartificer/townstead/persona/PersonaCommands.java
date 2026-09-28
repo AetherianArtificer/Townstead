@@ -21,7 +21,8 @@ import net.minecraft.server.level.ServerPlayer;
  * {@code /townstead persona [list | spawn <id> | reset <id>]}. Operator only.
  * {@code spawn} brings a Persona to the village you stand in, next to you, ignoring its arrival
  * goals. {@code reset} forgets that Persona for you in this village: the villager stays as an
- * ordinary resident, your bond and your story progress with them are cleared.
+ * ordinary resident, your bond and your story progress with them are cleared. When no village
+ * still has that Persona, what the world rolled for them is cleared too.
  */
 public final class PersonaCommands {
     private PersonaCommands() {}
@@ -85,7 +86,9 @@ public final class PersonaCommands {
             if (instance != null) removed = instances.remove(instance.villager());
         }
         removed |= PersonaBonds.remove(player, id);
+        PersonaBonds.forgetGifts(player, id);
         removed |= StoryService.reset(player, Personas.storyId(id));
+        if (instances.of(id).isEmpty()) instances.clearRolls(id);
         String what = removed ? "Reset " + id + " for you here." : "Nothing to reset for " + id + ".";
         source.sendSuccess(() -> Component.literal(what), false);
         return removed ? 1 : 0;

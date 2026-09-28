@@ -35,7 +35,15 @@ public abstract class BabyItemInheritanceMixin {
         if (child == null || child.level().isClientSide) return;
         List<Entity> parents = child.getRelationships().getParents().toList();
         Heredity.inheritFromEntities(TownsteadVillagers.get(child).life(), parents, child.getRandom());
-        com.aetherianartificer.townstead.pheno.state.EntityStates.receiveAtBirth(child, parents);
+        // MCA hands the parents over unordered; its family tree knows which one is the mother.
+        var family = child.getRelationships().getFamilyEntry();
+        net.minecraft.world.entity.LivingEntity mother = null, father = null;
+        for (Entity parent : parents) {
+            if (!(parent instanceof net.minecraft.world.entity.LivingEntity living)) continue;
+            if (living.getUUID().equals(family.mother())) mother = living;
+            else if (living.getUUID().equals(family.father())) father = living;
+        }
+        com.aetherianartificer.townstead.pheno.state.EntityStates.receiveAtBirth(child, mother, father);
         com.aetherianartificer.townstead.root.appearance.HairColors.inherit(child, parents);
         // Re-align stage durations to the (possibly newly inherited) origin's cycle.
         RootSpawnHandler.backfillIfMissing(child);

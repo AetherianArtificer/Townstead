@@ -491,7 +491,7 @@ public final class VillagerConsumptionManager {
         ItemStack remainder = remainder(stack, policy);
         if (remainder.isEmpty() && policy == null) {
             var nourishment = com.aetherianartificer.townstead.hunger.diet.Diets.nourishment(villager, stack);
-            if (nourishment != null) remainder = com.aetherianartificer.townstead.hunger.diet.Diets.remainder(nourishment);
+            if (nourishment != null) remainder = com.aetherianartificer.townstead.hunger.diet.Diets.remainder(nourishment, stack);
         }
         if (remainder.isEmpty()) {
             if (debug) {

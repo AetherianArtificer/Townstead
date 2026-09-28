@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "vampire_life_reply",
+  "groups": [
+    {
+      "lines": {
+        "youll_get_used_to_it": "You get used to it.",
+        "dusk_will_come": "Dusk always comes."
+      }
+    }
+  ]
+}

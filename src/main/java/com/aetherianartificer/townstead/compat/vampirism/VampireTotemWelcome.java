@@ -43,7 +43,9 @@ public final class VampireTotemWelcome implements FactionRelations.WelcomeSource
         return Set.of();
     }
 
-    private static Object controller(ServerLevel level, BlockPos center) {
+    /** The faction controlling the Vampirism totem nearest {@code center}, or null for none or unreadable. */
+    static Object controller(ServerLevel level, BlockPos center) {
+        if (!resolve()) return null;
         try {
             Optional<?> totem = (Optional<?>) totemNearPos.invoke(null, level, center, true);
             return totem.isPresent() ? controllingFaction.invoke(totem.get()) : null;

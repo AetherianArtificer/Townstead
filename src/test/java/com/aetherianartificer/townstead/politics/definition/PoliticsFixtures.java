@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Loads the bundled bond and faction kinds the way the reload listener does. */
-final class PoliticsFixtures {
+public final class PoliticsFixtures {
     private PoliticsFixtures() {}
 
     static void registerPheno() {
@@ -30,14 +30,14 @@ final class PoliticsFixtures {
         ValueTypes.register(new VillageSpiritTierValueType());
     }
 
-    static void load() {
+    public static void load() {
         registerPheno();
         Map<ResourceLocation, BondKind> bonds = bonds();
         BondKinds.replaceAll(bonds);
         PoliticalDefinitions.replace(kinds());
     }
 
-    static void clear() {
+    public static void clear() {
         BondKinds.replaceAll(Map.of());
         PoliticalDefinitions.replace(Map.of());
     }
@@ -59,7 +59,7 @@ final class PoliticsFixtures {
         return json(Files.readString(file));
     }
 
-    static ResourceLocation id(String value) {
+    public static ResourceLocation id(String value) {
         ResourceLocation parsed = DataPackLang.parseId(value);
         if (parsed == null) throw new IllegalArgumentException(value);
         return parsed;

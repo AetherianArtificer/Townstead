@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:dialogue_pool/v1",
+  "mods": "vampirism",
+  "act": "assess",
+  "subjects": "vampire_neighbor",
+  "persp": {
+    "who": "they"
+  },
+  "empty": 4
+}

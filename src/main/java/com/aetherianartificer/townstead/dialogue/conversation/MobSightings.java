@@ -26,17 +26,22 @@ public final class MobSightings {
 
     /** Records the nearest hostile mob this villager can see, at most one sighting of a type per village per day. */
     public static synchronized void observe(ServerLevel level, VillagerEntityMCA villager) {
-        List<Monster> near = level.getEntitiesOfClass(Monster.class, villager.getBoundingBox().inflate(RADIUS),
-                mob -> mob.isAlive() && villager.hasLineOfSight(mob));
+        // A wild villager standing in for a mob is seen as that mob: "a vampire by the fields".
+        List<net.minecraft.world.entity.LivingEntity> near = level.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class,
+                villager.getBoundingBox().inflate(RADIUS), mob -> mob.isAlive() && (mob instanceof Monster
+                        || com.aetherianartificer.townstead.replace.MobReplacer.activeReplacement(mob) != null)
+                        && villager.hasLineOfSight(mob));
         if (near.isEmpty()) return;
-        Monster mob = near.stream().min(Comparator.comparingDouble(villager::distanceToSqr)).orElseThrow();
+        net.minecraft.world.entity.LivingEntity mob = near.stream().min(Comparator.comparingDouble(villager::distanceToSqr)).orElseThrow();
         Integer village = village(level, villager);
         if (village == null) return;
         long day = TownsteadCalendar.worldDay(level.getServer());
-        ResourceLocation type = BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType());
+        net.minecraft.world.entity.EntityType<?> seenAs = com.aetherianartificer.townstead.replace.MobReplacer.replacedType(mob);
+        if (seenAs == null) seenAs = mob.getType();
+        ResourceLocation type = BuiltInRegistries.ENTITY_TYPE.getKey(seenAs);
         Deque<Sighting> list = BY_VILLAGE.computeIfAbsent(village, k -> new ArrayDeque<>());
         if (list.stream().anyMatch(s -> s.type().equals(type) && s.day() == day)) return;
-        list.addFirst(new Sighting(type, mob.getType().getDescription().getString(), villager.getUUID(),
+        list.addFirst(new Sighting(type, seenAs.getDescription().getString(), villager.getUUID(),
                 villager.getName().getString(), day, level.getGameTime()));
         while (list.size() > MAX_PER_VILLAGE) list.removeLast();
     }

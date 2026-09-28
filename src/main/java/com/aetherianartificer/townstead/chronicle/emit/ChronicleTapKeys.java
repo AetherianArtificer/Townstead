@@ -21,6 +21,11 @@ public final class ChronicleTapKeys {
     public static final String TURNED_VAMPIRE = "townstead:turned_vampire";
     public static final String VAMPIRE_CURED = "townstead:vampire_cured";
     public static final String WILD_SETTLED = "townstead:wild_settled";
+    public static final String VAMPIRE_BITE = "townstead:vampire_bite";
+    public static final String BECAME_FULL_VAMPIRE = "townstead:became_full_vampire";
+    public static final String HUNTER_SLEW_VAMPIRE = "townstead:hunter_slew_vampire";
+    public static final String VILLAGE_FELL_TO_VAMPIRES = "townstead:village_fell_to_vampires";
+    public static final String VILLAGE_RETAKEN = "townstead:village_retaken";
 
     private ChronicleTapKeys() {}
 }

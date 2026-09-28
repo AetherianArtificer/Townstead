@@ -10,6 +10,7 @@ import net.conczin.mca.entity.VillagerFactory;
 import net.conczin.mca.entity.ai.relationship.Gender;
 import net.conczin.mca.server.world.data.Village;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
@@ -90,8 +91,12 @@ public final class PersonaService {
         VillagerFactory factory = VillagerFactory.newVillager(level).withAge(0).withPosition(Vec3.atBottomCenterOf(at));
         if ("male".equals(persona.gender())) factory.withGender(Gender.MALE);
         else if ("female".equals(persona.gender())) factory.withGender(Gender.FEMALE);
-        if (persona.profession() != null && BuiltInRegistries.VILLAGER_PROFESSION.containsKey(persona.profession())) {
-            factory.withProfession(BuiltInRegistries.VILLAGER_PROFESSION.get(persona.profession()));
+        ResourceLocation profession = persona.profession();
+        for (PersonaRoll.Option option : rolls(persona, player).values()) {
+            if (option.profession() != null) profession = option.profession();
+        }
+        if (profession != null && BuiltInRegistries.VILLAGER_PROFESSION.containsKey(profession)) {
+            factory.withProfession(BuiltInRegistries.VILLAGER_PROFESSION.get(profession));
         }
         VillagerEntityMCA villager = factory.build();
         //? if >=1.21 {
@@ -102,12 +107,85 @@ public final class PersonaService {
         if (!level.addFreshEntity(villager)) return null;
         if (persona.root() != null) RootAssignment.assign(villager, persona.root());
         villager.getResidency().seekHome();
+        if (persona.schedule() != null) schedule(level.getServer(), villager, persona.schedule());
+        if (!persona.personalities().isEmpty()) personality(villager, persona);
         PersonaInstances.get(level.getServer()).add(new PersonaInstances.Instance(persona.id(), villager.getUUID(),
                 level.dimension().location(), village.getId(), level.getGameTime()));
         PersonaBonds.add(player, persona.id());
         if (walkIn) WALKING.put(villager.getUUID(), new WalkIn(player.getUUID(), level.getGameTime() + WALK_LIMIT));
         LOGGER.info("Persona {} arrived in village {} for {}", persona.id(), village.getId(), player.getGameProfile().getName());
         return villager;
+    }
+
+    /**
+     * What this world rolled for each of the Persona's rolls, rolling any that have not been
+     * rolled yet. A value that the data no longer offers is rolled again.
+     */
+    public static Map<String, PersonaRoll.Option> rolls(PersonaDefinition persona, ServerPlayer player) {
+        Map<String, PersonaRoll.Option> out = new java.util.LinkedHashMap<>();
+        if (persona.rolls().isEmpty()) return out;
+        PersonaInstances instances = PersonaInstances.get(player.server);
+        for (PersonaRoll roll : persona.rolls()) {
+            String value = instances.rolled(persona.id(), roll.name());
+            PersonaRoll.Option option = value == null ? null : roll.option(value);
+            if (option == null) {
+                option = roll.pick(player, player.getRandom());
+                if (option == null) continue;
+                instances.setRolled(persona.id(), roll.name(), option.value());
+            }
+            out.put(roll.name(), option);
+        }
+        return out;
+    }
+
+    /**
+     * Rolls one of the Persona's personalities, the same way a Root's personality policy does.
+     * A personality this MCA version does not have is left out of the roll.
+     */
+    private static void personality(VillagerEntityMCA villager, PersonaDefinition persona) {
+        Map<String, Integer> open = new java.util.LinkedHashMap<>();
+        int total = 0;
+        for (Map.Entry<String, Integer> entry : persona.personalities().entrySet()) {
+            if (entry.getValue() <= 0) continue;
+            if (com.aetherianartificer.townstead.root.personality.PersonalityResolver.baseOf(entry.getKey()) == null) {
+                LOGGER.warn("Persona {}: '{}' is not a personality here; skipping it", persona.id(), entry.getKey());
+                continue;
+            }
+            open.put(entry.getKey(), entry.getValue());
+            total += entry.getValue();
+        }
+        if (total <= 0) return;
+        int roll = villager.getRandom().nextInt(total);
+        for (Map.Entry<String, Integer> entry : open.entrySet()) {
+            roll -= entry.getValue();
+            if (roll >= 0) continue;
+            com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).life().setPersonalityId(entry.getKey());
+            villager.getVillagerBrain().setPersonality(
+                    com.aetherianartificer.townstead.root.personality.PersonalityResolver.baseOf(entry.getKey()));
+            com.aetherianartificer.townstead.villager.TownsteadVillagers.flush(villager);
+            return;
+        }
+    }
+
+    /** Puts a new Persona on a week plan, or on a shift template every day. */
+    private static void schedule(net.minecraft.server.MinecraftServer server, VillagerEntityMCA villager, ResourceLocation id) {
+        var state = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).schedule();
+        var plan = com.aetherianartificer.townstead.shift.weekplan.WeekPlanRegistry.resolve(server, id);
+        if (plan.isPresent()) {
+            state.setMode(com.aetherianartificer.townstead.shift.ShiftData.MODE_WEEKLY);
+            state.setWeekDayTemplates(plan.get().copyDays());
+        } else {
+            var template = com.aetherianartificer.townstead.shift.template.ShiftTemplateRegistry.resolve(server, id);
+            if (template.isEmpty()) {
+                LOGGER.warn("Persona schedule {} is neither a week plan nor a shift template", id);
+                return;
+            }
+            state.setMode(com.aetherianartificer.townstead.shift.ShiftData.MODE_DAILY);
+            state.setShifts(template.get().copyShifts());
+            state.setTemplateId(id.toString());
+        }
+        com.aetherianartificer.townstead.shift.ShiftScheduleApplier.apply(villager);
+        com.aetherianartificer.townstead.villager.TownsteadVillagers.flush(villager);
     }
 
     /** Keeps walking-in Personas heading for their player until they are close or it takes too long. */
@@ -131,6 +209,16 @@ public final class PersonaService {
             villager.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(player, 0.6f, 3));
             villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(player, true));
         }
+    }
+
+    /**
+     * A Persona is never a stranger: before MCA picks how to open a conversation, they already
+     * remember this player, so MCA's first-meeting lines and questions never play.
+     */
+    public static void knows(ServerPlayer player, VillagerEntityMCA villager) {
+        if (PersonaInstances.get(player.server).of(villager.getUUID()) == null) return;
+        String seen = "seen." + player.getUUID();
+        if (!villager.getLongTermMemory().hasMemory(seen)) villager.getLongTermMemory().remember(seen);
     }
 
     /** Death hook, for deaths that were not turned into being downed: the Persona is gone. */

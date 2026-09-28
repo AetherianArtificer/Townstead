@@ -19,7 +19,7 @@ import java.util.UUID;
 
 /**
  * Every Persona living in this world: which villager is which Persona, and their home village.
- * A village holds each Persona at most once.
+ * A village holds each Persona at most once. Also keeps what each Persona rolled for this world.
  */
 public final class PersonaInstances extends SavedData {
     public static final String FILE_ID = "townstead_personas";
@@ -30,6 +30,7 @@ public final class PersonaInstances extends SavedData {
     }
 
     private final Map<UUID, Instance> byVillager = new LinkedHashMap<>();
+    private final Map<ResourceLocation, Map<String, String>> rolls = new LinkedHashMap<>();
 
     public static PersonaInstances get(MinecraftServer server) {
         //? if >=1.21 {
@@ -72,6 +73,21 @@ public final class PersonaInstances extends SavedData {
         setDirty();
     }
 
+    /** The value this world rolled for a Persona's roll, or null when it has not rolled yet. */
+    public @Nullable String rolled(ResourceLocation persona, String roll) {
+        Map<String, String> values = rolls.get(persona);
+        return values == null ? null : values.get(roll);
+    }
+
+    public void setRolled(ResourceLocation persona, String roll, String value) {
+        rolls.computeIfAbsent(persona, k -> new LinkedHashMap<>()).put(roll, value);
+        setDirty();
+    }
+
+    public void clearRolls(ResourceLocation persona) {
+        if (rolls.remove(persona) != null) setDirty();
+    }
+
     public boolean remove(UUID villager) {
         boolean removed = byVillager.remove(villager) != null;
         if (removed) setDirty();
@@ -92,6 +108,15 @@ public final class PersonaInstances extends SavedData {
             if (persona == null || dimension == null || !entry.hasUUID("villager")) continue;
             Instance instance = new Instance(persona, entry.getUUID("villager"), dimension, entry.getInt("village"), entry.getLong("created"));
             data.byVillager.put(instance.villager(), instance);
+        }
+        CompoundTag rolled = tag.getCompound("rolls");
+        for (String persona : rolled.getAllKeys()) {
+            ResourceLocation id = ResourceLocation.tryParse(persona);
+            if (id == null) continue;
+            CompoundTag values = rolled.getCompound(persona);
+            Map<String, String> map = new LinkedHashMap<>();
+            for (String roll : values.getAllKeys()) map.put(roll, values.getString(roll));
+            data.rolls.put(id, map);
         }
         return data;
     }
@@ -114,6 +139,13 @@ public final class PersonaInstances extends SavedData {
             list.add(entry);
         }
         tag.put("instances", list);
+        CompoundTag rolled = new CompoundTag();
+        for (Map.Entry<ResourceLocation, Map<String, String>> persona : rolls.entrySet()) {
+            CompoundTag values = new CompoundTag();
+            persona.getValue().forEach(values::putString);
+            rolled.put(persona.getKey().toString(), values);
+        }
+        tag.put("rolls", rolled);
         return tag;
     }
 }

@@ -50,6 +50,7 @@ public final class SubjectSources {
         register("townstead:mob_sighting", SubjectSources::mobSighting);
         register("townstead:company", SubjectSources::company);
         register("townstead:infection", SubjectSources::infection);
+        register("townstead:aspect_neighbor", SubjectSources::aspectNeighbor);
         // Designed sources whose game data does not exist yet. Their topics stay silent until a
         // system or another mod registers a real source under the same id.
         for (String pending : List.of("townstead:quest_board", "townstead:project", "townstead:realm_rumour"))
@@ -189,6 +190,55 @@ public final class SubjectSources {
 
     private static LineComposer.Subject infected(Query q, VillagerEntityMCA who, String variant, double urgency) {
         return new LineComposer.Subject(q.subject().id(), variant, "negative",
+                Map.of("who", new LineComposer.SlotValue(who.getName().getString(), null, who.getUUID(), Map.of())),
+                Set.of("witnessed"), null, urgency);
+    }
+
+    /**
+     * Someone in the speaker's village carries an aspect ({@code state}). The listener, when it is
+     * them ("listener"); otherwise the nearest other carrier, spoken of warmly when the speaker's
+     * faction welcomes their {@code group} ("welcomed") and warily when not ("wary"). A carrier
+     * does not gossip about their own kind this way.
+     */
+    private static List<LineComposer.Subject> aspectNeighbor(Query q) {
+        JsonObject source = q.subject().source();
+        ResourceLocation state = ResourceLocation.tryParse(net.minecraft.util.GsonHelper.getAsString(source, "state", ""));
+        if (state == null || com.aetherianartificer.townstead.pheno.state.EntityStates.definition(state) == null) return List.of();
+        if (carries(q.speaker(), state)) return List.of();
+        if (carries(q.listener(), state)) {
+            return List.of(neighbor(q, q.listener(), "listener", "neutral", 0.5));
+        }
+        var home = q.speaker().getResidency().getHomeVillage();
+        if (home.isEmpty()) return List.of();
+        VillagerEntityMCA nearest = null;
+        double best = Double.MAX_VALUE;
+        for (UUID id : home.get().getResidentsUUIDs().toList()) {
+            if (id == null || id.equals(q.speaker().getUUID()) || id.equals(q.listener().getUUID())) continue;
+            if (!(q.level().getEntity(id) instanceof VillagerEntityMCA other) || !carries(other, state)) continue;
+            double distance = other.distanceToSqr(q.speaker());
+            if (distance < best) { best = distance; nearest = other; }
+        }
+        if (nearest == null) return List.of();
+        String group = net.minecraft.util.GsonHelper.getAsString(source, "group", "");
+        boolean welcomed = !group.isEmpty() && welcomes(q.level(), q.speaker(), group);
+        return List.of(neighbor(q, nearest, welcomed ? "welcomed" : "wary", welcomed ? "positive" : "negative", 0.4));
+    }
+
+    private static boolean carries(VillagerEntityMCA villager, ResourceLocation state) {
+        return com.aetherianartificer.townstead.pheno.state.EntityStates.resolve(villager, state).active();
+    }
+
+    private static boolean welcomes(ServerLevel level, VillagerEntityMCA speaker, String group) {
+        for (ResourceLocation faction : com.aetherianartificer.townstead.politics.relations.FactionMembership.of(speaker)) {
+            for (String welcome : com.aetherianartificer.townstead.politics.relations.FactionRelations.welcomes(level.getServer(), faction)) {
+                if (com.aetherianartificer.townstead.politics.relations.FactionDispositionSource.kin(group, welcome)) return true;
+            }
+        }
+        return false;
+    }
+
+    private static LineComposer.Subject neighbor(Query q, VillagerEntityMCA who, String variant, String valence, double urgency) {
+        return new LineComposer.Subject(q.subject().id(), variant, valence,
                 Map.of("who", new LineComposer.SlotValue(who.getName().getString(), null, who.getUUID(), Map.of())),
                 Set.of("witnessed"), null, urgency);
     }

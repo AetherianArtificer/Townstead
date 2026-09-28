@@ -48,7 +48,7 @@ public final class FactionDispositionSource implements DispositionSource {
     }
 
     /** A group is kin to a welcome when it is that group or counts it friendly. */
-    static boolean kin(String group, String welcome) {
+    public static boolean kin(String group, String welcome) {
         if (group.equals(welcome)) return true;
         DispositionRelations.GroupDef def = DispositionRelations.relations(group);
         return def != null && def.friendly().contains(welcome);

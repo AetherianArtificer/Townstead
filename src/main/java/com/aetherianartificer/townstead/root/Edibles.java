@@ -42,7 +42,7 @@ public final class Edibles {
         if (nourishment.food().effects() != null) nourishment.food().effects().run(new ActionContext(player));
         if (!player.getAbilities().instabuild) {
             stack.shrink(1);
-            ItemStack left = com.aetherianartificer.townstead.hunger.diet.Diets.remainder(nourishment);
+            ItemStack left = com.aetherianartificer.townstead.hunger.diet.Diets.remainder(nourishment, stack);
             if (!left.isEmpty() && !player.getInventory().add(left)) player.drop(left, false);
         }
         player.swing(hand);

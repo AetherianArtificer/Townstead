@@ -61,7 +61,7 @@ public final class SpeciesVoice {
     }
 
     /**
-     * Voice namespaces most specific first: the custom personality, its MCA base personality,
+     * Voice namespaces most specific first: the Persona, the custom personality, its MCA base personality,
      * then origin, lineage, ancestry, and species. Including the base personality makes built-in
      * and addon-registered personalities extensible from data-pack language sidecars too; when no
      * sidecar line exists, MCA's resource-pack personality resolver remains the final fallback.
@@ -69,6 +69,7 @@ public final class SpeciesVoice {
     private static List<String> voiceChain(VillagerEntityMCA villager, Player target) {
         TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
         List<String> out = new ArrayList<>();
+        addFlat(out, com.aetherianartificer.townstead.persona.PersonaVoice.of(villager));
         if (!suppressPersonalityVoice(villager, target)) {
             PersonalityDef personality = PersonalityResolver.def(life.personalityId());
             if (personality != null) addFlat(out, personality.id());

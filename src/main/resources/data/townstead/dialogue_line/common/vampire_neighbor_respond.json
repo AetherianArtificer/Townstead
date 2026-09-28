@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "vampire_neighbor_respond",
+  "groups": [
+    {
+      "variant": "listener",
+      "lines": {
+        "ive_been_sleeping_badly": "I've been sleeping badly.",
+        "the_sun_gives_me_headaches": "The sun gives me headaches."
+      }
+    }
+  ]
+}

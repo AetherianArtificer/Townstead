@@ -38,7 +38,10 @@ public final class ModCompat {
 
     public static boolean isLoaded(String modId) {
         if (modId == null || modId.isBlank()) return false;
-        return LOADED_CACHE.computeIfAbsent(modId, id -> ModList.get().isLoaded(id));
+        ModList mods = ModList.get();
+        // No mod loader, as in unit tests: nothing is installed, and nothing is cached.
+        if (mods == null) return false;
+        return LOADED_CACHE.computeIfAbsent(modId, mods::isLoaded);
     }
 
     /** Whether any one of these mods is present. */

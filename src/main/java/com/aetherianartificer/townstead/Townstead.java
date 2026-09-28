@@ -329,6 +329,11 @@ public class Townstead {
     public static final Supplier<Item> JOURNAL = ITEMS.register("journal",
             () -> new com.aetherianartificer.townstead.item.JournalItem(new Item.Properties().stacksTo(1).fireResistant()));
 
+    // ── Accord letter (a proclaimed offer of accord, carried to another faction) ──
+
+    public static final Supplier<Item> ACCORD_LETTER = ITEMS.register("accord_letter",
+            () -> new com.aetherianartificer.townstead.item.AccordLetterItem(new Item.Properties().stacksTo(1)));
+
     // ── Agelessness / aging potions ──
     // Brewed like vanilla potions (Awkward + Enchanted Golden Apple -> Agelessness;
     // Agelessness + Fermented Spider Eye -> Aging) and thrown as splash potions at MCA
@@ -527,6 +532,7 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> {
             com.aetherianartificer.townstead.temperature.RoomHeat.tick(e.getServer());
             com.aetherianartificer.townstead.politics.charter.CharterMemberships.tick(e.getServer());
+            com.aetherianartificer.townstead.compat.vampirism.VampireTotemWatch.tick(e.getServer());
             com.aetherianartificer.townstead.livery.LiverySync.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
@@ -920,6 +926,7 @@ public class Townstead {
             if (e.getEntity() instanceof ServerPlayer deadPlayer) com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.rememberDeath(deadPlayer, e.getSource());
             com.aetherianartificer.townstead.root.loot.DeathLoot.onDeath(e.getEntity());
             com.aetherianartificer.townstead.replace.MobReplacer.onDeath(e.getEntity(), e.getSource());
+            com.aetherianartificer.townstead.compat.vampirism.VampireChronicles.onDeath(e.getEntity(), e.getSource());
             com.aetherianartificer.townstead.compat.wholecloth.WholeClothDrops.onDeath(e.getEntity(), e.getSource());
             if (!(e.getEntity() instanceof net.minecraft.world.entity.player.Player)) {
                 com.aetherianartificer.townstead.profession.skill.LearnedSkills.clear(e.getEntity().getUUID());
@@ -1097,6 +1104,7 @@ public class Townstead {
             if (e.phase == net.minecraftforge.event.TickEvent.Phase.END) {
                 com.aetherianartificer.townstead.temperature.RoomHeat.tick(e.getServer());
             com.aetherianartificer.townstead.politics.charter.CharterMemberships.tick(e.getServer());
+            com.aetherianartificer.townstead.compat.vampirism.VampireTotemWatch.tick(e.getServer());
             com.aetherianartificer.townstead.livery.LiverySync.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.tick(e.getServer());
                 com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
@@ -1504,6 +1512,7 @@ public class Townstead {
             if (e.getEntity() instanceof ServerPlayer deadPlayer) com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.rememberDeath(deadPlayer, e.getSource());
             com.aetherianartificer.townstead.root.loot.DeathLoot.onDeath(e.getEntity());
             com.aetherianartificer.townstead.replace.MobReplacer.onDeath(e.getEntity(), e.getSource());
+            com.aetherianartificer.townstead.compat.vampirism.VampireChronicles.onDeath(e.getEntity(), e.getSource());
             com.aetherianartificer.townstead.compat.wholecloth.WholeClothDrops.onDeath(e.getEntity(), e.getSource());
             if (!(e.getEntity() instanceof net.minecraft.world.entity.player.Player)) {
                 com.aetherianartificer.townstead.profession.skill.LearnedSkills.clear(e.getEntity().getUUID());
@@ -1860,6 +1869,8 @@ public class Townstead {
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.root.gene.types.DispositionGroupGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.root.gene.types.BearingGeneType());
+            com.aetherianartificer.townstead.root.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.root.gene.types.CollectionGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.root.gene.types.StartingEquipmentGeneType());
@@ -2112,6 +2123,16 @@ public class Townstead {
                 (level, pos) -> com.aetherianartificer.townstead.block.FieldPostIndex.findBestForAnchor(level, pos) != null);
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.InWorkAreaConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.ModLoadedConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.NearMarkerConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.CanBuildConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.RestDayConditionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.MarkStructureActionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.TimeOfDayConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
@@ -2385,6 +2406,8 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.value.types.BondCountValueType());
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
                 new com.aetherianartificer.townstead.pheno.value.types.StandingValueType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.WorkHoursValueType());
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
                 new com.aetherianartificer.townstead.pheno.value.types.VillageNeedsValueType());
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
@@ -2719,6 +2742,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.hunger.diet.Diets.Loader());
         event.addListener(new com.aetherianartificer.townstead.replace.MobReplacements.Loader());
         event.addListener(new com.aetherianartificer.townstead.replace.behavior.BehaviorProfiles.Loader());
+        event.addListener(new com.aetherianartificer.townstead.politics.charter.AccordAcceptance.Loader());
         event.addListener(new com.aetherianartificer.townstead.needs.Amenities.Loader());
         event.addListener(new com.aetherianartificer.townstead.temperature.TemperatureSettings.Loader());
         event.addListener(new com.aetherianartificer.townstead.hangout.HangoutData.Loader());

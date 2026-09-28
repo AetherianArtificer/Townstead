@@ -25,7 +25,8 @@ public record StoryDefinition(
         Map<String, Quest> quests,
         Map<String, Condition> conditions,
         Map<String, Action> actions,
-        Map<String, com.google.gson.JsonObject> goals
+        Map<String, com.google.gson.JsonObject> goals,
+        List<Demeanor.Band> demeanor
 ) {
     /** Who a story's saved state belongs to, besides the player. */
     public enum Bind {

@@ -191,7 +191,7 @@ public final class OptionalBuildingRecognition {
         //? if >=1.21 {
         try {
             ServerLevel level = managerLevel(manager);
-            var scan = "ADD_ROOM".equals(actionName)
+            var scan = "ADD_ROOM".equals(actionName) || "SCAN_ROOM".equals(actionName)
                     ? com.aetherianartificer.townstead.compat.mca.McaRoomWorkflow.analyzeRoom(level, origin)
                     : com.aetherianartificer.townstead.compat.mca.McaRoomWorkflow.analyzeBuildingAddition(level, origin);
             return successful(scan.result());

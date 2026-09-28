@@ -36,6 +36,15 @@ public final class PoliticalVillageBootstrap {
         var data = PoliticalSavedData.get(level.getServer());
         SettlementRef settlement = new SettlementRef(level.dimension().location(), village.getId());
         Faction existing = data.faction(settlement);
+        if (existing == null && data.founding(settlement) == null) {
+            // A village seen for the first time takes a founding profile suited to where it stands.
+            var chosen = com.aetherianartificer.townstead.politics.founding.FoundingSelection.choose(level, village);
+            if (chosen != null && !chosen.id().equals(DEFAULT_PROFILE)) {
+                com.aetherianartificer.townstead.politics.founding.FoundingProfileApplier.apply(level, village, chosen,
+                        new net.minecraft.core.BlockPos(village.getCenter()));
+                existing = data.faction(settlement);
+            }
+        }
         Collection<UUID> residents = existing == null || existing.status() == Faction.Status.DISSOLVED
                 ? village.getResidentsUUIDs().toList() : residents(level, existing);
         var result = ensure(data, settlement, village.getName(), residents, level.getGameTime());

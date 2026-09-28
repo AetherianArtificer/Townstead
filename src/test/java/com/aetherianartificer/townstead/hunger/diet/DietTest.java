@@ -119,4 +119,31 @@ class DietTest {
                 """));
         assertThrows(IllegalArgumentException.class, () -> parse("x", "{\"schema\":\"townstead:diet/v1\"}"));
     }
+
+    @Test
+    void fluidServingMatchesOnlyAContainerThatHoldsIt() {
+        Diet diet = parse("sanguine", """
+                {"schema":"townstead:diet/v1","foods":[
+                  {"fluid":"vampirism:blood","amount":100,"nutrition":3}]}
+                """);
+        Diet.Food food = diet.foods().get(0);
+        assertTrue(food.fluidServing());
+        assertEquals(id("vampirism:blood"), food.fluid());
+        assertEquals(100, food.amount());
+        ResourceLocation bottle = id("vampirism:blood_bottle");
+        assertNotNull(Diets.nourishment(diet.foods(), bottle, tag -> false, false, f -> true));
+        assertNull(Diets.nourishment(diet.foods(), bottle, tag -> false, false, f -> false));
+        assertNull(Diets.nourishment(diet.foods(), bottle, tag -> false, false),
+                "without a fluid check, a fluid serving never matches");
+    }
+
+    @Test
+    void fluidServingNeedsAmountAndNutrition() {
+        assertThrows(IllegalArgumentException.class, () -> parse("broken", """
+                {"schema":"townstead:diet/v1","foods":[{"fluid":"vampirism:blood","nutrition":3}]}
+                """));
+        assertThrows(IllegalArgumentException.class, () -> parse("broken", """
+                {"schema":"townstead:diet/v1","foods":[{"fluid":"vampirism:blood","amount":100}]}
+                """));
+    }
 }
