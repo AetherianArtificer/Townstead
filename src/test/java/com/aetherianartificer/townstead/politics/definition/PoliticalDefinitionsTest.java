@@ -40,8 +40,9 @@ class PoliticalDefinitionsTest {
 
         assertEquals(Set.of(id("townstead:friendship"), id("townstead:marriage"), id("townstead:citizenship"),
                 id("townstead:faction_leader"), id("townstead:presiding_councilor"), id("townstead:councilor"),
-                id("townstead:accord"), id("townstead:thrall")), bonds.keySet());
-        assertEquals(Set.of(id("townstead:village_council"), id("townstead:player_faction"), id("townstead:free_settlement")), kinds.keySet());
+                id("townstead:accord"), id("townstead:thrall"), id("townstead:oath"), id("townstead:lodge_master")), bonds.keySet());
+        assertEquals(Set.of(id("townstead:village_council"), id("townstead:player_faction"), id("townstead:free_settlement"),
+                id("townstead:hunter_order")), kinds.keySet());
         for (FactionKind kind : kinds.values()) {
             assertTrue(PoliticalDefinitions.validate(kind, bonds).isEmpty(),
                     () -> kind.id() + ": " + PoliticalDefinitions.validate(kind, bonds));

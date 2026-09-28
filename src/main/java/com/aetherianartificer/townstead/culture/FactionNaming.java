@@ -33,7 +33,17 @@ public final class FactionNaming {
     }
     public static List<String> suggestions(ResourceLocation cultureId) {
         var culture = Cultures.get(cultureId);
-        var pool = culture == null || culture.factionNames() == null ? null : pools.get(culture.factionNames());
+        return suggestions(culture == null || culture.factionNames() == null ? null : pools.get(culture.factionNames()));
+    }
+
+    /** The name pool a faction kind brings of its own, or null when it takes its culture's. */
+    private static @org.jetbrains.annotations.Nullable SettlementNamePool kindPool(ResourceLocation kind) {
+        var definition = kind == null ? null : PoliticalDefinitions.snapshot().kind(kind);
+        var id = definition == null ? null : definition.presentation().factionNames();
+        return id == null ? null : pools.get(id);
+    }
+
+    private static List<String> suggestions(@org.jetbrains.annotations.Nullable SettlementNamePool pool) {
         if (pool == null) return List.of();
         var result = new LinkedHashSet<String>();
         for (int i = 0; i < 32 && result.size() < 12; i++) {
@@ -43,7 +53,8 @@ public final class FactionNaming {
         return List.copyOf(result);
     }
     public static Name generate(ResourceLocation culture, ResourceLocation kind, String fallback) {
-        var names = suggestions(culture);
+        var kindNames = kindPool(kind);
+        var names = kindNames != null ? suggestions(kindNames) : suggestions(culture);
         String base = names.isEmpty() ? fallback : pick(names);
         String pattern = pick(patterns(kind));
         if (CharterIdentityService.normalize(pattern.replace("{name}", base)) == null) pattern = "{name}";

@@ -1,0 +1,70 @@
+{
+  "schema": "townstead:faction/v1",
+  "display": {
+    "name": {
+      "translate": "faction.townstead.hunter_order"
+    },
+    "description": {
+      "translate": "faction.townstead.hunter_order.description"
+    }
+  },
+  "tags": [
+    "townstead:political"
+  ],
+  "holds_land": false,
+  "membership": {
+    "bond": "townstead:oath",
+    "admission": "townstead:application",
+    "approval": "townstead:review_membership_requests",
+    "approvals": 1
+  },
+  "offices": [
+    {
+      "bond": "townstead:lodge_master",
+      "min": 1,
+      "max": 1,
+      "founder": true
+    }
+  ],
+  "founding": {
+    "procedure": "townstead:charter",
+    "gifts": [
+      "townstead:oath_altar"
+    ],
+    "teaches": [
+      "townstead:oath_altar"
+    ]
+  },
+  "presentation": {
+    "faction_names": "townstead:hunter_orders",
+    "faction_name_patterns": [
+      "{name}"
+    ]
+  },
+  "members": {
+    "group": "hunter",
+    "profession": "townstead:hunter"
+  },
+  "governance": {
+    "head": "townstead:lodge_master",
+    "routes": [
+      {
+        "route": "townstead:favor",
+        "office": "townstead:lodge_master"
+      }
+    ],
+    "succession": "townstead:favor",
+    "legitimacy": {
+      "base": 60,
+      "sources": [
+        {
+          "label": "townstead:leader_standing",
+          "value": {
+            "type": "pheno:standing"
+          },
+          "weight": 0.5
+        }
+      ]
+    }
+  }
+}

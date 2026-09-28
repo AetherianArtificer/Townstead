@@ -38,6 +38,13 @@ public abstract class GetVillageRequestMixin {
             Optional<Village> village = Village.findNearest(player);
             if (village.isEmpty()) return;
             Village v = village.get();
+            // Locked buildings first: the catalog needs them even when no spirit snapshot is cached.
+            var locks = com.aetherianartificer.townstead.politics.order.VillageLocks.payload(level, v);
+            //? if neoforge {
+            PacketDistributor.sendToPlayer(player, locks);
+            //?} else if forge {
+            /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(player, locks);
+            *///?}
             VillageSpiritCache.Entry entry = VillageSpiritCache.get(level, v.getId());
             if (entry == null) return;
             VillageSpiritSyncPayload payload = VillageSpiritSyncPayload.fromCache(v.getId(), entry);

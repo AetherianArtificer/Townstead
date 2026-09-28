@@ -58,6 +58,33 @@ class StoryCompilerTest {
         assertFalse(tags.containsKey("emote"));
     }
 
+    @Test
+    void shippedVillageBuilderLoadsWithoutThrowing() throws IOException {
+        Path relative = Path.of("src/main/resources/data/townstead/persona/village_builder");
+        Path dir = relative;
+        for (Path root = Path.of(System.getProperty("user.dir")).toAbsolutePath(); root != null; root = root.getParent()) {
+            if (Files.isDirectory(root.resolve(relative))) {
+                dir = root.resolve(relative);
+                break;
+            }
+        }
+        Map<String, String> files = new LinkedHashMap<>();
+        Path base = dir;
+        try (Stream<Path> walk = Files.walk(dir)) {
+            for (Path file : walk.filter(Files::isRegularFile).sorted().toList()) {
+                files.put(base.relativize(file).toString().replace(java.io.File.separatorChar, '/'), Files.readString(file, StandardCharsets.UTF_8));
+            }
+        }
+        StoryCompiler.Result compiled = StoryCompiler.compile(files.entrySet().stream()
+                .filter(e -> e.getKey().endsWith(".ink"))
+                .collect(LinkedHashMap::new, (m, e) -> m.put(e.getKey(), e.getValue()), Map::putAll));
+        assertTrue(compiled.ok(), () -> "errors: " + compiled.errors());
+        compiled.knots().values().forEach(knot -> assertNotNull(knot.tags(), knot.name()));
+        List<String> issues = new java.util.ArrayList<>();
+        Stories.build(net.minecraft.resources.ResourceLocation.tryParse("townstead:persona/village_builder"), files, issues,
+                net.minecraft.resources.ResourceLocation.tryParse("townstead:village_builder"), new LinkedHashMap<>());
+    }
+
     private static Map<String, String> folder(String id) throws IOException {
         Path relative = Path.of("src/main/resources/data/townstead/story", id);
         Path dir = relative;

@@ -50,7 +50,9 @@ public final class CatalogEntries {
         CatalogDataLoader.scannedBuildingTypes().forEach(types::putIfAbsent);
         List<BuildingType> available = types.values().stream().filter(BuildingType::visible)
                 .filter(t -> ModCompat.isCompatAvailable(t.name()))
-                .filter(t -> !CatalogDataLoader.overrideFor(t.name()).hide()).toList();
+                .filter(t -> !CatalogDataLoader.overrideFor(t.name()).hide())
+                .filter(t -> village == null || !com.aetherianartificer.townstead.politics.order.VillageLocks
+                        .lockedOnClient(village.getId(), t.name())).toList();
         Set<String> superseded = CatalogDataLoader.activeSupersededBuildingTypes(available.stream().map(BuildingType::name).toList());
         List<Display> out = new ArrayList<>();
         for (BuildingType type : available) {

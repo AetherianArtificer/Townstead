@@ -76,6 +76,13 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
     private static final List<GroupDef> GROUPS = new CopyOnWriteArrayList<>();
     private static final Map<String, com.aetherianartificer.townstead.temperature.ThermalStructures.Spec> THERMAL_SPECS = new HashMap<>();
     private static final Map<String, BuildingOverride> OVERRIDES = new LinkedHashMap<>();
+    /** Building types that stay locked in a village until an order of this kind is based there. */
+    private static final Map<String, ResourceLocation> ORDER_GATES = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Every building type locked behind an order, with the kind of order that unlocks it. */
+    public static Map<String, ResourceLocation> orderGates() {
+        return Map.copyOf(ORDER_GATES);
+    }
     /**
      * Building definitions seen by Townstead's own data scan. MCA normally mirrors the same
      * definitions into {@link BuildingTypes#getBuildingTypes()}, but add-on and newly introduced
@@ -110,6 +117,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         SCANNED_BUILDING_TYPES.clear();
         THEME = Theme.DEFAULT;
         BuildingSpiritIndex.clear();
+        ORDER_GATES.clear();
         BuildingIconResolver.beginBuildingTypeReload();
 
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
@@ -452,6 +460,10 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                             ? resolveNodeItem(cat.get("node_item")) : Optional.empty();
                     boolean hide = GsonHelper.getAsBoolean(cat, "hide", false)
                             || (cat.has("node_item") && nodeItem.isEmpty());
+                    if (cat.has("requires_order")) {
+                        ResourceLocation kind = ResourceLocation.tryParse(GsonHelper.getAsString(cat, "requires_order"));
+                        if (kind != null) ORDER_GATES.put(buildingType, kind);
+                    }
                     putOverride(buildingType, new BuildingOverride(nodeItem, hide), true);
                 }
                 if (json.has("spirit") && json.get("spirit").isJsonObject()) {

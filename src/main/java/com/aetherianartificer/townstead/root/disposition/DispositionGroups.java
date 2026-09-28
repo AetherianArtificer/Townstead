@@ -30,6 +30,8 @@ public final class DispositionGroups {
         java.util.List<DispositionGroupGeneType.Instance> declared =
                 ExpressedGenes.instancesOf(entity, DispositionGroupGeneType.Instance.class);
         if (!declared.isEmpty()) return declared.get(0).group();
+        String sworn = com.aetherianartificer.townstead.politics.relations.FactionMembership.groupOf(entity);
+        if (sworn != null) return sworn;
         Group gene = EntityGroups.of(entity);
         if (gene != Group.DEFAULT) return gene.name().toLowerCase(Locale.ROOT);
         String byMembers = DispositionRelations.groupOf(entity.getType());

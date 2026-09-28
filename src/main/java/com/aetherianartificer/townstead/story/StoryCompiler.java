@@ -41,6 +41,11 @@ final class StoryCompiler {
 
     record Knot(String name, List<String> tags, List<String> stitches) {}
 
+    /** The runtime returns null, not an empty list, for a knot with no tags. */
+    private static List<String> tagsOrNone(List<String> tags) {
+        return tags == null ? List.of() : tags;
+    }
+
     record Result(String json, Map<String, Knot> knots, List<String> errors, List<String> warnings) {
         boolean ok() { return json != null && errors.isEmpty(); }
     }
@@ -81,7 +86,7 @@ final class StoryCompiler {
                 for (Map.Entry<String, INamedContent> inner : container.getNamedContent().entrySet()) {
                     if (inner.getValue() instanceof Container) stitches.add(inner.getKey());
                 }
-                knots.put(entry.getKey(), new Knot(entry.getKey(), story.tagsForContentAtPath(entry.getKey()), stitches));
+                knots.put(entry.getKey(), new Knot(entry.getKey(), tagsOrNone(story.tagsForContentAtPath(entry.getKey())), stitches));
             }
             return new Result(story.toJson(), knots, errors, warnings);
         } catch (Exception e) {

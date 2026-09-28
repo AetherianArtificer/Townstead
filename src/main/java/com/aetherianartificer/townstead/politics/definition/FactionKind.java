@@ -28,7 +28,8 @@ public record FactionKind(ResourceLocation id,
                           List<Office> offices,
                           Founding founding,
                           Presentation presentation,
-                          @Nullable GovernanceDefinition governance) {
+                          @Nullable GovernanceDefinition governance,
+                          Members members) {
     public static final String SCHEMA = "townstead:faction/v1";
     public static final ResourceLocation GENERATED = id("townstead:generated");
     public static final ResourceLocation OPEN = id("townstead:open");
@@ -102,24 +103,65 @@ public record FactionKind(ResourceLocation id,
         }
     }
 
-    public record Founding(ResourceLocation procedure, Condition eligibility) {
+    /**
+     * How it comes to be. An order also names what its founding hands over: {@code gifts} (items
+     * given to whoever founds it, such as a lodge's Oath Altar) and {@code teaches} (recipes they learn).
+     */
+    public record Founding(ResourceLocation procedure, Condition eligibility,
+                           List<ResourceLocation> gifts, List<ResourceLocation> teaches) {
+        public Founding {
+            gifts = List.copyOf(gifts);
+            teaches = List.copyOf(teaches);
+        }
+
         static Founding parse(@Nullable JsonObject json) {
-            if (json == null) return new Founding(id("townstead:generated"), Conditions.ALWAYS);
+            if (json == null) return new Founding(id("townstead:generated"), Conditions.ALWAYS, List.of(), List.of());
             Condition eligibility = Conditions.ALWAYS;
             if (json.has("eligibility")) {
                 eligibility = Conditions.parse(json.get("eligibility"));
                 if (eligibility == null) throw new IllegalArgumentException("'founding.eligibility' is not a registered Pheno condition");
             }
-            return new Founding(PoliticalJson.requiredId(json, "procedure"), eligibility);
+            return new Founding(PoliticalJson.requiredId(json, "procedure"), eligibility,
+                    ids(json, "gifts"), ids(json, "teaches"));
+        }
+
+        private static List<ResourceLocation> ids(JsonObject json, String field) {
+            List<ResourceLocation> out = new ArrayList<>();
+            JsonArray array = PoliticalJson.array(json, field, false);
+            if (array != null) for (JsonElement element : array) {
+                ResourceLocation value = com.aetherianartificer.townstead.data.DataPackLang.parseId(element.getAsString());
+                if (value == null) throw new IllegalArgumentException("'founding." + field + "' has a bad id");
+                out.add(value);
+            }
+            return out;
         }
     }
 
-    public record Presentation(List<String> factionNamePatterns) {
+    /** {@code factionNames} names its own name pool, used whatever the founding culture; null means the culture's. */
+    public record Presentation(List<String> factionNamePatterns, @Nullable ResourceLocation factionNames) {
         public Presentation { factionNamePatterns = List.copyOf(factionNamePatterns); }
 
         static Presentation parse(@Nullable JsonObject json) {
-            return new Presentation(json == null ? List.of("{name}")
-                    : com.aetherianartificer.townstead.culture.FactionNaming.parsePatterns(json));
+            if (json == null) return new Presentation(List.of("{name}"), null);
+            ResourceLocation names = json.has("faction_names")
+                    ? com.aetherianartificer.townstead.data.DataPackLang.parseId(GsonHelper.getAsString(json, "faction_names")) : null;
+            return new Presentation(com.aetherianartificer.townstead.culture.FactionNaming.parsePatterns(json), names);
+        }
+    }
+
+    /**
+     * What membership makes someone: the disposition {@code group} its members belong to, and the
+     * {@code profession} they practice (members are hunters, hunters are members). Both optional.
+     */
+    public record Members(@Nullable String group, @Nullable ResourceLocation profession) {
+        public static final Members NONE = new Members(null, null);
+
+        static Members parse(@Nullable JsonObject json) {
+            if (json == null) return NONE;
+            String group = json.has("group") ? GsonHelper.getAsString(json, "group") : null;
+            ResourceLocation profession = json.has("profession")
+                    ? com.aetherianartificer.townstead.data.DataPackLang.parseId(GsonHelper.getAsString(json, "profession")) : null;
+            return new Members(group, profession);
         }
     }
 
@@ -142,7 +184,8 @@ public record FactionKind(ResourceLocation id,
                 Membership.parse(PoliticalJson.object(json, "membership", true)), offices,
                 Founding.parse(PoliticalJson.object(json, "founding", false)),
                 Presentation.parse(PoliticalJson.object(json, "presentation", false)),
-                governanceJson == null ? null : GovernanceDefinition.parse(governanceJson, seen));
+                governanceJson == null ? null : GovernanceDefinition.parse(governanceJson, seen),
+                Members.parse(PoliticalJson.object(json, "members", false)));
     }
 
     private static ResourceLocation id(String value) {

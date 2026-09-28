@@ -229,6 +229,16 @@ public class Townstead {
     public static final Supplier<Item> ORDER_SHEET_ITEM = ITEMS.register("order_sheet",
             () -> new BlockItem(ORDER_SHEET.get(), new Item.Properties()));
 
+    // ── Oath Altar (the heart of a lodge; stands only where an order is based) ──
+
+    public static final Supplier<Block> OATH_ALTAR = BLOCKS.register("oath_altar",
+            () -> new com.aetherianartificer.townstead.politics.order.OathAltarBlock(BlockBehaviour.Properties.of()
+                    .strength(3.5f)
+                    .sound(SoundType.POLISHED_DEEPSLATE)));
+
+    public static final Supplier<Item> OATH_ALTAR_ITEM = ITEMS.register("oath_altar",
+            () -> new BlockItem(OATH_ALTAR.get(), new Item.Properties().stacksTo(1)));
+
     // ── Ownership Deed (who may use one MCA room or structure) ──
 
     public static final Supplier<Block> ROOM_OWNERSHIP_TAG = BLOCKS.register("room_ownership_tag",
@@ -406,6 +416,7 @@ public class Townstead {
                                 };
                                 add.accept(FIELD_POST_ITEM.get());
                                 add.accept(ORDER_SHEET_ITEM.get());
+                                add.accept(OATH_ALTAR_ITEM.get());
                                 add.accept(ROOM_OWNERSHIP_TAG_ITEM.get());
                                 add.accept(ROOM_THERMOMETER_ITEM.get());
                                 add.accept(ROOM_THERMOSTAT_ITEM.get());
@@ -822,6 +833,9 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.persona.PersonaCommands.register(e.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.politics.order.OrderCommands.register(e.getDispatcher()));
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.WorksiteCommands.register(
@@ -1390,6 +1404,9 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.persona.PersonaCommands.register(e.getDispatcher()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.politics.order.OrderCommands.register(e.getDispatcher()));
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.WorksiteCommands.register(
@@ -3253,6 +3270,12 @@ public class Townstead {
                 com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload.TYPE,
                 com.aetherianartificer.townstead.spirit.VillageSpiritSyncPayload.STREAM_CODEC,
                 this::handleVillageSpiritSync
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.politics.order.VillageLocksS2CPayload.TYPE,
+                com.aetherianartificer.townstead.politics.order.VillageLocksS2CPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> com.aetherianartificer.townstead.politics.order.VillageLocks.accept(payload))
         );
         registrar.playToServer(
                 com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload.TYPE,
