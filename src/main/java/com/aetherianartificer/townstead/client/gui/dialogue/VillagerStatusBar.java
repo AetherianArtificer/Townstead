@@ -135,7 +135,13 @@ public class VillagerStatusBar {
 
     private void renderHungerIcon(GuiGraphics graphics, int x, int y) {
         int hunger = HungerClientStore.get(entityId);
-        drawIcon(graphics, hungerSprite(HungerData.getState(hunger)), x, y);
+        HungerData.HungerState state = HungerData.getState(hunger);
+        ResourceLocation own = ClientNeeds.icon(entityId, "hunger", switch (state) {
+            case WELL_FED, ADEQUATE -> "full";
+            case HUNGRY -> "half";
+            case FAMISHED, STARVING -> "low";
+        });
+        drawIcon(graphics, own != null ? own : hungerSprite(state), x, y);
     }
 
     // Icon art is a glyph-tight 12px sprite; scale it to the ICON_SIZE footprint.

@@ -41,6 +41,20 @@ public final class RootSpawnHandler {
      * clobbered) and before the villager's first tick (so {@code backfillIfMissing} can't stamp
      * the default origin first).
      */
+    // A spawn that must honor more than the region (a replaced vampire needs a Root that can be one).
+    private static final ThreadLocal<java.util.function.Predicate<ResourceLocation>> ROOT_CONSTRAINT = new ThreadLocal<>();
+
+    /** Runs {@code spawn} with founder Root selection limited to Roots {@code allowed} accepts. */
+    public static <T> T withRootConstraint(java.util.function.Predicate<ResourceLocation> allowed,
+                                           java.util.function.Supplier<T> spawn) {
+        ROOT_CONSTRAINT.set(allowed);
+        try {
+            return spawn.get();
+        } finally {
+            ROOT_CONSTRAINT.remove();
+        }
+    }
+
     public static void onTrueSpawn(VillagerEntityMCA villager) {
         TownsteadVillager state = TownsteadVillagers.get(villager);
         assignSpawnRoot(villager, state);
@@ -85,6 +99,8 @@ public final class RootSpawnHandler {
                         : ignored -> 1.0D;
         java.util.function.Predicate<ResourceLocation> allowed = village.active()
                 ? village::allows : ignored -> true;
+        java.util.function.Predicate<ResourceLocation> constraint = ROOT_CONSTRAINT.get();
+        if (constraint != null) allowed = allowed.and(constraint);
         RootSelector.Selection selection = RootSelector.select(villager.level(), villager.blockPosition(),
                 villager.getRandom(), allowed, foundingWeight);
         if (selection.isMixed()) {

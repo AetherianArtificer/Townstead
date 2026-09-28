@@ -19,6 +19,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
+import com.aetherianartificer.townstead.root.disposition.DispositionRelations;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -31,7 +32,7 @@ import java.util.UUID;
 public final class CharterDrafts {
     public static final ResourceLocation GOVERN = id("townstead:govern_faction");
     public static final String RENAME = "rename", HERALDRY = "heraldry", LIVERY = "livery", SEAT = "seat",
-            TRANSFER_LEADERSHIP = "transfer_leadership", DISSOLVE = "dissolve";
+            TRANSFER_LEADERSHIP = "transfer_leadership", DISSOLVE = "dissolve", WELCOME = "welcome";
     /** How long a signed draft waits for its bell: half a Minecraft day. */
     static final long PREPARED_LIFETIME = 12000L;
 
@@ -145,6 +146,10 @@ public final class CharterDrafts {
             case SEAT -> new CharterSavedData.Clause(SEAT, binding.dimension() + "|" + binding.lectern().asLong(), "", "");
             case TRANSFER_LEADERSHIP -> new CharterSavedData.Clause(TRANSFER_LEADERSHIP, faction.id().toString(), request.argument(), "");
             case DISSOLVE -> new CharterSavedData.Clause(DISSOLVE, faction.id().toString(), "", faction.name());
+            case WELCOME -> DispositionRelations.welcomable().containsKey(request.target())
+                    ? new CharterSavedData.Clause(WELCOME, request.target(), "1".equals(request.argument()) ? "1" : "0",
+                            welcomed(player, faction, request.target()))
+                    : null;
             default -> null;
         };
     }
@@ -191,6 +196,8 @@ public final class CharterDrafts {
                 yield FactionBonds.holders(data, faction.id(), head).contains(recipient) ? "recipient" : null;
             }
             case DISSOLVE -> faction.name().equals(clause.expected()) ? null : "stale";
+            case WELCOME -> !DispositionRelations.welcomable().containsKey(clause.target()) ? "invalid"
+                    : welcomed(player, faction, clause.target()).equals(clause.expected()) ? null : "stale";
             default -> "invalid";
         };
     }
@@ -232,6 +239,7 @@ public final class CharterDrafts {
                     if (level != null) SeatService.designate(level, binding, true);
                 }
                 case TRANSFER_LEADERSHIP -> FactionLifecycle.transferHead(data, faction, uuid(clause.argument()), now);
+                case WELCOME -> data.setWelcome(faction.id(), clause.target(), "1".equals(clause.argument()));
                 case DISSOLVE -> {
                     FactionLifecycle.dissolve(player, faction, draft);
                     return new Proclamation(message("dissolved"), true);
@@ -278,6 +286,11 @@ public final class CharterDrafts {
                 return null;
             }
         }
+    }
+
+    /** "1" when the faction welcomes this group now, else "0": what a welcome clause expects. */
+    static String welcomed(ServerPlayer player, Faction faction, String group) {
+        return PoliticalSavedData.get(player.server).welcomes(faction.id()).contains(group) ? "1" : "0";
     }
 
     static @Nullable UUID uuid(String value) {

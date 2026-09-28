@@ -402,7 +402,8 @@ public final class CharterBellService {
                 external ? List.of() : CharterMemberships.requests(player, politics, faction),
                 draftView(player, politics, faction),
                 civic,
-                liveryStyles());
+                liveryStyles(),
+                external ? List.of() : welcomes(politics, faction));
         return new CharterSnapshotS2CPayload(lectern, bell, intact ? CharterSnapshotS2CPayload.FOUNDED : CharterSnapshotS2CPayload.REPAIR,
                 editable, message, CivicProviders.revision(player, civic), village.getName(), faction.name(), text(form),
                 text(Component.empty()), text(cultureName(founding == null ? null : founding.culture())), List.of(), List.of(), book);
@@ -523,6 +524,14 @@ public final class CharterBellService {
     }
 
     /** Every loaded livery style, by name, for the heraldry desk's chooser. */
+    private static List<CharterSnapshotS2CPayload.Welcome> welcomes(PoliticalSavedData politics, Faction faction) {
+        java.util.Set<String> current = politics.welcomes(faction.id());
+        List<CharterSnapshotS2CPayload.Welcome> out = new java.util.ArrayList<>();
+        com.aetherianartificer.townstead.root.disposition.DispositionRelations.welcomable().forEach((group, name) ->
+                out.add(new CharterSnapshotS2CPayload.Welcome(group, text(name), current.contains(group))));
+        return out;
+    }
+
     private static List<CharterSnapshotS2CPayload.StyleOption> liveryStyles() {
         return com.aetherianartificer.townstead.livery.LiveryStyles.all().values().stream()
                 .sorted(Comparator.comparing(style -> style.name().getString()))
@@ -611,6 +620,14 @@ public final class CharterBellService {
                                 head == null ? Component.empty() : BondKinds.byId(head).displayName(),
                                 recipient == null ? Component.empty() : CharterPeople.name(player, recipient))),
                         text(Component.translatable("charter.townstead.clause.transfer.detail")));
+            }
+            case CharterDrafts.WELCOME -> {
+                var name = com.aetherianartificer.townstead.root.disposition.DispositionRelations.welcomable()
+                        .getOrDefault(clause.target(), Component.literal(clause.target()));
+                boolean welcome = "1".equals(clause.argument());
+                yield new CharterSnapshotS2CPayload.Clause(
+                        text(Component.translatable(welcome ? "charter.townstead.clause.welcome" : "charter.townstead.clause.unwelcome", name)),
+                        text(Component.translatable(welcome ? "charter.townstead.clause.welcome.detail" : "charter.townstead.clause.unwelcome.detail", name)));
             }
             case CharterDrafts.DISSOLVE -> new CharterSnapshotS2CPayload.Clause(
                     text(Component.translatable("charter.townstead.clause.dissolve", faction.name())),

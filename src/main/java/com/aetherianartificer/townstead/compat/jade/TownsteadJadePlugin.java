@@ -22,8 +22,14 @@ import snownee.jade.api.config.IPluginConfig;
 public class TownsteadJadePlugin implements IWailaPlugin {
 
     @Override
+    public void register(snownee.jade.api.IWailaCommonRegistration registration) {
+        registration.registerEntityDataProvider(AspectJadeProvider.INSTANCE, net.minecraft.world.entity.LivingEntity.class);
+    }
+
+    @Override
     public void registerClient(IWailaClientRegistration registration) {
         registration.registerEntityComponent(NextStageProvider.INSTANCE, VillagerEntityMCA.class);
+        registration.registerEntityComponent(AspectJadeProvider.INSTANCE, net.minecraft.world.entity.LivingEntity.class);
     }
 
     private enum NextStageProvider implements IEntityComponentProvider {

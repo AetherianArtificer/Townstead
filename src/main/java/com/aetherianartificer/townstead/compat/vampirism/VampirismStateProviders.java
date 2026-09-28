@@ -37,6 +37,48 @@ public final class VampirismStateProviders {
         StateProviders.register(id("hunter_level"), entity -> level(entity, HUNTER, false));
         StateProviders.register(id("vampire_lord_level"), entity -> level(entity, VAMPIRE, true));
         StateProviders.register(id("hunter_lord_level"), entity -> level(entity, HUNTER, true));
+        if (ModCompat.isLoaded(AGEING_MOD_ID)) {
+            StateProviders.register(ResourceLocation.tryParse(AGEING_MOD_ID + ":vampire_age_rank"), VampirismStateProviders::ageRank);
+        }
+    }
+
+    // Vampiric Ageing: an Age Rank (1-5) past level 14. Its 1.20.1 build is a separate codebase.
+    public static final String AGEING_MOD_ID = "vampiricageing";
+    private static final String[][] AGE_LOOKUPS = {
+            {"com.thedrofdoctoring.vampiricageing.capabilities.AgeingManager", "getAge"},
+            {"com.doctor.vampiricageing.capabilities.VampiricAgeingCapabilityManager", "getAge"}};
+    private static volatile Method ageLookup;
+    private static volatile boolean ageProbed;
+
+    /** A vampire player's Age Rank, or null for anyone else (an aged hunter is no vampire). */
+    private static @Nullable Double ageRank(LivingEntity entity) {
+        if (level(entity, VAMPIRE, false) == null || !probeAge()) return null;
+        try {
+            Object record = unwrap(ageLookup.invoke(null, entity));
+            if (record == null) return null;
+            int rank = ((Number) record.getClass().getMethod("getAge").invoke(record)).intValue();
+            return rank > 0 ? (double) rank : null;
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static boolean probeAge() {
+        if (ageProbed) return ageLookup != null;
+        synchronized (VampirismStateProviders.class) {
+            if (!ageProbed) {
+                for (String[] lookup : AGE_LOOKUPS) {
+                    try {
+                        ageLookup = Class.forName(lookup[0]).getMethod(lookup[1], LivingEntity.class);
+                        break;
+                    } catch (Throwable ignored) {
+                        // Try the other codebase.
+                    }
+                }
+                ageProbed = true;
+            }
+            return ageLookup != null;
+        }
     }
 
     private static ResourceLocation id(String path) {

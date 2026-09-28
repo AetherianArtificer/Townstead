@@ -49,9 +49,21 @@ public final class StoryQuestProvider implements QuestProvider {
                                 : quest.state() == 1 ? QuestObjective.Status.PENDING : QuestObjective.Status.UNAVAILABLE,
                         com.aetherianartificer.townstead.client.gui.quest.QuestIcons.PREFIX + "talk"));
             }
+            List<com.aetherianartificer.townstead.quest.QuestReward> rewards = new ArrayList<>();
+            for (StoryQuestSyncS2CPayload.Reward reward : quest.rewards()) {
+                String label = reward.text();
+                if (reward.count() > 0 && !reward.itemId().isEmpty()) {
+                    net.minecraft.resources.ResourceLocation item = net.minecraft.resources.ResourceLocation.tryParse(reward.itemId());
+                    String name = item == null ? reward.itemId()
+                            : new net.minecraft.world.item.ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(item))
+                                    .getHoverName().getString();
+                    label = reward.count() + " " + name;
+                }
+                rewards.add(new com.aetherianartificer.townstead.quest.QuestReward(label, reward.itemId()));
+            }
             QuestState state = quest.state() == 2 ? QuestState.COMPLETE : QuestState.ACTIVE;
             out.add(new QuestEntry(id(), displayName(), quest.id(), quest.title(), quest.about(), quest.teller(),
-                    com.aetherianartificer.townstead.client.gui.quest.QuestIcons.PREFIX + "letter", state, objectives, List.of(), Set.of(),
+                    com.aetherianartificer.townstead.client.gui.quest.QuestIcons.PREFIX + "letter", state, objectives, rewards, Set.of(),
                     false, false, List.of(), I18n.get("townstead.story.quest.teller", quest.teller())));
         }
         return out;

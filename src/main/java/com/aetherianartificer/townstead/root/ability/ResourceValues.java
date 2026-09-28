@@ -300,6 +300,9 @@ public final class ResourceValues {
         storage.putInt("version", STORAGE_VERSION);
         storage.put(VALUES_KEY, values);
         writeStorage(entity, storage);
+        // Owned state values live here, so a state read this tick is now out of date.
+        com.aetherianartificer.townstead.pheno.state.EntityStates.invalidate(entity);
+        com.aetherianartificer.townstead.root.gene.GeneExpression.invalidate(entity);
     }
 
     private static CompoundTag readStorage(LivingEntity entity) {

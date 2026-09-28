@@ -56,5 +56,15 @@
   "gene.townstead_roots.vampire_deep_pallor": "Deathly Pallor",
   "gene.townstead_roots.vampire_deep_pallor.desc": "Skin as pale as bone.",
   "gene.townstead_roots.vampire_thermal": "Cold Body",
-  "gene.townstead_roots.vampire_thermal.desc": "Heat and cold no longer affect them."
+  "gene.townstead_roots.vampire_thermal.desc": "Heat and cold no longer affect them.",
+  "gene.townstead_roots.vampire_fire_frailty": "Fire Frailty",
+  "gene.townstead_roots.vampire_fire_frailty.desc": "Takes half again as much damage from fire.",
+  "gene.townstead_roots.vampire_elder_vigor": "Elder Vigor",
+  "gene.townstead_roots.vampire_elder_vigor.desc": "Gains 4 extra hearts of health.",
+  "gene.townstead_roots.vampire_nocturnal": "Night Dweller",
+  "gene.townstead_roots.vampire_nocturnal.desc": "Sleeps by day and is awake at night.",
+  "gene.townstead_roots.vampire_kin": "Vampire Kin",
+  "gene.townstead_roots.vampire_kin.desc": "Other vampires treat this person as one of their own. Vampire hunters treat them as prey.",
+  "gene.townstead_roots.vampire_no_thirst": "No Thirst for Water",
+  "gene.townstead_roots.vampire_no_thirst.desc": "Drinks blood instead of water."
 }

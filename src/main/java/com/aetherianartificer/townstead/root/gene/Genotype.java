@@ -21,6 +21,8 @@ import java.util.Map;
 public final class Genotype {
 
     private final Map<ResourceLocation, Allele[]> loci = new LinkedHashMap<>();
+    /** Counts changes, so a cached expression can tell it is out of date. */
+    private int revision;
 
     public Genotype() {}
 
@@ -47,11 +49,16 @@ public final class Genotype {
         if (locus == null) return;
         loci.put(LegacyNamespace.canonical(locus),
                 new Allele[]{a == null ? Allele.WILD : a, b == null ? Allele.WILD : b});
+        revision++;
     }
 
     /** Drop a locus entirely (a stale slot being relocated during migration). */
     public void remove(ResourceLocation locus) {
-        if (locus != null) loci.remove(LegacyNamespace.canonical(locus));
+        if (locus != null && loci.remove(LegacyNamespace.canonical(locus)) != null) revision++;
+    }
+
+    public int revision() {
+        return revision;
     }
 
     public List<ResourceLocation> loci() {

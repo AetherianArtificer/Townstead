@@ -6,13 +6,46 @@
   "goals": {
     "field_post": {
       "text": "Put a Field Post by {teller}'s fields",
-      "condition": { "type": "pheno:in_work_area", "area": "townstead:field_post", "at": "job_site" }
+      "condition": {
+        "type": "pheno:in_work_area",
+        "area": "townstead:field_post",
+        "at": "job_site"
+      }
     },
     "first_harvest": {
       "text": "{teller} harvests {count} crops",
       "event": "townstead:work_completed",
-      "where": { "worker": "teller", "verb": "townstead:harvested" },
+      "where": {
+        "worker": "teller",
+        "verb": "townstead:harvested"
+      },
       "count": 16
+    }
+  },
+  "rewards": {
+    "seed_bag": {
+      "items": [
+        {
+          "item": "minecraft:wheat_seeds",
+          "count": 8
+        },
+        {
+          "item": "minecraft:beetroot_seeds",
+          "count": 4
+        }
+      ]
+    },
+    "first_harvest": {
+      "items": [
+        {
+          "item": "minecraft:carrot",
+          "count": 6
+        },
+        {
+          "item": "minecraft:potato",
+          "count": 6
+        }
+      ]
     }
   }
 }

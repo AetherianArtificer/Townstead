@@ -34,7 +34,8 @@ import java.util.Map;
  * A hungry vampire villager walks to prey and drinks: an animal by default, or a person as far as
  * the feeding setting allows (never another vampire). Both actors play Astra's paired clips; the
  * blood changes hands at the clips' contact tick, through Vampirism's own blood pools, and the
- * bite can pass on Sanguinare by Vampirism's own rules.
+ * bite can pass on Sanguinare by Vampirism's own rules. A wild vampire that bites
+ * ({@code pheno:bite}) feeds on the person it hunts, whatever the feeding setting.
  */
 public class VampireFeedTask extends Behavior<VillagerEntityMCA> {
     private static final TagKey<EntityType<?>> PREY = TagKey.create(Registries.ENTITY_TYPE,
@@ -51,6 +52,7 @@ public class VampireFeedTask extends Behavior<VillagerEntityMCA> {
     private static final int CONTACT_TICK = 11;
     private static final int MAX_DURATION = 600;
     private static final int COOLDOWN_TICKS = 1200;
+    private static final int WILD_COOLDOWN_TICKS = 200;
     private static final int BLOOD_PER_BITE = 2;
     private static final int NUTRITION_PER_BLOOD = 3;
 
@@ -67,10 +69,12 @@ public class VampireFeedTask extends Behavior<VillagerEntityMCA> {
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (level.getGameTime() < nextSearch || !VampireVillagers.isVampire(villager)) return false;
         if (!TownsteadConfig.isVillagerHungerEnabled() || villager.isSleeping()) return false;
-        if (villager.getLastHurtByMob() != null) return false;
-        if (TownsteadVillagers.get(villager).needs().hunger() > HungerData.ADEQUATE_THRESHOLD) return false;
-        nextSearch = level.getGameTime() + 100;
-        prey = findPrey(level, villager);
+        boolean wild = bites(villager);
+        if (!wild && villager.getLastHurtByMob() != null) return false;
+        int hunger = TownsteadVillagers.get(villager).needs().hunger();
+        if (hunger > (wild ? HungerData.SATIETY_THRESHOLD : HungerData.ADEQUATE_THRESHOLD)) return false;
+        nextSearch = level.getGameTime() + (wild ? 20 : 100);
+        prey = wild ? huntedPerson(villager) : findPrey(level, villager);
         return prey != null;
     }
 
@@ -82,7 +86,7 @@ public class VampireFeedTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (prey == null || !prey.isAlive() || villager.getLastHurtByMob() != null) return false;
+        if (prey == null || !prey.isAlive() || !bites(villager) && villager.getLastHurtByMob() != null) return false;
         return biteTick < 0 ? villager.distanceToSqr(prey) < SEARCH_RADIUS * SEARCH_RADIUS * 4 : biteTick <= CLIP_TICKS;
     }
 
@@ -105,7 +109,7 @@ public class VampireFeedTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected void stop(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
-        if (biteTick >= 0) nextSearch = gameTime + COOLDOWN_TICKS;
+        if (biteTick >= 0) nextSearch = gameTime + (bites(villager) ? WILD_COOLDOWN_TICKS : COOLDOWN_TICKS);
         prey = null;
         biteTick = -1;
     }
@@ -115,6 +119,7 @@ public class VampireFeedTask extends Behavior<VillagerEntityMCA> {
         villager.getNavigation().stop();
         villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
         villager.getLookControl().setLookAt(prey, 30f, 30f);
+        villager.getBrain().setMemoryWithExpiry(MemoryModuleType.ATTACK_COOLING_DOWN, true, CLIP_TICKS);
         PerformanceProviders.play(level, new PerformanceRequest(villager, BITE, "action", CLIP_TICKS, 60,
                 PerformanceRequest.Fallback.VANILLA_GESTURE));
         if (isPerson(prey)) {
@@ -183,6 +188,17 @@ public class VampireFeedTask extends Behavior<VillagerEntityMCA> {
         Object pool = VampirismBlood.creature(mob);
         if (pool != null && VampirismBlood.maxBlood(pool) > 0) return VampirismBlood.blood(pool) > 0;
         return other.getType().is(PREY);
+    }
+
+    private static boolean bites(VillagerEntityMCA villager) {
+        return com.aetherianartificer.townstead.replace.behavior.BehaviorProfiles.behavior(villager,
+                com.aetherianartificer.townstead.replace.behavior.BehaviorTypes.BITE,
+                com.aetherianartificer.townstead.replace.behavior.BehaviorTypes.Bite.class) != null;
+    }
+
+    private static @Nullable LivingEntity huntedPerson(VillagerEntityMCA villager) {
+        LivingEntity target = villager.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+        return target != null && target.isAlive() && isPrey(villager, target, VampireFeeding.ANYONE) ? target : null;
     }
 
     private static boolean isPerson(@Nullable LivingEntity entity) {

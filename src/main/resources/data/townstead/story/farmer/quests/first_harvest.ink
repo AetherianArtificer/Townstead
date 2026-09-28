@@ -2,6 +2,7 @@
 # quest: The first rows
 # about: The farmer plants and harvests what the Field Post plan says. Keep seeds in reach and give the crops time.
 # goal: first_harvest
+# reward: first_harvest
 Good. If you see me standing in a row looking at the sky, I'm not lost. I'm waiting for rain.
 -> DONE
 

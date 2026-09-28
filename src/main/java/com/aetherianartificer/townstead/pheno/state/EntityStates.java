@@ -168,6 +168,44 @@ public final class EntityStates {
     }
 
     public static Resolved resolve(LivingEntity entity, ResourceLocation stateId) {
+        if (entity.level().isClientSide) return compute(entity, stateId);
+        long now = entity.level().getGameTime();
+        synchronized (MEMO) {
+            Memo memo = MEMO.get(entity);
+            if (memo != null && memo.time == now) {
+                Resolved cached = memo.states.get(stateId);
+                if (cached != null) return cached;
+            }
+        }
+        Resolved resolved = compute(entity, stateId);
+        synchronized (MEMO) {
+            Memo memo = MEMO.get(entity);
+            if (memo == null || memo.time != now) MEMO.put(entity, memo = new Memo(now));
+            memo.states.put(stateId, resolved);
+        }
+        return resolved;
+    }
+
+    /** Forget states read this tick, after a write or anything they sample changed. */
+    public static void invalidate(LivingEntity entity) {
+        synchronized (MEMO) {
+            MEMO.remove(entity);
+        }
+    }
+
+    private static final class Memo {
+        final long time;
+        final Map<ResourceLocation, Resolved> states = new HashMap<>();
+
+        Memo(long time) {
+            this.time = time;
+        }
+    }
+
+    // A state holds for the rest of the tick unless something writes it; reads are far more frequent.
+    private static final Map<LivingEntity, Memo> MEMO = new java.util.WeakHashMap<>();
+
+    private static Resolved compute(LivingEntity entity, ResourceLocation stateId) {
         EntityStateDefinition definition = definitions.get(stateId);
         if (definition == null) return new Resolved(stateId, false, 0, null, -1, 0, null, 0);
         if (!eligible(entity, stateId)) return Resolved.inactive(definition);
@@ -272,6 +310,7 @@ public final class EntityStates {
     }
 
     public static void forget(LivingEntity entity) {
+        invalidate(entity);
         UUID uuid = entity.getUUID();
         PREVIOUS.remove(uuid);
         NEXT_PERIODIC.remove(uuid);
@@ -425,6 +464,7 @@ public final class EntityStates {
 
     private static void writeOwned(LivingEntity entity, EntityStateDefinition definition,
                                    ResourceLocation backingId, Stored stored) {
+        invalidateAll(entity);
         if (definition.persistence() == EntityStateDefinition.Persistence.SESSION) {
             SESSION.computeIfAbsent(entity.getUUID(), ignored -> new ConcurrentHashMap<>()).put(backingId, stored);
             return;
@@ -443,6 +483,7 @@ public final class EntityStates {
 
     private static void removeOwned(LivingEntity entity, EntityStateDefinition definition,
                                     ResourceLocation backingId) {
+        invalidateAll(entity);
         if (definition.persistence() == EntityStateDefinition.Persistence.SESSION) {
             Map<ResourceLocation, Stored> values = SESSION.get(entity.getUUID());
             if (values != null) values.remove(backingId);
@@ -462,7 +503,13 @@ public final class EntityStates {
         return root.contains(BACKINGS_KEY, Tag.TAG_COMPOUND) ? root.getCompound(BACKINGS_KEY) : new CompoundTag();
     }
 
+    private static void invalidateAll(LivingEntity entity) {
+        invalidate(entity);
+        com.aetherianartificer.townstead.root.gene.GeneExpression.invalidate(entity);
+    }
+
     private static void writePersistentBackings(LivingEntity entity, CompoundTag values) {
+        invalidateAll(entity);
         CompoundTag root = entity.getPersistentData().getCompound(STORAGE_KEY);
         root.putInt("version", 1);
         root.put(BACKINGS_KEY, values);

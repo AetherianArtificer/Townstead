@@ -3,6 +3,7 @@
 # about: Put a Field Post near the farmer's workstation, then paint which crop goes in which row. Farmers work the ground a Field Post covers.
 # goal: field_post
 # skip if: field_post
+# reward: seed_bag
 {check("field_post"): -> skipped}
 Every morning I walk out and decide what goes where. Then I change my mind by lunch.
 There's a thing called a Field Post. You set it by the fields and paint the rows on it. Carrots here, wheat there.

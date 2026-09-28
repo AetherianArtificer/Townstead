@@ -40,7 +40,13 @@ public enum AvoidStrategy {
      */
     @Nullable
     public static AvoidStrategy derive(@Nullable JsonElement action, @Nullable JsonElement condition) {
-        if (!anyAction(action, AvoidStrategy::isHarmful)) return null;
+        return derive(action, condition, false);
+    }
+
+    /** As above; {@code declared} treats the action as harmful whatever its type. */
+    @Nullable
+    public static AvoidStrategy derive(@Nullable JsonElement action, @Nullable JsonElement condition, boolean declared) {
+        if (!declared && !anyAction(action, AvoidStrategy::isHarmful)) return null;
         if (exposesTo(condition, "sun")) return SUNLIGHT;
         return null;
     }

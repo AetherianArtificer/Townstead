@@ -42,7 +42,7 @@ public final class TownsteadConfig {
     /** Every system a world can switch off, in the order the setup screen lists them. */
     public static final List<String> SYSTEM_NAMES = List.of("careers", "work", "farming", "fishing", "shepherding",
             "hospitality", "clothing", "shifts", "hangouts", "reactions", "roots", "cultures", "naming",
-            "chronicles", "politics", "spirit", "calendar", "quests", "stories");
+            "chronicles", "politics", "spirit", "calendar", "quests", "stories", "personas");
     public static final Map<String, Supplier<Boolean>> SYSTEMS;
 
     //? if neoforge {
@@ -95,6 +95,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue CANNIBALISM_PRODUCE;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.compat.vampirism.VampireFeeding> VAMPIRE_FEEDING;
     public static final ModConfigSpec.BooleanValue VAMPIRE_INFECTION;
+    public static final ModConfigSpec.BooleanValue VAMPIRE_REPLACE_SPAWNS;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -145,6 +146,8 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue PEACEFUL_ROOTS_SHARE_VILLAGES;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.rebirth.RebirthMode> REBIRTH_MODE;
     public static final ModConfigSpec.IntValue REBIRTH_RELEARN_SPEED;
+    public static final ModConfigSpec.BooleanValue PERSONA_PERMADEATH;
+    public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.downed.DownedRecovery> DOWNED_RECOVERY;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.naming.NameStyle> NAME_STYLE;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.naming.NameStyle> NAMEPLATE_NAME_STYLE;
     public static final ModConfigSpec.BooleanValue ENABLE_STABLE_NAMING_REGISTERS;
@@ -206,6 +209,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue CANNIBALISM_PRODUCE;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.compat.vampirism.VampireFeeding> VAMPIRE_FEEDING;
     public static final ForgeConfigSpec.BooleanValue VAMPIRE_INFECTION;
+    public static final ForgeConfigSpec.BooleanValue VAMPIRE_REPLACE_SPAWNS;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -256,6 +260,8 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue PEACEFUL_ROOTS_SHARE_VILLAGES;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.rebirth.RebirthMode> REBIRTH_MODE;
     public static final ForgeConfigSpec.IntValue REBIRTH_RELEARN_SPEED;
+    public static final ForgeConfigSpec.BooleanValue PERSONA_PERMADEATH;
+    public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.downed.DownedRecovery> DOWNED_RECOVERY;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.naming.NameStyle> NAME_STYLE;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.naming.NameStyle> NAMEPLATE_NAME_STYLE;
     public static final ForgeConfigSpec.BooleanValue ENABLE_STABLE_NAMING_REGISTERS;
@@ -550,6 +556,10 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.vampirism.infection")
                 .comment("A vampire villager's bite can pass on Sanguinare, as a Vampirism vampire's does.")
                 .define("infection", true);
+        VAMPIRE_REPLACE_SPAWNS = b
+                .translation("townstead.configuration.vampirism.replaceSpawns")
+                .comment("Vampirism's vampires spawn as wild vampire villagers of the region's Roots, who count as vampires for kills and loot.")
+                .define("replaceSpawns", true);
         b.pop();
 
         // ── Caregiving ──
@@ -667,6 +677,17 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.rebirth.relearnSpeed")
                 .comment("How many times faster a reborn player regains career XP, after reading their old journal, until they are back at their old level.")
                 .defineInRange("relearnSpeed", 3, 1, 10);
+        b.pop();
+
+        b.translation("townstead.configuration.personas").push("personas");
+        PERSONA_PERMADEATH = b
+                .translation("townstead.configuration.personas.permadeath")
+                .comment("When false, a Persona who would die is downed instead and gets up later. When true, Personas die like anyone else.")
+                .define("permadeath", false);
+        DOWNED_RECOVERY = b
+                .translation("townstead.configuration.personas.downedRecovery")
+                .comment("How long a downed villager stays down when nobody helps. MINUTES: about 5 minutes. DAWN: until the next dawn, at least half a day. DAY: a full day.")
+                .defineEnum("downedRecovery", com.aetherianartificer.townstead.downed.DownedRecovery.DAWN);
         b.pop();
 
         // ── Naming ──

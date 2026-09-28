@@ -74,6 +74,7 @@ final class Dials {
     static final String TIME = "time";
     static final String REBIRTH = "rebirth";
     static final String QUESTS = "quests";
+    static final String PERSONAS = "personas";
 
     /** A style level that matches any level and applies nothing. */
     static final int ANY = -1;
@@ -199,6 +200,14 @@ final class Dials {
                 onOff(false, systems(List.of(Systems.QUESTS, Systems.STORIES), false)),
                 onOff(true, systems(List.of(Systems.QUESTS, Systems.STORIES), true))),
                 key -> key.equals(Systems.key(Systems.QUESTS)) || key.equals(Systems.key(Systems.STORIES))));
+
+        String permadeath = SettingIndex.keyOf(TownsteadConfig.PERSONA_PERMADEATH);
+        out.add(new Dial(PERSONAS, label("personas"), List.of(
+                level("personas.off", systems(List.of(Systems.PERSONAS), false)),
+                level("personas.on", personas(permadeath, false)),
+                level("personas.permadeath", personas(permadeath, true))),
+                key -> key.equals(Systems.key(Systems.PERSONAS)) || key.equals(permadeath)
+                        || key.startsWith("personas.")));
         return out;
     }
 
@@ -252,6 +261,12 @@ final class Dials {
     private static Map<String, Object> systems(List<String> names, boolean value) {
         Map<String, Object> out = new LinkedHashMap<>();
         for (String name : names) out.put(Systems.key(name), value);
+        return out;
+    }
+
+    private static Map<String, Object> personas(@org.jetbrains.annotations.Nullable String permadeathKey, boolean permadeath) {
+        Map<String, Object> out = systems(List.of(Systems.PERSONAS), true);
+        if (permadeathKey != null) out.put(permadeathKey, permadeath);
         return out;
     }
 

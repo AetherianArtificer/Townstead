@@ -16,6 +16,7 @@ import com.aetherianartificer.townstead.politics.heraldry.EmblemRecipe;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.jetbrains.annotations.Nullable;
@@ -148,6 +149,8 @@ public final class CharterScreen extends BookScreen {
         runningHead(p, tr("running_head", snapshot.settlement()), false);
         var civicRows = b.civic();
         int below = SECTION + HEADING + ROW;
+        Component welcomed = welcomedNames(b);
+        if (welcomed != null) below += ROW;
         if (civicRows != null && civicRows.controlsGovernment()) below += ROW;
         else {
             below += ROW + detailHeight(b.seat().detail().component(), w);
@@ -175,8 +178,20 @@ public final class CharterScreen extends BookScreen {
         y = detail(b.seat().detail().component(), x, y, w, b.seat().damaged() ? RUBRIC : FADED);
         if (b.legitimacy() != null) {
             y = row(tr("row.legitimacy"), b.legitimacy().component(), x, y, w, INK, null);
-            detail(b.legitimacyDetail().component(), x, y, w, FADED);
+            y = detail(b.legitimacyDetail().component(), x, y, w, FADED);
         }
+        if (welcomed != null) row(tr("row.welcomes"), welcomed, x, y, w, INK, null);
+    }
+
+    /** The groups the faction welcomes, as one line; null when it welcomes none. */
+    private @Nullable Component welcomedNames(Book b) {
+        MutableComponent out = null;
+        for (var welcome : b.welcomes()) {
+            if (!welcome.welcomed()) continue;
+            if (out == null) out = welcome.name().component().copy();
+            else out.append(", ").append(welcome.name().component());
+        }
+        return out;
     }
 
     /** What the title block may take: the emblem's size (0 for none) and the proclamation's lines. */
@@ -662,9 +677,21 @@ public final class CharterScreen extends BookScreen {
         if (b.seat().mayMoveHere()) entries.add(new DropMenu.Entry(tr("change.seat"), () -> { menu = null; draft("seat", "", ""); }));
         b.offices().stream().filter(CharterSnapshotS2CPayload.Office::editable).findFirst()
                 .ifPresent(office -> entries.add(new DropMenu.Entry(tr("change.successor"), () -> openSuccessorMenu(anchor, b, office))));
+        if (!b.welcomes().isEmpty()) entries.add(new DropMenu.Entry(tr("change.welcome"), () -> openWelcomeMenu(anchor, b)));
         entries.add(new DropMenu.Entry(tr("change.dissolve"), () -> { menu = null; draft("dissolve", "", ""); }, true, false, 0));
         Component amending = b.editingAs().component();
         menu = menuAbove(amending.getString().isBlank() ? null : amending, entries, anchor);
+    }
+
+    private void openWelcomeMenu(Controls.Rect anchor, Book b) {
+        List<DropMenu.Entry> entries = new ArrayList<>();
+        for (var welcome : b.welcomes()) {
+            entries.add(new DropMenu.Entry(welcome.name().component(), () -> {
+                menu = null;
+                draft("welcome", welcome.id(), welcome.welcomed() ? "0" : "1");
+            }, false, welcome.welcomed(), 0));
+        }
+        menu = menuAbove(tr("picker.welcome"), entries, anchor);
     }
 
     private void openSuccessorMenu(Controls.Rect anchor, Book b, CharterSnapshotS2CPayload.Office office) {

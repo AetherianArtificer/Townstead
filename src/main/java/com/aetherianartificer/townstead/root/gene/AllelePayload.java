@@ -98,6 +98,9 @@ public record AllelePayload(String variant, Map<String, Float> channels) {
     }
 
     private static Float parseFloat(String raw) {
+        // Most payloads are variant names; skip the exception a failed parse costs.
+        char first = raw.isEmpty() ? 'x' : raw.charAt(0);
+        if (!(first >= '0' && first <= '9') && first != '-' && first != '+' && first != '.') return null;
         try {
             return Float.parseFloat(raw);
         } catch (NumberFormatException e) {

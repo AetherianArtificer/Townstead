@@ -20,6 +20,7 @@ public final class ChronicleTapKeys {
     public static final String INFECTION_CURED = "townstead:infection_cured";
     public static final String TURNED_VAMPIRE = "townstead:turned_vampire";
     public static final String VAMPIRE_CURED = "townstead:vampire_cured";
+    public static final String WILD_SETTLED = "townstead:wild_settled";
 
     private ChronicleTapKeys() {}
 }

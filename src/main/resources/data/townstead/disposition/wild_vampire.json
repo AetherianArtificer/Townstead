@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:disposition/v1",
+  "mods": "vampirism",
+  "members": [
+    "vampirism:vampire",
+    "vampirism:advanced_vampire",
+    "vampirism:vampire_imob",
+    "vampirism:advanced_vampire_imob",
+    "vampirism:vampire_baron",
+    "vampirism:vampire_minion",
+    "vampirism:converted_creature",
+    "vampirism:converted_creature_imob",
+    "vampirism:converted_villager"
+  ],
+  "friendly": [
+    "wild_vampire",
+    "vampire"
+  ],
+  "hostile": [
+    "townsfolk",
+    "hunter"
+  ]
+}

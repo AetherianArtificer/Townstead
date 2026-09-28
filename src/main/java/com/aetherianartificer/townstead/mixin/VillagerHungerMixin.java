@@ -102,6 +102,14 @@ public abstract class VillagerHungerMixin extends Villager {
     @Unique
     private void townstead$addSeekFoodTask(Brain<VillagerEntityMCA> brain) {
         if (brain == null || brain == townstead$lastPatchedBrain) return;
+        if (com.aetherianartificer.townstead.replace.MobReplacer.isWild((VillagerEntityMCA) (Object) this)) {
+            // A wild villager acts like the mob it replaced; the resident behaviors would only cost ticks.
+            brain.addActivity(Activity.CORE, ImmutableList.of(
+                    Pair.of(97, new com.aetherianartificer.townstead.replace.behavior.HuntTask()),
+                    Pair.of(98, new com.aetherianartificer.townstead.compat.vampirism.VampireFeedTask())));
+            townstead$lastPatchedBrain = brain;
+            return;
+        }
         // Work behaviors go in Activity.WORK so they set WALK_TARGET after MCA's
         // built-in work behaviors, preventing job-site pathing from overriding ours.
         brain.addActivity(Activity.WORK,
@@ -145,6 +153,7 @@ public abstract class VillagerHungerMixin extends Villager {
         coreBehaviors.add(Pair.of(67, new com.aetherianartificer.townstead.temperature.ThermalSupplyTask()));
         coreBehaviors.add(Pair.of(68, new com.aetherianartificer.townstead.temperature.SeekThermalReliefTask()));
         // One unified refuel behavior handles both hunger and thirst (eat/drink to satiety).
+        coreBehaviors.add(Pair.of(97, new com.aetherianartificer.townstead.replace.behavior.HuntTask()));
         coreBehaviors.add(Pair.of(98, new com.aetherianartificer.townstead.compat.vampirism.VampireFeedTask()));
         coreBehaviors.add(Pair.of(99, new RefuelTask()));
         coreBehaviors.add(Pair.of(110, new CareForYoungTask()));

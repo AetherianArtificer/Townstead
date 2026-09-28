@@ -1,0 +1,17 @@
+{
+  "name": "Test Wanderer",
+  "downed": true,
+  "goals": {
+    "two_farmers": {
+      "text": "Have {count} farmers working",
+      "value": {
+        "type": "pheno:count",
+        "on": { "type": "pheno:village", "where": { "type": "pheno:profession", "profession": "minecraft:farmer" } }
+      },
+      "target": 2
+    }
+  },
+  "rewards": {
+    "bread": { "items": [ { "item": "minecraft:bread", "count": 3 } ] }
+  }
+}

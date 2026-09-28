@@ -242,6 +242,7 @@ public final class StoryService {
 
     static void sessionEnded(StorySession session) {
         if (SESSIONS.get(session.player.getUUID()) == session) SESSIONS.remove(session.player.getUUID());
+        payOut(session.player);
         save(session.player);
         sync(session.player);
     }
@@ -283,6 +284,7 @@ public final class StoryService {
             for (UUID id : new ArrayList<>(DIRTY)) {
                 ServerPlayer player = server.getPlayerList().getPlayer(id);
                 if (player != null) {
+                    payOut(player);
                     save(player);
                     sync(player);
                 }
@@ -386,6 +388,31 @@ public final class StoryService {
         return null;
     }
 
+    /** Hands over the rewards of every completed quest not yet paid, once each. */
+    private static void payOut(ServerPlayer player) {
+        if (!Systems.on(Systems.STORIES)) return;
+        for (PlayerStories.Entry entry : stories(player).entries()) {
+            StoryDefinition story = Stories.byId(entry.story);
+            if (story == null) continue;
+            for (PlayerStories.QuestRecord record : entry.quests.values()) {
+                if (record.state != PlayerStories.QuestState.COMPLETE || record.rewarded) continue;
+                StoryDefinition.Quest quest = story.quests().get(record.knot);
+                if (quest == null || quest.rewards().isEmpty()) continue;
+                record.rewarded = true;
+                VillagerEntityMCA teller = find(player.server, entry.villager);
+                for (var reward : quest.rewards()) {
+                    try {
+                        reward.give(player, teller);
+                    } catch (RuntimeException e) {
+                        com.aetherianartificer.townstead.Townstead.LOGGER.warn("Story {} reward for quest {} failed: {}",
+                                story.id(), quest.knot(), e.getMessage());
+                    }
+                }
+                DIRTY.add(player.getUUID());
+            }
+        }
+    }
+
     // ---- quest ledger ----
 
     public static void sync(ServerPlayer player) {
@@ -408,9 +435,17 @@ public final class StoryService {
                                 Math.min(current, goal.total()), goal.total(),
                                 complete || record.skipped || current >= goal.total()));
                     }
+                    List<StoryQuestSyncS2CPayload.Reward> rewards = new ArrayList<>();
+                    String teller = entry.givenName.isEmpty() ? entry.villagerName : entry.givenName;
+                    for (var reward : quest.rewards()) {
+                        for (var preview : reward.preview(teller, player.getGameProfile().getName())) {
+                            rewards.add(new StoryQuestSyncS2CPayload.Reward(preview.text(), preview.itemId(), preview.count()));
+                        }
+                    }
                     quests.add(new StoryQuestSyncS2CPayload.Quest(entry.story + "/" + record.knot + "@" + entry.villager,
                             quest.title(), quest.about(), entry.villagerName, (byte) record.state.ordinal(),
-                            quest.hasDone() || (record.skipped && quest.hasSkipped()), List.copyOf(objectives)));
+                            quest.hasDone() || (record.skipped && quest.hasSkipped()), List.copyOf(objectives),
+                            List.copyOf(rewards)));
                 }
             }
         }

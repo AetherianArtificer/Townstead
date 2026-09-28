@@ -38,6 +38,8 @@ public final class PoliticalSavedData extends SavedData {
     private final Map<ResourceLocation, Double> legitimacy = new LinkedHashMap<>();
     private final Map<ResourceLocation, FactionNaming.Name> factionNames = new LinkedHashMap<>();
     private final Set<ResourceLocation> externalGovernments = new HashSet<>();
+    /** Disposition groups a faction has declared its people welcome, such as {@code vampire}. */
+    private final Map<ResourceLocation, Set<String>> welcomes = new LinkedHashMap<>();
     /** Pre-faction organization and polity ids, mapped to the faction that replaced them. */
     private final Map<ResourceLocation, ResourceLocation> legacyIds = new LinkedHashMap<>();
     private MinecraftServer server;
@@ -137,6 +139,25 @@ public final class PoliticalSavedData extends SavedData {
     public void putFactionName(ResourceLocation id, FactionNaming.Name name) {
         factionNames.put(id, name);
         setDirty();
+    }
+
+    public Set<String> welcomes(ResourceLocation faction) {
+        Set<String> groups = welcomes.get(canonical(faction));
+        return groups == null ? Set.of() : Set.copyOf(groups);
+    }
+
+    public boolean anyWelcomes() {
+        return !welcomes.isEmpty();
+    }
+
+    public void setWelcome(ResourceLocation faction, String group, boolean welcome) {
+        ResourceLocation id = canonical(faction);
+        boolean changed = welcome ? welcomes.computeIfAbsent(id, key -> new LinkedHashSet<>()).add(group)
+                : welcomes.containsKey(id) && welcomes.get(id).remove(group);
+        if (!welcome && welcomes.containsKey(id) && welcomes.get(id).isEmpty()) welcomes.remove(id);
+        if (!changed) return;
+        setDirty();
+        com.aetherianartificer.townstead.politics.relations.FactionRelations.invalidate();
     }
 
     public void markExternalGovernment(ResourceLocation faction) {
@@ -240,6 +261,15 @@ public final class PoliticalSavedData extends SavedData {
             ResourceLocation id = ResourceLocation.tryParse(key);
             if (id != null && data.factions.containsKey(id)) data.factionNames.put(id, FactionNaming.Name.load(names.getCompound(key)));
         }
+        CompoundTag welcomeTag = tag.getCompound("welcomes");
+        for (String key : welcomeTag.getAllKeys()) {
+            ResourceLocation id = ResourceLocation.tryParse(key);
+            ListTag groups = welcomeTag.getList(key, Tag.TAG_STRING);
+            if (id == null || groups.isEmpty()) continue;
+            Set<String> set = new LinkedHashSet<>();
+            for (int i = 0; i < groups.size(); i++) set.add(groups.getString(i));
+            data.welcomes.put(id, set);
+        }
         CompoundTag legacy = tag.getCompound("legacy_ids");
         for (String key : legacy.getAllKeys()) {
             ResourceLocation from = ResourceLocation.tryParse(key), to = ResourceLocation.tryParse(legacy.getString(key));
@@ -268,6 +298,13 @@ public final class PoliticalSavedData extends SavedData {
         CompoundTag names = new CompoundTag();
         factionNames.forEach((id, name) -> names.put(id.toString(), name.save()));
         tag.put("faction_names", names);
+        CompoundTag welcomeTag = new CompoundTag();
+        welcomes.forEach((id, groups) -> {
+            ListTag list = new ListTag();
+            groups.forEach(group -> list.add(StringTag.valueOf(group)));
+            welcomeTag.put(id.toString(), list);
+        });
+        tag.put("welcomes", welcomeTag);
         CompoundTag legacy = new CompoundTag();
         legacyIds.forEach((from, to) -> legacy.putString(from.toString(), to.toString()));
         tag.put("legacy_ids", legacy);

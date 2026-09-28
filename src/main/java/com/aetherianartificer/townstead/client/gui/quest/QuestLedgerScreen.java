@@ -447,7 +447,16 @@ public final class QuestLedgerScreen extends Screen {
             drawScaledString(g, heading, x + 12, y, 0.86f, 0xFF85551F);
             y += 13;
             for (QuestReward reward : selected.rewards()) {
-                QuestIcons.draw(g, QuestIcons.Icon.REWARD, x, y - 1);
+                if (reward.iconItemId().isBlank() || QuestIcons.named(reward.iconItemId()) != null) {
+                    QuestIcons.draw(g, QuestIcons.Icon.REWARD, x, y - 1);
+                } else {
+                    // Item rewards show the item itself, at the size of a line icon.
+                    g.pose().pushPose();
+                    g.pose().translate(x - 1, y - 2, 0);
+                    g.pose().scale(0.625f, 0.625f, 1f);
+                    g.renderItem(icon(reward.iconItemId()), 0, 0);
+                    g.pose().popPose();
+                }
                 g.drawString(font, trim(reward.label(), contentW - 13), x + 13, y, 0xFF302417, false);
                 y += 11;
             }

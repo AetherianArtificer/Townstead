@@ -58,49 +58,93 @@ public final class Goals {
         static Parsed fail(String error) { return new Parsed(null, error); }
     }
 
+    /** A reference written in Ink, such as {@code have_profession(farmer, 3)}. */
+    public record Reference(String name, List<String> args) {}
+
+    /** A template with its parameters filled in, and the values for {@code {param}} in text. */
+    public record Instance(JsonObject json, Map<String, String> values) {}
+
+    public static @Nullable Reference reference(String raw) {
+        Matcher m = REF.matcher(raw);
+        if (!m.matches()) return null;
+        return new Reference(m.group(1).toLowerCase(Locale.ROOT), splitArgs(m.group(2)));
+    }
+
+    /**
+     * Finds a template by name: the story's own first, then the library under the story's
+     * namespace, then {@code townstead}. Returns null when there is none.
+     */
+    public static @Nullable JsonObject find(String name, String namespace, Map<String, JsonObject> inline,
+                                            Map<ResourceLocation, JsonObject> library) {
+        JsonObject template = name.contains(":") ? null : inline.get(name);
+        if (template != null) return template;
+        for (String candidate : name.contains(":") ? List.of(name) : List.of(namespace + ":" + name, "townstead:" + name)) {
+            ResourceLocation id = ResourceLocation.tryParse(candidate);
+            if (id != null && library.containsKey(id)) return library.get(id);
+        }
+        return null;
+    }
+
+    /** Fills a template's {@code params}; throws with a readable message when the count is wrong. */
+    public static Instance instantiate(JsonObject template, List<String> args) {
+        List<String> params = new ArrayList<>();
+        if (template.has("params") && template.get("params").isJsonArray()) {
+            for (JsonElement p : template.getAsJsonArray("params")) params.add(p.getAsString());
+        }
+        if (params.size() != args.size()) {
+            throw new IllegalArgumentException("expects " + params.size() + " values"
+                    + (params.isEmpty() ? "" : " (" + String.join(", ", params) + ")") + " but got " + args.size());
+        }
+        Map<String, String> values = new LinkedHashMap<>();
+        for (int i = 0; i < params.size(); i++) values.put(params.get(i), args.get(i));
+        return new Instance(substitute(template.deepCopy(), values).getAsJsonObject(), values);
+    }
+
+    public static String fillParams(String text, Map<String, String> values) {
+        for (Map.Entry<String, String> value : values.entrySet()) text = text.replace("{" + value.getKey() + "}", value.getValue());
+        return text;
+    }
+
     /**
      * Resolves a reference such as {@code have_profession(farmer, 3)}: a plain name is looked up in
      * the story's own goals first, then in the library under the story's namespace, then
      * {@code townstead}.
      */
     public static Parsed resolve(String reference, String namespace, Map<String, JsonObject> inline) {
-        Matcher m = REF.matcher(reference);
-        if (!m.matches()) return Parsed.fail("'" + reference + "' is not a goal name");
-        String name = m.group(1).toLowerCase(Locale.ROOT);
-        List<String> args = splitArgs(m.group(2));
-        JsonObject template = name.contains(":") ? null : inline.get(name);
-        if (template == null) {
-            for (String candidate : name.contains(":") ? List.of(name) : List.of(namespace + ":" + name, "townstead:" + name)) {
-                ResourceLocation id = ResourceLocation.tryParse(candidate);
-                if (id != null && library.containsKey(id)) {
-                    template = library.get(id);
-                    break;
-                }
-            }
-        }
-        if (template == null) return Parsed.fail("no goal named '" + name + "' in story.json or data/*/goal/");
-        return build(template, args);
+        return resolve(reference, namespace, inline, "teller");
+    }
+
+    /** As {@link #resolve(String, String, Map)}, with the subject a goal gets when it names none. */
+    public static Parsed resolve(String reference, String namespace, Map<String, JsonObject> inline, String defaultSubject) {
+        Reference ref = reference(reference);
+        if (ref == null) return Parsed.fail("'" + reference + "' is not a goal name");
+        JsonObject template = find(ref.name(), namespace, inline, library);
+        if (template == null) return Parsed.fail("no goal named '" + ref.name() + "' in story.json or data/*/goal/");
+        return build(template, ref.args(), defaultSubject);
     }
 
     static Parsed build(JsonObject template, List<String> args) {
-        List<String> params = new ArrayList<>();
-        if (template.has("params") && template.get("params").isJsonArray()) {
-            for (JsonElement p : template.getAsJsonArray("params")) params.add(p.getAsString());
-        }
-        if (params.size() != args.size()) {
-            return Parsed.fail("expects " + params.size() + " values" + (params.isEmpty() ? "" : " (" + String.join(", ", params) + ")")
-                    + " but got " + args.size());
-        }
-        Map<String, String> values = new LinkedHashMap<>();
-        for (int i = 0; i < params.size(); i++) values.put(params.get(i), args.get(i));
-        JsonObject json = substitute(template.deepCopy(), values).getAsJsonObject();
+        return build(template, args, "teller");
+    }
 
+    /** Builds an inline goal written directly where it is used, such as a Persona's arrival. */
+    public static Parsed inline(JsonObject goal, String defaultSubject) {
+        return build(goal, List.of(), defaultSubject);
+    }
+
+    static Parsed build(JsonObject template, List<String> args, String defaultSubject) {
+        Instance instance;
+        try {
+            instance = instantiate(template, args);
+        } catch (IllegalArgumentException e) {
+            return Parsed.fail(e.getMessage());
+        }
+        JsonObject json = instance.json();
         if (!json.has("text")) return Parsed.fail("a goal needs \"text\", the line shown in the Quest Ledger");
-        String text = json.get("text").getAsString();
-        for (Map.Entry<String, String> value : values.entrySet()) text = text.replace("{" + value.getKey() + "}", value.getValue());
+        String text = fillParams(json.get("text").getAsString(), instance.values());
         Goal.Subject subject;
         try {
-            subject = Goal.Subject.valueOf(json.has("subject") ? json.get("subject").getAsString().toUpperCase(Locale.ROOT) : "TELLER");
+            subject = Goal.Subject.valueOf((json.has("subject") ? json.get("subject").getAsString() : defaultSubject).toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             return Parsed.fail("subject must be \"teller\" or \"player\"");
         }
@@ -138,7 +182,7 @@ public final class Goals {
     }
 
     /** Replaces {@code $param} in every string. A string that is only {@code $param} takes the value's type. */
-    static JsonElement substitute(JsonElement element, Map<String, String> values) {
+    public static JsonElement substitute(JsonElement element, Map<String, String> values) {
         if (values.isEmpty()) return element;
         if (element.isJsonObject()) {
             JsonObject out = new JsonObject();

@@ -44,9 +44,12 @@ import java.util.regex.Pattern;
 public final class Stories {
     private static final Logger LOGGER = LoggerFactory.getLogger("Townstead/Stories");
     private static final String FOLDER = "story";
+    private static final String PERSONA_FOLDER = "persona";
     private static final String GOAL_FOLDER = "goal";
     /** Key under which the loader hands the goal library to {@code apply}. */
     private static final ResourceLocation GOAL_LIBRARY = ResourceLocation.tryParse("townstead:__goal_library__");
+    private static final String REWARD_FOLDER = "reward";
+    private static final ResourceLocation REWARD_LIBRARY = ResourceLocation.tryParse("townstead:__reward_library__");
     /** Translations sit beside the English file ({@code story.fr_fr.ink}) and are not compiled in. */
     private static final Pattern LOCALIZED = Pattern.compile(".*\\.[a-z]{2,3}_[a-z]{2,3}\\.ink$");
 
@@ -76,38 +79,10 @@ public final class Stories {
         @Override
         protected Map<ResourceLocation, Map<String, String>> prepare(ResourceManager manager, ProfilerFiller profiler) {
             Map<ResourceLocation, Map<String, String>> folders = new TreeMap<>();
-            Map<ResourceLocation, Resource> found = manager.listResources(FOLDER,
-                    path -> path.getPath().endsWith(".ink") || path.getPath().endsWith(".json"));
-            for (Map.Entry<ResourceLocation, Resource> entry : found.entrySet()) {
-                String path = entry.getKey().getPath().substring(FOLDER.length() + 1);
-                int slash = path.indexOf('/');
-                if (slash <= 0) continue;
-                String relative = path.substring(slash + 1);
-                if (LOCALIZED.matcher(relative).matches()) continue;
-                ResourceLocation id = ResourceLocation.tryParse(entry.getKey().getNamespace() + ":" + path.substring(0, slash));
-                if (id == null) continue;
-                try (Reader reader = entry.getValue().openAsReader(); BufferedReader buffered = new BufferedReader(reader)) {
-                    StringBuilder text = new StringBuilder();
-                    buffered.lines().forEach(line -> text.append(line).append('\n'));
-                    folders.computeIfAbsent(id, ignored -> new TreeMap<>()).put(relative, text.toString());
-                } catch (Exception e) {
-                    LOGGER.warn("Failed to read {}: {}", entry.getKey(), e.getMessage());
-                }
-            }
-            Map<String, String> goals = new TreeMap<>();
-            for (Map.Entry<ResourceLocation, Resource> entry : manager.listResources(GOAL_FOLDER,
-                    path -> path.getPath().endsWith(".json")).entrySet()) {
-                String path = entry.getKey().getPath();
-                String id = entry.getKey().getNamespace() + ":" + path.substring(GOAL_FOLDER.length() + 1, path.length() - 5);
-                try (Reader reader = entry.getValue().openAsReader(); BufferedReader buffered = new BufferedReader(reader)) {
-                    StringBuilder text = new StringBuilder();
-                    buffered.lines().forEach(line -> text.append(line).append('\n'));
-                    goals.put(id, text.toString());
-                } catch (Exception e) {
-                    LOGGER.warn("Failed to read {}: {}", entry.getKey(), e.getMessage());
-                }
-            }
-            folders.put(GOAL_LIBRARY, goals);
+            readStoryFolders(manager, FOLDER, "", folders);
+            readStoryFolders(manager, PERSONA_FOLDER, "persona/", folders);
+            folders.put(GOAL_LIBRARY, readJsonFolder(manager, GOAL_FOLDER));
+            folders.put(REWARD_LIBRARY, readJsonFolder(manager, REWARD_FOLDER));
             return folders;
         }
 
@@ -115,11 +90,16 @@ public final class Stories {
         protected void apply(Map<ResourceLocation, Map<String, String>> folders, ResourceManager manager, ProfilerFiller profiler) {
             Map<ResourceLocation, StoryDefinition> next = new LinkedHashMap<>();
             Map<ResourceLocation, List<String>> nextProblems = new LinkedHashMap<>();
+            Map<ResourceLocation, com.aetherianartificer.townstead.persona.PersonaDefinition> nextPersonas = new LinkedHashMap<>();
             loadGoalLibrary(folders.getOrDefault(GOAL_LIBRARY, Map.of()), nextProblems);
+            loadRewardLibrary(folders.getOrDefault(REWARD_LIBRARY, Map.of()), nextProblems);
             for (Map.Entry<ResourceLocation, Map<String, String>> folder : folders.entrySet()) {
-                if (folder.getKey().equals(GOAL_LIBRARY)) continue;
+                if (folder.getKey().equals(GOAL_LIBRARY) || folder.getKey().equals(REWARD_LIBRARY)) continue;
                 List<String> issues = new ArrayList<>();
-                StoryDefinition story = build(folder.getKey(), folder.getValue(), issues);
+                ResourceLocation persona = folder.getKey().getPath().startsWith("persona/")
+                        ? ResourceLocation.tryParse(folder.getKey().getNamespace() + ":" + folder.getKey().getPath().substring(8))
+                        : null;
+                StoryDefinition story = build(folder.getKey(), folder.getValue(), issues, persona, nextPersonas);
                 if (story != null) next.put(story.id(), story);
                 if (!issues.isEmpty()) {
                     nextProblems.put(folder.getKey(), List.copyOf(issues));
@@ -128,9 +108,78 @@ public final class Stories {
             }
             stories = Map.copyOf(next);
             problems = Map.copyOf(nextProblems);
+            com.aetherianartificer.townstead.persona.Personas.set(nextPersonas);
+            if (!nextPersonas.isEmpty()) LOGGER.info("Loaded {} Personas", nextPersonas.size());
             LOGGER.info("Loaded {} stories", next.size());
             StoryService.onReload();
         }
+    }
+
+    /** Every story-shaped folder under {@code data/<ns>/<folder>/<id>/}, keyed {@code ns:<prefix><id>}. */
+    private static void readStoryFolders(ResourceManager manager, String folder, String prefix,
+                                         Map<ResourceLocation, Map<String, String>> out) {
+        Map<ResourceLocation, Resource> found = manager.listResources(folder,
+                path -> path.getPath().endsWith(".ink") || path.getPath().endsWith(".json"));
+        for (Map.Entry<ResourceLocation, Resource> entry : found.entrySet()) {
+            String path = entry.getKey().getPath().substring(folder.length() + 1);
+            int slash = path.indexOf('/');
+            if (slash <= 0) continue;
+            String relative = path.substring(slash + 1);
+            if (LOCALIZED.matcher(relative).matches()) continue;
+            ResourceLocation id = ResourceLocation.tryParse(entry.getKey().getNamespace() + ":" + prefix + path.substring(0, slash));
+            if (id == null) continue;
+            try (Reader reader = entry.getValue().openAsReader(); BufferedReader buffered = new BufferedReader(reader)) {
+                StringBuilder text = new StringBuilder();
+                buffered.lines().forEach(line -> text.append(line).append('\n'));
+                out.computeIfAbsent(id, ignored -> new TreeMap<>()).put(relative, text.toString());
+            } catch (Exception e) {
+                LOGGER.warn("Failed to read {}: {}", entry.getKey(), e.getMessage());
+            }
+        }
+    }
+
+    /** Every {@code .json} under {@code data/<ns>/<folder>/}, by id. */
+    private static Map<String, String> readJsonFolder(ResourceManager manager, String folder) {
+        Map<String, String> out = new TreeMap<>();
+        for (Map.Entry<ResourceLocation, Resource> entry : manager.listResources(folder,
+                path -> path.getPath().endsWith(".json")).entrySet()) {
+            String path = entry.getKey().getPath();
+            String id = entry.getKey().getNamespace() + ":" + path.substring(folder.length() + 1, path.length() - 5);
+            try (Reader reader = entry.getValue().openAsReader(); BufferedReader buffered = new BufferedReader(reader)) {
+                StringBuilder text = new StringBuilder();
+                buffered.lines().forEach(line -> text.append(line).append('\n'));
+                out.put(id, text.toString());
+            } catch (Exception e) {
+                LOGGER.warn("Failed to read {}: {}", entry.getKey(), e.getMessage());
+            }
+        }
+        return out;
+    }
+
+    /** Shared rewards from {@code data/<ns>/reward/}. Rewards without parameters are checked now. */
+    private static void loadRewardLibrary(Map<String, String> files, Map<ResourceLocation, List<String>> problems) {
+        Map<ResourceLocation, JsonObject> library = new LinkedHashMap<>();
+        Map<ResourceLocation, List<String>> found = new LinkedHashMap<>();
+        for (Map.Entry<String, String> file : files.entrySet()) {
+            ResourceLocation id = ResourceLocation.tryParse(file.getKey());
+            if (id == null) continue;
+            try {
+                JsonElement parsed = JsonParser.parseString(file.getValue());
+                if (!parsed.isJsonObject()) throw new IllegalArgumentException("the root must be an object");
+                library.put(id, parsed.getAsJsonObject());
+            } catch (Exception e) {
+                found.put(id, List.of("error: reward file: " + e.getMessage()));
+            }
+        }
+        com.aetherianartificer.townstead.story.reward.Rewards.setLibrary(library);
+        for (Map.Entry<ResourceLocation, JsonObject> reward : library.entrySet()) {
+            if (reward.getValue().has("params")) continue;
+            var parsed = com.aetherianartificer.townstead.story.reward.Rewards.resolve(
+                    reward.getKey().toString(), reward.getKey().getNamespace(), Map.of());
+            if (parsed.reward() == null) found.put(reward.getKey(), List.of("error: reward: " + parsed.error()));
+        }
+        found.forEach((id, issues) -> issues.forEach(issue -> LOGGER.warn("Reward {}: {}", id, issue)));
+        problems.putAll(found);
     }
 
     /** Shared goals from {@code data/<ns>/goal/}. Goals without parameters are checked now. */
@@ -159,6 +208,18 @@ public final class Stories {
     }
 
     static @Nullable StoryDefinition build(ResourceLocation id, Map<String, String> files, List<String> issues) {
+        return build(id, files, issues, null, new LinkedHashMap<>());
+    }
+
+    /**
+     * Builds one story. For a Persona folder, {@code persona} is its id: {@code persona.json}
+     * takes the place of {@code story.json}, the story attaches to that Persona's villagers, and
+     * the Persona itself is parsed into {@code personas}.
+     */
+    static @Nullable StoryDefinition build(ResourceLocation id, Map<String, String> files, List<String> issues,
+                                           @Nullable ResourceLocation persona,
+                                           Map<ResourceLocation, com.aetherianartificer.townstead.persona.PersonaDefinition> personas) {
+        String jsonFile = persona == null ? "story.json" : "persona.json";
         Map<String, String> ink = new LinkedHashMap<>();
         files.entrySet().stream()
                 .filter(e -> e.getKey().endsWith(".ink"))
@@ -180,14 +241,14 @@ public final class Stories {
         if (greet == null) issues.add("error: no '=== greet ===' knot; it is where every conversation starts");
 
         JsonObject json = null;
-        String rawJson = files.get("story.json");
+        String rawJson = files.get(jsonFile);
         if (rawJson != null) {
             try {
                 JsonElement parsed = JsonParser.parseString(rawJson);
                 if (parsed.isJsonObject()) json = parsed.getAsJsonObject();
-                else issues.add("error: story.json: the root must be an object");
+                else issues.add("error: " + jsonFile + ": the root must be an object");
             } catch (Exception e) {
-                issues.add("error: story.json: " + e.getMessage());
+                issues.add("error: " + jsonFile + ": " + e.getMessage());
             }
         }
         Map<String, JsonObject> goals = new LinkedHashMap<>();
@@ -195,6 +256,14 @@ public final class Stories {
             for (Map.Entry<String, JsonElement> e : json.getAsJsonObject("goals").entrySet()) {
                 if (e.getValue().isJsonObject()) goals.put(e.getKey().toLowerCase(Locale.ROOT), e.getValue().getAsJsonObject());
                 else issues.add("error: story.json: goal '" + e.getKey() + "' must be an object");
+            }
+        }
+
+        Map<String, JsonObject> rewards = new LinkedHashMap<>();
+        if (json != null && json.has("rewards") && json.get("rewards").isJsonObject()) {
+            for (Map.Entry<String, JsonElement> e : json.getAsJsonObject("rewards").entrySet()) {
+                if (e.getValue().isJsonObject()) rewards.put(e.getKey().toLowerCase(Locale.ROOT), e.getValue().getAsJsonObject());
+                else issues.add("error: story.json: reward '" + e.getKey() + "' must be an object");
             }
         }
 
@@ -212,6 +281,12 @@ public final class Stories {
                 if (parsed.goal() == null) issues.add("error: quest '" + knot.name() + "' goal '" + reference + "': " + parsed.error());
                 else questGoals.add(parsed.goal());
             }
+            List<com.aetherianartificer.townstead.story.reward.Reward> questRewards = new ArrayList<>();
+            for (String reference : tags.getOrDefault("reward", List.of())) {
+                var parsed = com.aetherianartificer.townstead.story.reward.Rewards.resolve(reference, id.getNamespace(), rewards);
+                if (parsed.reward() == null) issues.add("error: quest '" + knot.name() + "' reward '" + reference + "': " + parsed.error());
+                else questRewards.add(parsed.reward());
+            }
             Goal skipIf = null;
             List<String> skip = tags.get("skip if");
             if (skip != null) {
@@ -223,11 +298,19 @@ public final class Stories {
             quests.put(knot.name(), new StoryDefinition.Quest(knot.name(), title,
                     first(tags, "about", ""), List.copyOf(questGoals), skipIf,
                     knot.stitches().contains("done"), knot.stitches().contains("skipped"),
-                    knot.stitches().contains("waiting"), first(tags, "label", null)));
+                    knot.stitches().contains("waiting"), first(tags, "label", null), List.copyOf(questRewards)));
         }
 
-        StoryAttach attach = json == null ? StoryAttach.NONE : attach(json, issues);
-        if (attach.isEmpty()) issues.add("warning: attaches to no villager; add \"attach\" to story.json");
+        StoryAttach attach;
+        com.aetherianartificer.townstead.persona.PersonaDefinition personaDefinition = null;
+        if (persona != null) {
+            attach = StoryAttach.persona(persona);
+            personaDefinition = com.aetherianartificer.townstead.persona.Personas.parse(persona,
+                    json == null ? new JsonObject() : json, goals, issues);
+        } else {
+            attach = json == null ? StoryAttach.NONE : attach(json, issues);
+            if (attach.isEmpty()) issues.add("warning: attaches to no villager; add \"attach\" to story.json");
+        }
         Map<String, Condition> conditions = new LinkedHashMap<>();
         Map<String, Action> actions = new LinkedHashMap<>();
         StoryDefinition.Bind bind = StoryDefinition.Bind.VILLAGER;
@@ -256,6 +339,10 @@ public final class Stories {
             if (json.has("priority")) priority = json.get("priority").getAsInt();
         }
         if (countErrors(issues) > errorsBefore) return null;
+        if (persona != null) {
+            if (personaDefinition == null) return null;
+            personas.put(persona, personaDefinition);
+        }
         String label = greet == null ? "" : first(tagMap(greet.tags()), "label", "");
         return new StoryDefinition(id, compiled.json(), sha1(compiled.json()), attach, bind, priority, label,
                 Map.copyOf(quests), Map.copyOf(conditions), Map.copyOf(actions), Map.copyOf(goals));
@@ -276,7 +363,7 @@ public final class Stories {
             if (when == null) issues.add("error: story.json: attach.when is not a known Pheno condition");
         }
         return new StoryAttach(Set.copyOf(professions), Set.copyOf(strings(attach.get("root"))),
-                Set.copyOf(strings(attach.get("culture"))), Set.copyOf(strings(attach.get("villager"))), when);
+                Set.copyOf(strings(attach.get("culture"))), Set.copyOf(strings(attach.get("villager"))), when, null);
     }
 
     private static List<String> strings(@Nullable JsonElement element) {

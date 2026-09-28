@@ -27,6 +27,8 @@ public final class PlayerStories {
         /** Per goal: the running count for counter goals, the last reading for state goals. */
         public long[] values;
         public boolean skipped;
+        /** Whether this quest's rewards have been handed over. They are given once, on completion. */
+        public boolean rewarded;
 
         QuestRecord(String knot, int goals) {
             this.knot = knot;
@@ -97,6 +99,7 @@ public final class PlayerStories {
                 int state = qt.getByte("state");
                 record.state = QuestState.values()[Math.max(0, Math.min(state, QuestState.values().length - 1))];
                 record.skipped = qt.getBoolean("skipped");
+                record.rewarded = qt.getBoolean("rewarded");
                 entry.quests.put(record.knot, record);
             }
             out.entries.put(tag.getString("key"), entry);
@@ -124,6 +127,7 @@ public final class PlayerStories {
                 qt.putByte("state", (byte) record.state.ordinal());
                 qt.putLongArray("values", record.values);
                 qt.putBoolean("skipped", record.skipped);
+                qt.putBoolean("rewarded", record.rewarded);
                 quests.add(qt);
             }
             tag.put("quests", quests);

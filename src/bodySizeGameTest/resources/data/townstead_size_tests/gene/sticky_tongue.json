@@ -1,0 +1,22 @@
+{
+  "schema": "townstead:gene/v2",
+  "type": "pheno:active_ability",
+  "display_name": {
+    "translate": "gene.townstead_ribbits.sticky_tongue"
+  },
+  "description": {
+    "translate": "gene.townstead_ribbits.sticky_tongue.desc"
+  },
+  "category": "Abilities",
+  "cooldown": 40,
+  "ai_trigger": "always",
+  "action": {
+    "type": "pheno:retrieve_item",
+    "range": 6,
+    "speed": 0.65,
+    "aim_radius": 0.35,
+    "extend_ticks": 4,
+    "color": "#E58D9A"
+  },
+  "icon": "minecraft:slime_ball"
+}

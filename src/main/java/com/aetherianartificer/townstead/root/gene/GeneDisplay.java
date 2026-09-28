@@ -19,7 +19,7 @@ package com.aetherianartificer.townstead.root.gene;
  */
 public record GeneDisplay(Kind kind, float min, float max, String targetId, float amount) {
 
-    public enum Kind { RANGE, BOOLEAN, INFLUENCE, COLOR, ATTACHMENT, VARIANTS, PROPORTIONS, HIDE_FEATURE, ABILITY, OVERLAY, PARTICLE, SUPPRESS_NEED, STUCK_IMMUNITY, BUOYANCY, SKIN_OVERLAY, OPACITY, INNATE_TOOL, BLOCK_BREAK_SPEED, ANIMATIONS }
+    public enum Kind { RANGE, BOOLEAN, INFLUENCE, COLOR, ATTACHMENT, VARIANTS, PROPORTIONS, HIDE_FEATURE, ABILITY, OVERLAY, PARTICLE, SUPPRESS_NEED, STUCK_IMMUNITY, BUOYANCY, SKIN_OVERLAY, OPACITY, INNATE_TOOL, BLOCK_BREAK_SPEED, ANIMATIONS, NEED_ICON }
 
     public static final GeneDisplay PRESENCE = new GeneDisplay(Kind.BOOLEAN, 0f, 1f, "", 0f);
 
@@ -197,6 +197,11 @@ public record GeneDisplay(Kind kind, float min, float max, String targetId, floa
      * {@code targetId} as {@code "hunger;thirst"} so the interact-screen status bar can hide each
      * suppressed need's icon. The server enforcement reads the gene directly; a presence chip in the picker.
      */
+    /** A need drawn with another icon set in the inspector: {@code "<need>;<ns:path prefix>"}. */
+    public static GeneDisplay needIcon(String need, String iconPrefix) {
+        return new GeneDisplay(Kind.NEED_ICON, 0f, 1f, need + ";" + iconPrefix, 0f);
+    }
+
     public static GeneDisplay suppressNeed(java.util.List<String> needs) {
         String packed = needs == null ? "" : String.join(";", needs);
         return new GeneDisplay(Kind.SUPPRESS_NEED, 0f, 1f, packed, 0f);

@@ -22,10 +22,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AuthoredVampireStateTest {
     private static final List<String> EFFECTS = List.of("vampire_turning_look", "vampire_fledgling_look",
             "vampire_look", "vampire_features", "vampire_elder_look", "vampire_fledgling_nature", "vampire_thirst",
-            "vampire_nature", "vampire_cold_body");
+            "vampire_nature", "vampire_cold_body", "vampire_elder_nature");
     private static final List<String> LEVEL_UPS = List.of("vampire_level_2", "vampire_level_3", "vampire_level_4");
     private static final List<String> BACKINGS = List.of("vampire_villager", "vampire_sanguinare",
-            "vampire_player_level", "vampire_player_lord", "vampire_blood_villager");
+            "vampire_player_level", "vampire_player_lord", "vampire_blood_villager", "vampire_player_age");
 
     @BeforeAll
     static void registerVocabulary() {
@@ -55,7 +55,7 @@ class AuthoredVampireStateTest {
         }
         for (String name : BACKINGS) {
             JsonObject json = read("/data/townstead/state_backing/" + name + ".json");
-            assertEquals("vampirism", json.get("mods").getAsString(), name);
+            assertTrue(json.get("mods").toString().contains("\"vampirism\""), name);
             StateBacking backing = StateBacking.parse(id("townstead:" + name), json);
             for (StateBacking.Level level : backing.amplifierLevels().values()) {
                 if (level.tier() != null) assertNotNull(vampire.tier(level.tier()), name + " maps to tier " + level.tier());

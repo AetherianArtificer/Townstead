@@ -479,6 +479,13 @@ public record GeneCatalogEntry(
     }
 
     /** Whether this gene suppresses the given need ({@code hunger}/{@code thirst}/{@code sleep}). */
+    /** The icon prefix a NEED_ICON gene draws {@code need} with, or null. */
+    public @org.jetbrains.annotations.Nullable String needIconPrefix(String need) {
+        if (displayKind != GeneDisplay.Kind.NEED_ICON.ordinal() || targetId == null) return null;
+        int semi = targetId.indexOf(';');
+        return semi > 0 && targetId.substring(0, semi).equals(need) ? targetId.substring(semi + 1) : null;
+    }
+
     public boolean suppressesNeed(String need) {
         if (!isSuppressNeed() || targetId == null || targetId.isEmpty()) return false;
         for (String entry : targetId.split(";")) {

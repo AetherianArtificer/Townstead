@@ -42,6 +42,7 @@ public record StoryDefinition(
      * while the quest is open.
      */
     public record Quest(String knot, String title, String about, List<Goal> goals, @Nullable Goal skipIf,
-                        boolean hasDone, boolean hasSkipped, boolean hasWaiting, @Nullable String label) {
+                        boolean hasDone, boolean hasSkipped, boolean hasWaiting, @Nullable String label,
+                        List<com.aetherianartificer.townstead.story.reward.Reward> rewards) {
     }
 }

@@ -65,6 +65,8 @@ public final class Powers {
     /** Invalidate this entity after a same-tick genotype or toggle mutation. */
     public static void invalidate(LivingEntity entity) {
         if (entity instanceof PowerCacheAccess cache) cache.townstead$invalidatePowerCache();
+        com.aetherianartificer.townstead.pheno.state.EntityStates.invalidate(entity);
+        com.aetherianartificer.townstead.root.gene.GeneExpression.invalidate(entity);
     }
 
     /** The components of the given type granted to {@code entity} (id-less convenience). */

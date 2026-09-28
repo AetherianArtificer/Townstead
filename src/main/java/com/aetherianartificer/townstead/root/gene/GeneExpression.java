@@ -83,14 +83,46 @@ public final class GeneExpression {
     }
 
     public static List<Allele> activeAlleles(LivingEntity entity) {
-        List<Allele> inherited = AspectOverlay.apply(entity,
-                Heredity.expressedAlleles(ExpressedGenes.genotypeOf(entity)));
+        Genotype genotype = ExpressedGenes.genotypeOf(entity);
+        // A villager's expression holds for the rest of the tick unless its genes or states change.
+        boolean memoize = !evaluating.get() && entity instanceof net.conczin.mca.entity.VillagerEntityMCA
+                && !entity.level().isClientSide;
+        long now = memoize ? entity.level().getGameTime() : 0;
+        if (memoize) {
+            synchronized (MEMO) {
+                Memo memo = MEMO.get(entity);
+                if (memo != null && memo.time() == now && memo.genotype() == genotype
+                        && memo.revision() == genotype.revision()) {
+                    return memo.alleles();
+                }
+            }
+        }
+        List<Allele> inherited = AspectOverlay.apply(entity, Heredity.expressedAlleles(genotype));
         if (evaluating.get()) return inherited;
         evaluating.set(true);
+        List<Allele> active;
         try {
-            return activeAlleles(inherited, new ConditionContext(entity));
+            active = activeAlleles(inherited, new ConditionContext(entity));
         } finally {
             evaluating.remove();
         }
+        if (memoize) {
+            active = List.copyOf(active);
+            synchronized (MEMO) {
+                MEMO.put(entity, new Memo(now, genotype, genotype.revision(), active));
+            }
+        }
+        return active;
     }
+
+    /** Forget a cached expression, after something it depends on changed. */
+    public static void invalidate(LivingEntity entity) {
+        synchronized (MEMO) {
+            MEMO.remove(entity);
+        }
+    }
+
+    private record Memo(long time, Genotype genotype, int revision, List<Allele> alleles) {}
+
+    private static final Map<LivingEntity, Memo> MEMO = new java.util.WeakHashMap<>();
 }

@@ -59,7 +59,9 @@ public final class ActionOverTimeGeneType implements GeneType {
         }
         // The "damage source" derived once here and cached on the parsed gene: a harmful periodic
         // action under a positional condition becomes a spatial hazard the AI flees (GeneAbilityTicker).
-        AvoidStrategy avoid = AvoidStrategy.derive(json.get("action"), json.get("condition"));
+        // "avoid": true declares a benign-looking effect (sun weakness) worth fleeing as well.
+        AvoidStrategy avoid = AvoidStrategy.derive(json.get("action"), json.get("condition"),
+                GsonHelper.getAsBoolean(json, "avoid", false));
         return new Instance(action, interval, condition, avoid, costResource, costAmount);
     }
 }

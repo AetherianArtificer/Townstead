@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "pheno:attribute",
+  "display_name": {
+    "translate": "gene.townstead_roots.vampire_elder_vigor"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.vampire_elder_vigor.desc"
+  },
+  "category": "Health",
+  "attribute": "minecraft:generic.max_health",
+  "amount": 8.0
+}

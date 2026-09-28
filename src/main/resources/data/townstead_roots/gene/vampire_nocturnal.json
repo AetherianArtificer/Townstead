@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "townstead_roots:chronotype",
+  "display_name": {
+    "translate": "gene.townstead_roots.vampire_nocturnal"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.vampire_nocturnal.desc"
+  },
+  "category": "Activity",
+  "locus": "townstead_roots:chronotypes",
+  "variants": {
+    "nocturnal": {
+      "weight": 1
+    }
+  }
+}

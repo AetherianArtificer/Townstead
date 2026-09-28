@@ -13,7 +13,9 @@
   },
   "genes": {
     "grant": [
-      "townstead_roots:vampire_diet"
+      "townstead_roots:vampire_diet",
+      "townstead_roots:vampire_no_thirst",
+      "townstead_roots:vampire_nocturnal"
     ]
   }
 }

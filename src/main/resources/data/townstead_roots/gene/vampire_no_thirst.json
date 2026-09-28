@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "townstead_roots:hydration",
+  "display_name": {
+    "translate": "gene.townstead_roots.vampire_no_thirst"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.vampire_no_thirst.desc"
+  },
+  "category": "Hydration",
+  "locus": "townstead_roots:hydration",
+  "liquid": "none"
+}

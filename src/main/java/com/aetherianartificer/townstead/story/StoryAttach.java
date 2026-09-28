@@ -17,16 +17,29 @@ import java.util.Set;
  * everyone. A story with nothing listed attaches to nobody.
  */
 public record StoryAttach(Set<String> professions, Set<String> roots, Set<String> cultures,
-                          Set<String> villagers, @Nullable Condition when) {
+                          Set<String> villagers, @Nullable Condition when,
+                          @Nullable net.minecraft.resources.ResourceLocation persona) {
 
-    public static final StoryAttach NONE = new StoryAttach(Set.of(), Set.of(), Set.of(), Set.of(), null);
+    public static final StoryAttach NONE = new StoryAttach(Set.of(), Set.of(), Set.of(), Set.of(), null, null);
+
+    /** Attaches to the villagers who are this Persona, and only while Personas are switched on. */
+    public static StoryAttach persona(net.minecraft.resources.ResourceLocation persona) {
+        return new StoryAttach(Set.of(), Set.of(), Set.of(), Set.of(), null, persona);
+    }
 
     public boolean isEmpty() {
-        return professions.isEmpty() && roots.isEmpty() && cultures.isEmpty() && villagers.isEmpty() && when == null;
+        return professions.isEmpty() && roots.isEmpty() && cultures.isEmpty() && villagers.isEmpty() && when == null
+                && persona == null;
     }
 
     public boolean matches(VillagerEntityMCA villager, Player player) {
         if (isEmpty()) return false;
+        if (persona != null) {
+            if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.PERSONAS)
+                    || villager.getServer() == null) return false;
+            var instance = com.aetherianartificer.townstead.persona.PersonaInstances.get(villager.getServer()).of(villager.getUUID());
+            return instance != null && instance.persona().equals(persona);
+        }
         if (!villagers.isEmpty() && !villagers.contains(villager.getUUID().toString())) return false;
         if (!professions.isEmpty()) {
             ResourceLocation key = BuiltInRegistries.VILLAGER_PROFESSION.getKey(villager.getVillagerData().getProfession());

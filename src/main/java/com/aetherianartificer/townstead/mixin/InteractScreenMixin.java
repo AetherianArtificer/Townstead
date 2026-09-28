@@ -293,7 +293,7 @@ public abstract class InteractScreenMixin extends Screen {
             ((AbstractDynamicScreenAccessor) this).townstead$invokeDrawHoveringIconText(context, hungerLabel, "hunger");
         }
 
-        if (ThirstBridgeResolver.isActive() && TownsteadConfig.isVillagerThirstEnabled() && townstead$isHoveringThirstIcon()) {
+        if (ThirstBridgeResolver.isActive() && townstead$thirstShown() && townstead$isHoveringThirstIcon()) {
             int thirst = ThirstClientStore.getThirst(entityId);
             ThirstData.ThirstState thirstState = ThirstData.getState(thirst);
             Component thirstLabel = Component.translatable(
@@ -411,6 +411,9 @@ public abstract class InteractScreenMixin extends Screen {
         if (TownsteadConfig.isVillagerHungerEnabled()) {
             int hunger = HungerClientStore.get(villager.asEntity().getId());
             ResourceLocation sprite = townstead$hungerIconSprite(HungerData.getState(hunger));
+            ResourceLocation own = com.aetherianartificer.townstead.client.root.ClientNeeds.icon(
+                    villager.asEntity().getId(), "hunger", townstead$needLevel(HungerData.getState(hunger)));
+            if (own != null) sprite = own;
             townstead$drawNeedIcon(context, sprite, HUNGER_ICON_X, HUNGER_ICON_Y, HUNGER_ICON_PX);
         }
 
@@ -431,7 +434,7 @@ public abstract class InteractScreenMixin extends Screen {
         }
 
         ThirstCompatBridge bridge = ThirstBridgeResolver.get();
-        if (bridge == null || !TownsteadConfig.isVillagerThirstEnabled()) return;
+        if (bridge == null || !townstead$thirstShown()) return;
 
         int thirst = ThirstClientStore.getThirst(villager.asEntity().getId());
         ThirstCompatBridge.ThirstIconInfo icon = bridge.iconInfo(thirst);
@@ -467,6 +470,12 @@ public abstract class InteractScreenMixin extends Screen {
 
     private boolean townstead$isHoveringThirstIcon() {
         return ((AbstractDynamicScreenAccessor) this).townstead$invokeHoveringOverIcon("thirst");
+    }
+
+    @Unique
+    private boolean townstead$thirstShown() {
+        return TownsteadConfig.isVillagerThirstEnabled()
+                && !com.aetherianartificer.townstead.client.root.ClientNeeds.suppresses(villager.asEntity().getId(), "thirst");
     }
 
     @Unique
@@ -564,6 +573,14 @@ public abstract class InteractScreenMixin extends Screen {
         double mx = minecraft.mouseHandler.xpos() * width / minecraft.getWindow().getScreenWidth();
         double my = minecraft.mouseHandler.ypos() * height / minecraft.getWindow().getScreenHeight();
         return mx >= x && mx <= x + w && my >= y && my <= y + h;
+    }
+
+    private static String townstead$needLevel(HungerData.HungerState state) {
+        return switch (state) {
+            case WELL_FED, ADEQUATE -> "full";
+            case HUNGRY -> "half";
+            case FAMISHED, STARVING -> "low";
+        };
     }
 
     private ResourceLocation townstead$hungerIconSprite(HungerData.HungerState state) {

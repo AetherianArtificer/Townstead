@@ -19,12 +19,15 @@ public record StoryQuestSyncS2CPayload(List<Quest> quests) implements CustomPack
 *///?}
     public record Objective(String label, long current, long total, boolean done) {}
 
+    /** A reward line: an item with a count, or text when {@code itemId} is empty or {@code count} is 0. */
+    public record Reward(String text, String itemId, int count) {}
+
     /**
      * {@code state}: 0 active, 1 ready to hand back, 2 complete. {@code handBack}: the teller has
      * something to say once the goals are met, so the ledger adds a line to go and talk to them.
      */
     public record Quest(String id, String title, String about, String teller, byte state, boolean handBack,
-                        List<Objective> objectives) {}
+                        List<Objective> objectives, List<Reward> rewards) {}
 
     public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(quests.size());
@@ -41,6 +44,12 @@ public record StoryQuestSyncS2CPayload(List<Quest> quests) implements CustomPack
                 buf.writeVarLong(objective.current());
                 buf.writeVarLong(objective.total());
                 buf.writeBoolean(objective.done());
+            }
+            buf.writeVarInt(quest.rewards().size());
+            for (Reward reward : quest.rewards()) {
+                buf.writeUtf(reward.text());
+                buf.writeUtf(reward.itemId());
+                buf.writeVarInt(reward.count());
             }
         }
     }
@@ -60,7 +69,10 @@ public record StoryQuestSyncS2CPayload(List<Quest> quests) implements CustomPack
             for (int j = 0; j < objectiveCount; j++) {
                 objectives.add(new Objective(buf.readUtf(), buf.readVarLong(), buf.readVarLong(), buf.readBoolean()));
             }
-            quests.add(new Quest(id, title, about, teller, state, handBack, List.copyOf(objectives)));
+            int rewardCount = Math.min(buf.readVarInt(), 64);
+            List<Reward> rewards = new ArrayList<>(rewardCount);
+            for (int j = 0; j < rewardCount; j++) rewards.add(new Reward(buf.readUtf(), buf.readUtf(), buf.readVarInt()));
+            quests.add(new Quest(id, title, about, teller, state, handBack, List.copyOf(objectives), List.copyOf(rewards)));
         }
         return new StoryQuestSyncS2CPayload(List.copyOf(quests));
     }

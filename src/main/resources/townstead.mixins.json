@@ -4,6 +4,8 @@
   "plugin": "com.aetherianartificer.townstead.TownsteadMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "LivingFieldAbilitiesMixin",
+    "accessor.ItemEntityOwnerAccessor",
     "ResultContainerGateMixin",
     "VillagerServingHandMixin",
     "VillagerServingRecoveryMixin",
@@ -13,6 +15,7 @@
     "compat.vampirism.FactionRegistryMixin",
     "compat.vampirism.FactionPredicateMixin",
     "VampireCureGiftMixin",
+    "WildVillagerHomeMixin",
     "compat.thirst.TanDrinkConsumptionMixin",
     "BabyItemInheritanceMixin",
     "BuildingMatchingMixin",

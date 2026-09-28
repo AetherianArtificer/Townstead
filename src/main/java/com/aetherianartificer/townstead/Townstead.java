@@ -543,6 +543,8 @@ public class Townstead {
             com.aetherianartificer.townstead.pheno.action.ActionScheduler.tick(e.getServer());
             com.aetherianartificer.townstead.dialogue.conversation.ConversationEngine.tick(e.getServer());
             com.aetherianartificer.townstead.story.StoryService.tick(e.getServer());
+            com.aetherianartificer.townstead.persona.PersonaService.tick(e.getServer());
+            com.aetherianartificer.townstead.downed.DownedService.tick(e.getServer());
             com.aetherianartificer.townstead.pheno.field.CloudManager.tick(e.getServer());
             com.aetherianartificer.townstead.work.order.OrdersWatchers.tick(e.getServer());
             com.aetherianartificer.townstead.work.job.ManagedRequirementLeases.tick(e.getServer());
@@ -553,6 +555,7 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.EntityJoinLevelEvent e) -> {
             if (e.getLevel() instanceof net.minecraft.server.level.ServerLevel sl) {
                 com.aetherianartificer.townstead.calendar.AgeableCatchup.onEntityJoin(e.getEntity(), sl.getServer());
+                com.aetherianartificer.townstead.downed.DownedService.onJoin(e.getEntity());
                 if (e.getEntity() instanceof VillagerEntityMCA villager) {
                     com.aetherianartificer.townstead.villager.TownsteadVillagerState.root(villager);
                     com.aetherianartificer.townstead.root.trait.TraitBridge.migrate(villager);
@@ -591,6 +594,12 @@ public class Townstead {
                 }
             });
         }
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.EntityInteract e) -> {
+            if (com.aetherianartificer.townstead.downed.DownedService.helpUp(e.getEntity(), e.getTarget())) {
+                e.setCanceled(true);
+                e.setCancellationResult(net.minecraft.world.InteractionResult.sidedSuccess(e.getLevel().isClientSide));
+            }
+        });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.EntityInteract e) -> {
             if (e.getTarget() instanceof VillagerEntityMCA villager
                     && com.aetherianartificer.townstead.compat.vampirism.VampireVillagers.isGarlicInjection(e.getItemStack())) {
@@ -806,6 +815,9 @@ public class Townstead {
                         com.aetherianartificer.townstead.story.StoryCommands.register(e.getDispatcher()));
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.persona.PersonaCommands.register(e.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.WorksiteCommands.register(
                                 e.getDispatcher(), e.getBuildContext()));
         NeoForge.EVENT_BUS.addListener(
@@ -876,6 +888,10 @@ public class Townstead {
             }
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent e) -> {
+            if (com.aetherianartificer.townstead.downed.DownedService.blocksDamage(e.getEntity(), e.getSource())) {
+                e.setCanceled(true);
+                return;
+            }
             float modified = com.aetherianartificer.townstead.root.damage.GeneDamageHandler.modify(
                     e.getEntity(), e.getSource(), e.getAmount());
             if (modified <= 0f) e.setCanceled(true);
@@ -887,15 +903,23 @@ public class Townstead {
                         level, e.getEntity(), e.getSource(), modified);
             }
         });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent e) -> {
+            if (com.aetherianartificer.townstead.replace.MobReplacer.onFinalizeSpawn(e.getEntity(), e.getLevel(), e.getSpawnType())) {
+                e.setSpawnCancelled(true);
+            }
+        });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingDeathEvent e) -> {
             if (com.aetherianartificer.townstead.root.Immortality.survivesDeath(e.getEntity(), e.getSource())
-                    || com.aetherianartificer.townstead.root.prevent.Prevents.tryPreventDeath(e.getEntity())) {
+                    || com.aetherianartificer.townstead.root.prevent.Prevents.tryPreventDeath(e.getEntity())
+                    || com.aetherianartificer.townstead.downed.DownedService.onDeath(e.getEntity(), e.getSource())) {
                 e.setCanceled(true);
                 return;
             }
+            com.aetherianartificer.townstead.persona.PersonaService.onDeath(e.getEntity());
             com.aetherianartificer.townstead.root.trigger.GeneTriggers.onDeath(e.getEntity(), e.getSource());
             if (e.getEntity() instanceof ServerPlayer deadPlayer) com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.rememberDeath(deadPlayer, e.getSource());
             com.aetherianartificer.townstead.root.loot.DeathLoot.onDeath(e.getEntity());
+            com.aetherianartificer.townstead.replace.MobReplacer.onDeath(e.getEntity(), e.getSource());
             com.aetherianartificer.townstead.compat.wholecloth.WholeClothDrops.onDeath(e.getEntity(), e.getSource());
             if (!(e.getEntity() instanceof net.minecraft.world.entity.player.Player)) {
                 com.aetherianartificer.townstead.profession.skill.LearnedSkills.clear(e.getEntity().getUUID());
@@ -923,7 +947,8 @@ public class Townstead {
             }
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent e) -> {
-            if (com.aetherianartificer.townstead.root.mobsignore.MobsIgnore.shouldIgnore(
+            if (com.aetherianartificer.townstead.downed.DownedService.blocksTarget(e.getNewAboutToBeSetTarget())
+                    || com.aetherianartificer.townstead.root.mobsignore.MobsIgnore.shouldIgnore(
                     e.getEntity(), e.getNewAboutToBeSetTarget())
                     || com.aetherianartificer.townstead.root.disposition.Dispositions.areFriendly(
                             e.getEntity(), e.getNewAboutToBeSetTarget())
@@ -1088,6 +1113,8 @@ public class Townstead {
                 com.aetherianartificer.townstead.pheno.action.ActionScheduler.tick(e.getServer());
             com.aetherianartificer.townstead.dialogue.conversation.ConversationEngine.tick(e.getServer());
             com.aetherianartificer.townstead.story.StoryService.tick(e.getServer());
+            com.aetherianartificer.townstead.persona.PersonaService.tick(e.getServer());
+            com.aetherianartificer.townstead.downed.DownedService.tick(e.getServer());
                 com.aetherianartificer.townstead.pheno.field.CloudManager.tick(e.getServer());
                 com.aetherianartificer.townstead.work.order.OrdersWatchers.tick(e.getServer());
                 com.aetherianartificer.townstead.work.job.ManagedRequirementLeases.tick(e.getServer());
@@ -1099,6 +1126,7 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.EntityJoinLevelEvent e) -> {
             if (e.getLevel() instanceof net.minecraft.server.level.ServerLevel sl) {
                 com.aetherianartificer.townstead.calendar.AgeableCatchup.onEntityJoin(e.getEntity(), sl.getServer());
+                com.aetherianartificer.townstead.downed.DownedService.onJoin(e.getEntity());
                 if (e.getEntity() instanceof VillagerEntityMCA villager) {
                     com.aetherianartificer.townstead.villager.TownsteadVillagerState.root(villager);
                     com.aetherianartificer.townstead.root.trait.TraitBridge.migrate(villager);
@@ -1130,6 +1158,12 @@ public class Townstead {
                 }
             });
         }
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.PlayerInteractEvent.EntityInteract e) -> {
+            if (com.aetherianartificer.townstead.downed.DownedService.helpUp(e.getEntity(), e.getTarget())) {
+                e.setCanceled(true);
+                e.setCancellationResult(net.minecraft.world.InteractionResult.sidedSuccess(e.getLevel().isClientSide));
+            }
+        });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.PlayerInteractEvent.EntityInteract e) -> {
             if (e.getTarget() instanceof VillagerEntityMCA villager
                     && com.aetherianartificer.townstead.compat.vampirism.VampireVillagers.isGarlicInjection(e.getItemStack())) {
@@ -1347,6 +1381,9 @@ public class Townstead {
                         com.aetherianartificer.townstead.story.StoryCommands.register(e.getDispatcher()));
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.persona.PersonaCommands.register(e.getDispatcher()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.WorksiteCommands.register(
                                 e.getDispatcher(), e.getBuildContext()));
         MinecraftForge.EVENT_BUS.addListener(
@@ -1435,6 +1472,10 @@ public class Townstead {
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingHurtEvent e) -> {
+            if (com.aetherianartificer.townstead.downed.DownedService.blocksDamage(e.getEntity(), e.getSource())) {
+                e.setCanceled(true);
+                return;
+            }
             float modified = com.aetherianartificer.townstead.root.damage.GeneDamageHandler.modify(
                     e.getEntity(), e.getSource(), e.getAmount());
             if (modified <= 0f) e.setCanceled(true);
@@ -1446,15 +1487,23 @@ public class Townstead {
                         level, e.getEntity(), e.getSource(), modified);
             }
         });
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.MobSpawnEvent.FinalizeSpawn e) -> {
+            if (com.aetherianartificer.townstead.replace.MobReplacer.onFinalizeSpawn(e.getEntity(), e.getLevel(), e.getSpawnType())) {
+                e.setSpawnCancelled(true);
+            }
+        });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingDeathEvent e) -> {
             if (com.aetherianartificer.townstead.root.Immortality.survivesDeath(e.getEntity(), e.getSource())
-                    || com.aetherianartificer.townstead.root.prevent.Prevents.tryPreventDeath(e.getEntity())) {
+                    || com.aetherianartificer.townstead.root.prevent.Prevents.tryPreventDeath(e.getEntity())
+                    || com.aetherianartificer.townstead.downed.DownedService.onDeath(e.getEntity(), e.getSource())) {
                 e.setCanceled(true);
                 return;
             }
+            com.aetherianartificer.townstead.persona.PersonaService.onDeath(e.getEntity());
             com.aetherianartificer.townstead.root.trigger.GeneTriggers.onDeath(e.getEntity(), e.getSource());
             if (e.getEntity() instanceof ServerPlayer deadPlayer) com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.rememberDeath(deadPlayer, e.getSource());
             com.aetherianartificer.townstead.root.loot.DeathLoot.onDeath(e.getEntity());
+            com.aetherianartificer.townstead.replace.MobReplacer.onDeath(e.getEntity(), e.getSource());
             com.aetherianartificer.townstead.compat.wholecloth.WholeClothDrops.onDeath(e.getEntity(), e.getSource());
             if (!(e.getEntity() instanceof net.minecraft.world.entity.player.Player)) {
                 com.aetherianartificer.townstead.profession.skill.LearnedSkills.clear(e.getEntity().getUUID());
@@ -1491,7 +1540,8 @@ public class Townstead {
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingChangeTargetEvent e) -> {
-            if (com.aetherianartificer.townstead.root.mobsignore.MobsIgnore.shouldIgnore(
+            if (com.aetherianartificer.townstead.downed.DownedService.blocksTarget(e.getNewTarget())
+                    || com.aetherianartificer.townstead.root.mobsignore.MobsIgnore.shouldIgnore(
                     e.getEntity(), e.getNewTarget())
                     || com.aetherianartificer.townstead.root.disposition.Dispositions.areFriendly(
                             e.getEntity(), e.getNewTarget())
@@ -1808,6 +1858,8 @@ public class Townstead {
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.root.gene.types.EntityGroupGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
+                    new com.aetherianartificer.townstead.root.gene.types.DispositionGroupGeneType());
+            com.aetherianartificer.townstead.root.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.root.gene.types.CollectionGeneType());
             com.aetherianartificer.townstead.root.gene.GeneTypes.register(
                     new com.aetherianartificer.townstead.root.gene.types.StartingEquipmentGeneType());
@@ -1895,6 +1947,7 @@ public class Townstead {
                     new com.aetherianartificer.townstead.root.BaselinePowers.Source());
             // Readings other mods own, observable through pheno:provider state backings
             com.aetherianartificer.townstead.compat.vampirism.VampirismStateProviders.register();
+            com.aetherianartificer.townstead.compat.vampirism.VampireTotemWelcome.register();
             // A Root's declared states decide who can become a vampire, get drunk, and so on
             com.aetherianartificer.townstead.pheno.state.EntityStates.setEligibility(
                     com.aetherianartificer.townstead.root.RootStates::allows);
@@ -1902,6 +1955,9 @@ public class Townstead {
             // system will register an authoritative source over this later.
             com.aetherianartificer.townstead.root.disposition.Dispositions.register(
                     new com.aetherianartificer.townstead.root.disposition.DataDispositionSource());
+            // Faction welcomes and alliances overrule the natural groups.
+            com.aetherianartificer.townstead.root.disposition.Dispositions.register(
+                    new com.aetherianartificer.townstead.politics.relations.FactionDispositionSource());
             // Read-side genetics feed for the capability layer (provenance for /pheno explain)
             com.aetherianartificer.townstead.pheno.capability.Capabilities.register(
                     new com.aetherianartificer.townstead.root.capability.GeneCapabilitySource());
@@ -2393,6 +2449,10 @@ public class Townstead {
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.JumpActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.LeapActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.RetrieveItemActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.FireActionType(
                         com.aetherianartificer.townstead.pheno.action.types.FireActionType.IGNITE_KEY, true));
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
@@ -2657,6 +2717,8 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.chronicle.pregen.ChronicleWorkHistoryLoader());
         event.addListener(new com.aetherianartificer.townstead.needs.Consumables.Loader());
         event.addListener(new com.aetherianartificer.townstead.hunger.diet.Diets.Loader());
+        event.addListener(new com.aetherianartificer.townstead.replace.MobReplacements.Loader());
+        event.addListener(new com.aetherianartificer.townstead.replace.behavior.BehaviorProfiles.Loader());
         event.addListener(new com.aetherianartificer.townstead.needs.Amenities.Loader());
         event.addListener(new com.aetherianartificer.townstead.temperature.TemperatureSettings.Loader());
         event.addListener(new com.aetherianartificer.townstead.hangout.HangoutData.Loader());
@@ -2680,6 +2742,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.root.attachment.AttachmentServerLoader());
         event.addListener(new com.aetherianartificer.townstead.chronicle.template.ChronicleEventJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.story.Stories.Loader());
+        event.addListener(new com.aetherianartificer.townstead.downed.DownedRules.Loader());
         com.aetherianartificer.townstead.farming.CropProductResolver.invalidate();
     }
 

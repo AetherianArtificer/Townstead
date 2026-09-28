@@ -27,13 +27,16 @@ public final class DietGeneType implements GeneType {
     private static final net.minecraft.resources.ResourceLocation LOCUS =
             com.aetherianartificer.townstead.data.DataPackLang.parseId(KEY);
 
-    public record Instance(String diet) implements GeneInstance {
+    public record Instance(String diet, @org.jetbrains.annotations.Nullable String needIcon) implements GeneInstance {
+        public Instance(String diet) {
+            this(diet, null);
+        }
+
         @Override public String typeKey() { return KEY; }
 
         @Override public GeneDisplay display() {
-            return disablesHunger()
-                    ? GeneDisplay.suppressNeed(java.util.List.of("hunger"))
-                    : GeneDisplay.PRESENCE;
+            if (disablesHunger()) return GeneDisplay.suppressNeed(java.util.List.of("hunger"));
+            return needIcon != null ? GeneDisplay.needIcon("hunger", needIcon) : GeneDisplay.PRESENCE;
         }
 
         /** True when this race does not eat, switching off the hunger need. */
@@ -47,7 +50,8 @@ public final class DietGeneType implements GeneType {
     public GeneInstance parse(JsonObject json) {
         String diet = GsonHelper.getAsString(json, "diet", "");
         if (diet.isBlank()) return null;
-        return new Instance(diet);
+        String icon = GsonHelper.getAsString(json, "need_icon", "").trim();
+        return new Instance(diet, icon.isEmpty() ? null : icon);
     }
 
     @Override

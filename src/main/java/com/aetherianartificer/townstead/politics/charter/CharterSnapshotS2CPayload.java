@@ -123,10 +123,12 @@ public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int sta
     public record Book(String id, Text proclaimed, Text editingAs, @Nullable Text legitimacy, Text legitimacyDetail,
                        SeatRow seat, List<CensusScope> census, List<Text> history, List<Heraldry> heraldry, boolean mayDraft,
                        List<Office> offices, Members members, List<Request> requests,
-                       @Nullable Draft draft, @Nullable Civic civic, List<StyleOption> liveryStyles) {
+                       @Nullable Draft draft, @Nullable Civic civic, List<StyleOption> liveryStyles,
+                       List<Welcome> welcomes) {
         public Book {
             census = List.copyOf(census); history = List.copyOf(history); heraldry = List.copyOf(heraldry);
             offices = List.copyOf(offices); requests = List.copyOf(requests); liveryStyles = List.copyOf(liveryStyles);
+            welcomes = List.copyOf(welcomes);
         }
         void write(FriendlyByteBuf b) {
             b.writeUtf(id, 256); proclaimed.write(b); editingAs.write(b); writeOptional(b, legitimacy); legitimacyDetail.write(b); seat.write(b);
@@ -136,13 +138,21 @@ public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int sta
             b.writeBoolean(draft != null); if (draft != null) draft.write(b);
             b.writeBoolean(civic != null); if (civic != null) civic.write(b);
             writeList(b, liveryStyles, StyleOption::write);
+            writeList(b, welcomes, Welcome::write);
         }
         static Book read(FriendlyByteBuf b) {
             return new Book(b.readUtf(256), Text.read(b), Text.read(b), readOptional(b), Text.read(b), SeatRow.read(b),
                     readList(b, CensusScope::read), readList(b, Text::read), readList(b, Heraldry::read), b.readBoolean(),
                     readList(b, Office::read), Members.read(b), readList(b, Request::read),
-                    b.readBoolean() ? Draft.read(b) : null, b.readBoolean() ? Civic.read(b) : null, readList(b, StyleOption::read));
+                    b.readBoolean() ? Draft.read(b) : null, b.readBoolean() ? Civic.read(b) : null, readList(b, StyleOption::read),
+                    readList(b, Welcome::read));
         }
+    }
+
+    /** A group the faction may declare welcome, and whether it does now. */
+    public record Welcome(String id, Text name, boolean welcomed) {
+        void write(FriendlyByteBuf b) { b.writeUtf(id, 256); name.write(b); b.writeBoolean(welcomed); }
+        static Welcome read(FriendlyByteBuf b) { return new Welcome(b.readUtf(256), Text.read(b), b.readBoolean()); }
     }
 
     /** The Seat of Power row: the building, a line of detail, and whether this lectern can propose moving it here. */

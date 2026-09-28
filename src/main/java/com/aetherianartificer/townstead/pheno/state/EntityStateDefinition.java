@@ -36,8 +36,11 @@ public record EntityStateDefinition(
 
     public record Tier(String id, double min) {}
 
-    /** Marks a lasting identity state (vampire, dhampir) as opposed to a passing one (drunk). */
-    public record Aspect(boolean display, @Nullable Inheritance inheritance) {}
+    /**
+     * Marks a lasting identity state (vampire, dhampir) as opposed to a passing one (drunk).
+     * {@code level} shows its amount as a level where it is displayed, instead of its tier.
+     */
+    public record Aspect(boolean display, @Nullable Inheritance inheritance, boolean level) {}
 
     /** A child born to carriers of this aspect receives {@code aspect} with {@code chance}. */
     public record Inheritance(ResourceLocation aspect, double chance, Parents parents) {}
@@ -144,7 +147,8 @@ public record EntityStateDefinition(
                         enumValue(inherit, "parents", Parents.ANY, Parents.class));
             }
         }
-        return new Aspect(GsonHelper.getAsBoolean(json, "display", true), inheritance);
+        return new Aspect(GsonHelper.getAsBoolean(json, "display", true), inheritance,
+                GsonHelper.getAsBoolean(json, "level", false));
     }
 
     private static <E extends Enum<E>> E enumValue(JsonObject json, String key, E fallback, Class<E> type) {
