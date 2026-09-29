@@ -44,7 +44,8 @@ public record WorkJobDef(
         ResourceLocation type,
         @Nullable EntitySource source,
         @Nullable BlockTarget destination,
-        @Nullable BlockTarget target) {
+        @Nullable BlockTarget target,
+        @Nullable com.aetherianartificer.townstead.work.martial.MartialJob martial) {
 
     public static final String SCHEMA = "townstead:job/v3";
     public static final ResourceLocation ENTITY_DELIVERY = id("townstead:entity_delivery");
@@ -238,14 +239,16 @@ public record WorkJobDef(
         if (BLOCK_INTERACTION.equals(type)) {
             BlockTarget target = parseBlockTarget(json.get("target"), true);
             return target == null ? null
-                    : new WorkJobDef(definitionId, task, type, null, null, target);
+                    : new WorkJobDef(definitionId, task, type, null, null, target, null);
         }
         if (ENTITY_DELIVERY.equals(type)) {
             EntitySource source = parseEntitySource(json.get("source"));
             BlockTarget destination = parseBlockTarget(json.get("destination"), false);
             return source == null || destination == null ? null
-                    : new WorkJobDef(definitionId, task, type, source, destination, null);
+                    : new WorkJobDef(definitionId, task, type, source, destination, null, null);
         }
+        var martial = com.aetherianartificer.townstead.work.martial.MartialJob.parse(type, json);
+        if (martial != null) return new WorkJobDef(definitionId, task, type, null, null, null, martial);
         return null;
     }
 

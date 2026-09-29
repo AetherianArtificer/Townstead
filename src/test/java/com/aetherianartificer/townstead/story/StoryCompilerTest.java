@@ -19,15 +19,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class StoryCompilerTest {
 
     @Test
-    void shippedFarmerStoryCompiles() throws IOException {
-        StoryCompiler.Result result = StoryCompiler.compile(folder("farmer"));
+    void shippedHuntmasterStoryCompiles() throws IOException {
+        StoryCompiler.Result result = StoryCompiler.compile(folder("huntmaster"));
         assertTrue(result.ok(), () -> "errors: " + result.errors());
         assertTrue(result.warnings().isEmpty(), () -> "warnings: " + result.warnings());
         assertNotNull(result.knots().get("greet"));
-        StoryCompiler.Knot fieldPost = result.knots().get("field_post");
-        assertNotNull(fieldPost);
-        assertTrue(fieldPost.tags().contains("quest: A plan for the fields"));
-        assertTrue(fieldPost.stitches().containsAll(List.of("done", "skipped", "waiting")));
     }
 
     @Test
@@ -80,6 +76,10 @@ class StoryCompilerTest {
                 .collect(LinkedHashMap::new, (m, e) -> m.put(e.getKey(), e.getValue()), Map::putAll));
         assertTrue(compiled.ok(), () -> "errors: " + compiled.errors());
         compiled.knots().values().forEach(knot -> assertNotNull(knot.tags(), knot.name()));
+        StoryCompiler.Knot pot = compiled.knots().get("pot");
+        assertNotNull(pot);
+        assertTrue(pot.tags().contains("quest: Something in the pot"));
+        assertTrue(pot.stitches().containsAll(List.of("done", "skipped", "waiting")));
         List<String> issues = new java.util.ArrayList<>();
         Stories.build(net.minecraft.resources.ResourceLocation.tryParse("townstead:persona/village_builder"), files, issues,
                 net.minecraft.resources.ResourceLocation.tryParse("townstead:village_builder"), new LinkedHashMap<>());

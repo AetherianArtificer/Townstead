@@ -9,7 +9,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.BoneMealItem;
-import net.minecraft.world.item.HoeItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.BlockItem;
 //? if >=1.21 {
@@ -61,9 +60,9 @@ public final class WorkSupplyManager {
                         stack -> stack.getItem() instanceof BoneMealItem,
                         stack -> stack.getCount());
             }
-            if (toolMatcher == null && !contains(inv, stack -> stack.getItem() instanceof HoeItem)) {
+            if (toolMatcher == null && !contains(inv, com.aetherianartificer.townstead.farming.Farmland::isHoe)) {
                 NearbyItemSources.pullSingleToInventory(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
-                        stack -> stack.getItem() instanceof HoeItem,
+                        com.aetherianartificer.townstead.farming.Farmland::isHoe,
                         stack -> 1);
             }
 
@@ -83,7 +82,7 @@ public final class WorkSupplyManager {
             if (stack.isEmpty()) continue;
             if (i == reserveFoodSlot) continue;
             if (requiredTool != null && requiredTool.test(stack)) continue;
-            if (stack.getItem() instanceof HoeItem) continue;
+            if (com.aetherianartificer.townstead.farming.Farmland.isHoe(stack)) continue;
             if (stack.getItem() instanceof BoneMealItem) continue;
             if (isPlantableSeed(stack)) continue;
 

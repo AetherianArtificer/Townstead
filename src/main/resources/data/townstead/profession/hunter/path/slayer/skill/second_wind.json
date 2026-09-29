@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.slayer.second_wind"
+  },
+  "icon": "minecraft:sugar",
+  "description": {
+    "translate": "skill.townstead.hunter.slayer.second_wind.description"
+  },
+  "cost": 1,
+  "requires": [
+    "hunters_grip"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:health",
+      "max": 0.5,
+      "relative": true
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 40,
+      "amplifier": 0
+    }
+  }
+}

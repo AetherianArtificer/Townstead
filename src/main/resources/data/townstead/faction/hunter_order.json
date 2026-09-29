@@ -1,5 +1,6 @@
 {
   "schema": "townstead:faction/v1",
+  "mods": "vampirism",
   "display": {
     "name": {
       "translate": "faction.townstead.hunter_order"
@@ -43,7 +44,27 @@
   },
   "members": {
     "group": "hunter",
-    "profession": "townstead:hunter"
+    "profession": "townstead:hunter",
+    "shift": "townstead:night_watch"
+  },
+  "recruitment": {
+    "ritual": "townstead:hunter_oath",
+    "training_nights": 3,
+    "room": {
+      "building": "compat/vampirism/hunter_lodge",
+      "per_block": "#townstead:lodge/workbenches"
+    },
+    "volunteers": {
+      "chance": 0.15,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          { "type": "pheno:life_stage", "stage": "adult" },
+          { "type": "pheno:personality", "personality": ["athletic", "confident"] },
+          { "type": "pheno:state", "state": "townstead_state:vampire", "inverted": true }
+        ]
+      }
+    }
   },
   "governance": {
     "head": "townstead:lodge_master",

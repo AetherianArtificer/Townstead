@@ -36,7 +36,11 @@ import java.util.regex.Pattern;
  *              "where": { "type": "pheno:profession", "profession": "$profession" } } },
  *   "target": "$count" }
  * </pre>
- * {@code subject} is {@code teller} (default) or {@code player}. A story names a goal in Ink as
+ * A {@code seasons} goal counts good seasons: a season (a seasons mod's, or {@code season_days},
+ * default 24, without one) is good when {@code condition} held on at least {@code share} (default
+ * 0.75) of its checked days and the optional {@code event} happened {@code per_season} times.
+ * An event goal with {@code "distinct": "objectId"} counts each value of that field once, such as
+ * different crops harvested. {@code subject} is {@code teller} (default) or {@code player}. A story names a goal in Ink as
  * {@code # goal: field_post} or, with parameters, {@code # goal: have_profession(farmer, 3)}.
  */
 public final class Goals {
@@ -150,6 +154,24 @@ public final class Goals {
             return Parsed.fail("subject must be \"teller\" or \"player\"");
         }
         try {
+            if (json.has("seasons")) {
+                if (!json.has("condition")) return Parsed.fail("a seasons goal needs \"condition\", what makes a season good");
+                Condition condition = Conditions.parse(json.get("condition"));
+                if (condition == null) return Parsed.fail("condition is not a known Pheno condition");
+                Class<? extends TownsteadEvent> event = null;
+                EventMatcher matcher = null;
+                if (json.has("event")) {
+                    event = GoalEvents.byId(json.get("event").getAsString());
+                    if (event == null) return Parsed.fail("no event '" + json.get("event").getAsString() + "'");
+                    matcher = EventMatcher.parse(event, json.has("where") ? json.getAsJsonObject("where") : null, null, null);
+                }
+                Goal.Seasonal seasonal = new Goal.Seasonal(
+                        json.has("season_days") ? Math.max(1, json.get("season_days").getAsInt()) : 24,
+                        json.has("share") ? Math.max(0, Math.min(1, json.get("share").getAsDouble())) : 0.75,
+                        event, matcher, json.has("per_season") ? json.get("per_season").getAsLong() : 0L);
+                return new Parsed(new Goal(text, json.get("seasons").getAsLong(), subject, condition, null, null, null)
+                        .withMarker(marker).withSeasonal(seasonal), null);
+            }
             if (json.has("event")) {
                 Class<? extends TownsteadEvent> event = GoalEvents.byId(json.get("event").getAsString());
                 if (event == null) return Parsed.fail("no event '" + json.get("event").getAsString() + "'");
@@ -162,7 +184,13 @@ public final class Goals {
                         json.has("where") ? json.getAsJsonObject("where") : null,
                         json.has("entity") ? json.get("entity").getAsString() : null, condition);
                 long count = json.has("count") ? json.get("count").getAsLong() : 1L;
-                return new Parsed(new Goal(text, count, subject, null, null, event, matcher).withMarker(marker), null);
+                java.lang.reflect.Method distinct = null;
+                if (json.has("distinct")) {
+                    String field = json.get("distinct").getAsString();
+                    for (var component : event.getRecordComponents()) if (component.getName().equals(field)) distinct = component.getAccessor();
+                    if (distinct == null) return Parsed.fail("distinct: the event has no field '" + field + "'");
+                }
+                return new Parsed(new Goal(text, count, subject, null, null, event, matcher).withMarker(marker).withDistinct(distinct), null);
             }
             if (json.has("condition")) {
                 Condition condition = Conditions.parse(json.get("condition"));

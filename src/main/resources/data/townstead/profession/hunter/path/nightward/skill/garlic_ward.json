@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.nightward.garlic_ward"
+  },
+  "icon": "vampirism:purified_garlic",
+  "description": {
+    "translate": "skill.townstead.hunter.nightward.garlic_ward.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:hunter_nightward_a",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 240,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 5,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "vampirism:garlic",
+            "duration": 200,
+            "amplifier": 0
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.grass.break",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

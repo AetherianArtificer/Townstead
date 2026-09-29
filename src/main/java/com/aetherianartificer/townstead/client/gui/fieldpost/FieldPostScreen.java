@@ -322,7 +322,7 @@ public class FieldPostScreen extends Screen {
         allSoilEntries.add(new PaletteList.ToolEntry("CLAIM", Component.translatable("townstead.field_post.soil.claim").getString(), new ItemStack(Items.NAME_TAG), CAT_TOOLS));
         // Vanilla soils (farmland, water) belong with other vanilla entries — same grouping as
         // vanilla seeds on the other tab.
-        allSoilEntries.add(new PaletteList.ToolEntry("FARMLAND", Component.translatable("townstead.field_post.soil.farmland").getString(), new ItemStack(Items.FARMLAND), CAT_VANILLA));
+        allSoilEntries.add(farmlandEntry());
         allSoilEntries.add(new PaletteList.ToolEntry("WATER", Component.translatable("townstead.field_post.soil.water").getString(), new ItemStack(Items.WATER_BUCKET), CAT_VANILLA));
         // SoilType.NONE is omitted — it's functionally identical to Erase (both leave the cell
         // outside the plan). Kept as an enum value for back-compat with old saves.
@@ -364,6 +364,46 @@ public class FieldPostScreen extends Screen {
         maybeAddFertilizedSoilEntry(SoilType.FERTILIZED_RICH, "townstead.field_post.soil.fertilized_rich");
         maybeAddFertilizedSoilEntry(SoilType.FERTILIZED_HEALTHY, "townstead.field_post.soil.fertilized_healthy");
         maybeAddFertilizedSoilEntry(SoilType.FERTILIZED_STABLE, "townstead.field_post.soil.fertilized_stable");
+        // Paddy (TFC rice): farmland under standing water. The icon is a seed that grows there.
+        if (com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry.providesPaddy()) {
+            for (Item item : BuiltInRegistries.ITEM) {
+                if (!"paddy".equals(com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry.patternHintForSeed(new ItemStack(item)))) continue;
+                ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
+                allSoilEntries.add(new PaletteList.ToolEntry(SoilType.PADDY.name(),
+                        Component.translatable("townstead.field_post.soil.paddy").getString(),
+                        new ItemStack(item), key != null ? categoryFor(key.getNamespace()) : CAT_TOOLS));
+                break;
+            }
+        }
+        // Nutrient farmland (TFC): the farmer tops up whatever the crop drains, using that mod's fertilizers.
+        if (com.aetherianartificer.townstead.compat.farming.FarmerNutrientCompatRegistry.available()) {
+            Item fertilizer = com.aetherianartificer.townstead.compat.farming.FarmerNutrientCompatRegistry.icon();
+            if (fertilizer != null) {
+                ResourceLocation key = BuiltInRegistries.ITEM.getKey(fertilizer);
+                allSoilEntries.add(new PaletteList.ToolEntry(SoilType.FERTILIZED_NUTRIENTS.name(),
+                        Component.translatable("townstead.field_post.soil.fertilized_nutrients").getString(),
+                        new ItemStack(fertilizer), key != null ? categoryFor(key.getNamespace()) : CAT_TOOLS));
+            }
+        }
+    }
+
+    /**
+     * The farmer tills with the ground's own hoe action, so where a mod brings its own farmland
+     * (TFC) the one Farmland entry shows that farmland under that mod's heading.
+     */
+    private PaletteList.ToolEntry farmlandEntry() {
+        String label = Component.translatable("townstead.field_post.soil.farmland").getString();
+        var tagged = BuiltInRegistries.BLOCK.getTag(com.aetherianartificer.townstead.farming.Farmland.TAG);
+        if (tagged.isPresent()) {
+            for (var holder : tagged.get()) {
+                Item item = holder.value().asItem();
+                if (item == Items.AIR) continue;
+                ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
+                return new PaletteList.ToolEntry("FARMLAND", label, new ItemStack(item),
+                        key != null ? categoryFor(key.getNamespace()) : CAT_VANILLA);
+            }
+        }
+        return new PaletteList.ToolEntry("FARMLAND", label, new ItemStack(Items.FARMLAND), CAT_VANILLA);
     }
 
     private void maybeAddFertilizedSoilEntry(SoilType type, String translationKey) {
@@ -589,7 +629,7 @@ public class FieldPostScreen extends Screen {
                 for (int dy = 3; dy >= -3; dy--) {
                     BlockPos candidate = new BlockPos(wx, baseY + dy, wz);
                     BlockState state = level.getBlockState(candidate);
-                    if (state.getBlock() instanceof FarmBlock) {
+                    if (com.aetherianartificer.townstead.farming.Farmland.is(state)) {
                         groundPos = candidate; groundState = state; break;
                     }
                 }
@@ -681,12 +721,16 @@ public class FieldPostScreen extends Screen {
     private boolean isSoilPlanFulfilled(BlockState state, SoilType desired) {
         if (desired == null) return true;
         return switch (desired) {
-            case FARMLAND -> state.getBlock() instanceof FarmBlock && !isCompatRichSoil(state) && !isFertilizedFarmland(state);
+            case FARMLAND -> com.aetherianartificer.townstead.farming.Farmland.is(state) && !isCompatRichSoil(state) && !isFertilizedFarmland(state);
             case RICH_SOIL_TILLED -> state.getBlock() instanceof FarmBlock && isCompatRichSoil(state);
-            case RICH_SOIL -> !(state.getBlock() instanceof FarmBlock) && isCompatRichSoil(state);
+            case RICH_SOIL -> !com.aetherianartificer.townstead.farming.Farmland.is(state) && isCompatRichSoil(state);
             case FERTILIZED_RICH -> isFertilizedVariant(state, "fertilized_farmland_rich");
             case FERTILIZED_HEALTHY -> isFertilizedVariant(state, "fertilized_farmland_healthy");
             case FERTILIZED_STABLE -> isFertilizedVariant(state, "fertilized_farmland_stable");
+            // Nutrient upkeep is ongoing; the plan is met once the ground is tilled.
+            case FERTILIZED_NUTRIENTS -> com.aetherianartificer.townstead.farming.Farmland.is(state);
+            // The water on top is checked by the farmer; the plan's ground is met once tilled.
+            case PADDY -> com.aetherianartificer.townstead.farming.Farmland.is(state);
             case WATER -> state.getFluidState().is(Fluids.WATER);
             // A trellis cell keeps its border and marks while the plan exists.
             case NONE, PROTECTED, CLAIM, TRELLIS -> false;
@@ -1216,8 +1260,8 @@ public class FieldPostScreen extends Screen {
                         case FARMLAND -> "minecraft:block/farmland";
                         case RICH_SOIL -> "minecraft:block/dirt"; // untilled variant looks like dark dirt
                         case RICH_SOIL_TILLED -> "minecraft:block/farmland_moist";
-                        case FERTILIZED_RICH, FERTILIZED_HEALTHY, FERTILIZED_STABLE -> "minecraft:block/farmland_moist";
-                        case WATER -> "minecraft:block/water_still";
+                        case FERTILIZED_RICH, FERTILIZED_HEALTHY, FERTILIZED_STABLE, FERTILIZED_NUTRIENTS -> "minecraft:block/farmland_moist";
+                        case WATER, PADDY -> "minecraft:block/water_still";
                         case NONE -> null;
                         case PROTECTED -> null;
                         case CLAIM -> null;
@@ -1228,7 +1272,7 @@ public class FieldPostScreen extends Screen {
                         g.setColor(1.0f, 1.0f, 1.0f, 0.6f);
                         CellTextures.blit(g, soilTexture, cx, cy, cs);
                         g.setColor(1.0f, 1.0f, 1.0f, 1.0f);
-                        if (soilAssignment == SoilType.WATER) {
+                        if (soilAssignment == SoilType.WATER || soilAssignment == SoilType.PADDY) {
                             g.fill(cx, cy, cx + cs, cy + cs, 0x403F76E4);
                         }
                     }
@@ -1239,6 +1283,8 @@ public class FieldPostScreen extends Screen {
                         case FERTILIZED_RICH -> 0xFF4CAF50;     // green border (matches green fertilizer)
                         case FERTILIZED_HEALTHY -> 0xFFE53935;  // red border (matches red fertilizer)
                         case FERTILIZED_STABLE -> 0xFFFFB300;   // amber border (matches yellow fertilizer)
+                        case FERTILIZED_NUTRIENTS -> 0xFF9C7BD0; // lilac border, apart from the FFB trio
+                        case PADDY -> 0xFF4FA89B;               // teal border: water over soil
                         case WATER -> 0xFF3366CC;
                         case NONE -> 0xFF666666;
                         case PROTECTED -> 0xFFFF4444;
@@ -1454,9 +1500,14 @@ public class FieldPostScreen extends Screen {
         if (state.getFluidState().is(Fluids.WATER)) {
             soilLabel = Component.translatable("townstead.field_post.tooltip.water").getString();
             soilColor = 0x5599FF;
-        } else if (state.getBlock() instanceof FarmBlock) {
-            boolean wet = state.getValue(FarmBlock.MOISTURE) > 0;
-            String farmland = Component.translatable("townstead.field_post.tooltip.soil.farmland").getString();
+        } else if (com.aetherianartificer.townstead.farming.Farmland.is(state)) {
+            boolean wet = groundPos != null
+                    ? com.aetherianartificer.townstead.farming.Farmland.isMoist(state, level, groundPos)
+                    : state.hasProperty(FarmBlock.MOISTURE) && state.getValue(FarmBlock.MOISTURE) > 0;
+            // Modded farmland names its own soil ("Loam Farmland").
+            String farmland = state.getBlock() instanceof FarmBlock
+                    ? Component.translatable("townstead.field_post.tooltip.soil.farmland").getString()
+                    : state.getBlock().getName().getString();
             String hydration = Component.translatable(wet ? "townstead.field_post.tooltip.hydrated" : "townstead.field_post.tooltip.dry").getString();
             soilLabel = farmland + " · " + hydration;
             soilColor = wet ? 0x77AACC : 0xBB9977;
@@ -1916,8 +1967,8 @@ public class FieldPostScreen extends Screen {
                 // (overriding an incompatible default). Land crops keep the FARMLAND default but
                 // never override a soil the user deliberately painted.
                 SoilType preferred = preferredSoilForSeed(tool.toolId);
-                if (preferred == SoilType.WATER) {
-                    soilPlan.put(key, SoilType.WATER);
+                if (preferred == SoilType.WATER || preferred == SoilType.PADDY) {
+                    soilPlan.put(key, preferred);
                 } else if (preferred == SoilType.TRELLIS) {
                     // Vine crops only grow on a trellis, so painting one implies a trellis cell.
                     if (soilPlan.get(key) != SoilType.TRELLIS) {
@@ -2231,6 +2282,10 @@ public class FieldPostScreen extends Screen {
             int trellisBit = 1 << com.aetherianartificer.townstead.farming.cellplan.SoilType.TRELLIS.ordinal();
             if ((bits & trellisBit) != 0 && (bits & ~trellisBit) == 0) {
                 return com.aetherianartificer.townstead.farming.cellplan.SoilType.TRELLIS;
+            }
+            int paddyBit = 1 << com.aetherianartificer.townstead.farming.cellplan.SoilType.PADDY.ordinal();
+            if ((bits & paddyBit) != 0 && (bits & ~paddyBit) == 0) {
+                return com.aetherianartificer.townstead.farming.cellplan.SoilType.PADDY;
             }
         }
         return com.aetherianartificer.townstead.farming.cellplan.SoilType.FARMLAND;

@@ -28,12 +28,14 @@ import java.util.Map;
  *   "villager": { "profession": "minecraft:mason", "root": "townstead_roots:human", "gender": "female",
  *                 "schedule": "townstead:long_days", "personality": ["friendly", "witty"] },
  *   "downed": true,
+ *   "unique": "village",
  *   "rolls": { "hometown": [ { "value": "mill", "profession": "townstead:baker", "vars": { "gift": "minecraft:bread" } } ] },
  *   "gifts": [ { "items": ["$gift"], "response": "loves", "knot": "gift_loved" } ],
  *   "requires_mods": ["farmersdelight"]
  * }
  * </pre>
- * Everything is optional. With no {@code arrives}, the Persona only comes through
+ * {@code unique} is {@code village} (default: one per village, so each player's settlement can
+ * have its own) or {@code world} (only one in the whole world). Everything is optional. With no {@code arrives}, the Persona only comes through
  * {@code /townstead persona spawn}. Arrival goals are read on the player, where they stand.
  */
 public final class Personas {
@@ -91,6 +93,7 @@ public final class Personas {
             }
         }
         ResourceLocation profession = null, root = null, schedule = null;
+        Map<String, String> outfit = Map.of();
         Map<String, Integer> personalities = new java.util.LinkedHashMap<>();
         String gender = null;
         if (json.has("villager") && json.get("villager").isJsonObject()) {
@@ -109,6 +112,7 @@ public final class Personas {
                 }
                 if (personalities.isEmpty()) issues.add("error: villager.personality: name at least one personality");
             }
+            if (villager.has("outfit")) outfit = outfit(villager.get("outfit"), "villager.outfit", issues);
             if (villager.has("schedule")) {
                 schedule = ResourceLocation.tryParse(villager.get("schedule").getAsString());
                 if (schedule == null) issues.add("error: villager.schedule: not an id");
@@ -126,6 +130,12 @@ public final class Personas {
             }
         }
         boolean downed = !json.has("downed") || json.get("downed").getAsBoolean();
+        boolean worldUnique = false;
+        if (json.has("unique")) {
+            String unique = json.get("unique").getAsString().toLowerCase(Locale.ROOT);
+            if (unique.equals("world")) worldUnique = true;
+            else if (!unique.equals("village")) issues.add("error: unique must be \"village\" or \"world\"");
+        }
         List<PersonaRoll> rolls = new ArrayList<>();
         if (json.has("rolls")) {
             if (!json.get("rolls").isJsonObject()) {
@@ -153,7 +163,30 @@ public final class Personas {
             issues.add("warning: no \"arrives\"; this Persona only comes through /townstead persona spawn");
         }
         if (issues.stream().anyMatch(i -> i.startsWith("error:"))) return null;
-        return new PersonaDefinition(id, storyId(id), name, List.copyOf(arrives), arrival, profession, root, gender, downed, List.copyOf(rolls), List.copyOf(gifts), schedule, Map.copyOf(personalities));
+        return new PersonaDefinition(id, storyId(id), name, List.copyOf(arrives), arrival, profession, root, gender, downed, List.copyOf(rolls), List.copyOf(gifts), schedule, Map.copyOf(personalities), worldUnique, outfit);
+    }
+
+    /**
+     * An outfit: one MCA clothing texture id for everyone, or an object keyed {@code female},
+     * {@code male} and {@code any}. The texture must be listed in an MCA clothing file.
+     */
+    static Map<String, String> outfit(JsonElement json, String where, List<String> issues) {
+        Map<String, String> out = new java.util.LinkedHashMap<>();
+        if (json.isJsonPrimitive()) {
+            out.put("any", json.getAsString());
+        } else if (json.isJsonObject()) {
+            for (Map.Entry<String, JsonElement> e : json.getAsJsonObject().entrySet()) {
+                String key = e.getKey().toLowerCase(Locale.ROOT);
+                if (!key.equals("female") && !key.equals("male") && !key.equals("any")) {
+                    issues.add("error: " + where + ": use \"female\", \"male\" or \"any\", not '" + e.getKey() + "'");
+                    continue;
+                }
+                out.put(key, e.getValue().getAsString());
+            }
+        } else {
+            issues.add("error: " + where + ": a texture id, or an object by gender");
+        }
+        return Map.copyOf(out);
     }
 
     private static List<String> strings(@Nullable JsonElement element) {

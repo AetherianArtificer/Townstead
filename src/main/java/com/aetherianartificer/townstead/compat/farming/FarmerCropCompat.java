@@ -141,4 +141,22 @@ public interface FarmerCropCompat {
      */
     @Nullable
     default Item soilCreationItem(SoilType type) { return null; }
+
+    /**
+     * A ripe-looking crop block the farmer must not break: the upper half of a two-block crop
+     * whose yield drops from the lower half, or a plant that keeps growing fruit beside it.
+     */
+    default boolean skipsHarvest(BlockState state) { return false; }
+
+    /** A plant that grows its fruit as blocks on the tiles beside it (TFC pumpkins and melons). */
+    default boolean spreadsFruit(BlockState state) { return false; }
+
+    /** A fruit block grown beside one of this provider's spreading plants. */
+    default boolean isSpreadFruit(ServerLevel level, BlockPos pos, BlockState state) { return false; }
+
+    /** Whether this seed can grow at cropPos under the current conditions (season, climate). */
+    default boolean canPlantNow(ServerLevel level, BlockPos cropPos, ItemStack seed) { return true; }
+
+    /** This provider has crops grown on farmland under standing water (the Paddy soil). */
+    default boolean providesPaddy() { return false; }
 }

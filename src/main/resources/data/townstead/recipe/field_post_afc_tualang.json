@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_afc_tualang"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "afc:wood/lumber/tualang"
+    },
+    "L": {
+      "item": "afc:wood/log/tualang"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_afc_tualang",
+    "count": 1
+  }
+}

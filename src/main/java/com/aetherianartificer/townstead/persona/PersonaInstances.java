@@ -25,12 +25,18 @@ public final class PersonaInstances extends SavedData {
     public static final String FILE_ID = "townstead_personas";
     private static final int SCHEMA = 1;
 
-    public record Instance(ResourceLocation persona, UUID villager, ResourceLocation dimension, int village, long created) {
+    /** @param name the villager's name when they arrived, for naming them while they are unloaded */
+    public record Instance(ResourceLocation persona, UUID villager, ResourceLocation dimension, int village, long created,
+                           String name) {
         String key() { return PersonaInstances.key(persona, dimension, village); }
     }
 
+    /** A Persona someone introduced, due to arrive in a village on a world day, for a player. */
+    public record Pending(ResourceLocation persona, ResourceLocation dimension, int village, long dueDay, UUID player) {}
+
     private final Map<UUID, Instance> byVillager = new LinkedHashMap<>();
     private final Map<ResourceLocation, Map<String, String>> rolls = new LinkedHashMap<>();
+    private final List<Pending> pending = new java.util.ArrayList<>();
 
     public static PersonaInstances get(MinecraftServer server) {
         //? if >=1.21 {
@@ -88,6 +94,31 @@ public final class PersonaInstances extends SavedData {
         if (rolls.remove(persona) != null) setDirty();
     }
 
+    public List<Pending> pending() {
+        return List.copyOf(pending);
+    }
+
+    public boolean isPending(ResourceLocation persona, ResourceLocation dimension, int village) {
+        for (Pending p : pending) {
+            if (p.persona().equals(persona) && p.dimension().equals(dimension) && p.village() == village) return true;
+        }
+        return false;
+    }
+
+    public boolean isPendingAnywhere(ResourceLocation persona) {
+        for (Pending p : pending) if (p.persona().equals(persona)) return true;
+        return false;
+    }
+
+    public void addPending(Pending entry) {
+        pending.add(entry);
+        setDirty();
+    }
+
+    public void removePending(Pending entry) {
+        if (pending.remove(entry)) setDirty();
+    }
+
     public boolean remove(UUID villager) {
         boolean removed = byVillager.remove(villager) != null;
         if (removed) setDirty();
@@ -106,8 +137,17 @@ public final class PersonaInstances extends SavedData {
             ResourceLocation persona = ResourceLocation.tryParse(entry.getString("persona"));
             ResourceLocation dimension = ResourceLocation.tryParse(entry.getString("dimension"));
             if (persona == null || dimension == null || !entry.hasUUID("villager")) continue;
-            Instance instance = new Instance(persona, entry.getUUID("villager"), dimension, entry.getInt("village"), entry.getLong("created"));
+            Instance instance = new Instance(persona, entry.getUUID("villager"), dimension, entry.getInt("village"),
+                    entry.getLong("created"), entry.getString("name"));
             data.byVillager.put(instance.villager(), instance);
+        }
+        ListTag pendingList = tag.getList("pending", Tag.TAG_COMPOUND);
+        for (int i = 0; i < pendingList.size(); i++) {
+            CompoundTag entry = pendingList.getCompound(i);
+            ResourceLocation persona = ResourceLocation.tryParse(entry.getString("persona"));
+            ResourceLocation dimension = ResourceLocation.tryParse(entry.getString("dimension"));
+            if (persona == null || dimension == null || !entry.hasUUID("player")) continue;
+            data.pending.add(new Pending(persona, dimension, entry.getInt("village"), entry.getLong("due"), entry.getUUID("player")));
         }
         CompoundTag rolled = tag.getCompound("rolls");
         for (String persona : rolled.getAllKeys()) {
@@ -136,6 +176,7 @@ public final class PersonaInstances extends SavedData {
             entry.putString("dimension", instance.dimension().toString());
             entry.putInt("village", instance.village());
             entry.putLong("created", instance.created());
+            entry.putString("name", instance.name());
             list.add(entry);
         }
         tag.put("instances", list);
@@ -146,6 +187,17 @@ public final class PersonaInstances extends SavedData {
             rolled.put(persona.getKey().toString(), values);
         }
         tag.put("rolls", rolled);
+        ListTag pendingList = new ListTag();
+        for (Pending p : pending) {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("persona", p.persona().toString());
+            entry.putString("dimension", p.dimension().toString());
+            entry.putInt("village", p.village());
+            entry.putLong("due", p.dueDay());
+            entry.putUUID("player", p.player());
+            pendingList.add(entry);
+        }
+        tag.put("pending", pendingList);
         return tag;
     }
 }

@@ -29,7 +29,8 @@ public record FactionKind(ResourceLocation id,
                           Founding founding,
                           Presentation presentation,
                           @Nullable GovernanceDefinition governance,
-                          Members members) {
+                          Members members,
+                          @Nullable Recruitment recruitment) {
     public static final String SCHEMA = "townstead:faction/v1";
     public static final ResourceLocation GENERATED = id("townstead:generated");
     public static final ResourceLocation OPEN = id("townstead:open");
@@ -153,15 +154,48 @@ public record FactionKind(ResourceLocation id,
      * What membership makes someone: the disposition {@code group} its members belong to, and the
      * {@code profession} they practice (members are hunters, hunters are members). Both optional.
      */
-    public record Members(@Nullable String group, @Nullable ResourceLocation profession) {
-        public static final Members NONE = new Members(null, null);
+    /** What sworn members become: a disposition group, a profession, and the shift template they work. */
+    public record Members(@Nullable String group, @Nullable ResourceLocation profession, @Nullable ResourceLocation shift) {
+        public static final Members NONE = new Members(null, null, null);
 
         static Members parse(@Nullable JsonObject json) {
             if (json == null) return NONE;
             String group = json.has("group") ? GsonHelper.getAsString(json, "group") : null;
             ResourceLocation profession = json.has("profession")
                     ? com.aetherianartificer.townstead.data.DataPackLang.parseId(GsonHelper.getAsString(json, "profession")) : null;
-            return new Members(group, profession);
+            ResourceLocation shift = json.has("shift")
+                    ? com.aetherianartificer.townstead.data.DataPackLang.parseId(GsonHelper.getAsString(json, "shift")) : null;
+            return new Members(group, profession, shift);
+        }
+    }
+
+    /**
+     * How an order takes on villagers: they train for {@code trainingNights} nights near its altar,
+     * then take {@code ritual}. Room is {@code 1 + one per} block of {@code perBlock} in its
+     * {@code building} buildings. Adults meeting {@code volunteer} sometimes ask to join, at
+     * {@code volunteerChance} a night.
+     */
+    public record Recruitment(ResourceLocation ritual, int trainingNights, @Nullable String building,
+                              @Nullable ResourceLocation perBlock, @Nullable JsonElement volunteer, double volunteerChance) {
+        /** Parsed on use: political definitions load before every Pheno condition is known. Null when malformed. */
+        public @Nullable Condition volunteerCondition() {
+            return volunteer == null ? Conditions.ALWAYS : Conditions.parse(volunteer);
+        }
+
+        static @Nullable Recruitment parse(@Nullable JsonObject json) {
+            if (json == null) return null;
+            ResourceLocation ritual = PoliticalJson.requiredId(json, "ritual");
+            int nights = GsonHelper.getAsInt(json, "training_nights", 3);
+            if (nights < 0) throw new IllegalArgumentException("'recruitment.training_nights' cannot be negative");
+            JsonObject room = GsonHelper.getAsJsonObject(json, "room", new JsonObject());
+            String building = room.has("building") ? GsonHelper.getAsString(room, "building") : null;
+            String block = room.has("per_block") ? GsonHelper.getAsString(room, "per_block") : null;
+            ResourceLocation perBlock = block == null ? null
+                    : com.aetherianartificer.townstead.data.DataPackLang.parseId(block.startsWith("#") ? block.substring(1) : block);
+            JsonObject volunteers = GsonHelper.getAsJsonObject(json, "volunteers", new JsonObject());
+            JsonElement volunteer = volunteers.has("condition") ? volunteers.get("condition") : null;
+            double chance = GsonHelper.getAsDouble(volunteers, "chance", 0);
+            return new Recruitment(ritual, nights, building, perBlock, volunteer, chance);
         }
     }
 
@@ -185,7 +219,8 @@ public record FactionKind(ResourceLocation id,
                 Founding.parse(PoliticalJson.object(json, "founding", false)),
                 Presentation.parse(PoliticalJson.object(json, "presentation", false)),
                 governanceJson == null ? null : GovernanceDefinition.parse(governanceJson, seen),
-                Members.parse(PoliticalJson.object(json, "members", false)));
+                Members.parse(PoliticalJson.object(json, "members", false)),
+                Recruitment.parse(PoliticalJson.object(json, "recruitment", false)));
     }
 
     private static ResourceLocation id(String value) {

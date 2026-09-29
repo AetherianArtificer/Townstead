@@ -1,7 +1,0 @@
-{
-  "schema": "townstead:extended_building/v1",
-  "catalog": {
-    "node_item": "townstead:oath_altar",
-    "requires_order": "townstead:hunter_order"
-  }
-}

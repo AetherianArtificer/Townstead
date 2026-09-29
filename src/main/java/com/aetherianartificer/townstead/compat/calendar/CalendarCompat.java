@@ -15,7 +15,7 @@ import net.minecraft.resources.ResourceLocation;
  */
 public final class CalendarCompat {
     public static final String SERENE_MOD_ID = "sereneseasons";
-    public static final String TFC_MOD_ID = "terrafirmacraft";
+    public static final String TFC_MOD_ID = "tfc";
     public static final String ECLIPTIC_MOD_ID = "eclipticseasons";
 
     /**

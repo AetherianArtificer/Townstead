@@ -25,6 +25,8 @@ public record StoryS2CPayload(int villagerId, byte kind, String text, List<Strin
     public static final byte OFFER = 0;
     public static final byte LINE = 1;
     public static final byte END = 2;
+    /** An offer from a Persona: the same as {@link #OFFER}, and the screen hides MCA's romance options. */
+    public static final byte OFFER_PERSONA = 3;
 
     public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(villagerId);

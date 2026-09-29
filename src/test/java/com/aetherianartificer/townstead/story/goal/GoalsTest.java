@@ -65,4 +65,26 @@ class GoalsTest {
         assertNotNull(GoalEvents.byId("townstead:village_needs_band_changed"));
         assertNotNull(GoalEvents.byId("work_completed"));
     }
+
+    @Test
+    void distinctCountsNeedARealEventField() {
+        Goals.Parsed ok = Goals.build(json("""
+                { "text": "Harvest {count} kinds", "count": 5, "event": "townstead:work_completed",
+                  "where": { "verb": "townstead:harvested" }, "distinct": "objectId" }
+                """), List.of());
+        assertNotNull(ok.goal(), ok.error());
+        assertTrue(ok.goal().isDistinct());
+        Goals.Parsed bad = Goals.build(json("""
+                { "text": "t", "event": "townstead:work_completed", "distinct": "crop" }
+                """), List.of());
+        assertNull(bad.goal());
+        assertTrue(bad.error().contains("no field 'crop'"), bad.error());
+    }
+
+    @Test
+    void seasonsGoalsNeedACondition() {
+        Goals.Parsed parsed = Goals.build(json("{ \"text\": \"t\", \"seasons\": 4 }"), List.of());
+        assertNull(parsed.goal());
+        assertTrue(parsed.error().contains("needs \"condition\""), parsed.error());
+    }
 }

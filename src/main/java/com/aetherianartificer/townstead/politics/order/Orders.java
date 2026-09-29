@@ -88,28 +88,74 @@ public final class Orders {
 
     /**
      * Keeps a villager's profession in step with membership: a member of an order whose kind names a
-     * profession practices it; anyone who is not loses it.
+     * profession practices it, and so does someone training to join one; anyone else loses it.
      */
     public static void syncProfession(VillagerEntityMCA villager) {
         if ((villager.tickCount + villager.getId()) % SYNC_INTERVAL != 0 || !(villager.level() instanceof ServerLevel level)) return;
         PoliticalSavedData data = PoliticalSavedData.get(level.getServer());
-        ResourceLocation sworn = null;
+        FactionKind.Members sworn = null;
         for (ResourceLocation id : FactionMembership.of(villager)) {
             Faction faction = data.faction(id);
             FactionKind kind = faction == null ? null : PoliticalDefinitions.snapshot().kind(faction.kind());
             if (kind != null && kind.members().profession() != null) {
-                sworn = kind.members().profession();
+                sworn = kind.members();
                 break;
             }
         }
+        if (sworn == null) sworn = trainingFor(level, data, villager);
         ResourceLocation current = BuiltInRegistries.VILLAGER_PROFESSION.getKey(villager.getProfession());
         if (sworn != null) {
-            if (sworn.equals(current)) return;
-            VillagerProfession profession = BuiltInRegistries.VILLAGER_PROFESSION.getOptional(sworn).orElse(null);
-            if (profession != null) villager.setProfession(profession);
+            if (sworn.profession().equals(current)) return;
+            VillagerProfession profession = BuiltInRegistries.VILLAGER_PROFESSION.getOptional(sworn.profession()).orElse(null);
+            if (profession == null) return;
+            villager.setProfession(profession);
+            if (sworn.shift() != null) takeShift(level, villager, sworn.shift());
         } else if (memberProfessions().contains(current)) {
             villager.setProfession(VillagerProfession.NONE);
+            leaveShift(villager);
         }
+    }
+
+    /** A new member works the order's shift, unless someone already set theirs by hand. */
+    static void takeShift(ServerLevel level, VillagerEntityMCA villager, ResourceLocation template) {
+        var schedule = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).schedule();
+        if (schedule.hasNonDefaultCustomShifts()) return;
+        com.aetherianartificer.townstead.shift.template.ShiftTemplateRegistry.resolve(level.getServer(), template).ifPresent(shift -> {
+            schedule.setShifts(shift.copyShifts());
+            schedule.setTemplateId(template.toString());
+            com.aetherianartificer.townstead.shift.ShiftScheduleApplier.apply(villager);
+        });
+    }
+
+    /** Someone leaving the order goes back to the ordinary day, if they were still on the order's shift. */
+    static void leaveShift(VillagerEntityMCA villager) {
+        var schedule = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).schedule();
+        ResourceLocation template = ResourceLocation.tryParse(schedule.templateId());
+        if (template == null) return;
+        for (FactionKind kind : PoliticalDefinitions.snapshot().kinds()) {
+            if (!template.equals(kind.members().shift())) continue;
+            schedule.setShifts(com.aetherianartificer.townstead.shift.ShiftData.getVanillaDefault());
+            schedule.setTemplateId("");
+            com.aetherianartificer.townstead.shift.ShiftScheduleApplier.apply(villager);
+            return;
+        }
+    }
+
+    /** The members block of the order {@code villager} is training for, if any. */
+    static @Nullable FactionKind.Members trainingFor(ServerLevel level, PoliticalSavedData data, VillagerEntityMCA villager) {
+        ResourceLocation order = OrderRecruits.get(level.getServer()).orderOf(villager.getUUID());
+        Faction faction = order == null ? null : data.faction(order);
+        FactionKind kind = faction == null ? null : PoliticalDefinitions.snapshot().kind(faction.kind());
+        return kind == null || kind.members().profession() == null ? null : kind.members();
+    }
+
+    /** Puts {@code villager} in the order's profession and shift now, rather than at the next sync. */
+    static void takeUp(ServerLevel level, VillagerEntityMCA villager, FactionKind.Members members) {
+        if (members.profession() == null) return;
+        VillagerProfession profession = BuiltInRegistries.VILLAGER_PROFESSION.getOptional(members.profession()).orElse(null);
+        if (profession == null) return;
+        if (villager.getProfession() != profession) villager.setProfession(profession);
+        if (members.shift() != null) takeShift(level, villager, members.shift());
     }
 
     private static Set<ResourceLocation> memberProfessions() {

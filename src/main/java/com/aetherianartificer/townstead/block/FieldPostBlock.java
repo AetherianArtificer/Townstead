@@ -46,8 +46,16 @@ public class FieldPostBlock extends SnowCoatedBlock implements EntityBlock, Simp
     // 4x16x4 centered column (like a fence post)
     private static final VoxelShape SHAPE = Block.box(6, 0, 6, 10, 16, 10);
 
+    // True for variants with no loot table file; see Townstead.registerFieldPostVariant.
+    private final boolean dropsSelf;
+
     public FieldPostBlock(Properties properties) {
+        this(properties, false);
+    }
+
+    public FieldPostBlock(Properties properties, boolean dropsSelf) {
         super(properties);
+        this.dropsSelf = dropsSelf;
         registerDefaultState(defaultBlockState()
                 .setValue(WATERLOGGED, false)
                 .setValue(FACING, Direction.NORTH));
@@ -174,6 +182,13 @@ public class FieldPostBlock extends SnowCoatedBlock implements EntityBlock, Simp
     @Override
     public List<ItemStack> getDrops(BlockState state, LootParams.Builder builder) {
         List<ItemStack> drops = super.getDrops(state, builder);
+        if (dropsSelf && drops.isEmpty()) {
+            // Same odds as the survives_explosion condition in the file-based tables.
+            Float radius = builder.getOptionalParameter(LootContextParams.EXPLOSION_RADIUS);
+            if (radius == null || builder.getLevel().random.nextFloat() <= 1.0F / radius) {
+                drops = new java.util.ArrayList<>(List.of(new ItemStack(this)));
+            }
+        }
         BlockEntity blockEntity = builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
         if (blockEntity instanceof FieldPostBlockEntity fieldPost) {
             for (ItemStack drop : drops) {

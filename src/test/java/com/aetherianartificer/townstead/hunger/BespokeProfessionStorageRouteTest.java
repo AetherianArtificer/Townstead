@@ -19,7 +19,7 @@ class BespokeProfessionStorageRouteTest {
         assertTrue(source.contains("StorageUse.INGREDIENT"));
         assertTrue(source.contains("StorageUse.TOOL"));
         assertTrue(source.contains("StorageUse.OUTPUT"));
-        assertTrue(source.contains("stack.getItem() instanceof HoeItem) return false"));
+        assertTrue(source.contains("Farmland.isHoe(stack)) return false"));
         assertFalse(source.contains("if (endOfWork) return true"));
         assertFalse(source.contains("NearbyItemSources.pullSingleToInventory"));
     }

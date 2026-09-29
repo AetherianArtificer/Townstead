@@ -1,0 +1,11 @@
+{
+  "requires_mods": ["vampirism"],
+  "attach": {
+    "profession": "townstead:hunter",
+    "when": { "type": "pheno:faction_bond", "kind": "townstead:lodge_master" }
+  },
+  "bind": "player",
+  "actions": {
+    "enlist": { "type": "pheno:enlist", "range": 6 }
+  }
+}

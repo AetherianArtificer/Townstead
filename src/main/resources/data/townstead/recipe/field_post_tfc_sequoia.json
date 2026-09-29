@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_tfc_sequoia"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "tfc:wood/lumber/sequoia"
+    },
+    "L": {
+      "item": "tfc:wood/log/sequoia"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_tfc_sequoia",
+    "count": 1
+  }
+}

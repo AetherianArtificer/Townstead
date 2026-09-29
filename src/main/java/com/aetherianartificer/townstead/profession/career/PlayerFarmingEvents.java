@@ -14,7 +14,6 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.CropBlock;
-import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.level.block.LiquidBlockContainer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluids;
@@ -95,8 +94,8 @@ public final class PlayerFarmingEvents {
         /*if (event.getToolAction() != ToolActions.HOE_TILL) return;
         *///?}
         BlockState result = event.getFinalState();
-        if (result == null || !(result.getBlock() instanceof FarmBlock)) return;
-        if (event.getState().getBlock() instanceof FarmBlock) return;
+        if (result == null || !com.aetherianartificer.townstead.farming.Farmland.is(result)) return;
+        if (com.aetherianartificer.townstead.farming.Farmland.is(event.getState())) return;
         award((ServerPlayer) event.getPlayer(), level, XP_TILL, "townstead:tilled");
     }
 

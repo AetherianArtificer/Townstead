@@ -56,7 +56,8 @@ public final class MobReplacer {
         // Wild villagers are not monsters, so the mob cap never sees them; this cap does.
         if (atCap(level, mob, replacement)) return true;
         Predicate<ResourceLocation> eligible = root -> replacement.states().keySet().stream()
-                .noneMatch(state -> Boolean.FALSE.equals(RootStates.declared(root, state)));
+                .noneMatch(state -> Boolean.FALSE.equals(RootStates.declared(root, state))
+                        || needsVillagerBody(state) && !com.aetherianartificer.townstead.root.rig.ServerRig.hasVillagerBody(root));
         RootSelector.Selection probe = RootSelector.select(level, pos, mob.getRandom(), eligible);
         if (probe.single() == null && probe.mix() == null) return false;
 
@@ -141,8 +142,13 @@ public final class MobReplacer {
     public static void tick(VillagerEntityMCA villager) {
         if (villager.tickCount % 20 != 0 || !villager.getPersistentData().contains(WILD)) return;
         MobReplacement replacement = replacementOf(villager);
-        if (replacement != null && trySettle(villager, replacement)) return;
-        if (activeReplacement(villager) == null) return;
+        if (replacement != null && trySettle(villager, replacement)) {
+            updateWildName(villager, false);
+            return;
+        }
+        boolean active = activeReplacement(villager) != null;
+        updateWildName(villager, active);
+        if (!active) return;
         if (villager.level().getDifficulty() == Difficulty.PEACEFUL || crowded(villager, replacement)) {
             villager.discard();
             return;
@@ -231,5 +237,33 @@ public final class MobReplacer {
         *///?}
         if (table == null) return;
         table.getRandomItems(params.create(LootContextParamSets.ENTITY), stack -> villager.spawnAtLocation(stack));
+    }
+
+    private static boolean needsVillagerBody(ResourceLocation state) {
+        var definition = com.aetherianartificer.townstead.pheno.state.EntityStates.definition(state);
+        return definition != null && definition.villagerBody();
+    }
+
+    private static final String NAME_HIDDEN = "townstead:wild_name_hidden";
+
+    /** Tells a player who starts seeing this villager whether its name is hidden (also clearing a reused id). */
+    public static void syncWildName(net.minecraft.server.level.ServerPlayer player, VillagerEntityMCA villager) {
+        boolean hidden = villager.getPersistentData().getBoolean(NAME_HIDDEN);
+        //? if neoforge {
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, new WildNameS2CPayload(villager.getId(), hidden));
+        //?} else {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(player, new WildNameS2CPayload(villager.getId(), hidden));
+        *///?}
+    }
+
+    /** A wild villager's name stays hidden while it acts as the mob it replaced. */
+    private static void updateWildName(VillagerEntityMCA villager, boolean hidden) {
+        if (villager.getPersistentData().getBoolean(NAME_HIDDEN) == hidden) return;
+        villager.getPersistentData().putBoolean(NAME_HIDDEN, hidden);
+        //? if neoforge {
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayersTrackingEntity(villager, new WildNameS2CPayload(villager.getId(), hidden));
+        //?} else {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToTrackingEntity(villager, new WildNameS2CPayload(villager.getId(), hidden));
+        *///?}
     }
 }

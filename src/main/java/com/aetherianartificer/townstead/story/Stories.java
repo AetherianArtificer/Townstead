@@ -251,6 +251,14 @@ public final class Stories {
                 issues.add("error: " + jsonFile + ": " + e.getMessage());
             }
         }
+        if (persona == null && json != null && json.has("requires_mods")) {
+            for (String mod : strings(json.get("requires_mods"))) {
+                if (!com.aetherianartificer.townstead.compat.ModCompat.isLoaded(mod)) {
+                    issues.add("warning: not loaded, because mod '" + mod + "' is not installed");
+                    return null;
+                }
+            }
+        }
         Map<String, JsonObject> goals = new LinkedHashMap<>();
         if (json != null && json.has("goals") && json.get("goals").isJsonObject()) {
             for (Map.Entry<String, JsonElement> e : json.getAsJsonObject("goals").entrySet()) {

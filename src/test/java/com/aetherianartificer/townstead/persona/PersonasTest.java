@@ -116,4 +116,13 @@ class PersonasTest {
         assertNull(Personas.parse(ID, json("{ \"gifts\": [ { \"items\": \"minecraft:stick\", \"response\": \"adores\" } ] }"), Map.of(), issues));
         assertTrue(issues.contains("error: gifts[0].response must be \"loves\", \"likes\" or \"dislikes\""), issues.toString());
     }
+
+    @Test
+    void uniqueIsPerVillageUnlessWorld() {
+        List<String> issues = new ArrayList<>();
+        assertTrue(!Personas.parse(ID, json("{}"), Map.of(), issues).worldUnique());
+        assertTrue(Personas.parse(ID, json("{ \"unique\": \"world\" }"), Map.of(), issues).worldUnique());
+        assertNull(Personas.parse(ID, json("{ \"unique\": \"galaxy\" }"), Map.of(), issues));
+        assertTrue(issues.contains("error: unique must be \"village\" or \"world\""), issues.toString());
+    }
 }

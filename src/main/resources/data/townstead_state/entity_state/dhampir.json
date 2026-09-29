@@ -2,6 +2,7 @@
   "schema": "pheno:entity_state/v1",
   "mods": "vampirism",
   "id": "townstead_state:dhampir",
+  "body": "villager",
   "min": 0,
   "max": 1,
   "initial": 0,

@@ -70,6 +70,9 @@ public final class PersonaCommands {
         if (PersonaInstances.get(source.getServer()).in(id, player.serverLevel().dimension().location(), village.getId()) != null) {
             return fail(source, persona.name() + " already lives in this village. Use /townstead persona reset " + id + " first.");
         }
+        if (PersonaService.takenElsewhere(source.getServer(), persona)) {
+            return fail(source, persona.name() + " is one of a kind and already lives, or is on their way, somewhere else.");
+        }
         VillagerEntityMCA villager = PersonaService.spawn(persona, player, village, true);
         if (villager == null) return fail(source, "Could not spawn " + persona.name() + " here.");
         source.sendSuccess(() -> Component.literal("Spawned " + persona.name() + "."), false);

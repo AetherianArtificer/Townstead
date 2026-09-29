@@ -17,6 +17,8 @@ import java.util.List;
  * @param gifts   how they take particular gifts; any other item is an ordinary MCA gift
  * @param schedule a week plan or shift template id they start with, or null for the usual
  * @param personalities personality refs they may roll, by weight; empty for the usual roll
+ * @param worldUnique  only one of them in the whole world, instead of one per village
+ * @param outfit       MCA clothing they always wear, by gender ("female", "male", or "any"); empty for the usual
  */
 public record PersonaDefinition(
         ResourceLocation id,
@@ -31,7 +33,9 @@ public record PersonaDefinition(
         List<PersonaRoll> rolls,
         List<PersonaGift> gifts,
         @Nullable ResourceLocation schedule,
-        java.util.Map<String, Integer> personalities
+        java.util.Map<String, Integer> personalities,
+        boolean worldUnique,
+        java.util.Map<String, String> outfit
 ) {
     public enum Arrival { WALK_IN, APPEAR }
 }

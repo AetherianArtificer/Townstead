@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_tfc_maple"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "tfc:wood/lumber/maple"
+    },
+    "L": {
+      "item": "tfc:wood/log/maple"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_tfc_maple",
+    "count": 1
+  }
+}

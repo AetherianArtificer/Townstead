@@ -5,7 +5,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.BushBlock;
 import net.minecraft.world.level.block.CropBlock;
-import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluids;
@@ -102,7 +101,7 @@ public final class ResolvedCellPlan implements CellPlanView {
      * so trees, tall grass, crops, or any other overlying block don't disqualify the ground beneath.
      */
     private static boolean isNaturalGround(BlockState state) {
-        if (state.getBlock() instanceof FarmBlock) return true;
+        if (com.aetherianartificer.townstead.farming.Farmland.is(state)) return true;
         return state.is(net.minecraft.tags.BlockTags.DIRT)
                 || state.is(net.minecraft.world.level.block.Blocks.FARMLAND)
                 || state.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)
@@ -153,7 +152,7 @@ public final class ResolvedCellPlan implements CellPlanView {
         int bestFarmDist = Integer.MAX_VALUE;
         for (int dy = -Y_SCAN_RANGE; dy <= Y_SCAN_RANGE; dy++) {
             BlockPos candidate = new BlockPos(wx, baseY + dy, wz);
-            if (level.getBlockState(candidate).getBlock() instanceof FarmBlock) {
+            if (com.aetherianartificer.townstead.farming.Farmland.is(level.getBlockState(candidate))) {
                 int dist = Math.abs(dy);
                 if (dist < bestFarmDist) { bestFarmDist = dist; bestFarm = candidate; }
             }

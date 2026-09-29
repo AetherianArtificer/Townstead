@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "mods": "vampirism",
+  "catalog": {
+    "node_item": "townstead:oath_altar",
+    "requires_order": "townstead:hunter_order"
+  }
+}

@@ -42,6 +42,18 @@ public final class ServerRig {
         return null;
     }
 
+    /** Whether this entity wears MCA's own villager body rather than a custom rig. */
+    public static boolean hasVillagerBody(LivingEntity entity) {
+        String id = rigIdFor(entity);
+        return id == null || id.isEmpty();
+    }
+
+    /** Whether people of this Root wear MCA's own villager body rather than a custom rig. */
+    public static boolean hasVillagerBody(ResourceLocation rootId) {
+        String id = rootId == null ? null : speciesRig(rootId.toString());
+        return id == null || id.isEmpty();
+    }
+
     private static String speciesRig(String rootIdRaw) {
         ResourceLocation rootId = ResourceLocation.tryParse(rootIdRaw);
         ResourceLocation speciesId = RootRegistry.effectiveSpecies(rootId);

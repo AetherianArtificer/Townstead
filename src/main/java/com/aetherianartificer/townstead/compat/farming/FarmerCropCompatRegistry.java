@@ -20,7 +20,8 @@ public final class FarmerCropCompatRegistry {
             new FarmingForBlockheadsCompat(),
             new CreepyDelightCropCompat(),
             new CauponaCropCompat(),
-            new CobblemonCropCompat()
+            new CobblemonCropCompat(),
+            new TfcCropCompat()
     );
 
     private FarmerCropCompatRegistry() {}
@@ -320,6 +321,46 @@ public final class FarmerCropCompatRegistry {
             if (item != null) return item;
         }
         return null;
+    }
+
+    public static boolean skipsHarvest(BlockState state) {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.skipsHarvest(state)) return true;
+        }
+        return false;
+    }
+
+    public static boolean spreadsFruit(BlockState state) {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.spreadsFruit(state)) return true;
+        }
+        return false;
+    }
+
+    public static boolean isSpreadFruit(ServerLevel level, BlockPos pos, BlockState state) {
+        if (state.isAir()) return false;
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.isSpreadFruit(level, pos, state)) return true;
+        }
+        return false;
+    }
+
+    public static boolean canPlantNow(ServerLevel level, BlockPos cropPos, ItemStack seed) {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (!provider.canPlantNow(level, cropPos, seed)) return false;
+        }
+        return true;
+    }
+
+    public static boolean providesPaddy() {
+        for (FarmerCropCompat provider : PROVIDERS) {
+            if (ModCompat.isLoaded(provider.modId()) && provider.providesPaddy()) return true;
+        }
+        return false;
     }
 
     public static String patternHintForSeed(ItemStack stack) {

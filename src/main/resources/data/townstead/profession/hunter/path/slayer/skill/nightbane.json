@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.slayer.nightbane"
+  },
+  "icon": "minecraft:fire_charge",
+  "description": {
+    "translate": "skill.townstead.hunter.slayer.nightbane.description"
+  },
+  "cost": 1,
+  "requires": [
+    "relentless"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "target": "other",
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:vigil",
+          "min": 75
+        },
+        {
+          "type": "pheno:or",
+          "conditions": [
+            {
+              "type": "pheno:entity_group",
+              "group": "undead"
+            },
+            {
+              "type": "pheno:state",
+              "state": "townstead_state:vampire"
+            }
+          ]
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:ignite",
+      "seconds": 4
+    }
+  }
+}

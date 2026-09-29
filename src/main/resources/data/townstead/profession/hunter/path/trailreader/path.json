@@ -1,0 +1,82 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "mods": "vampirism",
+  "name": {
+    "translate": "career.townstead.hunter.path.trailreader"
+  },
+  "title": {
+    "translate": "career.townstead.hunter.title.trailreader"
+  },
+  "color": "#4A7A4A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:vigil",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:hunter/trailreader/blood_trail"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:hunter/trailreader/run_down"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:hunter/trailreader/pin_down"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 12,
+            "condition": {
+              "type": "pheno:hostile"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:vigil",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "keen_nose",
+      "mark_quarry",
+      "bola"
+    ],
+    [
+      "light_step",
+      "called_shot",
+      "tangle"
+    ],
+    [
+      "blood_trail",
+      "run_down",
+      "pin_down"
+    ],
+    [
+      "no_escape",
+      "pursuit",
+      "closing_net"
+    ],
+    [
+      "apex_tracker",
+      "the_long_hunt",
+      "cornered"
+    ]
+  ]
+}

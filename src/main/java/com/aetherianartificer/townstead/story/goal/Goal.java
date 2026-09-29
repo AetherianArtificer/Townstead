@@ -28,6 +28,16 @@ public final class Goal {
     private final @Nullable Class<? extends TownsteadEvent> event;
     private final @Nullable EventMatcher matcher;
     private @Nullable String marker;
+    private @Nullable java.lang.reflect.Method distinct;
+    private @Nullable Seasonal seasonal;
+
+    /**
+     * A goal judged season by season: each season the {@code condition} must hold on at least
+     * {@code share} of its checked days, and {@code event} must happen {@code perSeason} times.
+     * Its value is the number of good seasons.
+     */
+    public record Seasonal(int seasonDays, double share, @Nullable Class<? extends TownsteadEvent> event,
+                           @Nullable EventMatcher matcher, long perSeason) {}
 
     Goal(String text, long total, Subject subject, @Nullable Condition condition, @Nullable Value value,
          @Nullable Class<? extends TownsteadEvent> event, @Nullable EventMatcher matcher) {
@@ -51,6 +61,55 @@ public final class Goal {
     }
 
     public boolean isCounter() { return event != null; }
+
+    Goal withSeasonal(@Nullable Seasonal seasonal) {
+        this.seasonal = seasonal;
+        return this;
+    }
+
+    public @Nullable Seasonal seasonal() { return seasonal; }
+
+    /** For a seasonal goal: whether its condition holds right now. */
+    public boolean holds(GoalContext ctx) {
+        if (condition == null) return false;
+        LivingEntity self = subject == Subject.TELLER ? ctx.speaker() : ctx.player();
+        LivingEntity other = subject == Subject.TELLER ? ctx.player() : ctx.speaker();
+        if (self == null) return false;
+        try {
+            return condition.test(new ConditionContext(self, other));
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /** For a seasonal goal with an event: how far a posted event advances this season's count. */
+    public boolean seasonEvent(TownsteadEvent posted, GoalContext ctx) {
+        if (seasonal == null || seasonal.event() == null || seasonal.matcher() == null || !seasonal.event().isInstance(posted)) return false;
+        try {
+            return seasonal.matcher().matches(posted, ctx);
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    Goal withDistinct(@Nullable java.lang.reflect.Method field) {
+        this.distinct = field;
+        return this;
+    }
+
+    public boolean isDistinct() { return distinct != null; }
+
+    /** For a distinct counter: the value of its field on a posted event, or null when it has none. */
+    public @Nullable String distinctValue(TownsteadEvent posted) {
+        if (distinct == null) return null;
+        try {
+            Object value = distinct.invoke(posted);
+            if (value instanceof java.util.Optional<?> optional) value = optional.orElse(null);
+            return value == null ? null : value.toString();
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
+    }
     public @Nullable Class<? extends TownsteadEvent> event() { return event; }
 
     /** The ledger line. {@code {teller}}, {@code {player}} and {@code {count}} are filled in here. */
@@ -60,7 +119,7 @@ public final class Goal {
 
     /** The current reading of a condition or value goal, or {@link #UNKNOWN}. */
     public long read(GoalContext ctx) {
-        if (isCounter()) return UNKNOWN;
+        if (isCounter() || seasonal != null) return UNKNOWN;
         LivingEntity self = subject == Subject.TELLER ? ctx.speaker() : ctx.player();
         LivingEntity other = subject == Subject.TELLER ? ctx.player() : ctx.speaker();
         if (self == null) return UNKNOWN;

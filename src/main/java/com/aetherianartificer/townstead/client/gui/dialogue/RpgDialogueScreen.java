@@ -403,7 +403,17 @@ public class RpgDialogueScreen extends Screen {
 
     // --- Called by ClientHandlerImplMixin ---
 
+    /** MCA's romance options, which a Persona's story replaces with its own. Divorce stays. */
+    private static final java.util.Set<String> PERSONA_HIDDEN = java.util.Set.of("flirt", "kiss", "procreate", "procreate_engaged");
+    private boolean persona;
+
+    private List<String> forSpeaker(String questionId, List<String> answers) {
+        if (!persona || answers == null || !DialogueMenuOrganizer.isMainQuestion(questionId)) return answers;
+        return answers.stream().filter(a -> !PERSONA_HIDDEN.contains(a)).toList();
+    }
+
     public void setDialogue(String questionId, List<String> answers) {
+        answers = forSpeaker(questionId, answers);
         if (DialogueMenuOrganizer.isMainQuestion(questionId)) mainAnswers = answers;
         this.dialogQuestionId = questionId;
         this.dialogAnswers = answers;
@@ -587,7 +597,15 @@ public class RpgDialogueScreen extends Screen {
 
     public void onStory(com.aetherianartificer.townstead.story.net.StoryS2CPayload payload) {
         switch (payload.kind()) {
-            case com.aetherianartificer.townstead.story.net.StoryS2CPayload.OFFER -> {
+            case com.aetherianartificer.townstead.story.net.StoryS2CPayload.OFFER,
+                 com.aetherianartificer.townstead.story.net.StoryS2CPayload.OFFER_PERSONA -> {
+                if (payload.kind() == com.aetherianartificer.townstead.story.net.StoryS2CPayload.OFFER_PERSONA && !persona) {
+                    persona = true;
+                    if (mainAnswers != null) mainAnswers = forSpeaker("main", mainAnswers);
+                    if (dialogAnswers != null && DialogueMenuOrganizer.isMainQuestion(dialogQuestionId)) {
+                        dialogAnswers = forSpeaker(dialogQuestionId, dialogAnswers);
+                    }
+                }
                 Component label = !payload.more() ? null : payload.text().isEmpty()
                         ? Component.translatable("townstead.story.talk") : Component.literal(payload.text());
                 choicePanel.setStoryEntry(label);

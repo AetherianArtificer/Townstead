@@ -12,7 +12,9 @@ public enum SoilType {
     PROTECTED,             // do not touch this cell at all
     CLAIM,                 // placeholder — server resolves this into a real soil+seed based on live world state
     // Appended last: soil types travel by ordinal on the network.
-    TRELLIS;               // solid ground with a farmer-built support (stem pole or lattice) for vine crops
+    TRELLIS,               // solid ground with a farmer-built support (stem pole or lattice) for vine crops
+    FERTILIZED_NUTRIENTS,  // farmland whose stored nutrients the farmer keeps topped up (TFC)
+    PADDY;                 // farmland under one block of standing water, for flooded crops (TFC rice)
 
     public static SoilType fromName(String name) {
         try {

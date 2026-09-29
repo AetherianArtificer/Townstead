@@ -55,6 +55,8 @@ public final class ProfessionAutoAssign {
         if (interval > 0 && villager.tickCount % interval != 0) return;
         if (!(villager.level() instanceof ServerLevel level)) return;
         if (villager.isBaby() || !villager.isAlive() || villager.isSleeping()) return;
+        // A Persona's job comes from who they are, not from a free seat.
+        if (com.aetherianartificer.townstead.persona.PersonaInstances.get(level.getServer()).isPersona(villager.getUUID())) return;
 
         if (def == null) return;
         VillagerProfession assignable = ProfessionSites.professionFor(def);

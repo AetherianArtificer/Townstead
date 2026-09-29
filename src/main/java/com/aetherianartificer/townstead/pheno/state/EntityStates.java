@@ -54,6 +54,9 @@ public final class EntityStates {
     }
 
     public static boolean eligible(LivingEntity entity, ResourceLocation state) {
+        EntityStateDefinition definition = definitions.get(state);
+        if (definition != null && definition.villagerBody()
+                && !com.aetherianartificer.townstead.root.rig.ServerRig.hasVillagerBody(entity)) return false;
         return eligibility.test(entity, state) && !excluded(entity, state);
     }
 

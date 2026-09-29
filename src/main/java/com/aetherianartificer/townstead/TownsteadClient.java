@@ -55,6 +55,8 @@ public final class TownsteadClient {
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientConnect);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onGatherTooltipComponents);
+            NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.ItemTooltipEvent e) ->
+                    com.aetherianartificer.townstead.ritual.Blessings.tooltip(e.getItemStack(), e.getToolTip()));
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onRenderNameTag);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onRenderLivingPre);
@@ -86,6 +88,8 @@ public final class TownsteadClient {
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onRenderNameTag);
+            MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.ItemTooltipEvent e) ->
+                    com.aetherianartificer.townstead.ritual.Blessings.tooltip(e.getItemStack(), e.getToolTip()));
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onRenderLivingPre);
             MinecraftForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             MinecraftForge.EVENT_BUS.addListener(
@@ -185,6 +189,7 @@ public final class TownsteadClient {
     /*private static void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
     *///?}
         com.aetherianartificer.townstead.pheno.cosmetic.CosmeticClientBridge.clear();
+        com.aetherianartificer.townstead.replace.WildNameS2CPayload.clear();
         clearClientStore("com.aetherianartificer.townstead.hunger.HungerClientStore");
         clearClientStore("com.aetherianartificer.townstead.client.rebirth.CharacterNameClient");
         clearClientStore("com.aetherianartificer.townstead.client.rebirth.RebirthDestinyClient");
@@ -215,6 +220,10 @@ public final class TownsteadClient {
             event.setCanRender(net.neoforged.neoforge.common.util.TriState.FALSE);
             return;
         }
+        if (com.aetherianartificer.townstead.replace.WildNameS2CPayload.hidden(event.getEntity().getId())) {
+            event.setCanRender(net.neoforged.neoforge.common.util.TriState.FALSE);
+            return;
+        }
         com.aetherianartificer.townstead.client.naming.NamePlate.render(
                 event.getEntity(), event.getContent(), event::setContent);
     }
@@ -223,6 +232,10 @@ public final class TownsteadClient {
         if (event.getEntity() instanceof net.minecraft.world.entity.player.Player player
                 && net.minecraft.client.Minecraft.getInstance().player != null
                 && player.isInvisibleTo(net.minecraft.client.Minecraft.getInstance().player)) {
+            event.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
+            return;
+        }
+        if (com.aetherianartificer.townstead.replace.WildNameS2CPayload.hidden(event.getEntity().getId())) {
             event.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
             return;
         }

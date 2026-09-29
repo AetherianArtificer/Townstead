@@ -34,6 +34,23 @@ public class OathAltarBlock extends Block {
         return super.getStateForPlacement(context);
     }
 
+    @Override
+    public void setPlacedBy(net.minecraft.world.level.Level level, BlockPos pos, BlockState state,
+                            @Nullable net.minecraft.world.entity.LivingEntity placer, net.minecraft.world.item.ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        if (!(level instanceof ServerLevel server)) return;
+        var order = orderAt(server, pos, net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(asItem()));
+        if (order != null) OrderAltars.get(server.getServer()).put(order.id(), net.minecraft.core.GlobalPos.of(server.dimension(), pos));
+    }
+
+    @Override
+    public void onRemove(BlockState state, net.minecraft.world.level.Level level, BlockPos pos, BlockState newState, boolean moved) {
+        if (level instanceof ServerLevel server && !state.is(newState.getBlock())) {
+            OrderAltars.get(server.getServer()).removeAt(net.minecraft.core.GlobalPos.of(server.dimension(), pos));
+        }
+        super.onRemove(state, level, pos, newState, moved);
+    }
+
     /** The order based at the village around {@code pos} whose founding gives {@code gift}, or null. */
     public static @Nullable com.aetherianartificer.townstead.politics.state.Faction orderAt(ServerLevel level, BlockPos pos,
                                                                                      net.minecraft.resources.ResourceLocation gift) {

@@ -31,8 +31,59 @@ VAR daily_trust = 0
 VAR lesson_day = -1
 VAR more_tomorrow = false
 
+VAR quest_ready = false
+VAR quest_open = false
+VAR interrupted = false
+
+// What the player says to open a conversation, shown in the villager's menu. It follows what is
+// going on between them, so the entry never reads the same when something has changed.
+=== function menu() ===
+{
+- interrupted:
+    ~ return "Where were we?"
+- met == 0:
+    ~ return "Hello."
+- met == 1:
+    ~ return "Got a minute now?"
+- count("collapsed") > 0 and not carry:
+    ~ return "Are you all right?"
+- quest_ready:
+    ~ return "I did what you asked."
+- quest_open:
+    ~ return "About what you asked me to do..."
+- not done_all() and lesson_day != today:
+    ~ return "Anything on your mind?"
+}
+{demeanor():
+- "stern":
+    ~ return "Hello."
+- "guarded":
+    ~ return "Got a moment?"
+}
+{hometown:
+- "mill": ~ return "Something smells good."
+- "mine": ~ return "Built anything today?"
+- "harbor": ~ return "Any luck fishing?"
+- "roads": ~ return "Mapped anything new?"
+- "forest": ~ return "How are the arrows coming?"
+}
+~ return "How are the fields?"
+
+// The first thing they say when the player comes back to a conversation they walked away from.
+=== function resumed() ===
+{demeanor():
+- "stern": ~ return "As I was saying."
+- "guarded": ~ return "Right. Where was I."
+}
+~ temp pick = RANDOM(1, 3)
+{pick:
+- 1: ~ return "Oh, there you are. As I was saying..."
+- 2: ~ return "Where was I? Oh, yes."
+}
+~ return "Right, sorry. As I was saying..."
+
 === greet ===
-# label: Talk about the village
+# label: Talk
 {
 - met == 0:
     -> meeting

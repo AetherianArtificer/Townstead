@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.nightward.sentinel"
+  },
+  "icon": "minecraft:lantern",
+  "description": {
+    "translate": "skill.townstead.hunter.nightward.sentinel.description"
+  },
+  "cost": 1,
+  "requires": [
+    "planted"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "resource_cost": {
+      "resource": "townstead:vigil",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:vigil",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:resistance",
+        "duration": 60,
+        "amplifier": 0
+      }
+    }
+  }
+}

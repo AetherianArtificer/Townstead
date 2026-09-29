@@ -7,7 +7,6 @@ import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.schedule.Activity;
 import com.aetherianartificer.townstead.hunger.FishermanSupplyManager;
 import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
-import net.minecraft.world.item.HoeItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.level.ServerLevel;
 
@@ -97,7 +96,7 @@ public final class WorkToolTicker {
         if (stack.isEmpty()) return false;
         for (var task : com.aetherianartificer.townstead.work.WorkTaskDeclarations.all(villager)) {
             if (task.type().equals(WorkTaskTypes.HARVEST)
-                    && stack.getItem() instanceof HoeItem) return true;
+                    && com.aetherianartificer.townstead.farming.Farmland.isHoe(stack)) return true;
             if (task.type().equals(WorkTaskTypes.FISH)
                     && FishermanSupplyManager.isFishingRod(stack)) return true;
             if (task.type().equals(WorkTaskTypes.SHEAR)

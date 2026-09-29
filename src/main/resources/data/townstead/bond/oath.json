@@ -1,5 +1,6 @@
 {
   "schema": "townstead:bond/v2",
+  "mods": "vampirism",
   "display": {
     "translate": "bond.townstead.oath"
   },

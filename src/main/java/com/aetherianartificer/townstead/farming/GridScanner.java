@@ -12,7 +12,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.BushBlock;
 import net.minecraft.world.level.block.CropBlock;
-import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluids;
@@ -68,7 +67,7 @@ public final class GridScanner {
                 for (int dy = 3; dy >= -3; dy--) {
                     BlockPos candidate = new BlockPos(wx, baseY + dy, wz);
                     BlockState state = level.getBlockState(candidate);
-                    if (state.getBlock() instanceof FarmBlock) {
+                    if (Farmland.is(state)) {
                         groundPos = candidate;
                         groundState = state;
                         break;
@@ -155,9 +154,9 @@ public final class GridScanner {
                 byte cellFlags = 0;
                 if (groundState.getFluidState().is(Fluids.WATER)) {
                     cellFlags |= GridSnapshot.FLAG_WATER;
-                } else if (groundState.getBlock() instanceof FarmBlock) {
+                } else if (Farmland.is(groundState)) {
                     cellFlags |= GridSnapshot.FLAG_FARMLAND;
-                    if (groundState.getValue(FarmBlock.MOISTURE) > 0) {
+                    if (Farmland.isMoist(groundState, level, groundPos)) {
                         cellFlags |= GridSnapshot.FLAG_MOIST;
                     }
                 }

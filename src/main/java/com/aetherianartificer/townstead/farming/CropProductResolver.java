@@ -237,6 +237,10 @@ public final class CropProductResolver {
         if ("rice_paddy".equals(hint)) {
             return EnumSet.of(SoilType.WATER);
         }
+        // Flooded crops that root in farmland beneath the water (TFC rice).
+        if ("paddy".equals(hint)) {
+            return EnumSet.of(SoilType.PADDY);
+        }
         // Vine crops grow on a farmer-built support over solid ground, never on tilled soil.
         if (FarmerCropCompatRegistry.growsOnTrellis(stack)) {
             return EnumSet.of(SoilType.TRELLIS);
@@ -252,10 +256,12 @@ public final class CropProductResolver {
                 || placedBlock instanceof BushBlock) {
             // Crops accept any farmland-style soil (FFB fertilized variants still extend FarmBlock).
             return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL_TILLED,
-                    SoilType.FERTILIZED_RICH, SoilType.FERTILIZED_HEALTHY, SoilType.FERTILIZED_STABLE);
+                    SoilType.FERTILIZED_RICH, SoilType.FERTILIZED_HEALTHY, SoilType.FERTILIZED_STABLE,
+                    SoilType.FERTILIZED_NUTRIENTS);
         }
         return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL_TILLED,
-                SoilType.FERTILIZED_RICH, SoilType.FERTILIZED_HEALTHY, SoilType.FERTILIZED_STABLE);
+                SoilType.FERTILIZED_RICH, SoilType.FERTILIZED_HEALTHY, SoilType.FERTILIZED_STABLE,
+                SoilType.FERTILIZED_NUTRIENTS);
     }
 
     private static Block getPlacedBlock(Item item) {

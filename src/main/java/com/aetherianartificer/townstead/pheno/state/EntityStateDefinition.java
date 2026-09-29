@@ -17,7 +17,9 @@ import java.util.Set;
 
 /**
  * Public identity and tier vocabulary for one open semantic entity state. While it is active, the
- * states it {@code excludes} cannot take hold (a thrall cannot be turned into a vampire).
+ * states it {@code excludes} cannot take hold (a thrall cannot be turned into a vampire). With
+ * {@code "body": "villager"} it only takes hold on someone in MCA's own villager body, never a
+ * custom rig.
  */
 public record EntityStateDefinition(
         ResourceLocation id,
@@ -29,7 +31,8 @@ public record EntityStateDefinition(
         Persistence persistence,
         DeathPolicy deathPolicy,
         @Nullable Aspect aspect,
-        java.util.Set<ResourceLocation> excludes) {
+        java.util.Set<ResourceLocation> excludes,
+        boolean villagerBody) {
 
     public static final String SCHEMA = "pheno:entity_state/v1";
 
@@ -118,7 +121,8 @@ public record EntityStateDefinition(
                 enumValue(json, "persistence", Persistence.PERSISTENT, Persistence.class),
                 enumValue(json, "death", DeathPolicy.CLEAR, DeathPolicy.class),
                 json.has("aspect") ? aspect(id, json.get("aspect")) : null,
-                excludes(json));
+                excludes(json),
+                "villager".equals(GsonHelper.getAsString(json, "body", "any")));
     }
 
     private static java.util.Set<ResourceLocation> excludes(JsonObject json) {

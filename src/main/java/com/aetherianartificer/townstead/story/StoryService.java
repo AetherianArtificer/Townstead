@@ -182,7 +182,11 @@ public final class StoryService {
             VillagerEntityMCA villager = villager(player, villagerId);
             label = villager == null ? story.label() : labelFor(player, villager, story);
         }
-        send(player, new StoryS2CPayload(villagerId, StoryS2CPayload.OFFER, label, List.of(), story != null));
+        VillagerEntityMCA target = villager(player, villagerId);
+        boolean persona = target != null
+                && com.aetherianartificer.townstead.persona.PersonaInstances.get(player.server).isPersona(target.getUUID());
+        send(player, new StoryS2CPayload(villagerId, persona ? StoryS2CPayload.OFFER_PERSONA : StoryS2CPayload.OFFER,
+                label, List.of(), story != null));
     }
 
     /** The villager's story for this player, unless another villager is already telling it to them. */
@@ -195,6 +199,18 @@ public final class StoryService {
 
     private static String labelFor(ServerPlayer player, VillagerEntityMCA villager, StoryDefinition story) {
         PlayerStories.Entry entry = stories(player).get(PlayerStories.key(story, villager.getUUID()));
+        if ((entry == null || entry.villager.equals(villager.getUUID())) && SESSIONS.get(player.getUUID()) == null) {
+            String name = StorySession.displayName(villager);
+            PlayerStories.Entry forMenu = entry != null ? entry
+                    : new PlayerStories.Entry(story.id(), villager.getUUID(), name);
+            try {
+                refresh(player.server, player.getUUID(), forMenu, story, villager);
+                String fromInk = StorySession.open(player, villager, story, forMenu).menuLabel();
+                if (fromInk != null) return fromInk;
+            } catch (Exception e) {
+                com.aetherianartificer.townstead.Townstead.LOGGER.warn("Story {} menu failed: {}", story.id(), e.getMessage());
+            }
+        }
         if (entry != null && entry.villager.equals(villager.getUUID())) {
             for (PlayerStories.QuestRecord record : entry.quests.values()) {
                 StoryDefinition.Quest quest = story.quests().get(record.knot);
@@ -215,11 +231,20 @@ public final class StoryService {
      * are off, the villager has no story, or it could not start.
      */
     public static boolean play(ServerPlayer player, VillagerEntityMCA villager, String knot) {
+        return play(player, villager, knot, Map.of());
+    }
+
+    /** As {@link #play(ServerPlayer, VillagerEntityMCA, String)}, setting Ink variables the story declares first. */
+    public static boolean play(ServerPlayer player, VillagerEntityMCA villager, String knot, Map<String, Object> variables) {
         if (!Systems.on(Systems.STORIES) || storyFor(player, villager) == null) return false;
-        return talk(player, villager, knot);
+        return talk(player, villager, knot, variables);
     }
 
     private static boolean talk(ServerPlayer player, VillagerEntityMCA villager, @Nullable String knot) {
+        return talk(player, villager, knot, Map.of());
+    }
+
+    private static boolean talk(ServerPlayer player, VillagerEntityMCA villager, @Nullable String knot, Map<String, Object> variables) {
         closeSession(player);
         StoryDefinition story = storyFor(player, villager);
         if (story == null) {
@@ -240,8 +265,15 @@ public final class StoryService {
             return false;
         }
         refresh(player.server, player.getUUID(), entry, story, session.villager);
+        variables.forEach(session::setIfDeclared);
         SESSIONS.put(player.getUUID(), session);
-        session.start(knot != null ? knot : entryPath(entry, story));
+        if (knot == null && entry.interrupted && !entry.ink.isEmpty() && story.hash().equals(entry.hash)) {
+            session.resume();
+        } else {
+            entry.interrupted = false;
+            entry.resumeLines.clear();
+            session.start(knot != null ? knot : entryPath(entry, story));
+        }
         DIRTY.add(player.getUUID());
         return true;
     }
@@ -270,6 +302,7 @@ public final class StoryService {
     private static void closeSession(ServerPlayer player) {
         StorySession session = SESSIONS.remove(player.getUUID());
         if (session == null) return;
+        session.interrupt();
         session.finish();
         save(player);
         sync(player);
@@ -359,10 +392,24 @@ public final class StoryService {
                     GoalContext ctx = null;
                     for (int i = 0; i < quest.goals().size() && i < record.values.length; i++) {
                         Goal goal = quest.goals().get(i);
+                        if (goal.seasonal() != null) {
+                            if (ctx == null) ctx = context(server, player.getUUID(), entry);
+                            if (goal.seasonEvent(event, ctx)) {
+                                rollSeason(server, record, i, goal);
+                                record.seasons.computeIfAbsent(i, k -> new PlayerStories.SeasonState()).events++;
+                                changed = true;
+                            }
+                            continue;
+                        }
                         if (!goal.isCounter() || goal.event() == null || !goal.event().isInstance(event)) continue;
                         if (ctx == null) ctx = context(server, player.getUUID(), entry);
                         long add = goal.increment(event, ctx);
                         if (add <= 0 || record.values[i] >= goal.total()) continue;
+                        if (goal.isDistinct()) {
+                            String value = goal.distinctValue(event);
+                            if (value == null || !record.distinct.computeIfAbsent(i, k -> new java.util.LinkedHashSet<>()).add(value)) continue;
+                            add = 1;
+                        }
                         record.values[i] = Math.min(goal.total(), record.values[i] + add);
                         changed = true;
                     }
@@ -395,6 +442,10 @@ public final class StoryService {
             if (quest == null) continue;
             for (int i = 0; i < quest.goals().size() && i < record.values.length; i++) {
                 Goal goal = quest.goals().get(i);
+                if (goal.seasonal() != null) {
+                    changed |= checkSeason(server, record, i, goal, ctx);
+                    continue;
+                }
                 if (goal.isCounter()) continue;
                 long value = goal.read(ctx);
                 if (value == Goal.UNKNOWN || value == record.values[i]) continue;
@@ -404,6 +455,47 @@ public final class StoryService {
             changed |= settle(record, quest, ctx);
         }
         return changed;
+    }
+
+    /**
+     * The season a seasonal goal is in now: a seasons mod's season and year, or a block of
+     * {@code season_days} world days without one.
+     */
+    private static String seasonKey(MinecraftServer server, Goal.Seasonal seasonal) {
+        var today = com.aetherianartificer.townstead.calendar.TownsteadCalendar.today(server);
+        if (today != null && today.season() != null) return today.year() + ":" + today.season();
+        return "d" + (com.aetherianartificer.townstead.calendar.TownsteadCalendar.worldDay(server) / seasonal.seasonDays());
+    }
+
+    /** Closes the season a goal was judging when a new one has begun, counting it when it was good. */
+    private static boolean rollSeason(MinecraftServer server, PlayerStories.QuestRecord record, int index, Goal goal) {
+        Goal.Seasonal seasonal = goal.seasonal();
+        String key = seasonKey(server, seasonal);
+        PlayerStories.SeasonState state = record.seasons.computeIfAbsent(index, k -> new PlayerStories.SeasonState());
+        if (key.equals(state.key)) return false;
+        boolean counted = false;
+        if (!state.key.isEmpty() && state.days > 0 && state.good >= Math.ceil(state.days * seasonal.share())
+                && state.events >= seasonal.perSeason() && record.values[index] < goal.total()) {
+            record.values[index]++;
+            counted = true;
+        }
+        state.key = key;
+        state.days = 0;
+        state.good = 0;
+        state.events = 0;
+        return counted;
+    }
+
+    /** Once a day, checks a seasonal goal's condition for the season in progress. */
+    private static boolean checkSeason(MinecraftServer server, PlayerStories.QuestRecord record, int index, Goal goal, GoalContext ctx) {
+        boolean changed = rollSeason(server, record, index, goal);
+        PlayerStories.SeasonState state = record.seasons.get(index);
+        long today = com.aetherianartificer.townstead.calendar.TownsteadCalendar.worldDay(server);
+        if (state.lastDay == today || ctx.speaker() == null) return changed;
+        state.lastDay = today;
+        state.days++;
+        if (goal.holds(ctx)) state.good++;
+        return true;
     }
 
     /** Marks a quest ready once every goal is met. A quest with nothing to say back completes. */

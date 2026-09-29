@@ -49,7 +49,9 @@ public final class PersonaGifts {
         boolean keeps = gift.response() != PersonaGift.Response.DISLIKES;
         if (keeps && !villager.getInventory().canAddItem(stack)) return false;
 
-        boolean first = gift.first() != null && !PersonaBonds.gaveFirst(player, persona.id(), index);
+        net.minecraft.resources.ResourceLocation itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
+        String firstKey = gift.first() != null && gift.first().perItem() ? index + "#" + itemId : String.valueOf(index);
+        boolean first = gift.first() != null && !PersonaBonds.gaveFirst(player, persona.id(), firstKey);
         int satisfaction = gift.satisfaction();
         if (keeps && !first) {
             int given = villager.getRelationships().getGiftSaturation().get(stack);
@@ -77,10 +79,11 @@ public final class PersonaGifts {
                     "gift:" + persona.id() + ":" + villager.getUUID() + ":" + player.getUUID() + ":" + time + ":" + quality,
                     quality, change.getValue(), day, -1, "townstead:gift/" + persona.id());
         }
-        if (first) PersonaBonds.markFirst(player, persona.id(), index);
+        if (first) PersonaBonds.markFirst(player, persona.id(), firstKey);
 
         String knot = first && gift.first().knot() != null ? gift.first().knot() : gift.knot();
-        if (knot == null || !StoryService.play(player, villager, knot)) {
+        if (knot == null || !StoryService.play(player, villager, knot,
+                Map.of("gift_item", com.aetherianartificer.townstead.story.StoryText.item(itemId)))) {
             villager.sendChatMessage(player, switch (gift.response()) {
                 case LOVES -> "gift.best";
                 case LIKES -> "gift.good";

@@ -366,7 +366,7 @@ public final class QuestLedgerScreen extends Screen {
             Component empty = Component.translatable("townstead.quest_ledger.empty");
             int emptyY = listTop + 10;
             for (FormattedCharSequence line : font.split(empty, leftW - 20)) {
-                g.drawCenteredString(font, line, leftX + leftW / 2, emptyY, 0xFFAAAAAA);
+                g.drawString(font, line, leftX + (leftW - font.width(line)) / 2, emptyY, 0xFFAAAAAA, false);
                 emptyY += 10;
             }
         }
@@ -490,8 +490,8 @@ public final class QuestLedgerScreen extends Screen {
         if (detailScroll > max) detailScroll = max;
         drawScrollbar(g, rightX + rightW - 3, top, bottom, detailScroll, max);
         if (!statusMessage.isBlank()) {
-            g.drawCenteredString(font, trim(statusMessage, rightW - 12), rightX + rightW / 2,
-                    actionY - 12, 0xFF5A3C20);
+            String status = trim(statusMessage, rightW - 12);
+            g.drawString(font, status, rightX + (rightW - font.width(status)) / 2, actionY - 12, 0xFF5A3C20, false);
         }
     }
 

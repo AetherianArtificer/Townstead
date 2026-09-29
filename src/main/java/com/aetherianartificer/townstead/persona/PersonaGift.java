@@ -24,6 +24,7 @@ import java.util.Map;
  *   "relationship": { "affection": 5 },
  *   "first": { "knot": "gift_from_home", "relationship": { "affection": 10 } } }
  * </pre>
+ * The reply knot can read the Ink variable {@code gift_item}, the gift's name as the reader sees it.
  * {@code satisfaction} works like an MCA gift's (hearts, mood, saturation); it defaults to 30
  * for loves, 15 for likes and -15 for dislikes. A disliked gift is handed back.
  */
@@ -32,8 +33,11 @@ public record PersonaGift(List<String> items, Response response, int satisfactio
 
     public enum Response { LOVES, LIKES, DISLIKES }
 
-    /** What happens the first time a player gives this kind of gift, instead of the usual. */
-    public record First(@Nullable String knot, Map<String, Float> relationship) {}
+    /**
+     * What happens the first time a player gives this kind of gift, instead of the usual. With
+     * {@code per_item}, it is the first time for each kind of item the rule matches.
+     */
+    public record First(@Nullable String knot, Map<String, Float> relationship, boolean perItem) {}
 
     /** Whether the stack is one of these items, with {@code $name} read from {@code vars}. */
     public boolean matches(ItemStack stack, Map<String, Object> vars) {
@@ -111,7 +115,8 @@ public record PersonaGift(List<String> items, Response response, int satisfactio
         First first = null;
         if (json.has("first") && json.get("first").isJsonObject()) {
             JsonObject f = json.getAsJsonObject("first");
-            first = new First(f.has("knot") ? f.get("knot").getAsString() : null, relationship(f, where + ".first", issues));
+            first = new First(f.has("knot") ? f.get("knot").getAsString() : null, relationship(f, where + ".first", issues),
+                    f.has("per_item") && f.get("per_item").getAsBoolean());
         }
         return new PersonaGift(List.copyOf(items), response, satisfaction, relationship(json, where, issues),
                 json.has("knot") ? json.get("knot").getAsString() : null, first);

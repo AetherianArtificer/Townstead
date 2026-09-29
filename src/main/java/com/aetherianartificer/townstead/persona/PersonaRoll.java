@@ -23,7 +23,8 @@ import java.util.Map;
  * <pre>
  * "rolls": {
  *   "hometown": [
- *     { "value": "mill", "profession": "townstead:baker", "vars": { "gift": "minecraft:bread" } },
+ *     { "value": "mill", "profession": "townstead:baker", "vars": { "gift": "minecraft:bread" },
+ *       "outfit": { "female": "townstead:skins/clothing/persona/builder_mill_f.png", "male": "..." } },
  *     { "value": "well", "weight": 1, "when": { "type": "pheno:config", ... }, "profession": "farmer" }
  *   ]
  * }
@@ -32,7 +33,7 @@ import java.util.Map;
 public record PersonaRoll(String name, List<Option> options) {
 
     public record Option(String value, int weight, @Nullable Condition when, @Nullable ResourceLocation profession,
-                         Map<String, Object> vars) {}
+                         Map<String, Object> vars, Map<String, String> outfit) {}
 
     /** Picks one option whose {@code when} holds for the player, by weight. Null when none can be picked. */
     public @Nullable Option pick(ServerPlayer player, RandomSource random) {
@@ -92,7 +93,8 @@ public record PersonaRoll(String name, List<Option> options) {
                 }
             }
             int weight = option.has("weight") ? option.get("weight").getAsInt() : 1;
-            options.add(new Option(option.get("value").getAsString(), weight, when, profession, Map.copyOf(vars)));
+            Map<String, String> outfit = option.has("outfit") ? Personas.outfit(option.get("outfit"), where + ".outfit", issues) : Map.of();
+            options.add(new Option(option.get("value").getAsString(), weight, when, profession, Map.copyOf(vars), outfit));
         }
         return options.isEmpty() ? null : new PersonaRoll(name, List.copyOf(options));
     }

@@ -57,6 +57,8 @@ public final class PersonaService {
         int now = server.getTickCount();
         if (now % WALK_TICKS == 0 && !WALKING.isEmpty()) walk(server);
         if (now % ARRIVAL_TICKS != 0 || !Systems.on(Systems.PERSONAS) || Personas.all().isEmpty()) return;
+        arriveIntroduced(server);
+        keepJobs(server);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             ServerLevel level = player.serverLevel();
             Village village = TownRange.at(level, player.blockPosition()).orElse(null);
@@ -64,6 +66,7 @@ public final class PersonaService {
             for (PersonaDefinition persona : Personas.all().values()) {
                 if (persona.arrives().isEmpty() || PersonaBonds.has(player, persona.id())) continue;
                 if (PersonaInstances.get(server).in(persona.id(), level.dimension().location(), village.getId()) != null) continue;
+                if (takenElsewhere(server, persona)) continue;
                 if (arrives(server, player, persona)) spawn(persona, player, village, false);
             }
         }
@@ -91,26 +94,29 @@ public final class PersonaService {
         VillagerFactory factory = VillagerFactory.newVillager(level).withAge(0).withPosition(Vec3.atBottomCenterOf(at));
         if ("male".equals(persona.gender())) factory.withGender(Gender.MALE);
         else if ("female".equals(persona.gender())) factory.withGender(Gender.FEMALE);
-        ResourceLocation profession = persona.profession();
-        for (PersonaRoll.Option option : rolls(persona, player).values()) {
-            if (option.profession() != null) profession = option.profession();
-        }
+        ResourceLocation profession = profession(persona, player);
         if (profession != null && BuiltInRegistries.VILLAGER_PROFESSION.containsKey(profession)) {
             factory.withProfession(BuiltInRegistries.VILLAGER_PROFESSION.get(profession));
         }
+        boolean keepsJob = profession != null;
         VillagerEntityMCA villager = factory.build();
         //? if >=1.21 {
         villager.finalizeSpawn(level, level.getCurrentDifficultyAt(at), MobSpawnType.EVENT, null);
         //?} else {
         /*villager.finalizeSpawn(level, level.getCurrentDifficultyAt(at), MobSpawnType.EVENT, null, null);
         *///?}
+        // A Persona's job is part of who they are. Any trade experience stops vanilla resetting
+        // a villager with no job site to jobless, which would start a hire-and-fire loop.
+        if (keepsJob && villager.getVillagerXp() < 1) villager.setVillagerXp(1);
         if (!level.addFreshEntity(villager)) return null;
         if (persona.root() != null) RootAssignment.assign(villager, persona.root());
         villager.getResidency().seekHome();
         if (persona.schedule() != null) schedule(level.getServer(), villager, persona.schedule());
+        dress(villager, outfit(persona, player));
         if (!persona.personalities().isEmpty()) personality(villager, persona);
         PersonaInstances.get(level.getServer()).add(new PersonaInstances.Instance(persona.id(), villager.getUUID(),
-                level.dimension().location(), village.getId(), level.getGameTime()));
+                level.dimension().location(), village.getId(), level.getGameTime(),
+                com.aetherianartificer.townstead.naming.VillagerNames.display(villager).getString()));
         PersonaBonds.add(player, persona.id());
         if (walkIn) WALKING.put(villager.getUUID(), new WalkIn(player.getUUID(), level.getGameTime() + WALK_LIMIT));
         LOGGER.info("Persona {} arrived in village {} for {}", persona.id(), village.getId(), player.getGameProfile().getName());
@@ -186,6 +192,123 @@ public final class PersonaService {
         }
         com.aetherianartificer.townstead.shift.ShiftScheduleApplier.apply(villager);
         com.aetherianartificer.townstead.villager.TownsteadVillagers.flush(villager);
+    }
+
+    /** The job a Persona is meant to have: their rolled one, else the one persona.json pins, or null. */
+    static @Nullable ResourceLocation profession(PersonaDefinition persona, ServerPlayer player) {
+        ResourceLocation profession = persona.profession();
+        for (PersonaRoll.Option option : rolls(persona, player).values()) {
+            if (option.profession() != null) profession = option.profession();
+        }
+        return profession;
+    }
+
+    /**
+     * Keeps every loaded Persona in the job they are meant to have. Personas that lost it before
+     * this rule existed get it back; trade experience of at least 1 keeps vanilla from resetting it.
+     */
+    private static void keepJobs(MinecraftServer server) {
+        for (PersonaInstances.Instance instance : PersonaInstances.get(server).all()) {
+            PersonaDefinition persona = Personas.byId(instance.persona());
+            if (persona == null) continue;
+            VillagerEntityMCA villager = find(server, instance.villager());
+            if (villager == null || villager.isBaby()) continue;
+            ServerPlayer anyone = server.getPlayerList().getPlayers().isEmpty() ? null : server.getPlayerList().getPlayers().get(0);
+            ResourceLocation wanted = persona.rolls().isEmpty() || anyone == null ? persona.profession() : profession(persona, anyone);
+            if (wanted == null || !BuiltInRegistries.VILLAGER_PROFESSION.containsKey(wanted)) continue;
+            var job = BuiltInRegistries.VILLAGER_PROFESSION.get(wanted);
+            if (villager.getVillagerData().getProfession() != job) {
+                villager.setProfession(job);
+                LOGGER.info("Persona {} got their job back ({})", instance.persona(), wanted);
+            }
+            if (villager.getVillagerXp() < 1) villager.setVillagerXp(1);
+            if (anyone != null) dress(villager, outfit(persona, anyone));
+        }
+    }
+
+    /** The outfit a Persona is meant to wear: a rolled one, else the one persona.json gives. */
+    static Map<String, String> outfit(PersonaDefinition persona, ServerPlayer player) {
+        Map<String, String> outfit = persona.outfit();
+        for (PersonaRoll.Option option : rolls(persona, player).values()) {
+            if (!option.outfit().isEmpty()) outfit = option.outfit();
+        }
+        return outfit;
+    }
+
+    /** Puts a Persona in their outfit and locks it, so a change of job does not re-dress them. */
+    private static void dress(VillagerEntityMCA villager, Map<String, String> outfit) {
+        if (outfit.isEmpty()) return;
+        String gender = villager.getGenetics().getGender().binary() == Gender.FEMALE ? "female" : "male";
+        String clothes = outfit.getOrDefault(gender, outfit.get("any"));
+        if (clothes == null || clothes.isBlank()) return;
+        if (!clothes.equals(villager.getClothes())) villager.setClothes(clothes);
+        if (!villager.isClothingLocked()) villager.setClothingLocked(true);
+    }
+
+    /** Whether a world-unique Persona already lives somewhere, or is on their way somewhere. */
+    public static boolean takenElsewhere(MinecraftServer server, PersonaDefinition persona) {
+        if (!persona.worldUnique()) return false;
+        PersonaInstances instances = PersonaInstances.get(server);
+        return !instances.of(persona.id()).isEmpty() || instances.isPendingAnywhere(persona.id());
+    }
+
+    /**
+     * Schedules a Persona to arrive in a village after some days, as when one Persona writes to
+     * another. Nothing happens when they already live there, are already on their way, or the
+     * player has met them before. Returns whether they were scheduled.
+     */
+    public static boolean introduce(ServerPlayer player, ResourceLocation personaId, ServerLevel level, Village village, int delayDays) {
+        PersonaDefinition persona = Personas.byId(personaId);
+        if (persona == null || PersonaBonds.has(player, personaId)) return false;
+        PersonaInstances instances = PersonaInstances.get(player.server);
+        ResourceLocation dimension = level.dimension().location();
+        if (instances.in(personaId, dimension, village.getId()) != null || instances.isPending(personaId, dimension, village.getId())) return false;
+        if (persona.worldUnique() && (!instances.of(personaId).isEmpty() || instances.isPendingAnywhere(personaId))) return false;
+        long due = com.aetherianartificer.townstead.calendar.TownsteadCalendar.worldDay(player.server) + Math.max(0, delayDays);
+        instances.addPending(new PersonaInstances.Pending(personaId, dimension, village.getId(), due, player.getUUID()));
+        LOGGER.info("Persona {} introduced to village {}, due on day {}", personaId, village.getId(), due);
+        return true;
+    }
+
+    /** Brings in introduced Personas whose day has come, once their player is online. */
+    private static void arriveIntroduced(MinecraftServer server) {
+        PersonaInstances instances = PersonaInstances.get(server);
+        if (instances.pending().isEmpty()) return;
+        long today = com.aetherianartificer.townstead.calendar.TownsteadCalendar.worldDay(server);
+        for (PersonaInstances.Pending entry : instances.pending()) {
+            if (entry.dueDay() > today) continue;
+            PersonaDefinition persona = Personas.byId(entry.persona());
+            ServerLevel level = server.getLevel(net.minecraft.resources.ResourceKey.create(
+                    net.minecraft.core.registries.Registries.DIMENSION, entry.dimension()));
+            if (persona == null || level == null) {
+                instances.removePending(entry);
+                continue;
+            }
+            ServerPlayer player = server.getPlayerList().getPlayer(entry.player());
+            if (player == null || player.level() != level) continue;
+            Village village = net.conczin.mca.server.world.data.VillageManager.get(level).getOrEmpty(entry.village()).orElse(null);
+            instances.removePending(entry);
+            if (village != null && instances.in(persona.id(), entry.dimension(), village.getId()) == null
+                    && !(persona.worldUnique() && !instances.of(persona.id()).isEmpty())) {
+                spawn(persona, player, village, false);
+            }
+        }
+    }
+
+    /**
+     * The name of a Persona living in a village, or in any village when none lives there. Uses
+     * the live villager when loaded, else the name they arrived with. Empty when there is none.
+     */
+    public static String nameOf(MinecraftServer server, ResourceLocation personaId, @Nullable ResourceLocation dimension, int village) {
+        PersonaInstances instances = PersonaInstances.get(server);
+        PersonaInstances.Instance instance = dimension == null ? null : instances.in(personaId, dimension, village);
+        if (instance == null) {
+            var all = instances.of(personaId);
+            if (all.isEmpty()) return "";
+            instance = all.get(0);
+        }
+        VillagerEntityMCA villager = find(server, instance.villager());
+        return villager != null ? com.aetherianartificer.townstead.naming.VillagerNames.display(villager).getString() : instance.name();
     }
 
     /** Keeps walking-in Personas heading for their player until they are close or it takes too long. */

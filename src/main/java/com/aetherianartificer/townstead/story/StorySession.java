@@ -54,6 +54,10 @@ final class StorySession {
     /** Visit counts of each quest's hand-back stitches when the conversation opened. */
     private final Map<String, Integer> handBackVisits = new HashMap<>();
     private @Nullable Line buffered;
+    /** The last line the player was shown, kept so a conversation left mid-way can pick up again. */
+    private @Nullable Line shown;
+    /** Lines to show before the story moves on, when a conversation picks up where it was left. */
+    private final java.util.ArrayDeque<Line> replay = new java.util.ArrayDeque<>();
     private boolean finished;
 
     private StorySession(ServerPlayer player, VillagerEntityMCA villager, StoryDefinition definition,
@@ -107,6 +111,41 @@ final class StorySession {
         if (!finished) step();
     }
 
+    /**
+     * Picks up a conversation the player left mid-way: the story's own {@code resumed()} line if it
+     * has one, the last line they saw, the line they had not seen yet, then on from there.
+     */
+    void resume() {
+        try {
+            if (story.hasFunction("resumed")) {
+                Object bridge = story.evaluateFunction("resumed");
+                if (bridge != null && !bridge.toString().isBlank()) replay.add(new Line(bridge.toString().trim(), List.of()));
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Story {}: resumed() failed: {}", definition.id(), e.getMessage());
+        }
+        for (String line : entry.resumeLines) replay.add(new Line(line, List.of()));
+        entry.interrupted = false;
+        entry.resumeLines.clear();
+        step();
+    }
+
+    /** Whether the player would lose something by leaving now: more lines, or choices waiting. */
+    boolean midway() {
+        return !finished && (buffered != null || !replay.isEmpty() || story.canContinue() || !story.getCurrentChoices().isEmpty());
+    }
+
+    /** Saves the state of a conversation the player is leaving mid-way, so they can return to it. */
+    void interrupt() {
+        if (!midway()) return;
+        entry.interrupted = true;
+        entry.resumeLines.clear();
+        if (shown != null && !shown.text().isEmpty()) entry.resumeLines.add(shown.text());
+        for (Line line : replay) entry.resumeLines.add(line.text());
+        if (buffered != null) entry.resumeLines.add(buffered.text());
+        finish();
+    }
+
     void choose(int index) {
         if (finished || buffered != null) return;
         try {
@@ -133,6 +172,22 @@ final class StorySession {
 
     boolean finished() { return finished; }
 
+    /**
+     * The menu entry the story's own {@code menu()} function gives right now, or null when it has
+     * none or gives nothing. Reads the story without moving it on.
+     */
+    @Nullable String menuLabel() {
+        try {
+            if (!story.hasFunction("menu")) return null;
+            Object label = story.evaluateFunction("menu");
+            String text = label == null ? "" : label.toString().trim();
+            return text.isEmpty() ? null : text;
+        } catch (Exception e) {
+            LOGGER.warn("Story {}: menu() failed: {}", definition.id(), e.getMessage());
+            return null;
+        }
+    }
+
     /** Whether this conversation has told the quest's done or skipped lines. */
     boolean toldHandBack(StoryDefinition.Quest quest, Story story) throws Exception {
         return handBackVisits(quest, story) > handBackVisits.getOrDefault(quest.knot(), 0);
@@ -147,8 +202,15 @@ final class StorySession {
 
     private void step() {
         try {
-            Line current = buffered != null ? buffered : pull();
-            buffered = null;
+            Line current;
+            if (!replay.isEmpty()) {
+                current = replay.poll();
+            } else if (buffered != null) {
+                current = buffered;
+                buffered = null;
+            } else {
+                current = pull();
+            }
             if (current == null) {
                 List<String> choices = choiceTexts();
                 if (choices.isEmpty()) {
@@ -159,8 +221,9 @@ final class StorySession {
                 return;
             }
             stage(current.tags());
-            buffered = pull();
-            boolean more = buffered != null;
+            shown = current;
+            if (replay.isEmpty() && buffered == null) buffered = pull();
+            boolean more = !replay.isEmpty() || buffered != null;
             List<String> choices = more ? List.of() : choiceTexts();
             send(StoryS2CPayload.LINE, current.text(), choices, more);
             if (!more && choices.isEmpty()) {
@@ -215,6 +278,8 @@ final class StorySession {
     }
 
     private void end() {
+        entry.interrupted = false;
+        entry.resumeLines.clear();
         finish();
         send(StoryS2CPayload.END, "", List.of(), false);
         StoryService.sessionEnded(this);
@@ -241,6 +306,9 @@ final class StorySession {
         setIfDeclared("village_name", villageName);
         setIfDeclared("profession", profession == null ? "" : profession.getPath());
         setIfDeclared("today", (int) Math.min(Integer.MAX_VALUE, TownsteadCalendar.worldDay(player.server)));
+        setIfDeclared("quest_ready", entry.quests.values().stream().anyMatch(q -> q.state == PlayerStories.QuestState.READY));
+        setIfDeclared("quest_open", entry.quests.values().stream().anyMatch(q -> q.state == PlayerStories.QuestState.ACTIVE));
+        setIfDeclared("interrupted", entry.interrupted);
         var instance = com.aetherianartificer.townstead.persona.PersonaInstances.get(player.server).of(villager.getUUID());
         var persona = instance == null ? null : com.aetherianartificer.townstead.persona.Personas.byId(instance.persona());
         if (persona == null) return;
@@ -250,7 +318,7 @@ final class StorySession {
         }
     }
 
-    private void setIfDeclared(String name, Object value) {
+    void setIfDeclared(String name, Object value) {
         try {
             if (story.getVariablesState().get(name) != null) story.getVariablesState().set(name, value);
         } catch (Exception e) {
@@ -268,6 +336,22 @@ final class StorySession {
         });
         story.bindExternalFunction("who", args -> who(string(args, 0)));
         story.bindExternalFunction("building", args -> StoryWorld.building(string(args, 0), goalContext()));
+        story.bindExternalFunction("roll", args -> {
+            ResourceLocation persona = ResourceLocation.tryParse(string(args, 0));
+            String rolled = persona == null ? null
+                    : com.aetherianartificer.townstead.persona.PersonaInstances.get(player.server).rolled(persona, string(args, 1));
+            return rolled == null ? "" : rolled;
+        });
+        story.bindExternalFunction("most_harvested", args -> goalContext().villageId(true)
+                .map(v -> com.aetherianartificer.townstead.village.HarvestTally.get(player.server).most(v))
+                .map(StoryText::item).orElse(""));
+        story.bindExternalFunction("persona_name", args -> {
+            ResourceLocation persona = ResourceLocation.tryParse(string(args, 0));
+            if (persona == null) return "";
+            var village = goalContext().villageId(true);
+            return com.aetherianartificer.townstead.persona.PersonaService.nameOf(player.server, persona,
+                    village.map(v -> v.dimension()).orElse(null), village.map(v -> v.villageId()).orElse(-1));
+        });
         story.bindExternalFunction("rel", args -> (int) Math.round(rel(string(args, 0))));
         story.bindExternalFunction("trust", args -> {
             contribute("trust", number(args, 0), "trust");

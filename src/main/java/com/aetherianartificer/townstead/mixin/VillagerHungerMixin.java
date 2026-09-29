@@ -142,7 +142,8 @@ public abstract class VillagerHungerMixin extends Villager {
                         Pair.of(82, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.SHEPHERDING, new com.aetherianartificer.townstead.shepherd.ShepherdWorkTask())),
                         Pair.of(83, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.SHEPHERDING, new com.aetherianartificer.townstead.shepherd.ShepherdDepositTask())),
                         Pair.of(73, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.job.BlockInteractionWorkTask())),
-                        Pair.of(84, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.StationWorkTask()))
+                        Pair.of(84, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.StationWorkTask())),
+                        Pair.of(85, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.martial.MartialWorkTask()))
                 ));
         // Non-work behaviors stay in CORE so they tick regardless of schedule activity.
         ArrayList<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>> coreBehaviors = new ArrayList<>();

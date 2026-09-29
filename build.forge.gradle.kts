@@ -195,6 +195,7 @@ tasks.withType<ProcessResources> {
         filter {
             it.replace("\"neoforge:conditions\"", "\"conditions\"")
               .replace("\"neoforge:mod_loaded\"", "\"forge:mod_loaded\"")
+              .replace("\"neoforge:item_exists\"", "\"forge:item_exists\"")
         }
     }
     doLast {

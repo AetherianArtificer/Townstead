@@ -1,0 +1,41 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.trailreader.apex_tracker"
+  },
+  "icon": "minecraft:recovery_compass",
+  "description": {
+    "translate": "skill.townstead.hunter.trailreader.apex_tracker.description"
+  },
+  "cost": 1,
+  "requires": [
+    "no_escape"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "resource_cost": {
+      "resource": "townstead:vigil",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:vigil",
+      "min": 75
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 24,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:invert",
+        "action": {
+          "type": "pheno:change_collection",
+          "collection": "townstead:marked",
+          "operation": "add"
+        }
+      }
+    }
+  }
+}

@@ -21,6 +21,15 @@ public final class PlayerStories {
 
     public enum QuestState { ACTIVE, READY, COMPLETE }
 
+    /** The season being judged: its key, the days checked, the good days, events counted, last checked day. */
+    public static final class SeasonState {
+        public String key = "";
+        public int days;
+        public int good;
+        public long events;
+        public long lastDay = -1;
+    }
+
     public static final class QuestRecord {
         public final String knot;
         public QuestState state = QuestState.ACTIVE;
@@ -29,6 +38,10 @@ public final class PlayerStories {
         public boolean skipped;
         /** Whether this quest's rewards have been handed over. They are given once, on completion. */
         public boolean rewarded;
+        /** Per goal index: the values a distinct counter goal has already counted. */
+        public final Map<Integer, java.util.Set<String>> distinct = new LinkedHashMap<>();
+        /** Per goal index: the season a seasonal goal is judging now. */
+        public final Map<Integer, SeasonState> seasons = new LinkedHashMap<>();
 
         QuestRecord(String knot, int goals) {
             this.knot = knot;
@@ -48,6 +61,9 @@ public final class PlayerStories {
         public final Map<String, QuestRecord> quests = new LinkedHashMap<>();
         /** How often each of the story's event goals has happened since the player met the villager. */
         public final Map<String, Long> seen = new LinkedHashMap<>();
+        /** Whether the player left mid-conversation, and the lines to show again when they return. */
+        public boolean interrupted;
+        public final java.util.List<String> resumeLines = new java.util.ArrayList<>();
 
         Entry(ResourceLocation story, UUID villager, String villagerName) {
             this.story = story;
@@ -102,8 +118,33 @@ public final class PlayerStories {
                 record.state = QuestState.values()[Math.max(0, Math.min(state, QuestState.values().length - 1))];
                 record.skipped = qt.getBoolean("skipped");
                 record.rewarded = qt.getBoolean("rewarded");
+                CompoundTag seasons = qt.getCompound("seasons");
+                for (String index : seasons.getAllKeys()) {
+                    CompoundTag st = seasons.getCompound(index);
+                    SeasonState season = new SeasonState();
+                    season.key = st.getString("key");
+                    season.days = st.getInt("days");
+                    season.good = st.getInt("good");
+                    season.events = st.getLong("events");
+                    season.lastDay = st.getLong("last");
+                    try {
+                        record.seasons.put(Integer.parseInt(index), season);
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+                CompoundTag distinct = qt.getCompound("distinct");
+                for (String index : distinct.getAllKeys()) {
+                    java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+                    for (Tag v : distinct.getList(index, Tag.TAG_STRING)) seen.add(v.getAsString());
+                    try {
+                        record.distinct.put(Integer.parseInt(index), seen);
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
                 entry.quests.put(record.knot, record);
             }
+            entry.interrupted = tag.getBoolean("interrupted");
+            for (Tag line : tag.getList("resume", Tag.TAG_STRING)) entry.resumeLines.add(line.getAsString());
             CompoundTag seen = tag.getCompound("seen");
             for (String name : seen.getAllKeys()) entry.seen.put(name, seen.getLong(name));
             out.entries.put(tag.getString("key"), entry);
@@ -132,12 +173,34 @@ public final class PlayerStories {
                 qt.putLongArray("values", record.values);
                 qt.putBoolean("skipped", record.skipped);
                 qt.putBoolean("rewarded", record.rewarded);
+                CompoundTag distinct = new CompoundTag();
+                record.distinct.forEach((index, seen) -> {
+                    ListTag values = new ListTag();
+                    seen.forEach(v -> values.add(net.minecraft.nbt.StringTag.valueOf(v)));
+                    distinct.put(String.valueOf(index), values);
+                });
+                qt.put("distinct", distinct);
+                CompoundTag seasons = new CompoundTag();
+                record.seasons.forEach((index, state) -> {
+                    CompoundTag st = new CompoundTag();
+                    st.putString("key", state.key);
+                    st.putInt("days", state.days);
+                    st.putInt("good", state.good);
+                    st.putLong("events", state.events);
+                    st.putLong("last", state.lastDay);
+                    seasons.put(String.valueOf(index), st);
+                });
+                qt.put("seasons", seasons);
                 quests.add(qt);
             }
             tag.put("quests", quests);
             CompoundTag seen = new CompoundTag();
             entry.seen.forEach(seen::putLong);
             tag.put("seen", seen);
+            tag.putBoolean("interrupted", entry.interrupted);
+            ListTag resume = new ListTag();
+            entry.resumeLines.forEach(line -> resume.add(net.minecraft.nbt.StringTag.valueOf(line)));
+            tag.put("resume", resume);
             list.add(tag);
         }
         CompoundTag root = data(player);
