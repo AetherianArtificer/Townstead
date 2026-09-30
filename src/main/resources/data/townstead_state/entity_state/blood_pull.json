@@ -1,0 +1,19 @@
+{
+  "schema": "pheno:entity_state/v1",
+  "mods": "vampirism",
+  "id": "townstead_state:blood_pull",
+  "body": "villager",
+  "min": 0,
+  "max": 100,
+  "initial": 40,
+  "tiers": [
+    { "id": "oathbound", "min": 0 },
+    { "id": "steady", "min": 25 },
+    { "id": "hungry", "min": 50 },
+    { "id": "predator", "min": 75 },
+    { "id": "fallen", "min": 100 }
+  ],
+  "merge": "max",
+  "persistence": "persistent",
+  "death": "keep"
+}

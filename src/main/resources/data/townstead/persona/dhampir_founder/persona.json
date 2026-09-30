@@ -1,0 +1,447 @@
+{
+  "name": "Dhampir Founder",
+  "requires_mods": [
+    "vampirism"
+  ],
+  "unique": "world",
+  "downed": true,
+  "arrival": "walk_in",
+  "arrives": [
+    {
+      "text": "A vampire comes near your village",
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:state",
+            "state": "vampirism:vampire_level",
+            "min": 1,
+            "inverted": true
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 48,
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:entity_type",
+                  "entity_type": "minecraft:player",
+                  "inverted": true
+                },
+                {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:state",
+                      "state": "townstead_state:vampire"
+                    },
+                    {
+                      "type": "pheno:entity_type",
+                      "entity_type": "vampirism:vampire"
+                    },
+                    {
+                      "type": "pheno:entity_type",
+                      "entity_type": "vampirism:advanced_vampire"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "villager": {
+    "profession": "townstead:hunter",
+    "mainhand": "minecraft:iron_sword",
+    "states": {
+      "townstead_state:dhampir": 1,
+      "townstead_state:blood_pull": 40
+    }
+  },
+  "names": {
+    "given": {
+      "female": [
+        "Adelheid",
+        "Agnes",
+        "Brigitta",
+        "Clara",
+        "Dorothea",
+        "Elisabeth",
+        "Emilia",
+        "Franziska",
+        "Gisela",
+        "Greta",
+        "Hedwig",
+        "Helena",
+        "Ilona",
+        "Irma",
+        "Judit",
+        "Katalin",
+        "Klara",
+        "Liesel",
+        "Magda",
+        "Margit",
+        "Marta",
+        "Mathilde",
+        "Mira",
+        "Ottilie",
+        "Rosalind",
+        "Sabine",
+        "Sofia",
+        "Teodora",
+        "Ursula",
+        "Veronika",
+        "Wilhelmina",
+        "Zsofia",
+        "Ioana",
+        "Irina",
+        "Viorica",
+        "Adela",
+        "Anca",
+        "Rada",
+        "Erzsi",
+        "Livia"
+      ],
+      "male": [
+        "Richter",
+        "Simon",
+        "Konrad",
+        "Anselm",
+        "Lukas",
+        "Matthias",
+        "Tobias",
+        "Ulrich",
+        "Reinhold",
+        "Kaspar",
+        "Gregor",
+        "Albrecht",
+        "Emeric",
+        "Balthasar",
+        "Dietrich",
+        "Gottfried",
+        "Hartmann",
+        "Jakob",
+        "Lorenz",
+        "Lothar",
+        "Magnus",
+        "Nikolaus",
+        "Oswald",
+        "Roland",
+        "Rupert",
+        "Stefan",
+        "Viktor",
+        "Wilhelm",
+        "Florian",
+        "Anton",
+        "Adrian",
+        "Julian",
+        "Leon",
+        "Andor",
+        "Laszlo",
+        "Tibor",
+        "Zoltan",
+        "Radu",
+        "Sorin",
+        "Mihail"
+      ]
+    },
+    "family": [
+      "Roth",
+      "Schuller",
+      "Binder",
+      "Kessler",
+      "Zimmermann",
+      "Krauss",
+      "Theil",
+      "Folberth",
+      "Wellmann",
+      "Teutsch",
+      "Hager",
+      "Schobel",
+      "Menning",
+      "Kroner",
+      "Lurtz",
+      "Farkas",
+      "Veres",
+      "Fekete",
+      "Kovács",
+      "Szabó",
+      "Bíró",
+      "Bartha",
+      "Csiki",
+      "Orbán",
+      "Kelemen",
+      "Deák",
+      "Pál",
+      "Szentes",
+      "Gál",
+      "Bakó",
+      "Lupu",
+      "Ardelean",
+      "Mureșan",
+      "Crișan",
+      "Moldovan",
+      "Oltean",
+      "Bucur",
+      "Vlaicu",
+      "Dobrin",
+      "Morar",
+      "Sas",
+      "Rusu",
+      "Onea",
+      "Pop",
+      "Iancu"
+    ],
+    "extra": {
+      "house": [
+        "von Aschenau",
+        "von Schwarzfels",
+        "von Nachtweil",
+        "von Wolfsgrund",
+        "von Eisenholz",
+        "von Rotheck",
+        "von Stillbach",
+        "von Hallstein"
+      ]
+    }
+  },
+  "moves_on": [
+    "order_dissolved",
+    "town_fallen"
+  ],
+  "actions": {
+    "found": {
+      "type": "pheno:found_faction",
+      "kind": "townstead:hunter_order"
+    },
+    "hunger_small": {
+      "type": "pheno:add_state",
+      "state": "townstead_state:blood_pull",
+      "amount": 3
+    },
+    "oath_small": {
+      "type": "pheno:add_state",
+      "state": "townstead_state:blood_pull",
+      "amount": -3
+    },
+    "walk_with": { "type": "pheno:travel_with", "leave_pets": false },
+    "first_watch": { "type": "pheno:spawn_at_edge", "entity_type": "vampirism:vampire", "count": 5 },
+    "rounds": { "type": "pheno:make_rounds", "count": 8 },
+    "thrall_arrives": {
+      "type": "pheno:visitor",
+      "role": "grieving_thrall",
+      "states": { "townstead_state:thrall": 1 }
+    },
+    "carry_question": { "type": "pheno:add_count", "key": "townstead:asked_neighbor", "on": "other" },
+    "walk_end": { "type": "pheno:travel_end" },
+    "take_garlic": {
+      "type": "pheno:take_items",
+      "tag": "townstead:garlic",
+      "count": 16
+    },
+    "fetch_wolf": {
+      "type": "pheno:errand",
+      "days": 1,
+      "adopt": "minecraft:wolf",
+      "essential": true
+    },
+    "wolf_rest_outside": {
+      "type": "pheno:pet_rest",
+      "building": "compat/vampirism/hunter_lodge",
+      "inside": false,
+      "entity_type": "minecraft:wolf"
+    },
+    "wolf_rest_inside": {
+      "type": "pheno:pet_rest",
+      "building": "compat/vampirism/hunter_lodge",
+      "inside": true,
+      "entity_type": "minecraft:wolf"
+    }
+  },
+  "conditions": {
+    "vampire_near": {
+      "type": "pheno:entity_in_radius",
+      "radius": 24,
+      "condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:state",
+            "state": "townstead_state:vampire"
+          },
+          {
+            "type": "pheno:entity_type",
+            "entity_type": "vampirism:vampire"
+          },
+          {
+            "type": "pheno:entity_type",
+            "entity_type": "vampirism:advanced_vampire"
+          }
+        ]
+      }
+    },
+    "made_kill": {
+      "type": "pheno:chronicle_count",
+      "key": "townstead:slew_vampire",
+      "at_least": 1
+    },
+    "has_wolf": {
+      "type": "pheno:has_pet",
+      "entity_type": "minecraft:wolf",
+      "radius": 32
+    },
+    "hungry": {
+      "type": "pheno:state",
+      "state": "townstead_state:blood_pull",
+      "min": 50
+    },
+    "hurt": {
+      "type": "pheno:health",
+      "max": 0.6,
+      "relative": true
+    },
+    "wet": {
+      "type": "pheno:wet"
+    },
+    "night": {
+      "type": "pheno:time_of_day",
+      "min": 13000,
+      "max": 23000
+    },
+    "altar_placed": { "type": "pheno:order_altar" },
+    "altar_graveyard": { "type": "pheno:order_altar", "building": "graveyard" },
+    "altar_house": { "type": "pheno:order_altar", "building": ["house", "big_house"] },
+    "altar_inn": { "type": "pheno:order_altar", "building": "inn" },
+    "altar_infirmary": { "type": "pheno:order_altar", "building": "infirmary" },
+    "altar_arms": { "type": "pheno:order_altar", "building": ["armory", "weaponsmith", "armorer", "blacksmith", "toolsmith"] },
+    "altar_open_sky": { "type": "pheno:order_altar", "outside": true, "sky": true },
+    "altar_underground": { "type": "pheno:order_altar", "sky": false, "outside": true },
+    "lodge_built": { "type": "pheno:village", "has_building": "hunter_lodge" },
+    "second_kill": { "type": "pheno:chronicle_count", "key": "townstead:slew_vampire", "at_least": 2 },
+    "parent_volunteer": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:life_stage", "stage": "adult" },
+        { "type": "pheno:personality", "personality": ["athletic", "confident"] },
+        { "type": "pheno:state", "state": "townstead_state:vampire", "inverted": true },
+        { "type": "pheno:has_child" }
+      ]
+    },
+    "first_oath": { "type": "pheno:chronicle_count", "key": "townstead:officiated/hunter_oath", "at_least": 1 },
+    "sworn_hunter": { "type": "pheno:faction_bond", "kind": "townstead:oath" },
+    "player_sworn": {
+      "type": "pheno:other",
+      "condition": { "type": "pheno:faction_bond", "kind": "townstead:oath" }
+    },
+    "evening": { "type": "pheno:time_of_day", "min": 11500, "max": 18000 },
+    "late_night": { "type": "pheno:time_of_day", "min": 13500, "max": 21000 },
+    "raid_near": {
+      "type": "pheno:entity_in_radius",
+      "radius": 64,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          { "type": "pheno:entity_type", "entity_type": "minecraft:player", "inverted": true },
+          {
+            "type": "pheno:or",
+            "conditions": [
+              { "type": "pheno:state", "state": "townstead_state:vampire" },
+              { "type": "pheno:entity_type", "entity_type": "vampirism:vampire" },
+              { "type": "pheno:entity_type", "entity_type": "vampirism:advanced_vampire" }
+            ]
+          }
+        ]
+      }
+    },
+    "resident_vampire": { "type": "pheno:state", "state": "townstead_state:vampire" },
+    "neighbor_biter": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:state", "state": "townstead_state:vampire" },
+        { "type": "pheno:chronicle_count", "key": "townstead:bit_unwilling", "at_least": 1 }
+      ]
+    },
+    "neighbor_willing": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:state", "state": "townstead_state:vampire" },
+        { "type": "pheno:chronicle_count", "key": "townstead:fed_on_person", "at_least": 1 },
+        { "type": "pheno:chronicle_count", "key": "townstead:bit_unwilling", "at_least": 0, "at_most": 0 }
+      ]
+    },
+    "neighbor_clean": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:state", "state": "townstead_state:vampire" },
+        { "type": "pheno:chronicle_count", "key": "townstead:fed_on_person", "at_least": 0, "at_most": 0 }
+      ]
+    },
+    "heard_neighbor": {
+      "type": "pheno:other",
+      "condition": { "type": "pheno:chronicle_count", "key": "townstead:heard_neighbor", "at_least": 1 }
+    },
+    "turning_villager": { "type": "pheno:status_effect", "effect": "vampirism:sanguinare" },
+    "cured_villager": { "type": "pheno:chronicle_count", "key": "townstead:vampire_cured", "at_least": 1 },
+    "thrall_near": { "type": "pheno:visitor", "role": "grieving_thrall", "radius": 128 },
+    "pull_steady": { "type": "pheno:state", "state": "townstead_state:blood_pull", "min": 25, "max": 49.99 },
+    "pull_hungry": { "type": "pheno:state", "state": "townstead_state:blood_pull", "min": 50, "max": 74.99 },
+    "pull_predator": { "type": "pheno:state", "state": "townstead_state:blood_pull", "min": 75, "max": 99.99 },
+    "pull_fallen": { "type": "pheno:state", "state": "townstead_state:blood_pull", "min": 100 },
+    "player_dhampir": {
+      "type": "pheno:other",
+      "condition": { "type": "pheno:state", "state": "townstead_state:dhampir" }
+    }
+  },
+  "goals": {
+    "altar_placed": {
+      "text": "Place the Oath Altar",
+      "condition": { "type": "pheno:order_altar" }
+    },
+    "lodge_built": {
+      "text": "Build the lodge: the altar and two workbenches in one room",
+      "condition": { "type": "pheno:village", "has_building": "hunter_lodge" }
+    },
+    "founder_kills": {
+      "text": "Vampires put down",
+      "value": { "type": "pheno:chronicle_count", "key": "townstead:slew_vampire" },
+      "target": 1
+    },
+    "player_kills": {
+      "text": "Vampires put down",
+      "subject": "player",
+      "value": { "type": "pheno:chronicle_count", "key": "townstead:slew_vampire" },
+      "target": 1
+    },
+    "founder_toyed": {
+      "text": "Finishing blows held back",
+      "value": { "type": "pheno:chronicle_count", "key": "townstead:toyed" },
+      "target": 1
+    },
+    "garlic_pile": {
+      "text": "Carry {count} garlic",
+      "subject": "player",
+      "count": 16,
+      "condition": {
+        "type": "pheno:inventory",
+        "min": 16,
+        "item_condition": { "type": "pheno:ingredient", "tag": "townstead:garlic" }
+      }
+    }
+  },
+  "gifts": [
+    {
+      "items": [
+        "minecraft:beef",
+        "minecraft:mutton",
+        "minecraft:porkchop",
+        "minecraft:chicken",
+        "minecraft:rabbit"
+      ],
+      "response": "likes",
+      "knot": "gift_meat"
+    }
+  ]
+}

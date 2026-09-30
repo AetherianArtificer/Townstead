@@ -5,6 +5,12 @@
     "when": { "type": "pheno:faction_bond", "kind": "townstead:lodge_master" }
   },
   "bind": "player",
+  "conditions": {
+    "sworn": {
+      "type": "pheno:other",
+      "condition": { "type": "pheno:faction_bond", "kind": "townstead:oath" }
+    }
+  },
   "actions": {
     "enlist": { "type": "pheno:enlist", "range": 6 }
   }

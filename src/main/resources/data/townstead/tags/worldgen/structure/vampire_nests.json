@@ -1,0 +1,17 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "vampirism:vampire_hut",
+      "required": false
+    },
+    {
+      "id": "vampirism:vampire_altar",
+      "required": false
+    },
+    {
+      "id": "vampirism:crypt",
+      "required": false
+    }
+  ]
+}

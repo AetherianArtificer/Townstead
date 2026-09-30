@@ -66,6 +66,23 @@ public final class Orders {
         return order;
     }
 
+    /** Hands the player who helped found an order what its founding gives and teaches. */
+    public static void giveFounding(net.minecraft.server.level.ServerPlayer player, FactionKind kind) {
+        for (ResourceLocation gift : kind.founding().gifts()) {
+            BuiltInRegistries.ITEM.getOptional(gift).ifPresent(item -> {
+                net.minecraft.world.item.ItemStack stack = new net.minecraft.world.item.ItemStack(item);
+                if (!player.getInventory().add(stack)) player.drop(stack, false);
+            });
+        }
+        if (!kind.founding().teaches().isEmpty()) {
+            //? if >=1.21 {
+            player.awardRecipesByKey(kind.founding().teaches());
+            //?} else {
+            /*player.awardRecipesByKey(kind.founding().teaches().toArray(new ResourceLocation[0]));
+            *///?}
+        }
+    }
+
     /** {@code person} takes the order's oath. */
     public static boolean swear(ServerLevel level, Faction order, UUID person) {
         FactionKind definition = PoliticalDefinitions.snapshot().kind(order.kind());

@@ -19,6 +19,67 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class StoryCompilerTest {
 
     @Test
+    void shippedDhampirFounderPersonaCompiles() throws IOException {
+        Path dir = Path.of("src/main/resources/data/townstead/persona/dhampir_founder");
+        for (Path root = Path.of(System.getProperty("user.dir")).toAbsolutePath(); root != null; root = root.getParent()) {
+            if (Files.isDirectory(root.resolve(dir))) {
+                dir = root.resolve(dir);
+                break;
+            }
+        }
+        Map<String, String> files = new LinkedHashMap<>();
+        files.put("persona.ink", Files.readString(dir.resolve("persona.ink"), StandardCharsets.UTF_8));
+        files.put("meeting.ink", Files.readString(dir.resolve("meeting.ink"), StandardCharsets.UTF_8));
+        files.put("wolf.ink", Files.readString(dir.resolve("wolf.ink"), StandardCharsets.UTF_8));
+        files.put("altar.ink", Files.readString(dir.resolve("altar.ink"), StandardCharsets.UTF_8));
+        files.put("garlic.ink", Files.readString(dir.resolve("garlic.ink"), StandardCharsets.UTF_8));
+        files.put("volunteers.ink", Files.readString(dir.resolve("volunteers.ink"), StandardCharsets.UTF_8));
+        files.put("oath.ink", Files.readString(dir.resolve("oath.ink"), StandardCharsets.UTF_8));
+        files.put("walk.ink", Files.readString(dir.resolve("walk.ink"), StandardCharsets.UTF_8));
+        files.put("watch.ink", Files.readString(dir.resolve("watch.ink"), StandardCharsets.UTF_8));
+        files.put("neighbor.ink", Files.readString(dir.resolve("neighbor.ink"), StandardCharsets.UTF_8));
+        files.put("bitten.ink", Files.readString(dir.resolve("bitten.ink"), StandardCharsets.UTF_8));
+        files.put("thrall.ink", Files.readString(dir.resolve("thrall.ink"), StandardCharsets.UTF_8));
+        files.put("counting.ink", Files.readString(dir.resolve("counting.ink"), StandardCharsets.UTF_8));
+        files.put("name.ink", Files.readString(dir.resolve("name.ink"), StandardCharsets.UTF_8));
+        files.put("contracts.ink", Files.readString(dir.resolve("contracts.ink"), StandardCharsets.UTF_8));
+        StoryCompiler.Result result = StoryCompiler.compile(files);
+        assertTrue(result.ok(), () -> "errors: " + result.errors());
+        assertTrue(result.warnings().isEmpty(), () -> "warnings: " + result.warnings());
+        assertNotNull(result.knots().get("greet"));
+        assertNotNull(result.knots().get("meeting"));
+        assertNotNull(result.knots().get("wolf"));
+        assertNotNull(result.knots().get("gift_meat"));
+        assertNotNull(result.knots().get("altar"));
+        assertNotNull(result.knots().get("garlic"));
+        assertNotNull(result.knots().get("volunteers"));
+        assertNotNull(result.knots().get("first_oath"));
+        assertNotNull(result.knots().get("walk_after"));
+        assertNotNull(result.knots().get("watch_after"));
+        assertNotNull(result.knots().get("neighbor_back"));
+        assertNotNull(result.knots().get("bitten_after"));
+        assertNotNull(result.knots().get("thrall_after"));
+        assertNotNull(result.knots().get("counting"));
+        assertNotNull(result.knots().get("the_name"));
+    }
+
+    @Test
+    void shippedResidentVampireStoryCompiles() throws IOException {
+        StoryCompiler.Result result = StoryCompiler.compile(folder("resident_vampire"));
+        assertTrue(result.ok(), () -> "errors: " + result.errors());
+        assertTrue(result.warnings().isEmpty(), () -> "warnings: " + result.warnings());
+        assertNotNull(result.knots().get("greet"));
+    }
+
+    @Test
+    void shippedGrievingThrallStoryCompiles() throws IOException {
+        StoryCompiler.Result result = StoryCompiler.compile(folder("grieving_thrall"));
+        assertTrue(result.ok(), () -> "errors: " + result.errors());
+        assertTrue(result.warnings().isEmpty(), () -> "warnings: " + result.warnings());
+        assertNotNull(result.knots().get("greet"));
+    }
+
+    @Test
     void shippedHuntmasterStoryCompiles() throws IOException {
         StoryCompiler.Result result = StoryCompiler.compile(folder("huntmaster"));
         assertTrue(result.ok(), () -> "errors: " + result.errors());
@@ -55,8 +116,22 @@ class StoryCompilerTest {
     }
 
     @Test
+    void shippedFarmerLoadsWithoutThrowing() throws IOException {
+        loadPersona("farmer");
+    }
+
+    @Test
     void shippedVillageBuilderLoadsWithoutThrowing() throws IOException {
-        Path relative = Path.of("src/main/resources/data/townstead/persona/village_builder");
+        StoryCompiler.Result compiled = loadPersona("village_builder");
+        StoryCompiler.Knot pot = compiled.knots().get("pot");
+        assertNotNull(pot);
+        assertTrue(pot.tags().contains("quest: Something in the pot"));
+        assertTrue(pot.stitches().containsAll(List.of("done", "skipped", "waiting")));
+    }
+
+    /** Compiles a shipped Persona and runs it through the loader, the way world load does. */
+    private static StoryCompiler.Result loadPersona(String id) throws IOException {
+        Path relative = Path.of("src/main/resources/data/townstead/persona", id);
         Path dir = relative;
         for (Path root = Path.of(System.getProperty("user.dir")).toAbsolutePath(); root != null; root = root.getParent()) {
             if (Files.isDirectory(root.resolve(relative))) {
@@ -76,13 +151,10 @@ class StoryCompilerTest {
                 .collect(LinkedHashMap::new, (m, e) -> m.put(e.getKey(), e.getValue()), Map::putAll));
         assertTrue(compiled.ok(), () -> "errors: " + compiled.errors());
         compiled.knots().values().forEach(knot -> assertNotNull(knot.tags(), knot.name()));
-        StoryCompiler.Knot pot = compiled.knots().get("pot");
-        assertNotNull(pot);
-        assertTrue(pot.tags().contains("quest: Something in the pot"));
-        assertTrue(pot.stitches().containsAll(List.of("done", "skipped", "waiting")));
         List<String> issues = new java.util.ArrayList<>();
-        Stories.build(net.minecraft.resources.ResourceLocation.tryParse("townstead:persona/village_builder"), files, issues,
-                net.minecraft.resources.ResourceLocation.tryParse("townstead:village_builder"), new LinkedHashMap<>());
+        Stories.build(net.minecraft.resources.ResourceLocation.tryParse("townstead:persona/" + id), files, issues,
+                net.minecraft.resources.ResourceLocation.tryParse("townstead:" + id), new LinkedHashMap<>());
+        return compiled;
     }
 
     private static Map<String, String> folder(String id) throws IOException {

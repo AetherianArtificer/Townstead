@@ -4,23 +4,29 @@
 === gift_from_home ===
 {hometown:
 - "mill":
-    Oh. Bread.
-    The mill town smelled like this every morning. You could find your way home with your eyes shut.
+    Bread! Oh, and a good one. Look at that crust.
+    Back home, the whole street smelled like this before sunrise. You could find your way to the mill with your eyes shut.
+    I'm going to give the starter a crumb. Don't tell him it isn't mine.
 - "mine":
-    Copper. Raw, even.
-    My father brought a piece home in his pocket every payday. For luck. It didn't work, but I liked it.
+    Copper! Raw, even.
+    My father brought a piece home in his pocket every payday. For luck. It never worked, but I loved it.
+    It's going next to the lamp. They'll get on.
 - "harbor":
-    Cod. Cooked right, too.
+    Cod! Cooked right, too.
     Every house on the harbor cooked this on the last day of the week. The whole street smelled of it.
+    I'm going to eat this very slowly, and nobody's allowed to talk to me while I do.
 - "roads":
-    A compass.
-    The traders who came through carried these. I used to follow them to the edge of town to see which way they went.
+    A compass! Oh, and it doesn't even wobble.
+    The traders who came through used to carry these. I followed them to the edge of town, just to see which way they'd go.
+    Now I'll always know which way home is. Well. Which way here is.
 - "forest":
-    A sapling. Oak.
-    There isn't a tree left where I grew up. I'm going to plant this somewhere nobody will cut it down.
+    A sapling! An oak, even.
+    There isn't a tree left where I grew up. Not one.
+    I'm going to plant it somewhere nobody will ever cut it down. You'll help me pick the spot?
 - else:
-    Water. Clean, too.
+    Water. Clean water.
     We used to line up at the well with bottles like this. Then one summer there was nothing to line up for.
+    I'm going to drink this one. The other bottle, I'll keep carrying.
 }
 Thank you. I mean it.
 -> DONE

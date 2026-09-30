@@ -82,6 +82,7 @@ public final class VampireVillagers {
                 || !villager.hasEffect(net.minecraft.world.effect.MobEffects.WEAKNESS)
                 || villager.getPersistentData().contains(CURE_AT)) return false;
         if (!player.getAbilities().instabuild) stack.shrink(1);
+        curedBy(player);
         beginCure(villager);
         return true;
     }
@@ -96,7 +97,9 @@ public final class VampireVillagers {
     /** A garlic injection given to a vampire villager starts the same cure, and leaves an empty injection. */
     public static boolean tryInjectCure(VillagerEntityMCA villager, net.minecraft.server.level.ServerPlayer player,
                                         net.minecraft.world.item.ItemStack stack) {
-        if (!isGarlicInjection(stack) || !isVampire(villager) || villager.getPersistentData().contains(CURE_AT)) return false;
+        if (!isGarlicInjection(stack) || villager.getPersistentData().contains(CURE_AT)) return false;
+        boolean early = !isVampire(villager);
+        if (early && !hasSanguinare(villager)) return false;
         if (!player.getAbilities().instabuild) {
             stack.shrink(1);
             BuiltInRegistries.ITEM.getOptional(EMPTY_INJECTION).ifPresent(empty -> {
@@ -104,8 +107,33 @@ public final class VampireVillagers {
                 if (!player.getInventory().add(left)) player.drop(left, false);
             });
         }
+        curedBy(player);
+        if (early) {
+            removeSanguinare(villager);
+            villager.playSound(net.minecraft.sounds.SoundEvents.ZOMBIE_VILLAGER_CURE, 1f, 1f);
+            com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.survival(villager,
+                    com.aetherianartificer.townstead.chronicle.emit.ChronicleTapKeys.VAMPIRE_CURED, Map.of());
+            return true;
+        }
         beginCure(villager);
         return true;
+    }
+
+    /** Chronicle counter on a player for every cure of vampirism they start. */
+    public static final String CURED_BY = "townstead:cured_vampirism";
+
+    private static void curedBy(net.minecraft.server.level.ServerPlayer player) {
+        com.aetherianartificer.townstead.chronicle.Chronicles.addCounter(player.server, player.getUUID(), CURED_BY, 1);
+    }
+
+    private static void removeSanguinare(LivingEntity entity) {
+        if (!BuiltInRegistries.MOB_EFFECT.containsKey(SANGUINARE)) return;
+        //? if neoforge {
+        BuiltInRegistries.MOB_EFFECT.getHolder(ResourceKey.create(Registries.MOB_EFFECT, SANGUINARE))
+                .ifPresent(entity::removeEffect);
+        //?} else {
+        /*entity.removeEffect(BuiltInRegistries.MOB_EFFECT.get(SANGUINARE));
+        *///?}
     }
 
     private static void beginCure(VillagerEntityMCA villager) {

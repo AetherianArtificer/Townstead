@@ -21,6 +21,9 @@ public final class VampireChronicles {
     /** A villager was drunk from without consent. Willing bites between spouses or a thrall stay private. */
     public static void bitten(VillagerEntityMCA biter, LivingEntity prey, boolean willing) {
         if (willing || !(prey instanceof VillagerEntityMCA)) return;
+        if (biter.level() instanceof net.minecraft.server.level.ServerLevel level) {
+            com.aetherianartificer.townstead.chronicle.Chronicles.addCounter(level.getServer(), biter.getUUID(), BIT_UNWILLING, 1);
+        }
         ChronicleTaps.survival(prey, ChronicleTapKeys.VAMPIRE_BITE, Map.of("biter", biter.getName().getString()));
     }
 
@@ -42,11 +45,28 @@ public final class VampireChronicles {
         }
     }
 
-    /** A vampire villager, resident or wild, killed by a hunter: a hunter mob or a player in the hunters. */
+    /** Chronicle counter on a vampire for every bite nobody agreed to. */
+    public static final String BIT_UNWILLING = "townstead:bit_unwilling";
+
+    /** Chronicle counter on the killer of a vampire. */
+    public static final String SLEW_VAMPIRE = "townstead:slew_vampire";
+
+    /**
+     * Counts the kill for whoever put down a vampire. For a vampire villager, resident or wild,
+     * killed by a hunter (a hunter mob, a dhampir, or a player in the hunters), also chronicles it.
+     */
     public static void onDeath(LivingEntity victim, DamageSource source) {
-        if (!(victim instanceof VillagerEntityMCA villager) || !VampireVillagers.isVampire(villager)) return;
         if (!(source.getEntity() instanceof LivingEntity killer)) return;
-        boolean hunter = "hunter".equals(DispositionGroups.of(killer)) || VampirismStateProviders.isHunter(killer);
+        String victimGroup = DispositionGroups.of(victim);
+        // Whoever puts down a vampire keeps count of it, villager or player; stories read the count.
+        if ("vampire".equals(victimGroup) || "wild_vampire".equals(victimGroup)) {
+            if (killer.level() instanceof net.minecraft.server.level.ServerLevel level) {
+                com.aetherianartificer.townstead.chronicle.Chronicles.addCounter(level.getServer(), killer.getUUID(), SLEW_VAMPIRE, 1);
+            }
+        }
+        if (!(victim instanceof VillagerEntityMCA villager) || !VampireVillagers.isVampire(villager)) return;
+        String killerGroup = DispositionGroups.of(killer);
+        boolean hunter = "hunter".equals(killerGroup) || "dhampir".equals(killerGroup) || VampirismStateProviders.isHunter(killer);
         if (!hunter) return;
         ChronicleTaps.survival(villager, ChronicleTapKeys.HUNTER_SLEW_VAMPIRE, Map.of("hunter", killer.getName().getString()));
     }

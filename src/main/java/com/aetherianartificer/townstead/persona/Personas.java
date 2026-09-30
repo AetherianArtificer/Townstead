@@ -96,6 +96,8 @@ public final class Personas {
         Map<String, String> outfit = Map.of();
         Map<String, Integer> personalities = new java.util.LinkedHashMap<>();
         String gender = null;
+        Map<ResourceLocation, Double> states = new java.util.LinkedHashMap<>();
+        ResourceLocation mainhand = null;
         if (json.has("villager") && json.get("villager").isJsonObject()) {
             JsonObject villager = json.getAsJsonObject("villager");
             if (villager.has("profession")) {
@@ -128,6 +130,17 @@ public final class Personas {
                     gender = null;
                 }
             }
+            if (villager.has("states") && villager.get("states").isJsonObject()) {
+                for (Map.Entry<String, JsonElement> e : villager.getAsJsonObject("states").entrySet()) {
+                    ResourceLocation state = ResourceLocation.tryParse(e.getKey());
+                    if (state == null) issues.add("error: villager.states: '" + e.getKey() + "' is not an id");
+                    else states.put(state, e.getValue().getAsDouble());
+                }
+            }
+            if (villager.has("mainhand")) {
+                mainhand = ResourceLocation.tryParse(villager.get("mainhand").getAsString());
+                if (mainhand == null) issues.add("error: villager.mainhand: not an id");
+            }
         }
         boolean downed = !json.has("downed") || json.get("downed").getAsBoolean();
         boolean worldUnique = false;
@@ -159,11 +172,22 @@ public final class Personas {
                 }
             }
         }
+        PersonaNames names = json.has("names") ? PersonaNames.parse(json.get("names"), issues) : null;
+        java.util.Set<String> movesOn = new java.util.LinkedHashSet<>();
+        for (String trigger : strings(json.get("moves_on"))) {
+            if (!trigger.equals(PersonaMoves.ORDER_DISSOLVED) && !trigger.equals(PersonaMoves.TOWN_FALLEN)) {
+                issues.add("error: moves_on: '" + trigger + "' is not \"" + PersonaMoves.ORDER_DISSOLVED
+                        + "\" or \"" + PersonaMoves.TOWN_FALLEN + "\"");
+            } else {
+                movesOn.add(trigger);
+            }
+        }
         if (arrives.isEmpty() && arrivesJson == null) {
             issues.add("warning: no \"arrives\"; this Persona only comes through /townstead persona spawn");
         }
         if (issues.stream().anyMatch(i -> i.startsWith("error:"))) return null;
-        return new PersonaDefinition(id, storyId(id), name, List.copyOf(arrives), arrival, profession, root, gender, downed, List.copyOf(rolls), List.copyOf(gifts), schedule, Map.copyOf(personalities), worldUnique, outfit);
+        return new PersonaDefinition(id, storyId(id), name, List.copyOf(arrives), arrival, profession, root, gender, downed, List.copyOf(rolls), List.copyOf(gifts), schedule, Map.copyOf(personalities), worldUnique, outfit,
+                names, Map.copyOf(states), mainhand, java.util.Set.copyOf(movesOn));
     }
 
     /**

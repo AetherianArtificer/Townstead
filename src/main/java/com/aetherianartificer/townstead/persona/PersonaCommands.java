@@ -18,11 +18,12 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * {@code /townstead persona [list | spawn <id> | reset <id>]}. Operator only.
+ * {@code /townstead persona [list | spawn <id> | reset <id> | travel <id>]}. Operator only.
  * {@code spawn} brings a Persona to the village you stand in, next to you, ignoring its arrival
  * goals. {@code reset} forgets that Persona for you in this village: the villager stays as an
  * ordinary resident, your bond and your story progress with them are cleared. When no village
- * still has that Persona, what the world rolled for them is cleared too.
+ * still has that Persona, what the world rolled for them is cleared too. {@code travel} sends the
+ * Persona living in this village on the road, ready to arrive in another village at once.
  */
 public final class PersonaCommands {
     private PersonaCommands() {}
@@ -39,7 +40,10 @@ public final class PersonaCommands {
                                 .executes(c -> spawn(c.getSource(), ResourceLocationArgument.getId(c, "id")))))
                 .then(Commands.literal("reset")
                         .then(Commands.argument("id", ResourceLocationArgument.id()).suggests(IDS)
-                                .executes(c -> reset(c.getSource(), ResourceLocationArgument.getId(c, "id")))))));
+                                .executes(c -> reset(c.getSource(), ResourceLocationArgument.getId(c, "id")))))
+                .then(Commands.literal("travel")
+                        .then(Commands.argument("id", ResourceLocationArgument.id()).suggests(IDS)
+                                .executes(c -> travel(c.getSource(), ResourceLocationArgument.getId(c, "id")))))));
     }
 
     private static int list(CommandSourceStack source) {
@@ -95,6 +99,22 @@ public final class PersonaCommands {
         String what = removed ? "Reset " + id + " for you here." : "Nothing to reset for " + id + ".";
         source.sendSuccess(() -> Component.literal(what), false);
         return removed ? 1 : 0;
+    }
+
+    private static int travel(CommandSourceStack source, ResourceLocation id) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        PersonaDefinition persona = Personas.byId(id);
+        Village village = TownRange.at(player.serverLevel(), player.blockPosition()).orElse(null);
+        if (persona == null || village == null) return fail(source, "Stand in the village where that Persona lives.");
+        PersonaInstances.Instance instance = PersonaInstances.get(source.getServer())
+                .in(id, player.serverLevel().dimension().location(), village.getId());
+        VillagerEntityMCA villager = instance == null ? null : PersonaService.find(source.getServer(), instance.villager());
+        if (villager == null) return fail(source, persona.name() + " does not live here, or is not loaded.");
+        if (!PersonaMoves.send(source.getServer(), persona, instance, villager, "command", 0)) {
+            return fail(source, "Could not send " + persona.name() + " on the road.");
+        }
+        source.sendSuccess(() -> Component.literal(persona.name() + " is on the road."), false);
+        return 1;
     }
 
     private static int fail(CommandSourceStack source, String message) {

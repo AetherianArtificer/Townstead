@@ -68,5 +68,7 @@
   "gene.townstead_roots.vampire_no_bearing": "Cannot Bear Children",
   "gene.townstead_roots.vampire_no_bearing.desc": "This person cannot carry a child.",
   "gene.townstead_roots.vampire_no_thirst": "No Thirst for Water",
-  "gene.townstead_roots.vampire_no_thirst.desc": "Drinks blood instead of water."
+  "gene.townstead_roots.vampire_no_thirst.desc": "Drinks blood instead of water.",
+  "gene.townstead_roots.dhampir_kin": "Dhampir Kin",
+  "gene.townstead_roots.dhampir_kin.desc": "Half of the blood that makes a vampire. Feral vampires are the enemy, but settled ones get a word first."
 }

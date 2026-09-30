@@ -6,6 +6,7 @@
   "mixins": [
     "LivingFieldAbilitiesMixin",
     "accessor.ItemEntityOwnerAccessor",
+    "accessor.MobGoalsAccessor",
     "ResultContainerGateMixin",
     "VillagerServingHandMixin",
     "VillagerServingRecoveryMixin",

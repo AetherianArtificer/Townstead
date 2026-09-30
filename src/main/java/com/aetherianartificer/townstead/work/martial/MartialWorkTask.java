@@ -2,8 +2,6 @@ package com.aetherianartificer.townstead.work.martial;
 
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
 import com.aetherianartificer.townstead.pheno.action.ActionContext;
-import com.aetherianartificer.townstead.politics.order.OrderAltars;
-import com.aetherianartificer.townstead.politics.relations.FactionMembership;
 import com.aetherianartificer.townstead.profession.career.CareerProgression;
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
@@ -19,7 +17,6 @@ import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -307,7 +304,7 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
     private void hold(ServerLevel level, VillagerEntityMCA villager, MartialJob job, long gameTime) {
         if (post == null) {
             BlockPos found = findPlace(level, villager, job);
-            post = found == null ? null : spotNear(level, found, villager, 3);
+            post = found == null ? null : com.aetherianartificer.townstead.building.BuildingCells.inside(level, found, 3, villager.getRandom());
             nextHoldXp = gameTime + HOLD_XP_INTERVAL;
             if (post == null) return;
         }
@@ -328,7 +325,7 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
             if (place == null) return;
         }
         if (post == null) {
-            post = spotNear(level, place, villager, PLACE_REACH);
+            post = com.aetherianartificer.townstead.building.BuildingCells.inside(level, place, PLACE_REACH, villager.getRandom());
             if (post == null) {
                 place = null;
                 return;
@@ -367,7 +364,7 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
         MartialJob.Place wanted = job.place();
         if (wanted == null) return null;
         if (wanted.orderAltar()) {
-            GlobalPos altar = orderAltar(level, villager);
+            GlobalPos altar = com.aetherianartificer.townstead.politics.order.OrderPlaces.altar(level, villager);
             return altar != null && altar.dimension().equals(level.dimension()) ? altar.pos() : null;
         }
         if (home == null) return null;
@@ -386,42 +383,6 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
             }
         }
         return best;
-    }
-
-    /** The altar of the order the villager trains for, else of an order it belongs to. */
-    private static @Nullable GlobalPos orderAltar(ServerLevel level, VillagerEntityMCA villager) {
-        OrderAltars altars = OrderAltars.get(level.getServer());
-        ResourceLocation training = com.aetherianartificer.townstead.politics.order.OrderRecruits.get(level.getServer()).orderOf(villager.getUUID());
-        if (training != null && altars.altar(training) != null) return altars.altar(training);
-        for (ResourceLocation order : FactionMembership.of(villager)) {
-            GlobalPos altar = altars.altar(order);
-            if (altar != null) return altar;
-        }
-        return null;
-    }
-
-    /**
-     * A standing cell near {@code center}, inside the building that holds it, so the villager stays
-     * in the room rather than against its outside wall. Without a building, a cell right beside it.
-     */
-    private @Nullable BlockPos spotNear(ServerLevel level, BlockPos center, VillagerEntityMCA villager, int reach) {
-        Building room = home == null ? null : McaBuildings.all(home).stream()
-                .filter(building -> building.containsPos(center)).findFirst().orElse(null);
-        int within = room == null ? 2 : reach;
-        List<BlockPos> cells = new ArrayList<>();
-        for (BlockPos pos : BlockPos.betweenClosed(center.offset(-within, -1, -within), center.offset(within, 1, within))) {
-            if (pos.distManhattan(center) < 2) continue;
-            if (room != null && !room.containsPos(pos)) continue;
-            if (standable(level, pos)) cells.add(pos.immutable());
-        }
-        return cells.isEmpty() ? null : cells.get(villager.getRandom().nextInt(cells.size()));
-    }
-
-    private static boolean standable(ServerLevel level, BlockPos pos) {
-        BlockState at = level.getBlockState(pos);
-        BlockState above = level.getBlockState(pos.above());
-        return at.getCollisionShape(level, pos).isEmpty() && above.getCollisionShape(level, pos.above()).isEmpty()
-                && level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP);
     }
 
     private static @Nullable Village village(ServerLevel level, VillagerEntityMCA villager) {

@@ -61,7 +61,8 @@
         "conditions": [
           { "type": "pheno:life_stage", "stage": "adult" },
           { "type": "pheno:personality", "personality": ["athletic", "confident"] },
-          { "type": "pheno:state", "state": "townstead_state:vampire", "inverted": true }
+          { "type": "pheno:state", "state": "townstead_state:vampire", "inverted": true },
+          { "type": "pheno:has_child", "inverted": true }
         ]
       }
     }

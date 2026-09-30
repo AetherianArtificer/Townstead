@@ -15,11 +15,9 @@ import net.conczin.mca.server.world.data.VillageManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
 
 /**
  * Test commands for orders (any landless faction kind based at a town) until they arise in play:
@@ -56,19 +54,7 @@ public final class OrderCommands {
         VillagerEntityMCA leader = CommandTargets.lookedAtOrNearest(player, null);
         Faction order = Orders.found(source.getLevel(), town, kind.id(), leader == null ? null : leader.getUUID());
         if (order == null) return fail(source, "command.townstead.order.failed");
-        for (ResourceLocation gift : kind.founding().gifts()) {
-            BuiltInRegistries.ITEM.getOptional(gift).ifPresent(item -> {
-                ItemStack stack = new ItemStack(item);
-                if (!player.getInventory().add(stack)) player.drop(stack, false);
-            });
-        }
-        if (!kind.founding().teaches().isEmpty()) {
-            //? if >=1.21 {
-            player.awardRecipesByKey(kind.founding().teaches());
-            //?} else {
-            /*player.awardRecipesByKey(kind.founding().teaches().toArray(new ResourceLocation[0]));
-            *///?}
-        }
+        Orders.giveFounding(player, kind);
         source.sendSuccess(() -> Component.translatable("command.townstead.order.founded", order.name(), town.getName(),
                 leader == null ? Component.translatable("command.townstead.order.nobody") : leader.getName()), true);
         return 1;

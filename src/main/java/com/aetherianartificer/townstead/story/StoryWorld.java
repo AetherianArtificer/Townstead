@@ -23,6 +23,12 @@ final class StoryWorld {
      * whose profession has that id or path. Empty when nobody fits.
      */
     static String who(String role, GoalContext ctx) {
+        // who("visitor:fledgling"): the visitor with that role near the teller.
+        if (role.startsWith("visitor:")) {
+            VillagerEntityMCA visitor = ctx.speaker() == null ? null
+                    : com.aetherianartificer.townstead.visitor.Visitors.near(ctx.speaker(), role.substring("visitor:".length()), 64);
+            return visitor == null ? "" : VillagerNames.display(visitor).getString();
+        }
         JsonObject json = new JsonObject();
         json.addProperty("type", "pheno:profession");
         json.addProperty("profession", role.contains(":") ? role : "minecraft:" + role);
@@ -58,6 +64,31 @@ final class StoryWorld {
             if (parts.length == 3 && !parts[2].isEmpty()) return StoryText.building(parts[2]);
         }
         return "";
+    }
+
+    /** The name of the first resident of the teller's village, other than the teller, that {@code condition} holds for. */
+    static String whoMatching(Condition condition, net.minecraft.world.entity.LivingEntity player, GoalContext ctx) {
+        Optional<Village> village = ctx.village();
+        if (village.isEmpty()) return "";
+        return village.get().getResidentsUUIDs()
+                .filter(id -> !id.equals(ctx.speakerId()))
+                .sorted()
+                .map(id -> find(ctx, id))
+                .filter(v -> v != null && condition.test(new ConditionContext(v, player)))
+                .findFirst()
+                .map(v -> VillagerNames.display(v).getString())
+                .orElse("");
+    }
+
+    /** The resident of the teller's village shown under {@code name}, or null. */
+    static @org.jetbrains.annotations.Nullable VillagerEntityMCA named(String name, GoalContext ctx) {
+        Optional<Village> village = ctx.village();
+        if (name.isBlank() || village.isEmpty()) return null;
+        return village.get().getResidentsUUIDs()
+                .map(id -> find(ctx, id))
+                .filter(v -> v != null && name.equals(VillagerNames.display(v).getString()))
+                .findFirst()
+                .orElse(null);
     }
 
     private static VillagerEntityMCA find(GoalContext ctx, UUID id) {

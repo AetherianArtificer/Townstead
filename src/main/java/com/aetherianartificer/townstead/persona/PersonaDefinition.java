@@ -19,6 +19,10 @@ import java.util.List;
  * @param personalities personality refs they may roll, by weight; empty for the usual roll
  * @param worldUnique  only one of them in the whole world, instead of one per village
  * @param outfit       MCA clothing they always wear, by gender ("female", "male", or "any"); empty for the usual
+ * @param names        name pools rolled once per world, or null to take the usual name
+ * @param states       entity states they arrive with, by amount
+ * @param mainhand     an item they arrive holding, or null
+ * @param movesOn      what makes them leave for another village ({@code order_dissolved}, {@code town_fallen})
  */
 public record PersonaDefinition(
         ResourceLocation id,
@@ -35,7 +39,11 @@ public record PersonaDefinition(
         @Nullable ResourceLocation schedule,
         java.util.Map<String, Integer> personalities,
         boolean worldUnique,
-        java.util.Map<String, String> outfit
+        java.util.Map<String, String> outfit,
+        @Nullable PersonaNames names,
+        java.util.Map<ResourceLocation, Double> states,
+        @Nullable ResourceLocation mainhand,
+        java.util.Set<String> movesOn
 ) {
     public enum Arrival { WALK_IN, APPEAR }
 }

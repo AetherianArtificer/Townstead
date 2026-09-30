@@ -59,12 +59,21 @@ public final class PersonaService {
         if (now % ARRIVAL_TICKS != 0 || !Systems.on(Systems.PERSONAS) || Personas.all().isEmpty()) return;
         arriveIntroduced(server);
         keepJobs(server);
+        PersonaMoves.tick(server);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             ServerLevel level = player.serverLevel();
             Village village = TownRange.at(level, player.blockPosition()).orElse(null);
             if (village == null) continue;
             for (PersonaDefinition persona : Personas.all().values()) {
-                if (persona.arrives().isEmpty() || PersonaBonds.has(player, persona.id())) continue;
+                if (persona.arrives().isEmpty()) continue;
+                PersonaInstances.Instance travelling = PersonaInstances.get(server).travelling(persona.id());
+                if (travelling != null) {
+                    if (readyToArrive(server, travelling, level, village) && arrives(server, player, persona)) {
+                        arriveTravelling(persona, travelling, player, village);
+                    }
+                    continue;
+                }
+                if (PersonaBonds.has(player, persona.id())) continue;
                 if (PersonaInstances.get(server).in(persona.id(), level.dimension().location(), village.getId()) != null) continue;
                 if (takenElsewhere(server, persona)) continue;
                 if (arrives(server, player, persona)) spawn(persona, player, village, false);
@@ -92,8 +101,9 @@ public final class PersonaService {
         BlockPos at = nearby ? surface(level, player.blockPosition().offset(3, 0, 3))
                 : walkIn ? edge(level, village, player) : centre(level, village);
         VillagerFactory factory = VillagerFactory.newVillager(level).withAge(0).withPosition(Vec3.atBottomCenterOf(at));
-        if ("male".equals(persona.gender())) factory.withGender(Gender.MALE);
-        else if ("female".equals(persona.gender())) factory.withGender(Gender.FEMALE);
+        Identity identity = identity(persona, player);
+        if ("male".equals(identity.gender())) factory.withGender(Gender.MALE);
+        else if ("female".equals(identity.gender())) factory.withGender(Gender.FEMALE);
         ResourceLocation profession = profession(persona, player);
         if (profession != null && BuiltInRegistries.VILLAGER_PROFESSION.containsKey(profession)) {
             factory.withProfession(BuiltInRegistries.VILLAGER_PROFESSION.get(profession));
@@ -114,6 +124,14 @@ public final class PersonaService {
         if (persona.schedule() != null) schedule(level.getServer(), villager, persona.schedule());
         dress(villager, outfit(persona, player));
         if (!persona.personalities().isEmpty()) personality(villager, persona);
+        name(villager, identity);
+        for (Map.Entry<ResourceLocation, Double> state : persona.states().entrySet()) {
+            com.aetherianartificer.townstead.pheno.state.EntityStates.set(villager, state.getKey(), state.getValue(), 0, null);
+        }
+        if (persona.mainhand() != null) {
+            BuiltInRegistries.ITEM.getOptional(persona.mainhand()).ifPresent(item ->
+                    villager.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new net.minecraft.world.item.ItemStack(item)));
+        }
         PersonaInstances.get(level.getServer()).add(new PersonaInstances.Instance(persona.id(), villager.getUUID(),
                 level.dimension().location(), village.getId(), level.getGameTime(),
                 com.aetherianartificer.townstead.naming.VillagerNames.display(villager).getString()));
@@ -121,6 +139,88 @@ public final class PersonaService {
         if (walkIn) WALKING.put(villager.getUUID(), new WalkIn(player.getUUID(), level.getGameTime() + WALK_LIMIT));
         LOGGER.info("Persona {} arrived in village {} for {}", persona.id(), village.getId(), player.getGameProfile().getName());
         return villager;
+    }
+
+    /** Who a Persona is in this world: gender, given and family name, and any extra story names. */
+    public record Identity(@Nullable String gender, @Nullable String given, @Nullable String family, Map<String, String> extra) {
+        /** The rolled names as Ink variables. */
+        public Map<String, Object> vars() {
+            Map<String, Object> out = new java.util.LinkedHashMap<>();
+            if (gender != null) out.put("gender", gender);
+            if (given != null) out.put(PersonaNames.GIVEN, given);
+            if (family != null) out.put(PersonaNames.FAMILY, family);
+            out.putAll(extra);
+            return out;
+        }
+    }
+
+    /**
+     * This world's identity for a Persona, rolling what has not been rolled yet. A gender comes from
+     * a roll that sets one, else persona.json; a Persona with names and neither rolls one.
+     */
+    public static Identity identity(PersonaDefinition persona, ServerPlayer player) {
+        PersonaInstances instances = PersonaInstances.get(player.server);
+        String gender = persona.gender();
+        for (PersonaRoll.Option option : rolls(persona, player).values()) {
+            if (option.gender() != null) gender = option.gender();
+        }
+        PersonaNames names = persona.names();
+        if (names == null) return new Identity(gender, null, null, Map.of());
+        if (gender == null) {
+            gender = instances.rolled(persona.id(), "name.gender");
+            if (gender == null) {
+                gender = player.getRandom().nextBoolean() ? "female" : "male";
+                instances.setRolled(persona.id(), "name.gender", gender);
+            }
+        }
+        String given = rolledName(instances, persona, "name.given", names.pickGiven(gender, player.getRandom()));
+        String family = rolledName(instances, persona, "name.family", PersonaNames.pick(names.family(), player.getRandom()));
+        Map<String, String> extra = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, java.util.List<String>> pool : names.extra().entrySet()) {
+            String value = rolledName(instances, persona, "name.extra." + pool.getKey(), PersonaNames.pick(pool.getValue(), player.getRandom()));
+            if (value != null) extra.put(pool.getKey(), value);
+        }
+        return new Identity(gender, given, family, Map.copyOf(extra));
+    }
+
+    private static @Nullable String rolledName(PersonaInstances instances, PersonaDefinition persona, String key, @Nullable String fresh) {
+        String value = instances.rolled(persona.id(), key);
+        if (value != null) return value;
+        if (fresh != null) instances.setRolled(persona.id(), key, fresh);
+        return fresh;
+    }
+
+    /** Names a new Persona villager from their rolled identity: the given name, and a fixed family name. */
+    private static void name(VillagerEntityMCA villager, Identity identity) {
+        if (identity.given() == null) return;
+        villager.setCustomName(net.minecraft.network.chat.Component.literal(identity.given()));
+        if (identity.family() != null) {
+            var life = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).life();
+            life.setFamilyName(identity.family());
+            life.setFamilyNameFixed(true);
+            com.aetherianartificer.townstead.villager.TownsteadVillagers.flush(villager);
+        }
+        com.aetherianartificer.townstead.naming.VillagerNames.publish(villager);
+    }
+
+    /** A travelling Persona may arrive here once their road time is over, anywhere but the village they left. */
+    private static boolean readyToArrive(MinecraftServer server, PersonaInstances.Instance instance, ServerLevel level, Village village) {
+        var journey = com.aetherianartificer.townstead.journey.Journeys.get(server).of(instance.villager());
+        if (journey == null) return false;
+        if (journey.readyDay() > com.aetherianartificer.townstead.calendar.TownsteadCalendar.worldDay(server)) return false;
+        return !(level.dimension().location().toString().equals(journey.data().getString("from_dimension"))
+                && journey.data().getInt("from_village") == village.getId());
+    }
+
+    /** Brings a travelling Persona in from the road, as themselves, walking toward the player. */
+    private static void arriveTravelling(PersonaDefinition persona, PersonaInstances.Instance instance, ServerPlayer player, Village village) {
+        ServerLevel level = player.serverLevel();
+        VillagerEntityMCA villager = com.aetherianartificer.townstead.journey.Journeys.arrive(level, instance.villager(), edge(level, village, player));
+        if (villager == null) return;
+        PersonaInstances.get(level.getServer()).move(villager.getUUID(), level.dimension().location(), village.getId());
+        PersonaBonds.add(player, persona.id());
+        WALKING.put(villager.getUUID(), new WalkIn(player.getUUID(), level.getGameTime() + WALK_LIMIT));
+        LOGGER.info("Persona {} came in from the road to village {}", persona.id(), village.getId());
     }
 
     /**
@@ -309,6 +409,16 @@ public final class PersonaService {
         }
         VillagerEntityMCA villager = find(server, instance.villager());
         return villager != null ? com.aetherianartificer.townstead.naming.VillagerNames.display(villager).getString() : instance.name();
+    }
+
+    /** A spot just outside {@code village}, out of the player's sight where possible. */
+    public static BlockPos arrivalPoint(ServerLevel level, Village village, ServerPlayer player) {
+        return edge(level, village, player);
+    }
+
+    /** Has {@code villager} walk up to {@code player}, as an arriving Persona does. */
+    public static void walkTo(VillagerEntityMCA villager, ServerPlayer player) {
+        WALKING.put(villager.getUUID(), new WalkIn(player.getUUID(), villager.level().getGameTime() + WALK_LIMIT));
     }
 
     /** Keeps walking-in Personas heading for their player until they are close or it takes too long. */

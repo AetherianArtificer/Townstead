@@ -65,6 +65,11 @@ public final class VampireTotemWatch extends SavedData {
         }
     }
 
+    /** Whether vampires held this village's totem when it was last checked. */
+    public static boolean heldByVampires(MinecraftServer server, net.minecraft.resources.ResourceLocation dimension, int village) {
+        return VAMPIRE.equals(get(server).control.get(dimension + "#" + village));
+    }
+
     private static @Nullable LivingEntity resident(ServerLevel level, Village village) {
         for (UUID id : village.getResidentsUUIDs().toList()) {
             Entity entity = id == null ? null : level.getEntity(id);

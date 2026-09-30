@@ -18,8 +18,8 @@ import java.util.Map;
 
 /**
  * One thing a Persona rolls once per world, such as their hometown. Every option can pin the
- * Persona's profession and set Ink variables. The rolled value is itself an Ink variable named
- * after the roll.
+ * Persona's profession or gender and set Ink variables. The rolled value is itself an Ink variable
+ * named after the roll.
  * <pre>
  * "rolls": {
  *   "hometown": [
@@ -33,7 +33,7 @@ import java.util.Map;
 public record PersonaRoll(String name, List<Option> options) {
 
     public record Option(String value, int weight, @Nullable Condition when, @Nullable ResourceLocation profession,
-                         Map<String, Object> vars, Map<String, String> outfit) {}
+                         Map<String, Object> vars, Map<String, String> outfit, @Nullable String gender) {}
 
     /** Picks one option whose {@code when} holds for the player, by weight. Null when none can be picked. */
     public @Nullable Option pick(ServerPlayer player, RandomSource random) {
@@ -94,7 +94,12 @@ public record PersonaRoll(String name, List<Option> options) {
             }
             int weight = option.has("weight") ? option.get("weight").getAsInt() : 1;
             Map<String, String> outfit = option.has("outfit") ? Personas.outfit(option.get("outfit"), where + ".outfit", issues) : Map.of();
-            options.add(new Option(option.get("value").getAsString(), weight, when, profession, Map.copyOf(vars), outfit));
+            String gender = option.has("gender") ? option.get("gender").getAsString().toLowerCase(java.util.Locale.ROOT) : null;
+            if (gender != null && !gender.equals("male") && !gender.equals("female")) {
+                issues.add("error: " + where + ".gender must be \"male\" or \"female\"");
+                gender = null;
+            }
+            options.add(new Option(option.get("value").getAsString(), weight, when, profession, Map.copyOf(vars), outfit, gender));
         }
         return options.isEmpty() ? null : new PersonaRoll(name, List.copyOf(options));
     }

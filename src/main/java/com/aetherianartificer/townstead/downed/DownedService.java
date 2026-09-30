@@ -66,6 +66,7 @@ public final class DownedService {
 
     /** Death hook. Returns true when the death was turned into being downed. */
     public static boolean onDeath(LivingEntity entity, DamageSource source) {
+        if (com.aetherianartificer.townstead.pet.PetDowned.onDeath(entity, source)) return true;
         if (!covers(entity) || !(entity instanceof VillagerEntityMCA villager)) return false;
         // /kill stays a way for an operator to remove anyone.
         if (source != null && source.is(DamageTypes.GENERIC_KILL)) return false;
@@ -78,6 +79,7 @@ public final class DownedService {
 
     /** Damage hook: a downed villager takes no damage except from the void, which rescues them. */
     public static boolean blocksDamage(LivingEntity entity, DamageSource source) {
+        if (com.aetherianartificer.townstead.pet.PetDowned.blocksDamage(entity)) return true;
         if (!isDowned(entity)) return false;
         if (source != null && source.is(DamageTypes.FELL_OUT_OF_WORLD)) {
             rescue((VillagerEntityMCA) entity);
@@ -87,7 +89,7 @@ public final class DownedService {
 
     /** Target hook: nothing targets a downed villager. */
     public static boolean blocksTarget(LivingEntity target) {
-        return isDowned(target);
+        return isDowned(target) || com.aetherianartificer.townstead.pet.PetDowned.isDowned(target);
     }
 
     /** Use hook: using a downed villager helps them up. Returns true when handled. */
@@ -105,6 +107,7 @@ public final class DownedService {
 
     /** Join hook: a villager who was down when their chunk unloaded lies back down. */
     public static void onJoin(Entity entity) {
+        com.aetherianartificer.townstead.pet.PetDowned.onJoin(entity);
         if (!(entity instanceof VillagerEntityMCA villager) || entity.level().isClientSide) return;
         if (villager.getPersistentData().getLong(KEY) > 0) {
             DOWN.put(villager, Boolean.TRUE);
@@ -113,6 +116,7 @@ public final class DownedService {
     }
 
     public static void tick(MinecraftServer server) {
+        com.aetherianartificer.townstead.pet.PetDowned.tick(server);
         if (server.getTickCount() % 10 != 0) return;
         for (VillagerEntityMCA villager : new ArrayList<>(DOWN.keySet())) {
             if (villager.isRemoved() || !villager.isAlive()) {

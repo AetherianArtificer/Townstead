@@ -316,6 +316,7 @@ final class StorySession {
             setIfDeclared(rolled.getKey(), rolled.getValue().value());
             rolled.getValue().vars().forEach(this::setIfDeclared);
         }
+        com.aetherianartificer.townstead.persona.PersonaService.identity(persona, player).vars().forEach(this::setIfDeclared);
     }
 
     void setIfDeclared(String name, Object value) {
@@ -327,32 +328,36 @@ final class StorySession {
     }
 
     private void bindExternals() throws Exception {
-        story.bindExternalFunction("check", args -> check(string(args, 0)));
-        story.bindExternalFunction("count", args -> {
+        bindRead("check", args -> check(string(args, 0)));
+        bindRead("count", args -> {
             Goal goal = goal(string(args, 0));
             if (goal != null && goal.isCounter()) return (int) Math.min(Integer.MAX_VALUE, entry.seen.getOrDefault(string(args, 0), 0L));
             long value = goal == null ? Goal.UNKNOWN : goal.read(goalContext());
             return (int) Math.max(0L, value);
         });
-        story.bindExternalFunction("who", args -> who(string(args, 0)));
-        story.bindExternalFunction("building", args -> StoryWorld.building(string(args, 0), goalContext()));
-        story.bindExternalFunction("roll", args -> {
-            ResourceLocation persona = ResourceLocation.tryParse(string(args, 0));
-            String rolled = persona == null ? null
-                    : com.aetherianartificer.townstead.persona.PersonaInstances.get(player.server).rolled(persona, string(args, 1));
-            return rolled == null ? "" : rolled;
+        bindRead("who", args -> who(string(args, 0)));
+        bindRead("is", args -> is(string(args, 0), string(args, 1)));
+        bindRead("building", args -> StoryWorld.building(string(args, 0), goalContext()));
+        bindRead("roll", args -> {
+            // Rolls it now when the Persona has not rolled it yet, so one Persona can talk about
+            // another before they arrive.
+            ResourceLocation id = ResourceLocation.tryParse(string(args, 0));
+            var persona = id == null ? null : com.aetherianartificer.townstead.persona.Personas.byId(id);
+            if (persona == null) return "";
+            var option = com.aetherianartificer.townstead.persona.PersonaService.rolls(persona, player).get(string(args, 1));
+            return option == null ? "" : option.value();
         });
-        story.bindExternalFunction("most_harvested", args -> goalContext().villageId(true)
+        bindRead("most_harvested", args -> goalContext().villageId(true)
                 .map(v -> com.aetherianartificer.townstead.village.HarvestTally.get(player.server).most(v))
                 .map(StoryText::item).orElse(""));
-        story.bindExternalFunction("persona_name", args -> {
+        bindRead("persona_name", args -> {
             ResourceLocation persona = ResourceLocation.tryParse(string(args, 0));
             if (persona == null) return "";
             var village = goalContext().villageId(true);
             return com.aetherianartificer.townstead.persona.PersonaService.nameOf(player.server, persona,
                     village.map(v -> v.dimension()).orElse(null), village.map(v -> v.villageId()).orElse(-1));
         });
-        story.bindExternalFunction("rel", args -> (int) Math.round(rel(string(args, 0))));
+        bindRead("rel", args -> (int) Math.round(rel(string(args, 0))));
         story.bindExternalFunction("trust", args -> {
             contribute("trust", number(args, 0), "trust");
             return null;
@@ -369,9 +374,38 @@ final class StorySession {
             act(string(args, 0));
             return null;
         }, false);
-        story.bindExternalFunction("mod", args -> com.aetherianartificer.townstead.compat.ModCompat.isLoaded(string(args, 0)));
-        story.bindExternalFunction("can_build", args -> com.aetherianartificer.townstead.pheno.condition.types.CanBuildConditionType.possible(string(args, 0).toLowerCase(java.util.Locale.ROOT)));
-        story.bindExternalFunction("demeanor", args -> Demeanor.of(definition.demeanor(), this::rel));
+        bindRead("mod", args -> com.aetherianartificer.townstead.compat.ModCompat.isLoaded(string(args, 0)));
+        bindRead("can_build", args -> com.aetherianartificer.townstead.pheno.condition.types.CanBuildConditionType.possible(string(args, 0).toLowerCase(java.util.Locale.ROOT)));
+        bindRead("demeanor", args -> Demeanor.of(definition.demeanor(), this::rel));
+        bindRead("contract_offer", args -> pool(args) == null ? ""
+                : com.aetherianartificer.townstead.contract.Contracts.title(player,
+                        com.aetherianartificer.townstead.contract.Contracts.offer(player, villager, pool(args))));
+        bindRead("contract_about", args -> pool(args) == null ? ""
+                : com.aetherianartificer.townstead.contract.Contracts.about(player,
+                        com.aetherianartificer.townstead.contract.Contracts.offer(player, villager, pool(args))));
+        bindRead("contract_skip", args -> {
+            if (pool(args) != null) com.aetherianartificer.townstead.contract.Contracts.skip(player, pool(args));
+            return true;
+        });
+        bindRead("contract_accept", args -> pool(args) != null
+                && com.aetherianartificer.townstead.contract.Contracts.accept(player, villager, pool(args)));
+        bindRead("contract_ready", args -> pool(args) == null ? 0
+                : com.aetherianartificer.townstead.contract.Contracts.ready(player, pool(args)));
+        bindRead("contract_active", args -> pool(args) == null ? 0
+                : com.aetherianartificer.townstead.contract.Contracts.active(player, pool(args)));
+        bindRead("contract_turn_in", args -> pool(args) == null ? 0
+                : com.aetherianartificer.townstead.contract.Contracts.turnIn(player, villager, pool(args)));
+    }
+
+    /**
+     * Binds a helper that only reads the world, so Ink can call it inside choice text and string
+     * building, as in {@code [How do you know {builder()}?]}. blade-ink 1.3.2 has that check the
+     * wrong way round: it refuses functions bound lookahead-safe (the default) while building a
+     * string. Binding them as not lookahead-safe lets string building call them, and makes the
+     * runtime wait on them during lookahead, which is correct for anything that reads the world.
+     */
+    private void bindRead(String name, com.bladecoder.ink.runtime.Story.ExternalFunction<?> function) throws Exception {
+        story.bindExternalFunction(name, function, false);
     }
 
     private boolean check(String what) {
@@ -392,9 +426,24 @@ final class StorySession {
         });
     }
 
+    /**
+     * {@code is(name, "condition")}: whether the resident of the teller's village with that name
+     * matches a condition the story names. With an empty condition, whether they are still there.
+     */
+    private boolean is(String name, String what) {
+        VillagerEntityMCA resident = StoryWorld.named(name, goalContext());
+        if (resident == null) return false;
+        if (what.isBlank()) return true;
+        Condition condition = definition.conditions().get(what);
+        return condition != null && condition.test(new ConditionContext(resident, player));
+    }
+
     private String who(String role) {
         if (role.equalsIgnoreCase("player")) return player.getGameProfile().getName();
         if (role.equalsIgnoreCase("me")) return entry.villagerName;
+        // A condition the story names: the first resident it holds for.
+        Condition condition = definition.conditions().get(role);
+        if (condition != null) return StoryWorld.whoMatching(condition, player, goalContext());
         return StoryWorld.who(role, goalContext());
     }
 
@@ -432,6 +481,10 @@ final class StorySession {
     private String operationId() {
         entry.operations++;
         return "story:" + definition.id() + ":" + villager.getUUID() + ":" + player.getUUID() + ":" + entry.operations;
+    }
+
+    private static @Nullable ResourceLocation pool(Object[] args) {
+        return ResourceLocation.tryParse(string(args, 0));
     }
 
     private static String string(Object[] args, int index) {

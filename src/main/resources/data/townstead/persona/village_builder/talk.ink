@@ -1,7 +1,15 @@
-// Everyday talk once nothing is waiting: one line, picked by demeanor, sometimes about something
-// that really happened. Nothing here claims a detail about the village without checking it.
+// Everyday talk once nothing is waiting: one line, picked by demeanor. The object they carry from
+// home is a small running thread; the walls gag shows up out of delight; "we" once they trust
+// the player. Nothing claims a detail about the village without checking it.
+
+VAR said_glad = false
 
 === talk ===
+{rel("trust") >= 20 and not said_glad and demeanor() != "stern" and demeanor() != "guarded":
+    ~ said_glad = true
+    I'm glad I came here. I don't think I've said that. I'm saying it.
+    -> choices
+}
 {demeanor():
 - "stern": -> stern
 - "guarded": -> guarded
@@ -9,58 +17,55 @@
 }
 -> warm
 
+// How the thing they carry from home is doing, today.
+= keepsake
+{hometown:
+- "harbor": {~The net's holding. For now. The net and I have an understanding.|I mended the net again. I'd say it's the last time, but we both know better.}
+- "mill": {~He's rising beautifully today. The starter. I say that like you'd know.|I fed him twice already. He's greedy. I'm proud of him.}
+- "mine": {~I still haven't fixed the lamp. It's become a sort of tradition.|The lamp sees half of things. So do I, before breakfast.}
+- "roads": {~I've made you a bigger dot on the map. Don't let it go to your head.|The map's getting crowded around here. That's a good sign, on a map.}
+- "forest": {~The heron has a second leg now. It's still a bit of a duck.|I carved a little more. The duck is winning.}
+- else: {~I still haven't opened the other bottle. I won't. It's not for drinking.|Have a sip? Just the one, mind. Habit.}
+}
+->->
+
 = stern
 {shuffle:
 - Is there something you need?
 - I'm working.
 - Say what you came to say.
-- We're fine. Don't push it.
-- I've got nothing to say to you right now.
 }
 -> choices
 
 = guarded
 {shuffle:
-- Oh. It's you.
+- Oh. Hello.
 - I'm fine. Busy.
 - Can it wait? I'm in the middle of something.
-- Mm. Hello.
-- I'll let you know if something's wrong.
 }
 -> choices
 
 = jovial
 {shuffle:
-- There you are! I was just thinking about roofs. I'm always thinking about roofs.
-- Good day for it, isn't it? For anything, really.
-- I walked the whole place this morning. It's getting good. Don't let it go to your head.
-- Have I told you this place is good? I'm telling you again. It's good.
-- I'm in a mood today. A good one. You couldn't ruin it if you tried. Please don't try.
-- Somebody laughed at one of my jokes today. On purpose, I think.
-- I'd like it on the record that I'm happy. Write that down somewhere.
+- There you are! I've been checking corners again. Yours are still square. I'm almost disappointed.
+- -> keepsake ->
+- I had an idea just now. I've lost it. It'll come back. They always come back at night.
+- {we() == "we": We're doing well, you know. Don't tell anyone I said so.|You're doing well here, you know. Don't let me go on about it.}
 - If I start humming, just let me. It's a whole thing.
-- {village_name != "": I told someone I live in {village_name} today. Out loud. It felt good.|I told someone I live here today. Out loud. It felt good.}
+- {village_name != "": I've started saying I live in {village_name}. Out loud. It feels good.|I've started saying I live here. Out loud. It feels good.}
 }
 -> choices
 
 = warm
 {shuffle:
-- I walked the whole place this morning. I do that every morning. I'm not going to stop.
 - Do you ever stand somewhere and think about where a door should go? No? Just me, then.
-- If you ever need a second opinion on anything, I have a first one ready.
-- Somebody asked me where I'm from today. I said down the road. It's true. It's just a long road.
-- I fixed something earlier. Nobody asked me to. I'm working on that.
-- Every place has a sound when it's working. This one's getting louder.
-- Don't tell anyone, but I talk to the walls I build. Encouragingly.
-- I had an idea earlier. I've lost it. It'll come back. They always come back at night.
-- You look busy. That's good. Busy is good. Too busy is a different conversation.
-- People keep asking me for advice. I keep giving it. One of us should stop.
+- If you ever need a second opinion on anything, I've got a first one ready.
+- I keep fixing things nobody asked me to. I'm working on that.
 - I keep a list of things to fix. It's a long list. It's a happy list, somehow.
-- My hands don't know what to do when they're not holding something. It's a problem.
-- {done_carry: I took my day off this week. The whole thing. I'm very proud of myself.|I tried to take a break earlier. I lasted about a minute.}
-- {count("newcomer") > 0: Did you meet the new one? I did. Twice. I'm told that's once too many.|I keep wondering who'll turn up next. Someone always does.}
-- {building("raised") != "": I stood in the {building("raised")} for a while today. It's a good room. Somebody measured.|I like watching a place go up. Even slowly. Especially slowly.}
-- {village_name != "": {village_name}. I like saying it. It sounds like a place that's going to be around a while.|This place needs a name people say with their chest. Just a thought.}
+- -> keepsake ->
+- {done_carry: I took my day off this week. The whole thing. I'm very proud of me.|I tried to take a break earlier. I lasted about a minute.}
+- {count("newcomer") > 0: Have you met the new arrival properly? I have. Twice. I'm told that's once too many.|I keep wondering who'll turn up next. Someone always does.}
+- {building("raised") != "": I went and stood in the {building("raised")} for a bit. Square. Properly square. Sorry, I'll stop.|I like watching a place go up. Even slowly. Especially slowly.}
 - {check("empty_houses"): There's room for more people here. I like that. It means we're expecting someone.|Every bed's spoken for. That's a good problem. Still a problem.}
 }
 -> choices
@@ -71,11 +76,11 @@
     - check("hungry"):
         People are a bit hungry. I'm not nagging. I'm noticing out loud.
     - check("no_spare_beds"):
-        Every bed's taken. If anyone new turns up, they'll be sleeping on your floor.
+        Every bed's taken. If anyone new turns up, they'll be sleeping on your floor. Or mine.
     - count("idle_adults") > 0:
         A few people have nothing to do. Not their fault. Nobody's asked them yet.
     - else:
-        {~Not right now. That's a good sign.|Nothing that can't wait. I'll find you.|No. Enjoy it. That doesn't last.}
+        {~Not right now. That's a good sign.|Nothing that can't wait. I'll find you.|No. Enjoy it. Properly.}
     }
     -> DONE
 + [Bye.]

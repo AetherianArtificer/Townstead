@@ -23,6 +23,8 @@ import java.util.UUID;
  */
 public final class PersonaInstances extends SavedData {
     public static final String FILE_ID = "townstead_personas";
+    /** The village of a Persona who is on the road between villages. */
+    public static final int TRAVELLING = -1;
     private static final int SCHEMA = 1;
 
     /** @param name the villager's name when they arrived, for naming them while they are unloaded */
@@ -72,6 +74,22 @@ public final class PersonaInstances extends SavedData {
 
     public Collection<Instance> all() {
         return byVillager.values();
+    }
+
+    /** Moves a Persona to another village, or onto the road with {@link #TRAVELLING}. */
+    public void move(UUID villager, ResourceLocation dimension, int village) {
+        Instance instance = byVillager.get(villager);
+        if (instance == null) return;
+        byVillager.put(villager, new Instance(instance.persona(), villager, dimension, village, instance.created(), instance.name()));
+        setDirty();
+    }
+
+    /** The world-unique Persona's instance while they are on the road, or null. */
+    public @Nullable Instance travelling(ResourceLocation persona) {
+        for (Instance instance : byVillager.values()) {
+            if (instance.persona().equals(persona) && instance.village() == TRAVELLING) return instance;
+        }
+        return null;
     }
 
     public void add(Instance instance) {

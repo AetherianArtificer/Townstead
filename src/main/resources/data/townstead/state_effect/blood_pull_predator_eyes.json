@@ -1,0 +1,13 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "mods": "vampirism",
+  "state": "townstead_state:blood_pull",
+  "min_tier": "predator",
+  "priority": 30,
+  "condition": { "type": "pheno:rig", "rig": "none" },
+  "genes": {
+    "grant": [
+      "townstead_roots:vampire_eyes"
+    ]
+  }
+}

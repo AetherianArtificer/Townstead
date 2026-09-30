@@ -576,6 +576,10 @@ public class Townstead {
             com.aetherianartificer.townstead.compat.vampirism.VampireTotemWatch.tick(e.getServer());
             com.aetherianartificer.townstead.ritual.RitualService.tick(e.getServer());
             com.aetherianartificer.townstead.politics.order.Recruiting.tick(e.getServer());
+            com.aetherianartificer.townstead.journey.Journeys.tick(e.getServer());
+            com.aetherianartificer.townstead.journey.Companions.tick(e.getServer());
+            com.aetherianartificer.townstead.journey.Rounds.tick(e.getServer());
+            com.aetherianartificer.townstead.contract.Contracts.tick(e.getServer());
             com.aetherianartificer.townstead.livery.LiverySync.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
@@ -605,6 +609,8 @@ public class Townstead {
             if (e.getLevel() instanceof net.minecraft.server.level.ServerLevel sl) {
                 com.aetherianartificer.townstead.calendar.AgeableCatchup.onEntityJoin(e.getEntity(), sl.getServer());
                 com.aetherianartificer.townstead.downed.DownedService.onJoin(e.getEntity());
+                com.aetherianartificer.townstead.pet.VillagerPets.onJoin(e.getEntity());
+                com.aetherianartificer.townstead.journey.Companions.onJoin(e.getEntity());
                 if (e.getEntity() instanceof VillagerEntityMCA villager) {
                     com.aetherianartificer.townstead.villager.TownsteadVillagerState.root(villager);
                     com.aetherianartificer.townstead.root.trait.TraitBridge.migrate(villager);
@@ -832,7 +838,10 @@ public class Townstead {
             com.aetherianartificer.townstead.temperature.PlayerThermalOffsets.clear(e.getEntity());
             com.aetherianartificer.townstead.profession.skill.LearnedSkills.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.profession.career.PlayerCareers.invalidate(e.getEntity().getUUID());
-            if (e.getEntity() instanceof ServerPlayer storyPlayer) com.aetherianartificer.townstead.story.StoryService.onLogout(storyPlayer);
+            if (e.getEntity() instanceof ServerPlayer storyPlayer) {
+                com.aetherianartificer.townstead.story.StoryService.onLogout(storyPlayer);
+                com.aetherianartificer.townstead.contract.Contracts.onLogout(storyPlayer);
+            }
             if (e.getEntity() instanceof ServerPlayer sp) com.aetherianartificer.townstead.rebirth.Rebirth.onLogout(sp);
             com.aetherianartificer.townstead.chronicle.net.ChronicleArchiveAccess.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.building.pin.BuildingPinService.logout(e.getEntity().getUUID());
@@ -872,6 +881,18 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.ritual.RitualCommands.register(e.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.pet.PetCommands.register(e.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.visitor.VisitorCommands.register(e.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.journey.TravelCommands.register(e.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.contract.ContractCommands.register(e.getDispatcher()));
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.WorksiteCommands.register(
@@ -951,6 +972,7 @@ public class Townstead {
             float modified = com.aetherianartificer.townstead.root.damage.GeneDamageHandler.modify(
                     e.getEntity(), e.getSource(), e.getAmount());
             modified = com.aetherianartificer.townstead.ritual.Blessings.modify(e.getEntity(), e.getSource(), modified);
+            modified = com.aetherianartificer.townstead.compat.vampirism.Toying.modify(e.getEntity(), e.getSource(), modified);
             if (modified <= 0f) e.setCanceled(true);
             else e.setAmount(modified);
             com.aetherianartificer.townstead.root.trigger.GeneTriggers.onDamage(
@@ -978,6 +1000,7 @@ public class Townstead {
             com.aetherianartificer.townstead.root.loot.DeathLoot.onDeath(e.getEntity());
             com.aetherianartificer.townstead.replace.MobReplacer.onDeath(e.getEntity(), e.getSource());
             com.aetherianartificer.townstead.compat.vampirism.VampireChronicles.onDeath(e.getEntity(), e.getSource());
+            com.aetherianartificer.townstead.contract.KillCounts.onDeath(e.getEntity(), e.getSource());
             com.aetherianartificer.townstead.compat.wholecloth.WholeClothDrops.onDeath(e.getEntity(), e.getSource());
             if (!(e.getEntity() instanceof net.minecraft.world.entity.player.Player)) {
                 com.aetherianartificer.townstead.profession.skill.LearnedSkills.clear(e.getEntity().getUUID());
@@ -1158,6 +1181,10 @@ public class Townstead {
             com.aetherianartificer.townstead.compat.vampirism.VampireTotemWatch.tick(e.getServer());
             com.aetherianartificer.townstead.ritual.RitualService.tick(e.getServer());
             com.aetherianartificer.townstead.politics.order.Recruiting.tick(e.getServer());
+            com.aetherianartificer.townstead.journey.Journeys.tick(e.getServer());
+            com.aetherianartificer.townstead.journey.Companions.tick(e.getServer());
+            com.aetherianartificer.townstead.journey.Rounds.tick(e.getServer());
+            com.aetherianartificer.townstead.contract.Contracts.tick(e.getServer());
             com.aetherianartificer.townstead.livery.LiverySync.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.tick(e.getServer());
                 com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
@@ -1188,6 +1215,8 @@ public class Townstead {
             if (e.getLevel() instanceof net.minecraft.server.level.ServerLevel sl) {
                 com.aetherianartificer.townstead.calendar.AgeableCatchup.onEntityJoin(e.getEntity(), sl.getServer());
                 com.aetherianartificer.townstead.downed.DownedService.onJoin(e.getEntity());
+                com.aetherianartificer.townstead.pet.VillagerPets.onJoin(e.getEntity());
+                com.aetherianartificer.townstead.journey.Companions.onJoin(e.getEntity());
                 if (e.getEntity() instanceof VillagerEntityMCA villager) {
                     com.aetherianartificer.townstead.villager.TownsteadVillagerState.root(villager);
                     com.aetherianartificer.townstead.root.trait.TraitBridge.migrate(villager);
@@ -1412,7 +1441,10 @@ public class Townstead {
             com.aetherianartificer.townstead.temperature.PlayerThermalOffsets.clear(e.getEntity());
             com.aetherianartificer.townstead.profession.skill.LearnedSkills.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.profession.career.PlayerCareers.invalidate(e.getEntity().getUUID());
-            if (e.getEntity() instanceof ServerPlayer storyPlayer) com.aetherianartificer.townstead.story.StoryService.onLogout(storyPlayer);
+            if (e.getEntity() instanceof ServerPlayer storyPlayer) {
+                com.aetherianartificer.townstead.story.StoryService.onLogout(storyPlayer);
+                com.aetherianartificer.townstead.contract.Contracts.onLogout(storyPlayer);
+            }
             if (e.getEntity() instanceof ServerPlayer sp) com.aetherianartificer.townstead.rebirth.Rebirth.onLogout(sp);
             com.aetherianartificer.townstead.chronicle.net.ChronicleArchiveAccess.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.building.pin.BuildingPinService.logout(e.getEntity().getUUID());
@@ -1452,6 +1484,18 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.ritual.RitualCommands.register(e.getDispatcher()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.pet.PetCommands.register(e.getDispatcher()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.visitor.VisitorCommands.register(e.getDispatcher()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.journey.TravelCommands.register(e.getDispatcher()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.contract.ContractCommands.register(e.getDispatcher()));
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.WorksiteCommands.register(
@@ -1549,6 +1593,7 @@ public class Townstead {
             float modified = com.aetherianartificer.townstead.root.damage.GeneDamageHandler.modify(
                     e.getEntity(), e.getSource(), e.getAmount());
             modified = com.aetherianartificer.townstead.ritual.Blessings.modify(e.getEntity(), e.getSource(), modified);
+            modified = com.aetherianartificer.townstead.compat.vampirism.Toying.modify(e.getEntity(), e.getSource(), modified);
             if (modified <= 0f) e.setCanceled(true);
             else e.setAmount(modified);
             com.aetherianartificer.townstead.root.trigger.GeneTriggers.onDamage(
@@ -1576,6 +1621,7 @@ public class Townstead {
             com.aetherianartificer.townstead.root.loot.DeathLoot.onDeath(e.getEntity());
             com.aetherianartificer.townstead.replace.MobReplacer.onDeath(e.getEntity(), e.getSource());
             com.aetherianartificer.townstead.compat.vampirism.VampireChronicles.onDeath(e.getEntity(), e.getSource());
+            com.aetherianartificer.townstead.contract.KillCounts.onDeath(e.getEntity(), e.getSource());
             com.aetherianartificer.townstead.compat.wholecloth.WholeClothDrops.onDeath(e.getEntity(), e.getSource());
             if (!(e.getEntity() instanceof net.minecraft.world.entity.player.Player)) {
                 com.aetherianartificer.townstead.profession.skill.LearnedSkills.clear(e.getEntity().getUUID());
@@ -2215,6 +2261,44 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.action.types.StartRitualActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.EnlistActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.FoundFactionActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.AdoptPetActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.ErrandActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.PetRestActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.VisitorActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.VisitorOutcomeActionType(true));
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.VisitorOutcomeActionType(false));
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.TravelActionType(true));
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.TravelActionType(false));
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.TakeItemsActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.SpawnAtEdgeActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.MakeRoundsActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.AddCountActionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.HasPetConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.VisitorConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.TravellingWithConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.OrderAltarConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.OtherConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.HasChildConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.FactionBondConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
@@ -2779,6 +2863,7 @@ public class Townstead {
         event.addListener(WHEEL_ACTIONS);
         event.addListener(new com.aetherianartificer.townstead.reaction.ReactionDataLoader());
         event.addListener(new com.aetherianartificer.townstead.ritual.Rituals.Loader());
+        event.addListener(new com.aetherianartificer.townstead.contract.Contracts.Loader());
         event.addListener(new ShiftTemplateJsonLoader());
         event.addListener(new WeekPlanJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.calendar.CalendarProfileJsonLoader());

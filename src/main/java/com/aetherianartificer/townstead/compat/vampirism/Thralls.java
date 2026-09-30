@@ -50,6 +50,15 @@ public final class Thralls {
                 new BondInstance.Side("thrall", Party.person(villager.getUUID()))), PROVENANCE, level.getGameTime());
     }
 
+    /** Binds {@code thrall} to {@code master} now, whatever village either lives in. */
+    public static void bind(LivingEntity master, LivingEntity thrall) {
+        if (!(thrall.level() instanceof ServerLevel level)) return;
+        PoliticalSavedData data = PoliticalSavedData.get(level.getServer());
+        if (bond(data, thrall.getUUID()) != null) return;
+        FactionBonds.form(data, BOND, List.of(new BondInstance.Side("master", Party.person(master.getUUID())),
+                new BondInstance.Side("thrall", Party.person(thrall.getUUID()))), PROVENANCE, level.getGameTime());
+    }
+
     /** Whether {@code thrall} serves {@code master}. */
     public static boolean serves(LivingEntity master, LivingEntity thrall) {
         if (!(thrall.level() instanceof ServerLevel level)) return false;

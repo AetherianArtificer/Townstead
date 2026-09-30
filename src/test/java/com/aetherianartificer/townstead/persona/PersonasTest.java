@@ -125,4 +125,18 @@ class PersonasTest {
         assertNull(Personas.parse(ID, json("{ \"unique\": \"galaxy\" }"), Map.of(), issues));
         assertTrue(issues.contains("error: unique must be \"village\" or \"world\""), issues.toString());
     }
+
+    @Test
+    void outfitsAreOneTextureOrByGender() {
+        List<String> issues = new ArrayList<>();
+        PersonaDefinition one = Personas.parse(ID, json("{ \"villager\": { \"outfit\": \"townstead:skins/a.png\" } }"), Map.of(), issues);
+        assertEquals("townstead:skins/a.png", one.outfit().get("any"));
+        PersonaDefinition both = Personas.parse(ID, json("""
+                { "villager": { "outfit": { "female": "f.png", "male": "m.png" } },
+                  "rolls": { "home": [ { "value": "a", "outfit": "r.png" } ] } }
+                """), Map.of(), issues);
+        assertEquals("f.png", both.outfit().get("female"));
+        assertEquals("r.png", both.rolls().get(0).option("a").outfit().get("any"));
+        assertNull(Personas.parse(ID, json("{ \"villager\": { \"outfit\": { \"robot\": \"x.png\" } } }"), Map.of(), issues));
+    }
 }

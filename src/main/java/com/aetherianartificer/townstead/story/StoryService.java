@@ -587,6 +587,7 @@ public final class StoryService {
                 }
             }
         }
+        if (Systems.on(Systems.STORIES)) com.aetherianartificer.townstead.contract.Contracts.ledger(player, quests);
         send(player, new StoryQuestSyncS2CPayload(List.copyOf(quests)));
     }
 

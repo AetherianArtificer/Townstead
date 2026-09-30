@@ -227,6 +227,8 @@ final class RitualSession {
     private void complete() {
         over = true;
         if (ritual.outcome().joinOrder()) Orders.swear(level, order, candidate.getUUID());
+        com.aetherianartificer.townstead.chronicle.Chronicles.addCounter(level.getServer(), officiant.getUUID(),
+                ritual.id().getNamespace() + ":officiated/" + ritual.id().getPath(), 1);
         if (ritual.outcome().chronicle() != null && candidate instanceof VillagerEntityMCA) {
             ChronicleTaps.survival(candidate, ritual.outcome().chronicle(), Map.of("order", order.name()));
         }

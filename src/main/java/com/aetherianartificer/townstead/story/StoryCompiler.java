@@ -27,6 +27,7 @@ final class StoryCompiler {
             Map.entry("check", "what"),
             Map.entry("count", "what"),
             Map.entry("who", "role"),
+            Map.entry("is", "name, what"),
             Map.entry("building", "kind"),
             Map.entry("roll", "persona, name"),
             Map.entry("persona_name", "persona"),
@@ -38,7 +39,14 @@ final class StoryCompiler {
             Map.entry("act", "id"),
             Map.entry("mod", "id"),
             Map.entry("can_build", "building"),
-            Map.entry("demeanor", ""));
+            Map.entry("demeanor", ""),
+            Map.entry("contract_offer", "pool"),
+            Map.entry("contract_about", "pool"),
+            Map.entry("contract_skip", "pool"),
+            Map.entry("contract_accept", "pool"),
+            Map.entry("contract_ready", "pool"),
+            Map.entry("contract_active", "pool"),
+            Map.entry("contract_turn_in", "pool"));
 
     private static final String ROOT = "<story>";
 

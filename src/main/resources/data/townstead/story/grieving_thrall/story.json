@@ -1,0 +1,10 @@
+{
+  "attach": {
+    "when": { "type": "pheno:visitor", "role": "grieving_thrall", "self": true }
+  },
+  "bind": "player",
+  "actions": {
+    "stay": { "type": "pheno:visitor_stay", "role": "grieving_thrall", "radius": 8 },
+    "leave": { "type": "pheno:visitor_leave", "role": "grieving_thrall", "radius": 8 }
+  }
+}
