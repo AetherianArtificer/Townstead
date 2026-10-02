@@ -59,6 +59,17 @@ public final class Thralls {
                 new BondInstance.Side("thrall", Party.person(thrall.getUUID()))), PROVENANCE, level.getGameTime());
     }
 
+    /** Breaks {@code thrall}'s bond by force and clears the thrall state. False when they serve no one. */
+    public static boolean release(LivingEntity thrall) {
+        if (!(thrall.level() instanceof ServerLevel level)) return false;
+        PoliticalSavedData data = PoliticalSavedData.get(level.getServer());
+        BondInstance bond = bond(data, thrall.getUUID());
+        if (bond == null) return false;
+        FactionBonds.end(data, bond, level.getGameTime(), "broken");
+        EntityStates.clear(thrall, STATE, null);
+        return true;
+    }
+
     /** Whether {@code thrall} serves {@code master}. */
     public static boolean serves(LivingEntity master, LivingEntity thrall) {
         if (!(thrall.level() instanceof ServerLevel level)) return false;

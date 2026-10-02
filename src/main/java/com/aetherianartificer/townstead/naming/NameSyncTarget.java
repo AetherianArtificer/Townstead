@@ -24,7 +24,7 @@ public final class NameSyncTarget {
     public static void syncToPlayer(net.minecraft.server.level.ServerPlayer player, VillagerEntityMCA villager) {
         NameParts parts = VillagerNames.parts(villager);
         NameSyncPayload payload = new NameSyncPayload(
-                villager.getId(), parts.family(), Naming.cultureOf(villager), parts.order(),
+                villager.getId(), familyFor(player, villager, parts), Naming.cultureOf(villager), parts.order(),
                 rule(villager), traditionOf(villager));
         //? if neoforge {
         PacketDistributor.sendToPlayer(player, payload);
@@ -35,6 +35,15 @@ public final class NameSyncTarget {
 
     private static void send(VillagerEntityMCA villager, NameParts parts) {
         if (villager.level().isClientSide) return;
+        com.aetherianartificer.townstead.persona.PersonaDefinition persona =
+                com.aetherianartificer.townstead.persona.PersonaService.definition(villager);
+        if (persona != null && persona.familyToldOnly() && villager.level() instanceof net.minecraft.server.level.ServerLevel level) {
+            // Each player sees the family name only once they have been told it.
+            for (net.minecraft.server.level.ServerPlayer player : level.players()) {
+                if (player.distanceToSqr(villager) < SYNC_RANGE * SYNC_RANGE) syncToPlayer(player, villager);
+            }
+            return;
+        }
         NameSyncPayload payload = new NameSyncPayload(
                 villager.getId(), parts.family(), Naming.cultureOf(villager), parts.order(),
                 rule(villager), traditionOf(villager));
@@ -43,6 +52,12 @@ public final class NameSyncTarget {
         //?} else {
         /*com.aetherianartificer.townstead.TownsteadNetwork.sendToTrackingEntity(villager, payload);
         *///?}
+    }
+
+    private static final double SYNC_RANGE = 160;
+
+    private static String familyFor(net.minecraft.server.level.ServerPlayer player, VillagerEntityMCA villager, NameParts parts) {
+        return com.aetherianartificer.townstead.persona.PersonaService.familyNameKnown(villager, player) ? parts.family() : "";
     }
 
     /** The family-name rule this villager's tradition uses, or none when they have no tradition. */

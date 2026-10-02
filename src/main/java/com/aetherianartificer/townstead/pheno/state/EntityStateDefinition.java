@@ -48,7 +48,13 @@ public record EntityStateDefinition(
      * Marks a lasting identity state (vampire, dhampir) as opposed to a passing one (drunk).
      * {@code level} shows its amount as a level where it is displayed, instead of its tier.
      */
-    public record Aspect(boolean display, @Nullable Inheritance inheritance, boolean level) {}
+    /**
+     * How a state shows as an aspect. {@code pickable} offers it in the editor's Aspects page; a
+     * player who picks it joins {@code faction} (a Vampirism faction, at level 1) when one is named,
+     * and anyone else is set to {@code pick}.
+     */
+    public record Aspect(boolean display, @Nullable Inheritance inheritance, boolean level,
+                         boolean pickable, @Nullable ResourceLocation faction, double pick) {}
 
     /** A child born to carriers of this aspect receives {@code aspect} with {@code chance}. */
     public record Inheritance(ResourceLocation aspect, double chance, Parents parents) {}
@@ -169,8 +175,10 @@ public record EntityStateDefinition(
                         enumValue(inherit, "parents", Parents.ANY, Parents.class));
             }
         }
+        ResourceLocation faction = json.has("faction") ? DataPackLang.parseId(GsonHelper.getAsString(json, "faction")) : null;
         return new Aspect(GsonHelper.getAsBoolean(json, "display", true), inheritance,
-                GsonHelper.getAsBoolean(json, "level", false));
+                GsonHelper.getAsBoolean(json, "level", false), GsonHelper.getAsBoolean(json, "pickable", false),
+                faction, GsonHelper.getAsDouble(json, "pick", 1));
     }
 
     private static <E extends Enum<E>> E enumValue(JsonObject json, String key, E fallback, Class<E> type) {

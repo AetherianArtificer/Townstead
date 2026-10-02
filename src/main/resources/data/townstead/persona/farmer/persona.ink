@@ -5,9 +5,9 @@
 // that comes in every year. The world rolls whether they met the Builder on the road or grew up
 // in the Builder's hometown.
 //
-// Voice: warm and quick, a little breathless when excited, funny about their own habits and never
-// about the village. They see what others miss, love inventions they cannot build, and care about
-// people even when an idea makes them forget everyone for a while.
+// Voice: loud, quick and sincere, and they never remark on the volume. They live in "when" and
+// "what if" until the year of plenty moves them to "this" and "today". Guilt is the only thing that
+// makes them quiet. See the Farmer voice sheet in the design doc.
 
 VAR origin = ""
 VAR villager_name = ""
@@ -21,11 +21,23 @@ VAR interrupted = false
 // 0: not met. 1: met, the player was busy. 2: met.
 VAR met = 0
 VAR done_plan = false
+VAR done_water = false
 VAR done_harvest = false
+VAR done_store = false
 VAR done_kinds = false
+VAR done_ground = false
+VAR done_rice = false
 VAR done_home = false
 VAR done_frost = false
 VAR done_year = false
+VAR asked_quiet = false
+
+// Story beats outside the quests.
+VAR done_path = false
+VAR done_trader = false
+VAR trader_refused = false
+VAR done_letter = false
+VAR letter_sent = false
 
 // Pacing, as with the Builder: the first talk each day earns a little trust, capped, and they
 // raise at most one new thing a day.
@@ -81,7 +93,7 @@ VAR more_tomorrow = false
 - 1: ~ return "There you are! Sorry, where was I? Oh, yes."
 - 2: ~ return "Oh, good, you're back. As I was saying..."
 }
-~ return "Right, right. As I was saying..."
+~ return "Where was I? Oh, yes!"
 
 === function daily() ===
 {today != last_talk_day:
@@ -113,12 +125,26 @@ VAR more_tomorrow = false
     -> talk
 - not done_plan:
     -> plan_offer
+- not done_water:
+    -> water_offer
 - not done_harvest:
     -> harvest_offer
+- not done_store:
+    -> store_offer
+- not done_path and career_path() != "":
+    -> path_scene
 - not done_kinds:
     -> kinds_offer
+- not done_ground:
+    -> ground_offer
+- not done_rice and check("paddy_rice"):
+    -> rice_offer
+- not done_trader and check("trader_near"):
+    -> trader_scene
 - not done_home and check("hungry"):
     -> home_offer
+- not done_letter and done_home and rel("trust") >= 30:
+    -> letter_scene
 - not done_frost and check("autumn") and done_kinds:
     -> frost_offer
 - not done_year and done_kinds and (done_home or rel("trust") >= 30):

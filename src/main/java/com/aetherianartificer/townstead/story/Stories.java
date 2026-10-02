@@ -247,6 +247,13 @@ public final class Stories {
                 JsonElement parsed = JsonParser.parseString(rawJson);
                 if (parsed.isJsonObject()) json = parsed.getAsJsonObject();
                 else issues.add("error: " + jsonFile + ": the root must be an object");
+                if (json != null && persona == null) {
+                    try {
+                        com.aetherianartificer.townstead.data.TownsteadSchema.validate(json, "townstead:story/v1");
+                    } catch (IllegalArgumentException e) {
+                        issues.add("error: " + jsonFile + ": " + e.getMessage());
+                    }
+                }
             } catch (Exception e) {
                 issues.add("error: " + jsonFile + ": " + e.getMessage());
             }
@@ -309,6 +316,11 @@ public final class Stories {
                     knot.stitches().contains("waiting"), first(tags, "label", null), List.copyOf(questRewards)));
         }
 
+        List<String> overheard = new ArrayList<>();
+        for (StoryCompiler.Knot knot : compiled.knots().values()) {
+            if (tagMap(knot.tags()).containsKey("overheard")) overheard.add(knot.name());
+        }
+
         StoryAttach attach;
         com.aetherianartificer.townstead.persona.PersonaDefinition personaDefinition = null;
         if (persona != null) {
@@ -331,7 +343,14 @@ public final class Stories {
         StoryDefinition.Bind bind = StoryDefinition.Bind.VILLAGER;
         int priority = 0;
         List<Demeanor.Band> demeanor = Demeanor.DEFAULT;
+        Map<String, JsonObject> checkpoints = new LinkedHashMap<>();
         if (json != null) {
+            if (json.has("checkpoints") && json.get("checkpoints").isJsonObject()) {
+                for (Map.Entry<String, JsonElement> e : json.getAsJsonObject("checkpoints").entrySet()) {
+                    if (e.getValue().isJsonObject()) checkpoints.put(e.getKey(), e.getValue().getAsJsonObject());
+                    else issues.add("warning: checkpoint '" + e.getKey() + "' is not an object");
+                }
+            }
             if (json.has("conditions") && json.get("conditions").isJsonObject()) {
                 for (Map.Entry<String, JsonElement> e : json.getAsJsonObject("conditions").entrySet()) {
                     Condition condition = Conditions.parse(e.getValue());
@@ -365,7 +384,8 @@ public final class Stories {
         }
         String label = greet == null ? "" : first(tagMap(greet.tags()), "label", "");
         return new StoryDefinition(id, compiled.json(), sha1(compiled.json()), attach, bind, priority, label,
-                Map.copyOf(quests), Map.copyOf(conditions), Map.copyOf(actions), Map.copyOf(goals), demeanor);
+                Map.copyOf(quests), Map.copyOf(conditions), Map.copyOf(actions), Map.copyOf(goals), demeanor,
+                List.copyOf(overheard), Map.copyOf(checkpoints));
     }
 
     private static StoryAttach attach(JsonObject json, List<String> issues) {

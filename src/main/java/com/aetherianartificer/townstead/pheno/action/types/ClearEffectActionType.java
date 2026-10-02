@@ -14,7 +14,9 @@ import net.minecraft.util.GsonHelper;
  * uniform; the single-effect call takes a {@code Holder} on 1.21 and a {@code MobEffect}
  * on 1.20, so that path is version-guarded.
  *
- * <p>JSON: {@code { "type":"pheno:clear_effect", "effect":"minecraft:poison" }}</p>
+ * <p>JSON: {@code { "type":"pheno:clear_effect", "effect":"minecraft:poison" }}, or
+ * {@code { "type":"pheno:clear_effect", "category":"harmful" }} to clear every effect of one
+ * vanilla category.</p>
  */
 public final class ClearEffectActionType implements ActionType {
 
@@ -30,7 +32,30 @@ public final class ClearEffectActionType implements ActionType {
         ResourceLocation effectId = json.has("effect")
                 ? DataPackLang.parseId(GsonHelper.getAsString(json, "effect", ""))
                 : null;
+        // category: clear every active effect of one vanilla category (harmful, beneficial, neutral).
+        net.minecraft.world.effect.MobEffectCategory category = null;
+        if (effectId == null && json.has("category")) {
+            try {
+                category = net.minecraft.world.effect.MobEffectCategory.valueOf(
+                        GsonHelper.getAsString(json, "category", "").toUpperCase(java.util.Locale.ROOT));
+            } catch (IllegalArgumentException invalid) {
+                return null;
+            }
+        }
+        net.minecraft.world.effect.MobEffectCategory only = category;
         return ctx -> {
+            if (only != null) {
+                var matching = new java.util.ArrayList<net.minecraft.world.effect.MobEffectInstance>();
+                for (var active : ctx.entity().getActiveEffects()) {
+                    //? if >=1.21 {
+                    if (active.getEffect().value().getCategory() == only) matching.add(active);
+                    //?} else {
+                    /*if (active.getEffect().getCategory() == only) matching.add(active);
+                    *///?}
+                }
+                for (var active : matching) ctx.entity().removeEffect(active.getEffect());
+                return;
+            }
             if (effectId == null) {
                 ctx.entity().removeAllEffects();
                 return;

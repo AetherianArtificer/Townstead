@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "filleter"
+    "set_the_hook"
   ],
   "power": {
     "type": "pheno:action_over_time",

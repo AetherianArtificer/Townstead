@@ -69,13 +69,13 @@ VAR interrupted = false
     ~ return "Got a moment?"
 }
 {hometown:
-- "mill": ~ return "Something smells good."
-- "mine": ~ return "Built anything today?"
-- "harbor": ~ return "Any luck fishing?"
-- "roads": ~ return "Mapped anything new?"
-- "forest": ~ return "How are the arrows coming?"
+- "mill": ~ return "How's the starter?"
+- "mine": ~ return "Fixed the lamp yet?"
+- "harbor": ~ return "How's the net holding?"
+- "roads": ~ return "Am I on the map yet?"
+- "forest": ~ return "Is it a heron yet?"
 }
-~ return "How are the fields?"
+~ return "Still carrying that bottle?"
 
 // The first thing they say when the player comes back to a conversation they walked away from.
 === function resumed() ===
@@ -172,7 +172,7 @@ VAR interrupted = false
 
 === idle ===
 {more_tomorrow and not done_all():
-    {~There's another thing I want to show you. Tomorrow. One thing a day, or you'll stop listening to me.|I've got more for you, but it can wait for tomorrow. Some things should.}
+    {~There's another thing I want to show you. Tomorrow. One thing a day, or you'll stop listening to me.|I've got more for you, but it can wait until tomorrow.}
     -> DONE
 }
 -> talk
@@ -200,11 +200,11 @@ They had a hard time, a while back. Lost nearly everything.
     That's theirs to tell. They'll tell you, too, if you ask nicely and have an afternoon free.
 + [Did you help them?]
     They'll tell you I did. Don't believe a word of it. They helped themselves. I was just standing nearby.
-- I'd like them somewhere with good soil and good people. I think you've got both.
+- I'd like them somewhere they can stay. I think here might be it.
 + [Write to them.]
     ~ act("introduce_farmer")
     I'll do it tonight. If they're anything like they used to be, they'll be here before the ink's dry.
-    You're going to like them. You're also going to hear a great deal about beans.
+    You're going to like them. You'll hear them before you see them.
 + [Let me think about it.]
     ~ act("introduce_farmer")
     Too late, I'm afraid. I wrote to them yesterday. I had a feeling.

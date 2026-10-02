@@ -1,6 +1,0 @@
-{
-  "values": [
-    "#townstead:blessable",
-    { "id": "#vampirism:crossbows", "required": false }
-  ]
-}

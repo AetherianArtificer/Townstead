@@ -30,7 +30,7 @@ Have you picked one yet? A building to make better? I've got opinions, if you wa
 
 = waiting
 -> checkin ->
-{~Anything better yet? Even a little? I'm not rushing you. I'm very excited, which is different.|There's always one building nearly ready for more. It just wants someone to notice.}
+{~Anything better yet? Even a little? I'm not rushing you. I'm very excited, which is different.|Most buildings are only a few things away from the next step.}
 + [Any advice?]
     The Catalog shows what a building needs for its next step up. Usually it's only a few things.
     Start with the one people pass on their way to work. That's the one they'll talk about.
@@ -43,8 +43,7 @@ Have you picked one yet? A building to make better? I've got opinions, if you wa
 ~ daily()
 ~ done_push = true
 ~ trust(5)
-You did it! I went and looked, twice, just to be sure I wasn't imagining it.
-That's how it starts, you know. One thing gets better, and everyone starts looking for the next.
+You did it! I have to go and look at it properly.
 + [It was your idea.]
     It was your work. I just talked a lot. I'm very good at the talking part.
 + [What's next?]
@@ -67,7 +66,7 @@ Have you got a minute? There's something I keep thinking about.
 + [Of course.]
     -> meeting.first_worry -> DONE
 + [Not now.]
-    Later, then. It'll keep. The people working too hard won't, but it will.
+    Later, then.
     -> DONE
 
 === rest ===
@@ -78,7 +77,7 @@ Have you got a minute? There's something I keep thinking about.
 ~ lesson_day = today
 {meeting_asked: ->->}
 One day off in the week, for everyone. Just one. They'll work better on the other six, I promise.
-I'm not saying it to be kind. I've watched what happens when nobody stops, and it's slow, and then it's very fast.
+I'm not saying it to be kind. Where I grew up, nobody stopped, and it didn't end well.
 + [Everyone?]
     Everyone. Me too, probably. Don't hold me to that part.
 + [We can't spare anyone.]
@@ -101,11 +100,11 @@ I'm not saying it to be kind. I've watched what happens when nobody stops, and i
 ~ done_rest = true
 ~ trust(5)
 Everyone has a day of their own now. Every one of them.
-Nobody knows what to do with a free day, the first time. Then they work it out, and they never give it back.
+Some of them won't know what to do with it, the first time. They'll work it out.
 + [And you?]
     Me? I'm working on it. Don't look at me like that.
 + [Good.]
-    Good. Yes. It really is.
+    Good. Yes.
 - -> DONE
 
 = skipped
@@ -123,7 +122,7 @@ Can I talk to you about beds? I know how that sounds. Stay with me.
 + [Go on.]
     -> beds -> DONE
 + [Not now.]
-    That's fair. The beds aren't going anywhere. That's rather the point.
+    That's fair. Later, then.
     -> DONE
 
 = first_time
@@ -131,7 +130,7 @@ Have you got a minute? There's something I keep thinking about.
 + [Of course.]
     -> meeting.first_worry -> DONE
 + [Not now.]
-    That's fair. The beds aren't going anywhere. That's rather the point.
+    That's fair. Later, then.
     -> DONE
 
 === beds ===
@@ -150,7 +149,7 @@ Have you got a minute? There's something I keep thinking about.
 -> checkin ->
 {
 - check("spare_bed"):
-    {~There's room now! We just have to wait for someone to notice it.|A spare bed is a kind of invitation, you know. Somebody will take it.}
+    {~There's room now! We just have to wait for someone to notice it.|There's a bed waiting. Now someone just has to come.}
 - else:
     {~Every bed's spoken for, as far as I can see. We could use a few more.|Two more, at least, so there's always one to spare.}
 }
@@ -158,7 +157,7 @@ Have you got a minute? There's something I keep thinking about.
     A bed only counts inside a house. A small house with two beds does more than you'd think.
     Newcomers come on their own when there's room. You don't have to go looking for them.
 + [Working on it.]
-    I know. I'm counting on it. Literally. I'm counting beds.
+    I know. I'll keep counting beds.
 + [See you later.]
 - -> DONE
 
@@ -166,7 +165,7 @@ Have you got a minute? There's something I keep thinking about.
 ~ daily()
 ~ done_beds = true
 ~ trust(5)
-Someone new moved in! And there's still a bed to spare. That's what a place expecting company looks like.
+Someone new moved in! And there's still a bed to spare.
 {worry() == "beds": Back home, at the end, nobody expected anyone. Anyway! This is good. This is really good.}
 + [It was a good idea.]
     It was a good bed. I just pointed at it.
@@ -182,7 +181,7 @@ Can I ask you about food? Not mine. Everyone's.
 + [Go on.]
     -> pot -> DONE
 + [Not now.]
-    All right. I'll keep an eye on it. Two eyes, if I'm honest.
+    All right. Later, then.
     -> DONE
 
 = first_time
@@ -190,7 +189,7 @@ Have you got a minute? There's something I keep thinking about.
 + [Of course.]
     -> meeting.first_worry -> DONE
 + [Not now.]
-    All right. I'll keep an eye on it. Two eyes, if I'm honest.
+    All right. Later, then.
     -> DONE
 
 === pot ===
@@ -210,7 +209,7 @@ Have you got a minute? There's something I keep thinking about.
 -> checkin ->
 {
 - check("hungry"):
-    {~People are still a bit hungry. I peeked in a chest. Sorry. Habit.|Not quite there yet. Nearly. I can feel it.}
+    {~People are still a bit hungry. I peeked in a chest. Sorry. Habit.|Not quite there yet. Keep going.}
 - else:
     {~It's getting better. Keep it coming.|Nearly there. Don't stop now.}
 }
@@ -218,7 +217,7 @@ Have you got a minute? There's something I keep thinking about.
     Put food in a chest inside a house, or in a kitchen. People eat from what they can reach, not from what you're carrying.
     Bread, and anything cooked, goes the furthest.
 + [Working on it.]
-    I know. Thank you. You don't know how much this one matters to me. Well. Maybe you do.
+    I know. Thank you. This one matters to me.
 + [See you later.]
 - -> DONE
 
@@ -249,7 +248,7 @@ Can I ask about work? Who's doing what, I mean. Humor me.
 + [Go on.]
     -> work -> DONE
 + [Not now.]
-    Sure. It can wait a day. Not a season, but a day.
+    Sure. Later, then.
     -> DONE
 
 = first_time
@@ -257,7 +256,7 @@ Have you got a minute? There's something I keep thinking about.
 + [Of course.]
     -> meeting.first_worry -> DONE
 + [Not now.]
-    Sure. It can wait a day. Not a season, but a day.
+    Sure. Later, then.
     -> DONE
 
 === work ===
@@ -268,7 +267,7 @@ Have you got a minute? There's something I keep thinking about.
 ~ lesson_day = today
 {not meeting_asked:
     People stay where there's work. A workstation each, and something worth doing at it.
-    Three people working is a good start. After that it gets easier, I promise. Work makes more work.
+    Three people working is a good start. After that it gets easier, I promise.
 }
 ->->
 
@@ -293,7 +292,7 @@ Have you got a minute? There's something I keep thinking about.
 Everyone has somewhere to be now. Everyone!
 {worry() == "work": Back home, the mornings went quiet first. This is the opposite of that. I didn't know how much I'd missed it.}
 + [It's a good feeling.]
-    The best one. A town with work in it sounds different. You'll start hearing it now.
+    It is!
 + [What now?]
     Now we let it settle, and then I find something new to fuss about. You know me by now.
 - -> DONE
@@ -332,17 +331,16 @@ Have you got a minute? There's something I keep thinking about.
 ~ lesson_day = today
 {not meeting_asked:
     Put water where people live. Anything that isn't a long walk with a heavy bucket.
-    It sounds small. It isn't. Nobody stays long in a place where every drink is a trip.
 }
 ->->
 
 = waiting
 -> checkin ->
-{~Water's still a walk for some people. Closer is better. It's always better.|It's closer than it was. Closer still would be lovely.}
+{~Water's still a walk for some people.|It's closer than it was! Closer still would be lovely.}
 + [Any advice?]
     Water near the houses is the whole trick. A water source by the front doors does more than a lake past the fields.
 + [Working on it.]
-    I know. Thank you. This one matters to me more than I can say.
+    I know. Thank you.
 + [See you later.]
 - -> DONE
 
@@ -355,7 +353,7 @@ Nobody's short of water now. Not one person.
 + [Thank you for pushing.]
     Thank you for listening. Not everyone does.
 + [You can stop counting steps.]
-    I can, can't I? I won't. But I can.
+    I can, can't I? I probably won't.
 - -> DONE
 
 = skipped
@@ -388,6 +386,11 @@ You heard. I'm fine. Leave it.
 = admit
 I don't know how to stop, that's the truth of it. Where I grew up, nobody stopped until the work did.
 And then it did, all at once, and nobody knew what to do with their hands. I suppose I never learned.
+{here("farmer"):
+    I saw it coming. I meant to say something, and then I got busy with a new seed, and I didn't. # who: farmer
+    It's not your job to watch me.
+    It's exactly my job. # who: farmer
+}
 + [Then let someone else carry some of it.]
     -> carry -> DONE
 + [Take a day off. That's not a request.]
@@ -395,11 +398,11 @@ And then it did, all at once, and nobody knew what to do with their hands. I sup
 
 === carry ===
 # quest: Let someone else carry it
-# about: Change their schedule: a day off each week, and no day longer than ten hours. Nobody carries a village alone.
+# about: Change their schedule: a day off each week, and no day longer than ten hours.
 # goal: own_rest_day
 # goal: shorter_days
 Fine. Change my schedule, if you have to. A day off, and shorter days.
-I'll hate it. Then I'll probably thank you. Don't tell me which one happens first.
+I'll hate it. Then I'll probably thank you.
 ->->
 
 = waiting
@@ -418,7 +421,7 @@ I'll hate it. Then I'll probably thank you. Don't tell me which one happens firs
 I took the day off. I sat down on purpose this time, and felt guilty for about an hour.
 Then I didn't. That was new.
 + [How did it feel?]
-    Strange. Quiet. Good, I think. Nothing fell down without me. I checked. Twice, obviously.
+    Strange and quiet, and good, I think. Nothing fell down without me. I checked twice.
 + [I'm glad.]
     So am I. Don't tell anyone.
 - Thank you. For not letting me talk you out of it.

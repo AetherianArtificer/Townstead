@@ -7,14 +7,14 @@
 Hold this a moment? Mind the glass, it's cracked. I'm trying to get the wick to sit right.
 + [Hold the lamp steady.]
     ~ helped_first = true
-    There. Thank you. It only sees half of things now, with the crack. I've got used to half.
+    There. Thank you. It won't sit right with the crack, but that's close.
 + [Why not fix the glass?]
     ~ helped_first = true
     ~ teased_first = true
-    I will. One day. Soon. I've been saying that for about four years, so it must be nearly true.
+    I will. I've been meaning to for about four years.
 + [I can't stop right now, sorry.]
     ~ met = 1
-    Go on, then. The lamp will keep. It's kept this long.
+    Go on, then.
     -> DONE
 - ~ met = 2
 ->->
@@ -25,7 +25,7 @@ There you are. The wick's behaving now, more or less. Got a minute?
     ~ met = 2
     ->->
 + [Not yet.]
-    Fine by me. I'll be here, with the walls.
+    Fine by me. I'll be here.
     -> DONE
 
 = walls
@@ -39,23 +39,23 @@ I knocked on one, too, sorry. It rang solid all the way through. I've seen chape
 I'm {villager_name}.
 + [Welcome. I'm {player_name}.]
     ~ contribute("affection", 1, "welcomed")
-    {player_name}. Good, solid name. It'll hold.
+    {player_name}. Good.
 + [You knocked on my walls?]
     ~ teased_first = true
-    Only one. Walls talk, if you let them. Yours says nice things about you.
+    Only one. It sounded solid. That's all I wanted to know.
 + [What do you want?]
     A bed, a wall to work on, and nobody asking me to go underground. In that order.
 - -> passing
 
 = passing
-I'm only passing through, mind. A season, maybe. Then I'll see where the road goes.
+I'm only passing through, mind. A season, maybe.
 Who's still working here after dark? Tell me honestly. Somebody always is.
 + [Everyone works hard.]
     Everyone. Mm.
-    Where I grew up, the late shift came up grey, and went back down the same night. You get used to it. You shouldn't.
+    Where I grew up, the late shift came up grey, and went back down the same night.
     Well! That's an easy one to fix, as these things go. One day in the week with no work in it. For everyone.
 + [Nobody, I hope.]
-    Hope's good. A rest day's better. Let's give everyone one, and then you won't have to hope.
+    Then let's make sure of it. One day a week with no work in it, for everyone.
 + [You, probably.]
     ~ teased_first = true
     Ha! Probably. Don't hold me to that part. But everyone else gets one, at least.
@@ -65,12 +65,12 @@ Who's still working here after dark? Tell me honestly. Somebody always is.
 -> goodbye
 
 = goodbye
-Right. I'll stay out of your way. If you hear knocking, it's only me, asking your walls how they are.
+Right. I'll stay out of your way. If you hear knocking on your walls, it's only me.
 + [Stay as long as you like.]
     ~ stayed = true
     ~ contribute("affection", 2, "welcomed")
     ~ trust(2)
     Careful. People say that, and then I stay.
 + [See you around.]
-    You will. I'm the one with the lamp that sees half of things.
+    You will. I'm the one with the cracked lamp.
 - -> DONE

@@ -18,12 +18,12 @@
 I'm {villager_name}.
 + [Welcome{village_name != "": to {village_name}}.]
     ~ contribute("affection", 1, "welcomed")
-    Thank you. It's a lovely place to be welcomed to. You can tell people mean to stay.
+    Thank you! It's a lovely place to be welcomed to.
 + [Heard about me, did you?]
     ~ teased_first = true
     Only good things! Well. Mostly good things. Somebody thought you were taller.
 + [What brings you here?]
-    You, a bit. And a feeling. I get a feeling about places. It's usually right, and it's always inconvenient.
+    You, mostly. I wanted to see what you'd done here.
 - -> passing
 
 = passing
@@ -31,7 +31,7 @@ I'm only passing through, mind. A season, maybe.
 Can I tell you what I noticed, walking round? You might not like it.
 + [Tell me.]
 + [Is it bad?]
-    Not bad. Not yet. That's the good part.
+    No! It's easy to fix. That's why I'm telling you.
 + [I probably know already.]
     You might. Let's see if we noticed the same thing.
 - {
@@ -40,7 +40,7 @@ Can I tell you what I noticed, walking round? You might not like it.
 - count("idle_adults") > 0:
     A few people here have nothing to do all day. Not their fault. Nobody's asked them yet.
 - else:
-    Nothing's wrong, exactly. It's just very settled. I've seen settled turn into stuck.
+    Nothing's wrong, exactly. I just think it could be more.
 }
 {hometown:
 - "harbor": Home looked fine for years, too. Then the boats stopped coming, one at a time.
@@ -50,11 +50,11 @@ Can I tell you what I noticed, walking round? You might not like it.
 - "forest": Home looked fine for years, too. Then the tree line got further away every spring.
 - else: Home looked fine for years, too. Then the bucket came up a little lighter every summer.
 }
-Well! The good news is nothing's falling down. It just needs a push.
+Well! Nothing's falling down. It just needs a push.
 {building("upgraded") != "":
     What you did with the {building("upgraded")} is the right idea. Do it again, somewhere everyone walks past.
 - else:
-    Pick a building everyone walks past, and make it better. People notice. Then they stay.
+    Pick a building everyone walks past, and make it better. People notice that kind of thing.
 }
 + [Will you help?]
     Help? I'll be under your feet the whole time. You'll have to stop me.
@@ -68,7 +68,7 @@ Right! I'll stay out of your way. Mostly.
 {hometown:
 - "harbor": If you need me, I'm the one with the net.
 - "mill": If something smells good, that's me.
-- "mine": If you hear knocking, it's only me, asking your walls how they are.
+- "mine": If you hear knocking on your walls, it's only me.
 - "roads": If you see someone counting steps along your edges, that's me, finishing the map.
 - "forest": If you find shavings, I was there.
 - else: If you see someone pacing about, counting steps, that's me.

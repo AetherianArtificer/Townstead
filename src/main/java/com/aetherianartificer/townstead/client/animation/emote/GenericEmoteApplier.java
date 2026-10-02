@@ -102,7 +102,7 @@ public final class GenericEmoteApplier {
         boolean collapse = com.aetherianartificer.townstead.client.animation.nativeclip.NativePlaybackRegistry.hasCollapse(entity.getId(), now);
         for (var playback : active) {
             if (now < playback.startedAt()) continue;
-            if (collapse && !com.aetherianartificer.townstead.performance.CollapseMotion.CLIP.equals(playback.clip().toString())) continue;
+            if (collapse && !com.aetherianartificer.townstead.performance.CollapseMotion.isGround(playback.clip().toString())) continue;
             String name = playback.clip().getPath();
             boolean mounted = entity.isPassenger();
             if (mounted && name.equals("relaxed_lean")) continue;

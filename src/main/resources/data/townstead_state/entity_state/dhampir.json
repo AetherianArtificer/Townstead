@@ -19,6 +19,8 @@
     "townstead_state:vampire"
   ],
   "aspect": {
-    "display": true
+    "display": true,
+    "pickable": true,
+    "pick": 1
   }
 }

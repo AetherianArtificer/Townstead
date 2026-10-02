@@ -41,7 +41,11 @@ final class StorySession {
     private static final Logger LOGGER = LoggerFactory.getLogger("Townstead/Stories");
     private static final int STEP_LIMIT = 500;
     /** Tags that describe a knot for the host rather than stage a line. */
-    private static final Set<String> METADATA = Set.of("quest", "goal", "skip if", "about", "label", "signal");
+    /** The choice tag that marks the way forward; the screen lists those choices first, with a marker. */
+    static final String ADVANCE_TAG = "advance";
+    private static final Set<String> METADATA = Set.of("quest", "goal", "skip if", "about", "label", "signal", "who", "overheard");
+    /** Splits who said a saved resume line from its text. */
+    private static final char WHO_SEPARATOR = '';
 
     private record Line(String text, List<String> tags) {}
 
@@ -51,6 +55,9 @@ final class StorySession {
     final PlayerStories.Entry entry;
     private final Story story;
     private final Map<String, Goal> checkCache = new HashMap<>();
+    private final StoryCast cast = new StoryCast(this);
+    /** Who said the line on screen: the villager the player is talking to, or someone in the cast. */
+    private VillagerEntityMCA speaker;
     /** Visit counts of each quest's hand-back stitches when the conversation opened. */
     private final Map<String, Integer> handBackVisits = new HashMap<>();
     private @Nullable Line buffered;
@@ -67,6 +74,7 @@ final class StorySession {
         this.definition = definition;
         this.entry = entry;
         this.story = story;
+        this.speaker = villager;
     }
 
     static StorySession open(ServerPlayer player, VillagerEntityMCA villager, StoryDefinition definition,
@@ -124,7 +132,11 @@ final class StorySession {
         } catch (Exception e) {
             LOGGER.warn("Story {}: resumed() failed: {}", definition.id(), e.getMessage());
         }
-        for (String line : entry.resumeLines) replay.add(new Line(line, List.of()));
+        for (String line : entry.resumeLines) {
+            int split = line.indexOf(WHO_SEPARATOR);
+            replay.add(split < 0 ? new Line(line, List.of())
+                    : new Line(line.substring(split + 1), List.of("who: " + line.substring(0, split))));
+        }
         entry.interrupted = false;
         entry.resumeLines.clear();
         step();
@@ -140,9 +152,9 @@ final class StorySession {
         if (!midway()) return;
         entry.interrupted = true;
         entry.resumeLines.clear();
-        if (shown != null && !shown.text().isEmpty()) entry.resumeLines.add(shown.text());
-        for (Line line : replay) entry.resumeLines.add(line.text());
-        if (buffered != null) entry.resumeLines.add(buffered.text());
+        if (shown != null && !shown.text().isEmpty()) entry.resumeLines.add(saved(shown));
+        for (Line line : replay) entry.resumeLines.add(saved(line));
+        if (buffered != null) entry.resumeLines.add(saved(buffered));
         finish();
     }
 
@@ -158,10 +170,79 @@ final class StorySession {
         step();
     }
 
+    private static String saved(Line line) {
+        String who = who(line.tags());
+        return who.isEmpty() ? line.text() : who + WHO_SEPARATOR + line.text();
+    }
+
+    /** A line said in chat, for a scene the player overhears. */
+    record Spoken(String text, VillagerEntityMCA by) {}
+
+    /** Moves the story to a knot without saying anything yet, for a scene played in chat. */
+    boolean begin(String path) {
+        try {
+            story.choosePathString(path);
+            return true;
+        } catch (Exception e) {
+            LOGGER.warn("Story {}: could not start {}: {}", definition.id(), path, e.getMessage());
+            return false;
+        }
+    }
+
+    /** Whether the player has already been through this knot. */
+    boolean visited(String knot) {
+        try {
+            return story.getState().visitCountAtPathString(knot) > 0;
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    /**
+     * The next line of a scene played in chat and who says it, or null at the end. Chat has no
+     * choices, so a choice ends the scene too.
+     */
+    @Nullable Spoken nextSpoken() {
+        if (finished) return null;
+        try {
+            Line current = nextLine();
+            VillagerEntityMCA by = current == null ? null : speakerOf(current);
+            while (current != null && by == null) {
+                current = nextLine();
+                by = current == null ? null : speakerOf(current);
+            }
+            if (current == null) return null;
+            speaker = by;
+            stage(current.tags(), by);
+            shown = current;
+            return new Spoken(current.text(), by);
+        } catch (Exception e) {
+            LOGGER.warn("Story {}: overheard scene stopped: {}", definition.id(), e.getMessage());
+            return null;
+        }
+    }
+
+    /** Ends without saving, for a scene that turned out to have nothing to say. */
+    void discard() {
+        finished = true;
+        cast.release();
+    }
+
+    /** Keeps everyone in a scene played in chat where they stand, facing whoever is talking. */
+    void holdInPlace() {
+        if (!finished) cast.holdInPlace(speaker);
+    }
+
+    /** Keeps the rest of the cast in the scene, facing whoever is talking. Called every tick. */
+    void holdCast() {
+        if (!finished) cast.hold(speaker);
+    }
+
     /** Saves the Ink state. Safe to call more than once. */
     void finish() {
         if (finished) return;
         finished = true;
+        cast.release();
         try {
             entry.ink = story.getState().toJson();
             entry.hash = definition.hash();
@@ -176,6 +257,19 @@ final class StorySession {
      * The menu entry the story's own {@code menu()} function gives right now, or null when it has
      * none or gives nothing. Reads the story without moving it on.
      */
+    /** The story's own {@code greeting()} line, said in place of MCA's greeting; null when it has none. */
+    @Nullable String greetingLine() {
+        try {
+            if (!story.hasFunction("greeting")) return null;
+            Object line = story.evaluateFunction("greeting");
+            String text = line == null ? "" : line.toString().trim();
+            return text.isEmpty() ? null : text;
+        } catch (Exception e) {
+            LOGGER.warn("Story {}: greeting() failed: {}", definition.id(), e.getMessage());
+            return null;
+        }
+    }
+
     @Nullable String menuLabel() {
         try {
             if (!story.hasFunction("menu")) return null;
@@ -202,30 +296,30 @@ final class StorySession {
 
     private void step() {
         try {
-            Line current;
-            if (!replay.isEmpty()) {
-                current = replay.poll();
-            } else if (buffered != null) {
-                current = buffered;
-                buffered = null;
-            } else {
-                current = pull();
+            Line current = nextLine();
+            VillagerEntityMCA by = current == null ? null : speakerOf(current);
+            while (current != null && by == null) {
+                // Nobody near fits the line's speaker. Scenes check here() first; this covers the rest.
+                LOGGER.warn("Story {}: nobody near to say a line for '{}'; skipping it", definition.id(), who(current.tags()));
+                current = nextLine();
+                by = current == null ? null : speakerOf(current);
             }
             if (current == null) {
                 List<String> choices = choiceTexts();
                 if (choices.isEmpty()) {
                     end();
                 } else {
-                    send(StoryS2CPayload.LINE, "", choices, false);
+                    send(StoryS2CPayload.LINE, "", choices, false, speaker);
                 }
                 return;
             }
-            stage(current.tags());
+            speaker = by;
+            stage(current.tags(), by);
             shown = current;
             if (replay.isEmpty() && buffered == null) buffered = pull();
             boolean more = !replay.isEmpty() || buffered != null;
             List<String> choices = more ? List.of() : choiceTexts();
-            send(StoryS2CPayload.LINE, current.text(), choices, more);
+            send(StoryS2CPayload.LINE, current.text(), choices, more, by);
             if (!more && choices.isEmpty()) {
                 finish();
                 StoryService.sessionEnded(this);
@@ -233,6 +327,29 @@ final class StorySession {
         } catch (Exception e) {
             fail(e);
         }
+    }
+
+    private @Nullable Line nextLine() throws Exception {
+        if (!replay.isEmpty()) return replay.poll();
+        if (buffered != null) {
+            Line line = buffered;
+            buffered = null;
+            return line;
+        }
+        return pull();
+    }
+
+    private @Nullable VillagerEntityMCA speakerOf(Line line) {
+        return cast.find(who(line.tags()));
+    }
+
+    /** The {@code # who:} value of a line, or empty for the villager the player is talking to. */
+    private static String who(List<String> tags) {
+        for (String tag : tags) {
+            int colon = tag.indexOf(':');
+            if (colon > 0 && tag.substring(0, colon).trim().equalsIgnoreCase("who")) return tag.substring(colon + 1).trim();
+        }
+        return "";
     }
 
     /** Runs the story to its next line of speech, starting quests as their knots are entered. */
@@ -243,9 +360,21 @@ final class StorySession {
             List<String> tags = new ArrayList<>(story.getCurrentTags());
             StoryService.startEnteredQuests(this, story);
             if (!text.isEmpty()) return new Line(text, tags);
-            stage(tags);
+            VillagerEntityMCA by = cast.find(who(tags));
+            stage(tags, by == null ? villager : by);
         }
         return null;
+    }
+
+    /** A bit for each current choice tagged {@code # advance}: the one that moves the story on. */
+    private int questChoices() {
+        int mask = 0;
+        List<Choice> choices = story.getCurrentChoices();
+        for (int i = 0; i < choices.size() && i < 32; i++) {
+            List<String> tags = choices.get(i).getTags();
+            if (tags != null && tags.stream().anyMatch(t -> t.trim().equalsIgnoreCase(ADVANCE_TAG))) mask |= 1 << i;
+        }
+        return mask;
     }
 
     private List<String> choiceTexts() {
@@ -254,24 +383,24 @@ final class StorySession {
         return out;
     }
 
-    private void stage(List<String> tags) {
+    private void stage(List<String> tags, VillagerEntityMCA by) {
         for (String tag : tags) {
             int colon = tag.indexOf(':');
             if (colon <= 0) continue;
             String key = tag.substring(0, colon).trim().toLowerCase(java.util.Locale.ROOT);
             if (METADATA.contains(key)) continue;
-            if (key.equals("emote")) emote(tag.substring(colon + 1).trim());
+            if (key.equals("emote")) emote(tag.substring(colon + 1).trim(), by);
         }
     }
 
-    private void emote(String raw) {
-        if (!(villager.level() instanceof ServerLevel level) || raw.isEmpty()) return;
+    private void emote(String raw, VillagerEntityMCA by) {
+        if (!(by.level() instanceof ServerLevel level) || raw.isEmpty()) return;
         List<String> candidates = raw.contains(":") ? List.of(raw)
                 : List.of("townstead:reaction_" + raw, "townstead:" + raw);
         for (String candidate : candidates) {
             ResourceLocation id = ResourceLocation.tryParse(candidate);
             if (id == null || PerformanceMappings.targets(id).isEmpty()) continue;
-            PerformanceProviders.play(level, new PerformanceRequest(villager, id, "story", 40, 45,
+            PerformanceProviders.play(level, new PerformanceRequest(by, id, "story", 40, 45,
                     PerformanceRequest.Fallback.NONE));
             return;
         }
@@ -293,7 +422,12 @@ final class StorySession {
     }
 
     private void send(byte kind, String text, List<String> choices, boolean more) {
-        StoryService.send(player, new StoryS2CPayload(villager.getId(), kind, text, choices, more));
+        send(kind, text, choices, more, speaker);
+    }
+
+    private void send(byte kind, String text, List<String> choices, boolean more, VillagerEntityMCA by) {
+        StoryService.send(player, new StoryS2CPayload(villager.getId(), kind, text, choices, more, by.getId(),
+                com.aetherianartificer.townstead.persona.PersonaService.dialogueTheme(by), choices.isEmpty() ? 0 : questChoices()));
     }
 
     // ---- host facts and helpers ----
@@ -309,6 +443,8 @@ final class StorySession {
         setIfDeclared("quest_ready", entry.quests.values().stream().anyMatch(q -> q.state == PlayerStories.QuestState.READY));
         setIfDeclared("quest_open", entry.quests.values().stream().anyMatch(q -> q.state == PlayerStories.QuestState.ACTIVE));
         setIfDeclared("interrupted", entry.interrupted);
+        // A fresh 1 to 100 each time the conversation opens: Ink's RANDOM repeats itself from a saved state.
+        setIfDeclared("chance", player.getRandom().nextInt(100) + 1);
         var instance = com.aetherianartificer.townstead.persona.PersonaInstances.get(player.server).of(villager.getUUID());
         var persona = instance == null ? null : com.aetherianartificer.townstead.persona.Personas.byId(instance.persona());
         if (persona == null) return;
@@ -336,6 +472,8 @@ final class StorySession {
             return (int) Math.max(0L, value);
         });
         bindRead("who", args -> who(string(args, 0)));
+        bindRead("here", args -> cast.find(string(args, 0)) != null);
+        bindRead("career_path", args -> careerPath());
         bindRead("is", args -> is(string(args, 0), string(args, 1)));
         bindRead("building", args -> StoryWorld.building(string(args, 0), goalContext()));
         bindRead("roll", args -> {
@@ -445,6 +583,20 @@ final class StorySession {
         Condition condition = definition.conditions().get(role);
         if (condition != null) return StoryWorld.whoMatching(condition, player, goalContext());
         return StoryWorld.who(role, goalContext());
+    }
+
+    /**
+     * {@code career_path()}: the career path the teller has learned the most skills in, such as
+     * {@code "tiller"}, or empty before their first path skill. Path skills are named
+     * {@code <ns>:<profession>/<path>/<skill>}.
+     */
+    private String careerPath() {
+        Map<String, Integer> counts = new HashMap<>();
+        for (ResourceLocation skill : com.aetherianartificer.townstead.profession.skill.LearnedSkills.learned(villager)) {
+            String[] parts = skill.getPath().split("/");
+            if (parts.length == 3) counts.merge(parts[1], 1, Integer::sum);
+        }
+        return counts.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse("");
     }
 
     private static String quality(String raw) {

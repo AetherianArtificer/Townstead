@@ -171,7 +171,14 @@ final class RitualSession {
                 PerformanceProviders.play(level, new PerformanceRequest(actor, step.clip(), step.channel(), step.ticks(),
                         priority, PerformanceRequest.Fallback.STAND));
             }
-            if (step.line() != null) speak(actor, step.line());
+            String line = step.line();
+            for (RitualDefinition.LineVariant variant : step.lines()) {
+                if (variant.holds(actor, actor == candidate ? officiant : candidate)) {
+                    line = variant.line();
+                    break;
+                }
+            }
+            if (line != null) speak(actor, line);
         }
         if (step.sound() != null) {
             //? if >=1.21 {

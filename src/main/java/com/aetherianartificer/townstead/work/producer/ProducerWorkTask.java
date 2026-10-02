@@ -280,7 +280,9 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
                 villager,
                 com.aetherianartificer.townstead.profession.def.ProfessionDefs.canonicalId(profession),
-                xp, gameTime, activityKey(), activeRecipe.output(), "item", activeRecipe.tier());
+                xp, gameTime, activityKey(), activeRecipe.output(), "item", activeRecipe.tier(),
+                java.util.Map.of(), stationAnchor,
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.get(activeRecipe.output()).getDefaultInstance());
     }
 
     // ── Optional hooks (default no-op) ──

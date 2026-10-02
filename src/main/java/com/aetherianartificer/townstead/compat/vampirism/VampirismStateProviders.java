@@ -20,6 +20,9 @@ public final class VampirismStateProviders {
     public static final String MOD_ID = "vampirism";
     private static final ResourceLocation VAMPIRE = ResourceLocation.tryParse("vampirism:vampire");
     private static final ResourceLocation HUNTER = ResourceLocation.tryParse("vampirism:hunter");
+    /** Werewolves (TeamLapen) is a Vampirism faction, so the same handler reads it. */
+    public static final String WEREWOLVES_MOD_ID = "werewolves";
+    private static final ResourceLocation WEREWOLF = ResourceLocation.tryParse("werewolves:werewolf");
 
     private static volatile boolean probeAttempted;
     private static volatile boolean probeOk;
@@ -37,6 +40,10 @@ public final class VampirismStateProviders {
         StateProviders.register(id("hunter_level"), entity -> level(entity, HUNTER, false));
         StateProviders.register(id("vampire_lord_level"), entity -> level(entity, VAMPIRE, true));
         StateProviders.register(id("hunter_lord_level"), entity -> level(entity, HUNTER, true));
+        if (ModCompat.isLoaded(WEREWOLVES_MOD_ID)) {
+            StateProviders.register(ResourceLocation.tryParse(WEREWOLVES_MOD_ID + ":werewolf_level"), entity -> level(entity, WEREWOLF, false));
+            StateProviders.register(ResourceLocation.tryParse(WEREWOLVES_MOD_ID + ":werewolf_lord_level"), entity -> level(entity, WEREWOLF, true));
+        }
         if (ModCompat.isLoaded(AGEING_MOD_ID)) {
             StateProviders.register(ResourceLocation.tryParse(AGEING_MOD_ID + ":vampire_age_rank"), VampirismStateProviders::ageRank);
         }
@@ -83,6 +90,47 @@ public final class VampirismStateProviders {
 
     private static ResourceLocation id(String path) {
         return ResourceLocation.tryParse(MOD_ID + ":" + path);
+    }
+
+    /** The id of the player's Vampirism faction (vampire, hunter, werewolf...), or null for none. */
+    public static @Nullable ResourceLocation factionOf(Player player) {
+        if (!ModCompat.isLoaded(MOD_ID) || !ensureProbe()) return null;
+        try {
+            Object handler = unwrap(getHandler.invoke(null, player));
+            Object current = handler == null ? null : currentFaction.invoke(handler);
+            return current == null ? null : (ResourceLocation) factionId.invoke(current);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    /** Joins the player to {@code faction} at {@code level}, as Vampirism's own faction change does. */
+    public static boolean joinFaction(Player player, ResourceLocation faction, int level) {
+        if (!ModCompat.isLoaded(MOD_ID) || !ensureProbe()) return false;
+        try {
+            Object handler = unwrap(getHandler.invoke(null, player));
+            if (handler == null) return false;
+            Object registry = Class.forName("de.teamlapen.vampirism.api.VampirismAPI").getMethod("factionRegistry").invoke(null);
+            Object target = registry.getClass().getMethod("getFactionByID", ResourceLocation.class).invoke(registry, faction);
+            if (target == null) return false;
+            Class<?> playable = Class.forName("de.teamlapen.vampirism.api.entity.factions.IPlayableFaction");
+            if (!playable.isInstance(target)) return false;
+            Object ok = handler.getClass().getMethod("setFactionAndLevel", playable, int.class).invoke(handler, target, level);
+            return Boolean.TRUE.equals(ok);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    /** Takes the player out of their Vampirism faction. */
+    public static void leaveFaction(Player player) {
+        if (!ModCompat.isLoaded(MOD_ID) || !ensureProbe()) return;
+        try {
+            Object handler = unwrap(getHandler.invoke(null, player));
+            if (handler != null) handler.getClass().getMethod("leaveFaction", boolean.class).invoke(handler, false);
+        } catch (Throwable ignored) {
+            // Nothing to leave.
+        }
     }
 
     /** A player who has joined the hunters, at any level. */

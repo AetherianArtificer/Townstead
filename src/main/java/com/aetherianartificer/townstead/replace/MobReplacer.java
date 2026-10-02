@@ -40,21 +40,23 @@ import java.util.function.Predicate;
 public final class MobReplacer {
     /** Marks a wild villager with the replacement it came from. */
     public static final String WILD = "townstead:wild";
-    private static final String REPLACED = "townstead:replaced";
+    static final String REPLACED = "townstead:replaced";
 
     private MobReplacer() {}
 
-    /** Called from the spawn-finalize event. True when the mob's spawn should be cancelled. */
+    /**
+     * Called from the spawn-finalize event. The mob still spawns and keeps its own mind; it wears
+     * the person it stands for (see {@link WildCostume}). Always false: the spawn goes ahead.
+     */
     public static boolean onFinalizeSpawn(Mob mob, ServerLevelAccessor accessor, MobSpawnType spawnType) {
-        if (!MobReplacements.any() || !(accessor instanceof ServerLevel level) || mob instanceof VillagerEntityMCA) return false;
+        if (!MobReplacements.any() || !(accessor instanceof ServerLevel level) || mob instanceof VillagerEntityMCA
+                || WildCostume.has(mob)) return false;
         MobReplacement replacement = MobReplacements.forType(mob.getType());
         if (replacement == null || !enabled(replacement)) return false;
         if (!replacement.spawnTypes().contains(spawnType.name().toLowerCase(Locale.ROOT))) return false;
         if (mob.getRandom().nextFloat() >= replacement.chance()) return false;
 
         BlockPos pos = mob.blockPosition();
-        // Wild villagers are not monsters, so the mob cap never sees them; this cap does.
-        if (atCap(level, mob, replacement)) return true;
         Predicate<ResourceLocation> eligible = root -> replacement.states().keySet().stream()
                 .noneMatch(state -> Boolean.FALSE.equals(RootStates.declared(root, state))
                         || needsVillagerBody(state) && !com.aetherianartificer.townstead.root.rig.ServerRig.hasVillagerBody(root));
@@ -85,8 +87,8 @@ public final class MobReplacer {
             double amount = range[0] + villager.getRandom().nextDouble() * (range[1] - range[0]);
             EntityStates.set(villager, state.getKey(), Math.round(amount), 0, null);
         }
-        level.addFreshEntityWithPassengers(villager);
-        return true;
+        WildCostume.dress(mob, villager);
+        return false;
     }
 
     /** Worn, not carried: MCA drops a villager's inventory on death, and the loot is the mob's. */
@@ -117,12 +119,6 @@ public final class MobReplacer {
         return count > replacement.cap() && villager.getRandom().nextFloat() < (count - replacement.cap()) / (float) count;
     }
 
-    private static boolean atCap(ServerLevel level, Mob mob, MobReplacement replacement) {
-        String id = replacement.id().toString();
-        return level.getEntitiesOfClass(VillagerEntityMCA.class, mob.getBoundingBox().inflate(replacement.capRadius()),
-                villager -> id.equals(villager.getPersistentData().getString(WILD))).size() >= replacement.cap();
-    }
-
     /** A wild villager's death counts as the mob's: kill statistic and loot. */
     public static void onDeath(LivingEntity entity, DamageSource source) {
         if (!(entity instanceof VillagerEntityMCA villager) || !(villager.level() instanceof ServerLevel level)) return;
@@ -147,6 +143,9 @@ public final class MobReplacer {
             return;
         }
         boolean active = activeReplacement(villager) != null;
+        // Wild villagers from before replaced mobs kept their own minds go back to being the mob.
+        EntityType<?> replaced = active ? replacedType(villager) : null;
+        if (replaced != null && WildCostume.revert(villager, replaced)) return;
         updateWildName(villager, active);
         if (!active) return;
         if (villager.level().getDifficulty() == Difficulty.PEACEFUL || crowded(villager, replacement)) {
@@ -244,7 +243,7 @@ public final class MobReplacer {
         return definition != null && definition.villagerBody();
     }
 
-    private static final String NAME_HIDDEN = "townstead:wild_name_hidden";
+    static final String NAME_HIDDEN = "townstead:wild_name_hidden";
 
     /** Tells a player who starts seeing this villager whether its name is hidden (also clearing a reused id). */
     public static void syncWildName(net.minecraft.server.level.ServerPlayer player, VillagerEntityMCA villager) {

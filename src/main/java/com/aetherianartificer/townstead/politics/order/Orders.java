@@ -109,6 +109,8 @@ public final class Orders {
      */
     public static void syncProfession(VillagerEntityMCA villager) {
         if ((villager.tickCount + villager.getId()) % SYNC_INTERVAL != 0 || !(villager.level() instanceof ServerLevel level)) return;
+        // A Persona's job comes from who they are, not from membership.
+        if (com.aetherianartificer.townstead.persona.PersonaService.pinnedProfession(villager) != null) return;
         PoliticalSavedData data = PoliticalSavedData.get(level.getServer());
         FactionKind.Members sworn = null;
         for (ResourceLocation id : FactionMembership.of(villager)) {

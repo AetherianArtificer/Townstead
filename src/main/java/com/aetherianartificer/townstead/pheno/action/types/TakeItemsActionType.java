@@ -17,7 +17,7 @@ import java.util.function.Predicate;
 
 /**
  * Takes {@code count} matching items from the player of the action (a quest hand-in). Matches an
- * {@code item} id or an item {@code tag}. Takes nothing and fails when they carry fewer.
+ * {@code item} id, an item {@code tag}, or a {@code story_item}. Takes nothing and fails when they carry fewer.
  * <pre>
  * { "type": "pheno:take_items", "tag": "townstead:garlic", "count": 16 }
  * </pre>
@@ -34,7 +34,11 @@ public final class TakeItemsActionType implements ActionType {
     public Action parse(JsonObject json) {
         int count = Math.max(1, GsonHelper.getAsInt(json, "count", 1));
         Predicate<ItemStack> matches;
-        if (json.has("tag")) {
+        if (json.has("story_item")) {
+            ResourceLocation storyId = DataPackLang.parseId(GsonHelper.getAsString(json, "story_item"));
+            if (storyId == null) return null;
+            matches = stack -> com.aetherianartificer.townstead.item.StoryItems.is(stack, storyId);
+        } else if (json.has("tag")) {
             ResourceLocation id = DataPackLang.parseId(GsonHelper.getAsString(json, "tag"));
             if (id == null) return null;
             TagKey<Item> tag = TagKey.create(Registries.ITEM, id);

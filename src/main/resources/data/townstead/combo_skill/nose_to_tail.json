@@ -1,0 +1,32 @@
+{
+  "display_name": {
+    "translate": "combo_skill.townstead.nose_to_tail"
+  },
+  "description": {
+    "translate": "combo_skill.townstead.nose_to_tail.description"
+  },
+  "icon": "minecraft:leather",
+  "professions": {
+    "minecraft:butcher": 3,
+    "minecraft:leatherworker": 3
+  },
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.75,
+    "damage_condition": {
+      "type": "pheno:attacker",
+      "condition": {
+        "type": "pheno:entity_type",
+        "tag": "townstead:beasts"
+      }
+    },
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "chest",
+      "item_condition": {
+        "type": "pheno:ingredient",
+        "item": "minecraft:leather_chestplate"
+      }
+    }
+  }
+}

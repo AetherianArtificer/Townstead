@@ -582,7 +582,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                 net.minecraft.sounds.SoundSource.NEUTRAL,
                 0.5F, 0.4F / (level.random.nextFloat() * 0.4F + 0.8F));
 
-        int lure = townstead$fishingSpeedLevel(level, currentRod) + townstead$dockLureBonus();
+        int lure = com.aetherianartificer.townstead.root.hook.PhenoHooks.fishingLure(villager, currentRod,
+                townstead$fishingSpeedLevel(level, currentRod) + townstead$dockLureBonus());
         int wait = BITE_MIN_TICKS + level.random.nextInt(Math.max(1, BITE_RANDOM_TICKS))
                 - lure * BITE_LURE_REDUCTION_TICKS;
         int floor = BITE_MIN_TICKS;
@@ -637,8 +638,10 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         // the owner-hand check.
         fakePlayer.setItemInHand(InteractionHand.MAIN_HAND, townstead$vanillaRodProxy());
 
-        int luck = townstead$fishingLuckLevel(level, currentRod) + townstead$dockLuckBonus();
-        int lure = townstead$fishingSpeedLevel(level, currentRod) + townstead$dockLureBonus();
+        int luck = com.aetherianartificer.townstead.root.hook.PhenoHooks.fishingLuck(villager, currentRod,
+                townstead$fishingLuckLevel(level, currentRod) + townstead$dockLuckBonus());
+        int lure = com.aetherianartificer.townstead.root.hook.PhenoHooks.fishingLure(villager, currentRod,
+                townstead$fishingSpeedLevel(level, currentRod) + townstead$dockLureBonus());
 
         // Vanilla constructor places the hook 0.3 blocks forward of the
         // FakePlayer at eye height and applies the normalized look-vector
@@ -941,7 +944,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
                 villager, com.aetherianartificer.townstead.profession.career.Careers.FISHERMAN,
                 PlayerFishingEvents.XP_CATCH, gameTime, "townstead:fished", null, null,
-                PlayerFishingEvents.XP_CATCH);
+                PlayerFishingEvents.XP_CATCH, null, loot.get(0));
     }
 
     private void tickReturnToBarrel(ServerLevel level, VillagerEntityMCA villager, long gameTime) {

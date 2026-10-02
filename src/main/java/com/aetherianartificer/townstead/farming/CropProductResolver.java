@@ -257,11 +257,11 @@ public final class CropProductResolver {
             // Crops accept any farmland-style soil (FFB fertilized variants still extend FarmBlock).
             return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL_TILLED,
                     SoilType.FERTILIZED_RICH, SoilType.FERTILIZED_HEALTHY, SoilType.FERTILIZED_STABLE,
-                    SoilType.FERTILIZED_NUTRIENTS);
+                    SoilType.FERTILIZED_NUTRIENTS, SoilType.FERTILIZED_CROP);
         }
         return EnumSet.of(SoilType.FARMLAND, SoilType.RICH_SOIL_TILLED,
                 SoilType.FERTILIZED_RICH, SoilType.FERTILIZED_HEALTHY, SoilType.FERTILIZED_STABLE,
-                SoilType.FERTILIZED_NUTRIENTS);
+                SoilType.FERTILIZED_NUTRIENTS, SoilType.FERTILIZED_CROP);
     }
 
     private static Block getPlacedBlock(Item item) {

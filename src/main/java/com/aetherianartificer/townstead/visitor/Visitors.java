@@ -41,8 +41,12 @@ public final class Visitors {
 
     /** Brings a visitor (and their thrall) in from the edge of {@code village}, walking to {@code player}. */
     public static @Nullable VillagerEntityMCA arrive(ServerPlayer player, Village village, Spec spec) {
+        return arrive(player, PersonaService.arrivalPoint(player.serverLevel(), village, player), spec);
+    }
+
+    /** Brings a visitor (and their thrall) to {@code at}, walking to {@code player}. */
+    public static @Nullable VillagerEntityMCA arrive(ServerPlayer player, BlockPos at, Spec spec) {
         ServerLevel level = player.serverLevel();
-        BlockPos at = PersonaService.arrivalPoint(level, village, player);
         VillagerEntityMCA visitor = make(level, at, spec);
         if (visitor == null) return null;
         PersonaService.walkTo(visitor, player);

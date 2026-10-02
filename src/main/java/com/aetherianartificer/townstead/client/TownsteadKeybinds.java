@@ -74,6 +74,22 @@ public final class TownsteadKeybinds {
             "townstead.key.category"
     );
 
+    /** Held in the dialogue screen: runs lines past until the next choice. */
+    public static final KeyMapping DIALOGUE_SKIP = new KeyMapping(
+            "townstead.key.dialogue_skip",
+            InputConstants.Type.KEYSYM,
+            org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_ALT,
+            "townstead.key.category"
+    );
+
+    /** Opens and closes the conversation log in the dialogue screen. */
+    public static final KeyMapping DIALOGUE_LOG = new KeyMapping(
+            "townstead.key.dialogue_log",
+            InputConstants.Type.KEYSYM,
+            InputConstants.KEY_B,
+            "townstead.key.category"
+    );
+
     public static final int ABILITY_KEYS = 8;
     public static final KeyMapping[] ABILITIES = new KeyMapping[ABILITY_KEYS];
 

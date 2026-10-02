@@ -27,6 +27,8 @@ final class StoryCompiler {
             Map.entry("check", "what"),
             Map.entry("count", "what"),
             Map.entry("who", "role"),
+            Map.entry("here", "role"),
+            Map.entry("career_path", ""),
             Map.entry("is", "name, what"),
             Map.entry("building", "kind"),
             Map.entry("roll", "persona, name"),

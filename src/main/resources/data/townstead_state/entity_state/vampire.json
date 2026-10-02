@@ -35,9 +35,13 @@
       "aspect": "townstead_state:dhampir",
       "chance": 1,
       "parents": "father_only"
-    }
+    },
+    "pickable": true,
+    "faction": "vampirism:vampire",
+    "pick": 1
   },
   "excludes": [
-    "townstead_state:thrall"
+    "townstead_state:thrall",
+    "townstead_state:werewolf"
   ]
 }

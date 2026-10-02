@@ -50,7 +50,18 @@ public record RitualDefinition(ResourceLocation id, ResourceLocation placeBlock,
 
     /** One beat: {@code role} plays {@code clip} from tick {@code at} for {@code ticks}. */
     public record Step(int at, Role role, @Nullable ResourceLocation clip, int ticks, String channel,
-                       @Nullable ResourceLocation sound, @Nullable String line) {}
+                       @Nullable ResourceLocation sound, @Nullable String line, List<LineVariant> lines) {}
+
+    /**
+     * A line said instead of the step's own when {@code when} holds for the speaker (the
+     * candidate is the other side). The condition is parsed on first use.
+     */
+    public record LineVariant(com.google.gson.JsonElement when, String line) {
+        public boolean holds(net.minecraft.world.entity.LivingEntity speaker, @Nullable net.minecraft.world.entity.LivingEntity other) {
+            var condition = com.aetherianartificer.townstead.pheno.condition.Conditions.parse(when);
+            return condition != null && condition.test(new com.aetherianartificer.townstead.pheno.condition.ConditionContext(speaker, other));
+        }
+    }
 
     /** The candidate lays what they hold on the altar; it returns marked against these groups. */
     public record Offering(ResourceLocation accepts, boolean tag, List<String> against) {}
@@ -86,7 +97,7 @@ public record RitualDefinition(ResourceLocation id, ResourceLocation placeBlock,
                     step.has("clip") ? required(GsonHelper.getAsString(step, "clip")) : null, ticks,
                     GsonHelper.getAsString(step, "channel", "ritual"),
                     step.has("sound") ? required(GsonHelper.getAsString(step, "sound")) : null,
-                    step.has("line") ? GsonHelper.getAsString(step, "line") : null));
+                    step.has("line") ? GsonHelper.getAsString(step, "line") : null, lineVariants(step)));
         }
         Offering offering = null;
         if (json.has("offering")) {
@@ -109,5 +120,16 @@ public record RitualDefinition(ResourceLocation id, ResourceLocation placeBlock,
         ResourceLocation id = DataPackLang.parseId(raw);
         if (id == null) throw new IllegalArgumentException("'" + raw + "' is not an id");
         return id;
+    }
+
+    private static List<LineVariant> lineVariants(JsonObject step) {
+        List<LineVariant> out = new ArrayList<>();
+        if (!step.has("lines")) return out;
+        for (JsonElement element : GsonHelper.getAsJsonArray(step, "lines")) {
+            JsonObject variant = element.getAsJsonObject();
+            if (!variant.has("when") || !variant.has("line")) throw new IllegalArgumentException("a line variant needs \"when\" and \"line\"");
+            out.add(new LineVariant(variant.get("when"), GsonHelper.getAsString(variant, "line")));
+        }
+        return List.copyOf(out);
     }
 }

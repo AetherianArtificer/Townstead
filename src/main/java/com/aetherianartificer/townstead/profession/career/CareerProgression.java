@@ -44,6 +44,26 @@ public final class CareerProgression {
             LivingEntity worker, ResourceLocation career, int baseXp, long gameTime,
             String chronicleVerb, ResourceLocation objectId, String paramName, float magnitude,
             Map<String, String> semanticParams) {
+        return completeWork(worker, career, baseXp, gameTime, chronicleVerb, objectId, paramName,
+                magnitude, semanticParams, null, net.minecraft.world.item.ItemStack.EMPTY);
+    }
+
+    /** Work at a known block, with a known output: what {@code when_work} skills act on. */
+    public static ProfessionProgress.GainResult completeWork(
+            LivingEntity worker, ResourceLocation career, int baseXp, long gameTime,
+            String chronicleVerb, ResourceLocation objectId, String paramName, float magnitude,
+            @org.jetbrains.annotations.Nullable net.minecraft.core.BlockPos workPos,
+            net.minecraft.world.item.ItemStack output) {
+        return completeWork(worker, career, baseXp, gameTime, chronicleVerb, objectId, paramName,
+                magnitude, Map.of(), workPos, output);
+    }
+
+    public static ProfessionProgress.GainResult completeWork(
+            LivingEntity worker, ResourceLocation career, int baseXp, long gameTime,
+            String chronicleVerb, ResourceLocation objectId, String paramName, float magnitude,
+            Map<String, String> semanticParams,
+            @org.jetbrains.annotations.Nullable net.minecraft.core.BlockPos workPos,
+            net.minecraft.world.item.ItemStack output) {
         career = ProfessionDefs.canonicalId(career);
         ProfessionXpStore store = store(worker);
         if (store == null) return new ProfessionProgress.GainResult(0, 1, 1, false);
@@ -83,6 +103,10 @@ public final class CareerProgression {
         }
         if ((insight > 0 || boost.capScale() > 1) && worker instanceof net.minecraft.server.level.ServerPlayer player) {
             com.aetherianartificer.townstead.rebirth.Relearning.restore(player);
+        }
+        if (chronicleVerb != null) {
+            com.aetherianartificer.townstead.root.trigger.GeneTriggers.onWork(worker, chronicleVerb,
+                    workPos, output == null ? net.minecraft.world.item.ItemStack.EMPTY : output);
         }
         return result;
     }

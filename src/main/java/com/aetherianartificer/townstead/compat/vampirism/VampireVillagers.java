@@ -87,7 +87,23 @@ public final class VampireVillagers {
         return true;
     }
 
-    private static final ResourceLocation GARLIC_INJECTION = ResourceLocation.tryParse("vampirism:injection_garlic");
+    /**
+     * The same cures work on a wild vampire mob that shows a person: it becomes that person, a vampire
+     * villager, and the cure starts on them. True when the item was taken as a cure.
+     */
+    public static boolean tryCureWild(net.minecraft.world.entity.Mob mob, net.minecraft.server.level.ServerPlayer player,
+                                      net.minecraft.world.item.ItemStack stack) {
+        boolean apple = stack.is(net.minecraft.world.item.Items.GOLDEN_APPLE)
+                && mob.hasEffect(net.minecraft.world.effect.MobEffects.WEAKNESS);
+        if (!apple && !isGarlicInjection(stack)) return false;
+        VillagerEntityMCA person = com.aetherianartificer.townstead.replace.WildCostume.person(mob);
+        if (person == null || !isVampire(person)) return false;
+        VillagerEntityMCA villager = com.aetherianartificer.townstead.replace.WildCostume.convert(mob);
+        if (villager == null) return false;
+        return apple ? tryStartCure(villager, player) : tryInjectCure(villager, player, stack);
+    }
+
+    private static final ResourceLocation GARLIC_INJECTION =ResourceLocation.tryParse("vampirism:injection_garlic");
     private static final ResourceLocation EMPTY_INJECTION = ResourceLocation.tryParse("vampirism:injection_empty");
 
     public static boolean isGarlicInjection(net.minecraft.world.item.ItemStack stack) {

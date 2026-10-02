@@ -7,7 +7,7 @@ VAR said_glad = false
 === talk ===
 {rel("trust") >= 20 and not said_glad and demeanor() != "stern" and demeanor() != "guarded":
     ~ said_glad = true
-    I'm glad I came here. I don't think I've said that. I'm saying it.
+    I'm glad I came here. I mean that.
     -> choices
 }
 {demeanor():
@@ -20,11 +20,11 @@ VAR said_glad = false
 // How the thing they carry from home is doing, today.
 = keepsake
 {hometown:
-- "harbor": {~The net's holding. For now. The net and I have an understanding.|I mended the net again. I'd say it's the last time, but we both know better.}
-- "mill": {~He's rising beautifully today. The starter. I say that like you'd know.|I fed him twice already. He's greedy. I'm proud of him.}
-- "mine": {~I still haven't fixed the lamp. It's become a sort of tradition.|The lamp sees half of things. So do I, before breakfast.}
+- "harbor": {~The net's holding, for now.|I mended the net again. It won't be the last time.}
+- "mill": {~The starter's doing well. He's always hungry.|Want to smell the starter? Go on. That's bread, before it's bread.}
+- "mine": {~I still haven't fixed the lamp. It's become a sort of tradition.|I should fix the lamp. I keep saying that.}
 - "roads": {~I've made you a bigger dot on the map. Don't let it go to your head.|The map's getting crowded around here. That's a good sign, on a map.}
-- "forest": {~The heron has a second leg now. It's still a bit of a duck.|I carved a little more. The duck is winning.}
+- "forest": {~The heron has a second leg now. It's still a bit of a duck.|I carved a little more of the heron. Want to see?}
 - else: {~I still haven't opened the other bottle. I won't. It's not for drinking.|Have a sip? Just the one, mind. Habit.}
 }
 ->->
@@ -49,9 +49,9 @@ VAR said_glad = false
 {shuffle:
 - There you are! I've been checking corners again. Yours are still square. I'm almost disappointed.
 - -> keepsake ->
-- I had an idea just now. I've lost it. It'll come back. They always come back at night.
+- I had an idea just now, and I've lost it. It'll come back.
 - {we() == "we": We're doing well, you know. Don't tell anyone I said so.|You're doing well here, you know. Don't let me go on about it.}
-- If I start humming, just let me. It's a whole thing.
+- If I start humming, just let me.
 - {village_name != "": I've started saying I live in {village_name}. Out loud. It feels good.|I've started saying I live here. Out loud. It feels good.}
 }
 -> choices
@@ -61,12 +61,12 @@ VAR said_glad = false
 - Do you ever stand somewhere and think about where a door should go? No? Just me, then.
 - If you ever need a second opinion on anything, I've got a first one ready.
 - I keep fixing things nobody asked me to. I'm working on that.
-- I keep a list of things to fix. It's a long list. It's a happy list, somehow.
+- I keep a list of things to fix. It's a long list.
 - -> keepsake ->
-- {done_carry: I took my day off this week. The whole thing. I'm very proud of me.|I tried to take a break earlier. I lasted about a minute.}
-- {count("newcomer") > 0: Have you met the new arrival properly? I have. Twice. I'm told that's once too many.|I keep wondering who'll turn up next. Someone always does.}
-- {building("raised") != "": I went and stood in the {building("raised")} for a bit. Square. Properly square. Sorry, I'll stop.|I like watching a place go up. Even slowly. Especially slowly.}
-- {check("empty_houses"): There's room for more people here. I like that. It means we're expecting someone.|Every bed's spoken for. That's a good problem. Still a problem.}
+- {done_carry: I took my day off this week. The whole day.|I tried to take a break earlier. I lasted about a minute.}
+- {count("newcomer") > 0: Have you met the new arrival properly? I have.|I keep wondering who'll turn up next. Someone always does.}
+- {building("raised") != "": I went and stood in the {building("raised")} for a bit. Square. Properly square. Sorry, I'll stop.|I like watching a place go up.}
+- {check("empty_houses"): There's room for more people here. I like that. It means we're expecting someone.|Every bed's spoken for. We could use a few more.}
 }
 -> choices
 
@@ -80,7 +80,7 @@ VAR said_glad = false
     - count("idle_adults") > 0:
         A few people have nothing to do. Not their fault. Nobody's asked them yet.
     - else:
-        {~Not right now. That's a good sign.|Nothing that can't wait. I'll find you.|No. Enjoy it. Properly.}
+        {~Not right now. That's a good sign.|Nothing that can't wait. I'll find you.|No! Enjoy it.}
     }
     -> DONE
 + [Bye.]

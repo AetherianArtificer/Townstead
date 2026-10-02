@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "steady_fuse"
+    "blast_master"
   ],
   "power": {
     "type": "pheno:action_over_time",

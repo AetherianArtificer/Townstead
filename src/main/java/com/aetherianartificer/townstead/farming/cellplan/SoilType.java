@@ -14,7 +14,8 @@ public enum SoilType {
     // Appended last: soil types travel by ordinal on the network.
     TRELLIS,               // solid ground with a farmer-built support (stem pole or lattice) for vine crops
     FERTILIZED_NUTRIENTS,  // farmland whose stored nutrients the farmer keeps topped up (TFC)
-    PADDY;                 // farmland under one block of standing water, for flooded crops (TFC rice)
+    PADDY,                 // farmland under one block of standing water, for flooded crops (TFC rice)
+    FERTILIZED_CROP;       // farmland whose crop the farmer feeds bone meal or a fertilizer from the crop_fertilizers tag
 
     public static SoilType fromName(String name) {
         try {

@@ -8,7 +8,7 @@ Hold on, hold on, don't move, I've nearly got you. ...There! Sorry. I'm putting 
 Well, not you. Your village. You're more of a dot.
 + [Hold the corner of the map down.]
     ~ helped_first = true
-    Thank you! The wind's been trying to take it since the crossroads. Right... there. You're official.
+    Thank you! It keeps trying to roll itself up. Right... there. You're official.
 + [Can I be a bigger dot?]
     ~ helped_first = true
     ~ teased_first = true
@@ -26,7 +26,7 @@ There you are! You're on the map now, by the way. Small, but on it. Got a minute
     ~ met = 2
     ->->
 + [Not yet.]
-    That's all right. The map and I aren't going anywhere. Well, not today.
+    That's all right. I'll be here.
     -> DONE
 
 = walls
@@ -52,7 +52,7 @@ I've seen a hundred villages from the road, and I could count the square ones on
 - -> passing
 
 = passing
-I'm only passing through, mind. A season, maybe. The road always wants me back eventually.
+I'm only passing through, mind. A season, maybe.
 Who here's got nothing to do all day? There's always someone. Standing about, looking at their hands.
 + [Nobody, I think.]
     {count("idle_adults") > 0:

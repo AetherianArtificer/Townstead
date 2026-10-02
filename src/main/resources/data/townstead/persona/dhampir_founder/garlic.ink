@@ -25,7 +25,7 @@ Somebody's going to start hanging garlic over their door any day now, you watch.
 On a door? Not really. I've watched them walk right past it. It's like hanging up a sign that says please don't. They can read, they just don't care.
 In the air it's different. There are ways of burning it so it hangs in a room, and that they do mind. That's later, though. That's a whole other job.
 But I'll tell you what garlic on a door does do. It lets people sleep. And people who sleep don't open the door at three in the morning to see what the noise was.
-So grow some. A proper patch, not three sad heads behind the well. Bring me a good pile and I'll see it gets round the houses.
+So grow some. A proper patch, not three sad heads in a pot. Bring me a good pile and I'll see it gets round the houses.
 - (topics)
 * [You just said it was useless.]
     I said it was useless against them. I didn't say it was useless. Those are different things, and I'd like it on record that I know the difference.

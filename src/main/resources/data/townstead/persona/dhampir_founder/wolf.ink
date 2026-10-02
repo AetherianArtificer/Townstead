@@ -75,6 +75,7 @@ VAR asked_scraps = false
 // The player gave them raw meat. They take it for the wolf.
 === gift_meat ===
 {wolf_seen:
+    ~ meat_given++
     {asked_scraps:
         {~Thanks. I'll make sure it gets it. Nobody needs to know.|It eats better than I do now. I'm not sure how that happened.|You're spoiling it. It's going to start expecting this.}
     - else:

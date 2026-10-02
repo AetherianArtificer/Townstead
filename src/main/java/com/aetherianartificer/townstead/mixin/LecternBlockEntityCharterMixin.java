@@ -11,7 +11,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 //? if >=1.21 {
 import net.minecraft.core.HolderLookup;
 //?}
@@ -39,7 +38,7 @@ public abstract class LecternBlockEntityCharterMixin implements CharterLecternAc
     @Inject(method = "saveAdditional", at = @At("TAIL"))
     private void townstead$saveCharter(CompoundTag tag, HolderLookup.Provider registries, CallbackInfo ci) {
     //?} else {
-    /*@Inject(method = "saveAdditional", at = @At("TAIL"))
+    /*@Inject(method = "m_183515_", remap = false, at = @At("TAIL"))
     private void townstead$saveCharter(CompoundTag tag, CallbackInfo ci) {
     *///?}
         if (townstead$charterState != NONE) tag.putInt(TOWNSTEAD_CHARTER_STATE, townstead$charterState);
@@ -50,29 +49,40 @@ public abstract class LecternBlockEntityCharterMixin implements CharterLecternAc
     @Inject(method = "loadAdditional", at = @At("TAIL"))
     private void townstead$loadCharter(CompoundTag tag, HolderLookup.Provider registries, CallbackInfo ci) {
     //?} else {
-    /*@Inject(method = "load", at = @At("TAIL"))
+    /*@Inject(method = "m_142466_", remap = false, at = @At("TAIL"))
     private void townstead$loadCharter(CompoundTag tag, CallbackInfo ci) {
     *///?}
         townstead$charterState = Math.max(NONE, Math.min(FOUNDED, tag.getInt(TOWNSTEAD_CHARTER_STATE)));
         townstead$setEmblem(tag.getString("TownsteadEmblem"));
     }
 
-    @Inject(method = "getUpdatePacket", at = @At("HEAD"), cancellable = true)
-    private void townstead$syncCharter(CallbackInfoReturnable<Packet<ClientGamePacketListener>> cir) {
-        cir.setReturnValue(ClientboundBlockEntityDataPacket.create((LecternBlockEntity) (Object) this));
+    // LecternBlockEntity inherits both sync methods, so they are overridden here rather than injected.
+    //? if neoforge {
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create((LecternBlockEntity) (Object) this);
     }
 
-    //? if >=1.21 {
-    @Inject(method = "getUpdateTag", at = @At("RETURN"))
-    private void townstead$updateTag(HolderLookup.Provider registries, CallbackInfoReturnable<CompoundTag> cir) {
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        return townstead$updateTag();
+    }
     //?} else {
-    /*@Inject(method = "getUpdateTag", at = @At("RETURN"))
-    private void townstead$updateTag(CallbackInfoReturnable<CompoundTag> cir) {
+    /*public Packet<ClientGamePacketListener> m_58483_() {
+        return ClientboundBlockEntityDataPacket.create((LecternBlockEntity) (Object) this);
+    }
+
+    public CompoundTag m_5995_() {
+        return townstead$updateTag();
+    }
     *///?}
+
+    @Unique
+    private CompoundTag townstead$updateTag() {
         var lectern = (LecternBlockEntity) (Object) this;
         if (lectern.getLevel() instanceof net.minecraft.server.level.ServerLevel level)
             townstead$setEmblem(com.aetherianartificer.townstead.politics.heraldry.HeraldryService.clothRecipe(level, lectern.getBlockPos()));
-        cir.getReturnValue().putString("TownsteadEmblem", townstead$emblem);
-        if (townstead$charterState != NONE) cir.getReturnValue().putInt(TOWNSTEAD_CHARTER_STATE, townstead$charterState);
+        CompoundTag tag = new CompoundTag();
+        tag.putString("TownsteadEmblem", townstead$emblem);
+        if (townstead$charterState != NONE) tag.putInt(TOWNSTEAD_CHARTER_STATE, townstead$charterState);
+        return tag;
     }
 }

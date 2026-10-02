@@ -182,12 +182,41 @@ public final class Personas {
                 movesOn.add(trigger);
             }
         }
+        ResourceLocation dialogueTheme = null;
+        JsonObject dialogueThemeJson = null;
+        if (json.has("dialogue_theme")) {
+            if (json.get("dialogue_theme").isJsonObject()) {
+                dialogueThemeJson = json.getAsJsonObject("dialogue_theme");
+                dialogueTheme = com.aetherianartificer.townstead.dialogue.DialogueThemeData.inlineId(id);
+            } else {
+                dialogueTheme = ResourceLocation.tryParse(json.get("dialogue_theme").getAsString());
+                if (dialogueTheme == null) issues.add("error: dialogue_theme: not an id or a theme object");
+            }
+        }
+        java.util.Set<String> hiddenMenu = new java.util.LinkedHashSet<>(PersonaDefinition.SMALL_TALK);
+        if (json.has("mca_menu")) {
+            JsonElement menu = json.get("mca_menu");
+            if (menu.isJsonPrimitive() && menu.getAsString().equals("all")) {
+                hiddenMenu.clear();
+            } else if (menu.isJsonObject()) {
+                hiddenMenu.removeAll(strings(menu.getAsJsonObject().get("keep")));
+                hiddenMenu.addAll(strings(menu.getAsJsonObject().get("hide")));
+            } else {
+                issues.add("error: mca_menu must be \"all\" or an object with \"keep\" and/or \"hide\" lists");
+            }
+        }
+        boolean familyToldOnly = false;
+        if (json.has("family_name")) {
+            String mode = json.get("family_name").getAsString();
+            if (mode.equals("told")) familyToldOnly = true;
+            else if (!mode.equals("shown")) issues.add("error: family_name must be \"shown\" or \"told\"");
+        }
         if (arrives.isEmpty() && arrivesJson == null) {
             issues.add("warning: no \"arrives\"; this Persona only comes through /townstead persona spawn");
         }
         if (issues.stream().anyMatch(i -> i.startsWith("error:"))) return null;
         return new PersonaDefinition(id, storyId(id), name, List.copyOf(arrives), arrival, profession, root, gender, downed, List.copyOf(rolls), List.copyOf(gifts), schedule, Map.copyOf(personalities), worldUnique, outfit,
-                names, Map.copyOf(states), mainhand, java.util.Set.copyOf(movesOn));
+                names, Map.copyOf(states), mainhand, java.util.Set.copyOf(movesOn), dialogueTheme, dialogueThemeJson, java.util.Set.copyOf(hiddenMenu), familyToldOnly);
     }
 
     /**

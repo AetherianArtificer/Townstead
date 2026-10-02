@@ -324,6 +324,8 @@ public class FieldPostScreen extends Screen {
         // vanilla seeds on the other tab.
         allSoilEntries.add(farmlandEntry());
         allSoilEntries.add(new PaletteList.ToolEntry("WATER", Component.translatable("townstead.field_post.soil.water").getString(), new ItemStack(Items.WATER_BUCKET), CAT_VANILLA));
+        // The farmer feeds the crop bone meal, or any item in the crop_fertilizers tag.
+        allSoilEntries.add(new PaletteList.ToolEntry(SoilType.FERTILIZED_CROP.name(), Component.translatable("townstead.field_post.soil.fertilized_crop").getString(), new ItemStack(Items.BONE_MEAL), CAT_VANILLA));
         // SoilType.NONE is omitted — it's functionally identical to Erase (both leave the cell
         // outside the plan). Kept as an enum value for back-compat with old saves.
         allSoilEntries.add(new PaletteList.ToolEntry("PROTECTED", Component.translatable("townstead.field_post.soil.protected").getString(), new ItemStack(Items.SHIELD), CAT_TOOLS));
@@ -729,6 +731,8 @@ public class FieldPostScreen extends Screen {
             case FERTILIZED_STABLE -> isFertilizedVariant(state, "fertilized_farmland_stable");
             // Nutrient upkeep is ongoing; the plan is met once the ground is tilled.
             case FERTILIZED_NUTRIENTS -> com.aetherianartificer.townstead.farming.Farmland.is(state);
+            // Feeding the crop is ongoing; the plan is met once the ground is tilled.
+            case FERTILIZED_CROP -> com.aetherianartificer.townstead.farming.Farmland.is(state);
             // The water on top is checked by the farmer; the plan's ground is met once tilled.
             case PADDY -> com.aetherianartificer.townstead.farming.Farmland.is(state);
             case WATER -> state.getFluidState().is(Fluids.WATER);
@@ -1260,7 +1264,7 @@ public class FieldPostScreen extends Screen {
                         case FARMLAND -> "minecraft:block/farmland";
                         case RICH_SOIL -> "minecraft:block/dirt"; // untilled variant looks like dark dirt
                         case RICH_SOIL_TILLED -> "minecraft:block/farmland_moist";
-                        case FERTILIZED_RICH, FERTILIZED_HEALTHY, FERTILIZED_STABLE, FERTILIZED_NUTRIENTS -> "minecraft:block/farmland_moist";
+                        case FERTILIZED_RICH, FERTILIZED_HEALTHY, FERTILIZED_STABLE, FERTILIZED_NUTRIENTS, FERTILIZED_CROP -> "minecraft:block/farmland_moist";
                         case WATER, PADDY -> "minecraft:block/water_still";
                         case NONE -> null;
                         case PROTECTED -> null;
@@ -1284,6 +1288,7 @@ public class FieldPostScreen extends Screen {
                         case FERTILIZED_HEALTHY -> 0xFFE53935;  // red border (matches red fertilizer)
                         case FERTILIZED_STABLE -> 0xFFFFB300;   // amber border (matches yellow fertilizer)
                         case FERTILIZED_NUTRIENTS -> 0xFF9C7BD0; // lilac border, apart from the FFB trio
+                        case FERTILIZED_CROP -> 0xFFE8E2CC;     // bone white
                         case PADDY -> 0xFF4FA89B;               // teal border: water over soil
                         case WATER -> 0xFF3366CC;
                         case NONE -> 0xFF666666;

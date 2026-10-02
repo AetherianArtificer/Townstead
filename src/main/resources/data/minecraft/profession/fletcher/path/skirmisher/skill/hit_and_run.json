@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "nimble"
+    "strung_right"
   ],
   "power": {
     "type": "pheno:action_over_time",

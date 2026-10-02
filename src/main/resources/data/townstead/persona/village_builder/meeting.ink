@@ -55,7 +55,7 @@
     -> rest ->
 - "harbor":
     Where does the next family sleep, here? Say someone came up the road tomorrow with a cart and three children.
-    Back home, we'd have had a bed made up before the boat was even tied off. Let's be that kind of place.
+    Back home, we'd have had a bed made up before the boat was even tied off. Let's do that here.
     -> beds ->
 - "roads":
     Who here's got nothing to do all day? There's always someone, standing about, looking at their hands.

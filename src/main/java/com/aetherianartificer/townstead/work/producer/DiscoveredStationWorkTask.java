@@ -836,7 +836,8 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
                 villager, careerId, xp, level.getGameTime(),
                 activity, activeRecipe.output(), "dish", activeRecipe.tier(),
-                metadata);
+                metadata, stationAnchor,
+                BuiltInRegistries.ITEM.get(activeRecipe.output()).getDefaultInstance());
     }
 
     /** After a protocol harvest, read quality off the actual product now in inventory. */

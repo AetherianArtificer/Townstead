@@ -26,7 +26,11 @@ public record StoryDefinition(
         Map<String, Condition> conditions,
         Map<String, Action> actions,
         Map<String, com.google.gson.JsonObject> goals,
-        List<Demeanor.Band> demeanor
+        List<Demeanor.Band> demeanor,
+        /** Knots tagged {@code # overheard: once}: scenes played in chat when the player walks by. */
+        List<String> overheard,
+        /** Test checkpoints ({@code "checkpoints"} in the JSON), for {@code /townstead story checkpoint}. */
+        Map<String, com.google.gson.JsonObject> checkpoints
 ) {
     /** Who a story's saved state belongs to, besides the player. */
     public enum Bind {

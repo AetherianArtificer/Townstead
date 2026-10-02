@@ -2,7 +2,9 @@ package com.aetherianartificer.townstead.compat.mca;
 
 //? if neoforge {
 import net.neoforged.fml.ModList;
-//?}
+//?} else if forge {
+/*import net.minecraftforge.fml.ModList;
+*///?}
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,8 +18,6 @@ public final class McaBuildGuard {
     }
 
     public static void verify() {
-        // The legacy Forge line has its own independently versioned MCA dependency.
-        //? if neoforge {
         Target target = loadTarget();
         var modFile = ModList.get().getModFileById("mca");
         if (modFile == null) {
@@ -29,7 +29,6 @@ public final class McaBuildGuard {
             return;
         }
         throw incompatible("MCA reports version " + actualVersion, target);
-        //?}
     }
 
     static boolean accepts(String actualVersion, String targetVersion, String developmentVersion) {

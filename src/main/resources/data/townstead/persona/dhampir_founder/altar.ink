@@ -22,7 +22,7 @@ I've been walking round your town trying to work out where the altar should go. 
 # goal: lodge_built
 # skip if: lodge_built
 ~ altar_started = true
-Somewhere with a door that shuts. Somewhere people have to mean it to walk into, not somewhere they pass on the way to the well.
+Somewhere with a door that shuts. Somewhere people have to mean it to walk into, not somewhere they pass on the way to somewhere else.
 And not too close to anyone's bed. People say things on their knees that they don't want the whole house hearing.
 - (topics)
 * [What does the altar do?]

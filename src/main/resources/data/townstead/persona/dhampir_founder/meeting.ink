@@ -1,8 +1,10 @@
 // Act 1, scene 1: First blood. The first conversation, soon after the founder arrives on the trail
 // of a vampire. They are in the middle of their own work: after a kill (the "made_kill" counter)
-// they want to get clean and find out who sleeps near the fence; when the trail went cold they are
-// asking who slept badly. The offer to stay is their own plan: they need a base near the ridge.
-// Reveals only their given name, their hatred of vampires, and the shepherd's wolf (for scene 2).
+// they want to get clean and find out who lives near the edge of town; when the trail went cold
+// they are asking who slept badly. The player answers their question first; then the open topics.
+// The offer to stay is their own plan: they need a base near the ridge. The player can leave at
+// any point and pick up where they were (meeting.resume). Reveals only their given name, their
+// hatred of vampires, and the shepherd's wolf (for scene 2).
 
 === meeting ===
 {check("vampire_near"):
@@ -19,22 +21,26 @@
 Not now. Get behind me. # emote:point
 -> DONE
 
+// Back after leaving mid-conversation.
+= resume
+Where were we.
+{check("made_kill"):
+    -> after_kill.topics
+}
+-> cold_trail.cold
+
 = after_kill
 It's dead. Give it a minute before you go near it, they twitch. I asked a cleric once why they twitch, and he told me it was the Nether going out of them, and then he tried to sell me a bottle of something that glowed, so.
 {check("player_dhampir"):
     ...Huh. You too, then. I've never met another one. I always thought I'd feel something. Mostly I feel like I should have washed first.
 }
 Is there water somewhere? The last town I came through, I tried their trough and a llama spat at me, which I probably deserved.
-- (topics)
-* [The well's this way.]
+* [There's water this way.]
     Good, thanks. # emote:nod
-    How many of you sleep on this side of the fence? I just want to know whose doors to try in the morning. Not tonight. Tonight they can sleep, they've earned that much.
-    ** [A few families.]
-        All right. Names in the morning, then.
-    ** [I don't know.]
-        That's fine, I'll find out. Finding out is most of the job.
-    --
-    -> topics
+* [You'll live.]
+    Probably. I usually do. # emote:shrug
+- I'll want to know who lives out at the edge of town, whose doors to try in the morning. Not tonight. Tonight they can sleep, they've earned that much.
+- (topics)
 * [Who are you?]
     -> name ->
     -> topics
@@ -58,8 +64,7 @@ Is there water somewhere? The last town I came through, I tried their trough and
     --
     -> topics
 * {check("player_dhampir")} [What are we?]
-    Tired, mostly. Hungry at the wrong times. Hard to kill.
-    I don't know much more than that, if I'm honest, and I've had longer to work it out than you have.
+    -> kin ->
     -> topics
 * [You enjoyed that.]
     Yeah, I did. If you want me to pretend otherwise I can do that, I'm fairly good at it. But you asked.
@@ -71,8 +76,11 @@ Is there water somewhere? The last town I came through, I tried their trough and
         All right. That's fair. People don't need to see that part.
     --
     -> topics
-+ [What now?]
++ [What now? #advance]
     -> offer
++ [Another time.]
+    Sure. I'll be around. I'm not going anywhere tonight.
+    -> DONE
 
 // The trail went cold: the vampire went on, or someone else ended it.
 = cold_trail
@@ -80,14 +88,12 @@ Is there water somewhere? The last town I came through, I tried their trough and
     Hang on. You too? Huh. I've never met another one. Give me a minute, I don't know what I'm supposed to say to that.
 }
 Did anybody here sleep badly last night? Dogs going off at nothing, or somebody finding their door open in the morning and blaming the wind. It's always the wind. I've never met the wind, but it gets blamed for a lot.
-- (cold)
 * [Now that you mention it...]
-    Show me in the morning, then. Tonight, bar your shutters, all of you. Say it's for phantoms if people want a reason. Nobody argues with phantoms.
-    -> cold
+    Show me in the morning, then. Tonight, everybody keeps their doors shut. Say it's for phantoms if people want a reason. Nobody argues with phantoms.
 * [No. Why?]
-    Because something came this way and I lost it at your fence. Either it went on over the hills, or it found a cave to lie up in until dark.
+    Because something came this way and I lost it at the edge of your town. Either it went on over the hills, or it found a cave to lie up in until dark.
     If it's a cave, I'll get it. If it's somebody's cellar, that's worse.
-    -> cold
+- (cold)
 * [Who are you?]
     -> name ->
     -> cold
@@ -96,11 +102,10 @@ Did anybody here sleep badly last night? Dogs going off at nothing, or somebody 
     -> shepherd ->
     -> cold
 * {check("player_dhampir")} [What are we?]
-    Tired, mostly. Hungry at the wrong times. Hard to kill.
-    I don't know much more than that, if I'm honest, and I've had longer to work it out than you have.
+    -> kin ->
     -> cold
-* [I killed it.]
-    Did you? Huh. # emote:ponder
+* {check("player_killed")} [I've killed one.]
+    Have you? Huh. # emote:ponder
     Then either you're luckier than most, or better than you look. No offense.
     ** [Better.]
         ~ act("hunger_small")
@@ -113,8 +118,11 @@ Did anybody here sleep badly last night? Dogs going off at nothing, or somebody 
 * [Are you hurt?]
     -> hurt ->
     -> cold
-+ [What now?]
++ [What now? #advance]
     -> offer
++ [Another time.]
+    Sure. Keep your door shut tonight.
+    -> DONE
 
 // ---- shared pieces ----
 
@@ -125,6 +133,11 @@ Did anybody here sleep badly last night? Dogs going off at nothing, or somebody 
 * [Where are you from?]
     East, originally. Then a lot of places. I've slept in more haystacks than beds this year. # emote:shrug
 - ->->
+
+= kin
+Tired, mostly. Hungry at the wrong times. Hard to kill.
+I don't know much more than that, if I'm honest, and I've had longer to work it out than you have.
+->->
 
 = hurt
 {check("hurt"):
@@ -181,12 +194,12 @@ You'd get the same out of it. I'd set up an altar and swear in anyone who's got 
     -> offer_topics
 * [Why us?]
     {check("made_kill"):
-        You came toward the noise. Everybody else stayed behind their shutters, which I understand. But you came out.
+        You came toward the noise. That's rarer than you'd think.
     - else:
-        Honestly? Your fence is bad and your people seem decent. That's the kind of town they like.
+        Honestly? Your people seem decent, and decent people are the ones they like.
     }
     -> offer_topics
-+ [Stay.]
++ [Stay. #advance]
     -> stay
 + [I'll think about it.]
     Take your time. I'd just rather you thought faster than they eat.

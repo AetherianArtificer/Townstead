@@ -65,10 +65,12 @@ public final class PlayerFarmingEvents {
         if (!realPlayer(event.getPlayer())) return;
         BlockState state = event.getState();
         if (state.getBlock() instanceof CropBlock crop && crop.isMaxAge(state)) {
-            award((ServerPlayer) event.getPlayer(), level, XP_HARVEST, "townstead:harvested");
+            // A crop grown big or giant is that much more harvest.
+            award((ServerPlayer) event.getPlayer(), level,
+                    XP_HARVEST * com.aetherianartificer.townstead.farming.CropFertilizers.size(state), "townstead:harvested", event.getPos());
         } else if (HarvestWorkTask.isRemovableWeed(state)
                 && (plannedOrAdjacentSoil(level, event.getPos().below()) || plannedSoil(level, event.getPos()))) {
-            award((ServerPlayer) event.getPlayer(), level, XP_GROOM, "townstead:groomed");
+            award((ServerPlayer) event.getPlayer(), level, XP_GROOM, "townstead:groomed", event.getPos());
         }
     }
 
@@ -78,7 +80,7 @@ public final class PlayerFarmingEvents {
         if (!(event.getLevel() instanceof ServerLevel level)) return;
         if (!realPlayer(event.getEntity())) return;
         if (event.getPlacedBlock().getBlock() instanceof CropBlock) {
-            award((ServerPlayer) event.getEntity(), level, XP_PLANT, "townstead:planted");
+            award((ServerPlayer) event.getEntity(), level, XP_PLANT, "townstead:planted", event.getPos());
         }
     }
 
@@ -96,7 +98,7 @@ public final class PlayerFarmingEvents {
         BlockState result = event.getFinalState();
         if (result == null || !com.aetherianartificer.townstead.farming.Farmland.is(result)) return;
         if (com.aetherianartificer.townstead.farming.Farmland.is(event.getState())) return;
-        award((ServerPlayer) event.getPlayer(), level, XP_TILL, "townstead:tilled");
+        award((ServerPlayer) event.getPlayer(), level, XP_TILL, "townstead:tilled", event.getPos());
     }
 
     /**
@@ -115,11 +117,12 @@ public final class PlayerFarmingEvents {
         level.getServer().tell(new TickTask(level.getServer().getTickCount() + 1, () -> {
             if (!player.isAlive() || player.serverLevel() != level) return;
             if (!level.getFluidState(target).is(FluidTags.WATER)) return;
-            award(player, level, XP_IRRIGATE, "townstead:irrigated");
+            award(player, level, XP_IRRIGATE, "townstead:irrigated", target);
         }));
     }
 
-    private static boolean plannedSoil(ServerLevel level, BlockPos pos) {
+    /** Whether a Field Post plan marks this cell as soil (not water, not protected). */
+    public static boolean plannedSoil(ServerLevel level, BlockPos pos) {
         for (FieldPostBlockEntity post : FieldPostIndex.findAllInRange(level, pos, FieldPostBlockEntity.DEFAULT_RADIUS)) {
             BlockPos origin = post.getBlockPos();
             int dx = pos.getX() - origin.getX();
@@ -154,7 +157,8 @@ public final class PlayerFarmingEvents {
         return false;
     }
 
-    private static void award(ServerPlayer player, ServerLevel level, int xp, String verb) {
-        CareerProgression.completeWork(player, Careers.FARMER, xp, level.getGameTime(), verb, null, null, xp);
+    private static void award(ServerPlayer player, ServerLevel level, int xp, String verb, BlockPos pos) {
+        CareerProgression.completeWork(player, Careers.FARMER, xp, level.getGameTime(), verb, null, null, xp,
+                pos, ItemStack.EMPTY);
     }
 }

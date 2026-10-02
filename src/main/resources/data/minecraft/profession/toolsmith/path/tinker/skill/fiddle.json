@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "grip_spikes"
+    "well_made"
   ],
   "power": {
     "type": "pheno:action_over_time",

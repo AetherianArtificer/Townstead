@@ -59,6 +59,9 @@ public final class TownsteadClient {
                     com.aetherianartificer.townstead.ritual.Blessings.tooltip(e.getItemStack(), e.getToolTip()));
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onRenderNameTag);
+            NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGHEST,
+                    com.aetherianartificer.townstead.client.render.WildCostumeRender::onRenderLivingPre);
+            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.render.WildCostumeRender::onEntityLeave);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onRenderLivingPre);
             NeoForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             NeoForge.EVENT_BUS.addListener(
@@ -90,6 +93,9 @@ public final class TownsteadClient {
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onRenderNameTag);
             MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.ItemTooltipEvent e) ->
                     com.aetherianartificer.townstead.ritual.Blessings.tooltip(e.getItemStack(), e.getToolTip()));
+            MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.HIGHEST,
+                    com.aetherianartificer.townstead.client.render.WildCostumeRender::onRenderLivingPre);
+            MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.render.WildCostumeRender::onEntityLeave);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onRenderLivingPre);
             MinecraftForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             MinecraftForge.EVENT_BUS.addListener(
@@ -190,6 +196,7 @@ public final class TownsteadClient {
     *///?}
         com.aetherianartificer.townstead.pheno.cosmetic.CosmeticClientBridge.clear();
         com.aetherianartificer.townstead.replace.WildNameS2CPayload.clear();
+        com.aetherianartificer.townstead.client.render.WildCostumeRender.clear();
         clearClientStore("com.aetherianartificer.townstead.hunger.HungerClientStore");
         clearClientStore("com.aetherianartificer.townstead.client.rebirth.CharacterNameClient");
         clearClientStore("com.aetherianartificer.townstead.client.rebirth.RebirthDestinyClient");

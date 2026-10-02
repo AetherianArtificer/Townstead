@@ -8,6 +8,7 @@
     "translate": "skill.townstead.cook.pizzaiolo.pizza_craft.description"
   },
   "cost": 1,
+  "skill_group": "townstead:pizzaiolo_service",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 300,
@@ -40,6 +41,7 @@
           "pitch": 1.2
         }
       ]
-    }
+    },
+    "slot": 1
   }
 }

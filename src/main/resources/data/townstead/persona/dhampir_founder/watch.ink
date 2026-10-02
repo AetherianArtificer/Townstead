@@ -10,7 +10,7 @@ VAR done_watch = false
 === watch_offer ===
 Don't go to bed yet.
 There's more than one out there tonight. I can hear them calling to each other, the way they do, like dogs that learned a few words.
-We hold the fence. You can hold it with us, or you can get people behind their doors. Both of those are the job.
+We hold the edge of town. You can hold it with us, or you can get people behind their doors. Both of those are the job.
 + [I'll stand with you.]
     ~ trust(1)
     Good. Stay on my left. I'm better on my right, and I'd rather not hit you.

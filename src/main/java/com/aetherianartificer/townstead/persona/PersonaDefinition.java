@@ -23,6 +23,10 @@ import java.util.List;
  * @param states       entity states they arrive with, by amount
  * @param mainhand     an item they arrive holding, or null
  * @param movesOn      what makes them leave for another village ({@code order_dissolved}, {@code town_fallen})
+ * @param dialogueTheme the dialogue theme they speak in, or null for the player's own
+ * @param dialogueThemeJson the theme itself when persona.json writes it inline, else null
+ * @param hiddenMenu   MCA main-menu answers the Persona hides (small talk by default; {@code mca_menu} changes it)
+ * @param familyToldOnly whether each player sees their family name only once the story tells it ({@code "family_name": "told"})
  */
 public record PersonaDefinition(
         ResourceLocation id,
@@ -43,7 +47,16 @@ public record PersonaDefinition(
         @Nullable PersonaNames names,
         java.util.Map<ResourceLocation, Double> states,
         @Nullable ResourceLocation mainhand,
-        java.util.Set<String> movesOn
+        java.util.Set<String> movesOn,
+        @Nullable ResourceLocation dialogueTheme,
+        @Nullable com.google.gson.JsonObject dialogueThemeJson,
+        java.util.Set<String> hiddenMenu,
+        boolean familyToldOnly
 ) {
+    /** MCA's small talk, hidden for a Persona unless {@code mca_menu} keeps it: their own story speaks for them. */
+    public static final java.util.Set<String> SMALL_TALK = java.util.Set.of(
+            "chat", "joke", "story", "hug", "flirt", "kiss", "procreate", "procreate_engaged",
+            "apologize", "rumors", "rock_paper_scissor", "adopt");
+
     public enum Arrival { WALK_IN, APPEAR }
 }

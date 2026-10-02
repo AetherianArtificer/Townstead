@@ -17,25 +17,23 @@ import java.util.List;
  * Supports hub mode for the organized main menu.
  */
 public class ChoicePanel {
-    private static final int BG_COLOR = 0xAA000000;
-    private static final int BORDER_COLOR = 0xFF555555;
-    private static final int BORDER_HIGHLIGHT = 0xFF888888;
-    private static final int NORMAL_COLOR = 0xAAFFFFFF;
-    private static final int HOVER_COLOR = 0xFFD7D784;
-    private static final int SELECTED_BG = 0x44FFFFFF;
     private static final int PADDING = 8;
     private static final int LINE_HEIGHT = 11;
     private static final int ENTRY_SPACING = 6;
     private static final int HIGHLIGHT_PAD = 3;
     private static final int INDICATOR_WIDTH = 10;
     private static final int NUMBER_GAP = 3;
-    private static final int NUMBER_COLOR = 0x88FFFFFF;
     private static final int MAX_NUMBERED = 9;
     /** Right edge of the badge a mod paints for itself, measured from the panel edge. */
     private static final int GUEST_BADGE_END = 18;
     private static final int GAP_ABOVE_DIALOGUE = 8;
+    /** The speech mark on a story choice that moves the story on: an 8x8 sprite, with room left for it in the text. */
+    private static final net.minecraft.resources.ResourceLocation ADVANCE_MARK =
+            net.minecraft.resources.ResourceLocation.tryParse("townstead:textures/gui/dialogue/advance.png");
+    private static final String ADVANCE_ROOM = "   ";
+    /** Story rows that carry the speech mark. */
+    private final java.util.Set<Integer> advanceRows = new java.util.HashSet<>();
     private static final int MIN_TOP_MARGIN = 10;
-    private static final int BACK_COLOR = 0xFF8888AA;
 
     // Raw MCA data (kept for sending packets)
     private List<String> rawAnswers = List.of();
@@ -45,6 +43,7 @@ public class ChoicePanel {
     private List<DisplayEntry> displayEntries = List.of();
 
     private boolean visible;
+    private DialogueTheme theme = DialogueThemes.resolve(null);
     /**
      * Set through the client API by a mod that wants numbered choices. Read when the panel lays
      * out, so the gutter it needs is reserved before the text is wrapped into it.
@@ -154,6 +153,10 @@ public class ChoicePanel {
         }
     }
 
+    public void setTheme(DialogueTheme theme) {
+        this.theme = theme;
+    }
+
     public boolean isVisible() {
         return visible && !displayEntries.isEmpty();
     }
@@ -185,8 +188,9 @@ public class ChoicePanel {
         graphics.enableScissor(x, y, x + width, y + height);
         float bgOpacity = DialogueAccessibility.backgroundAlpha();
         int bgAlphaInt = Math.min((int)(bgOpacity * 2f * 0xAA), 0xFF);
-        int bgColor = (bgAlphaInt << 24) | (BG_COLOR & 0x00FFFFFF);
-        graphics.fill(x, y, x + width, y + height, aa(bgColor, a));
+        int bgColor = (bgAlphaInt << 24) | (theme.choicesBackground() & 0x00FFFFFF);
+        if (theme.choices() != null) theme.choices().draw(graphics, x, y, width, height, a);
+        else graphics.fill(x, y, x + width, y + height, aa(bgColor, a));
 
         int entryY = y + PADDING - scrollOffset;
         hoveredIndex = -1;
@@ -209,14 +213,14 @@ public class ChoicePanel {
                 DisplayEntry entry = displayEntries.get(i);
 
                 if (highlighted) {
-                    graphics.fill(x + 2, entryY - HIGHLIGHT_PAD, x + width - 2, entryY + entryH + HIGHLIGHT_PAD, SELECTED_BG);
+                    graphics.fill(x + 2, entryY - HIGHLIGHT_PAD, x + width - 2, entryY + entryH + HIGHLIGHT_PAD, theme.choiceSelectedBackground());
                 }
 
                 int textColor;
                 if (entry.isBack()) {
-                    textColor = highlighted ? HOVER_COLOR : BACK_COLOR;
+                    textColor = highlighted ? theme.choiceHoverColor() : theme.choiceBackColor();
                 } else {
-                    textColor = highlighted ? HOVER_COLOR : NORMAL_COLOR;
+                    textColor = highlighted ? theme.choiceHoverColor() : theme.choiceColor();
                 }
 
                 int gutterOffset = gutterWidth - INDICATOR_WIDTH;
@@ -225,16 +229,21 @@ public class ChoicePanel {
                     // a label on the choice rather than a widget beside it.
                     int numberY = entryY + (entryH - LINE_HEIGHT) / 2;
                     graphics.drawString(font, visibleOrdinal + ".", x + PADDING, numberY,
-                            highlighted ? HOVER_COLOR : NUMBER_COLOR);
+                            highlighted ? theme.choiceHoverColor() : theme.choiceNumberColor());
                 }
 
                 if (highlighted && !guestNumbered) {
                     int indicatorY = entryY + (entryH - LINE_HEIGHT) / 2;
                     String indicator = "\u25B8";
-                    graphics.drawString(font, indicator, x + PADDING + gutterOffset, indicatorY, HOVER_COLOR);
+                    graphics.drawString(font, indicator, x + PADDING + gutterOffset, indicatorY, theme.choiceHoverColor());
                 }
 
                 List<FormattedCharSequence> lines = wrappedEntries.get(i);
+                if (advanceRows.contains(i) && STORY_QUESTION.equals(questionId)) {
+                    graphics.setColor(1f, 1f, 1f, a);
+                    graphics.blit(ADVANCE_MARK, x + PADDING + gutterWidth, entryY, 0f, 0f, 8, 8, 8, 8);
+                    graphics.setColor(1f, 1f, 1f, 1f);
+                }
                 int lineY = entryY;
                 for (FormattedCharSequence line : lines) {
                     graphics.drawString(font, line, x + PADDING + gutterWidth, lineY, textColor);
@@ -248,10 +257,12 @@ public class ChoicePanel {
         graphics.disableScissor();
 
         // Border
-        graphics.fill(x, y, x + width, y + 1, aa(BORDER_HIGHLIGHT, a));
-        graphics.fill(x, y + height - 1, x + width, y + height, aa(BORDER_COLOR, a));
-        graphics.fill(x, y, x + 1, y + height, aa(BORDER_HIGHLIGHT, a));
-        graphics.fill(x + width - 1, y, x + width, y + height, aa(BORDER_COLOR, a));
+        if (theme.choices() == null) {
+            graphics.fill(x, y, x + width, y + 1, aa(theme.choicesBorderLight(), a));
+            graphics.fill(x, y + height - 1, x + width, y + height, aa(theme.choicesBorderDark(), a));
+            graphics.fill(x, y, x + 1, y + height, aa(theme.choicesBorderLight(), a));
+            graphics.fill(x + width - 1, y, x + width, y + height, aa(theme.choicesBorderDark(), a));
+        }
 
         if (needsScroll) {
             if (scrollOffset > 0) {
@@ -279,6 +290,16 @@ public class ChoicePanel {
             entryY += entryH + ENTRY_SPACING;
         }
         return rows;
+    }
+
+    /** True while this panel paints its own row numbers. */
+    public boolean isNumbered() {
+        return numbered;
+    }
+
+    /** The label of the selected row, or null. */
+    public Component selectedLabel() {
+        return selectedIndex >= 0 && selectedIndex < displayEntries.size() ? displayEntries.get(selectedIndex).text() : null;
     }
 
     /** Moves the selection to {@code index} if it exists; the caller then runs the native selection. */
@@ -369,6 +390,14 @@ public class ChoicePanel {
 
     /** A story's choices, shown as written. */
     public void setLiteralChoices(List<String> choices, Font font) {
+        setLiteralChoices(choices, i -> false, font);
+    }
+
+    /**
+     * Story choices. The ones that move the story on ({@code advance}) come first, marked; each row
+     * still answers with its own index in the story.
+     */
+    public void setLiteralChoices(List<String> choices, java.util.function.IntPredicate advance, Font font) {
         this.questionId = STORY_QUESTION;
         this.hubMode = false;
         this.currentSubMenu = null;
@@ -377,9 +406,17 @@ public class ChoicePanel {
         this.scrollOffset = 0;
         List<String> answers = new ArrayList<>(choices.size());
         displayEntries = new ArrayList<>(choices.size());
-        for (int i = 0; i < choices.size(); i++) {
+        List<Integer> order = new ArrayList<>(choices.size());
+        for (int i = 0; i < choices.size(); i++) if (advance.test(i)) order.add(i);
+        for (int i = 0; i < choices.size(); i++) if (!advance.test(i)) order.add(i);
+        advanceRows.clear();
+        for (int i : order) {
             answers.add(STORY_CHOICE_PREFIX + i);
             String text = com.aetherianartificer.townstead.client.gui.dialogue.effect.EffectTagParser.stripTags(choices.get(i));
+            if (advance.test(i)) {
+                advanceRows.add(displayEntries.size());
+                text = ADVANCE_ROOM + text;
+            }
             displayEntries.add(new DisplayEntry(Component.literal(text), STORY_CHOICE_PREFIX + i, null, false));
         }
         this.rawAnswers = answers;
@@ -450,7 +487,10 @@ public class ChoicePanel {
         entryHeights.clear();
         // A mod that asks us to number wins; otherwise the text simply starts past the badges a
         // mod paints for itself, with no caret column of ours in between.
-        numbered = numberingRequested();
+        // With no mod asking and Conversations absent, the panel numbers its own rows.
+        numbered = numberingRequest == null
+                ? !com.aetherianartificer.townstead.compat.otectus.ConversationsChoiceNumbering.present(this)
+                : numberingRequested();
         guestNumbered = !numbered
                 && com.aetherianartificer.townstead.compat.otectus.ConversationsChoiceNumbering.numbersRows(this);
         gutterWidth = guestNumbered

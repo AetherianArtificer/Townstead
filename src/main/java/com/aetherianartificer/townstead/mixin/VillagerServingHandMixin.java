@@ -13,7 +13,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Other AI behaviors share this equipment slot with genuine consumption. */
 @Mixin(Mob.class)
 public abstract class VillagerServingHandMixin {
+    //? if neoforge {
     @Inject(method = "setItemSlot", at = @At("HEAD"), cancellable = true)
+    //?} else {
+    /*@Inject(method = "m_8061_", remap = false, at = @At("HEAD"), cancellable = true)
+    *///?}
     private void townstead$reserveServingHand(EquipmentSlot slot, ItemStack stack, CallbackInfo ci) {
         if (!((Object) this instanceof VillagerEntityMCA villager) || villager.level().isClientSide()
                 || slot != EquipmentSlot.MAINHAND) return;

@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "strong_knots"
+    "mended_nets"
   ],
   "power": {
     "type": "pheno:action_over_time",

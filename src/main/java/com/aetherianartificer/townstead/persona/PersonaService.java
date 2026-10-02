@@ -314,7 +314,7 @@ public final class PersonaService {
             VillagerEntityMCA villager = find(server, instance.villager());
             if (villager == null || villager.isBaby()) continue;
             ServerPlayer anyone = server.getPlayerList().getPlayers().isEmpty() ? null : server.getPlayerList().getPlayers().get(0);
-            ResourceLocation wanted = persona.rolls().isEmpty() || anyone == null ? persona.profession() : profession(persona, anyone);
+            ResourceLocation wanted = pinned(server, persona);
             if (wanted == null || !BuiltInRegistries.VILLAGER_PROFESSION.containsKey(wanted)) continue;
             var job = BuiltInRegistries.VILLAGER_PROFESSION.get(wanted);
             if (villager.getVillagerData().getProfession() != job) {
@@ -324,6 +324,60 @@ public final class PersonaService {
             if (villager.getVillagerXp() < 1) villager.setVillagerXp(1);
             if (anyone != null) dress(villager, outfit(persona, anyone));
         }
+    }
+
+    /**
+     * The profession a Persona is pinned to, or null for anyone else (and for a Persona whose
+     * persona.json names no profession). Nothing may move a pinned Persona to another job: not
+     * hiring, not order membership, not the job screen.
+     */
+    public static @Nullable ResourceLocation pinnedProfession(VillagerEntityMCA villager) {
+        MinecraftServer server = villager.getServer();
+        if (server == null) return null;
+        PersonaInstances.Instance instance = PersonaInstances.get(server).of(villager.getUUID());
+        PersonaDefinition persona = instance == null ? null : Personas.byId(instance.persona());
+        return persona == null ? null : pinned(server, persona);
+    }
+
+    /** Whether {@code player} may see this villager's family name: anyone's, a Persona's once told. */
+    public static boolean familyNameKnown(VillagerEntityMCA villager, net.minecraft.server.level.ServerPlayer player) {
+        PersonaDefinition persona = definition(villager);
+        return persona == null || !persona.familyToldOnly()
+                || com.aetherianartificer.townstead.chronicle.Chronicles.count(player.server, player.getUUID(), familyKey(persona)) > 0;
+    }
+
+    /** The villager tells {@code player} their family name, and the player's screens show it from now on. */
+    public static void tellFamilyName(VillagerEntityMCA villager, net.minecraft.server.level.ServerPlayer player) {
+        PersonaDefinition persona = definition(villager);
+        if (persona == null || !persona.familyToldOnly() || familyNameKnown(villager, player)) return;
+        com.aetherianartificer.townstead.chronicle.Chronicles.addCounter(player.server, player.getUUID(), familyKey(persona), 1);
+        com.aetherianartificer.townstead.naming.NameSyncTarget.syncToPlayer(player, villager);
+    }
+
+    private static String familyKey(PersonaDefinition persona) {
+        return "townstead:knows_family/" + persona.id().getNamespace() + "/" + persona.id().getPath();
+    }
+
+    /** The Persona this villager is, or null for anyone else. */
+    public static @Nullable PersonaDefinition definition(VillagerEntityMCA villager) {
+        MinecraftServer server = villager.getServer();
+        if (server == null) return null;
+        PersonaInstances.Instance instance = PersonaInstances.get(server).of(villager.getUUID());
+        return instance == null ? null : Personas.byId(instance.persona());
+    }
+
+    /** A Persona's own dialogue theme id, or empty for anyone else. */
+    public static String dialogueTheme(VillagerEntityMCA villager) {
+        MinecraftServer server = villager.getServer();
+        if (server == null) return "";
+        PersonaInstances.Instance instance = PersonaInstances.get(server).of(villager.getUUID());
+        PersonaDefinition persona = instance == null ? null : Personas.byId(instance.persona());
+        return persona == null || persona.dialogueTheme() == null ? "" : persona.dialogueTheme().toString();
+    }
+
+    private static @Nullable ResourceLocation pinned(MinecraftServer server, PersonaDefinition persona) {
+        ServerPlayer anyone = server.getPlayerList().getPlayers().isEmpty() ? null : server.getPlayerList().getPlayers().get(0);
+        return persona.rolls().isEmpty() || anyone == null ? persona.profession() : profession(persona, anyone);
     }
 
     /** The outfit a Persona is meant to wear: a rolled one, else the one persona.json gives. */

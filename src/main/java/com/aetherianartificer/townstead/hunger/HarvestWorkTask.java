@@ -701,7 +701,24 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             );
             if (clustered != null) return clustered;
         }
-        return snapshot.nearestHarvestTarget(villager, pos -> !townstead$isBlacklisted(pos, gameTime));
+        return snapshot.nearestHarvestTarget(villager, pos -> !townstead$isBlacklisted(pos, gameTime)
+                && !townstead$growingBigger(villager, pos));
+    }
+
+    /**
+     * A grown crop on a Fertilized (Bone Meal) cell that the farmer is trying to grow bigger: they
+     * feed it instead of harvesting it while they have a fertilizer that can, and harvest it once
+     * it is giant or they run out.
+     */
+    private boolean townstead$growingBigger(VillagerEntityMCA villager, BlockPos cropPos) {
+        if (!(villager.level() instanceof ServerLevel level) || !townstead$feedsCrop(cropPos.below())) return false;
+        BlockState state = level.getBlockState(cropPos);
+        if (!com.aetherianartificer.townstead.farming.CropFertilizers.canGrowBigger(level, cropPos, state)) return false;
+        SimpleContainer inv = villager.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            if (com.aetherianartificer.townstead.farming.CropFertilizers.wouldHelp(level, cropPos, state, inv.getItem(i))) return true;
+        }
+        return false;
     }
 
     private BlockPos townstead$findNearestPlantSpot(HarvestWorkIndex.FarmSnapshot snapshot, ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -747,7 +764,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             lastHarvestPos = targetPos.immutable();
             lastHarvestTick = gameTime;
             nextTargetScanTick = 0;
-            townstead$awardFarmerXp(level, villager, gameTime, 3, "harvest", townstead$harvestProduct(drops, state));
+            townstead$awardFarmerXp(level, villager, gameTime, 3, "harvest", townstead$harvestProduct(drops, state), targetPos);
             return;
         }
 
@@ -767,7 +784,9 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         lastHarvestPos = targetPos.immutable();
         lastHarvestTick = gameTime;
         nextTargetScanTick = 0;
-        townstead$awardFarmerXp(level, villager, gameTime, 3, "harvest", townstead$harvestProduct(drops, state));
+        // A crop grown big or giant is that much more harvest.
+        townstead$awardFarmerXp(level, villager, gameTime, 3 * com.aetherianartificer.townstead.farming.CropFertilizers.size(state), "harvest",
+                townstead$harvestProduct(drops, state), targetPos);
 
         if (isMatureCrop && townstead$findSeedSlot(villager.getInventory(), villager, level, targetPos) >= 0) {
             townstead$doPlant(level, villager, targetPos, gameTime);
@@ -935,7 +954,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
                 villager.swing(villager.getDominantHand());
                 townstead$markWorked(pos, gameTime);
                 HarvestWorkIndex.invalidate(level, pos);
-                townstead$awardFarmerXp(level, villager, gameTime, 2, "plant");
+                townstead$awardFarmerXp(level, villager, gameTime, 2, "plant", null, pos);
             } else {
                 townstead$rejectCurrentTarget(pos, gameTime);
             }
@@ -969,7 +988,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             villager.swing(villager.getDominantHand());
             townstead$markWorked(pos, gameTime);
             HarvestWorkIndex.invalidate(level, pos);
-            townstead$awardFarmerXp(level, villager, gameTime, 2, "plant");
+            townstead$awardFarmerXp(level, villager, gameTime, 2, "plant", null, pos);
         } else {
             townstead$rejectCurrentTarget(pos, gameTime);
         }
@@ -1052,7 +1071,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             villager.swing(villager.getDominantHand());
             HarvestWorkIndex.invalidate(level, pos);
             nextTargetScanTick = 0;
-            townstead$awardFarmerXp(level, villager, gameTime, 1, "trellis");
+            townstead$awardFarmerXp(level, villager, gameTime, 1, "trellis", null, cell.soilPos());
         } else {
             townstead$rejectCurrentTarget(pos, gameTime);
         }
@@ -1070,7 +1089,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             villager.swing(villager.getDominantHand());
             HarvestWorkIndex.invalidate(level, pos);
             nextTargetScanTick = 0;
-            townstead$awardFarmerXp(level, villager, gameTime, 1, "trellis");
+            townstead$awardFarmerXp(level, villager, gameTime, 1, "trellis", null, pos);
         } else {
             townstead$rejectCurrentTarget(pos, gameTime);
         }
@@ -1083,27 +1102,71 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             return;
         }
         ItemStack fertilizer = villager.getInventory().getItem(slot);
+        if (townstead$feedsCrop(soilPos)) {
+            com.aetherianartificer.townstead.farming.FarmerBlockUse.Result used = com.aetherianartificer.townstead.farming.CropFertilizers.use(level, soilPos.above(), fertilizer);
+            if (used == null) {
+                townstead$rejectCurrentTarget(soilPos, gameTime);
+                return;
+            }
+            for (ItemStack back : used.returned()) {
+                if (!back.isEmpty()) villager.getInventory().addItem(back);
+            }
+            villager.swing(villager.getDominantHand());
+            townstead$markWorked(soilPos, gameTime);
+            HarvestWorkIndex.invalidate(level, soilPos);
+            HarvestWorkIndex.invalidate(level, soilPos.above());
+            nextTargetScanTick = 0;
+            townstead$awardFarmerXp(level, villager, gameTime, 1, "fertilize", null, soilPos);
+            return;
+        }
         if (com.aetherianartificer.townstead.compat.farming.FarmerNutrientCompatRegistry.feed(level, soilPos, fertilizer)) {
             fertilizer.shrink(1);
             villager.swing(villager.getDominantHand());
             townstead$markWorked(soilPos, gameTime);
             HarvestWorkIndex.invalidate(level, soilPos);
             nextTargetScanTick = 0;
-            townstead$awardFarmerXp(level, villager, gameTime, 1, "fertilize");
+            townstead$awardFarmerXp(level, villager, gameTime, 1, "fertilize", null, soilPos);
         } else {
             townstead$rejectCurrentTarget(soilPos, gameTime);
         }
     }
 
+    /** Whether this soil's cell is painted Fertilized (Bone Meal): the crop gets fed, not the soil. */
+    private boolean townstead$feedsCrop(BlockPos soilPos) {
+        if (farmBlueprint == null) return false;
+        PlannedCell cell = farmBlueprint.cellAt(soilPos);
+        return cell != null && cell.desiredSoil() == com.aetherianartificer.townstead.farming.cellplan.SoilType.FERTILIZED_CROP;
+    }
+
+    private static boolean townstead$isAnyFertilizer(ItemStack stack) {
+        return com.aetherianartificer.townstead.compat.farming.FarmerNutrientCompatRegistry.isFertilizer(stack)
+                || com.aetherianartificer.townstead.farming.CropFertilizers.isFertilizer(stack);
+    }
+
+    private static boolean townstead$has(SimpleContainer inv, java.util.function.Predicate<ItemStack> test) {
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            if (!inv.getItem(i).isEmpty() && test.test(inv.getItem(i))) return true;
+        }
+        return false;
+    }
+
     private static boolean townstead$hasFertilizer(SimpleContainer inv) {
         for (int i = 0; i < inv.getContainerSize(); i++) {
-            if (com.aetherianartificer.townstead.compat.farming.FarmerNutrientCompatRegistry.isFertilizer(inv.getItem(i))) return true;
+            if (townstead$isAnyFertilizer(inv.getItem(i))) return true;
         }
         return false;
     }
 
     /** A fertilizer in the inventory that would mostly land on this cell, or -1. */
-    private static int townstead$findFertilizerSlot(SimpleContainer inv, ServerLevel level, BlockPos soilPos) {
+    private int townstead$findFertilizerSlot(SimpleContainer inv, ServerLevel level, BlockPos soilPos) {
+        if (townstead$feedsCrop(soilPos)) {
+            BlockPos cropPos = soilPos.above();
+            BlockState crop = level.getBlockState(cropPos);
+            for (int i = 0; i < inv.getContainerSize(); i++) {
+                if (com.aetherianartificer.townstead.farming.CropFertilizers.wouldHelp(level, cropPos, crop, inv.getItem(i))) return i;
+            }
+            return -1;
+        }
         for (int i = 0; i < inv.getContainerSize(); i++) {
             if (com.aetherianartificer.townstead.compat.farming.FarmerNutrientCompatRegistry.wouldHelp(level, soilPos, inv.getItem(i))) return i;
         }
@@ -1176,7 +1239,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             villager.swing(villager.getDominantHand());
             townstead$markWorked(soilPos, gameTime);
             HarvestWorkIndex.invalidate(level, soilPos);
-            townstead$awardFarmerXp(level, villager, gameTime, 1, "till");
+            townstead$awardFarmerXp(level, villager, gameTime, 1, "till", null, soilPos);
         }
     }
 
@@ -1193,7 +1256,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         villager.swing(villager.getDominantHand());
         townstead$markWorked(topPos, gameTime);
         HarvestWorkIndex.invalidate(level, topPos);
-        townstead$awardFarmerXp(level, villager, gameTime, 1, "groom");
+        townstead$awardFarmerXp(level, villager, gameTime, 1, "groom", null, topPos);
     }
 
     private void townstead$doPlaceWater(ServerLevel level, VillagerEntityMCA villager, BlockPos pos, long gameTime) {
@@ -1220,7 +1283,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         villager.swing(villager.getDominantHand());
         townstead$markWorked(pos, gameTime);
         HarvestWorkIndex.invalidate(level, pos);
-        townstead$awardFarmerXp(level, villager, gameTime, 4, "irrigate");
+        townstead$awardFarmerXp(level, villager, gameTime, 4, "irrigate", null, pos);
         cachedInventoryTick = -1;
     }
 
@@ -1523,7 +1586,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     /** Trellis supports and rope are consumed by the farmer's own work, so they are not harvest output. */
     private boolean townstead$isWorkMaterial(ItemStack stack) {
         return FarmerCropCompatRegistry.isColumnBlockItem(stack) || FarmerCropCompatRegistry.isRope(stack)
-                || com.aetherianartificer.townstead.compat.farming.FarmerNutrientCompatRegistry.isFertilizer(stack);
+                || townstead$isAnyFertilizer(stack);
     }
 
     private boolean townstead$isInventoryMostlyFull(SimpleContainer inv) {
@@ -1644,7 +1707,12 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             }
             if (snapshot.fertilizeTargetCount() > 0 && !townstead$hasFertilizer(inv)) {
                 townstead$pullFromStorage(level, villager,
-                        com.aetherianartificer.townstead.compat.farming.FarmerNutrientCompatRegistry::isFertilizer, ItemStack::getCount, StorageUse.INGREDIENT);
+                        HarvestWorkTask::townstead$isAnyFertilizer, ItemStack::getCount, StorageUse.INGREDIENT);
+            }
+            // Growing a crop giant takes a fertilizer that can; fetch one alongside plain bone meal.
+            if (snapshot.fertilizeTargetCount() > 0 && !townstead$has(inv, stack -> stack.is(com.aetherianartificer.townstead.farming.CropFertilizers.GIANT))) {
+                townstead$pullFromStorage(level, villager,
+                        stack -> stack.is(com.aetherianartificer.townstead.farming.CropFertilizers.GIANT), ItemStack::getCount, StorageUse.INGREDIENT);
             }
         }
         if (!townstead$hasHarvestTool(inv)) {
@@ -1929,6 +1997,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             case "till" -> "townstead:tilled";
             case "groom" -> "townstead:groomed";
             case "irrigate" -> "townstead:irrigated";
+            case "fertilize" -> "townstead:fertilized";
             default -> "townstead:farmed";
         };
     }
@@ -1942,17 +2011,14 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return seed == net.minecraft.world.item.Items.AIR ? null : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(seed);
     }
 
-    private void townstead$awardFarmerXp(ServerLevel level, VillagerEntityMCA villager, long gameTime, int amount, String source) {
-        townstead$awardFarmerXp(level, villager, gameTime, amount, source, null);
-    }
-
     private void townstead$awardFarmerXp(ServerLevel level, VillagerEntityMCA villager, long gameTime, int amount, String source,
-                                         net.minecraft.resources.ResourceLocation objectId) {
+                                         net.minecraft.resources.ResourceLocation objectId, BlockPos workPos) {
         if (amount <= 0) return;
         TownsteadVillager.ProfessionMemory mem = TownsteadVillagers.get(villager).professionMemory();
         ProfessionProgress.GainResult result = com.aetherianartificer.townstead.profession.career.CareerProgression
                 .completeWork(villager, com.aetherianartificer.townstead.profession.career.Careers.FARMER,
-                        amount, gameTime, townstead$chronicleFarmVerb(source), objectId, null, amount);
+                        amount, gameTime, townstead$chronicleFarmVerb(source), objectId, null, amount,
+                        workPos == null ? null : workPos.immutable(), ItemStack.EMPTY);
         if (result.appliedXp() <= 0) return;
         CompoundTag hungerTag = TownsteadVillagers.get(villager).needs().hungerTag();
         //? if neoforge {

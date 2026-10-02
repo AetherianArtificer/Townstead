@@ -1,6 +1,6 @@
 // The dhampir founder. A hunter with a vampire father and a living mother, who arrives on the trail
 // of a vampire and stays to found a hunter lodge. The whole arc and the voice rules are in
-// docs/design/dhampir_founder.md. Act 1 lives in meeting.ink (scene 1), wolf.ink (scene 2), altar.ink (scene 3), garlic.ink (scene 4), volunteers.ink (scene 5), oath.ink (scene 6), walk.ink (scene 7), watch.ink (scene 8), neighbor.ink (scene 9), bitten.ink (scene 9b), thrall.ink (scene 10), counting.ink (scene 11) and name.ink (scene 12). Contracts: contracts.ink.
+// docs/design/dhampir_founder.md. Act 1 lives in meeting.ink (scene 1), wolf.ink (scene 2), altar.ink (scene 3), garlic.ink (scene 4), volunteers.ink (scene 5), oath.ink (scene 6), walk.ink (scene 7), watch.ink (scene 8), neighbor.ink (scene 9), bitten.ink (scene 9b), thrall.ink (scene 10), counting.ink (scene 11) and name.ink (scene 12). Act 2: count_talk.ink (scene 13), debrief.ink (14), stakeout.ink (15), willing.ink (16), fledgling.ink (17), slip.ink (M1), midwife_side.ink (M2, the founder's side), grave.ink (M3), wounded.ink (wolf beat 10), book.ink (M4), midpoint.ink (the Truth), romance.ink. The wolf line: wolf_line.ink. Werewolves: werewolf.ink. Act 3 and the endings: court.ink. Contracts: contracts.ink.
 //
 // Voice: guarded, dry, rage held in. The hunt delights them; that delight is for their quarry,
 // never the player. They respect the player and show care through what they do. Reveals are slow.
@@ -25,8 +25,30 @@ VAR interrupted = false
 {
 - interrupted:
     ~ return "You were saying?"
+- court_arrived and not done_court and here("visitor:father"):
+    ~ return "They're here."
+- court_walking and not court_arrived and check("at_court"):
+    ~ return "Is this the place?"
+- court_walking and not court_arrived:
+    ~ return "How far now?"
+- done_court and not done_epilogue and not court_walking:
+    ~ return "Home again."
+- shepherd_walking and check("at_shepherd"):
+    ~ return "Is this where he is?"
+- shepherd_walking:
+    ~ return "Still with me?"
+- staking and check("late_night") and stake_last < today:
+    ~ return "Anything moving?"
+- couple_called and not done_willing and here("visitor:couple_thrall"):
+    ~ return "Who are they?"
+- fledgling_called and not done_fledgling and here("visitor:fledgling"):
+    ~ return "They're asking for you."
+- curing and not done_cure and is(fledgling_name, "cured_villager"):
+    ~ return "Did it work?"
 - met == 0:
     ~ return "Who are you?"
+- met == 2 and not offered:
+    ~ return "About earlier..."
 - offered and not founded:
     ~ return "About staying..."
 - founded and not wolf_seen and check("has_wolf"):
@@ -53,6 +75,26 @@ VAR interrupted = false
     ~ return "Who's that?"
 - thrall_seen and not done_thrall and not check("thrall_near"):
     ~ return "It's decided."
+- done_count_talk and not done_slip and count("founder_oaths") > slip_oaths:
+    ~ return "About the oath..."
+- grave_walking and not grave_seen and check("at_grave"):
+    ~ return "Is this it?"
+- grave_walking:
+    ~ return "How are you doing?"
+- bringer_called and not done_midpoint and here("visitor:candle_bringer"):
+    ~ return "They came for me."
+- done_book and not bringer_called and today > book_day:
+    ~ return "Did you hear something?"
+- done_midpoint and not done_confession_after and (check("midwife_forgiven") or check("midwife_cast_out")):
+    ~ return "About her..."
+- bread_known and not done_grave:
+    ~ return "You're quiet today."
+- court_came and not done_wounded and count("wolf_downs") > court_downs and check("wolf_down"):
+    ~ return "Is it breathing?"
+- court_came and not done_wounded and count("wolf_downs") > court_downs:
+    ~ return "It's up."
+- done_grave and not court_came and check("late_night"):
+    ~ return "Something wrong?"
 - done_counting and not named and (done_walk or done_watch) and (done_neighbor or done_bitten) and rel("trust") >= 15 and check("evening"):
     ~ return "Mind if I sit?"
 - done_watch and not done_neighbor and not bitten_asked and who("turning_villager") != "":
@@ -61,6 +103,12 @@ VAR interrupted = false
     ~ return "Something on your mind?"
 - done_first_oath and not done_walk and check("player_sworn") and check("evening"):
     ~ return "Going out tonight?"
+- named and count("founder_kills") > debrief_kills and debrief_day < today:
+    ~ return "Good hunting?"
+- romance_ready():
+    ~ return "Mind the company?"
+- done_midpoint and done_inside and not court_offered and (done_confession_after or today > midpoint_day + 5):
+    ~ return "You've been quiet."
 - quest_ready:
     ~ return "Come and look."
 - quest_open:
@@ -73,8 +121,30 @@ VAR interrupted = false
 {
 - met == 0:
     -> meeting
+- met == 2 and not offered:
+    -> meeting.resume
 - offered and not founded:
     -> reoffer
+- court_arrived and not done_court and here("visitor:father"):
+    -> court
+- court_walking and not court_arrived and check("at_court"):
+    -> court_arrive
+- court_walking and not court_arrived:
+    -> court_road
+- done_court and not done_epilogue and not court_walking and not check("at_court"):
+    -> epilogue
+- shepherd_walking and check("at_shepherd"):
+    -> shepherd_arrive
+- shepherd_walking:
+    -> shepherd_road
+- staking and check("late_night") and stake_last < today:
+    -> stakeout_night
+- couple_called and not done_willing and here("visitor:couple_thrall"):
+    -> couple_meet
+- fledgling_called and not done_fledgling and here("visitor:fledgling"):
+    -> fledgling_meet
+- curing and not done_cure and is(fledgling_name, "cured_villager"):
+    -> cure_after
 - founded and not wolf_seen and check("has_wolf"):
     -> wolf
 - founded and not altar_started and not done_lodge:
@@ -95,6 +165,30 @@ VAR interrupted = false
     -> thrall_cold
 - thrall_seen and not done_thrall and not check("thrall_near"):
     -> thrall_after
+- done_count_talk and not done_slip and count("founder_oaths") > slip_oaths:
+    -> slip_after
+- grave_walking and not grave_seen and check("at_grave"):
+    -> grave_arrive
+- grave_walking and grave_seen:
+    -> grave_arrive.stay
+- grave_walking:
+    -> grave_road
+- bringer_called and not done_midpoint and here("visitor:candle_bringer"):
+    -> midpoint
+- done_book and not bringer_called and today > book_day:
+    -> bringer_arrival
+- done_midpoint and not done_confession_after and (check("midwife_forgiven") or check("midwife_cast_out")):
+    -> confession_after
+- court_came and not done_wounded and count("wolf_downs") > court_downs and check("wolf_down"):
+    -> wounded_down
+- court_came and not done_wounded and count("wolf_downs") > court_downs:
+    -> wounded_up
+- court_came and not done_wounded and not done_court_note and not check("raid_near") and count("wolf_downs") <= court_downs:
+    -> court_note
+- done_grave and not court_came and check("late_night"):
+    -> court_move
+- bread_known and not done_grave and not grave_walking:
+    -> grave_offer
 - done_lodge and not done_first_oath and check("first_oath"):
     -> first_oath
 - done_lodge and not done_volunteers and who("parent_volunteer") != "":
@@ -115,6 +209,28 @@ VAR interrupted = false
     -> the_name
 - done_lodge and not garlic_started and not done_garlic and check("second_kill"):
     -> garlic_offer
+- done_midpoint and done_inside and not court_offered and (done_confession_after or today > midpoint_day + 5):
+    -> court_offer
+- named and count("founder_kills") > debrief_kills and debrief_day < today:
+    -> debrief
+- romance_ready():
+    -> romance_beat
+- done_count_talk and not stake_offered and not done_stakeout:
+    -> stakeout_offer
+- done_stakeout and not couple_called:
+    -> couple_arrival
+- done_willing and bread_known and not fledgling_called:
+    -> fledgling_arrival
+- done_fledgling and fledgling_end != "" and not done_fledgling_after and not check("oath_restored") and check("night") and today > fledgling_day:
+    -> fledgling_after
+- mod("werewolves") and done_lodge and not done_w1 and check("werewolf_near"):
+    -> werewolf_signs
+- w1_asked and not done_w1_items and check("carries_werewolf_things"):
+    -> werewolf_items
+- done_w1 and not done_w2 and check("werewolf_near") and check("has_wolf") and today > w1_day:
+    -> werewolf_wolf
+- wolf_beat() != "":
+    -> wolf_beat_run
 }
 -> dusk
 
@@ -131,12 +247,19 @@ Have you thought about it? I'm not trying to rush you. They are, though.
 // and the opening follows what is really going on: hurt, soaked, out at night, or just working.
 === dusk ===
 ~ temp mood = neighbor_mood_line()
+{mood == "":
+    ~ mood = not_them_line()
+}
 {done_counting and check("night") and RANDOM(1, 4) == 1:
     -> recite ->
     Oh. It's you.
     -> talk
 }
 {
+- ending == "B":
+    {~You again. Sit, if you like. I don't bite. Not you, anyway.|The lodge is quiet tonight. I like it quiet. I like a lot of things quiet now.}
+- ending == "A" and RANDOM(1, 3) == 1:
+    {~I said all nine again this morning. I'm getting faster. I'm trying not to.|It's a good night. I'm not going out. I don't have to, and I'm finding out what that's like.}
 - mood != "":
     {mood}
 - check("hurt"):
@@ -166,6 +289,12 @@ Have you thought about it? I'm not trying to rush you. They are, though.
         Fat. Somebody keeps feeding it, and it isn't me, whatever it tells you.
     }
     -> talk
+* {check("carries_book") and not done_book} [I have something of your mother's.]
+    -> the_book
+* {check("heard_birth") and not told_father} [She says your father was at your birth.]
+    -> father_at_birth
+* {named and done_counting and not done_count_talk} [What were you reciting, that night?]
+    -> the_count
 + {check("player_sworn")} [Any work?]
     -> contracts ->
     -> talk
@@ -173,7 +302,7 @@ Have you thought about it? I'm not trying to rush you. They are, though.
     {~Torches. Always torches. You can't have too many, whatever your builders tell you.|Arrows, if anyone's making them. I go through them faster than I'd like.|Sleep, mostly. You can't get me any of that, but thanks for asking.}
     -> talk
 + [What do you do when you're not hunting?]
-    Sharpen things, mostly. Walk the fence. I tried fishing once, a whole afternoon, and I caught a boot and a saddle. I still don't know what a saddle was doing in a river. # emote:shrug
+    Sharpen things, mostly. Walk the edge of town. I tried fishing once, a whole afternoon, and I caught a boot and a saddle. I still don't know what a saddle was doing in a river. # emote:shrug
     -> talk
 + [Tell me about yourself.]
     Not now. I'm not being difficult, I'm just tired, and it isn't a short story.

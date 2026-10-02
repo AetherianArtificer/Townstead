@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "pound"
+    "tender_cuts"
   ],
   "power": {
     "type": "pheno:action_over_time",

@@ -119,6 +119,9 @@ public abstract class VillagerEditorRootMixin extends Screen {
     private void townstead$appendRootsPage(CallbackInfoReturnable<String[]> cir) {
         if ((Object) this instanceof DestinyScreen) return;
         String[] pages = RootPicker.insertRootsPage(cir.getReturnValue());
+        if (com.aetherianartificer.townstead.client.gui.aspect.AspectPage.available()) {
+            pages = com.aetherianartificer.townstead.client.gui.aspect.AspectPage.insertPage(pages, "origins");
+        }
         // Old editor only (the new one hosts gene tabs under its Character hub): add a top-level
         // Character page whenever the target's species resolves custom gene tabs. getPages runs
         // inside MCA's setPage BEFORE our TAIL primes, so fall back to resolving the target here.
@@ -386,6 +389,18 @@ public abstract class VillagerEditorRootMixin extends Screen {
         if ("personality".equals(page)) {
             townstead$replacePersonalityButtons();
         }
+
+        if (com.aetherianartificer.townstead.client.gui.aspect.AspectPage.PAGE.equals(page)) {
+            com.aetherianartificer.townstead.client.gui.aspect.AspectPage.build(townstead$target,
+                    this.width / 2, this.height / 2 - 80, 175, this::addRenderableWidget, () -> {
+                        if (Minecraft.getInstance().screen == (Object) this
+                                && com.aetherianartificer.townstead.client.gui.aspect.AspectPage.PAGE.equals(this.page)) {
+                            setPage(com.aetherianartificer.townstead.client.gui.aspect.AspectPage.PAGE);
+                        }
+                    });
+            return;
+        }
+        com.aetherianartificer.townstead.client.gui.aspect.AspectPage.closed();
 
         if (!"origins".equals(page)) return;
 

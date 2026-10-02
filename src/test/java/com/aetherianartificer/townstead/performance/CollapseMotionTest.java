@@ -54,6 +54,56 @@ class CollapseMotionTest {
         assertEquals(0, midpoint.z + compensation.z, .00001);
     }
 
+    @Test void lieDownSettlesWithoutLateReversalsAndHoldsStill() throws Exception {
+        try (var stream = getClass().getResourceAsStream(
+                "/assets/townstead_performance/animations/townstead/fatigue.animation.json")) {
+            assertNotNull(stream);
+            var clip = BedrockPerformanceClip.parse(JsonParser.parseReader(
+                    new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject())
+                    .get("animation.fatigue_lie_down");
+            assertEquals(BedrockPerformanceClip.Loop.HOLD, clip.loop());
+            // The hands release at 3.3 seconds. They must not retract and reach
+            // again while the torso is settling (the previous export twitched).
+            for (String bone : java.util.List.of("right_arm", "left_arm", "right_forearm", "left_forearm")) {
+                var rotation = clip.bones().get(bone).rotation();
+                float previous = rotation.sample(66)[0];
+                float direction = Math.signum(rotation.sample(clip.durationTicks())[0] - previous);
+                for (float tick = 66.125F; tick <= clip.durationTicks(); tick += .125F) {
+                    float current = rotation.sample(tick)[0];
+                    assertTrue((current - previous) * direction >= -.0001F, bone + " reverses during settling");
+                    assertTrue(Math.abs(current - previous) <= .6F, bone + " snaps during settling");
+                    previous = current;
+                }
+            }
+            var root = clip.bones().get("root");
+            double previousHipHeight = Double.POSITIVE_INFINITY;
+            double previousChestHeight = Double.POSITIVE_INFINITY;
+            // Cover the earlier kneeling transition too: the backwards thigh
+            // excursion previously lifted the hips and chest around 3 seconds.
+            for (float tick = 43.5F; tick <= clip.durationTicks(); tick += .125F) {
+                double hipHeight = root.position().sample(tick)[1]
+                        + 12 * Math.cos(Math.toRadians(root.rotation().sample(tick)[0]));
+                // Linear interpolation between baked Euler keys introduces a
+                // subpixel arc error; compare against the lowest height seen
+                // so this tolerance cannot hide an accumulating rebound.
+                assertTrue(hipHeight <= previousHipHeight + .005, "Body rises again during settling");
+                double chestHeight = hipHeight + 6 * Math.cos(Math.toRadians(
+                        root.rotation().sample(tick)[0] + clip.bones().get("body").rotation().sample(tick)[0]));
+                assertTrue(chestHeight <= previousChestHeight + .0001, "Torso drifts upward during descent");
+                previousHipHeight = Math.min(previousHipHeight, hipHeight);
+                previousChestHeight = chestHeight;
+            }
+            for (var track : clip.bones().values()) {
+                for (var channel : new BedrockPerformanceClip.Channel[]{track.rotation(), track.position()}) {
+                    if (channel == null) continue;
+                    var held = channel.sample(clip.durationTicks());
+                    for (float tick = 106; tick <= clip.durationTicks() + 20; tick += .125F)
+                        assertArrayEquals(held, channel.sample(tick), .0001F);
+                }
+            }
+        }
+    }
+
     @Test void fatigueExportsLoadAndYawnReturnsToTheWalkingCompatibleTiredPose() throws Exception {
         try (var stream = getClass().getResourceAsStream(
                 "/assets/townstead_performance/animations/townstead/fatigue.animation.json")) {

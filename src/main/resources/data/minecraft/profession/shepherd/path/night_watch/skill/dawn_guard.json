@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "watchfire"
+    "shepherds_crook"
   ],
   "power": {
     "type": "pheno:action_over_time",

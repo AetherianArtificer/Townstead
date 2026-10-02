@@ -126,7 +126,7 @@ public final class PlayerWorkEvents {
                 var activities = WorkTaskTypes.activities(task.type());
                 String activity = activities.isEmpty() ? task.type().toString() : activities.get(0);
                 CareerProgression.completeWork(sp, def.id(), xp, sp.serverLevel().getGameTime(),
-                        activity, outputId, "item", output.getCount());
+                        activity, outputId, "item", output.getCount(), null, output);
                 return;
             }
         }
@@ -151,7 +151,7 @@ public final class PlayerWorkEvents {
             if (!player.isAlive() || player.serverLevel() != level) return;
             if (!animal.isAlive() || shearable.readyForShearing()) return;
             CareerProgression.completeWork(player, Careers.SHEPHERD, XP_SHEAR, level.getGameTime(),
-                    "townstead:tended", null, null, XP_SHEAR);
+                    "townstead:tended", null, null, XP_SHEAR, animal.blockPosition(), ItemStack.EMPTY);
         }));
     }
 

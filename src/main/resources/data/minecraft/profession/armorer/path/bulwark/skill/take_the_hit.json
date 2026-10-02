@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "blast_plate"
+    "proofed_plate"
   ],
   "power": {
     "type": "pheno:trigger",

@@ -1,30 +1,33 @@
-// The Farmer's first meeting. They walk in a day or two after the Builder writes to them, and
-// find the player near the fields. Topics in any order; asking about the fields starts the first
-// quest, and leaving early still gets one quick look at them.
+// The Farmer's first meeting. They walk in a day or two after the Builder writes to them.
+// Objective: somewhere to plant, and a yes to a plan. Turn: they ask the player to paint the plan,
+// because they know what they'd paint. Topics in any order; leaving early still reaches the plan.
 
 === meeting ===
-You're the one with the farmland, aren't you? {builder()} wrote to me about it.
-Well. They wrote to me about you, mostly. The farmland was a footnote, but it was a very good footnote.
-I'm {villager_name}. I've been walking since before dawn, and I planted three things on the way here. Don't tell {builder()}.
-+ [Welcome. I'm {player_name}.]
+Hello! You're {player_name}, aren't you? {builder()} wrote to me about you.
+I'm {villager_name}. Hold on, I'm counting. Eleven kinds of seed, and one in my boot I'm not sure about.
++ [Welcome! I'm glad you came.]
     ~ contribute("affection", 1, "welcomed")
-    {player_name}! Good. Now I have a name to go with the fields.
-+ [You planted things on the way?]
-    Only three. Well, four. There was a nice bit of riverbank, and I had a seed I'd never tried, and it seemed rude not to.
+    Oh! Well, thank you! Thank you. Do you want to see the one from my boot?
++ [Why is there a seed in your boot?]
+    It got in somewhere on the road. I'm keeping it! It came all this way.
++ [Maybe a little quieter?]
+    ~ asked_quiet = true
+    Oh! Sorry.
+    So! Where's the FARMLAND?
 + [I'm a bit busy right now.]
     ~ met = 1
-    Of course! I'll be out looking at your soil. Find me when you've got a minute. I'll be the one kneeling in it.
+    Of course! I'll be out looking at your fields. Come and find me!
     -> DONE
 - ~ met = 2
 -> topics
 
 = resume
-Oh, you came back! Good. Have you got a minute now? I've been looking at your soil. It's lovely soil.
+There you are! Have you got a minute now? I've got about a hundred questions about your farmland.
 + [Sure.]
     ~ met = 2
     -> topics
 + [Not yet.]
-    That's all right. The soil and I will be here.
+    All right! I'll save them up.
     -> DONE
 
 = topics
@@ -32,59 +35,58 @@ Oh, you came back! Good. Have you got a minute now? I've been looking at your so
 * [How do you know {builder()}?]
     -> how_we_met ->
     -> hub
-* [What do you grow?]
-    Everything, once. That's the problem, or so I'm told.
-    I'm always looking for the one crop that changes everything. The one that grows twice as fast and sells for ten times as much.
-    I haven't found it yet. But I've found a lot of very interesting beans.
+* [What's in the book?]
+    Machines! Drawings of machines. This one plants and waters at the same time.
+    I can't build any of them. {builder()} builds something close, and then we argue for a week about what I meant.
+    The last one worked twice. That's a record!
     -> hub
-* [What do you make of the fields?]
+* [What do you think of the fields?]
     -> fields ->
-    -> hub
-* [What's that you're carrying?]
-    Oh, this? It's a sketch. A machine that plants and waters at the same time, in theory.
-    I can't build it. I can barely build a fence. But {builder()} can build almost anything, so I keep drawing them.
-    They build a sensible version, and then we argue about it for a week. It's my favorite part.
     -> hub
 + [I should get back to it.]
     {not fields:
-        Oh, before you go! Can I tell you one thing about the fields? It's quick. Mostly quick.
+        Wait, before you go! Can I show you one thing? It won't take long.
         -> fields ->
     }
     -> close
 
 = how_we_met
 {origin == "old_town":
-    We grew up two doors apart, in {home_town()}. When everyone left, our family's plot was the first to go wild.
-    Years later I lost everything again. My own farm, this time. And {builder()} found me and took me in.
+    We grew up on the same street, in {home_town()}! They were the one fixing the fences. I was the one climbing them.
+    They were scared of the dark until they were twelve! Don't tell them I said.
+    Years later I had a very bad year, and they found me and took me in.
 - else:
-    Years ago, I bet my whole farm on a seed a trader swore would change everything. I planted every field with it.
-    Not one row came up. Not one.
-    {builder()} found me standing in the middle of it with nothing left. Fed me, found me a roof, got me back on my feet.
+    On the road, years ago. I was having a very bad year.
+    They fed me, found me somewhere to sleep, and wouldn't hear a word of thanks.
+    They sing when they think nobody's listening, you know. Terribly! Don't tell them I said.
 }
-I owe them. They won't hear a word about it, which only makes it worse.
+{here("village_builder"):
+    {villager_name}. # who: village_builder
+}
+They still won't let me thank them. I've tried everything!
 ->->
 
 = fields
 {check("has_farm"):
-    The ground here is good. Better than good. Whoever chose it has a good eye.
+    I've been all over your farmland! Can I show you something?
 - else:
-    You've made a start. It's not a proper farm yet, but it wants to be. I can tell.
+    You've got farmland started! Can I show you something?
 }
 {check("hungry"):
-    People look a little hungry, though. Fields are the slow way to fix that, but they're the way that lasts.
+    People here look hungry. Let's grow what we know grows first, and plenty of it.
 }
 -> plan ->
 ->->
 
 = close
-I'd like to stay, if you'll have me. I'll be in your fields either way, if I'm honest.
+Can I stay? I've got nowhere I need to be, and eleven kinds of seed.
 + [Stay. You're welcome here.]
     ~ contribute("affection", 2, "welcomed")
     ~ trust(2)
-    Wonderful! I'll try very hard not to plant anything in your house.
-+ [We'll see.]
-    That's fair. Watch me work for a week, and then decide.
-- Right. I'm going to go and look at your soil, up close. It was good to meet you, {player_name}.
+    Oh! Good! Right. I'll go and look at the fields, then. Thank you!
++ [We'll see how you do.]
+    Fair! Watch me for a week.
+- It was good to meet you, {player_name}!
 + [Good to meet you too.]
     -> DONE
 + [See you around.]

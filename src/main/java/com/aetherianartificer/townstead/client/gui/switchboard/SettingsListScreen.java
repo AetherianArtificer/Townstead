@@ -194,6 +194,7 @@ final class SettingsListScreen extends MenuBackgroundScreen {
         boolean anyHostile = model.catalog.roots.stream().anyMatch(ContentCatalog.RootRow::hostile);
         if (needle.isEmpty()) {
             worldRow(TownsteadConfig.ALLOW_ROOT_CHOICE_IN_DESTINY);
+            worldRow(TownsteadConfig.ALLOW_ASPECT_START);
             if (anyHostile) {
                 worldRow(TownsteadConfig.ROOT_HOSTILITY);
                 worldRow(TownsteadConfig.PEACEFUL_ROOTS_SHARE_VILLAGES);

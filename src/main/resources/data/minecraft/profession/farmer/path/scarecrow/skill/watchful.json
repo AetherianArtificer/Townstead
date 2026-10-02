@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "straw_stuffing"
+    "scarecrows_watch"
   ],
   "power": {
     "type": "pheno:action_over_time",

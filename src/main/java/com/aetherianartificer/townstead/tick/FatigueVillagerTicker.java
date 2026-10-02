@@ -162,6 +162,8 @@ public final class FatigueVillagerTicker {
                 // An active lounge surface owns this interval, replacing ordinary MEET
                 // accumulation with its authored recovery rate.
                 applyFatigueDelta(needs, state, -loungeRecovery);
+            } else if (com.aetherianartificer.townstead.performance.CollapsePlayback.sleepingRough(self)) {
+                applyFatigueDelta(needs, state, FatigueData.RECOVERY_ROUGH);
             } else if (inBed) {
                 // Sleeping inside the chronotype window = full recovery; an
                 // off-window nap recovers at the reduced rate.
@@ -342,6 +344,16 @@ public final class FatigueVillagerTicker {
         BorrowBedWhenFatiguedTask.requestEmergencyFallback(
                 self, shouldSeek && assignedBed == null
                         && (!needs.hasEmergencyBed() || activelyBorrowingBed));
+        // No home bed and none to borrow: after a short wait, lie down where they are.
+        boolean noBed = overrideActive && shouldSeek && assignedBed == null && !needs.hasEmergencyBed()
+                && !self.isSleeping() && !needs.collapsed();
+        if (!noBed) state.noBedSince = -1L;
+        else if (state.noBedSince < 0L) state.noBedSince = level.getGameTime();
+        if (noBed && !com.aetherianartificer.townstead.performance.CollapsePlayback.sleepingRough(self)
+                && level.getGameTime() - state.noBedSince >= FatigueData.ROUGH_SLEEP_GRACE
+                && self.onGround() && !self.isInWater() && keepsSleepingRough(self)) {
+            com.aetherianartificer.townstead.performance.CollapsePlayback.startRough(self);
+        }
         if (assignedBed != null) {
             // MCA's REST package owns HOME navigation and SleepInBed, but its
             // UpdateActivityFromSchedule behavior may replace the active
@@ -424,6 +436,13 @@ public final class FatigueVillagerTicker {
             restoreHomeAfterEmergencySleep(self, needs);
             forget(self);
         }
+    }
+
+    /** Whether a villager sleeping rough stays down: still in forced rest, and nothing is attacking them. */
+    public static boolean keepsSleepingRough(VillagerEntityMCA self) {
+        TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
+        return needs.restOverrideActive() && needs.fatigue() > 0 && !needs.collapsed()
+                && self.getLastHurtByMob() == null && !self.getVillagerBrain().isPanicking();
     }
 
     /** Drop memory-only ticker state when the dispatcher observes removal. */
@@ -600,5 +619,6 @@ public final class FatigueVillagerTicker {
         private Schedule preOverrideSchedule = null;
         private net.minecraft.world.entity.ai.Brain<?> overrideBrain = null;
         private long emergencyBedStartedAt = -1L;
+        private long noBedSince = -1L;
     }
 }

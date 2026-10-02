@@ -12,7 +12,7 @@ VAR walk_player_kills = 0
 VAR walk_toyed = 0
 
 === walk_offer ===
-I'm walking the edge tonight. Past the fence, out where it's dark. You can come if you want.
+I'm walking the edge tonight. Out past the houses, where it's dark. You can come if you want.
 Stay behind me, and don't be brave. Brave is how people end up in stories.
 + [I'm coming.]
     ~ walk_kills = count("founder_kills")
@@ -87,5 +87,5 @@ That's good. That's very good. I'm not annoyed. I'm a little annoyed.
 - -> home
 
 = home
-Come on. Back inside the fence. The walk home is the part people forget to be careful on.
+Come on. Back into town. The walk home is the part people forget to be careful on.
 -> DONE

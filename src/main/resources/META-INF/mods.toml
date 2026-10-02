@@ -34,7 +34,8 @@ side = "BOTH"
 [[dependencies.townstead]]
 modId = "mca"
 mandatory = true
-versionRange = "[7.7.1-alpha.3,)"
+# Published installs support exactly this MCA release, plus the snapshot used to build/test it.
+versionRange = "[${mca_development_version}],[${mca_version}]"
 ordering = "AFTER"
 side = "BOTH"
 

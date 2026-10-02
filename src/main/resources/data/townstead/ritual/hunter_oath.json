@@ -1,24 +1,148 @@
 {
   "schema": "townstead:ritual/v1",
   "mods": "vampirism",
-  "place": { "block": "townstead:oath_altar", "radius": 12 },
-  "officiant": { "office": "townstead:lodge_master" },
-  "witnesses": { "max": 6 },
+  "place": {
+    "block": "townstead:oath_altar",
+    "radius": 12
+  },
+  "officiant": {
+    "office": "townstead:lodge_master"
+  },
+  "witnesses": {
+    "max": 6
+  },
   "duration": 320,
   "steps": [
-    { "at": 0, "role": "all", "clip": "townstead_performance:formal_stance", "ticks": 40 },
-    { "at": 40, "role": "candidate", "clip": "townstead_performance:kneel", "ticks": 30 },
-    { "at": 70, "role": "candidate", "clip": "townstead_performance:kneel_hold", "ticks": 190 },
-    { "at": 70, "role": "officiant", "clip": "townstead_performance:hunter_oath_invoke", "ticks": 60, "channel": "gesture", "line": "ritual.townstead.hunter_oath.invoke" },
-    { "at": 102, "role": "officiant", "sound": "minecraft:block.bell.use", "ticks": 1 },
-    { "at": 120, "role": "candidate", "clip": "townstead_performance:hunter_oath_swear", "ticks": 60, "channel": "gesture", "line": "ritual.townstead.hunter_oath.swear" },
-    { "at": 180, "role": "officiant", "clip": "townstead_performance:hunter_oath_anoint", "ticks": 80, "channel": "gesture", "line": "ritual.townstead.hunter_oath.anoint" },
-    { "at": 260, "role": "candidate", "clip": "townstead_performance:rise_from_kneel", "ticks": 30, "channel": "gesture" },
-    { "at": 290, "role": "witnesses", "clip": "townstead_performance:fist_salute", "ticks": 30, "channel": "gesture" }
+    {
+      "at": 0,
+      "role": "all",
+      "clip": "townstead_performance:formal_stance",
+      "ticks": 40
+    },
+    {
+      "at": 40,
+      "role": "candidate",
+      "clip": "townstead_performance:kneel",
+      "ticks": 30
+    },
+    {
+      "at": 70,
+      "role": "candidate",
+      "clip": "townstead_performance:kneel_hold",
+      "ticks": 190
+    },
+    {
+      "at": 70,
+      "role": "officiant",
+      "clip": "townstead_performance:hunter_oath_invoke",
+      "ticks": 60,
+      "channel": "gesture",
+      "line": "ritual.townstead.hunter_oath.invoke",
+      "lines": [
+        {
+          "when": {
+            "type": "pheno:chronicle_count",
+            "key": "townstead:oath_restored",
+            "at_least": 1
+          },
+          "line": "ritual.townstead.hunter_oath.invoke_hers"
+        },
+        {
+          "when": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:state",
+                "state": "townstead_state:dhampir"
+              },
+              {
+                "type": "pheno:chronicle_count",
+                "key": "townstead:ready_to_slip",
+                "at_least": 1
+              },
+              {
+                "type": "pheno:chronicle_count",
+                "key": "townstead:slipped",
+                "at_least": 0,
+                "at_most": 0
+              }
+            ]
+          },
+          "line": "ritual.townstead.hunter_oath.invoke_slip"
+        }
+      ]
+    },
+    {
+      "at": 102,
+      "role": "officiant",
+      "sound": "minecraft:block.bell.use",
+      "ticks": 1
+    },
+    {
+      "at": 120,
+      "role": "candidate",
+      "clip": "townstead_performance:hunter_oath_swear",
+      "ticks": 60,
+      "channel": "gesture",
+      "line": "ritual.townstead.hunter_oath.swear",
+      "lines": [
+        {
+          "when": {
+            "type": "pheno:other",
+            "condition": {
+              "type": "pheno:chronicle_count",
+              "key": "townstead:oath_restored",
+              "at_least": 1
+            }
+          },
+          "line": "ritual.townstead.hunter_oath.swear_hers"
+        }
+      ]
+    },
+    {
+      "at": 180,
+      "role": "officiant",
+      "clip": "townstead_performance:hunter_oath_anoint",
+      "ticks": 80,
+      "channel": "gesture",
+      "line": "ritual.townstead.hunter_oath.anoint",
+      "lines": [
+        {
+          "when": {
+            "type": "pheno:chronicle_count",
+            "key": "townstead:oath_restored",
+            "at_least": 1
+          },
+          "line": "ritual.townstead.hunter_oath.anoint_hers"
+        }
+      ]
+    },
+    {
+      "at": 260,
+      "role": "candidate",
+      "clip": "townstead_performance:rise_from_kneel",
+      "ticks": 30,
+      "channel": "gesture"
+    },
+    {
+      "at": 290,
+      "role": "witnesses",
+      "clip": "townstead_performance:fist_salute",
+      "ticks": 30,
+      "channel": "gesture"
+    }
   ],
   "offering": {
     "accepts": "#townstead:blessable",
-    "blessing": { "against": ["vampire", "wild_vampire"] }
+    "blessing": {
+      "against": [
+        "vampire",
+        "wild_vampire"
+      ]
+    }
   },
-  "outcome": { "join_order": true, "chronicle": "townstead:oath_sworn" }
+  "outcome": {
+    "join_order": true,
+    "chronicle": "townstead:oath_sworn"
+  }
 }

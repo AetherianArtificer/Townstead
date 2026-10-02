@@ -9,26 +9,26 @@
 Oh! Could you hold this end? Just there. Thank you. It's been slipping since the coast road, and I've been fighting it the whole way.
 + [Take the end of the net.]
     ~ helped_first = true
-    Perfect. Now pull, gently, like you're coaxing it... there! That'll hold. For a day or two. Nets are like that.
+    Perfect. Now pull, gently... there! That'll hold for a day or two.
 + [Is that a fishing net?]
     ~ helped_first = true
     ~ teased_first = true
-    It's a net, it's for fish, and right now it's mostly for catching my temper. Pull that end, would you? Gently.
+    It's a net, it's for fish, and right now it won't stay knotted. Pull that end, would you? Gently.
     There! Look at that. We make a good crew.
 + [I can't stop right now, sorry.]
     ~ met = 1
-    No, no, go on! I'll wrestle it myself. I usually win. Eventually.
+    No, no, go on! I'll manage.
     -> DONE
 - ~ met = 2
 ->->
 
 = resume
-There you are! The net won, by the way. I let it. Have you got a minute now?
+There you are! I got the knot to hold, by the way. Have you got a minute now?
 + [Sure.]
     ~ met = 2
     ->->
 + [Not yet.]
-    That's all right. I'll be here, losing to a net.
+    That's all right. I'll be here.
     -> DONE
 
 = walls
@@ -42,16 +42,16 @@ Do you know how rare that is? I've seen town halls you could roll a marble off.
 I'm {villager_name}.
 + [Welcome. I'm {player_name}.]
     ~ contribute("affection", 1, "welcomed")
-    {player_name}. Good. I'll make that fast in my head, like a line to a post.
+    {player_name}! Good. Now I know who to thank for the walls.
 + [You measured my walls?]
     ~ teased_first = true
-    Only with my eyes! And my thumb. And a bit of string. I'll put the string back.
+    Only with my eyes! And my thumb. And a bit of string.
 + [What do you want?]
-    Honestly? Somewhere to sleep tonight, and a look at whoever's building all this. I've had the look. That leaves the sleeping.
+    Honestly? Somewhere to sleep tonight. And I wanted to meet whoever built all this.
 - -> passing
 
 = passing
-I'm only passing through, mind. A season, maybe. The tide always turns.
+I'm only passing through, mind. A season, maybe.
 Where does the next family sleep, here? Say someone came up the road tomorrow with a cart and three children. Where would they go?
 + [Nowhere yet.]
     Nowhere. Mm.

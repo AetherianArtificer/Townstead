@@ -15,7 +15,7 @@ This jar. He's a starter, for bread. He needs feeding twice a day, and I've been
     He's not bread yet! He's the bit before bread. And yes. You would too, if you'd carried him this far.
 + [I can't stop right now, sorry.]
     ~ met = 1
-    No, no, go on! He'll keep. He's kept longer than this.
+    No, no, go on! He'll keep.
     -> DONE
 - ~ met = 2
 ->->
@@ -26,7 +26,7 @@ There you are! He's fed, by the way. Grumpy, but fed. Have you got a minute now?
     ~ met = 2
     ->->
 + [Not yet.]
-    That's all right. We'll both be here, rising slowly.
+    That's all right. I'll be here.
     -> DONE
 
 = walls
@@ -36,7 +36,7 @@ There you are! He's fed, by the way. Grumpy, but fed. Have you got a minute now?
 - else:
     You put all this up, didn't you? I've been round your walls twice. Square! Properly square!
 }
-You can tell a lot from a wall. Same as a loaf. Somebody took their time with yours, and it shows.
+Somebody took their time with your walls. You can tell.
 I'm {villager_name}.
 + [Welcome. I'm {player_name}.]
     ~ contribute("affection", 1, "welcomed")
@@ -49,7 +49,7 @@ I'm {villager_name}.
 - -> passing
 
 = passing
-I'm only passing through, mind. A season, maybe, while the dough rises.
+I'm only passing through, mind. A season, maybe.
 Where does a hungry person eat, here? Say someone came in off the road with nothing in their bag. Where would they go?
 + [Nowhere yet.]
     Nowhere. Mm.

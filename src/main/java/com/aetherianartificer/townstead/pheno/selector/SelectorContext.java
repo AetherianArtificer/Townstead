@@ -83,8 +83,10 @@ public final class SelectorContext {
     }
 
     public static SelectorContext of(ActionContext ctx) {
+        Vec3 anchor = ctx.focusBlock() != null
+                ? Vec3.atCenterOf(ctx.focusBlock()) : ctx.entity().position();
         return new SelectorContext(ctx.entity(), ctx.other(), ctx.origin(), ctx.level(),
-                ctx.entity().position(), Map.of(), null, null, ctx.reservations());
+                anchor, Map.of(), null, null, ctx.reservations());
     }
 
     public static SelectorContext of(ConditionContext ctx) {

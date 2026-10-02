@@ -1,0 +1,28 @@
+{
+  "values": [
+    {
+      "id": "vampirism:heart_seeker_ultimate",
+      "required": false
+    },
+    {
+      "id": "vampirism:heart_striker_ultimate",
+      "required": false
+    },
+    {
+      "id": "vampirism:hunter_axe_ultimate",
+      "required": false
+    },
+    {
+      "id": "vampirism:crucifix_ultimate",
+      "required": false
+    },
+    {
+      "id": "vampirism:holy_water_bottle_ultimate",
+      "required": false
+    },
+    {
+      "id": "vampirism:holy_water_splash_bottle_ultimate",
+      "required": false
+    }
+  ]
+}

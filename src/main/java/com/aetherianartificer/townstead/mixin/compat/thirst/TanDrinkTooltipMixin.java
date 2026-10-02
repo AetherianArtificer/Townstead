@@ -15,7 +15,11 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(targets = "toughasnails.client.handler.TooltipHandler", remap = false)
 public class TanDrinkTooltipMixin {
     @WrapOperation(method = "onRenderTooltip", at = @At(value = "INVOKE",
+            //? if neoforge {
             target = "Lnet/minecraft/world/item/ItemStack;is(Lnet/minecraft/tags/TagKey;)Z", remap = true))
+            //?} else {
+            /*target = "Lnet/minecraft/world/item/ItemStack;m_204117_(Lnet/minecraft/tags/TagKey;)Z"))
+            *///?}
     private static boolean townstead$configuredDrink(ItemStack stack, TagKey<Item> tag, Operation<Boolean> original) {
         return original.call(stack, tag) || DataDrivenThirstCompat.tanProjection(stack).hydrates();
     }

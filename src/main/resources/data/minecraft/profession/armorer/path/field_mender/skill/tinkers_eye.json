@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "rivets"
+    "bellows_hand"
   ],
   "power": {
     "type": "pheno:action_over_time",

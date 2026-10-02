@@ -104,7 +104,7 @@ public final class WorkTaskTypes {
         }
         if (id.equals(HARVEST)) {
             return List.of("townstead:harvested", "townstead:planted", "townstead:tilled",
-                    "townstead:groomed", "townstead:irrigated", "townstead:farmed");
+                    "townstead:groomed", "townstead:irrigated", "townstead:fertilized", "townstead:farmed");
         }
         if (id.equals(SHEAR)) return List.of("townstead:tended");
         if (id.equals(GRIND) || id.equals(TAXIDERMY) || id.equals(SMELT) || id.equals(CRAFT)) {

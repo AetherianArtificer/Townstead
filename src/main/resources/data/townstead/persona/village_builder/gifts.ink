@@ -10,7 +10,7 @@
 - "mine":
     Copper! Raw, even.
     My father brought a piece home in his pocket every payday. For luck. It never worked, but I loved it.
-    It's going next to the lamp. They'll get on.
+    It's going next to the lamp.
 - "harbor":
     Cod! Cooked right, too.
     Every house on the harbor cooked this on the last day of the week. The whole street smelled of it.

@@ -23,12 +23,19 @@ public final class CollapsePlayback {
         String channel;
         int priority;
         boolean fatigue;
+        boolean rough;
+        String clip = CollapseMotion.CLIP;
     }
     private CollapsePlayback() {}
 
     public static PerformanceHandle start(VillagerEntityMCA actor, String channel, int duration, int priority) {
+        return start(actor, channel, duration, priority, CollapseMotion.CLIP);
+    }
+
+    public static PerformanceHandle start(VillagerEntityMCA actor, String channel, int duration, int priority, String clip) {
         stop(actor);
         State s = new State();
+        s.clip = clip;
         s.start = s.lastTick = actor.level().getGameTime();
         s.expires = s.start + duration;
         s.yaw = actor.yBodyRot;
@@ -44,6 +51,17 @@ public final class CollapsePlayback {
     public static void startFatigue(VillagerEntityMCA actor) {
         start(actor, CollapseMotion.CHANNEL, LEASE, 1000);
         ACTIVE.get(actor).fatigue = true;
+    }
+
+    /** Lies down calmly and sleeps where they stand, for as long as the fatigue ticker keeps them there. */
+    public static void startRough(VillagerEntityMCA actor) {
+        start(actor, CollapseMotion.CHANNEL, LEASE, 1000, CollapseMotion.LIE_DOWN_CLIP);
+        ACTIVE.get(actor).rough = true;
+    }
+
+    public static boolean sleepingRough(VillagerEntityMCA actor) {
+        State s = ACTIVE.get(actor);
+        return s != null && s.rough;
     }
 
     /** Loaded unconscious villagers resume the hold, never repeat or reapply the fall. */
@@ -85,7 +103,10 @@ public final class CollapsePlayback {
             broadcast(actor, packet(actor, s));
         }
         if (s == null) return;
-        if (s.fatigue ? !collapsed : now >= s.expires) {
+        boolean held = s.fatigue ? collapsed
+                : s.rough ? com.aetherianartificer.townstead.tick.FatigueVillagerTicker.keepsSleepingRough(actor)
+                : now < s.expires;
+        if (!held) {
             stop(actor);
             return;
         }
@@ -93,7 +114,7 @@ public final class CollapsePlayback {
         if (actor.isPassenger()) actor.stopRiding();
         // Advance from the attempted keyframe, not the actual distance travelled:
         // a blocked step is discarded instead of accumulating a later teleport.
-        Vec3 delta = CollapseMotion.step(Math.max(s.lastTick, now - 1) - s.start, now - s.start, s.yaw);
+        Vec3 delta = CollapseMotion.step(s.clip, Math.max(s.lastTick, now - 1) - s.start, now - s.start, s.yaw);
         var destination = actor.getBoundingBox().move(delta);
         var support = new net.minecraft.world.phys.AABB(destination.minX, destination.minY - .5,
                 destination.minZ, destination.maxX, destination.minY - .001, destination.maxZ);
@@ -102,14 +123,14 @@ public final class CollapsePlayback {
             actor.move(MoverType.SELF, delta);
         }
         s.lastTick = now;
-        if (now - s.start >= 82 && now % 16 == Math.floorMod(actor.getId(), 16)) {
+        if (now - s.start >= settled(s.clip) && now % 16 == Math.floorMod(actor.getId(), 16)) {
             double facing = Math.toRadians(s.yaw);
             ((net.minecraft.server.level.ServerLevel) actor.level()).sendParticles(
                     com.aetherianartificer.townstead.fatigue.SleepParticles.SLEEP.get(),
                     actor.getX() - Math.sin(facing) * .65, actor.getY() + .55,
                     actor.getZ() + Math.cos(facing) * .65, 1, .08, .03, .08, 0);
         }
-        if (s.fatigue && s.expires - now < LEASE / 2) {
+        if ((s.fatigue || s.rough) && s.expires - now < LEASE / 2) {
             s.expires = now + LEASE;
             broadcast(actor, packet(actor, s));
         }
@@ -133,8 +154,13 @@ public final class CollapsePlayback {
     }
 
     private static NativePerformanceS2CPayload packet(VillagerEntityMCA actor, State s) {
-        return new NativePerformanceS2CPayload(actor.getId(), s.channel, CollapseMotion.CLIP,
+        return new NativePerformanceS2CPayload(actor.getId(), s.channel, s.clip,
                 (int) Math.max(1, s.expires - actor.level().getGameTime()), s.priority, s.start);
+    }
+
+    /** When the body is down and the sleep particles start. */
+    private static int settled(String clip) {
+        return CollapseMotion.CLIP.equals(clip) ? 82 : CollapseMotion.duration(clip);
     }
 
     private static void freeze(VillagerEntityMCA actor, State s) {

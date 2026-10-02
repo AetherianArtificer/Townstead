@@ -38,6 +38,21 @@ public final class StoryText {
         return out.toString();
     }
 
+    /** The line as chat text: tokens become names the reader's client translates. */
+    public static net.minecraft.network.chat.MutableComponent component(String text) {
+        net.minecraft.network.chat.MutableComponent out = net.minecraft.network.chat.Component.empty();
+        Matcher m = TOKEN.matcher(text);
+        int from = 0;
+        while (m.find()) {
+            if (m.start() > from) out.append(text.substring(from, m.start()));
+            String key = m.group(1).equals("building") ? "buildingType." + m.group(2) : itemKey(m.group(2));
+            out.append(net.minecraft.network.chat.Component.translatable(key));
+            from = m.end();
+        }
+        if (from < text.length()) out.append(text.substring(from));
+        return out;
+    }
+
     private static String itemKey(String raw) {
         ResourceLocation id = ResourceLocation.tryParse(raw);
         if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) return raw;

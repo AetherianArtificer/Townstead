@@ -33,7 +33,23 @@ public record SkillDef(
         @Nullable ResourceLocation skillGroup,
         @Nullable PowerComponent power,
         List<SkillEvidenceRequirement> evidence,
-        @Nullable ResourceLocation icon) {
+        @Nullable ResourceLocation icon,
+        java.util.Map<String, PowerComponent> companions) {
+
+    /**
+     * Before companions: a skill with only its main power. Companions are extra powers that
+     * ride the skill (expressed while it is, as {@code <skill id>/<name>}), exactly as a gene's
+     * {@code companions} ride the gene.
+     */
+    public SkillDef(ResourceLocation id, Component displayName, @Nullable Component description,
+                    ResourceLocation profession, int tier, List<ResourceLocation> requires,
+                    List<ResourceLocation> exclusiveWith, int cost, List<SkillGrant> grants,
+                    @Nullable ResourceLocation animation, @Nullable ResourceLocation skillGroup,
+                    @Nullable PowerComponent power, List<SkillEvidenceRequirement> evidence,
+                    @Nullable ResourceLocation icon) {
+        this(id, displayName, description, profession, tier, requires, exclusiveWith, cost, grants,
+                animation, skillGroup, power, evidence, icon, java.util.Map.of());
+    }
 
     /** Compatibility constructor for v1 definitions and integrations. */
     public SkillDef(ResourceLocation id, Component displayName, @Nullable Component description,

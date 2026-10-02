@@ -50,9 +50,14 @@ class RigGeometryArmorRenderTest {
                     pose.scale(.8F, .8F, .8F);
                     pose.mulPose(new org.joml.Quaternionf().rotationX(.07F));
                     var expected = new Vertices();
-                    part.render(pose, expected, 0, 0, -1);
                     var actual = new Vertices();
+                    //? if neoforge {
+                    part.render(pose, expected, 0, 0, -1);
                     model.renderToBuffer(pose, actual, 0, 0, -1);
+                    //?} else {
+                    /*part.render(pose, expected, 0, 0, 1F, 1F, 1F, 1F);
+                    model.renderToBuffer(pose, actual, 0, 0, 1F, 1F, 1F, 1F);
+                    *///?}
                     assertEquals(24, actual.positions.size(), layer + "/" + name);
                     for (int i = 0; i < actual.positions.size(); i++) {
                         assertTrue(expected.positions.get(i).distance(actual.positions.get(i)) < 1e-6,
@@ -65,11 +70,23 @@ class RigGeometryArmorRenderTest {
 
     private static class Vertices implements VertexConsumer {
         final List<Vector3f> positions = new ArrayList<>();
+        //? if neoforge {
         public VertexConsumer addVertex(float x, float y, float z) { positions.add(new Vector3f(x,y,z)); return this; }
         public VertexConsumer setColor(int r, int g, int b, int a) { return this; }
         public VertexConsumer setUv(float u, float v) { return this; }
         public VertexConsumer setUv1(int u, int v) { return this; }
         public VertexConsumer setUv2(int u, int v) { return this; }
         public VertexConsumer setNormal(float x, float y, float z) { return this; }
+        //?} else {
+        /*public VertexConsumer vertex(double x, double y, double z) { positions.add(new Vector3f((float) x, (float) y, (float) z)); return this; }
+        public VertexConsumer color(int r, int g, int b, int a) { return this; }
+        public VertexConsumer uv(float u, float v) { return this; }
+        public VertexConsumer overlayCoords(int u, int v) { return this; }
+        public VertexConsumer uv2(int u, int v) { return this; }
+        public VertexConsumer normal(float x, float y, float z) { return this; }
+        public void endVertex() {}
+        public void defaultColor(int r, int g, int b, int a) {}
+        public void unsetDefaultColor() {}
+        *///?}
     }
 }

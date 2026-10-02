@@ -44,6 +44,15 @@ public final class ConversationsChoiceNumbering {
         }
     }
 
+    /** True when Conversations has mixed into {@code panel}, whether or not its numbers are on. */
+    public static boolean present(Object panel) {
+        if (panel == null) {
+            return false;
+        }
+        resolve();
+        return bridgeInterface != null && bridgeInterface.isInstance(panel);
+    }
+
     private static synchronized void resolve() {
         if (resolved) {
             return;

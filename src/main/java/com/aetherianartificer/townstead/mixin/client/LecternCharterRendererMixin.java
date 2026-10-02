@@ -20,7 +20,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Draws a charter and civic cloth without putting either item into the lectern. */
 @Mixin(LecternRenderer.class)
 public abstract class LecternCharterRendererMixin {
+    //? if neoforge {
     @Inject(method = "render", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_6922_(Lnet/minecraft/world/level/block/entity/LecternBlockEntity;FLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;II)V", remap = false, at = @At("TAIL"))
+    *///?}
     private void townstead$renderCharter(LecternBlockEntity lectern, float partialTick, PoseStack pose,
                                           MultiBufferSource buffers, int light, int overlay, CallbackInfo ci) {
         if (!(lectern instanceof CharterLecternAccess access) || access.townstead$charterState() == CharterLecternAccess.NONE

@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "grim_resolve"
+    "clean_stroke"
   ],
   "power": {
     "type": "pheno:action_over_time",

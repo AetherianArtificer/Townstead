@@ -85,6 +85,7 @@ public final class StoryService {
 
     static void onReload() {
         if (subscribed) subscribeGoalEvents();
+        StoryOverheard.clear();
         for (StorySession session : new ArrayList<>(SESSIONS.values())) {
             session.finish();
             send(session.player, new StoryS2CPayload(session.villager.getId(), StoryS2CPayload.END, "", List.of(), false));
@@ -110,6 +111,7 @@ public final class StoryService {
     }
 
     public static void onLogout(ServerPlayer player) {
+        StoryOverheard.stop(player);
         StorySession session = SESSIONS.remove(player.getUUID());
         if (session != null) session.finish();
         if (PLAYERS.containsKey(player.getUUID())) save(player);
@@ -177,40 +179,54 @@ public final class StoryService {
     }
 
     private static void offer(ServerPlayer player, int villagerId, @Nullable StoryDefinition story) {
-        String label = "";
-        if (story != null) {
-            VillagerEntityMCA villager = villager(player, villagerId);
-            label = villager == null ? story.label() : labelFor(player, villager, story);
-        }
         VillagerEntityMCA target = villager(player, villagerId);
-        boolean persona = target != null
-                && com.aetherianartificer.townstead.persona.PersonaInstances.get(player.server).isPersona(target.getUUID());
-        send(player, new StoryS2CPayload(villagerId, persona ? StoryS2CPayload.OFFER_PERSONA : StoryS2CPayload.OFFER,
-                label, List.of(), story != null));
+        OfferTexts texts = new OfferTexts("", "");
+        if (story != null) {
+            texts = target == null ? new OfferTexts(story.label(), "") : offerTexts(player, target, story);
+        }
+        com.aetherianartificer.townstead.persona.PersonaDefinition persona = target == null ? null
+                : com.aetherianartificer.townstead.persona.PersonaService.definition(target);
+        // An offer from a Persona lists the MCA answers they hide in place of choices.
+        List<String> hidden = persona == null ? List.of() : List.copyOf(persona.hiddenMenu());
+        send(player, new StoryS2CPayload(villagerId, persona != null ? StoryS2CPayload.OFFER_PERSONA : StoryS2CPayload.OFFER,
+                texts.label(), hidden, story != null, villagerId,
+                target == null ? "" : com.aetherianartificer.townstead.persona.PersonaService.dialogueTheme(target),
+                0, persona == null ? "" : texts.greeting()));
     }
 
     /** The villager's story for this player, unless another villager is already telling it to them. */
-    private static @Nullable StoryDefinition storyFor(ServerPlayer player, VillagerEntityMCA villager) {
+    static @Nullable StoryDefinition storyFor(ServerPlayer player, VillagerEntityMCA villager) {
         StoryDefinition story = Stories.forVillager(villager, player);
         if (story == null) return null;
         PlayerStories.Entry entry = stories(player).get(PlayerStories.key(story, villager.getUUID()));
         return entry == null || entry.villager.equals(villager.getUUID()) ? story : null;
     }
 
-    private static String labelFor(ServerPlayer player, VillagerEntityMCA villager, StoryDefinition story) {
+    /** The menu label and the greeting line a story offers when the screen opens. */
+    private record OfferTexts(String label, String greeting) {}
+
+    private static OfferTexts offerTexts(ServerPlayer player, VillagerEntityMCA villager, StoryDefinition story) {
         PlayerStories.Entry entry = stories(player).get(PlayerStories.key(story, villager.getUUID()));
+        String greeting = "";
         if ((entry == null || entry.villager.equals(villager.getUUID())) && SESSIONS.get(player.getUUID()) == null) {
             String name = StorySession.displayName(villager);
             PlayerStories.Entry forMenu = entry != null ? entry
                     : new PlayerStories.Entry(story.id(), villager.getUUID(), name);
             try {
                 refresh(player.server, player.getUUID(), forMenu, story, villager);
-                String fromInk = StorySession.open(player, villager, story, forMenu).menuLabel();
-                if (fromInk != null) return fromInk;
+                StorySession session = StorySession.open(player, villager, story, forMenu);
+                String line = session.greetingLine();
+                if (line != null) greeting = line;
+                String fromInk = session.menuLabel();
+                if (fromInk != null) return new OfferTexts(fromInk, greeting);
             } catch (Exception e) {
                 com.aetherianartificer.townstead.Townstead.LOGGER.warn("Story {} menu failed: {}", story.id(), e.getMessage());
             }
         }
+        return new OfferTexts(labelFor(entry, villager, story), greeting);
+    }
+
+    private static String labelFor(@Nullable PlayerStories.Entry entry, VillagerEntityMCA villager, StoryDefinition story) {
         if (entry != null && entry.villager.equals(villager.getUUID())) {
             for (PlayerStories.QuestRecord record : entry.quests.values()) {
                 StoryDefinition.Quest quest = story.quests().get(record.knot);
@@ -235,6 +251,11 @@ public final class StoryService {
     }
 
     /** As {@link #play(ServerPlayer, VillagerEntityMCA, String)}, setting Ink variables the story declares first. */
+    /** The story {@code villager} tells {@code player}, or null. */
+    public static @Nullable StoryDefinition storyOf(ServerPlayer player, VillagerEntityMCA villager) {
+        return storyFor(player, villager);
+    }
+
     public static boolean play(ServerPlayer player, VillagerEntityMCA villager, String knot, Map<String, Object> variables) {
         if (!Systems.on(Systems.STORIES) || storyFor(player, villager) == null) return false;
         return talk(player, villager, knot, variables);
@@ -246,6 +267,7 @@ public final class StoryService {
 
     private static boolean talk(ServerPlayer player, VillagerEntityMCA villager, @Nullable String knot, Map<String, Object> variables) {
         closeSession(player);
+        StoryOverheard.stop(player);
         StoryDefinition story = storyFor(player, villager);
         if (story == null) {
             send(player, new StoryS2CPayload(villager.getId(), StoryS2CPayload.END, "", List.of(), false));
@@ -308,6 +330,20 @@ public final class StoryService {
         sync(player);
     }
 
+    /** The story a player already has going with this villager, or null when they have never talked. */
+    static @Nullable PlayerStories.Entry existingEntry(ServerPlayer player, VillagerEntityMCA villager, StoryDefinition story) {
+        PlayerStories.Entry entry = stories(player).get(PlayerStories.key(story, villager.getUUID()));
+        return entry != null && entry.villager.equals(villager.getUUID()) ? entry : null;
+    }
+
+    static boolean inConversation(ServerPlayer player) {
+        return SESSIONS.containsKey(player.getUUID());
+    }
+
+    static void changed(ServerPlayer player) {
+        DIRTY.add(player.getUUID());
+    }
+
     static void sessionEnded(StorySession session) {
         if (SESSIONS.get(session.player.getUUID()) == session) SESSIONS.remove(session.player.getUUID());
         payOut(session.player);
@@ -348,6 +384,8 @@ public final class StoryService {
 
     public static void tick(MinecraftServer server) {
         StoryService.server = server;
+        for (StorySession session : SESSIONS.values()) session.holdCast();
+        StoryOverheard.tick(server, ticks);
         if (++ticks % 20 == 0 && !DIRTY.isEmpty()) {
             for (UUID id : new ArrayList<>(DIRTY)) {
                 ServerPlayer player = server.getPlayerList().getPlayer(id);

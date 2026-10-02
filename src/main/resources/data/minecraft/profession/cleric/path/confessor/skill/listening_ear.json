@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "absolution"
+    "steady_pour"
   ],
   "power": {
     "type": "pheno:action_over_time",

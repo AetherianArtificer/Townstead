@@ -17,7 +17,8 @@ import java.util.Map;
 
 /**
  * {@code /townstead story [list | errors [id] | reset [id]]}. Operator only. {@code reset} clears
- * your own saved state, so a story can be played again from its greeting.
+ * your own saved state, so a story can be played again from its greeting. Jumping to a scene is
+ * {@code /townstead scene} ({@link StoryDebug}).
  */
 public final class StoryCommands {
     private StoryCommands() {}

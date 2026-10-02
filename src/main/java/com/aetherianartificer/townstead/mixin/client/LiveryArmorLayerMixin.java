@@ -14,10 +14,14 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import net.minecraft.world.item.ArmorMaterial;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 //?} else {
-/*import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArgs;
+/*import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.model.Model;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.world.item.ArmorItem;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 *///?}
 
 /**
@@ -60,15 +64,20 @@ public abstract class LiveryArmorLayerMixin {
         cir.setReturnValue(LiveryRender.texture(entity, cir.getReturnValue()));
     }
 
-    @ModifyArgs(method = "m_117118_(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/EquipmentSlot;ILnet/minecraft/client/model/HumanoidModel;)V",
+    // WrapOperation, not ModifyArgs: Forge's module classloader cannot load ModifyArgs' synthetic Args classes.
+    @WrapOperation(method = "m_117118_(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/EquipmentSlot;ILnet/minecraft/client/model/HumanoidModel;)V",
             remap = false, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/layers/HumanoidArmorLayer;renderModel(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/world/item/ArmorItem;Lnet/minecraft/client/model/Model;ZFFFLnet/minecraft/resources/ResourceLocation;)V"),
             require = 1)
-    private void townstead$liveryTint(Args args) {
+    private void townstead$liveryTint(HumanoidArmorLayer<?, ?, ?> layer, PoseStack pose, MultiBufferSource buffers,
+                                      int light, ArmorItem item, Model model, boolean glint,
+                                      float r, float g, float b, ResourceLocation texture, Operation<Void> original) {
         int tint = LiveryRender.tint(0);
-        if (tint == 0) return;
-        args.set(6, (tint >> 16 & 255) / 255f);
-        args.set(7, (tint >> 8 & 255) / 255f);
-        args.set(8, (tint & 255) / 255f);
+        if (tint != 0) {
+            r = (tint >> 16 & 255) / 255f;
+            g = (tint >> 8 & 255) / 255f;
+            b = (tint & 255) / 255f;
+        }
+        original.call(layer, pose, buffers, light, item, model, glint, r, g, b, texture);
     }
     *///?}
 }

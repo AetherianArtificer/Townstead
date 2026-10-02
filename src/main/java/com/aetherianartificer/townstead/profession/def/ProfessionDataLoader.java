@@ -934,7 +934,30 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
                 skillGroup,
                 parsePower(obj, lang, diag),
                 parseSkillEvidence(obj, diag),
-                obj.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "icon", "")) : null);
+                obj.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "icon", "")) : null,
+                parseCompanions(obj, lang, diag));
+    }
+
+    /**
+     * A skill's {@code companions}: named extra powers that ride it, parsed the same way as its
+     * main {@code power}. A bad companion drops alone with a diagnostic.
+     */
+    static Map<String, com.aetherianartificer.townstead.pheno.power.PowerComponent> parseCompanions(
+            JsonObject obj, Map<String, String> lang, Diagnostics diag) {
+        if (!obj.has("companions")) return Map.of();
+        if (!obj.get("companions").isJsonObject()) {
+            diag.error(JsonPath.ROOT.field("companions"), "'companions' must be an object of named powers.",
+                    "Use { \"name\": { \"type\": \"pheno:...\" } }.");
+            return Map.of();
+        }
+        Map<String, com.aetherianartificer.townstead.pheno.power.PowerComponent> out = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonElement> entry : obj.getAsJsonObject("companions").entrySet()) {
+            JsonObject holder = new JsonObject();
+            holder.add("power", entry.getValue().deepCopy());
+            var power = parsePower(holder, lang, diag);
+            if (power != null) out.put(entry.getKey(), power);
+        }
+        return Map.copyOf(out);
     }
 
     /**
@@ -1163,7 +1186,7 @@ public final class ProfessionDataLoader extends SimplePreparableReloadListener<P
      * only the power (with a diagnostic), never the skill: learned history must keep resolving.
      */
     @org.jetbrains.annotations.Nullable
-    private static com.aetherianartificer.townstead.pheno.power.PowerComponent parsePower(
+    static com.aetherianartificer.townstead.pheno.power.PowerComponent parsePower(
             JsonObject obj, Map<String, String> lang, Diagnostics diag) {
         if (!obj.has("power")) return null;
         JsonPath path = JsonPath.ROOT.field("power");

@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "hard_harvest"
+    "wide_swing"
   ],
   "power": {
     "type": "pheno:trigger",

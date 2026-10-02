@@ -4,7 +4,7 @@
   "icon": "farmersdelight:stove",
   "description": { "translate": "skill.townstead.cook.chef.kitchen_flow.description" },
   "cost": 1,
-  "requires": ["mise_en_place"],
+  "requires": ["honed_edge"],
   "power": {
     "type": "pheno:action_over_time",
     "interval": 20,

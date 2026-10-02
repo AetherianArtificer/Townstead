@@ -171,7 +171,7 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
             }
         }
         villager.getInventory().setChanged();
-        awardXp(villager, 1, level.getGameTime());
+        awardXp(villager, 1, level.getGameTime(), sheep.blockPosition());
     }
 
     private void equipShearsIfAvailable(VillagerEntityMCA villager) {
@@ -229,10 +229,11 @@ public class ShepherdWorkTask extends Behavior<VillagerEntityMCA> {
                         level, villager, anchor, WorkTaskTypes.SHEAR);
     }
 
-    private static void awardXp(VillagerEntityMCA villager, int amount, long gameTime) {
+    private static void awardXp(VillagerEntityMCA villager, int amount, long gameTime,
+                                net.minecraft.core.BlockPos pos) {
         if (amount <= 0) return;
         com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
                 villager, com.aetherianartificer.townstead.profession.career.Careers.SHEPHERD, amount, gameTime,
-                "townstead:tended", null, null, amount);
+                "townstead:tended", null, null, amount, pos, ItemStack.EMPTY);
     }
 }

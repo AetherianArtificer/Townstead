@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "salt_in_the_veins"
+    "weather_eye"
   ],
   "power": {
     "type": "pheno:ability",

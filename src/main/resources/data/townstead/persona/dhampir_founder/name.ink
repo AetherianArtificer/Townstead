@@ -23,6 +23,7 @@ Sit down, if you want. I'm not doing anything. I'm practicing not doing anything
 You've asked that enough times. I said some night. This is some night, I suppose.
 {given_name} {family_name}. That's the whole of it.
 ~ named = true
+~ act("tell_family")
 ~ trust(3)
 It was my mother's name. I use it because she'd have been furious if I didn't, and because nobody ever asks about it, and I'd like to keep it that way.
 You're the exception. Don't let it go to your head.

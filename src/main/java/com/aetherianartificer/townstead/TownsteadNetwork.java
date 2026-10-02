@@ -154,6 +154,10 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload::read,
                 TownsteadNetwork::handleConsumableEffectsSync);
+        registerS2C(com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload::read,
+                payload -> com.aetherianartificer.townstead.client.gui.dialogue.DialogueThemes.setServer(payload.themes()));
         registerS2C(com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload.class,
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload::read,
@@ -174,6 +178,10 @@ public final class TownsteadNetwork {
                 (p, buf) -> com.aetherianartificer.townstead.replace.WildNameS2CPayload.write(buf, p),
                 com.aetherianartificer.townstead.replace.WildNameS2CPayload::read,
                 com.aetherianartificer.townstead.replace.WildNameS2CPayload::accept);
+        registerS2C(com.aetherianartificer.townstead.replace.WildCostumeS2CPayload.class,
+                (p, buf) -> com.aetherianartificer.townstead.replace.WildCostumeS2CPayload.write(buf, p),
+                com.aetherianartificer.townstead.replace.WildCostumeS2CPayload::read,
+                com.aetherianartificer.townstead.replace.WildCostumeS2CPayload::accept);
         registerC2S(com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload.class,
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload::read,
@@ -426,6 +434,14 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.root.CommitRootGenesC2SPayload::write,
                 com.aetherianartificer.townstead.root.CommitRootGenesC2SPayload::read,
                 TownsteadNetwork::handleCommitRootGenes);
+        registerC2S(com.aetherianartificer.townstead.aspect.AspectC2SPayload.class,
+                com.aetherianartificer.townstead.aspect.AspectC2SPayload::write,
+                com.aetherianartificer.townstead.aspect.AspectC2SPayload::read,
+                (payload, sp) -> com.aetherianartificer.townstead.aspect.AspectC2SPayload.handle(sp, payload));
+        registerS2C(com.aetherianartificer.townstead.aspect.AspectS2CPayload.class,
+                com.aetherianartificer.townstead.aspect.AspectS2CPayload::write,
+                com.aetherianartificer.townstead.aspect.AspectS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.gui.aspect.AspectPage.accept(payload));
         registerC2S(com.aetherianartificer.townstead.root.SetPersonalityC2SPayload.class,
                 com.aetherianartificer.townstead.root.SetPersonalityC2SPayload::write,
                 com.aetherianartificer.townstead.root.SetPersonalityC2SPayload::read,
@@ -1416,6 +1432,10 @@ public final class TownsteadNetwork {
 
     private static void townstead$assignProfession(ServerPlayer sp, VillagerEntityMCA villager, VillagerProfession newProf) {
         if (!(villager.level() instanceof net.minecraft.server.level.ServerLevel level)) return;
+        if (com.aetherianartificer.townstead.persona.PersonaService.pinnedProfession(villager) != null) {
+            sp.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.townstead.persona.fixed_job", villager.getName()), true);
+            return;
+        }
 
         VillagerProfession oldProf = villager.getVillagerData().getProfession();
         if (oldProf == newProf) {

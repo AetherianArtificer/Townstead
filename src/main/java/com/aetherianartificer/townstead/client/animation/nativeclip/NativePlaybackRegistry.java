@@ -33,6 +33,6 @@ public final class NativePlaybackRegistry {
     public static void clear() { ACTIVE.clear(); }
     public static boolean hasCollapse(int entityId, long now) {
         return forEntity(entityId, now).values().stream().anyMatch(p -> p.startedAt() <= now
-                && com.aetherianartificer.townstead.performance.CollapseMotion.CLIP.equals(p.clip().toString()));
+                && com.aetherianartificer.townstead.performance.CollapseMotion.isGround(p.clip().toString()));
     }
 }

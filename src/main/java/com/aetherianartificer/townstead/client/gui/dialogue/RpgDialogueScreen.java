@@ -43,7 +43,14 @@ public class RpgDialogueScreen extends Screen {
 
     private final DialogueBox dialogueBox = new DialogueBox();
     private final ChoicePanel choicePanel = new ChoicePanel();
+    private final DialogueLog log = new DialogueLog();
+    /** Each speaker's own theme id, by entity id, as the server reported it. */
+    private final java.util.Map<Integer, String> speakerThemes = new java.util.HashMap<>();
+    /** Ticks until held skip moves the conversation on again. */
+    private int skipCooldown;
     private DialogueCameraController cameraController;
+    /** Who is talking: the villager, or someone else in a story scene. Null means the villager. */
+    private Entity speaker;
 
     private String dialogQuestionId;
     private List<String> dialogAnswers;
@@ -89,8 +96,9 @@ public class RpgDialogueScreen extends Screen {
         // The header names whoever you are talking to, so it shows their full name: the
         // family name their culture gave them, not just the given name MCA tracks.
         dialogueBox.setVillagerName(
-                com.aetherianartificer.townstead.client.naming.ClientNames.displayName(villager.asEntity()));
+                com.aetherianartificer.townstead.client.naming.ClientNames.displayName(speaker()));
         choicePanel.layout(width, height, dialogueBox.getY());
+        applyTheme();
 
         if (!initialized) {
             initialized = true;
@@ -117,6 +125,7 @@ public class RpgDialogueScreen extends Screen {
         choicePanel.tick();
         if (cameraController != null) cameraController.tick(); // for restore completion tracking
         tickParticles();
+        tickHeldSkip();
 
         switch (state) {
             case TYPEWRITER_PLAYING -> {
@@ -161,6 +170,11 @@ public class RpgDialogueScreen extends Screen {
         if (cameraController != null) cameraController.update();
 
         if (state == DialogueState.CLOSING) return;
+        if (log.isOpen()) {
+            log.render(graphics, font, dialogueBox.getX(), 20, dialogueBox.getWidth(),
+                    dialogueBox.getY() + dialogueBox.getHeight());
+            return;
+        }
         dialogueBox.render(graphics, font);
         choicePanel.render(graphics, font, mouseX, mouseY);
         if (choicePanel.isVisible() && com.aetherianartificer.townstead.api.impl.v1.client.ChoicePanelPaintHooks.any()) {
@@ -208,19 +222,60 @@ public class RpgDialogueScreen extends Screen {
     //? if >=1.21 {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (scrollLog(mouseX, mouseY, scrollY)) return true;
         if (choicePanel.mouseScrolled(scrollY)) return true;
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
     //?} else {
     /*@Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
+        if (scrollLog(mouseX, mouseY, scrollY)) return true;
         if (choicePanel.mouseScrolled(scrollY)) return true;
         return super.mouseScrolled(mouseX, mouseY, scrollY);
     }
     *///?}
 
+    /** Scrolls an open log; scrolling up over the dialogue box opens it. */
+    private boolean scrollLog(double mouseX, double mouseY, double scrollY) {
+        if (log.isOpen()) {
+            log.scroll(scrollY);
+            return true;
+        }
+        if (scrollY > 0 && !log.isEmpty()
+                && mouseX >= dialogueBox.getX() && mouseX < dialogueBox.getX() + dialogueBox.getWidth()
+                && mouseY >= dialogueBox.getY() && mouseY < dialogueBox.getY() + dialogueBox.getHeight()) {
+            log.setOpen(true);
+            return true;
+        }
+        return false;
+    }
+
+    /** While the skip key is held, lines run past until a choice or the last line. */
+    private void tickHeldSkip() {
+        if (log.isOpen() || !com.aetherianartificer.townstead.client.TownsteadKeybinds.isHeld(
+                minecraft, com.aetherianartificer.townstead.client.TownsteadKeybinds.DIALOGUE_SKIP)) {
+            skipCooldown = 0;
+            return;
+        }
+        if (skipCooldown-- > 0) return;
+        skipCooldown = 2;
+        TypewriterText typewriter = dialogueBox.getTypewriter();
+        if (state == DialogueState.TYPEWRITER_PLAYING) {
+            typewriter.skipToEnd();
+        } else if (state == DialogueState.STORY_NEXT) {
+            if (typewriter.hasMorePages()) typewriter.advancePage();
+            else requestNextStoryLine();
+        } else if (state == DialogueState.ENDING && typewriter.hasMorePages()) {
+            typewriter.advancePage();
+        }
+    }
+
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (log.isOpen()) {
+            log.setOpen(false);
+            return true;
+        }
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
 
         if (state == DialogueState.TYPEWRITER_PLAYING) {
@@ -250,8 +305,24 @@ public class RpgDialogueScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (log.isOpen()) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE
+                    || com.aetherianartificer.townstead.client.TownsteadKeybinds.DIALOGUE_LOG.matches(keyCode, scanCode)) {
+                log.setOpen(false);
+            } else if (keyCode == GLFW.GLFW_KEY_UP || keyCode == GLFW.GLFW_KEY_PAGE_UP) {
+                log.scroll(keyCode == GLFW.GLFW_KEY_UP ? 1 : 4);
+            } else if (keyCode == GLFW.GLFW_KEY_DOWN || keyCode == GLFW.GLFW_KEY_PAGE_DOWN) {
+                log.scroll(keyCode == GLFW.GLFW_KEY_DOWN ? -1 : -4);
+            }
+            return true;
+        }
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
             closeByUser();
+            return true;
+        }
+        if (com.aetherianartificer.townstead.client.TownsteadKeybinds.DIALOGUE_LOG.matches(keyCode, scanCode)
+                && !log.isEmpty()) {
+            log.setOpen(true);
             return true;
         }
         if (state == DialogueState.TYPEWRITER_PLAYING) {
@@ -284,6 +355,13 @@ public class RpgDialogueScreen extends Screen {
             }
             if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_SPACE) {
                 handleChoiceSelection();
+                return true;
+            }
+            // Number keys pick the Nth visible row, only while the panel paints the numbers.
+            if (choicePanel.isNumbered() && keyCode >= GLFW.GLFW_KEY_1 && keyCode <= GLFW.GLFW_KEY_9) {
+                List<com.aetherianartificer.townstead.api.v1.client.ChoiceRow> rows = choicePanel.visibleRows();
+                int ordinal = keyCode - GLFW.GLFW_KEY_1;
+                if (ordinal < rows.size()) apiSelectChoice(rows.get(ordinal).index());
                 return true;
             }
         }
@@ -329,7 +407,7 @@ public class RpgDialogueScreen extends Screen {
         particleTimer++;
         if (particleTimer % 10 != 0) return; // Spawn every half second
 
-        Entity entity = villager.asEntity();
+        Entity entity = speaker();
         if (entity.level() == null) return;
         double px = entity.getX() + (entity.level().random.nextDouble() - 0.5) * 1.2;
         double py = entity.getEyeY() + (entity.level().random.nextDouble() - 0.3) * 0.8;
@@ -403,13 +481,17 @@ public class RpgDialogueScreen extends Screen {
 
     // --- Called by ClientHandlerImplMixin ---
 
-    /** MCA's romance options, which a Persona's story replaces with its own. Divorce stays. */
-    private static final java.util.Set<String> PERSONA_HIDDEN = java.util.Set.of("flirt", "kiss", "procreate", "procreate_engaged");
     private boolean persona;
+    /** The MCA main-menu answers this Persona hides, as the server listed them. */
+    private java.util.Set<String> personaHidden = java.util.Set.of();
+    /** The Persona's own greeting, said in place of MCA's; empty for none. */
+    private String personaGreeting = "";
+    /** Whether the box is showing MCA's greeting, so a late Persona greeting can take its place. */
+    private boolean showingMainGreeting;
 
     private List<String> forSpeaker(String questionId, List<String> answers) {
         if (!persona || answers == null || !DialogueMenuOrganizer.isMainQuestion(questionId)) return answers;
-        return answers.stream().filter(a -> !PERSONA_HIDDEN.contains(a)).toList();
+        return answers.stream().filter(a -> !personaHidden.contains(a)).toList();
     }
 
     public void setDialogue(String questionId, List<String> answers) {
@@ -436,6 +518,8 @@ public class RpgDialogueScreen extends Screen {
         //?} else {
         /*Component text = villager.transformMessage(questionText.copy());
         *///?}
+        boolean mainGreeting = !silent && DialogueMenuOrganizer.isMainQuestion(dialogQuestionId);
+        if (mainGreeting && persona && !personaGreeting.isEmpty()) text = Component.literal(storyText(personaGreeting));
 
         // Silent text on the main greeting accompanies the menu and must not overwrite
         // a villager's just-spoken response. Silent sub-question prompts (divorce/procreate/
@@ -446,8 +530,11 @@ public class RpgDialogueScreen extends Screen {
         }
 
         // Silent prompts are the player's own thoughts/menus, not villager speech: drop the name plate.
+        setSpeaker(villager.asEntity());
         dialogueBox.setNameVisible(!silent);
         dialogueBox.setText(text, font);
+        showingMainGreeting = mainGreeting;
+        if (!silent) logLine(text);
         choicePanel.setVisible(false);
         state = DialogueState.TYPEWRITER_PLAYING;
         awaitingResponseTimer = 0;
@@ -474,8 +561,11 @@ public class RpgDialogueScreen extends Screen {
     }
 
     public void setIncomingChatLine(Component line) {
+        setSpeaker(villager.asEntity());
         dialogueBox.setNameVisible(true);
         dialogueBox.setText(line, font);
+        logLine(line);
+        showingMainGreeting = false;
         choicePanel.setVisible(false);
         state = DialogueState.TYPEWRITER_PLAYING;
         awaitingResponseTimer = 0;
@@ -487,8 +577,11 @@ public class RpgDialogueScreen extends Screen {
     public void setFinalPhrase(Component message) {
         // Terminal dialogue line — sent via VillagerMessage instead of
         // InteractionDialogueQuestionResponse. Already transformed by server.
+        setSpeaker(villager.asEntity());
         dialogueBox.setNameVisible(true);
         dialogueBox.setText(message, font);
+        logLine(message);
+        showingMainGreeting = false;
         choicePanel.setVisible(false);
         dialogAnswers = null;
         state = DialogueState.TYPEWRITER_PLAYING;
@@ -497,8 +590,13 @@ public class RpgDialogueScreen extends Screen {
         narrateText(message);
     }
 
+    private void logLine(Component text) {
+        log.addLine(com.aetherianartificer.townstead.client.naming.ClientNames.displayName(speaker()),
+                TypewriterText.resolveDisplayText(text).component());
+    }
+
     private void speakDisplayedText(Component text) {
-        if (!(villager.asEntity() instanceof VillagerEntityMCA mca)) return;
+        if (!(speaker() instanceof VillagerEntityMCA mca)) return;
         // Resolving first is what registers the line's translation key with MCA, so the lookup
         // inside speakLine can find it and hand a stock MCA line back to MCA's own speech manager.
         // Clearing first keeps a line MCA does not own from claiming the previous line's key.
@@ -511,7 +609,7 @@ public class RpgDialogueScreen extends Screen {
         if (DialogueAccessibility.narratorEnabled()) {
             String clean = com.aetherianartificer.townstead.client.gui.dialogue.effect.EffectTagParser
                     .stripTags(text.getString());
-            String name = villager.asEntity().getDisplayName().getString();
+            String name = speaker().getDisplayName().getString();
             try {
                 com.mojang.text2speech.Narrator.getNarrator().say(name + ": " + clean, true);
             } catch (Exception ignored) {
@@ -538,7 +636,9 @@ public class RpgDialogueScreen extends Screen {
     }
 
     private void handleChoiceSelection() {
+        Component label = choicePanel.selectedLabel();
         ChoicePanel.SelectionResult result = choicePanel.select();
+        if (result.type() == ChoicePanel.SelectionResult.Type.ANSWER && label != null) log.addChoice(label);
         switch (result.type()) {
             case ANSWER -> selectChoice(result.mcaAnswer());
             case SUB_MENU -> choicePanel.openSubMenu(result.subMenuId(), font);
@@ -591,16 +691,49 @@ public class RpgDialogueScreen extends Screen {
 
     // --- Stories (called by StoryClient) ---
 
+    private Entity speaker() {
+        return speaker != null && !speaker.isRemoved() ? speaker : villager.asEntity();
+    }
+
+    /** Moves the name plate and the camera to whoever says the next line. */
+    private void setSpeaker(Entity entity) {
+        if (entity == null || entity == speaker()) return;
+        speaker = entity;
+        applyTheme();
+        dialogueBox.setVillagerName(com.aetherianartificer.townstead.client.naming.ClientNames.displayName(entity));
+        if (cameraController != null) cameraController.setTarget(entity);
+    }
+
+    private void applyTheme() {
+        DialogueTheme theme = DialogueThemes.resolve(speakerThemes.get(speaker().getId()));
+        dialogueBox.setTheme(theme);
+        choicePanel.setTheme(theme);
+    }
+
     public int villagerEntityId() {
         return villager.asEntity().getId();
     }
 
     public void onStory(com.aetherianartificer.townstead.story.net.StoryS2CPayload payload) {
+        if (payload.kind() != com.aetherianartificer.townstead.story.net.StoryS2CPayload.END) {
+            String before = speakerThemes.put(payload.speakerId(), payload.theme());
+            if (!payload.theme().equals(before) && payload.speakerId() == speaker().getId()) applyTheme();
+        }
         switch (payload.kind()) {
             case com.aetherianartificer.townstead.story.net.StoryS2CPayload.OFFER,
                  com.aetherianartificer.townstead.story.net.StoryS2CPayload.OFFER_PERSONA -> {
                 if (payload.kind() == com.aetherianartificer.townstead.story.net.StoryS2CPayload.OFFER_PERSONA && !persona) {
                     persona = true;
+                    personaHidden = java.util.Set.copyOf(payload.choices());
+                    personaGreeting = payload.greeting();
+                    // MCA's greeting got here first: say the Persona's own in its place.
+                    if (showingMainGreeting && !personaGreeting.isEmpty() && !storyActive) {
+                        Component greeting = Component.literal(storyText(personaGreeting));
+                        dialogueBox.setText(greeting, font);
+                        logLine(greeting);
+                        choicePanel.setVisible(false);
+                        state = DialogueState.TYPEWRITER_PLAYING;
+                    }
                     if (mainAnswers != null) mainAnswers = forSpeaker("main", mainAnswers);
                     if (dialogAnswers != null && DialogueMenuOrganizer.isMainQuestion(dialogQuestionId)) {
                         dialogAnswers = forSpeaker(dialogQuestionId, dialogAnswers);
@@ -633,7 +766,8 @@ public class RpgDialogueScreen extends Screen {
             dialogQuestionId = ChoicePanel.STORY_QUESTION;
             dialogAnswers = new java.util.ArrayList<>();
             for (int i = 0; i < payload.choices().size(); i++) dialogAnswers.add(ChoicePanel.STORY_CHOICE_PREFIX + i);
-            choicePanel.setLiteralChoices(payload.choices().stream().map(RpgDialogueScreen::storyText).toList(), font);
+            choicePanel.setLiteralChoices(payload.choices().stream().map(RpgDialogueScreen::storyText).toList(),
+                    payload::questChoice, font);
             choicePanel.layout(width, height, dialogueBox.getY());
         }
         if (last) restoreMainMenu();
@@ -644,8 +778,12 @@ public class RpgDialogueScreen extends Screen {
             return;
         }
         Component text = Component.literal(storyText(payload.text()));
+        Entity by = minecraft == null || minecraft.level == null ? null : minecraft.level.getEntity(payload.speakerId());
+        setSpeaker(by == null ? villager.asEntity() : by);
         dialogueBox.setNameVisible(true);
         dialogueBox.setText(text, font);
+        logLine(text);
+        showingMainGreeting = false;
         state = DialogueState.TYPEWRITER_PLAYING;
         speakDisplayedText(text);
         narrateText(text);
@@ -658,6 +796,7 @@ public class RpgDialogueScreen extends Screen {
 
     private void finishStory() {
         storyActive = false;
+        setSpeaker(villager.asEntity());
         restoreMainMenu();
         if (dialogueBox.getTypewriter().isComplete() && dialogAnswers != null && !dialogAnswers.isEmpty()) {
             state = DialogueState.CHOICES_VISIBLE;

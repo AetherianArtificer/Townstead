@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "sure_footing"
+    "wide_furrow"
   ],
   "power": {
     "type": "pheno:attribute",

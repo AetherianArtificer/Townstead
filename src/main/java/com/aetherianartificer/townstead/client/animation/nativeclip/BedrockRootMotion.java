@@ -20,8 +20,7 @@ public final class BedrockRootMotion {
         var owner = NativePlaybackRegistry.forEntity(entity.getId(), now).entrySet().stream()
                 .filter(entry -> {
                     var playback = entry.getValue();
-                    if (collapse && !com.aetherianartificer.townstead.performance.CollapseMotion.CLIP
-                            .equals(playback.clip().toString())) return false;
+                    if (collapse && !com.aetherianartificer.townstead.performance.CollapseMotion.isGround(playback.clip().toString())) return false;
                     var clip = NativeClipRegistry.getBedrock(playback.clip()).orElse(null);
                     return clip != null && clip.bones().containsKey("root")
                             && NativeLocomotionPolicy.lowerBodyWeight(playback.clip(), entity.walkAnimation.speed(partialTick)) > 0
@@ -46,7 +45,7 @@ public final class BedrockRootMotion {
         float weight = BedrockPerformanceSampler.blend(clip, playback.elapsed(now, partialTick),
                 playback.expiresAt() - now - partialTick) * lowerBodyWeight;
         for (int axis = 0; axis < 3; axis++) rotation[axis] *= weight;
-        if (com.aetherianartificer.townstead.performance.CollapseMotion.CLIP.equals(playback.clip().toString())) {
+        if (com.aetherianartificer.townstead.performance.CollapseMotion.isGround(playback.clip().toString())) {
             // The server already moved the body midpoint. Keep the fall's foot pivot
             // visually correct without adding its horizontal trajectory a second time.
             var anchor = com.aetherianartificer.townstead.performance.CollapseMotion.anchor(rotation);

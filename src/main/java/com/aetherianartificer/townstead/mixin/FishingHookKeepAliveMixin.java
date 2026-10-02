@@ -27,9 +27,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * behavior is preserved (the FakePlayer is a real ServerPlayer so null
  * owners server-side remain legitimately orphaned and still despawn).
  *
- * The redirects are compiled with {@code remap = false} on Forge 1.20.1
- * because that target has no mixin refmap in this project; the project uses
- * official names there, so the named method targets still line up.
+ * Forge 1.20.1 ships no refmap, so its targets are SRG with {@code remap = false}:
+ * {@code m_6453_} lerpTo, {@code m_8119_} tick, {@code m_141965_} recreateFromPacket,
+ * {@code m_6074_} kill, {@code m_146870_} discard.
  */
 @Mixin(FishingHook.class)
 public abstract class FishingHookKeepAliveMixin {
@@ -55,7 +55,7 @@ public abstract class FishingHookKeepAliveMixin {
     //? if neoforge {
     @Inject(method = "lerpTo", at = @At("HEAD"), cancellable = true)
     //?} else {
-    /*@Inject(method = "lerpTo(DDDFFIZ)V", remap = false, require = 0, at = @At("HEAD"), cancellable = true)
+    /*@Inject(method = "m_6453_(DDDFFIZ)V", remap = false, require = 0, at = @At("HEAD"), cancellable = true)
     *///?}
     private void townstead$lerpToForLinkedHooks(
             double x, double y, double z, float yaw, float pitch, int lerpSteps,
@@ -89,7 +89,7 @@ public abstract class FishingHookKeepAliveMixin {
     //? if neoforge {
     @Inject(method = "tick", at = @At("HEAD"))
     //?} else {
-    /*@Inject(method = "tick", remap = false, require = 0, at = @At("HEAD"))
+    /*@Inject(method = "m_8119_", remap = false, require = 0, at = @At("HEAD"))
     *///?}
     private void townstead$tickClientLerp(CallbackInfo ci) {
         try {
@@ -128,10 +128,10 @@ public abstract class FishingHookKeepAliveMixin {
     )
     //?} else {
     /*@Redirect(
-            method = "recreateFromPacket",
+            method = "m_141965_",
             remap = false,
             require = 0,
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/projectile/FishingHook;kill()V")
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/projectile/FishingHook;m_6074_()V")
     )
     *///?}
     private void townstead$suppressClientKillOnSpawn(FishingHook self) {
@@ -150,12 +150,12 @@ public abstract class FishingHookKeepAliveMixin {
     )
     //?} else {
     /*@Redirect(
-            method = "tick",
+            method = "m_8119_",
             remap = false,
             require = 0,
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/world/entity/projectile/FishingHook;discard()V",
+                    target = "Lnet/minecraft/world/entity/projectile/FishingHook;m_146870_()V",
                     ordinal = 0
             )
     )

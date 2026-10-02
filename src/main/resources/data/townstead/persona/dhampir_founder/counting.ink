@@ -21,6 +21,10 @@ Did you want something?
 
 // The recitation, as far as they get tonight.
 === recite ===
+{check("oath_restored"):
+    First. Come when you are called, whatever the hour. Second. Wash your hands before, and after. Third. Speak plainly to the frightened. Fourth. Carry the lamp yourself. Fifth. Keep what you are told. Sixth. Turn no one away. Seventh. Do no harm that you can help. Eighth. Take nothing from the dying. Ninth. Do not leave before it is finished.
+    ->->
+}
 First. Come when you are called, whatever the hour.
 Second. Wash your hands before, and after.
 {check("pull_fallen"):

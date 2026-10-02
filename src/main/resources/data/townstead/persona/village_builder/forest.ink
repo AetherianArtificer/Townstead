@@ -5,18 +5,18 @@
 
 === forest_meeting ===
 = open
-Oh, hello! Don't mind the shavings, they're only shavings. Here, what do you think? Be honest.
-It's going to be a heron. It's a heron from the neck up, anyway. The rest is still deciding.
+Oh, hello! Don't mind the shavings. Here, what do you think? Be honest.
+It's going to be a heron. It's a heron from the neck up, anyway. The rest, I'm still working on.
 + [It's lovely.]
     ~ helped_first = true
-    You're very kind, and very wrong, and I like you already. Give it a week.
+    That's kind of you! Give it a week. It'll look like a heron by then.
 + [Is that a duck?]
     ~ helped_first = true
     ~ teased_first = true
     A duck! It's a heron! Look at the neck! ...All right, it's a bit of a duck. The grain's against me.
 + [I can't stop right now, sorry.]
     ~ met = 1
-    Go on! The heron will wait. Herons are good at waiting.
+    Go on! I'll be here.
     -> DONE
 - ~ met = 2
 ->->
@@ -27,7 +27,7 @@ There you are! The heron's got a leg now. One. Got a minute?
     ~ met = 2
     ->->
 + [Not yet.]
-    That's all right. The heron and I will be here.
+    That's all right. I'll be here.
     -> DONE
 
 = walls
@@ -37,19 +37,19 @@ There you are! The heron's got a leg now. One. Got a minute?
 - else:
     You put all this up, didn't you? I've been round your walls twice. Square! Properly square!
 }
-Somebody here knows how timber wants to sit. You can't fake that.
+Somebody here took their time with the timber.
 I'm {villager_name}.
 + [Welcome. I'm {player_name}.]
     ~ contribute("affection", 1, "welcomed")
-    {player_name}. Good. That's a name with a bit of grain to it.
+    {player_name}. Good. I'll remember that.
 + [Do you carve a lot?]
-    Whenever my hands are empty. Which is too often, lately. That's partly why I'm here.
+    Whenever my hands are empty. Which is too often, lately.
 + [What do you want?]
     A bed under a roof that isn't mine to worry about, for once. And somewhere to put the shavings.
 - -> passing
 
 = passing
-I'm only passing through, mind. A season, maybe. Then I'll see which way the wind is.
+I'm only passing through, mind. A season, maybe.
 When somebody new comes, is there a roof waiting for them? A bed that's theirs, from the first night?
 + [Not yet.]
     Not yet. Mm.
@@ -78,5 +78,5 @@ Right! I'll stay out of your way. Mostly. If you find shavings, I was there.
     ~ trust(2)
     Careful. People say that, and then I stay. And then you get a heron.
 + [See you around.]
-    You will! I'm the one with the duck. Heron. Heron.
+    You will! I'm the one with the heron.
 - -> DONE

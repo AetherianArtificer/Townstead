@@ -3,6 +3,7 @@
   "downed": true,
   "arrival": "walk_in",
   "villager": {
+    "profession": "minecraft:mason",
     "schedule": "townstead:long_days",
     "personality": [
       "friendly",
@@ -31,7 +32,6 @@
     "hometown": [
       {
         "value": "mine",
-        "profession": "minecraft:mason",
         "vars": {
           "gift": "minecraft:raw_copper",
           "line": "overwork"
@@ -40,7 +40,6 @@
       },
       {
         "value": "mill",
-        "profession": "townstead:baker",
         "vars": {
           "gift": "minecraft:bread",
           "line": "hunger"
@@ -49,7 +48,6 @@
       },
       {
         "value": "harbor",
-        "profession": "minecraft:fisherman",
         "vars": {
           "gift": "minecraft:cooked_cod",
           "line": "eviction"
@@ -58,7 +56,6 @@
       },
       {
         "value": "roads",
-        "profession": "minecraft:cartographer",
         "vars": {
           "gift": "minecraft:compass",
           "line": "idle"
@@ -67,7 +64,6 @@
       },
       {
         "value": "forest",
-        "profession": "minecraft:fletcher",
         "vars": {
           "gift": "minecraft:oak_sapling",
           "line": "demolition"
@@ -76,7 +72,6 @@
       },
       {
         "value": "well",
-        "profession": "minecraft:farmer",
         "vars": {
           "gift": "minecraft:potion[potion=minecraft:water]",
           "line": "thirst"

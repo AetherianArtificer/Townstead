@@ -306,6 +306,12 @@ public final class HarvestWorkIndex {
                     && com.aetherianartificer.townstead.compat.farming.FarmerNutrientCompatRegistry.wantsFeeding(level, soilPos)) {
                 fertilizeTargets.add(soilPos.immutable());
             }
+            // 2c. FERTILIZE the crop — a cell painted Fertilized (Bone Meal) whose crop is still
+            // growing, or is grown and can still grow bigger.
+            if (cell.desiredSoil() == SoilType.FERTILIZED_CROP && soilIsFarmland
+                    && com.aetherianartificer.townstead.farming.CropFertilizers.wantsFertilizer(level, cropPos, cropState)) {
+                fertilizeTargets.add(soilPos.immutable());
+            }
 
             // 3. PLANT — crop slot empty, seed not NONE, and either vanilla farmland OR a compat plantable spot (FD rice in water).
             // Also: the seed assignment (if specific) must be compatible with this cell's painted soil.
@@ -455,7 +461,7 @@ public final class HarvestWorkIndex {
             // Untilled rich soil = compat AND NOT farmland (FD rich_soil is a dirt-type, not FarmBlock).
             case RICH_SOIL -> soilIsCompat && !soilIsFarmland;
             // Feeding is its own target; the soil itself only has to be tilled.
-            case FERTILIZED_NUTRIENTS -> soilIsFarmland;
+            case FERTILIZED_NUTRIENTS, FERTILIZED_CROP -> soilIsFarmland;
             // Fertilized variants — delegate to the provider (direct block identity check).
             case FERTILIZED_RICH, FERTILIZED_HEALTHY, FERTILIZED_STABLE ->
                     FarmerCropCompatRegistry.isExistingSoil(desired, level, pos);
@@ -565,6 +571,17 @@ public final class HarvestWorkIndex {
             return isPlannedOrAdjacentSoil(blueprint, pos.below());
         }
         return false;
+    }
+
+    /**
+     * Whether a crop is ripe, by the same rules the harvest engine uses: a vanilla crop at its
+     * max age, or the generic age fallback below. Excludes crops their compat provider harvests
+     * some other way. Callers outside a Field Post plan should scope it to crops on farmland.
+     */
+    public static boolean isMatureCrop(BlockState state) {
+        if (FarmerCropCompatRegistry.skipsHarvest(state)) return false;
+        if (state.getBlock() instanceof CropBlock crop) return crop.isMaxAge(state);
+        return isGenericMatureCrop(state);
     }
 
     /**

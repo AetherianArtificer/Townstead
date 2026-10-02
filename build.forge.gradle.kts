@@ -5,7 +5,8 @@ plugins {
 
 val mcaNamespace = "forge.net.conczin.mca"
 val mcaArtifact = "minecraft-comes-alive"
-val mcaVersion = "7.7.1-beta.2+1.20.1-universal"
+val mcaVersion = "7.7.1-beta.3+1.20.1"
+val mcaDevelopmentVersion = "1.20.1-SNAPSHOT"
 
 stonecutter {
     const("neoforge", false)
@@ -72,7 +73,7 @@ dependencies {
     // forge.* namespace the shipped jars actually carry at runtime.
     // Resolve through flatDir so ForgeGradle can remap the universal production jar for the
     // named development/test runtime. A files(...) dependency cannot be deobfuscated.
-    compileOnly(fg.deobf("townstead.libs:$mcaArtifact:$mcaVersion"))
+    compileOnly(fg.deobf("townstead.libs:$mcaArtifact:$mcaVersion-universal"))
     compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:${property("mixin_extras_version")}")!!)
     implementation(jarJar("io.github.llamalad7:mixinextras-forge:${property("mixin_extras_version")}")) {
         jarJar.ranged(this, "[0.5.4,0.6)")
@@ -152,9 +153,15 @@ layout.buildDirectory.set(file(
 ))
 
 tasks.withType<ProcessResources> {
-    val replaceProperties = mapOf("version" to project.version)
+    val replaceProperties = mapOf(
+        "version" to project.version,
+        "mca_version" to mcaVersion,
+        "mca_development_version" to mcaDevelopmentVersion
+    )
     inputs.properties(replaceProperties)
-    filesMatching("META-INF/mods.toml") { expand(replaceProperties) }
+    filesMatching(listOf("META-INF/mods.toml", "META-INF/townstead-mca.properties")) {
+        expand(replaceProperties)
+    }
     exclude("META-INF/neoforge.mods.toml")
     // Downgrade the mixin compatibility level for Java 17. Icon mixins remain in
     // the config; TownsteadMixinPlugin gates optional MCA targets at runtime.
@@ -217,6 +224,8 @@ tasks.withType<Test> {
     useJUnitPlatform()
     // ApiV1IsolationTest scans the compiled api/v1 classes for leaked internals.
     systemProperty("townstead.classes", sourceSets.main.get().output.classesDirs.asPath)
+    systemProperty("townstead.mcaVersion", mcaVersion)
+    systemProperty("townstead.mcaDevelopmentVersion", mcaDevelopmentVersion)
 }
 
 // The public API alone, for third-party mods to compile against (compileOnly, never shipped).

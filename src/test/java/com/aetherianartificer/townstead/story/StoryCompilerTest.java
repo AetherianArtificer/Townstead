@@ -28,21 +28,13 @@ class StoryCompilerTest {
             }
         }
         Map<String, String> files = new LinkedHashMap<>();
+        // Every scene file beside persona.ink, as the Persona loader takes them.
         files.put("persona.ink", Files.readString(dir.resolve("persona.ink"), StandardCharsets.UTF_8));
-        files.put("meeting.ink", Files.readString(dir.resolve("meeting.ink"), StandardCharsets.UTF_8));
-        files.put("wolf.ink", Files.readString(dir.resolve("wolf.ink"), StandardCharsets.UTF_8));
-        files.put("altar.ink", Files.readString(dir.resolve("altar.ink"), StandardCharsets.UTF_8));
-        files.put("garlic.ink", Files.readString(dir.resolve("garlic.ink"), StandardCharsets.UTF_8));
-        files.put("volunteers.ink", Files.readString(dir.resolve("volunteers.ink"), StandardCharsets.UTF_8));
-        files.put("oath.ink", Files.readString(dir.resolve("oath.ink"), StandardCharsets.UTF_8));
-        files.put("walk.ink", Files.readString(dir.resolve("walk.ink"), StandardCharsets.UTF_8));
-        files.put("watch.ink", Files.readString(dir.resolve("watch.ink"), StandardCharsets.UTF_8));
-        files.put("neighbor.ink", Files.readString(dir.resolve("neighbor.ink"), StandardCharsets.UTF_8));
-        files.put("bitten.ink", Files.readString(dir.resolve("bitten.ink"), StandardCharsets.UTF_8));
-        files.put("thrall.ink", Files.readString(dir.resolve("thrall.ink"), StandardCharsets.UTF_8));
-        files.put("counting.ink", Files.readString(dir.resolve("counting.ink"), StandardCharsets.UTF_8));
-        files.put("name.ink", Files.readString(dir.resolve("name.ink"), StandardCharsets.UTF_8));
-        files.put("contracts.ink", Files.readString(dir.resolve("contracts.ink"), StandardCharsets.UTF_8));
+        try (var scenes = Files.list(dir)) {
+            for (Path scene : scenes.filter(f -> f.toString().endsWith(".ink")).sorted().toList()) {
+                files.putIfAbsent(scene.getFileName().toString(), Files.readString(scene, StandardCharsets.UTF_8));
+            }
+        }
         StoryCompiler.Result result = StoryCompiler.compile(files);
         assertTrue(result.ok(), () -> "errors: " + result.errors());
         assertTrue(result.warnings().isEmpty(), () -> "warnings: " + result.warnings());
@@ -61,6 +53,15 @@ class StoryCompilerTest {
         assertNotNull(result.knots().get("thrall_after"));
         assertNotNull(result.knots().get("counting"));
         assertNotNull(result.knots().get("the_name"));
+        assertNotNull(result.knots().get("the_count"));
+        assertNotNull(result.knots().get("slip_after"));
+        assertNotNull(result.knots().get("gift_bread"));
+        assertNotNull(result.knots().get("father_at_birth"));
+        assertNotNull(result.knots().get("grave_arrive"));
+        assertNotNull(result.knots().get("wounded_up"));
+        assertNotNull(result.knots().get("the_book"));
+        assertNotNull(result.knots().get("midpoint"));
+        assertNotNull(result.knots().get("confession_after"));
     }
 
     @Test
@@ -77,6 +78,23 @@ class StoryCompilerTest {
         assertTrue(result.ok(), () -> "errors: " + result.errors());
         assertTrue(result.warnings().isEmpty(), () -> "warnings: " + result.warnings());
         assertNotNull(result.knots().get("greet"));
+    }
+
+    @Test
+    void shippedMidwifePersonaCompiles() throws IOException {
+        Path dir = Path.of("src/main/resources/data/townstead/persona/midwife");
+        for (Path root = Path.of(System.getProperty("user.dir")).toAbsolutePath(); root != null; root = root.getParent()) {
+            if (Files.isDirectory(root.resolve(dir))) {
+                dir = root.resolve(dir);
+                break;
+            }
+        }
+        StoryCompiler.Result result = StoryCompiler.compile(Map.of("persona.ink",
+                Files.readString(dir.resolve("persona.ink"), StandardCharsets.UTF_8)));
+        assertTrue(result.ok(), () -> "errors: " + result.errors());
+        assertTrue(result.warnings().isEmpty(), () -> "warnings: " + result.warnings());
+        assertNotNull(result.knots().get("greet"));
+        assertNotNull(result.knots().get("meeting"));
     }
 
     @Test
@@ -117,7 +135,8 @@ class StoryCompilerTest {
 
     @Test
     void shippedFarmerLoadsWithoutThrowing() throws IOException {
-        loadPersona("farmer");
+        StoryCompiler.Result compiled = loadPersona("farmer");
+        assertTrue(compiled.knots().get("overheard_sit").tags().contains("overheard: once"));
     }
 
     @Test
@@ -154,6 +173,10 @@ class StoryCompilerTest {
         List<String> issues = new java.util.ArrayList<>();
         Stories.build(net.minecraft.resources.ResourceLocation.tryParse("townstead:persona/" + id), files, issues,
                 net.minecraft.resources.ResourceLocation.tryParse("townstead:" + id), new LinkedHashMap<>());
+        // Pheno types register at mod start, which unit tests skip; every other error still fails.
+        List<String> errors = issues.stream().filter(i -> i.startsWith("error:"))
+                .filter(i -> !i.contains("not a known Pheno")).toList();
+        assertTrue(errors.isEmpty(), () -> "errors: " + errors);
         return compiled;
     }
 

@@ -1,0 +1,38 @@
+{
+  "schema": "pheno:entity_state/v1",
+  "mods": "werewolves",
+  "id": "townstead_state:werewolf",
+  "body": "villager",
+  "min": 0,
+  "max": 14,
+  "initial": 0,
+  "tiers": [
+    {
+      "id": "infected",
+      "min": 0.5
+    },
+    {
+      "id": "werewolf",
+      "min": 1
+    },
+    {
+      "id": "elder",
+      "min": 10
+    }
+  ],
+  "merge": "max",
+  "persistence": "persistent",
+  "death": "keep",
+  "aspect": {
+    "display": true,
+    "level": true,
+    "pickable": true,
+    "faction": "werewolves:werewolf",
+    "pick": 1
+  },
+  "excludes": [
+    "townstead_state:vampire",
+    "townstead_state:dhampir",
+    "townstead_state:thrall"
+  ]
+}

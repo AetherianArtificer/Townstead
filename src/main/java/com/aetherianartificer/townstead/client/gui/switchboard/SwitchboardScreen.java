@@ -166,6 +166,7 @@ public class SwitchboardScreen extends MenuBackgroundScreen {
 
     private void initPeoples(int y) {
         y = worldToggle(SettingIndex.keyOf(TownsteadConfig.ALLOW_ROOT_CHOICE_IN_DESTINY), y);
+        y = worldToggle(SettingIndex.keyOf(TownsteadConfig.ALLOW_ASPECT_START), y);
         if (model.catalog.roots.stream().anyMatch(ContentCatalog.RootRow::hostile)) {
             y = worldToggle(SettingIndex.keyOf(TownsteadConfig.ROOT_HOSTILITY), y);
         }

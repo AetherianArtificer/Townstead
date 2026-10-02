@@ -106,6 +106,9 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
     public static final ModConfigSpec.BooleanValue SHOW_VILLAGER_AGE;
     public static final ModConfigSpec.BooleanValue USE_RPG_DIALOGUE;
+    public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.client.gui.dialogue.DialogueTextSpeed> DIALOGUE_TEXT_SPEED;
+    public static final ModConfigSpec.ConfigValue<String> DIALOGUE_THEME;
+    public static final ModConfigSpec.BooleanValue CHARACTER_DIALOGUE_THEMES;
     public static final ModConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.temperature.TemperatureData.Unit> TEMPERATURE_UNIT;
     public static final ModConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
@@ -141,6 +144,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_LINEAGES;
     public static final ModConfigSpec.BooleanValue ALLOW_ROOT_CHOICE_IN_DESTINY;
+    public static final ModConfigSpec.BooleanValue ALLOW_ASPECT_START;
     public static final ModConfigSpec.IntValue ROOT_DISCOVERY_HEARTS;
     public static final ModConfigSpec.BooleanValue ROOT_HOSTILITY;
     public static final ModConfigSpec.BooleanValue PEACEFUL_ROOTS_SHARE_VILLAGES;
@@ -220,6 +224,9 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue USE_TOWNSTEAD_CATALOG;
     public static final ForgeConfigSpec.BooleanValue SHOW_VILLAGER_AGE;
     public static final ForgeConfigSpec.BooleanValue USE_RPG_DIALOGUE;
+    public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.client.gui.dialogue.DialogueTextSpeed> DIALOGUE_TEXT_SPEED;
+    public static final ForgeConfigSpec.ConfigValue<String> DIALOGUE_THEME;
+    public static final ForgeConfigSpec.BooleanValue CHARACTER_DIALOGUE_THEMES;
     public static final ForgeConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.temperature.TemperatureData.Unit> TEMPERATURE_UNIT;
     public static final ForgeConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
@@ -255,6 +262,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_LINEAGES;
     public static final ForgeConfigSpec.BooleanValue ALLOW_ROOT_CHOICE_IN_DESTINY;
+    public static final ForgeConfigSpec.BooleanValue ALLOW_ASPECT_START;
     public static final ForgeConfigSpec.IntValue ROOT_DISCOVERY_HEARTS;
     public static final ForgeConfigSpec.BooleanValue ROOT_HOSTILITY;
     public static final ForgeConfigSpec.BooleanValue PEACEFUL_ROOTS_SHARE_VILLAGES;
@@ -653,6 +661,10 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.roots.allowRootChoiceInDestiny")
                 .comment("Let players choose their own Root in Destiny. When false, players keep the default Root unless an operator changes it.")
                 .define("allowRootChoiceInDestiny", true);
+        ALLOW_ASPECT_START = b
+                .translation("townstead.configuration.roots.allowAspectStart")
+                .comment("Let players start as a vampire, werewolf or dhampir from the Aspects page, once, before they join any faction. Operators can always set aspects.")
+                .define("allowAspectStart", true);
         ROOT_DISCOVERY_HEARTS = b
                 .translation("townstead.configuration.roots.discoveryHearts")
                 .comment("Hearts a player needs with a villager of a Discoverable Root to discover it for the whole server.")
@@ -822,6 +834,18 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.dialogue.useRpgDialogue")
                 .comment("Show the Townstead visual overlay on MCA's talk screen. Set to false to use MCA's default talk screen.")
                 .define("useRpgDialogue", true);
+        DIALOGUE_TEXT_SPEED = clientBuilder
+                .translation("townstead.configuration.dialogue.textSpeed")
+                .comment("How fast dialogue text types out: SLOW, NORMAL, FAST, or INSTANT (each line shown whole).")
+                .defineEnum("dialogueTextSpeed", com.aetherianartificer.townstead.client.gui.dialogue.DialogueTextSpeed.NORMAL);
+        DIALOGUE_THEME = clientBuilder
+                .translation("townstead.configuration.dialogue.theme")
+                .comment("The dialogue theme to use, by id. Resource packs add themes under assets/<namespace>/dialogue_theme/, data packs under data/<namespace>/dialogue_theme/.")
+                .define("dialogueTheme", "townstead:classic");
+        CHARACTER_DIALOGUE_THEMES = clientBuilder
+                .translation("townstead.configuration.dialogue.characterThemes")
+                .comment("Let characters with their own dialogue theme restyle the dialogue screen while they speak.")
+                .define("characterDialogueThemes", true);
         SHOW_VILLAGER_AGE = clientBuilder
                 .translation("townstead.configuration.dialogue.showVillagerAge")
                 .comment("Show a villager's age next to their birthday when you hover their name on the interact screen.")
@@ -997,6 +1021,31 @@ public final class TownsteadConfig {
      * false, MCA's own dialogue runs instead. Client config, so it defaults to true whenever
      * the value is not loaded.
      */
+    public static String dialogueTheme() {
+        try {
+            return DIALOGUE_THEME == null ? "townstead:classic" : DIALOGUE_THEME.get();
+        } catch (Exception e) {
+            return "townstead:classic";
+        }
+    }
+
+    public static boolean characterDialogueThemes() {
+        try {
+            return CHARACTER_DIALOGUE_THEMES == null || CHARACTER_DIALOGUE_THEMES.get();
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    public static com.aetherianartificer.townstead.client.gui.dialogue.DialogueTextSpeed dialogueTextSpeed() {
+        try {
+            return DIALOGUE_TEXT_SPEED == null ? com.aetherianartificer.townstead.client.gui.dialogue.DialogueTextSpeed.NORMAL
+                    : DIALOGUE_TEXT_SPEED.get();
+        } catch (Exception e) {
+            return com.aetherianartificer.townstead.client.gui.dialogue.DialogueTextSpeed.NORMAL;
+        }
+    }
+
     public static boolean isRpgDialogueEnabled() {
         try {
             return USE_RPG_DIALOGUE == null || USE_RPG_DIALOGUE.get();

@@ -51,7 +51,9 @@ public final class PhenoSchemas {
         // --- Gene types (their behavior tree starts here) ---
         NodeSchemas.register(NodeSchema.of("pheno:trigger", NodeDomain.GENE)
                 .doc("Runs an action when a life-cycle event fires (attack, hurt, kill, land, ...).")
-                .field(required("trigger", PhenoType.STRING).doc("Event: when_attack, when_hurt, when_kill, ..."))
+                .field(required("trigger", PhenoType.STRING).doc("Event: when_attack, when_hurt, when_kill, when_work, ..."))
+                .field(of("verbs", PhenoType.ANY).doc("when_work only: work verb or list of verbs (e.g. townstead:harvested); omitted accepts all."))
+                .field(of("item_condition", PhenoType.OBJECT).doc("when_item_use: the used item. when_work: the work's output."))
                 .field(of("target", PhenoType.STRING).doc("self or other (the counterpart entity)."))
                 .field(required("action", PhenoType.ACTION))
                 .field(of("condition", PhenoType.CONDITION))
@@ -104,13 +106,17 @@ public final class PhenoSchemas {
         NodeSchemas.register(NodeSchema.of("pheno:modifier", NodeDomain.GENE)
                 .doc("Scales a server mechanic: healing, damage_dealt, break_speed, jump, exhaustion, "
                         + "xp_gain, food, projectile_damage, breeding_cooldown, status_effect_duration/"
-                        + "amplifier (with effect), enchantment_level (with enchantment, shape only). "
+                        + "amplifier (with effect), enchantment_level (with enchantment, shape only), "
+                        + "durability_loss, fishing_lure, fishing_luck, anvil_break_chance, "
+                        + "anvil_material_repair, anvil_prior_work, farmland_trample. "
                         + "Folds onto the live base through the capability layer.")
                 .field(of("target", PhenoType.STRING).doc("Intercept point (v1 alias: modifier)."))
                 .field(of("modifier", PhenoType.STRING).doc("v1 name for target."))
                 .field(of("value", PhenoType.FLOAT).doc("v1 scalar paired with operation."))
                 .field(of("operation", PhenoType.STRING).doc("multiply (default), add, set, min, max."))
                 .field(of("effect", PhenoType.ID).doc("Discriminator for status_effect_* targets."))
+                .field(of("item_condition", PhenoType.OBJECT).doc("Only when the item the mechanic acts on passes (tool, rod, anvil item); never applies where there is no item."))
+                .field(of("applies_to", PhenoType.OBJECT).doc("Aura: {radius (max 16), self (default true), condition on each receiver}."))
                 .field(of("enchantment", PhenoType.ID).doc("Discriminator for enchantment_level."))
                 .field(of("condition", PhenoType.CONDITION))
                 .field(of("when", PhenoType.CONDITION).doc("v2 alias for condition.")).build());
@@ -417,6 +423,10 @@ public final class PhenoSchemas {
                 .field(of("z", PhenoType.INT))
                 .field(required("block_action", PhenoType.BLOCK_ACTION)).primaryChild("block_action").build());
 
+        NodeSchemas.register(NodeSchema.of("pheno:accelerate", NodeDomain.BLOCK_ACTION)
+                .doc("Runs the block entity's own ticker extra times (stations work further along). "
+                        + "Blocks in #townstead:never_accelerate are skipped.")
+                .field(of("ticks", PhenoType.INT).doc("Extra ticks, 1 to 200 (default 1).")).build());
         NodeSchemas.register(NodeSchema.of("pheno:set_block", NodeDomain.BLOCK_ACTION)
                 .doc("Replaces the focused block; the id may be literal or derived from the current block.")
                 .field(required("block", PhenoType.ANY))

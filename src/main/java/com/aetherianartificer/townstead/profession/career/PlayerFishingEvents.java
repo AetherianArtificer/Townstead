@@ -37,6 +37,7 @@ public final class PlayerFishingEvents {
         if (!(player.level() instanceof ServerLevel level)) return;
         if (event.getDrops().isEmpty()) return;
         CareerProgression.completeWork(player, Careers.FISHERMAN, XP_CATCH, level.getGameTime(),
-                "townstead:fished", null, null, XP_CATCH);
+                "townstead:fished", null, null, XP_CATCH,
+                event.getHookEntity().blockPosition(), event.getDrops().get(0));
     }
 }

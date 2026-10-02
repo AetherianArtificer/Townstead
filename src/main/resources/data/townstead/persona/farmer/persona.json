@@ -35,12 +35,26 @@
     "has_farm": { "type": "pheno:village", "has_building": "farm" },
     "has_granary": { "type": "pheno:village", "has_building": "granary" },
     "seasons_on": { "type": "pheno:season", "season": ["spring", "summer", "autumn", "winter"] },
-    "autumn": { "type": "pheno:season", "season": ["autumn"] }
+    "autumn": { "type": "pheno:season", "season": ["autumn"] },
+    "rich_soil": { "type": "pheno:exists", "block": "farmersdelight:rich_soil_farmland" },
+    "nutrient_soil": { "type": "pheno:exists", "block": ["#tfc:farmland", "#tfc:farmlands"] },
+    "paddy_rice": { "type": "pheno:exists", "block": "tfc:crop/rice" },
+    "big_crops": { "type": "pheno:exists", "block": ["farm_and_charm:lettuce_crop", "farm_and_charm:onion_crop"] },
+    "trader_near": {
+      "type": "pheno:entity_in_radius",
+      "radius": 24,
+      "condition": { "type": "pheno:entity_type", "entity_type": "minecraft:wandering_trader" }
+    }
   },
   "goals": {
     "field_plan": {
       "text": "Place a Field Post over {teller}'s fields and paint a plan",
       "condition": { "type": "pheno:in_work_area", "area": "townstead:field_post", "at": "job_site" }
+    },
+    "watered": {
+      "text": "Get water into a Water cell of the plan",
+      "event": "townstead:work_completed",
+      "where": { "verb": "townstead:irrigated" }
     },
     "first_harvest": {
       "text": "{teller} brings in the first harvest",
@@ -53,6 +67,41 @@
       "event": "townstead:work_completed",
       "where": { "verb": "townstead:harvested" },
       "distinct": "objectId"
+    },
+    "rich_harvest": {
+      "text": "Harvest {count} crops grown on rich soil",
+      "count": 8,
+      "event": "townstead:work_completed",
+      "where": { "verb": "townstead:harvested" },
+      "entity": "worker",
+      "condition": {
+        "type": "pheno:block_in_radius",
+        "radius": 2,
+        "block_condition": { "type": "pheno:block", "block": "farmersdelight:rich_soil_farmland" }
+      }
+    },
+    "giant": {
+      "text": "Harvest {count} pumpkins or melons",
+      "count": 4,
+      "event": "townstead:work_completed",
+      "where": { "verb": "townstead:harvested", "objectId": ["minecraft:pumpkin", "minecraft:melon_slice", "tfc:pumpkin", "tfc:melon"] }
+    },
+    "giant_crop": {
+      "text": "Harvest a giant crop",
+      "event": "townstead:work_completed",
+      "where": { "verb": "townstead:harvested", "magnitude": { "min": 9 } }
+    },
+    "fed_soil": {
+      "text": "The farmers fertilize the soil {count} times",
+      "count": 8,
+      "event": "townstead:work_completed",
+      "where": { "verb": "townstead:fertilized" }
+    },
+    "rice": {
+      "text": "Harvest {count} rice",
+      "count": 8,
+      "event": "townstead:work_completed",
+      "where": { "verb": "townstead:harvested", "objectId": "tfc:food/rice" }
     },
     "fed": {
       "text": "Get the village's hunger to a good level",

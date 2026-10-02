@@ -47,9 +47,9 @@ class LevelSchemaTest {
                 "path skills pool like any other skill; the path steers who buys them");
         assertTrue(cook.skills().contains(id("townstead:cook/pizzaiolo/pizza_spin")),
                 "ability skills are ordinary skills; only their power block differs");
-        // One path of ten options plus the two skills belonging to no path, which compete for
-        // the same picks.
-        assertEquals(12, cook.skills().size());
+        // One path of fifteen options (five ranks of three columns) plus the two skills belonging
+        // to no path, which compete for the same picks.
+        assertEquals(17, cook.skills().size());
     }
 
     /** Cook's progression ships as a sidecar, merged here the same way the scanner does. */
