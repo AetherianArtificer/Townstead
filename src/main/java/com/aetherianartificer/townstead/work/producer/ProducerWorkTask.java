@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.work.producer;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.work.WorkMovement;
 import com.aetherianartificer.townstead.work.WorkBuildingNav;
 import com.aetherianartificer.townstead.work.WorkNavigationResult;
@@ -279,7 +280,9 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
                 villager,
                 com.aetherianartificer.townstead.profession.def.ProfessionDefs.canonicalId(profession),
-                xp, gameTime, activityKey(), activeRecipe.output(), "item", activeRecipe.tier());
+                xp, gameTime, activityKey(), activeRecipe.output(), "item", activeRecipe.tier(),
+                java.util.Map.of(), stationAnchor,
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.get(activeRecipe.output()).getDefaultInstance());
     }
 
     // ── Optional hooks (default no-op) ──
@@ -364,7 +367,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
      * get diagnosed by guesswork.</p>
      */
     protected void debugChat(ServerLevel level, VillagerEntityMCA villager, String message) {
-        if (!com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
+        if (!Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI)) return;
         if (!(level.getNearestPlayer(villager, DEBUG_CHAT_RANGE)
                 instanceof net.minecraft.server.level.ServerPlayer player)) return;
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(

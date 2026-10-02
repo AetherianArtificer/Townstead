@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "close_discreet",
+  "lines": {
+    "forget_i_said_anything": "Forget I said anything.",
+    "anyway_nice_weather_were_having": "Anyway. Nice weather we're having.",
+    "right_i_was_never_here": "Right. I was never here.",
+    "not_a_word_to_anyone": "Not a word to anyone.",
+    "lets_talk_about_something_else": "Let's talk about something else.",
+    "anyway_lovely_day": "Anyway! Lovely day.",
+    "right_moving_on": "Right. Moving on.",
+    "we_never_had_this_talk": "We never had this talk."
+  }
+}

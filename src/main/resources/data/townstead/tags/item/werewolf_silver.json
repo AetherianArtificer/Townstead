@@ -1,0 +1,28 @@
+{
+  "values": [
+    {
+      "id": "#c:nuggets/silver",
+      "required": false
+    },
+    {
+      "id": "#c:ingots/silver",
+      "required": false
+    },
+    {
+      "id": "werewolves:silver_ingot",
+      "required": false
+    },
+    {
+      "id": "werewolves:silver_nugget",
+      "required": false
+    },
+    {
+      "id": "#forge:nuggets/silver",
+      "required": false
+    },
+    {
+      "id": "#forge:ingots/silver",
+      "required": false
+    }
+  ]
+}

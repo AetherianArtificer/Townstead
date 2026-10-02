@@ -12,8 +12,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class BondLedgerTest {
     @BeforeAll static void kinds() {
         BondKinds.replaceAll(Map.of(
-                ResourceLocation.tryParse("test:friend"), new BondKind(ResourceLocation.tryParse("test:friend"), "", "Friend", 0, true, true, null),
-                ResourceLocation.tryParse("test:marriage"), new BondKind(ResourceLocation.tryParse("test:marriage"), "", "Marriage", 1, true, true, null)));
+                ResourceLocation.tryParse("test:friend"), BondKind.personal(ResourceLocation.tryParse("test:friend"), "Friend", 0, true, true, null),
+                ResourceLocation.tryParse("test:marriage"), BondKind.personal(ResourceLocation.tryParse("test:marriage"), "Marriage", 1, true, true, null)));
     }
 
     @Test void recognizedBondSurvivesReloadAndOperationReplay() {

@@ -27,6 +27,7 @@ public final class WorkJobs {
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/WorkJobs");
     private static volatile List<WorkJobDef> DEFINITIONS = List.of();
     private static volatile Set<ResourceLocation> DECLARED_TASKS = Set.of();
+    private static volatile Map<ResourceLocation, List<WorkJobDef>> MARTIAL = Map.of();
 
     private WorkJobs() {}
 
@@ -50,6 +51,11 @@ public final class WorkJobs {
         List<WorkJobDef> out = new ArrayList<>();
         for (WorkJobDef def : DEFINITIONS) if (def.type().equals(type)) out.add(def);
         return List.copyOf(out);
+    }
+
+    /** The martial Jobs attached to a task id; precomputed, so hot checks allocate nothing. */
+    public static List<WorkJobDef> martial(ResourceLocation task) {
+        return MARTIAL.getOrDefault(task, List.of());
     }
 
     /** Every Job document attached to a profession-facing task id. */
@@ -116,6 +122,12 @@ public final class WorkJobs {
                 loaded.add(def);
             }
             DEFINITIONS = List.copyOf(loaded);
+            Map<ResourceLocation, List<WorkJobDef>> martial = new java.util.HashMap<>();
+            for (WorkJobDef def : loaded) {
+                if (def.martial() != null) martial.computeIfAbsent(def.task(), key -> new ArrayList<>()).add(def);
+            }
+            martial.replaceAll((task, jobs) -> List.copyOf(jobs));
+            MARTIAL = Map.copyOf(martial);
             DECLARED_TASKS = Set.copyOf(declaredTasks);
             LOGGER.info("Loaded {} work job definitions", loaded.size());
         }

@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.client.animation;
 
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.client.animation.emote.EmoteRegistry;
 import com.aetherianartificer.townstead.client.animation.emote.EmotecraftAnimationSourceAdapter;
@@ -40,6 +42,7 @@ public final class McaAnimationBridge {
     private static final List<AnimationSourceAdapter> SOURCES = List.of(
             EMF_ADAPTER,
             ROOT_ADAPTER,
+            new FatigueAnimationSourceAdapter(),
             BENCH_ADAPTER,
             STOOL_ADAPTER,
             new ReclineAnimationSourceAdapter(),
@@ -68,6 +71,7 @@ public final class McaAnimationBridge {
 
     /** Drop cached CEM programs so the next render reloads from the current pack stack. */
     public static void onResourcesReloaded() {
+        AnimationTargetMap.clearCache();
         EmfCompat.register();
         EMF_ADAPTER.invalidate();
         EmoteReflection.invalidate();
@@ -155,9 +159,8 @@ public final class McaAnimationBridge {
             return;
         }
 
-        // Skip gliders: fall-flight poses the whole body horizontal in setupRotations,
-        // and walk/idle transforms layered on top bend the model in the wrong space.
-        if (entity.isFallFlying()) return;
+        // Flight still needs provider evaluation: the authored fly source selects its
+        // gliding pose. setupRotations handles whole-entity orientation separately.
 
         McaAnimationParameters parameters = McaAnimationParameters.from(
                 entity,
@@ -207,19 +210,28 @@ public final class McaAnimationBridge {
         BendStateRegistry.clearEntity(entity.getUUID());
 
         boolean anyAvailable = false;
+        boolean diagnostics = Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_LOGGING);
         for (AnimationSourceAdapter source : SOURCES) {
-            if (source == EMF_ADAPTER && MCA_NATIVE_EMF && !rigTargets) continue;
+            if (source == EMOTE_ADAPTER
+                    && com.aetherianartificer.townstead.client.animation.nativeclip.NativePlaybackRegistry
+                    .hasCollapse(entity.getId(), entity.level().getGameTime())) continue;
+            if (source == EMF_ADAPTER && MCA_NATIVE_EMF && !rigTargets
+                    && !GeneAnimations.ownsProviderSelection(entity)) continue;
             if (!source.isAvailable()) continue;
             anyAvailable = true;
             List<AnimationTransform> transforms = source.collectTransforms(context);
-            McaModelPartApplier.ApplyStats stats = McaModelPartApplier.applyWithStats(source.id(), targets, transforms);
+            if (diagnostics) {
+                var stats = McaModelPartApplier.applyWithStats(source.id(), targets, transforms);
+                logDiagnostic(entity, model, source.id(), transforms, stats);
+            } else {
+                McaModelPartApplier.apply(source.id(), targets, transforms);
+            }
             for (AnimationTransform t : transforms) {
                 if (t.applyBend() && t.bend() != null && t.bendDirection() != null) {
                     BendStateRegistry.put(entity.getUUID(), t.target(),
                             t.bendDirection(), t.bend());
                 }
             }
-            logDiagnostic(entity, model, source.id(), transforms, stats);
         }
 
         syncMcaDependentParts(model, breasts, localOffsetX, localOffsetY, localOffsetZ);
@@ -237,18 +249,20 @@ public final class McaAnimationBridge {
             List<AnimationTransform> transforms,
             McaModelPartApplier.ApplyStats stats
     ) {
-        if (!com.aetherianartificer.townstead.TownsteadConfig.DEBUG_LOGGING.get()) return;
+        if (!Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_LOGGING)) return;
         if (!"emf".equals(sourceId)
                 && !("emotes".equals(sourceId) && !transforms.isEmpty())
+                && !("fatigue".equals(sourceId) && !transforms.isEmpty())
                 && !("native_performance".equals(sourceId) && !transforms.isEmpty())) return;
         long tick = entity.level().getGameTime();
         if (tick - lastDiagnosticTick < 120L) return;
         lastDiagnosticTick = tick;
         Townstead.LOGGER.info(
-                "[AnimationBridge] diagnostic source={} entity={} model={} transforms={} appliedParts={} largestDelta={} sample={}",
+                "[AnimationBridge] diagnostic source={} entity={} model={} entityCrouch={} modelCrouch={} bodyPitch={} transforms={} appliedParts={} largestDelta={} sample={}",
                 sourceId,
                 entity.getType().builtInRegistryHolder().key().location(),
                 model.getClass().getName(),
+                entity.isCrouching(), model.crouching, model.body.xRot,
                 transforms.size(),
                 stats.appliedParts(),
                 stats.largestDelta(),
@@ -327,7 +341,7 @@ public final class McaAnimationBridge {
      * are excluded: {@link RootAnimationSourceAdapter} re-asserts their crouch through the rig bone
      * map, deliberately layered on top of the pack pose.</p>
      */
-    private static void restoreHostCrouch(HumanoidModel<?> model) {
+    static void restoreHostCrouch(HumanoidModel<?> model) {
         if (!model.crouching) return;
         model.body.xRot = 0.5f;
         model.body.y = 3.2f;

@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+import com.aetherianartificer.townstead.profession.career.PlayerFishingEvents;
 import com.aetherianartificer.townstead.compat.starcatcher.StarcatcherCompat;
 import com.aetherianartificer.townstead.dock.Dock;
 import com.aetherianartificer.townstead.dock.DockBerthClaims;
@@ -343,7 +345,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     // ── Phase handlers ──
 
     private void tickIdle(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        int threshold = Math.max(1, TownsteadConfig.FISHERMAN_INVENTORY_FULL_THRESHOLD.get());
+        int threshold = Math.max(1, Switchboard.get(TownsteadConfig.FISHERMAN_INVENTORY_FULL_THRESHOLD));
         int nonRodCount = countNonRodItems(villager.getInventory());
         // An activity line governs future casts, never a catch already in flight. Pausing while
         // the bobber is out therefore lets that cast finish; once idle, the fisherman carries
@@ -483,7 +485,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             return;
         }
         if (result == WorkNavigationResult.BLOCKED) {
-            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
                 LOGGER.info("[Fisherman] GO_TO_WATER blocked: villager@({},{},{}) stand={} water={} anchor={}",
                         villager.getX(), villager.getY(), villager.getZ(),
                         stand, currentWaterSpot == null ? "?" : currentWaterSpot.waterPos(),
@@ -580,7 +582,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                 net.minecraft.sounds.SoundSource.NEUTRAL,
                 0.5F, 0.4F / (level.random.nextFloat() * 0.4F + 0.8F));
 
-        int lure = townstead$fishingSpeedLevel(level, currentRod) + townstead$dockLureBonus();
+        int lure = com.aetherianartificer.townstead.root.hook.PhenoHooks.fishingLure(villager, currentRod,
+                townstead$fishingSpeedLevel(level, currentRod) + townstead$dockLureBonus());
         int wait = BITE_MIN_TICKS + level.random.nextInt(Math.max(1, BITE_RANDOM_TICKS))
                 - lure * BITE_LURE_REDUCTION_TICKS;
         int floor = BITE_MIN_TICKS;
@@ -635,8 +638,10 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         // the owner-hand check.
         fakePlayer.setItemInHand(InteractionHand.MAIN_HAND, townstead$vanillaRodProxy());
 
-        int luck = townstead$fishingLuckLevel(level, currentRod) + townstead$dockLuckBonus();
-        int lure = townstead$fishingSpeedLevel(level, currentRod) + townstead$dockLureBonus();
+        int luck = com.aetherianartificer.townstead.root.hook.PhenoHooks.fishingLuck(villager, currentRod,
+                townstead$fishingLuckLevel(level, currentRod) + townstead$dockLuckBonus());
+        int lure = com.aetherianartificer.townstead.root.hook.PhenoHooks.fishingLure(villager, currentRod,
+                townstead$fishingSpeedLevel(level, currentRod) + townstead$dockLureBonus());
 
         // Vanilla constructor places the hook 0.3 blocks forward of the
         // FakePlayer at eye height and applies the normalized look-vector
@@ -656,7 +661,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         nextHookLinkSyncTick = level.getGameTime() + HOOK_LINK_REFRESH_TICKS;
         townstead$broadcastHookLink(level, hook, villager,
                 waterPos.getX() + 0.5D, waterPos.getY() + 0.5D, waterPos.getZ() + 0.5D);
-        if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+        if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
             LOGGER.info("[Fisherman] cast hook id={} from ({},{},{}) yaw={} pitch={} horizDist={} dy={} v={}",
                     hook.getId(), villager.getX(), villager.getY(), villager.getZ(),
                     yaw, pitch, horizDist, dy, hook.getDeltaMovement());
@@ -902,11 +907,13 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
         List<ItemStack> loot = rollCatch(level, villager, hook, rod, rodCopy, origin);
         townstead$depositFishingLoot(level, villager, loot);
+        awardCatch(villager, loot, gameTime);
 
         if (townstead$dockDoubleCatchTriggers(level)) {
             List<ItemStack> bonus = rollCatch(level, villager, hook, rod, rodCopy, origin);
             townstead$depositFishingLoot(level, villager, bonus);
-            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            awardCatch(villager, bonus, gameTime);
+            if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
                 LOGGER.info("[Fisherman] wharf double-catch (tier {}) yielded {} extra item(s)",
                         currentDock.tier(), bonus.size());
             }
@@ -929,6 +936,15 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
         nextCastReadyTick = gameTime + CAST_COOLDOWN_TICKS;
         enterPhase(Phase.IDLE, gameTime);
+    }
+
+    /** Every reel that lands something is one catch on the Fisherman career record. */
+    private static void awardCatch(VillagerEntityMCA villager, List<ItemStack> loot, long gameTime) {
+        if (loot == null || loot.isEmpty()) return;
+        com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
+                villager, com.aetherianartificer.townstead.profession.career.Careers.FISHERMAN,
+                PlayerFishingEvents.XP_CATCH, gameTime, "townstead:fished", null, null,
+                PlayerFishingEvents.XP_CATCH, null, loot.get(0));
     }
 
     private void tickReturnToBarrel(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -982,7 +998,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             return;
         }
         if (result == WorkNavigationResult.BLOCKED) {
-            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
                 double ddx = villager.getX() - (target.getX() + 0.5);
                 double ddy = villager.getY() - target.getY();
                 double ddz = villager.getZ() - (target.getZ() + 0.5);
@@ -1111,7 +1127,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     }
 
     private int townstead$waterSearchRadius() {
-        return Math.max(4, TownsteadConfig.FISHERMAN_WATER_SEARCH_RADIUS.get());
+        return Math.max(4, Switchboard.get(TownsteadConfig.FISHERMAN_WATER_SEARCH_RADIUS));
     }
 
     private int townstead$waterFallbackRadius() {
@@ -1536,7 +1552,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                 villager, PROFESSION, "dock_first_use", level.getGameTime())) return;
         villager.getLongTermMemory().remember(MEMORY_FIRST_DOCK_USE);
         // Small, personal ack effect on the villager — MAJOR/GRAND are reserved
-        // for structural dock milestones and fire from DockScanner instead.
+        // for structural dock milestones and fire from building recognition instead.
         RecognitionEffects.play(level, villager.position().add(0, 1.0, 0),
                 RecognitionEffects.Tier.MINOR);
     }
@@ -1544,7 +1560,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     // ── Debug ──
 
     private void debugTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
+        if (!Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) return;
         if (gameTime < nextDebugTick) return;
         if (!(level.getNearestPlayer(villager, REQUEST_RANGE) instanceof ServerPlayer player)) return;
         String name = villager.getName().getString();
@@ -1569,7 +1585,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                     + " water=" + water;
         }
         int invNonRod = countNonRodItems(villager.getInventory());
-        int invThreshold = Math.max(1, TownsteadConfig.FISHERMAN_INVENTORY_FULL_THRESHOLD.get());
+        int invThreshold = Math.max(1, Switchboard.get(TownsteadConfig.FISHERMAN_INVENTORY_FULL_THRESHOLD));
         String invSummary = townstead$summarizeInventory(villager.getInventory());
         String dockInfo;
         if (currentDock == null) {

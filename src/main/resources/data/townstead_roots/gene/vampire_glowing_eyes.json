@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "townstead_roots:iris",
+  "display_name": {
+    "translate": "gene.townstead_roots.vampire_glowing_eyes"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.vampire_glowing_eyes.desc"
+  },
+  "category": "Appearance",
+  "tint": "#FF2A2A",
+  "glow": true
+}

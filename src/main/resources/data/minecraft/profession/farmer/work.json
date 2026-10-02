@@ -1,9 +1,10 @@
 {
   "schema": "townstead:profession_work/v1",
   "poi": [
-    { "type": "townstead:job_block", "block": "minecraft:composter" }
+    { "type": "townstead:job_block", "blocks": ["minecraft:composter", "tfc:composter"] }
   ],
   "tasks": [
     { "type": "townstead_work:harvest", "weight": 10 }
-  ]
+  ],
+  "storage": { "preferred_roles": ["townstead:agricultural"] }
 }

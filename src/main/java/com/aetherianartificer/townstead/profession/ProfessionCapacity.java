@@ -22,12 +22,10 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Village workplace counting for careers whose def declares {@code via} surfaces. Capacity is
- * DESCRIPTIVE, never enforced: vanilla block logic stands — a claimed job block is a job — and
- * this class just counts honestly for the picker and the cook-site list. Every claimed via-POI
- * is a workable post (a pot inside a kitchen and a pot in a courtyard both employ someone);
- * building slots add the Townstead-assigned positions on top. Schema predicates live in
- * {@link com.aetherianartificer.townstead.profession.def.PoiHierarchy} (MCA-free, test-loadable).
+ * Village workplace counting for data-defined careers. Buildings and explicitly grouped
+ * job blocks supply Townstead-managed seats; ordinary one-block/one-worker professions
+ * retain native POI ownership. Grouped workloads without building providers include indoor
+ * stations too, so adding several regulators to a room does not hire one worker per block.
  */
 public final class ProfessionCapacity {
 
@@ -135,7 +133,7 @@ public final class ProfessionCapacity {
             // A plain job-block-only profession remains vanilla/MCA-owned. A direct block in a
             // building hierarchy is different: it is the standalone fallback after the building
             // seats, including feature POIs such as beehives whose max ticket count is zero.
-            if (block.via() == null && !hasBuildingProvider) continue;
+            if (block.via() == null && !hasBuildingProvider && !block.ownsSeats()) continue;
             VillagerProfession surface = professionById(
                     block.via() == null ? def.id() : block.via());
             if (surface == null || surface == VillagerProfession.NONE) continue;
@@ -148,7 +146,8 @@ public final class ProfessionCapacity {
                     .map(BlockPos::immutable)
                     .filter(pos -> block.blocks().contains(BuiltInRegistries.BLOCK.getKey(
                             level.getBlockState(pos).getBlock())))
-                    .filter(pos -> !insideAnyBuilding(level, village, pos))
+                    .filter(pos -> (block.ownsSeats() && !hasBuildingProvider)
+                            || !insideAnyBuilding(level, village, pos))
                     .filter(seen::add)
                     .sorted(java.util.Comparator.<BlockPos>comparingInt(BlockPos::getY)
                             .thenComparingInt(BlockPos::getZ)

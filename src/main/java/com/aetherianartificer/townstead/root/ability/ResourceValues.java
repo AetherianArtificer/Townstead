@@ -65,6 +65,7 @@ public final class ResourceValues {
         int prev = get(entity, resourceId);
         int next = Math.max(instance.min(), Math.min(instance.max(), value));
         writeStored(entity, resourceId, next);
+        if (next != prev) Powers.invalidate(entity);
         if (next > prev && !instance.onReach().isEmpty()) {
             fireReach(entity, resourceId, instance, prev, next);
         }
@@ -299,6 +300,9 @@ public final class ResourceValues {
         storage.putInt("version", STORAGE_VERSION);
         storage.put(VALUES_KEY, values);
         writeStorage(entity, storage);
+        // Owned state values live here, so a state read this tick is now out of date.
+        com.aetherianartificer.townstead.pheno.state.EntityStates.invalidate(entity);
+        com.aetherianartificer.townstead.root.gene.GeneExpression.invalidate(entity);
     }
 
     private static CompoundTag readStorage(LivingEntity entity) {

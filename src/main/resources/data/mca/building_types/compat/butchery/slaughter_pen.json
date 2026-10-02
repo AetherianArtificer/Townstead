@@ -5,6 +5,8 @@
   "icon": false,
   "iconU": 245,
   "iconV": 192,
+  "margin": 8,
+  "mergeRange": 32,
   "blocks": {
     "butchery:blood_grate": 1,
     "#minecraft:fence_gates": 1,

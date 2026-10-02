@@ -30,6 +30,7 @@ import net.minecraft.world.level.storage.LevelResource;
 public final class ConfigGate {
 
     private static final long CACHE_NANOS = 1_000_000_000L;
+    private static final String OWN_SERVER_CONFIG = "townstead-server.toml";
     private static final ConcurrentHashMap<Path, CachedConfig> CACHE = new ConcurrentHashMap<>();
 
     private record CachedConfig(long checkedAt, long modified, long size,
@@ -52,6 +53,8 @@ public final class ConfigGate {
                 || expected == null || expected.isJsonNull()) return null;
 
         String scope = string(object.get("scope"));
+        Object own = ownServerValue(scope, file, path);
+        if (own != null) return compare(expected, own);
         Path root = "server".equalsIgnoreCase(scope == null ? "" : scope) && level != null
                 && level.getServer() != null
                 ? level.getServer().getWorldPath(LevelResource.ROOT).resolve("serverconfig")
@@ -105,6 +108,8 @@ public final class ConfigGate {
         if (file == null || file.isBlank() || path == null || path.isEmpty()) return fallback;
 
         String scope = string(object.get("scope"));
+        Object own = ownServerValue(scope, file, path);
+        if (own instanceof Number n) return n.doubleValue();
         Path root = "server".equalsIgnoreCase(scope == null ? "" : scope) && level != null
                 && level.getServer() != null
                 ? level.getServer().getWorldPath(LevelResource.ROOT).resolve("serverconfig")
@@ -174,6 +179,12 @@ public final class ConfigGate {
             CACHE.put(target, new CachedConfig(now, -1, -1, null));
             return null;
         }
+    }
+
+    /** Townstead's own server settings, read through the Switchboard so world overrides apply. */
+    private static @Nullable Object ownServerValue(@Nullable String scope, String file, List<String> path) {
+        if (!"server".equalsIgnoreCase(scope == null ? "" : scope) || !OWN_SERVER_CONFIG.equalsIgnoreCase(file)) return null;
+        return com.aetherianartificer.townstead.switchboard.Switchboard.valueAt(path);
     }
 
     private static @Nullable Boolean compare(JsonElement expected, @Nullable Object actual) {

@@ -1,6 +1,8 @@
 {
   "schema": "townstead:profession_path/v1",
-  "mods": ["bakery"],
+  "mods": [
+    "bakery"
+  ],
   "name": {
     "translate": "career.townstead.baker.path.jam_maker"
   },
@@ -11,9 +13,87 @@
   "worksites": [
     "bakery:small_cooking_pot"
   ],
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:proof",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:baker/jam_maker/slow_boil"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:baker/jam_maker/preserve_trap"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:baker/jam_maker/bee_friend"
+              }
+            ]
+          },
+          {
+            "type": "pheno:block_in_radius",
+            "radius": 6,
+            "block_condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:in_tag",
+                  "tag": "townstead:kitchen/heat_sources"
+                },
+                {
+                  "type": "pheno:block_state",
+                  "property": "lit",
+                  "value": "true",
+                  "if_missing": "pass"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:proof",
+        "amount": 1
+      }
+    }
+  ],
   "skills": [
-    "setting_point",
-    "clean_jar",
-    "slow_boil"
+    [
+      "clean_jar",
+      "jam_jar_toss",
+      "hive_smoke"
+    ],
+    [
+      "honey_keeper",
+      "setting_point",
+      "pollinate"
+    ],
+    [
+      "slow_boil",
+      "preserve_trap",
+      "bee_friend"
+    ],
+    [
+      "pantry",
+      "marmalade_moat",
+      "orchard_bloom"
+    ],
+    [
+      "harvest_home",
+      "jam_session",
+      "bramble_ward"
+    ]
   ]
 }

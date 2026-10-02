@@ -1,8 +1,0 @@
-{
-  "schema": "townstead:bond_kind/v1",
-  "display": { "translate": "bond.townstead.marriage" },
-  "max_active": 1,
-  "unique_per_pair": true,
-  "symmetric": true,
-  "source": "mca:marriage"
-}

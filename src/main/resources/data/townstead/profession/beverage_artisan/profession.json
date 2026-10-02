@@ -8,5 +8,9 @@
   "description": {
     "translate": "career.townstead.beverage_artisan.description"
   },
+  "skills": [
+    "taste_test",
+    "hospitality"
+  ],
   "unlock_model": "experiential"
 }

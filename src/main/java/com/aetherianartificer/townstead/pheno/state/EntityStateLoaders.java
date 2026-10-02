@@ -45,6 +45,14 @@ public final class EntityStateLoaders {
                     LOGGER.warn("Entity state {} rejected: {}", entry.getKey(), message(exception));
                 }
             }
+            for (EntityStateDefinition definition : loaded.values()) {
+                EntityStateDefinition.Inheritance inheritance = definition.aspect() == null ? null
+                        : definition.aspect().inheritance();
+                if (inheritance != null && inheritance.aspect() != null && !loaded.containsKey(inheritance.aspect())) {
+                    LOGGER.warn("Entity state {} passes on unknown aspect '{}'; children will not receive it",
+                            definition.id(), inheritance.aspect());
+                }
+            }
             EntityStates.replaceDefinitions(loaded);
             LOGGER.info("Loaded {} open entity-state identities", loaded.size());
         }
@@ -95,6 +103,9 @@ public final class EntityStateLoaders {
                     if (definition == null) throw new IllegalArgumentException("unknown canonical state '" + effect.state() + "'");
                     if (effect.tier() != null && definition.tier(effect.tier()) == null) {
                         throw new IllegalArgumentException("unknown tier '" + effect.tier() + "' for " + effect.state());
+                    }
+                    if (effect.minTier() != null && definition.tier(effect.minTier()) == null) {
+                        throw new IllegalArgumentException("unknown min_tier '" + effect.minTier() + "' for " + effect.state());
                     }
                     loaded.add(effect);
                 } catch (Exception exception) {

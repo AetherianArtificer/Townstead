@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.hunger;
 
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+
 import com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry;
 import com.aetherianartificer.townstead.compat.farming.FarmerRemovableWeedCompatRegistry;
 import com.aetherianartificer.townstead.farming.CropProductResolver;
@@ -21,7 +23,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ComposterBlock;
 import net.minecraft.world.level.block.CropBlock;
-import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.level.block.StemBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -119,6 +120,9 @@ public final class HarvestWorkIndex {
         List<BlockPos> hydratedTillTargets = new ArrayList<>();
         List<BlockPos> waterTargets = new ArrayList<>();
         List<BlockPos> groomTargets = new ArrayList<>();
+        List<BlockPos> supportTargets = new ArrayList<>();
+        List<BlockPos> ropeTargets = new ArrayList<>();
+        List<BlockPos> fertilizeTargets = new ArrayList<>();
         Set<Long> groomSeen = new HashSet<>();
 
         for (PlannedCell cell : blueprint.cells()) {
@@ -201,7 +205,7 @@ public final class HarvestWorkIndex {
                 if (!hasWater) {
                     if (isWaterPlaceable(soilState)) {
                         waterTargets.add(soilPos.immutable());
-                    } else if (com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+                    } else if (Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI)) {
                         org.slf4j.LoggerFactory.getLogger("townstead/HarvestWorkIndex").info(
                                 "WATER cell {} dry but not placeable: block={}", soilPos, soilState.getBlock());
                     }
@@ -219,7 +223,7 @@ public final class HarvestWorkIndex {
                 boolean matches = seedMatchesSoil(level, cell);
                 if (seedAllowed && plantable && matches) {
                     plantTargets.add(plantPos.immutable());
-                } else if (com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get() && seedAllowed) {
+                } else if (Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI) && seedAllowed) {
                     org.slf4j.LoggerFactory.getLogger("townstead/HarvestWorkIndex").info(
                             "WATER cell {} has water but no plant target: seed={}, plantPos={}, blockThere={}, blockBelow={}, plantable={}, matches={}",
                             soilPos, cell.seedAssignment(), plantPos,
@@ -227,6 +231,19 @@ public final class HarvestWorkIndex {
                             level.getBlockState(plantPos.below()).getBlock(),
                             plantable, matches);
                 }
+                continue;
+            }
+
+            // TRELLIS-painted cells: the ground stays solid, the farmer builds the support to the
+            // cell's height, plants each bare segment, and picks each ripe one.
+            if (cell.desiredSoil() == SoilType.TRELLIS) {
+                scanTrellisCell(level, blueprint, cell, harvestTargets, plantTargets, supportTargets);
+                continue;
+            }
+
+            if (cell.desiredSoil() == SoilType.PADDY) {
+                scanPaddyCell(level, blueprint, cell, soilState, cropState, harvestTargets, plantTargets,
+                        tillTargets, waterTargets, groomTargets, groomSeen);
                 continue;
             }
 
@@ -238,18 +255,62 @@ public final class HarvestWorkIndex {
                 }
             }
 
-            boolean soilIsFarmland = soilState.getBlock() instanceof FarmBlock;
+            // 1b. PLANT ON SUPPORT — bare trellis segments in this cell's column (Vinery stems).
+            // The seed goes onto the support block itself, one seed per segment.
+            if (!SeedAssignment.NONE.equals(cell.seedAssignment())) {
+                ItemStack assignedSeed = assignedSeedStack(cell);
+                BlockPos segment = cropPos;
+                for (int i = 0; i < FarmerCropCompatRegistry.MAX_COLUMN_HEIGHT; i++, segment = segment.above()) {
+                    BlockState segmentState = level.getBlockState(segment);
+                    if (!FarmerCropCompatRegistry.isColumnBlock(segmentState)) break;
+                    if (blueprint.isProtected(segment)) continue;
+                    boolean accepts = assignedSeed.isEmpty()
+                            ? FarmerCropCompatRegistry.isBareSupport(level, segment, segmentState)
+                            : FarmerCropCompatRegistry.canPlantOnSupport(level, segment, segmentState, assignedSeed);
+                    if (accepts) plantTargets.add(segment.immutable());
+                }
+            }
+
+            // 1c. ROPE — the top segment of a climbing crop that has a rope block hanging above it.
+            BlockPos columnTop = null;
+            for (int i = 0; i < FarmerCropCompatRegistry.MAX_COLUMN_HEIGHT; i++) {
+                BlockPos segment = cropPos.above(i);
+                if (!FarmerCropCompatRegistry.isColumnBlock(level.getBlockState(segment))) break;
+                columnTop = segment;
+            }
+            if (columnTop != null && !blueprint.isProtected(columnTop)
+                    && FarmerCropCompatRegistry.needsRope(level, columnTop, level.getBlockState(columnTop))) {
+                ropeTargets.add(columnTop.immutable());
+            } else if (columnTop == null && !blueprint.isProtected(cropPos)
+                    && FarmerCropCompatRegistry.needsRope(level, cropPos, cropState)) {
+                // A single crop block that takes its support straight on (a TFC climbing crop's stick).
+                ropeTargets.add(cropPos.immutable());
+            }
+
+            boolean soilIsFarmland = com.aetherianartificer.townstead.farming.Farmland.is(soilState);
             boolean soilIsCompat = FarmerCropCompatRegistry.isCompatibleSoil(level, soilPos);
 
             // 2. TILL — current soil doesn't match what the plan wants, and the current block can be turned into the target.
             // Accepts dirt-types or plain farmland (farmland gets upgraded to rich_soil_farmland if RICH_SOIL_TILLED).
             boolean currentMatchesDesired = soilMatchesDesired(level, soilPos, soilState, soilIsFarmland, soilIsCompat, cell.desiredSoil());
-            boolean currentIsReshapeable = isTillableDirt(soilState) || soilIsFarmland || soilIsCompat;
+            boolean currentIsReshapeable = com.aetherianartificer.townstead.farming.Farmland.canTill(level, soilPos, soilState) || soilIsFarmland || soilIsCompat;
             if (!currentMatchesDesired && currentIsReshapeable && canClearTillObstruction(cropState)) {
                 tillTargets.add(soilPos.immutable());
                 if (hasNearbyWater(level, soilPos)) {
                     hydratedTillTargets.add(soilPos.immutable());
                 }
+            }
+
+            // 2b. FERTILIZE — tilled nutrient farmland with a nutrient running low.
+            if (cell.desiredSoil() == SoilType.FERTILIZED_NUTRIENTS && soilIsFarmland
+                    && com.aetherianartificer.townstead.compat.farming.FarmerNutrientCompatRegistry.wantsFeeding(level, soilPos)) {
+                fertilizeTargets.add(soilPos.immutable());
+            }
+            // 2c. FERTILIZE the crop — a cell painted Fertilized (Bone Meal) whose crop is still
+            // growing, or is grown and can still grow bigger.
+            if (cell.desiredSoil() == SoilType.FERTILIZED_CROP && soilIsFarmland
+                    && com.aetherianartificer.townstead.farming.CropFertilizers.wantsFertilizer(level, cropPos, cropState)) {
+                fertilizeTargets.add(soilPos.immutable());
             }
 
             // 3. PLANT — crop slot empty, seed not NONE, and either vanilla farmland OR a compat plantable spot (FD rice in water).
@@ -286,8 +347,101 @@ public final class HarvestWorkIndex {
                 List.copyOf(hydratedTillTargets),
                 List.copyOf(waterTargets),
                 List.copyOf(groomTargets),
+                List.copyOf(supportTargets),
+                List.copyOf(ropeTargets),
+                List.copyOf(fertilizeTargets),
                 gameTime + FARM_TTL_TICKS
         );
+    }
+
+    /**
+     * One PADDY cell: farmland at the soil, a source of fresh water standing on it, the crop
+     * planted into that water. Worked in that order: till, flood, plant, harvest.
+     */
+    private static void scanPaddyCell(ServerLevel level, FarmBlueprint blueprint, PlannedCell cell,
+                                      BlockState soilState, BlockState cropState,
+                                      List<BlockPos> harvestTargets, List<BlockPos> plantTargets,
+                                      List<BlockPos> tillTargets, List<BlockPos> waterTargets,
+                                      List<BlockPos> groomTargets, Set<Long> groomSeen) {
+        BlockPos soilPos = cell.soilPos();
+        BlockPos cropPos = cell.cropPos();
+        if (blueprint.isProtected(cropPos)) return;
+        // A dead or wild crop standing in the water: clear it so the cell replants.
+        if (isRemovableWeed(cropState)) {
+            if (groomSeen.add(cropPos.asLong())) groomTargets.add(cropPos.immutable());
+            return;
+        }
+        if (cropState.getBlock() instanceof CropBlock crop) {
+            if (crop.isMaxAge(cropState)) harvestTargets.add(cropPos.immutable());
+            return;
+        }
+        boolean flooded = cropState.is(Blocks.WATER) && level.getFluidState(cropPos).isSource()
+                && level.getFluidState(cropPos).getType().isSame(net.minecraft.world.level.material.Fluids.WATER);
+        if (!com.aetherianartificer.townstead.farming.Farmland.is(soilState)) {
+            // Tilling works under standing water too (TFC checks for air or fluid above).
+            if ((cropState.isAir() || flooded) && com.aetherianartificer.townstead.farming.Farmland.canTill(level, soilPos, soilState)) {
+                tillTargets.add(soilPos.immutable());
+            }
+            return;
+        }
+        if (!flooded) {
+            if (cropState.isAir()) waterTargets.add(cropPos.immutable());
+            return;
+        }
+        if (!SeedAssignment.NONE.equals(cell.seedAssignment())
+                && FarmerCropCompatRegistry.isPlantableSpot(level, cropPos) && seedMatchesSoil(level, cell)) {
+            plantTargets.add(cropPos.immutable());
+        }
+    }
+
+    /**
+     * One TRELLIS cell. Walks up from the ground, through the support and past any air gap, so an
+     * upright stack and a panel hung over the cell are both found. The next missing support
+     * segment, if any, becomes a support target.
+     */
+    private static void scanTrellisCell(ServerLevel level, FarmBlueprint blueprint, PlannedCell cell,
+                                        List<BlockPos> harvestTargets, List<BlockPos> plantTargets,
+                                        List<BlockPos> supportTargets) {
+        BlockPos cropPos = cell.cropPos();
+        ItemStack assignedSeed = assignedSeedStack(cell);
+        boolean mayPlant = !SeedAssignment.NONE.equals(cell.seedAssignment());
+        com.aetherianartificer.townstead.farming.cellplan.TrellisSpec spec = cell.trellisSpec();
+
+        int builtFromGround = 0;
+        boolean contiguous = true;
+        for (int dy = 0; dy < FarmerCropCompatRegistry.MAX_COLUMN_HEIGHT; dy++) {
+            BlockPos segment = cropPos.above(dy);
+            BlockState segmentState = level.getBlockState(segment);
+            if (!FarmerCropCompatRegistry.isColumnBlock(segmentState)) {
+                if (!segmentState.isAir() && !segmentState.canBeReplaced()) break;
+                contiguous = false;
+                continue;
+            }
+            if (contiguous && FarmerCropCompatRegistry.isTrellisSupportBlock(segmentState, assignedSeed)) builtFromGround++;
+            if (blueprint.isProtected(segment)) continue;
+            if (FarmerCropCompatRegistry.shouldPartialHarvest(segmentState)) {
+                harvestTargets.add(segment.immutable());
+            } else if (mayPlant) {
+                boolean accepts = assignedSeed.isEmpty()
+                        ? FarmerCropCompatRegistry.isBareSupport(level, segment, segmentState)
+                        : FarmerCropCompatRegistry.canPlantOnSupport(level, segment, segmentState, assignedSeed);
+                if (accepts) plantTargets.add(segment.immutable());
+            }
+        }
+
+        BlockPos next;
+        if (spec.flat()) {
+            next = cropPos.above(spec.height() - 1);
+            if (FarmerCropCompatRegistry.isColumnBlock(level.getBlockState(next))) return;
+        } else {
+            if (builtFromGround >= spec.height()) return;
+            next = cropPos.above(builtFromGround);
+        }
+        BlockState nextState = level.getBlockState(next);
+        if (blueprint.isProtected(next)) return;
+        if (nextState.isAir() || (nextState.canBeReplaced() && nextState.getFluidState().isEmpty())) {
+            supportTargets.add(next.immutable());
+        }
     }
 
     /**
@@ -306,6 +460,8 @@ public final class HarvestWorkIndex {
             case RICH_SOIL_TILLED -> soilIsFarmland && soilIsCompat;
             // Untilled rich soil = compat AND NOT farmland (FD rich_soil is a dirt-type, not FarmBlock).
             case RICH_SOIL -> soilIsCompat && !soilIsFarmland;
+            // Feeding is its own target; the soil itself only has to be tilled.
+            case FERTILIZED_NUTRIENTS, FERTILIZED_CROP -> soilIsFarmland;
             // Fertilized variants — delegate to the provider (direct block identity check).
             case FERTILIZED_RICH, FERTILIZED_HEALTHY, FERTILIZED_STABLE ->
                     FarmerCropCompatRegistry.isExistingSoil(desired, level, pos);
@@ -332,6 +488,22 @@ public final class HarvestWorkIndex {
         if (seedItem == null) return true;
         java.util.Set<SoilType> compatible = CropProductResolver.get(level).getCompatibleSoils(seedItem);
         return compatible.contains(cell.desiredSoil());
+    }
+
+    /** The cell's specific seed as a stack, or EMPTY for AUTO / NONE / unresolved assignments. */
+    private static ItemStack assignedSeedStack(PlannedCell cell) {
+        String seed = cell.seedAssignment();
+        if (seed == null || SeedAssignment.AUTO.equals(seed) || SeedAssignment.NONE.equals(seed)) return ItemStack.EMPTY;
+        ResourceLocation rl;
+        try {
+            //? if >=1.21 {
+            rl = ResourceLocation.parse(seed);
+            //?} else {
+            /*rl = new ResourceLocation(seed);
+            *///?}
+        } catch (Exception e) { return ItemStack.EMPTY; }
+        Item seedItem = BuiltInRegistries.ITEM.get(rl);
+        return seedItem == null ? ItemStack.EMPTY : new ItemStack(seedItem);
     }
 
     /**
@@ -361,8 +533,15 @@ public final class HarvestWorkIndex {
         // BuddingTomatoBlock base. YH tea is a DoubleCropBlock with an upper half. Without scanning
         // up, the fruiting/perennial part is invisible to the farmer.
         candidates.add(cropPos.above());
+        // Crop columns (trellis poles, climbing crops): every segment above the first two.
+        for (int dy = 2; dy < FarmerCropCompatRegistry.MAX_COLUMN_HEIGHT; dy++) {
+            BlockPos segment = cropPos.above(dy);
+            if (!FarmerCropCompatRegistry.isColumnBlock(level.getBlockState(segment))) break;
+            candidates.add(segment);
+        }
         BlockState state = level.getBlockState(cropPos);
-        if (state.getBlock() instanceof StemBlock || state.getBlock() instanceof AttachedStemBlock) {
+        if (state.getBlock() instanceof StemBlock || state.getBlock() instanceof AttachedStemBlock
+                || FarmerCropCompatRegistry.spreadsFruit(state)) {
             for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.Plane.HORIZONTAL) {
                 candidates.add(cropPos.relative(dir));
             }
@@ -372,6 +551,7 @@ public final class HarvestWorkIndex {
 
     private static boolean isHarvestTargetValid(ServerLevel level, BlockPos pos, BlockState state, FarmBlueprint blueprint) {
         if (blueprint.isProtected(pos)) return false;
+        if (FarmerCropCompatRegistry.skipsHarvest(state)) return false;
         if (state.getBlock() instanceof CropBlock crop) {
             // Walk down up to 2 blocks to find a planned soil — catches stacked crops like FD tomato
             // vines that sit one block above the budding base (which itself sits above the soil).
@@ -379,7 +559,7 @@ public final class HarvestWorkIndex {
             return crop.isMaxAge(state);
         }
         if (FarmerCropCompatRegistry.shouldPartialHarvest(state)) {
-            return findPlannedSoilBelow(blueprint, pos, 2) != null;
+            return findPlannedSoilBelow(blueprint, FarmerCropCompatRegistry.columnBase(level, pos), 2) != null;
         }
         if (isGenericMatureCrop(state)) {
             return findPlannedSoilBelow(blueprint, pos, 2) != null;
@@ -387,7 +567,21 @@ public final class HarvestWorkIndex {
         if (state.is(Blocks.MELON) || state.is(Blocks.PUMPKIN)) {
             return isPlannedOrAdjacentSoil(blueprint, pos.below()) && hasAdjacentStem(level, pos);
         }
+        if (FarmerCropCompatRegistry.isSpreadFruit(level, pos, state)) {
+            return isPlannedOrAdjacentSoil(blueprint, pos.below());
+        }
         return false;
+    }
+
+    /**
+     * Whether a crop is ripe, by the same rules the harvest engine uses: a vanilla crop at its
+     * max age, or the generic age fallback below. Excludes crops their compat provider harvests
+     * some other way. Callers outside a Field Post plan should scope it to crops on farmland.
+     */
+    public static boolean isMatureCrop(BlockState state) {
+        if (FarmerCropCompatRegistry.skipsHarvest(state)) return false;
+        if (state.getBlock() instanceof CropBlock crop) return crop.isMaxAge(state);
+        return isGenericMatureCrop(state);
     }
 
     /**
@@ -401,6 +595,8 @@ public final class HarvestWorkIndex {
     static boolean isGenericMatureCrop(BlockState state) {
         Block block = state.getBlock();
         if (block instanceof CropBlock || block instanceof StemBlock || block instanceof AttachedStemBlock) return false;
+        // Column segments are only ever picked through their compat provider, never broken.
+        if (FarmerCropCompatRegistry.isColumnBlock(state)) return false;
         if (state.is(Blocks.SUGAR_CANE) || state.is(Blocks.CACTUS)
                 || state.is(Blocks.BAMBOO) || state.is(Blocks.BAMBOO_SAPLING)
                 || state.is(Blocks.KELP) || state.is(Blocks.TWISTING_VINES) || state.is(Blocks.WEEPING_VINES)
@@ -441,10 +637,6 @@ public final class HarvestWorkIndex {
         if (state.isAir()) return true;
         // Destroy speed of -1 marks vanilla "unbreakable" blocks (bedrock, barrier, command_block, structure_block, ...).
         return state.getDestroySpeed(net.minecraft.world.level.EmptyBlockGetter.INSTANCE, net.minecraft.core.BlockPos.ZERO) >= 0;
-    }
-
-    private static boolean isTillableDirt(BlockState state) {
-        return state.is(Blocks.DIRT) || state.is(Blocks.GRASS_BLOCK) || state.is(Blocks.DIRT_PATH) || state.is(Blocks.COARSE_DIRT);
     }
 
     private static boolean canClearTillObstruction(BlockState state) {
@@ -518,7 +710,7 @@ public final class HarvestWorkIndex {
     }
 
     static final class FarmSnapshot {
-        static final FarmSnapshot EMPTY = new FarmSnapshot(List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), Long.MIN_VALUE);
+        static final FarmSnapshot EMPTY = new FarmSnapshot(List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), Long.MIN_VALUE);
 
         private final List<BlockPos> harvestTargets;
         private final List<BlockPos> plantTargets;
@@ -526,11 +718,19 @@ public final class HarvestWorkIndex {
         private final List<BlockPos> hydratedTillTargets;
         private final List<BlockPos> waterTargets;
         private final List<BlockPos> groomTargets;
+        private final List<BlockPos> supportTargets;
+        private final List<BlockPos> ropeTargets;
+        private final List<BlockPos> fertilizeTargets;
         private final long expiresAt;
 
         private FarmSnapshot(List<BlockPos> harvestTargets, List<BlockPos> plantTargets,
                              List<BlockPos> tillTargets, List<BlockPos> hydratedTillTargets,
-                             List<BlockPos> waterTargets, List<BlockPos> groomTargets, long expiresAt) {
+                             List<BlockPos> waterTargets, List<BlockPos> groomTargets,
+                             List<BlockPos> supportTargets, List<BlockPos> ropeTargets,
+                             List<BlockPos> fertilizeTargets, long expiresAt) {
+            this.supportTargets = supportTargets;
+            this.ropeTargets = ropeTargets;
+            this.fertilizeTargets = fertilizeTargets;
             this.harvestTargets = harvestTargets;
             this.plantTargets = plantTargets;
             this.tillTargets = tillTargets;
@@ -580,6 +780,30 @@ public final class HarvestWorkIndex {
 
         int groomTargetCount() {
             return groomTargets.size();
+        }
+
+        List<BlockPos> supportTargets() {
+            return supportTargets;
+        }
+
+        int ropeTargetCount() {
+            return ropeTargets.size();
+        }
+
+        @Nullable BlockPos nearestSupportTarget(VillagerEntityMCA villager, Predicate<BlockPos> filter) {
+            return nearestTo(villager, supportTargets, filter);
+        }
+
+        @Nullable BlockPos nearestRopeTarget(VillagerEntityMCA villager, Predicate<BlockPos> filter) {
+            return nearestTo(villager, ropeTargets, filter);
+        }
+
+        int fertilizeTargetCount() {
+            return fertilizeTargets.size();
+        }
+
+        @Nullable BlockPos nearestFertilizeTarget(VillagerEntityMCA villager, Predicate<BlockPos> filter) {
+            return nearestTo(villager, fertilizeTargets, filter);
         }
 
         boolean hasWaterTargets() {

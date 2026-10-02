@@ -23,6 +23,14 @@ public final class GeneTriggers {
 
     private GeneTriggers() {}
 
+    /** Completed transfers only; conditions see the destination. Login and respawn do not call this. */
+    public static void onEnterDimension(LivingEntity entity,
+            net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> previousDimension) {
+        if (entity.level().isClientSide || previousDimension.equals(entity.level().dimension())) return;
+        Powers.invalidate(entity);
+        fire(entity, Trigger.WHEN_ENTER_DIMENSION, null, null, 0f);
+    }
+
     public static void onDamage(LivingEntity victim, DamageSource source, float amount) {
         if (victim.level().isClientSide) return;
         LivingEntity attacker = source.getEntity() instanceof LivingEntity le ? le : null;
@@ -70,7 +78,48 @@ public final class GeneTriggers {
     /** The bearer finished using/consuming an item (Roots {@code action_on_item_use}); self-only. */
     public static void onItemUse(LivingEntity entity) {
         if (entity.level().isClientSide) return;
-        fire(entity, Trigger.WHEN_ITEM_USE, null, null, 0f);
+        onItemUse(entity, net.minecraft.world.item.ItemStack.EMPTY);
+    }
+
+    /** The Finish event supplies the original stack, including the last item in a stack. */
+    public static void onItemUse(LivingEntity entity, net.minecraft.world.item.ItemStack usedItem) {
+        if (entity.level().isClientSide) return;
+        fire(entity, Trigger.WHEN_ITEM_USE, null, null, 0f, usedItem);
+    }
+
+    /**
+     * The bearer completed a piece of Career work. {@code verb} is the work verb
+     * ({@code townstead:harvested}), {@code pos} the worked block when there is one, and
+     * {@code output} what the work produced (empty when nothing).
+     */
+    public static void onWork(LivingEntity worker, String verb, @Nullable net.minecraft.core.BlockPos pos,
+                              net.minecraft.world.item.ItemStack output) {
+        if (worker.level().isClientSide || IN_WORK_TRIGGER.get()) return;
+        List<TriggerGeneType.Instance> triggers = Powers.componentsOf(worker, TriggerGeneType.Instance.class);
+        if (triggers.isEmpty()) return;
+        // Work done by a work trigger (a wider harvest) is not new work: it must not fire again.
+        IN_WORK_TRIGGER.set(true);
+        try {
+            fireWork(worker, triggers, verb, pos, output);
+        } finally {
+            IN_WORK_TRIGGER.set(false);
+        }
+    }
+
+    private static final ThreadLocal<Boolean> IN_WORK_TRIGGER = ThreadLocal.withInitial(() -> false);
+
+    private static void fireWork(LivingEntity worker, List<TriggerGeneType.Instance> triggers, String verb,
+                                 @Nullable net.minecraft.core.BlockPos pos, net.minecraft.world.item.ItemStack output) {
+        ConditionContext ctx = null;
+        for (TriggerGeneType.Instance t : triggers) {
+            if (t.trigger() != Trigger.WHEN_WORK || !t.acceptsVerb(verb)) continue;
+            if (t.itemCondition() != null && !t.itemCondition().test(worker.level(), output)) continue;
+            if (t.condition() != null) {
+                if (ctx == null) ctx = new ConditionContext(worker);
+                if (!t.condition().test(ctx)) continue;
+            }
+            t.action().run(new ActionContext(worker).withFocusBlock(pos));
+        }
     }
 
     /** Fired by the key-press packet handler: run the entity's press triggers bound to {@code key}. */
@@ -91,11 +140,17 @@ public final class GeneTriggers {
 
     private static void fire(LivingEntity bearer, Trigger trigger, @Nullable LivingEntity other,
                              @Nullable DamageSource source, float amount) {
+        fire(bearer, trigger, other, source, amount, net.minecraft.world.item.ItemStack.EMPTY);
+    }
+
+    private static void fire(LivingEntity bearer, Trigger trigger, @Nullable LivingEntity other,
+                             @Nullable DamageSource source, float amount, net.minecraft.world.item.ItemStack usedItem) {
         List<TriggerGeneType.Instance> triggers = Powers.componentsOf(bearer, TriggerGeneType.Instance.class);
         if (triggers.isEmpty()) return;
         ConditionContext ctx = null;
         for (TriggerGeneType.Instance t : triggers) {
             if (t.trigger() != trigger) continue;
+            if (t.itemCondition() != null && !t.itemCondition().test(bearer.level(), usedItem)) continue;
             LivingEntity primary = t.target() == Target.OTHER ? other : bearer;
             if (primary == null) continue;
             // A damage_condition can only hold where a damage event is in play (hurt/attack/kill/death).

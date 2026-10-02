@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.bartender.closing_time"
+  },
+  "icon": "minecraft:clock",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.bartender.closing_time.description"
+  },
+  "cost": 1,
+  "requires": [
+    "bums_rush"
+  ],
+  "skill_group": "townstead:bartender_bouncer",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:tab",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 10,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:random_teleport",
+            "distance": 16
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:slowness",
+            "duration": 100,
+            "amplifier": 0
+          }
+        ]
+      }
+    }
+  }
+}

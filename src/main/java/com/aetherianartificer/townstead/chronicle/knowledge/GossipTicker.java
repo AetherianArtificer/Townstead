@@ -84,19 +84,42 @@ public final class GossipTicker {
             }
         }
         if (best == null) return;
-        ChronicleEvent event = Chronicles.buffer().byId(best.storyEventId);
-        if (event == null) return;
+        tell(server, level, teller, listener, nearby, best, bestTemplate, today);
+    }
+
+    /**
+     * Passes one story from teller to listener through the gossip channel: fidelity loss, possible
+     * distortion, then a new account. Conversations call this when a villager tells a story aloud.
+     * Returns false when the listener already knows it or the story has left the recent buffer.
+     */
+    public static boolean tellStory(ServerLevel level, VillagerEntityMCA teller, VillagerEntityMCA listener,
+                                    KnownStoriesCache.Entry story) {
+        if (KnownStoriesCache.knows(listener.getUUID(), story.storyEventId)) return false;
+        ChronicleEventTemplate template = ChronicleEventRegistry.byId(story.templateId);
+        if (template == null) return false;
+        List<VillagerEntityMCA> nearby = level.getEntitiesOfClass(VillagerEntityMCA.class,
+                teller.getBoundingBox().inflate(PARTNER_RADIUS));
+        return tell(level.getServer(), level, teller, listener, nearby, story, template,
+                TownsteadCalendar.worldDay(level.getServer()));
+    }
+
+    private static boolean tell(MinecraftServer server, ServerLevel level, VillagerEntityMCA teller,
+                                VillagerEntityMCA listener, List<VillagerEntityMCA> nearby,
+                                KnownStoriesCache.Entry story, ChronicleEventTemplate template, long today) {
+        ChronicleEvent event = Chronicles.buffer().byId(story.storyEventId);
+        if (event == null) return false;
 
         SpreadChannel channel = SpreadChannel.GOSSIP;
         LivingEntity substitute = pickSubstituteCandidate(nearby, teller, listener, event);
-        DistortionOverlay overlay = best.overlay.compound(bestTemplate, channel, level.random,
+        DistortionOverlay overlay = story.overlay.compound(template, channel, level.random,
                 substitute == null ? null : substitute.getUUID(),
-                substitute == null ? null : substitute.getName().getString());
+                substitute == null ? null : substitute.getDisplayName().getString());
         float fidelity = Math.max(channel.fidelityFloor(),
-                best.fidelity * channel.fidelityFactor() * (0.9f + level.random.nextFloat() * 0.2f));
+                story.fidelity * channel.fidelityFactor() * (0.9f + level.random.nextFloat() * 0.2f));
 
-        AccountLedger.learn(server, bestTemplate, event, listener.getUUID(), true, null,
-                channel, best.accountId, fidelity, overlay, today);
+        AccountLedger.learn(server, template, event, listener.getUUID(), true, null,
+                channel, story.accountId, fidelity, overlay, today);
+        return true;
     }
 
     private static void absorbDigest(MinecraftServer server, ServerLevel level,

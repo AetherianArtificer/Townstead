@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {"node_item": "minecraft:composter"},
+  "workers": ["minecraft:farmer"],
+  "spirit": {"pastoral": 8},
+  "enclosure": "none"
+}

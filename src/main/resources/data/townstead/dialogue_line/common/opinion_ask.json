@@ -1,0 +1,84 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "opinion_ask",
+  "groups": [
+    {
+      "state": { "is_initiator": false },
+      "lines": {
+        "what_do_you_make_of": { "text": "What do you make of it?", "asks": "townstead:opinion" },
+        "what_do_you_think": { "text": "What do you think?", "asks": "townstead:opinion" },
+        "how_do_you_feel_about": { "text": "How do you feel about it?", "asks": "townstead:opinion" },
+        "thoughts": { "text": "Thoughts?", "asks": "townstead:opinion" },
+        "whats_your_take": { "text": "What's your take?", "asks": "townstead:opinion" },
+        "what_would_you_do": { "text": "What would you do?", "asks": "townstead:opinion" },
+        "do_you_think_its_a": { "text": "Do you think it's a big deal?", "asks": "townstead:opinion" },
+        "what_do_you_reckon": { "text": "What do you reckon?", "asks": "townstead:opinion" },
+        "is_that_normal_do_you": { "text": "Is that normal, do you think?", "asks": "townstead:opinion" },
+        "whats_your_opinion": { "text": "What's your opinion?", "asks": "townstead:opinion" },
+        "weird_right_what_do_you": { "text": "Weird, right? What do you think?", "asks": "townstead:opinion" },
+        "how_do_you_see_it": { "text": "How do you see it?", "asks": "townstead:opinion" }
+      }
+    },
+    {
+      "valence": ["negative", "neutral"],
+      "state": { "is_initiator": false },
+      "lines": {
+        "does_that_worry_you": { "text": "Does that worry you?", "asks": "townstead:opinion" },
+        "should_we_be_worried": { "text": "Should we be worried?", "asks": "townstead:opinion" },
+        "you_think_itll_be_okay": { "text": "You think it'll be okay?", "asks": "townstead:opinion" }
+      }
+    },
+    {
+      "state": { "is_initiator": true },
+      "lines": {
+        "can_you_believe_it": { "text": "Can you believe it?", "asks": "townstead:opinion" },
+        "isnt_that_something": { "text": "Isn't that something?", "asks": "townstead:opinion" },
+        "crazy_right": { "text": "Crazy, right?", "asks": "townstead:opinion" },
+        "what_do_you_think_about": { "text": "What do you think about that?", "asks": "townstead:opinion" },
+        "wild_huh": { "text": "Wild, huh?", "asks": "townstead:opinion" },
+        "would_you_believe_it": { "text": "Would you believe it?", "asks": "townstead:opinion" },
+        "can_you_imagine": { "text": "Can you imagine?", "asks": "townstead:opinion" },
+        "isnt_that_wild": { "text": "Isn't that wild?", "asks": "townstead:opinion" }
+      }
+    },
+    {
+      "state": { "is_initiator": true, "variant": "argument" },
+      "lines": {
+        "what_would_you_have_done": { "text": "What would you have done?", "asks": "townstead:would_do" },
+        "whose_side_are_you_on": { "text": "Whose side are you on?", "asks": "townstead:side" },
+        "who_do_you_think_started": { "text": "Who do you think started it?", "asks": "townstead:side" }
+      }
+    },
+    {
+      "persp": { "who": "they" },
+      "state": { "is_initiator": true, "variant": "marriage" },
+      "lines": { "arent_they_sweet_together": {"text": "Aren't they sweet together?", "asks": "townstead:opinion"} }
+    },
+    {
+      "persp": { "who": "they" },
+      "state": { "is_initiator": true, "variant": "mastery" },
+      "lines": { "dont_they_deserve_it": {"text": "Don't they deserve it?", "asks": "townstead:opinion"} }
+    },
+    {
+      "lines": {
+        "not_that_it_matters_but": {
+          "text": "Not that it matters, but what do you think?",
+          "asks": "townstead:opinion",
+          "personalities": "gloomy"
+        },
+        "well_out_with_it": { "text": "Well? Out with it.", "asks": "townstead:opinion", "personalities": ["crabby", "grumpy"] },
+        "ooh_what_do_you_think": {
+          "text": "Ooh, what do you think? Tell me!",
+          "asks": "townstead:opinion",
+          "personalities": ["upbeat", "peppy"]
+        },
+        "um_what_do_you_think": {
+          "text": "Um, what do you think?",
+          "asks": "townstead:opinion",
+          "personalities": ["introverted", "shy"]
+        },
+        "what_do_you_think_is": { "text": "What do you think? Is it cool?", "asks": "townstead:opinion", "stages": "child" }
+      }
+    }
+  ]
+}

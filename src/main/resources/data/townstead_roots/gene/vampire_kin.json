@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "pheno:disposition_group",
+  "display_name": {
+    "translate": "gene.townstead_roots.vampire_kin"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.vampire_kin.desc"
+  },
+  "category": "Abilities",
+  "group": "vampire"
+}

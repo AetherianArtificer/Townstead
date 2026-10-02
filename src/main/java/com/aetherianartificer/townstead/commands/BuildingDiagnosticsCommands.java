@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.commands;
 
 import com.aetherianartificer.townstead.compat.mca.McaBuildingCompat;
 import com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery;
+import com.aetherianartificer.townstead.compat.mca.McaRoomWorkflow;
 import com.mojang.brigadier.CommandDispatcher;
 import net.conczin.mca.server.world.data.Building;
 //? if >=1.21 {
@@ -58,7 +59,7 @@ public final class BuildingDiagnosticsCommands {
         if (room == null) {
             report.append("\n").append(Component.translatable("townstead.command.building.room.none"));
             //? if >=1.21 {
-            var scan = manager.analyzeRoom(pos);
+            var scan = McaRoomWorkflow.analyzeRoom(level, pos);
             report.append("\n").append(Component.translatable(
                     "townstead.command.building.add_room_analysis", scan.result().toString(),
                     scan.matchingTypes().toString()));
@@ -77,12 +78,12 @@ public final class BuildingDiagnosticsCommands {
                         candidates.toString()));
         //? if >=1.21 {
         report.append("\n").append(Component.translatable("townstead.command.building.structure_floor",
-                room.getStructureId(), room.getFloorId(), room.getFloorRegions().size(),
+                room.getStructureId(), room.getFloorId(), room.getFloorCells().size(),
                 room.getFloorFootprintArea()));
-        RegisteredRoomUpdate update = manager.analyzeRegisteredRoomUpdate(
-                village, room.getId(), pos);
+        RegisteredRoomUpdate update = McaRoomWorkflow.analyzeRegisteredRoomUpdate(
+                level, village, room.getId(), pos);
         report.append("\n").append(Component.translatable("townstead.command.building.update_analysis",
-                update.result().toString(), update.playerMatchingTypes().toString()));
+                update.result().toString(), update.matchingTypes().toString()));
         //?}
         source.sendSuccess(() -> report, false);
         return 1;

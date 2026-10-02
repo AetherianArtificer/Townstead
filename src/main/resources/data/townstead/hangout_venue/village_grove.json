@@ -1,0 +1,8 @@
+{
+  "schema":"townstead:hangout_venue/v2",
+  "buildings":["grove"],
+  "capacity":6,
+  "activities":["townstead:village_meeting_conversation"],
+  "tags":["townstead_hangouts:quiet","townstead_hangouts:social","townstead_hangouts:outdoors"],
+  "amenities":["conversation","shade"]
+}

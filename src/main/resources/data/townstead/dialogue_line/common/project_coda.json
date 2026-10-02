@@ -1,0 +1,34 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "project_coda",
+  "groups": [
+    {
+      "stance": "+",
+      "lines": {
+        "itll_be_good_for_everyone": "It'll be good for everyone.",
+        "about_time": "About time.",
+        "im_excited_to_see_it": "I'm excited to see it.",
+        "itll_make_the_village_look": "It'll make the village look great.",
+        "i_cant_wait_until_its": "I can't wait until it's done."
+      }
+    },
+    {
+      "stance": "-",
+      "lines": {
+        "whos_paying_for_it_though": "Who's paying for it, though?",
+        "more_noise_every_morning": "More noise every morning.",
+        "ill_believe_it_when_its": "I'll believe it when it's finished.",
+        "i_just_want_some_quiet": "I just want some quiet.",
+        "its_always_something": "It's always something."
+      }
+    },
+    {
+      "stance": "0",
+      "lines": {
+        "well_see_how_it_turns": "We'll see how it turns out.",
+        "time_will_tell": "Time will tell.",
+        "should_be_interesting": "Should be interesting."
+      }
+    }
+  ]
+}

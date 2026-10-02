@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "company_after",
+  "groups": [
+    {
+      "stance": "+",
+      "lines": {
+        "ill_bring_something_to_eat": "I'll bring something to eat.",
+        "its_a_plan_then": "It's a plan, then.",
+        "looking_forward_to_it": "Looking forward to it.",
+        "dont_forget": "Don't forget.",
+        "ill_be_there": "I'll be there.",
+        "yay": { "text": "Yay!", "stages": "child", "simple": true }
+      }
+    },
+    {
+      "stance": "-",
+      "lines": {
+        "maybe_next_week": "Maybe next week.",
+        "ask_me_again_another_day": "Ask me again another day.",
+        "im_too_busy_right_now": "I'm too busy right now.",
+        "some_other_time_maybe": "Some other time, maybe."
+      }
+    }
+  ]
+}

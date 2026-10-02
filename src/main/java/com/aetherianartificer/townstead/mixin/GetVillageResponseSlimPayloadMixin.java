@@ -25,9 +25,9 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
  * still grows large (many residents, many tasks, many building types).</p>
  *
  * <p><b>Legacy MCA only</b> ({@code TownsteadMixinPlugin} gates it off the
- * floor-system build). There the real payload bloat is fixed at the source by
- * {@code BuildingTypeSyntheticBlockMixin} (ordinary houses no longer record their
- * walls) and {@code GetVillageResponseLargePacketMixin} raises the decode cap for
+ * floor-system build). There the real payload bloat is fixed at the source (no
+ * building type lists generic structural material, so ordinary houses do not record
+ * their walls) and {@code GetVillageResponseLargePacketMixin} raises the decode cap for
  * any legacy save data, so the slimmer is unnecessary — and keeping this wire
  * rewrite off that version avoids disturbing the block geometry the new map
  * renderer reads. {@link VillageSnapshotSlimmer} still truncates to real,

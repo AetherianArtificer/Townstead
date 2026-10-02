@@ -1,0 +1,28 @@
+{
+  "box": {
+    "background": "#EEE6D5B0",
+    "border_light": "#8B6B43",
+    "border_dark": "#4A3520",
+    "inner_light": "#B39463",
+    "inner_dark": "#6B4E2E",
+    "accent": "#C9AD7E",
+    "corner": "#5C4027"
+  },
+  "name_tab": {
+    "background": "#EEE6D5B0",
+    "name_color": "#7A3E12"
+  },
+  "text_color": "#3B2A1A",
+  "indicator_color": "#5C4027",
+  "choices": {
+    "background": "#DDE6D5B0",
+    "border_light": "#8B6B43",
+    "border_dark": "#4A3520",
+    "text_color": "#4A3520",
+    "hover_color": "#7A3E12",
+    "selected_background": "#338B6B43",
+    "back_color": "#6B5A7A",
+    "number_color": "#886B4E2E"
+  },
+  "type_sound": "minecraft:item.book.page_turn"
+}

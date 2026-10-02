@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.farming;
 
+import com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
@@ -11,7 +12,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.BushBlock;
 import net.minecraft.world.level.block.CropBlock;
-import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluids;
@@ -67,7 +67,7 @@ public final class GridScanner {
                 for (int dy = 3; dy >= -3; dy--) {
                     BlockPos candidate = new BlockPos(wx, baseY + dy, wz);
                     BlockState state = level.getBlockState(candidate);
-                    if (state.getBlock() instanceof FarmBlock) {
+                    if (Farmland.is(state)) {
                         groundPos = candidate;
                         groundState = state;
                         break;
@@ -130,6 +130,13 @@ public final class GridScanner {
                     continue;
                 }
 
+                // The top-of-column pass lands on the top of a trellis pole or climbing crop.
+                // Show the ground the column stands on, with the column as its crop.
+                if (FarmerCropCompatRegistry.isColumnBlock(groundState)) {
+                    groundPos = FarmerCropCompatRegistry.columnBase(level, groundPos).below();
+                    groundState = level.getBlockState(groundPos);
+                }
+
                 // Check one block above ground for crops/water
                 BlockPos abovePos = groundPos.above();
                 BlockState aboveState = level.getBlockState(abovePos);
@@ -147,9 +154,9 @@ public final class GridScanner {
                 byte cellFlags = 0;
                 if (groundState.getFluidState().is(Fluids.WATER)) {
                     cellFlags |= GridSnapshot.FLAG_WATER;
-                } else if (groundState.getBlock() instanceof FarmBlock) {
+                } else if (Farmland.is(groundState)) {
                     cellFlags |= GridSnapshot.FLAG_FARMLAND;
-                    if (groundState.getValue(FarmBlock.MOISTURE) > 0) {
+                    if (Farmland.isMoist(groundState, level, groundPos)) {
                         cellFlags |= GridSnapshot.FLAG_MOIST;
                     }
                 }
@@ -166,6 +173,21 @@ public final class GridScanner {
                     Item product = resolver.getCropProduct(aboveState, level, abovePos);
                     if (product != null && product != Items.AIR) {
                         cropItemIds[idx] = BuiltInRegistries.ITEM.getId(product);
+                    }
+                } else if (FarmerCropCompatRegistry.isColumnBlock(aboveState)) {
+                    // Ripest segment of the column stands for the whole cell.
+                    cellFlags |= GridSnapshot.FLAG_HAS_CROP;
+                    BlockPos segment = abovePos;
+                    for (int i = 0; i < FarmerCropCompatRegistry.MAX_COLUMN_HEIGHT; i++, segment = segment.above()) {
+                        BlockState segmentState = level.getBlockState(segment);
+                        if (!FarmerCropCompatRegistry.isColumnBlock(segmentState)) break;
+                        if (FarmerCropCompatRegistry.shouldPartialHarvest(segmentState)) cellFlags |= GridSnapshot.FLAG_MATURE;
+                        if (cropItemIds[idx] == 0) {
+                            Item product = FarmerCropCompatRegistry.columnProduct(segmentState);
+                            if (product != null && product != Items.AIR) {
+                                cropItemIds[idx] = BuiltInRegistries.ITEM.getId(product);
+                            }
+                        }
                     }
                 } else if (aboveState.getBlock() instanceof BushBlock) {
                     cellFlags |= GridSnapshot.FLAG_HAS_CROP;

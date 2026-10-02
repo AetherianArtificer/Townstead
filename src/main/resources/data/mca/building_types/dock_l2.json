@@ -5,10 +5,12 @@
   "icon": false,
   "iconU": 241,
   "iconV": 188,
+  "margin": 8,
+  "mergeRange": 16,
   "blocks": {
-    "#townstead:dock_surfaces": 24,
+    "minecraft:barrel": 1,
+    "#townstead:liquids": 4,
     "#minecraft:fences": 6,
-    "minecraft:lantern": 3,
-    "minecraft:barrel": 1
+    "minecraft:lantern": 3
   }
 }

@@ -1,0 +1,30 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.saddler.steady_mount"
+  },
+  "icon": "minecraft:leather_horse_armor",
+  "description": {
+    "translate": "skill.townstead.leatherworker.saddler.steady_mount.description"
+  },
+  "cost": 1,
+  "requires": [
+    "good_seat"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:riding"
+    },
+    "action": {
+      "type": "pheno:riding_action",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:resistance",
+        "duration": 30,
+        "amplifier": 0
+      }
+    }
+  }
+}

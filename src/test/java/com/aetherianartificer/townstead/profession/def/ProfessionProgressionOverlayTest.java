@@ -25,7 +25,7 @@ class ProfessionProgressionOverlayTest {
                 .getAsJsonObject().get("xp").getAsInt());
         assertFalse(profession.getAsJsonArray("levels").get(2).getAsJsonObject().has("xp"));
         assertEquals(80, profession.get("daily_cap").getAsInt());
-        assertEquals(120, profession.get("max_xp").getAsInt());
+        assertFalse(profession.has("max_xp"), "XP stays open past the top rank");
         assertFalse(profession.has("ranks"));
         assertEquals("Beekeeper", profession.get("display_name").getAsString());
     }
@@ -54,7 +54,7 @@ class ProfessionProgressionOverlayTest {
         assertEquals(2, second.get("skill_points").getAsInt());
         assertEquals("Apiarist", second.getAsJsonObject("name").get("text").getAsString());
         assertFalse(second.has("at"));
-        assertEquals(120, profession.get("max_xp").getAsInt());
+        assertFalse(profession.has("max_xp"));
     }
 
     @Test

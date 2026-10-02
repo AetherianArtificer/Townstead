@@ -7,5 +7,9 @@
   "description": {
     "text": "Cut stone and fire brick to build a history of masonry mastery."
   },
+  "skills": [
+    "sure_hands",
+    "shore"
+  ],
   "unlock_model": "experiential"
 }

@@ -33,14 +33,27 @@ public final class SkillPowerSource implements PowerSource {
 
     @Override
     public void collect(LivingEntity entity, List<Power> out) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CAREERS)) return;
         Set<ResourceLocation> learned = LearnedSkills.learned(entity);
         Set<ResourceLocation> professions = new LinkedHashSet<>();
         for (ResourceLocation skillId : learned) {
             SkillDef skill = SkillDefs.byId(skillId);
             if (skill == null) continue;
             professions.add(skill.profession());
-            if (skill.power() != null && CareerChoices.isActive(entity, skillId)) {
-                out.add(new Power(skillId, skill.power()));
+            if (!CareerChoices.isActive(entity, skillId)) continue;
+            if (skill.power() != null) out.add(new Power(skillId, skill.power()));
+            // Companions ride the skill, as a gene's companions ride the gene.
+            for (var companion : skill.companions().entrySet()) {
+                ResourceLocation id = ResourceLocation.tryParse(skillId + "/" + companion.getKey());
+                if (id != null) out.add(new Power(id, companion.getValue()));
+            }
+        }
+        // Combo skills held by career history express their power like a learned skill.
+        for (var combo : com.aetherianartificer.townstead.profession.def.ComboSkills.unlockedFor(entity)) {
+            if (combo.power() != null) out.add(new Power(combo.id(), combo.power()));
+            for (var companion : combo.companions().entrySet()) {
+                ResourceLocation id = ResourceLocation.tryParse(combo.id() + "/" + companion.getKey());
+                if (id != null) out.add(new Power(id, companion.getValue()));
             }
         }
         ResourceLocation rawProfession = ProfessionIdentity.rawId(entity);

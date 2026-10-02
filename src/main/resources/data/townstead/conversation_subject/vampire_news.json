@@ -1,0 +1,64 @@
+{
+  "schema": "townstead:conversation_subject/v1",
+  "mods": "vampirism",
+  "source": {
+    "type": "townstead:chronicle_account",
+    "max_age_days": 7,
+    "min_fidelity": 0.2,
+    "events": {
+      "townstead:vampire_bite": {
+        "variant": "bitten",
+        "valence": "negative",
+        "roles": {
+          "who": "bitten"
+        }
+      },
+      "townstead:turned_vampire": {
+        "variant": "turned",
+        "valence": "negative",
+        "roles": {
+          "who": "turned"
+        }
+      },
+      "townstead:vampire_cured": {
+        "variant": "cured",
+        "valence": "positive",
+        "roles": {
+          "who": "cured"
+        }
+      },
+      "townstead:hunter_slew_vampire": {
+        "variant": "slain",
+        "valence": "negative",
+        "roles": {
+          "who": "slain"
+        }
+      },
+      "townstead:village_fell_to_vampires": {
+        "variant": "fell",
+        "valence": "negative",
+        "roles": {
+          "who": "resident"
+        }
+      },
+      "townstead:village_retaken": {
+        "variant": "retaken",
+        "valence": "positive",
+        "roles": {
+          "who": "resident"
+        }
+      }
+    }
+  },
+  "register": "grief",
+  "valence": "from_source",
+  "content_tags": [
+    "vampires"
+  ],
+  "slots": {
+    "who": {
+      "type": "person",
+      "from": "role.who"
+    }
+  }
+}

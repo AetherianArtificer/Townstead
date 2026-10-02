@@ -29,7 +29,8 @@ import java.util.TreeMap;
  */
 final class CareerLayout {
 
-    static final int COL_W = 84;
+    /** Fits a three-choice row at {@link #CHOICE_PITCH} with room either side. */
+    static final int COL_W = 120;
     private static final int COL_GAP = 8;
     static final int COL_PITCH = COL_W + COL_GAP;
 
@@ -41,6 +42,8 @@ final class CareerLayout {
     private static final int BAND_INSET = 15;
     /** How far a mark may sit either side of its column's centre line. */
     private static final int LANE = 25;
+    /** Centre-to-centre spacing of a Path's peer choices; a mark is 22 wide. */
+    static final int CHOICE_PITCH = 36;
 
     private static final int[] ARM_TINTS = {
             0xFFC9A05A, 0xFFC46A42, 0xFF7E9E62, 0xFF8A7EA8, 0xFF6E93A8, 0xFFB08A4E};
@@ -255,6 +258,7 @@ final class CareerLayout {
             int y = authoredChoiceRow ? top + inner / 2
                     : top + slot + jitter(node.id(), 11, 5);
             int offset = count == 1 ? 0
+                    : authoredChoiceRow ? Math.round((i - (count - 1) / 2f) * CHOICE_PITCH)
                     : Math.round((2f * i / (count - 1) - 1f) * LANE);
             int x = centre + offset
                     + (authoredChoiceRow ? 0 : jitter(node.id(), 37, 3));

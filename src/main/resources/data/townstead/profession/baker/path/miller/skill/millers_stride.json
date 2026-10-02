@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.miller.millers_stride"
+  },
+  "icon": "minecraft:oak_stairs",
+  "description": {
+    "translate": "skill.townstead.baker.miller.millers_stride.description"
+  },
+  "cost": 1,
+  "requires": [
+    "threshing_floor"
+  ],
+  "power": {
+    "type": "pheno:step_height",
+    "amount": 1.0
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.harpooner.trawl"
+  },
+  "icon": "minecraft:lead",
+  "description": {
+    "translate": "skill.townstead.fisherman.harpooner.trawl.description"
+  },
+  "cost": 1,
+  "requires": [
+    "gaff"
+  ],
+  "skill_group": "townstead:harpooner_hook",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 12,
+          "include_self": false,
+          "target": "hostile",
+          "bientity_condition": {
+            "type": "pheno:relative_rotation",
+            "max_angle": 35
+          },
+          "action": {
+            "type": "pheno:add_velocity",
+            "away_from_other": -1.4,
+            "y": 0.25
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.fishing_bobber.retrieve",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

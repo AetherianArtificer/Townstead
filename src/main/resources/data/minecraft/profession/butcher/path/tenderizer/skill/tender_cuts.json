@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.tenderizer.tender_cuts"
+  },
+  "icon": "minecraft:iron_block",
+  "description": {
+    "translate": "skill.townstead.butcher.tenderizer.tender_cuts.description"
+  },
+  "cost": 1,
+  "requires": [
+    "mallet_blows"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "durability_loss",
+    "operation": "set",
+    "value": 0,
+    "item_condition": {
+      "type": "pheno:ingredient",
+      "tag": "townstead:butcher_hammers"
+    }
+  }
+}

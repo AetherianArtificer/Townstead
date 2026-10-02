@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.sapper.blast_shield"
+  },
+  "icon": "minecraft:obsidian",
+  "description": {
+    "translate": "skill.townstead.toolsmith.sapper.blast_shield.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sapper_smoke"
+  ],
+  "skill_group": "townstead:sapper_trap",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:knack",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:resistance",
+            "duration": 400,
+            "amplifier": 1
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:fire_resistance",
+            "duration": 400,
+            "amplifier": 0
+          }
+        ]
+      }
+    }
+  }
+}

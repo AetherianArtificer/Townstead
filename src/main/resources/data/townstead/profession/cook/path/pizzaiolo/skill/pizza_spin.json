@@ -8,7 +8,7 @@
     "translate": "skill.townstead.cook.pizzaiolo.pizza_spin.description"
   },
   "cost": 1,
-  "requires": ["starter_culture"],
+  "skill_group": "townstead:pizzaiolo_peel",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 160,
@@ -57,6 +57,7 @@
           "pitch": 0.9
         }
       ]
-    }
+    },
+    "slot": 2
   }
 }

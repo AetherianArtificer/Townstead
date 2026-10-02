@@ -7,7 +7,6 @@ import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.schedule.Activity;
 import com.aetherianartificer.townstead.hunger.FishermanSupplyManager;
 import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
-import net.minecraft.world.item.HoeItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.level.ServerLevel;
 
@@ -27,15 +26,19 @@ import java.util.function.Predicate;
  */
 public final class WorkToolTicker {
     private static final int CHECK_INTERVAL_TICKS = 20;
+    private static final String GRIEVE_ID = "mca:grieve";
     private WorkToolTicker() {}
 
     private static final Map<UUID, ItemStack> PREVIOUS_MAIN_HAND = new ConcurrentHashMap<>();
 
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
+        if (com.aetherianartificer.townstead.hunger.VillagerConsumptionManager.isHoldingServing(villager)) return;
         if ((villager.level().getGameTime() + villager.getId()) % CHECK_INTERVAL_TICKS != 0) return;
 
         Brain<?> brain = villager.getBrain();
+        // A mourner holds MCA's flower and gets its hand back when mourning ends; leave the hand alone.
+        if (isGrieving(brain)) return;
         long dayTime = villager.level().getDayTime() % 24000L;
         Activity current = brain.getSchedule().getActivityAt((int) dayTime);
         if (current != Activity.WORK) {
@@ -93,7 +96,7 @@ public final class WorkToolTicker {
         if (stack.isEmpty()) return false;
         for (var task : com.aetherianartificer.townstead.work.WorkTaskDeclarations.all(villager)) {
             if (task.type().equals(WorkTaskTypes.HARVEST)
-                    && stack.getItem() instanceof HoeItem) return true;
+                    && com.aetherianartificer.townstead.farming.Farmland.isHoe(stack)) return true;
             if (task.type().equals(WorkTaskTypes.FISH)
                     && FishermanSupplyManager.isFishingRod(stack)) return true;
             if (task.type().equals(WorkTaskTypes.SHEAR)
@@ -118,6 +121,14 @@ public final class WorkToolTicker {
         ItemStack prev = PREVIOUS_MAIN_HAND.remove(villager.getUUID());
         if (prev == null) return;
         villager.setItemInHand(InteractionHand.MAIN_HAND, prev);
+    }
+
+    // Matched by id: the activity constant lives in a different MCA class on each version.
+    private static boolean isGrieving(Brain<?> brain) {
+        return brain.getActiveNonCoreActivity()
+                .map(activity -> GRIEVE_ID.equals(String.valueOf(
+                        net.minecraft.core.registries.BuiltInRegistries.ACTIVITY.getKey(activity))))
+                .orElse(false);
     }
 
     private static int findSlot(SimpleContainer inv, Predicate<ItemStack> matcher) {

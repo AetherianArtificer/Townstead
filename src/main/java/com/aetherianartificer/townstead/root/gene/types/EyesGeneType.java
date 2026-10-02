@@ -34,6 +34,9 @@ import net.minecraft.util.GsonHelper;
  */
 public final class EyesGeneType implements GeneType {
 
+    @Override
+    public boolean conditionControlsExpression() { return true; }
+
     public static final String KEY = "townstead_roots:eyes";
 
     /** {@code row} sentinel: place the strip so its bottom row lands on the vanilla eye baseline. */
@@ -44,9 +47,12 @@ public final class EyesGeneType implements GeneType {
     private static final net.minecraft.resources.ResourceLocation LOCUS =
             com.aetherianartificer.townstead.data.DataPackLang.parseId(KEY);
 
-    public record Instance(String texture, boolean glow, int row, String tint) implements GeneInstance {
+    public record Instance(String texture, boolean glow, int row, String tint, String visibleHalf) implements GeneInstance {
+        public Instance(String texture, boolean glow, int row, String tint) {
+            this(texture, glow, row, tint, "both");
+        }
         @Override public String typeKey() { return KEY; }
-        @Override public GeneDisplay display() { return GeneDisplay.eyes(texture, glow, row, tint); }
+        @Override public GeneDisplay display() { return GeneDisplay.eyes(texture, glow, row, tint, visibleHalf); }
     }
 
     @Override
@@ -54,10 +60,13 @@ public final class EyesGeneType implements GeneType {
 
     @Override
     public GeneInstance parse(JsonObject json) {
+        String half = GsonHelper.getAsString(json, "visible_half", "both");
+        if (!java.util.List.of("both", "left", "right").contains(half)) return null;
         return new Instance(GsonHelper.getAsString(json, "texture", ""),
                 GsonHelper.getAsBoolean(json, "glow", false),
                 GsonHelper.getAsInt(json, "row", AUTO_ROW),
-                GsonHelper.getAsString(json, "tint", ""));
+                GsonHelper.getAsString(json, "tint", ""),
+                half);
     }
 
     @Override

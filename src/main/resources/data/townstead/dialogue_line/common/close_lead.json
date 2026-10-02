@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "close_lead",
+  "lines": {
+    "well": "Well.",
+    "ah": "Ah.",
+    "anyway": "Anyway.",
+    "right": "Right.",
+    "okay": "Okay.",
+    "alright": "Alright.",
+    "welp": "Welp.",
+    "oh": "Oh!",
+    "hm": "Hm.",
+    "so": "So.",
+    "anyhow": { "text": "Anyhow.", "stages": ["adult", "senior"] },
+    "ugh": { "text": "Ugh.", "personalities": ["crabby", "grumpy"] }
+  }
+}

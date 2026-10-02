@@ -34,7 +34,8 @@ side = "BOTH"
 [[dependencies.townstead]]
 modId = "mca"
 mandatory = true
-versionRange = "[7.7.1-alpha.3,)"
+# Published installs support exactly this MCA release, plus the snapshot used to build/test it.
+versionRange = "[${mca_development_version}],[${mca_version}]"
 ordering = "AFTER"
 side = "BOTH"
 
@@ -44,13 +45,6 @@ mandatory = false
 versionRange = "[2.2.0,)"
 ordering = "NONE"
 side = "CLIENT"
-
-[[dependencies.townstead]]
-modId = "patchouli"
-mandatory = true
-versionRange = "[1.20.1-85,)"
-ordering = "AFTER"
-side = "BOTH"
 
 [[dependencies.townstead]]
 modId = "travelerstitles"

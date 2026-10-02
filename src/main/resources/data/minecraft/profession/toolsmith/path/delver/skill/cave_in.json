@@ -1,0 +1,58 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.delver.cave_in"
+  },
+  "icon": "minecraft:gravel",
+  "description": {
+    "translate": "skill.townstead.toolsmith.delver.cave_in.description"
+  },
+  "cost": 1,
+  "requires": [
+    "lamp_oil"
+  ],
+  "skill_group": "townstead:delver_deep",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:knack",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 6,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:damage",
+                "amount": 4,
+                "source": "other"
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:slowness",
+                "duration": 100,
+                "amplifier": 2
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.stone.break",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

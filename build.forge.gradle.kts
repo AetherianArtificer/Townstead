@@ -5,7 +5,8 @@ plugins {
 
 val mcaNamespace = "forge.net.conczin.mca"
 val mcaArtifact = "minecraft-comes-alive"
-val mcaVersion = "7.7.1-alpha.3+1.20.1-universal"
+val mcaVersion = "7.7.1-beta.3+1.20.1"
+val mcaDevelopmentVersion = "1.20.1-SNAPSHOT"
 
 stonecutter {
     const("neoforge", false)
@@ -58,6 +59,9 @@ repositories {
     maven("https://maven.blamejared.com")
     // Curios API, for the optional wearables integration (villager Curios slots and screen).
     maven("https://www.cursemaven.com") { content { includeGroup("curse.maven") } }
+    // EMI and REI plugin APIs (runtime optional; each plugin class is only loaded by its viewer's scan).
+    maven("https://maven.terraformersmc.com/releases")
+    maven("https://maven.shedaniel.me")
     mavenCentral()
 }
 
@@ -69,7 +73,7 @@ dependencies {
     // forge.* namespace the shipped jars actually carry at runtime.
     // Resolve through flatDir so ForgeGradle can remap the universal production jar for the
     // named development/test runtime. A files(...) dependency cannot be deobfuscated.
-    compileOnly(fg.deobf("townstead.libs:$mcaArtifact:$mcaVersion"))
+    compileOnly(fg.deobf("townstead.libs:$mcaArtifact:$mcaVersion-universal"))
     compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:${property("mixin_extras_version")}")!!)
     implementation(jarJar("io.github.llamalad7:mixinextras-forge:${property("mixin_extras_version")}")) {
         jarJar.ranged(this, "[0.5.4,0.6)")
@@ -80,13 +84,23 @@ dependencies {
     "jarJar"("com.h2database:h2-mvstore:[${property("h2_mvstore_version")},2.5.0)") {
         jarJar.pin(this, property("h2_mvstore_version") as String)
     }
+    // Ink runtime and compiler for villager stories; .ink files compile on datapack reload.
+    for (artifact in listOf("blade-ink", "blade-ink-compiler")) {
+        "minecraftLibrary"("com.bladecoder.ink:$artifact:${property("blade_ink_version")}")
+        "jarJar"("com.bladecoder.ink:$artifact:[${property("blade_ink_version")},1.4.0)") {
+            jarJar.pin(this, property("blade_ink_version") as String)
+        }
+    }
     compileOnly("dev.architectury:architectury-forge:9.2.14")
-    compileOnly(fg.deobf("vazkii.patchouli:Patchouli:1.20.1-85-FORGE:api"))
     // JEI plugin API (runtime optional; the plugin class is only loaded by JEI's scan)
     compileOnly(fg.deobf("mezz.jei:jei-1.20.1-common-api:15.20.0.135"))
     compileOnly(fg.deobf("mezz.jei:jei-1.20.1-forge-api:15.20.0.135"))
+    compileOnly(fg.deobf("dev.emi:emi-forge:1.0.9+1.20.1:api"))
+    compileOnly(fg.deobf("me.shedaniel:RoughlyEnoughItems-api-forge:12.1.785"))
     // Curios (runtime optional): everything Curios-shaped lives in compat.curios behind ModCompat.
     compileOnly(fg.deobf("curse.maven:curios-309927:6418456"))
+    // Jade plugin API (runtime optional; the plugin class is only loaded by Jade's scan)
+    compileOnly(fg.deobf("curse.maven:jade-324717:6271651"))
     // No Sponge Mixin annotation processor: this build ships no refmap (targets
     // are hand-written SRG with remap=false). MixinExtras' own processor is kept
     // only because its supported ForgeGradle setup requires it.
@@ -95,6 +109,22 @@ dependencies {
     // Pheno unit tests touch Minecraft types; surface the main compile classpath to tests.
     testImplementation(files(sourceSets.main.get().compileClasspath))
 }
+
+// Real-Minecraft-class tests; see the neoforge script.
+testing {
+    suites {
+        val integrationTest by registering(JvmTestSuite::class) {
+            useJUnitJupiter()
+            dependencies {
+                implementation(platform("org.junit:junit-bom:5.10.2"))
+                implementation(files(sourceSets.main.get().compileClasspath))
+                implementation(sourceSets.main.get().output)
+            }
+            targets.all { testTask.configure { shouldRunAfter(tasks.test) } }
+        }
+    }
+}
+tasks.check { dependsOn(testing.suites.named("integrationTest")) }
 
 // Offline Chronicles harness; see the neoforge script for why it is not in src/test.
 val sim by sourceSets.creating {
@@ -123,9 +153,15 @@ layout.buildDirectory.set(file(
 ))
 
 tasks.withType<ProcessResources> {
-    val replaceProperties = mapOf("version" to project.version)
+    val replaceProperties = mapOf(
+        "version" to project.version,
+        "mca_version" to mcaVersion,
+        "mca_development_version" to mcaDevelopmentVersion
+    )
     inputs.properties(replaceProperties)
-    filesMatching("META-INF/mods.toml") { expand(replaceProperties) }
+    filesMatching(listOf("META-INF/mods.toml", "META-INF/townstead-mca.properties")) {
+        expand(replaceProperties)
+    }
     exclude("META-INF/neoforge.mods.toml")
     // Downgrade the mixin compatibility level for Java 17. Icon mixins remain in
     // the config; TownsteadMixinPlugin gates optional MCA targets at runtime.
@@ -161,20 +197,12 @@ tasks.withType<ProcessResources> {
     filesMatching("data/*/recipe/*.json") {
         filter { it.replace("\"id\":", "\"item\":") }
     }
-    // 1.20.1 Patchouli: book id is stored as NBT on the result item, not a 1.21 data component
-    filesMatching("data/townstead/recipe/townstead_guide.json") {
-        filter {
-            it.replace(
-                Regex("""\"components\"\s*:\s*\{\s*\"patchouli:book\"\s*:\s*\"([^\"]+)\"\s*\}\s*,"""),
-                "\"nbt\": \"{\\\\\"patchouli:book\\\\\":\\\\\"$1\\\\\"}\","
-            )
-        }
-    }
     // 1.20.1 recipe conditions use "conditions" key and "forge:mod_loaded" type
     filesMatching("data/*/recipe/*.json") {
         filter {
             it.replace("\"neoforge:conditions\"", "\"conditions\"")
               .replace("\"neoforge:mod_loaded\"", "\"forge:mod_loaded\"")
+              .replace("\"neoforge:item_exists\"", "\"forge:item_exists\"")
         }
     }
     doLast {
@@ -192,7 +220,24 @@ tasks.withType<ProcessResources> {
 }
 
 tasks.withType<JavaCompile> { options.encoding = "UTF-8" }
-tasks.withType<Test> { useJUnitPlatform() }
+tasks.withType<Test> {
+    useJUnitPlatform()
+    // ApiV1IsolationTest scans the compiled api/v1 classes for leaked internals.
+    systemProperty("townstead.classes", sourceSets.main.get().output.classesDirs.asPath)
+    systemProperty("townstead.mcaVersion", mcaVersion)
+    systemProperty("townstead.mcaDevelopmentVersion", mcaDevelopmentVersion)
+}
+
+// The public API alone, for third-party mods to compile against (compileOnly, never shipped).
+tasks.register<Jar>("apiJar") {
+    group = "build"
+    description = "Packages only com.aetherianartificer.townstead.api.v1 for consumers to compile against."
+    archiveBaseName.set("townstead-api")
+    archiveClassifier.set("v1")
+    from(sourceSets.main.get().output) { include("com/aetherianartificer/townstead/api/v1/**") }
+    from(sourceSets.main.get().allSource) { include("com/aetherianartificer/townstead/api/v1/**") }
+    dependsOn(tasks.named("classes"))
+}
 
 tasks.named<Jar>("jar") {
     // The plain jar remains available for diagnostics; distribution uses the

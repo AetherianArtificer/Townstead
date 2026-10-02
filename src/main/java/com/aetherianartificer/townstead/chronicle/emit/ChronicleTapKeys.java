@@ -13,6 +13,19 @@ public final class ChronicleTapKeys {
     // survival
     public static final String STARVING = "townstead:starving";
     public static final String CURED = "townstead:cured";
+    public static final String FREEZING = "townstead:freezing";
+    public static final String SWELTERING = "townstead:sweltering";
+    public static final String ZOMBIE_BITE = "townstead:zombie_bite";
+    public static final String TURNED_ZOMBIE = "townstead:turned_zombie";
+    public static final String INFECTION_CURED = "townstead:infection_cured";
+    public static final String TURNED_VAMPIRE = "townstead:turned_vampire";
+    public static final String VAMPIRE_CURED = "townstead:vampire_cured";
+    public static final String WILD_SETTLED = "townstead:wild_settled";
+    public static final String VAMPIRE_BITE = "townstead:vampire_bite";
+    public static final String BECAME_FULL_VAMPIRE = "townstead:became_full_vampire";
+    public static final String HUNTER_SLEW_VAMPIRE = "townstead:hunter_slew_vampire";
+    public static final String VILLAGE_FELL_TO_VAMPIRES = "townstead:village_fell_to_vampires";
+    public static final String VILLAGE_RETAKEN = "townstead:village_retaken";
 
     private ChronicleTapKeys() {}
 }

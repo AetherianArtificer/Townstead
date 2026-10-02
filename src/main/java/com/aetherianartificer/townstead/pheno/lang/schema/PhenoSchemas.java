@@ -51,11 +51,31 @@ public final class PhenoSchemas {
         // --- Gene types (their behavior tree starts here) ---
         NodeSchemas.register(NodeSchema.of("pheno:trigger", NodeDomain.GENE)
                 .doc("Runs an action when a life-cycle event fires (attack, hurt, kill, land, ...).")
-                .field(required("trigger", PhenoType.STRING).doc("Event: when_attack, when_hurt, when_kill, ..."))
+                .field(required("trigger", PhenoType.STRING).doc("Event: when_attack, when_hurt, when_kill, when_work, ..."))
+                .field(of("verbs", PhenoType.ANY).doc("when_work only: work verb or list of verbs (e.g. townstead:harvested); omitted accepts all."))
+                .field(of("item_condition", PhenoType.OBJECT).doc("when_item_use: the used item. when_work: the work's output."))
                 .field(of("target", PhenoType.STRING).doc("self or other (the counterpart entity)."))
                 .field(required("action", PhenoType.ACTION))
                 .field(of("condition", PhenoType.CONDITION))
                 .primaryChild("action").build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:thermal_tolerance", NodeDomain.GENE)
+                .doc("Resting body temperature and comfort band; cold/heat scale the ambient pull. climate:any switches the need off.")
+                .field(of("neutral", PhenoType.FLOAT).doc("Resting body temperature in Celsius (default 37.0)."))
+                .field(of("band", PhenoType.FLOAT).doc("Comfortable half-width in Celsius (default 0.5)."))
+                .field(of("cold", PhenoType.FLOAT).doc("Cold sensitivity 0..2 (0 immune, 1 baseline)."))
+                .field(of("heat", PhenoType.FLOAT).doc("Heat sensitivity 0..2 (0 immune, 1 baseline)."))
+                .field(of("climate", PhenoType.STRING).doc("\"any\" disables thermoregulation entirely."))
+                .build());
+        NodeSchemas.register(NodeSchema.of("pheno:insulation", NodeDomain.GENE)
+                .doc("Innate clothing (fur, blubber, chitin) as a Celsius offset on the body target.")
+                .field(of("amount", PhenoType.FLOAT).doc("-1.5..1.5 degrees; positive warms."))
+                .field(of("sheds", PhenoType.BOOL).doc("Positive insulation stops hurting in the heat."))
+                .build());
+        NodeSchemas.register(NodeSchema.of("pheno:metabolism", NodeDomain.GENE)
+                .doc("endotherm (default) holds its neutral and warms with work; ectotherm follows the air and basks in the sun.")
+                .field(of("metabolism", PhenoType.STRING).doc("endotherm or ectotherm."))
+                .build());
 
         NodeSchemas.register(NodeSchema.of("pheno:active_ability", NodeDomain.GENE)
                 .doc("An action the holder triggers from an Root Ability key slot.")
@@ -86,13 +106,17 @@ public final class PhenoSchemas {
         NodeSchemas.register(NodeSchema.of("pheno:modifier", NodeDomain.GENE)
                 .doc("Scales a server mechanic: healing, damage_dealt, break_speed, jump, exhaustion, "
                         + "xp_gain, food, projectile_damage, breeding_cooldown, status_effect_duration/"
-                        + "amplifier (with effect), enchantment_level (with enchantment, shape only). "
+                        + "amplifier (with effect), enchantment_level (with enchantment, shape only), "
+                        + "durability_loss, fishing_lure, fishing_luck, anvil_break_chance, "
+                        + "anvil_material_repair, anvil_prior_work, farmland_trample. "
                         + "Folds onto the live base through the capability layer.")
                 .field(of("target", PhenoType.STRING).doc("Intercept point (v1 alias: modifier)."))
                 .field(of("modifier", PhenoType.STRING).doc("v1 name for target."))
                 .field(of("value", PhenoType.FLOAT).doc("v1 scalar paired with operation."))
                 .field(of("operation", PhenoType.STRING).doc("multiply (default), add, set, min, max."))
                 .field(of("effect", PhenoType.ID).doc("Discriminator for status_effect_* targets."))
+                .field(of("item_condition", PhenoType.OBJECT).doc("Only when the item the mechanic acts on passes (tool, rod, anvil item); never applies where there is no item."))
+                .field(of("applies_to", PhenoType.OBJECT).doc("Aura: {radius (max 16), self (default true), condition on each receiver}."))
                 .field(of("enchantment", PhenoType.ID).doc("Discriminator for enchantment_level."))
                 .field(of("condition", PhenoType.CONDITION))
                 .field(of("when", PhenoType.CONDITION).doc("v2 alias for condition.")).build());
@@ -213,6 +237,16 @@ public final class PhenoSchemas {
         NodeSchemas.register(NodeSchema.of("pheno:energize", NodeDomain.ACTION)
                 .doc("Reduces a Townstead villager's fatigue.")
                 .field(of("amount", PhenoType.ANY).doc("Fatigue removed; number or Pheno value."))
+                .build());
+        NodeSchemas.register(NodeSchema.of("pheno:warm", NodeDomain.ACTION)
+                .doc("Raises a Townstead villager's body temperature: hot soup, mulled wine, a warm bath.")
+                .field(of("amount", PhenoType.ANY).doc("Degrees Celsius added; number or Pheno value."))
+                .field(of("duration", PhenoType.DURATION).doc("Zero edits core instantly; positive ticks apply a non-stacking ambient warming influence for that duration."))
+                .build());
+        NodeSchemas.register(NodeSchema.of("pheno:cool", NodeDomain.ACTION)
+                .doc("Lowers a Townstead villager's body temperature: an iced drink, a swim.")
+                .field(of("amount", PhenoType.ANY).doc("Degrees Celsius removed; number or Pheno value."))
+                .field(of("duration", PhenoType.DURATION).doc("Zero edits core instantly; positive ticks apply a non-stacking ambient cooling influence for that duration."))
                 .build());
         NodeSchemas.register(NodeSchema.of("pheno:apply_effect", NodeDomain.ACTION)
                 .doc("Applies a status effect.")
@@ -337,6 +371,24 @@ public final class PhenoSchemas {
                 .field(required("blocks", PhenoType.OBJECT).doc("A block selector (e.g. { type: pheno:ray, stop_on: block })."))
                 .field(required("do", PhenoType.BLOCK_ACTION)).primaryChild("do").build());
 
+        NodeSchemas.register(NodeSchema.of("pheno:haze", NodeDomain.ACTION)
+                .doc("Raises haze of one data-defined kind (data/<ns>/haze) at the selected blocks. Fills only "
+                        + "air and existing haze; grounded kinds skip cells with nothing solid below.")
+                .field(required("kind", PhenoType.ID).doc("A haze kind id, e.g. townstead:flour."))
+                .field(required("blocks", PhenoType.OBJECT).doc("A block selector, e.g. { radius: 3, where: { type: air } }."))
+                .field(of("density", PhenoType.INT).doc("Starting density, 1 to 8 (default 8).")).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:wear_cosmetic", NodeDomain.ACTION)
+                .doc("Shows an item in an equipment slot for a while, display only: real gear is untouched and "
+                        + "nothing is created. One of the listed items (ids or #tags) is picked at random.")
+                .field(of("slot", PhenoType.STRING).doc("head (default), chest, legs, feet, mainhand, offhand."))
+                .field(required("item", PhenoType.ANY).doc("An item id, a #tag, or a list of either."))
+                .field(of("duration", PhenoType.INT).doc("Ticks the cosmetic shows (default 200).")).build());
+        NodeSchemas.register(NodeSchema.of("pheno:wearing_cosmetic", NodeDomain.CONDITION)
+                .doc("True while a pheno:wear_cosmetic item shows in the slot; with item, only while that item does.")
+                .field(of("slot", PhenoType.STRING).doc("head (default), chest, legs, feet, mainhand, offhand."))
+                .field(of("item", PhenoType.STRING).doc("Optional item id or #tag.")).build());
+
         NodeSchemas.register(NodeSchema.of("pheno:beam", NodeDomain.ACTION)
                 .doc("Draws a line of particles from the caster's eyes along a ray to its impact point "
                         + "(the beam half of Apoli/Apugli raycast).")
@@ -371,6 +423,10 @@ public final class PhenoSchemas {
                 .field(of("z", PhenoType.INT))
                 .field(required("block_action", PhenoType.BLOCK_ACTION)).primaryChild("block_action").build());
 
+        NodeSchemas.register(NodeSchema.of("pheno:accelerate", NodeDomain.BLOCK_ACTION)
+                .doc("Runs the block entity's own ticker extra times (stations work further along). "
+                        + "Blocks in #townstead:never_accelerate are skipped.")
+                .field(of("ticks", PhenoType.INT).doc("Extra ticks, 1 to 200 (default 1).")).build());
         NodeSchemas.register(NodeSchema.of("pheno:set_block", NodeDomain.BLOCK_ACTION)
                 .doc("Replaces the focused block; the id may be literal or derived from the current block.")
                 .field(required("block", PhenoType.ANY))
@@ -426,6 +482,28 @@ public final class PhenoSchemas {
                 .field(of("biome", PhenoType.TAG_OR_ID).asList())
                 .field(of("dimension", PhenoType.ID).asList())
                 .field(of("effects", PhenoType.OBJECT)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:near_decoration", NodeDomain.CONDITION)
+                .doc("A recognised decoration (a hearth, a cool spot) stands within radius of the entity.")
+                .field(of("decoration", PhenoType.ID).doc("Decoration definition id; omit for any decoration."))
+                .field(of("radius", PhenoType.INT)).build());
+        for (var query : java.util.Map.of(
+                "thermal_stress", "Server villager core deviation in species comfort bands: negative cold, positive hot.",
+                "thermal_wetness", "Server villager retained wetness from 0 (dry) to 1 (soaked), including drying after rain.",
+                "thermal_load", "Server villager personal exposure in Celsius-equivalent degrees relative to comfort.",
+                "thermal_strain", "Server villager seconds of continuous exposure outside the comfort zone.",
+                "thermal_trend", "Server villager predicted direction: -1 cooling, 0 steady, 1 warming.").entrySet())
+            NodeSchemas.register(NodeSchema.of("pheno:" + query.getKey(), NodeDomain.CONDITION)
+                    .doc(query.getValue()).field(of("min", PhenoType.FLOAT)).field(of("max", PhenoType.FLOAT)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:wet", NodeDomain.CONDITION)
+                .doc("True in water/rain, and while a villager remains wet during drying.").build());
+        NodeSchemas.register(NodeSchema.of("pheno:body_temperature", NodeDomain.CONDITION)
+                .doc("A Townstead villager's body temperature in degrees Celsius (37.0 is the human neutral).")
+                .field(of("min", PhenoType.FLOAT))
+                .field(of("max", PhenoType.FLOAT)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:ambient_temperature", NodeDomain.CONDITION)
+                .doc("The ambient temperature at the entity's position in degrees Celsius, from the active temperature backend.")
+                .field(of("min", PhenoType.FLOAT))
+                .field(of("max", PhenoType.FLOAT)).build());
 
         NodeSchemas.register(NodeSchema.of("pheno:building", NodeDomain.CONDITION)
                 .doc("Tests the Townstead/MCA building at the entity's position.")

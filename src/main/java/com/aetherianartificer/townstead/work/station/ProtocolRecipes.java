@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.work.station;
 
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
 import com.aetherianartificer.townstead.work.recipe.StationType;
@@ -135,6 +137,7 @@ public final class ProtocolRecipes {
         } else {
             out.addAll(discoverFor(def));
         }
+        out.addAll(discoverCommissions(level, def));
         out.addAll(discoverByType(level, def));
 
         Set<ResourceLocation> attached = new LinkedHashSet<>();
@@ -153,6 +156,76 @@ public final class ProtocolRecipes {
     }
 
     /**
+     * A {@code modifies} line has no fixed workpiece, so it yields one recipe per workpiece a
+     * player has actually handed over: every escrowed commission on this server whose stack the
+     * line admits. The recipe's output is the workpiece item, so the finished piece counts, stores,
+     * and credits the line the way any product does, and its id carries the exact product.
+     */
+    static List<DiscoveredRecipe> discoverCommissions(ServerLevel level, WorkstationDef def) {
+        List<DiscoveredRecipe> out = new ArrayList<>();
+        if (def.produces().isEmpty() || level.getServer() == null) return out;
+        Set<ResourceLocation> workpieces = null;
+        for (WorkstationDef.Produce produce : def.produces()) {
+            if (produce.modifies() == null) continue;
+            if (workpieces == null) workpieces = escrowedWorkpieces(level);
+            List<RecipeIngredient> base = plainInputs(produce);
+            if (base.isEmpty()) continue;
+            for (ResourceLocation item : workpieces) {
+                ItemStack probe = new ItemStack(BuiltInRegistries.ITEM.get(item));
+                if (probe.isEmpty() || !produce.admits(probe)) continue;
+                List<RecipeIngredient> inputs = new ArrayList<>(base);
+                inputs.add(new RecipeIngredient(List.of(item), 1));
+                out.add(new DiscoveredRecipe(
+                        com.aetherianartificer.townstead.work.order.ModifiedProducts.recipeId(produce.output(), item),
+                        def.role(), def.recipeTier() > 0 ? def.recipeTier() : 1, item, 1,
+                        Math.max(1, produce.timeTicks()), false, null, 0, List.copyOf(inputs), false,
+                        def.beverage(), null));
+            }
+        }
+        return out;
+    }
+
+    /** Every distinct item currently escrowed as a commission workpiece on this server. */
+    private static Set<ResourceLocation> escrowedWorkpieces(ServerLevel level) {
+        Set<ResourceLocation> out = new LinkedHashSet<>();
+        var register = com.aetherianartificer.townstead.work.site.WorksiteRegister.get(level.getServer());
+        for (var site : register.all()) {
+            var orders = site.orders();
+            for (int i = 0; i < orders.size(); i++) {
+                var order = orders.at(i);
+                if (order == null || order.workpiece() == null) continue;
+                ResourceLocation item = ResourceLocation.tryParse(order.workpiece().getString("id"));
+                if (item != null && BuiltInRegistries.ITEM.containsKey(item)) out.add(item);
+            }
+        }
+        return out;
+    }
+
+    /** The line's declared inputs as ingredients, ids and tags only. */
+    private static List<RecipeIngredient> plainInputs(WorkstationDef.Produce produce) {
+        List<RecipeIngredient> out = new ArrayList<>();
+        for (String raw : produce.inputs()) {
+            List<ResourceLocation> ids = new ArrayList<>();
+            ResourceLocation sourceTag = null;
+            if (raw.startsWith("#")) {
+                sourceTag = ResourceLocation.tryParse(raw.substring(1));
+                if (sourceTag != null) {
+                    for (var holder : BuiltInRegistries.ITEM.getTagOrEmpty(
+                            net.minecraft.tags.TagKey.create(Registries.ITEM, sourceTag))) {
+                        ids.add(BuiltInRegistries.ITEM.getKey(holder.value()));
+                    }
+                }
+            } else {
+                ResourceLocation itemId = ResourceLocation.tryParse(raw);
+                if (itemId != null && BuiltInRegistries.ITEM.containsKey(itemId)) ids.add(itemId);
+            }
+            if (ids.isEmpty()) return List.of();
+            out.add(new RecipeIngredient(List.copyOf(ids), 1, sourceTag, null));
+        }
+        return out;
+    }
+
+    /**
      * Every recipe of a def's declared {@code recipe_type}, resolved for the order screen.
      *
      * <p>For a station whose outputs come from a recipe family rather than inline lines (the
@@ -165,8 +238,19 @@ public final class ProtocolRecipes {
         long gameTime = level.getGameTime();
         ByTypeCacheEntry cached = BY_TYPE_CACHE.get(def.id());
         if (cached != null && gameTime < cached.expiresAt()) return cached.recipes();
+        // A mod whose recipes hide their result or their counts behind its own getters registers
+        // a reader for the recipe type; the def then reads through it instead of the recipe API.
+        com.aetherianartificer.townstead.work.recipe.RecipeTypeSources.Source typed =
+                com.aetherianartificer.townstead.work.recipe.RecipeTypeSources.byType(def.recipeType());
+        if (typed != null) {
+            List<DiscoveredRecipe> read = List.copyOf(typed.discover(level, def));
+            BY_TYPE_CACHE.put(def.id(), new ByTypeCacheEntry(read, gameTime + BY_TYPE_CACHE_TICKS));
+            return read;
+        }
         List<DiscoveredRecipe> out = new ArrayList<>();
         List<ItemStack> probes = null;
+        int ofType = 0;
+        List<String> droppedNoInputs = new ArrayList<>();
         //? if >=1.21 {
         for (net.minecraft.world.item.crafting.RecipeHolder<?> holder
                 : level.getRecipeManager().getRecipes()) {
@@ -177,8 +261,9 @@ public final class ProtocolRecipes {
                 : level.getRecipeManager().getRecipes()) {
             ResourceLocation recipeId = recipe.getId();
         *///?}
-            ResourceLocation typeId = WorkRecipeRegistry.recipeTypeId(recipe.getType());
+            ResourceLocation typeId = WorkRecipeRegistry.recipeTypeId(recipe);
             if (!def.recipeType().equals(typeId)) continue;
+            ofType++;
             // Trim recipes compose their result from base and template at craft time; there is
             // no honest static line for "any armor, any pattern".
             if (recipe instanceof net.minecraft.world.item.crafting.SmithingTrimRecipe) continue;
@@ -212,7 +297,14 @@ public final class ProtocolRecipes {
             }
             // A recipe whose ingredients cannot be resolved must yield nothing rather than a
             // zero-input line — a recipe that costs nothing is an item printer.
-            if (inputs.isEmpty()) continue;
+            if (inputs.isEmpty()) {
+                inputs = com.aetherianartificer.townstead.work.recipe.ProjectedStationPlan.declaredInputs(
+                        com.aetherianartificer.townstead.work.recipe.RecipeProjections.project(recipeId, typeId, recipe));
+            }
+            if (inputs.isEmpty()) {
+                if (droppedNoInputs.size() < 8) droppedNoInputs.add(recipeId.toString());
+                continue;
+            }
             // A furnace burns something to run. Expressed as an ordinary ingredient on the
             // supply-line id so planning, staging and the needs list all account for fuel
             // without knowing what fuel is. Only furnaces: a passive block with a recipe
@@ -243,6 +335,11 @@ public final class ProtocolRecipes {
             ));
         }
         List<DiscoveredRecipe> frozen = List.copyOf(out);
+        if (Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_LOGGING)) {
+            com.aetherianartificer.townstead.Townstead.LOGGER.info(
+                    "Recipe type {} for station {}: {} recipes of this type, {} usable, {} dropped without inputs {}",
+                    def.recipeType(), def.id(), ofType, frozen.size(), ofType - frozen.size(), droppedNoInputs);
+        }
         BY_TYPE_CACHE.put(def.id(), new ByTypeCacheEntry(frozen, gameTime + BY_TYPE_CACHE_TICKS));
         return frozen;
     }

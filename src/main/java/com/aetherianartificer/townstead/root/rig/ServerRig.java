@@ -42,6 +42,21 @@ public final class ServerRig {
         return null;
     }
 
+    /** Whether this entity wears MCA's own villager body rather than a custom rig. */
+    public static boolean hasVillagerBody(LivingEntity entity) {
+        return isVillagerBody(rigIdFor(entity));
+    }
+
+    /** Whether people of this Root wear MCA's own villager body rather than a custom rig. */
+    public static boolean hasVillagerBody(ResourceLocation rootId) {
+        return isVillagerBody(rootId == null ? null : speciesRig(rootId.toString()));
+    }
+
+    // Species that keep MCA's body name it as mca:villager rather than leaving it empty.
+    private static boolean isVillagerBody(String rig) {
+        return rig == null || rig.isEmpty() || rig.equals(com.aetherianartificer.townstead.root.Rig.VILLAGER.base());
+    }
+
     private static String speciesRig(String rootIdRaw) {
         ResourceLocation rootId = ResourceLocation.tryParse(rootIdRaw);
         ResourceLocation speciesId = RootRegistry.effectiveSpecies(rootId);

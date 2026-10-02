@@ -114,6 +114,8 @@ public final class BlockConditions {
                     };
                 };
             }
+            case "redstone_powered":
+                return (level, pos) -> level.isLoaded(pos) && level.hasNeighborSignal(pos);
             case "exposed_to_sky":
                 return Level::canSeeSky;
             case "air":
@@ -314,6 +316,45 @@ public final class BlockConditions {
             case "constant": {
                 boolean value = GsonHelper.getAsBoolean(json, "value", true);
                 return (level, pos) -> value;
+            }
+            case "work_station": {
+                // A block one of the profession's work tasks names as a workstation. Read from
+                // the live def, so paths, packs, and mod-gated tasks are included as loaded.
+                ResourceLocation profession = DataPackLang.parseId(GsonHelper.getAsString(json, "profession", ""));
+                if (profession == null) return null;
+                ResourceLocation task = json.has("task")
+                        ? DataPackLang.parseId(GsonHelper.getAsString(json, "task", "")) : null;
+                return (level, pos) -> {
+                    var def = com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(profession);
+                    if (def == null) return false;
+                    ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
+                    for (var work : def.workTasks()) {
+                        // A task that names no stations works anywhere; it is not a station.
+                        if (work.workstations().isEmpty()) continue;
+                        if (task != null && !task.equals(work.type())) continue;
+                        if (work.allowsBlock(blockId)) return true;
+                    }
+                    return false;
+                };
+            }
+            case "farmland": {
+                // Any mod's farmland: vanilla and its subclasses, plus #townstead:farmland.
+                return (level, pos) -> com.aetherianartificer.townstead.farming.Farmland.is(level.getBlockState(pos));
+            }
+            case "mature": {
+                // A ripe crop, by the harvest engine's own rules; scope to farmland for wild plants.
+                return (level, pos) -> com.aetherianartificer.townstead.hunger.HarvestWorkIndex
+                        .isMatureCrop(level.getBlockState(pos));
+            }
+            case "in_work_area": {
+                // The block-position form of the entity condition: is this block inside a work area.
+                net.minecraft.resources.ResourceLocation area = json.has("area")
+                        ? com.aetherianartificer.townstead.data.DataPackLang.parseId(GsonHelper.getAsString(json, "area", ""))
+                        : null;
+                if (json.has("area") && (area == null
+                        || !com.aetherianartificer.townstead.pheno.area.WorkAreas.isKnown(area))) return null;
+                return (level, pos) -> level instanceof net.minecraft.server.level.ServerLevel server
+                        && com.aetherianartificer.townstead.pheno.area.WorkAreas.covers(server, pos, area);
             }
             default:
                 return null;

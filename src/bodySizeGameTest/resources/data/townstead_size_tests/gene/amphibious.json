@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:gene/v2",
+  "type": "pheno:ability",
+  "display_name": {
+    "translate": "gene.townstead_ribbits.amphibious"
+  },
+  "description": {
+    "translate": "gene.townstead_ribbits.amphibious.desc"
+  },
+  "category": "Abilities",
+  "ability": "water_breathing",
+  "icon": "minecraft:kelp"
+}

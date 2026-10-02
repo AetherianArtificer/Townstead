@@ -6,7 +6,7 @@
   "priority": 30,
   "contributes": {
     "path": {
-      "worksites": ["brewinandchewin:item_mat", "brewinandchewin:keg"],
+      "worksites": ["brewinandchewin:coaster", "brewinandchewin:item_mat", "brewinandchewin:keg"],
       "work": [
         {
           "type": "townstead_work:brew",

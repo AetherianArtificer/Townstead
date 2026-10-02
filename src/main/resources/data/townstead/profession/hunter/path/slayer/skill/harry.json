@@ -1,0 +1,64 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.slayer.harry"
+  },
+  "icon": "minecraft:rabbit_foot",
+  "description": {
+    "translate": "skill.townstead.hunter.slayer.harry.description"
+  },
+  "cost": 1,
+  "requires": [
+    "pounce"
+  ],
+  "skill_group": "townstead:hunter_slayer_b",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:add_velocity",
+          "relative": true,
+          "z": 1.5,
+          "y": 0.2
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 3,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:damage",
+                "amount": 4,
+                "source": "other"
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:slowness",
+                "duration": 60,
+                "amplifier": 0
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.player.attack.sweep",
+          "volume": 1.0,
+          "pitch": 0.9
+        }
+      ]
+    }
+  }
+}

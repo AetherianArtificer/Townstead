@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.pilgrim.pilgrims_grace"
+  },
+  "icon": "minecraft:honey_bottle",
+  "description": {
+    "translate": "skill.townstead.cleric.pilgrim.pilgrims_grace.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tireless"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 100,
+    "resource_cost": {
+      "resource": "townstead:faith",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:faith",
+      "min": 75
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:hydrate",
+            "immediate": 2,
+            "lasting": 1
+          },
+          {
+            "type": "pheno:energize",
+            "amount": 1
+          }
+        ]
+      }
+    }
+  }
+}

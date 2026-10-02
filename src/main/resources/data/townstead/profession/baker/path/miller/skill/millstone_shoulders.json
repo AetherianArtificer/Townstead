@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.miller.millstone_shoulders"
+  },
+  "icon": "minecraft:grindstone",
+  "description": {
+    "translate": "skill.townstead.baker.miller.millstone_shoulders.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:attribute",
+    "attribute": "minecraft:generic.knockback_resistance",
+    "amount": 0.5
+  }
+}

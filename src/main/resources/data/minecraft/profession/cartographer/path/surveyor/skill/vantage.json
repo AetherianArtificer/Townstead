@@ -1,0 +1,59 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.surveyor.vantage"
+  },
+  "icon": "minecraft:spyglass",
+  "description": {
+    "translate": "skill.townstead.cartographer.surveyor.vantage.description"
+  },
+  "cost": 1,
+  "requires": [
+    "clear_air"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:bearing",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:block",
+          "y": 0,
+          "block_condition": {
+            "type": "height",
+            "min": 100
+          }
+        },
+        {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:not",
+              "condition": {
+                "type": "pheno:movement",
+                "movement": "moving"
+              }
+            },
+            {
+              "type": "pheno:block",
+              "y": 0,
+              "block_condition": {
+                "type": "exposed_to_sky"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:bearing",
+      "amount": 3
+    }
+  }
+}

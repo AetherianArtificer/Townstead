@@ -441,6 +441,10 @@ public final class ScannedProfessions {
             JsonObject provider = entry.getAsJsonObject();
             if (provider.has("type")
                     && "townstead:building".equals(provider.get("type").getAsString())) return true;
+            if (provider.has("type")
+                    && "townstead:job_block".equals(provider.get("type").getAsString())
+                    && provider.has("sites_per_worker")
+                    && provider.get("sites_per_worker").getAsInt() > 1) return true;
         }
         return false;
     }

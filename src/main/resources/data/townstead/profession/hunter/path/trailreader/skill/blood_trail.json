@@ -1,0 +1,27 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.trailreader.blood_trail"
+  },
+  "icon": "minecraft:redstone",
+  "description": {
+    "translate": "skill.townstead.hunter.trailreader.blood_trail.description"
+  },
+  "cost": 1,
+  "requires": [
+    "light_step"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "target": "other",
+    "action": {
+      "type": "pheno:invert",
+      "action": {
+        "type": "pheno:change_collection",
+        "collection": "townstead:marked",
+        "operation": "add"
+      }
+    }
+  }
+}

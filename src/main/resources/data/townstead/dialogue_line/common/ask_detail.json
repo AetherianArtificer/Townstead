@@ -1,0 +1,56 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "ask_detail",
+  "groups": [
+    {
+      "lines": {
+        "where_exactly": { "text": "Where exactly?", "asks": "townstead:where", "about": "where" },
+        "where_was_this": { "text": "Where was this?", "asks": "townstead:where", "about": "where" },
+        "whereabouts": { "text": "Whereabouts?", "asks": "townstead:where", "about": "where" },
+        "near_which_houses": { "text": "Near which houses?", "asks": "townstead:where", "about": "where" },
+        "when_was_this": { "text": "When was this?", "asks": "townstead:when" },
+        "last_night_really": { "text": "Last night? Really?", "asks": "townstead:when" },
+        "when_did_it_happen": { "text": "When did it happen?", "asks": "townstead:when" },
+        "what_time_was_it": { "text": "What time was it?", "asks": "townstead:when" },
+        "was_it_late": { "text": "Was it late?", "asks": "townstead:when" },
+        "just_last_night": { "text": "Just last night?", "asks": "townstead:when" },
+        "how_late_was_it": { "text": "How late was it?", "asks": "townstead:when" },
+        "tonight_or_last_night": { "text": "Tonight, or last night?", "asks": "townstead:when" },
+        "was_anyone_hurt": { "text": "Was anyone hurt?", "asks": "townstead:hurt" },
+        "is_everyone_all_right": { "text": "Is everyone all right?", "asks": "townstead:hurt" },
+        "is_everyone_okay": { "text": "Is everyone okay?", "asks": "townstead:hurt" },
+        "did_anyone_get_hurt": { "text": "Did anyone get hurt?", "asks": "townstead:hurt" },
+        "nobodys_hurt_right": { "text": "Nobody's hurt, right?", "asks": "townstead:hurt" },
+        "is_anybody_injured": { "text": "Is anybody injured?", "asks": "townstead:hurt" },
+        "please_tell_me_no_one": { "text": "Please tell me no one got hurt.", "asks": "townstead:hurt" },
+        "was_there_any_damage": { "text": "Was there any damage?", "asks": "townstead:hurt" }
+      }
+    },
+    {
+      "persp": { "who": "they" },
+      "lines": {
+        "who_saw_it": { "text": "Who saw it?", "asks": "townstead:who" },
+        "who_told_you": { "text": "Who told you?", "asks": "townstead:who" },
+        "did_someone_see_it": { "text": "Did someone see it?", "asks": "townstead:who" },
+        "who_spotted_it": { "text": "Who spotted it?", "asks": "townstead:who" },
+        "who_was_out_that_late": { "text": "Who was out that late?", "asks": "townstead:who" }
+      }
+    },
+    {
+      "lines": {
+        "where_were_the_guards": { "text": "Where were the guards?", "asks": "townstead:watch" },
+        "who_was_on_watch": { "text": "Who was on watch?", "asks": "townstead:watch" },
+        "didnt_anyone_stop_it": { "text": "Didn't anyone stop it?", "asks": "townstead:watch" },
+        "why_didnt_the_guards_see": { "text": "Why didn't the guards see it?", "asks": "townstead:watch" },
+        "oh_no_is_everyone_okay": { "text": "Oh no! Is everyone okay? Is it gone?", "asks": "townstead:hurt", "personalities": "anxious" },
+        "where_are_the_guards_when": {
+          "text": "Where are the guards when you need them?",
+          "asks": "townstead:watch",
+          "personalities": ["crabby", "grumpy"]
+        },
+        "whoa_where": { "text": "Whoa! Where?", "asks": "townstead:where", "about": "where", "stages": "child" },
+        "was_it_big": { "text": "Was it big?", "asks": "townstead:hurt", "stages": "child" }
+      }
+    }
+  ]
+}

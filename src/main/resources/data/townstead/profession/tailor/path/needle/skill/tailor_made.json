@@ -1,0 +1,69 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.needle.tailor_made"
+  },
+  "icon": "minecraft:red_dye",
+  "description": {
+    "translate": "skill.townstead.tailor.needle.tailor_made.description"
+  },
+  "cost": 1,
+  "requires": [
+    "measure_twice"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "target": "other",
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "ingredient",
+            "item": "minecraft:shears"
+          }
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:stitch",
+          "min": 50
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:delay",
+          "ticks": 20,
+          "action": {
+            "type": "pheno:damage",
+            "amount": 1,
+            "source": "other"
+          }
+        },
+        {
+          "type": "pheno:delay",
+          "ticks": 40,
+          "action": {
+            "type": "pheno:damage",
+            "amount": 1,
+            "source": "other"
+          }
+        },
+        {
+          "type": "pheno:delay",
+          "ticks": 60,
+          "action": {
+            "type": "pheno:damage",
+            "amount": 1,
+            "source": "other"
+          }
+        }
+      ]
+    }
+  }
+}

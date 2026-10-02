@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.roadwright.waystation"
+  },
+  "icon": "minecraft:campfire",
+  "description": {
+    "translate": "skill.townstead.mason.roadwright.waystation.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tollgate"
+  ],
+  "skill_group": "townstead:road_crew",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 2,
+    "ai_trigger": "always",
+    "resource_cost": {
+      "resource": "townstead:mortar",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:energize",
+        "amount": 8
+      }
+    }
+  }
+}

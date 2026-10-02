@@ -41,11 +41,16 @@ public final class DispositionRelationsLoader extends SimpleJsonResourceReloadLi
                          ProfilerFiller profiler) {
         Map<String, DispositionRelations.GroupDef> groups = new HashMap<>();
         Map<EntityType<?>, String> members = new HashMap<>();
+        Map<String, net.minecraft.network.chat.Component> welcomable = new java.util.TreeMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             String group = entry.getKey().getPath();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), entry.getKey().toString());
                 TownsteadSchema.validate(obj, "townstead:disposition/v1");
+                if (!com.aetherianartificer.townstead.data.ModGate.allows(obj)) continue;
+                if (obj.has("welcome")) {
+                    welcomable.put(group, DataPackLang.parseComponent(obj.get("welcome"), group, Map.of()));
+                }
                 groups.put(group, new DispositionRelations.GroupDef(
                         names(obj, "friendly"), names(obj, "hostile")));
                 if (obj.has("members") && obj.get("members").isJsonArray()) {
@@ -60,6 +65,7 @@ public final class DispositionRelationsLoader extends SimpleJsonResourceReloadLi
             }
         }
         DispositionRelations.replaceAll(groups, members);
+        DispositionRelations.replaceWelcomable(welcomable);
         LOGGER.info("Loaded {} disposition groups", groups.size());
     }
 

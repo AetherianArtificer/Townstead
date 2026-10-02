@@ -1,0 +1,59 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.tidecaller.sea_shanty"
+  },
+  "icon": "minecraft:note_block",
+  "description": {
+    "translate": "skill.townstead.fisherman.tidecaller.sea_shanty.description"
+  },
+  "cost": 1,
+  "requires": [
+    "dolphin_run"
+  ],
+  "skill_group": "townstead:tidecaller_crew",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 2,
+    "ai_trigger": "always",
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 10,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:haste",
+                "duration": 600,
+                "amplifier": 0
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:strength",
+                "duration": 600,
+                "amplifier": 0
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.note_block.bell",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "biome_tease",
+  "lines": {
+    "you_say_that_every_week": "You say that every week.",
+    "youve_never_been_anywhere_else": "You've never been anywhere else.",
+    "spoken_like_a_local": "Spoken like a local.",
+    "you_sound_like_my_grandmother": "You sound like my grandmother.",
+    "somebodys_homesick_and_they_havent": "Somebody's homesick and they haven't even left.",
+    "should_i_write_that_down": "Should I write that down for the village sign?",
+    "youd_live_in_a_hole": "You'd live in a hole if it was local.",
+    "yeah_yeah_we_know_you": "Yeah, yeah, we know you love it here.",
+    "wow_poetic": "Wow, poetic.",
+    "someones_in_a_good_mood": { "text": "Someone's in a good mood.", "personalities": ["playful", "witty"] },
+    "youre_so_cheesy": { "text": "You're so cheesy.", "stages": "teen" },
+    "hmph_its_fine_i_suppose": { "text": "Hmph. It's fine, I suppose.", "personalities": ["crabby", "grumpy"] }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.trapper.trapfield"
+  },
+  "icon": "minecraft:cobweb",
+  "description": {
+    "translate": "skill.townstead.fletcher.trapper.trapfield.description"
+  },
+  "cost": 1,
+  "requires": [
+    "snare_ring"
+  ],
+  "skill_group": "townstead:trapper_snare",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:draw",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:snare",
+          "blocks": {
+            "radius": 5,
+            "where": {
+              "type": "air"
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.tripwire.click_on",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

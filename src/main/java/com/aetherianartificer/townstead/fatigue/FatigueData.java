@@ -34,6 +34,10 @@ public final class FatigueData {
     // Misaligned bed: -0.6/interval → full recovery in ~17 MC hours
     public static final float RECOVERY_BED_MISALIGNED = -0.6f;
     public static final float RECOVERY_REST_NO_BED = -0.05f;
+    /** Sleeping rough on the ground: an off-window nap's rate, so a bedless villager still gets up rested. */
+    public static final float RECOVERY_ROUGH = -0.6f;
+    /** How long forced rest waits for a bed (home or borrowed) before a villager sleeps rough. */
+    public static final int ROUGH_SLEEP_GRACE = 200;
     // -0.4/interval → clears collapse in ~5 gameTime intervals ≈ 2 real minutes
     public static final float RECOVERY_COLLAPSED = -0.4f;
 

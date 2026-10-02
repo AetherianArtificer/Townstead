@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.bartender.bums_rush"
+  },
+  "icon": "minecraft:iron_door",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.bartender.bums_rush.description"
+  },
+  "cost": 1,
+  "requires": [
+    "eighty_six"
+  ],
+  "skill_group": "townstead:bartender_bouncer",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:tab",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 5,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:random_teleport",
+        "distance": 10
+      }
+    }
+  }
+}

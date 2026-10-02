@@ -15,7 +15,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-/** Public identity and tier vocabulary for one open semantic entity state. */
+/**
+ * Public identity and tier vocabulary for one open semantic entity state. While it is active, the
+ * states it {@code excludes} cannot take hold (a thrall cannot be turned into a vampire). With
+ * {@code "body": "villager"} it only takes hold on someone in MCA's own villager body, never a
+ * custom rig.
+ */
 public record EntityStateDefinition(
         ResourceLocation id,
         double min,
@@ -24,18 +29,39 @@ public record EntityStateDefinition(
         List<Tier> tiers,
         MergePolicy merge,
         Persistence persistence,
-        DeathPolicy deathPolicy) {
+        DeathPolicy deathPolicy,
+        @Nullable Aspect aspect,
+        java.util.Set<ResourceLocation> excludes,
+        boolean villagerBody) {
 
     public static final String SCHEMA = "pheno:entity_state/v1";
 
     public enum MergePolicy { FIRST, MAX, SUM, LATEST }
     public enum Persistence { PERSISTENT, SESSION }
     public enum DeathPolicy { KEEP, CLEAR }
+    /** Which parents must carry the aspect: any, both, or only the father (or mother) and not the other. */
+    public enum Parents { ANY, BOTH, FATHER_ONLY, MOTHER_ONLY }
 
     public record Tier(String id, double min) {}
 
+    /**
+     * Marks a lasting identity state (vampire, dhampir) as opposed to a passing one (drunk).
+     * {@code level} shows its amount as a level where it is displayed, instead of its tier.
+     */
+    /**
+     * How a state shows as an aspect. {@code pickable} offers it in the editor's Aspects page; a
+     * player who picks it joins {@code faction} (a Vampirism faction, at level 1) when one is named,
+     * and anyone else is set to {@code pick}.
+     */
+    public record Aspect(boolean display, @Nullable Inheritance inheritance, boolean level,
+                         boolean pickable, @Nullable ResourceLocation faction, double pick) {}
+
+    /** A child born to carriers of this aspect receives {@code aspect} with {@code chance}. */
+    public record Inheritance(ResourceLocation aspect, double chance, Parents parents) {}
+
     public EntityStateDefinition {
         tiers = List.copyOf(tiers);
+        excludes = excludes == null ? java.util.Set.of() : java.util.Set.copyOf(excludes);
     }
 
     public double clamp(double value) {
@@ -99,7 +125,60 @@ public record EntityStateDefinition(
         return new EntityStateDefinition(id, min, max, initial, tiers,
                 enumValue(json, "merge", MergePolicy.MAX, MergePolicy.class),
                 enumValue(json, "persistence", Persistence.PERSISTENT, Persistence.class),
-                enumValue(json, "death", DeathPolicy.CLEAR, DeathPolicy.class));
+                enumValue(json, "death", DeathPolicy.CLEAR, DeathPolicy.class),
+                json.has("aspect") ? aspect(id, json.get("aspect")) : null,
+                excludes(json),
+                "villager".equals(GsonHelper.getAsString(json, "body", "any")));
+    }
+
+    private static java.util.Set<ResourceLocation> excludes(JsonObject json) {
+        if (!json.has("excludes")) return java.util.Set.of();
+        java.util.Set<ResourceLocation> out = new java.util.LinkedHashSet<>();
+        for (var element : GsonHelper.getAsJsonArray(json, "excludes")) {
+            ResourceLocation state = DataPackLang.parseId(element.getAsString());
+            if (state == null) throw new IllegalArgumentException("'" + element.getAsString() + "' is not a state id");
+            out.add(state);
+        }
+        return out;
+    }
+
+    /** The amount a newly received aspect starts at: its first tier, else fully present. */
+    public double receivedAmount() {
+        for (Tier tier : tiers) if (tier.min() > min) return tier.min();
+        return max;
+    }
+
+    private static Aspect aspect(ResourceLocation self, JsonElement element) {
+        if (!element.isJsonObject()) throw new IllegalArgumentException("'aspect' must be an object");
+        JsonObject json = element.getAsJsonObject();
+        Inheritance inheritance = null;
+        if (json.has("inheritance")) {
+            if (!json.get("inheritance").isJsonObject()) throw new IllegalArgumentException("'inheritance' must be an object");
+            JsonObject inherit = json.getAsJsonObject("inheritance");
+            String mode = GsonHelper.getAsString(inherit, "mode", "none").toLowerCase(Locale.ROOT);
+            ResourceLocation target = switch (mode) {
+                case "none" -> null;
+                case "same" -> self;
+                case "child_aspect" -> {
+                    ResourceLocation parsed = DataPackLang.parseId(GsonHelper.getAsString(inherit, "aspect", ""));
+                    if (parsed == null) throw new IllegalArgumentException("child_aspect inheritance requires an 'aspect' id");
+                    yield parsed;
+                }
+                default -> throw new IllegalArgumentException("unknown inheritance mode '" + mode + "'");
+            };
+            double chance = GsonHelper.getAsDouble(inherit, "chance", 1);
+            if (!Double.isFinite(chance) || chance < 0 || chance > 1) {
+                throw new IllegalArgumentException("inheritance chance must be in [0,1]");
+            }
+            if (target != null) {
+                inheritance = new Inheritance(target, chance,
+                        enumValue(inherit, "parents", Parents.ANY, Parents.class));
+            }
+        }
+        ResourceLocation faction = json.has("faction") ? DataPackLang.parseId(GsonHelper.getAsString(json, "faction")) : null;
+        return new Aspect(GsonHelper.getAsBoolean(json, "display", true), inheritance,
+                GsonHelper.getAsBoolean(json, "level", false), GsonHelper.getAsBoolean(json, "pickable", false),
+                faction, GsonHelper.getAsDouble(json, "pick", 1));
     }
 
     private static <E extends Enum<E>> E enumValue(JsonObject json, String key, E fallback, Class<E> type) {

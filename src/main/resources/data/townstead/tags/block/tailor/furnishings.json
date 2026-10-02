@@ -1,0 +1,27 @@
+{
+  "replace": false,
+  "values": [
+    "#minecraft:banners",
+    "#minecraft:candles",
+    "minecraft:lantern",
+    "minecraft:soul_lantern",
+    "minecraft:loom",
+    "minecraft:flower_pot",
+    {
+      "id": "weaversparadise:player_plushie",
+      "required": false
+    },
+    {
+      "id": "weaversparadise:blahaj",
+      "required": false
+    },
+    {
+      "id": "weaversparadise:dyeing_barrel",
+      "required": false
+    },
+    {
+      "id": "weaversparadise:dyemaking_block",
+      "required": false
+    }
+  ]
+}

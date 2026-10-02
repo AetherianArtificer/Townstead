@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:conversation/v1",
+  "subjects": [
+    "townstead:biome"
+  ],
+  "register": "ambient",
+  "start": "t0_open_subject",
+  "turns": {
+    "t0_open_subject": {
+      "speaker": "initiator",
+      "move": "townstead:open_subject",
+      "replies": [
+        "t1_agree",
+        "t1_tease"
+      ]
+    },
+    "t1_agree": {
+      "speaker": "responder",
+      "move": "townstead:agree",
+      "weight": 2
+    },
+    "t1_tease": {
+      "speaker": "responder",
+      "move": "townstead:tease",
+      "personality_weights": {
+        "witty": 3,
+        "default": 1
+      }
+    }
+  },
+  "associated": [
+    "townstead:weather"
+  ],
+  "expansions": {
+    "moves": [
+      "townstead:elaborate",
+      "townstead:opinion_ask",
+      "townstead:anecdote"
+    ],
+    "max": 2
+  }
+}

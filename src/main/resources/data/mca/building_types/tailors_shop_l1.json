@@ -1,0 +1,15 @@
+{
+  "color": "ffb98fb8",
+  "visible": true,
+  "priority": 2,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 216,
+  "noBeds": true,
+  "blocks": {
+    "minecraft:crafting_table": 1,
+    "#townstead:tailor/workbenches": 1,
+    "#townstead:tailor/fabric": 1,
+    "#townstead:tailor/storage": 1
+  }
+}

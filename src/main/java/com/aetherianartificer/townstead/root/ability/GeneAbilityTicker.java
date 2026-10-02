@@ -77,6 +77,7 @@ public final class GeneAbilityTicker {
         if (entity.level().isClientSide) return;
         if ((entity.level().getGameTime() + entity.getId()) % INTERVAL != 0) return;
 
+        com.aetherianartificer.townstead.root.GeneExpressionSync.tick(entity);
         List<Power> expressed = Powers.active(entity);
         if (expressed.isEmpty()) return;
 

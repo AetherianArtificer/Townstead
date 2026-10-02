@@ -1,0 +1,103 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.weaponsmith.path.honer"
+  },
+  "title": {
+    "translate": "career.townstead.weaponsmith.title.honer"
+  },
+  "color": "#C8A04A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:edge",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:weaponsmith/honer/sharpening"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:weaponsmith/honer/tempered_blade"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:weaponsmith/honer/arm_the_village"
+              }
+            ]
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:equipped_item",
+                "slot": "mainhand",
+                "item_condition": {
+                  "type": "or",
+                  "conditions": [
+                    {
+                      "type": "ingredient",
+                      "tag": "minecraft:swords"
+                    },
+                    {
+                      "type": "ingredient",
+                      "tag": "minecraft:axes"
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 8,
+                "condition": {
+                  "type": "pheno:hostile"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:edge",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "honed_edge",
+      "quick_hone",
+      "sharpen_arms"
+    ],
+    [
+      "keep_it_keen",
+      "keen_strike",
+      "field_forge"
+    ],
+    [
+      "sharpening",
+      "tempered_blade",
+      "arm_the_village"
+    ],
+    [
+      "building_edge",
+      "armor_breaker",
+      "warband"
+    ],
+    [
+      "razor",
+      "perfect_edge",
+      "masterforged"
+    ]
+  ]
+}

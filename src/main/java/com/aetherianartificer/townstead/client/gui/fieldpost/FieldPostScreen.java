@@ -1,7 +1,11 @@
 package com.aetherianartificer.townstead.client.gui.fieldpost;
 
+import com.aetherianartificer.townstead.client.gui.common.BlockSpriteResolver;
+
 import com.aetherianartificer.townstead.block.CropDetection;
 import com.aetherianartificer.townstead.block.FieldPostBlockEntity;
+import com.aetherianartificer.townstead.block.OrderSheetBlock;
+import com.aetherianartificer.townstead.block.RoomThermometerBlock;
 import com.aetherianartificer.townstead.client.gui.common.CellTextures;
 import com.aetherianartificer.townstead.client.gui.common.FrameRenderer;
 import com.aetherianartificer.townstead.client.gui.common.PaletteList;
@@ -10,6 +14,7 @@ import com.aetherianartificer.townstead.farming.cellplan.CellPlan;
 import com.aetherianartificer.townstead.farming.cellplan.FieldPostConfig;
 import com.aetherianartificer.townstead.farming.cellplan.SeedAssignment;
 import com.aetherianartificer.townstead.farming.cellplan.SoilType;
+import com.aetherianartificer.townstead.farming.cellplan.TrellisSpec;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -25,6 +30,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CampfireBlock;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.level.block.BushBlock;
@@ -105,9 +111,14 @@ public class FieldPostScreen extends Screen {
     // Two-layer plan: soil type and seed assignment
     private final Map<Integer, SoilType> soilPlan = new HashMap<>();
     private final Map<Integer, String> seedPlan = new HashMap<>();
+    // Packed TrellisSpec per TRELLIS cell
+    private final Map<Integer, Integer> trellisPlan = new HashMap<>();
+    // Trellis brush: every TRELLIS cell painted takes these values
+    private int brushTrellisHeight = TrellisSpec.DEFAULT.height();
+    private TrellisSpec.Facing brushTrellisFacing = TrellisSpec.DEFAULT.facing();
 
     // Undo/redo stacks
-    private record UndoEntry(int key, PaletteTab tab, SoilType prevSoil, String prevSeed) {}
+    private record UndoEntry(int key, PaletteTab tab, SoilType prevSoil, String prevSeed, Integer prevTrellis) {}
     private final Deque<UndoEntry> undoStack = new ArrayDeque<>();
     private final Deque<UndoEntry> redoStack = new ArrayDeque<>();
     private static final int MAX_UNDO = 500;
@@ -152,6 +163,8 @@ public class FieldPostScreen extends Screen {
             soilPlan.putAll(plan.soilPlan());
             seedPlan.clear();
             seedPlan.putAll(plan.seedPlan());
+            trellisPlan.clear();
+            trellisPlan.putAll(plan.trellisPlan());
         }
 
         gridSize = loadedConfig.radius() * 2 + 1;
@@ -309,8 +322,10 @@ public class FieldPostScreen extends Screen {
         allSoilEntries.add(new PaletteList.ToolEntry("CLAIM", Component.translatable("townstead.field_post.soil.claim").getString(), new ItemStack(Items.NAME_TAG), CAT_TOOLS));
         // Vanilla soils (farmland, water) belong with other vanilla entries — same grouping as
         // vanilla seeds on the other tab.
-        allSoilEntries.add(new PaletteList.ToolEntry("FARMLAND", Component.translatable("townstead.field_post.soil.farmland").getString(), new ItemStack(Items.FARMLAND), CAT_VANILLA));
+        allSoilEntries.add(farmlandEntry());
         allSoilEntries.add(new PaletteList.ToolEntry("WATER", Component.translatable("townstead.field_post.soil.water").getString(), new ItemStack(Items.WATER_BUCKET), CAT_VANILLA));
+        // The farmer feeds the crop bone meal, or any item in the crop_fertilizers tag.
+        allSoilEntries.add(new PaletteList.ToolEntry(SoilType.FERTILIZED_CROP.name(), Component.translatable("townstead.field_post.soil.fertilized_crop").getString(), new ItemStack(Items.BONE_MEAL), CAT_VANILLA));
         // SoilType.NONE is omitted — it's functionally identical to Erase (both leave the cell
         // outside the plan). Kept as an enum value for back-compat with old saves.
         allSoilEntries.add(new PaletteList.ToolEntry("PROTECTED", Component.translatable("townstead.field_post.soil.protected").getString(), new ItemStack(Items.SHIELD), CAT_TOOLS));
@@ -336,12 +351,61 @@ public class FieldPostScreen extends Screen {
                         new ItemStack(richSoilTilledItem), categoryFor("farmersdelight")));
             }
         }
+        // Trellis — exposed only when a loaded mod gives the farmer a support block to build.
+        net.minecraft.world.item.Item trellisIcon =
+                com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry.trellisIcon();
+        if (trellisIcon != null) {
+            ResourceLocation trellisKey = BuiltInRegistries.ITEM.getKey(trellisIcon);
+            allSoilEntries.add(new PaletteList.ToolEntry("TRELLIS",
+                    Component.translatable("townstead.field_post.soil.trellis").getString(),
+                    new ItemStack(trellisIcon), trellisKey != null ? categoryFor(trellisKey.getNamespace()) : CAT_TOOLS));
+        }
         // Fertilized farmland variants — exposed only when at least one compat provider can create
         // the corresponding soil type. Graceful degradation: no FFB/etc. loaded, the options just
         // don't show up, and any existing plan cells painted with these types simply stay unworked.
         maybeAddFertilizedSoilEntry(SoilType.FERTILIZED_RICH, "townstead.field_post.soil.fertilized_rich");
         maybeAddFertilizedSoilEntry(SoilType.FERTILIZED_HEALTHY, "townstead.field_post.soil.fertilized_healthy");
         maybeAddFertilizedSoilEntry(SoilType.FERTILIZED_STABLE, "townstead.field_post.soil.fertilized_stable");
+        // Paddy (TFC rice): farmland under standing water. The icon is a seed that grows there.
+        if (com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry.providesPaddy()) {
+            for (Item item : BuiltInRegistries.ITEM) {
+                if (!"paddy".equals(com.aetherianartificer.townstead.compat.farming.FarmerCropCompatRegistry.patternHintForSeed(new ItemStack(item)))) continue;
+                ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
+                allSoilEntries.add(new PaletteList.ToolEntry(SoilType.PADDY.name(),
+                        Component.translatable("townstead.field_post.soil.paddy").getString(),
+                        new ItemStack(item), key != null ? categoryFor(key.getNamespace()) : CAT_TOOLS));
+                break;
+            }
+        }
+        // Nutrient farmland (TFC): the farmer tops up whatever the crop drains, using that mod's fertilizers.
+        if (com.aetherianartificer.townstead.compat.farming.FarmerNutrientCompatRegistry.available()) {
+            Item fertilizer = com.aetherianartificer.townstead.compat.farming.FarmerNutrientCompatRegistry.icon();
+            if (fertilizer != null) {
+                ResourceLocation key = BuiltInRegistries.ITEM.getKey(fertilizer);
+                allSoilEntries.add(new PaletteList.ToolEntry(SoilType.FERTILIZED_NUTRIENTS.name(),
+                        Component.translatable("townstead.field_post.soil.fertilized_nutrients").getString(),
+                        new ItemStack(fertilizer), key != null ? categoryFor(key.getNamespace()) : CAT_TOOLS));
+            }
+        }
+    }
+
+    /**
+     * The farmer tills with the ground's own hoe action, so where a mod brings its own farmland
+     * (TFC) the one Farmland entry shows that farmland under that mod's heading.
+     */
+    private PaletteList.ToolEntry farmlandEntry() {
+        String label = Component.translatable("townstead.field_post.soil.farmland").getString();
+        var tagged = BuiltInRegistries.BLOCK.getTag(com.aetherianartificer.townstead.farming.Farmland.TAG);
+        if (tagged.isPresent()) {
+            for (var holder : tagged.get()) {
+                Item item = holder.value().asItem();
+                if (item == Items.AIR) continue;
+                ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
+                return new PaletteList.ToolEntry("FARMLAND", label, new ItemStack(item),
+                        key != null ? categoryFor(key.getNamespace()) : CAT_VANILLA);
+            }
+        }
+        return new PaletteList.ToolEntry("FARMLAND", label, new ItemStack(Items.FARMLAND), CAT_VANILLA);
     }
 
     private void maybeAddFertilizedSoilEntry(SoilType type, String translationKey) {
@@ -567,7 +631,7 @@ public class FieldPostScreen extends Screen {
                 for (int dy = 3; dy >= -3; dy--) {
                     BlockPos candidate = new BlockPos(wx, baseY + dy, wz);
                     BlockState state = level.getBlockState(candidate);
-                    if (state.getBlock() instanceof FarmBlock) {
+                    if (com.aetherianartificer.townstead.farming.Farmland.is(state)) {
                         groundPos = candidate; groundState = state; break;
                     }
                 }
@@ -659,14 +723,21 @@ public class FieldPostScreen extends Screen {
     private boolean isSoilPlanFulfilled(BlockState state, SoilType desired) {
         if (desired == null) return true;
         return switch (desired) {
-            case FARMLAND -> state.getBlock() instanceof FarmBlock && !isCompatRichSoil(state) && !isFertilizedFarmland(state);
+            case FARMLAND -> com.aetherianartificer.townstead.farming.Farmland.is(state) && !isCompatRichSoil(state) && !isFertilizedFarmland(state);
             case RICH_SOIL_TILLED -> state.getBlock() instanceof FarmBlock && isCompatRichSoil(state);
-            case RICH_SOIL -> !(state.getBlock() instanceof FarmBlock) && isCompatRichSoil(state);
+            case RICH_SOIL -> !com.aetherianartificer.townstead.farming.Farmland.is(state) && isCompatRichSoil(state);
             case FERTILIZED_RICH -> isFertilizedVariant(state, "fertilized_farmland_rich");
             case FERTILIZED_HEALTHY -> isFertilizedVariant(state, "fertilized_farmland_healthy");
             case FERTILIZED_STABLE -> isFertilizedVariant(state, "fertilized_farmland_stable");
+            // Nutrient upkeep is ongoing; the plan is met once the ground is tilled.
+            case FERTILIZED_NUTRIENTS -> com.aetherianartificer.townstead.farming.Farmland.is(state);
+            // Feeding the crop is ongoing; the plan is met once the ground is tilled.
+            case FERTILIZED_CROP -> com.aetherianartificer.townstead.farming.Farmland.is(state);
+            // The water on top is checked by the farmer; the plan's ground is met once tilled.
+            case PADDY -> com.aetherianartificer.townstead.farming.Farmland.is(state);
             case WATER -> state.getFluidState().is(Fluids.WATER);
-            case NONE, PROTECTED, CLAIM -> false;
+            // A trellis cell keeps its border and marks while the plan exists.
+            case NONE, PROTECTED, CLAIM, TRELLIS -> false;
         };
     }
 
@@ -990,6 +1061,85 @@ public class FieldPostScreen extends Screen {
         drawSmallButton(g, zoomPlusX, rightBtnY, smallBtn, "+", mouseX, mouseY);
         String zoomLbl = Component.translatable("townstead.field_post.zoom").getString();
         g.drawString(font, zoomLbl, zoomMinusX - font.width(zoomLbl) - 4, textY, TEXT_DIM, false);
+
+        // ── Trellis brush: height and facing of the next painted trellis cells ──
+        if (trellisBrushActive()) {
+            TrellisBrushLayout brush = trellisBrushLayout();
+            g.drawString(font, brush.heightLabel(), brush.heightLabelX(), textY, TEXT_DIM, false);
+            drawSmallButton(g, brush.minusX(), brush.y(), brush.btn(), "-", mouseX, mouseY);
+            g.drawCenteredString(font, String.valueOf(brushTrellisHeight), brush.valueX(), textY, TEXT_LIGHT);
+            drawSmallButton(g, brush.plusX(), brush.y(), brush.btn(), "+", mouseX, mouseY);
+            g.drawString(font, brush.facingLabel(), brush.facingLabelX(), textY, TEXT_DIM, false);
+            boolean facingHovered = mouseX >= brush.facingX() && mouseX < brush.facingX() + brush.facingW()
+                    && mouseY >= brush.y() && mouseY < brush.y() + brush.btn();
+            g.fill(brush.facingX() - 1, brush.y() - 1, brush.facingX() + brush.facingW() + 1, brush.y() + brush.btn() + 1, FrameRenderer.FRAME_SHADOW);
+            g.fill(brush.facingX(), brush.y(), brush.facingX() + brush.facingW(), brush.y() + brush.btn(), facingHovered ? 0xFF4A4235 : 0xFF2A251A);
+            g.drawCenteredString(font, facingName(brushTrellisFacing), brush.facingX() + brush.facingW() / 2, brush.y() + 3, TEXT_LIGHT);
+        }
+    }
+
+    private record TrellisBrushLayout(String heightLabel, int heightLabelX, int minusX, int valueX, int plusX,
+                                      String facingLabel, int facingLabelX, int facingX, int facingW, int y, int btn) {}
+
+    private boolean trellisBrushActive() {
+        if (activeTab != PaletteTab.SOIL || paletteList == null) return false;
+        PaletteList.ToolEntry selected = paletteList.getSelected();
+        return selected != null && !selected.isHeader && "TRELLIS".equals(selected.toolId);
+    }
+
+    /** Right-aligned against the zoom controls, so render and click share one set of positions. */
+    private TrellisBrushLayout trellisBrushLayout() {
+        int btn = 14;
+        int y = toolbarTop + (TOOLBAR_H - btn) / 2;
+        String zoomLbl = Component.translatable("townstead.field_post.zoom").getString();
+        int zoomMinusX = toolbarLeft + vpW - btn - 4 - btn - 2;
+        int right = zoomMinusX - font.width(zoomLbl) - 4 - 10;
+
+        int facingW = 0;
+        for (TrellisSpec.Facing facing : TrellisSpec.Facing.values()) {
+            facingW = Math.max(facingW, font.width(facingName(facing)) + 8);
+        }
+        String facingLabel = Component.translatable("townstead.field_post.trellis.facing").getString();
+        String heightLabel = Component.translatable("townstead.field_post.trellis.height").getString();
+        int facingX = right - facingW;
+        int facingLabelX = facingX - 4 - font.width(facingLabel);
+        int plusX = facingLabelX - 10 - btn;
+        int valueX = plusX - 8;
+        int minusX = valueX - 8 - btn;
+        int heightLabelX = minusX - 4 - font.width(heightLabel);
+        return new TrellisBrushLayout(heightLabel, heightLabelX, minusX, valueX, plusX,
+                facingLabel, facingLabelX, facingX, facingW, y, btn);
+    }
+
+    private String facingName(TrellisSpec.Facing facing) {
+        return Component.translatable("townstead.field_post.trellis.facing."
+                + facing.name().toLowerCase(java.util.Locale.ROOT)).getString();
+    }
+
+    /**
+     * Marks a trellis cell: a stake, the planned height, and the lattice facing as a bar on that
+     * side of the cell (a centered square for a flat panel).
+     */
+    private void drawTrellisMark(GuiGraphics g, int cx, int cy, int cs, TrellisSpec spec) {
+        int stake = 0xFFC8A064;
+        g.fill(cx + 3, cy + 2, cx + 4, cy + cs - 2, stake);
+        g.fill(cx + 2, cy + 4, cx + 5, cy + 5, stake);
+        int bar = 0xFF7B9E3A;
+        switch (spec.facing()) {
+            case NORTH -> g.fill(cx + 1, cy + 1, cx + cs - 1, cy + 2, bar);
+            case SOUTH -> g.fill(cx + 1, cy + cs - 2, cx + cs - 1, cy + cs - 1, bar);
+            case WEST -> g.fill(cx + 1, cy + 1, cx + 2, cy + cs - 1, bar);
+            case EAST -> g.fill(cx + cs - 2, cy + 1, cx + cs - 1, cy + cs - 1, bar);
+            case FLAT -> {
+                int mid = cs / 2;
+                g.fill(cx + mid - 2, cy + mid - 2, cx + mid + 2, cy + mid + 2, bar);
+            }
+        }
+        g.pose().pushPose();
+        g.pose().translate(cx + cs - 5, cy + cs - 6, 200);
+        g.pose().scale(0.5f, 0.5f, 1.0f);
+        g.drawString(font, String.valueOf(spec.height()), 0, 0, 0xFFFFFFFF, true);
+        g.pose().popPose();
     }
 
     private void drawSmallButton(GuiGraphics g, int x, int y, int size, String label, int mouseX, int mouseY) {
@@ -1041,20 +1191,31 @@ public class FieldPostScreen extends Screen {
                 // Base color under the sprite for fallback
                 g.fill(cx, cy, cx + cs, cy + cs, 0xFF1E1E1E);
 
-                if (state != null && !state.isAir()) {
+                // Small objects use their complete item model, not a fragment of their atlas.
+                boolean objectIcon = state != null && (state.getBlock() instanceof RoomThermometerBlock
+                        || state.getBlock() instanceof CampfireBlock
+                        || state.getBlock() instanceof OrderSheetBlock);
+                BlockPos terrainPos = objectIcon && worldPos != null ? worldPos.below() : worldPos;
+                BlockState terrainState = objectIcon
+                        ? (terrainPos != null ? level.getBlockState(terrainPos) : null) : state;
+                // Stacked objects and wall-mounted objects without ground retain the neutral backing.
+                if (terrainState != null && !terrainState.isAir()
+                        && !(terrainState.getBlock() instanceof RoomThermometerBlock)
+                        && !(terrainState.getBlock() instanceof CampfireBlock)
+                        && !(terrainState.getBlock() instanceof OrderSheetBlock)) {
                     // Farmland: use known atlas texture directly (model lookup returns dirt particle)
-                    if (state.getBlock() instanceof FarmBlock) {
-                        boolean wet = state.getValue(FarmBlock.MOISTURE) > 0;
+                    if (terrainState.getBlock() instanceof FarmBlock) {
+                        boolean wet = terrainState.getValue(FarmBlock.MOISTURE) > 0;
                         CellTextures.blit(g, wet ? "minecraft:block/farmland_moist" : "minecraft:block/farmland", cx, cy, cs);
-                    } else if (state.getFluidState().is(Fluids.WATER)) {
+                    } else if (terrainState.getFluidState().is(Fluids.WATER)) {
                         // Water cell: use water texture with tint
                         CellTextures.blit(g, "minecraft:block/water_still", cx, cy, cs);
                         g.fill(cx, cy, cx + cs, cy + cs, 0x603F76E4);
                     } else {
                         net.minecraft.client.renderer.texture.TextureAtlasSprite sprite =
-                                BlockSpriteResolver.getTopSprite(state);
+                                BlockSpriteResolver.getTopSprite(terrainState);
                         if (sprite != null) {
-                            int tint = BlockSpriteResolver.getTint(state, level, worldPos);
+                            int tint = BlockSpriteResolver.getTint(terrainState, level, terrainPos);
                             float r = ((tint >> 16) & 0xFF) / 255f;
                             float gg = ((tint >> 8) & 0xFF) / 255f;
                             float b = (tint & 0xFF) / 255f;
@@ -1065,8 +1226,8 @@ public class FieldPostScreen extends Screen {
                     }
                 }
 
-                // Existing crop icon (centered in cell)
-                ItemStack icon = cropIcons[gz][gx];
+                // Existing crop or object icon, centered with padding at every zoom level.
+                ItemStack icon = objectIcon ? new ItemStack(state.getBlock()) : cropIcons[gz][gx];
                 if (icon != null && !icon.isEmpty()) {
                     g.pose().pushPose();
                     float scale = cs / 16.0f * 0.7f;
@@ -1103,18 +1264,19 @@ public class FieldPostScreen extends Screen {
                         case FARMLAND -> "minecraft:block/farmland";
                         case RICH_SOIL -> "minecraft:block/dirt"; // untilled variant looks like dark dirt
                         case RICH_SOIL_TILLED -> "minecraft:block/farmland_moist";
-                        case FERTILIZED_RICH, FERTILIZED_HEALTHY, FERTILIZED_STABLE -> "minecraft:block/farmland_moist";
-                        case WATER -> "minecraft:block/water_still";
+                        case FERTILIZED_RICH, FERTILIZED_HEALTHY, FERTILIZED_STABLE, FERTILIZED_NUTRIENTS, FERTILIZED_CROP -> "minecraft:block/farmland_moist";
+                        case WATER, PADDY -> "minecraft:block/water_still";
                         case NONE -> null;
                         case PROTECTED -> null;
                         case CLAIM -> null;
+                        case TRELLIS -> null;
                     };
                     if (soilTexture != null) {
                         // Render the planned soil texture as a semi-transparent overlay
                         g.setColor(1.0f, 1.0f, 1.0f, 0.6f);
                         CellTextures.blit(g, soilTexture, cx, cy, cs);
                         g.setColor(1.0f, 1.0f, 1.0f, 1.0f);
-                        if (soilAssignment == SoilType.WATER) {
+                        if (soilAssignment == SoilType.WATER || soilAssignment == SoilType.PADDY) {
                             g.fill(cx, cy, cx + cs, cy + cs, 0x403F76E4);
                         }
                     }
@@ -1125,12 +1287,19 @@ public class FieldPostScreen extends Screen {
                         case FERTILIZED_RICH -> 0xFF4CAF50;     // green border (matches green fertilizer)
                         case FERTILIZED_HEALTHY -> 0xFFE53935;  // red border (matches red fertilizer)
                         case FERTILIZED_STABLE -> 0xFFFFB300;   // amber border (matches yellow fertilizer)
+                        case FERTILIZED_NUTRIENTS -> 0xFF9C7BD0; // lilac border, apart from the FFB trio
+                        case FERTILIZED_CROP -> 0xFFE8E2CC;     // bone white
+                        case PADDY -> 0xFF4FA89B;               // teal border: water over soil
                         case WATER -> 0xFF3366CC;
                         case NONE -> 0xFF666666;
                         case PROTECTED -> 0xFFFF4444;
                         case CLAIM -> 0xFFFFCC00; // yellow — pending server resolution
+                        case TRELLIS -> 0xFF7B9E3A; // vine green
                     };
                     drawCellBorder(g, cx, cy, cs, borderColor);
+                    if (soilAssignment == SoilType.TRELLIS) {
+                        drawTrellisMark(g, cx, cy, cs, TrellisSpec.unpack(trellisPlan.getOrDefault(planKey, 0)));
+                    }
                 }
 
                 // Seed plan: show as a smaller centered icon
@@ -1336,9 +1505,14 @@ public class FieldPostScreen extends Screen {
         if (state.getFluidState().is(Fluids.WATER)) {
             soilLabel = Component.translatable("townstead.field_post.tooltip.water").getString();
             soilColor = 0x5599FF;
-        } else if (state.getBlock() instanceof FarmBlock) {
-            boolean wet = state.getValue(FarmBlock.MOISTURE) > 0;
-            String farmland = Component.translatable("townstead.field_post.tooltip.soil.farmland").getString();
+        } else if (com.aetherianartificer.townstead.farming.Farmland.is(state)) {
+            boolean wet = groundPos != null
+                    ? com.aetherianartificer.townstead.farming.Farmland.isMoist(state, level, groundPos)
+                    : state.hasProperty(FarmBlock.MOISTURE) && state.getValue(FarmBlock.MOISTURE) > 0;
+            // Modded farmland names its own soil ("Loam Farmland").
+            String farmland = state.getBlock() instanceof FarmBlock
+                    ? Component.translatable("townstead.field_post.tooltip.soil.farmland").getString()
+                    : state.getBlock().getName().getString();
             String hydration = Component.translatable(wet ? "townstead.field_post.tooltip.hydrated" : "townstead.field_post.tooltip.dry").getString();
             soilLabel = farmland + " · " + hydration;
             soilColor = wet ? 0x77AACC : 0xBB9977;
@@ -1619,6 +1793,24 @@ public class FieldPostScreen extends Screen {
             }
         }
 
+        if (trellisBrushActive()) {
+            TrellisBrushLayout brush = trellisBrushLayout();
+            if (my >= brush.y() && my < brush.y() + brush.btn()) {
+                if (mx >= brush.minusX() && mx < brush.minusX() + brush.btn()) {
+                    brushTrellisHeight = Math.max(TrellisSpec.MIN_HEIGHT, brushTrellisHeight - 1);
+                    return true;
+                }
+                if (mx >= brush.plusX() && mx < brush.plusX() + brush.btn()) {
+                    brushTrellisHeight = Math.min(TrellisSpec.MAX_HEIGHT, brushTrellisHeight + 1);
+                    return true;
+                }
+                if (mx >= brush.facingX() && mx < brush.facingX() + brush.facingW()) {
+                    brushTrellisFacing = brushTrellisFacing.next();
+                    return true;
+                }
+            }
+        }
+
         // Zoom buttons
         int smallBtn = 14;
         int rightY = toolbarTop + (TOOLBAR_H - smallBtn) / 2;
@@ -1767,6 +1959,11 @@ public class FieldPostScreen extends Screen {
         if (activeTab == PaletteTab.SOIL) {
             SoilType type = SoilType.fromName(tool.toolId);
             if (type != null) soilPlan.put(key, type);
+            if (type == SoilType.TRELLIS) {
+                trellisPlan.put(key, new TrellisSpec(brushTrellisHeight, brushTrellisFacing).pack());
+            } else {
+                trellisPlan.remove(key);
+            }
         } else {
             seedPlan.put(key, tool.toolId);
             if (SeedAssignment.AUTO.equals(tool.toolId) || SeedAssignment.isExplicitSeed(tool.toolId)) {
@@ -1774,8 +1971,15 @@ public class FieldPostScreen extends Screen {
                 // only grow on WATER, so a dirt cell would silently fail — set WATER outright
                 // (overriding an incompatible default). Land crops keep the FARMLAND default but
                 // never override a soil the user deliberately painted.
-                if (preferredSoilForSeed(tool.toolId) == SoilType.WATER) {
-                    soilPlan.put(key, SoilType.WATER);
+                SoilType preferred = preferredSoilForSeed(tool.toolId);
+                if (preferred == SoilType.WATER || preferred == SoilType.PADDY) {
+                    soilPlan.put(key, preferred);
+                } else if (preferred == SoilType.TRELLIS) {
+                    // Vine crops only grow on a trellis, so painting one implies a trellis cell.
+                    if (soilPlan.get(key) != SoilType.TRELLIS) {
+                        soilPlan.put(key, SoilType.TRELLIS);
+                        trellisPlan.put(key, new TrellisSpec(brushTrellisHeight, brushTrellisFacing).pack());
+                    }
                 } else {
                     soilPlan.putIfAbsent(key, SoilType.FARMLAND);
                 }
@@ -1832,8 +2036,12 @@ public class FieldPostScreen extends Screen {
 
     private void eraseAt(int key) {
         pushUndo(key);
-        if (activeTab == PaletteTab.SOIL) soilPlan.remove(key);
-        else seedPlan.remove(key);
+        if (activeTab == PaletteTab.SOIL) {
+            soilPlan.remove(key);
+            trellisPlan.remove(key);
+        } else {
+            seedPlan.remove(key);
+        }
         refreshCounts();
     }
 
@@ -1846,7 +2054,7 @@ public class FieldPostScreen extends Screen {
     }
 
     private void pushUndo(int key) {
-        undoStack.push(new UndoEntry(key, activeTab, soilPlan.get(key), seedPlan.get(key)));
+        undoStack.push(new UndoEntry(key, activeTab, soilPlan.get(key), seedPlan.get(key), trellisPlan.get(key)));
         if (undoStack.size() > MAX_UNDO) ((ArrayDeque<UndoEntry>) undoStack).removeLast();
         redoStack.clear(); // new action invalidates redo history
     }
@@ -1854,23 +2062,26 @@ public class FieldPostScreen extends Screen {
     private void undo() {
         if (undoStack.isEmpty()) return;
         UndoEntry entry = undoStack.pop();
-        redoStack.push(new UndoEntry(entry.key, entry.tab, soilPlan.get(entry.key), seedPlan.get(entry.key)));
-        if (entry.prevSoil != null) soilPlan.put(entry.key, entry.prevSoil);
-        else soilPlan.remove(entry.key);
-        if (entry.prevSeed != null) seedPlan.put(entry.key, entry.prevSeed);
-        else seedPlan.remove(entry.key);
+        redoStack.push(new UndoEntry(entry.key, entry.tab, soilPlan.get(entry.key), seedPlan.get(entry.key), trellisPlan.get(entry.key)));
+        restorePlanEntry(entry);
         refreshCounts();
     }
 
     private void redo() {
         if (redoStack.isEmpty()) return;
         UndoEntry entry = redoStack.pop();
-        undoStack.push(new UndoEntry(entry.key, entry.tab, soilPlan.get(entry.key), seedPlan.get(entry.key)));
+        undoStack.push(new UndoEntry(entry.key, entry.tab, soilPlan.get(entry.key), seedPlan.get(entry.key), trellisPlan.get(entry.key)));
+        restorePlanEntry(entry);
+        refreshCounts();
+    }
+
+    private void restorePlanEntry(UndoEntry entry) {
         if (entry.prevSoil != null) soilPlan.put(entry.key, entry.prevSoil);
         else soilPlan.remove(entry.key);
         if (entry.prevSeed != null) seedPlan.put(entry.key, entry.prevSeed);
         else seedPlan.remove(entry.key);
-        refreshCounts();
+        if (entry.prevTrellis != null) trellisPlan.put(entry.key, entry.prevTrellis);
+        else trellisPlan.remove(entry.key);
     }
 
     private void refreshCounts() {
@@ -1895,6 +2106,7 @@ public class FieldPostScreen extends Screen {
         CellPlan.Builder planBuilder = CellPlan.builder();
         soilPlan.forEach(planBuilder::rawSoil);
         seedPlan.forEach(planBuilder::rawSeed);
+        trellisPlan.forEach(planBuilder::rawTrellis);
         CellPlan plan = planBuilder.build();
         // Build seeds list for the seed filter from explicit seed assignments
         List<String> seeds = new ArrayList<>();
@@ -2071,6 +2283,14 @@ public class FieldPostScreen extends Screen {
             // Water-only crop: WATER allowed and no other soil is.
             if ((bits & waterBit) != 0 && (bits & ~waterBit) == 0) {
                 return com.aetherianartificer.townstead.farming.cellplan.SoilType.WATER;
+            }
+            int trellisBit = 1 << com.aetherianartificer.townstead.farming.cellplan.SoilType.TRELLIS.ordinal();
+            if ((bits & trellisBit) != 0 && (bits & ~trellisBit) == 0) {
+                return com.aetherianartificer.townstead.farming.cellplan.SoilType.TRELLIS;
+            }
+            int paddyBit = 1 << com.aetherianartificer.townstead.farming.cellplan.SoilType.PADDY.ordinal();
+            if ((bits & paddyBit) != 0 && (bits & ~paddyBit) == 0) {
+                return com.aetherianartificer.townstead.farming.cellplan.SoilType.PADDY;
             }
         }
         return com.aetherianartificer.townstead.farming.cellplan.SoilType.FARMLAND;

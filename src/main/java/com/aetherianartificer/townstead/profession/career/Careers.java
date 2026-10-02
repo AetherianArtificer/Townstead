@@ -14,6 +14,7 @@ public final class Careers {
 
     public static final ResourceLocation FARMER = id("minecraft", "farmer");
     public static final ResourceLocation SHEPHERD = id("minecraft", "shepherd");
+    public static final ResourceLocation FISHERMAN = id("minecraft", "fisherman");
     public static final ResourceLocation COOK = id("townstead", "cook");
     public static final ResourceLocation BEVERAGE_ARTISAN = id("townstead", "beverage_artisan");
 

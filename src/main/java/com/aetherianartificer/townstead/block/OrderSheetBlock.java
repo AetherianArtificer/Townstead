@@ -43,7 +43,7 @@ import org.jetbrains.annotations.Nullable;
  * sheet is the career desk instead: it opens the career screen, and it is the block the Archives
  * is detected by.</p>
  */
-public class OrderSheetBlock extends Block {
+public class OrderSheetBlock extends SnowCoatedBlock {
 
     public static final EnumProperty<AttachFace> FACE = BlockStateProperties.ATTACH_FACE;
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
@@ -57,13 +57,14 @@ public class OrderSheetBlock extends Block {
 
     public OrderSheetBlock(Properties properties) {
         super(properties);
-        registerDefaultState(stateDefinition.any()
+        registerDefaultState(defaultBlockState()
                 .setValue(FACE, AttachFace.FLOOR)
                 .setValue(FACING, Direction.NORTH));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        super.createBlockStateDefinition(builder);
         builder.add(FACE, FACING);
     }
 

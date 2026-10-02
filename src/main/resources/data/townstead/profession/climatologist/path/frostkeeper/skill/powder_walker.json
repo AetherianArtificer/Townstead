@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.frostkeeper.powder_walker"
+  },
+  "icon": "minecraft:powder_snow_bucket",
+  "description": {
+    "translate": "skill.townstead.climatologist.frostkeeper.powder_walker.description"
+  },
+  "cost": 1,
+  "requires": [
+    "cold_blooded"
+  ],
+  "power": {
+    "type": "pheno:stuck_immunity",
+    "blocks": [
+      "minecraft:powder_snow"
+    ]
+  }
+}

@@ -1,9 +1,28 @@
 {
   "schema": "townstead:hangout_spot/v1",
-  "mods": ["brewery"],
-  "blocks": ["#townstead_hangouts:benches"],
+  "mods": [
+    "brewery"
+  ],
+  "blocks": [
+    "#townstead_hangouts:benches"
+  ],
   "posture": "townstead:sit",
   "capacity": 1,
-  "canonical_offset": [0, 1, 0],
-  "linked_offsets": [[0, -1, 0]]
+  "canonical_offset": [
+    0,
+    1,
+    0
+  ],
+  "linked_offsets": [
+    [
+      0,
+      -1,
+      0
+    ]
+  ],
+  "embodiment_offset": [
+    0,
+    -0.4,
+    0
+  ]
 }

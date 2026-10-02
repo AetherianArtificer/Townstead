@@ -1,13 +1,13 @@
 {
   "color": "ff6a5028",
   "visible": true,
-  "priority": 1,
+  "priority": 5,
   "icon": false,
   "iconU": 247,
   "iconV": 192,
+  "margin": 8,
+  "mergeRange": 32,
   "blocks": {
-    "minecraft:hay_block": 1,
-    "#minecraft:fence_gates": 1,
-    "#minecraft:fences": 4
+    "#townstead:pen_markers": 1
   }
 }

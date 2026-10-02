@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:conversation/v1",
+  "subjects": [
+    "townstead:mob"
+  ],
+  "register": "social",
+  "start": "t0_share_account",
+  "turns": {
+    "t0_share_account": {
+      "speaker": "initiator",
+      "move": "townstead:share_account",
+      "replies": [
+        "t1_ask_detail",
+        "t1_react",
+        "t1_respond"
+      ]
+    },
+    "t1_ask_detail": {
+      "speaker": "responder",
+      "move": "townstead:ask_detail",
+      "weight": 2
+    },
+    "t1_react": {
+      "speaker": "responder",
+      "move": "townstead:react"
+    },
+    "t1_respond": {
+      "speaker": "responder",
+      "move": "townstead:respond",
+      "weight": 3
+    }
+  },
+  "associated": [
+    "townstead:event",
+    "townstead:quest"
+  ],
+  "expansions": {
+    "moves": [
+      "townstead:elaborate",
+      "townstead:opinion_ask",
+      "townstead:anecdote"
+    ],
+    "max": 2
+  }
+}

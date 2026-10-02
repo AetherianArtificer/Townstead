@@ -56,7 +56,7 @@ public final class PhysicalStorageDelivery {
         Map<Long, Candidate> unique = new HashMap<>();
 
         for (BlockPos pos : WorksiteStorageIndex.candidateStoragePositions(level, worksiteBounds)) {
-            addCandidate(unique, level, pos, StoragePreference.LOCAL_RANK, villager, use);
+            addCandidate(unique, level, pos, preference.localRank(use), villager, use);
         }
         for (var building : PreferredStorageBuildings.resolve(level, villager)) {
             int buildingRank = preference.buildingRank(building.getType());

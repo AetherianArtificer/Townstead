@@ -1,5 +1,26 @@
 {
-  "schema":"townstead:hangout_spot/v1","mods":"kaleidoscope_tavern",
-  "blocks":["#townstead:compat/kaleidoscope_tavern/seating"],
-  "posture":"townstead:sit","capacity":1,"canonical_offset":[0,1,0],"linked_offsets":[[0,-1,0]]
+  "schema": "townstead:hangout_spot/v1",
+  "mods": "kaleidoscope_tavern",
+  "blocks": [
+    "#townstead:compat/kaleidoscope_tavern/seating"
+  ],
+  "posture": "townstead:sit",
+  "capacity": 1,
+  "canonical_offset": [
+    0,
+    1,
+    0
+  ],
+  "linked_offsets": [
+    [
+      0,
+      -1,
+      0
+    ]
+  ],
+  "embodiment_offset": [
+    0,
+    -0.4,
+    0
+  ]
 }

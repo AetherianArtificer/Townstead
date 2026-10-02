@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.heatwarden.heatproof"
+  },
+  "icon": "minecraft:magma_cream",
+  "description": {
+    "translate": "skill.townstead.climatologist.heatwarden.heatproof.description"
+  },
+  "cost": 1,
+  "requires": [
+    "warm_blooded"
+  ],
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.5,
+    "damage_tag": "minecraft:is_fire"
+  }
+}

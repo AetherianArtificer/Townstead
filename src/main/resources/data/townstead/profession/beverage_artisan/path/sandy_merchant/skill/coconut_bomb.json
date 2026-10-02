@@ -1,0 +1,62 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.coconut_bomb"
+  },
+  "icon": "minecraft:brown_dye",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.coconut_bomb.description"
+  },
+  "cost": 1,
+  "requires": [
+    "frozen_daiquiri"
+  ],
+  "skill_group": "townstead:sandy_cocktails",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:tan",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:damage",
+              "amount": 6,
+              "source": "other"
+            },
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:nausea",
+              "duration": 160,
+              "amplifier": 0
+            },
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:slowness",
+              "duration": 60,
+              "amplifier": 0
+            }
+          ],
+          "on": {
+            "type": "pheno:ray",
+            "distance": 16
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.wood.break",
+          "volume": 1.0,
+          "pitch": 1.6
+        }
+      ]
+    }
+  }
+}

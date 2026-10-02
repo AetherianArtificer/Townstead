@@ -5,6 +5,7 @@
   "turns": {
     "open": {
       "speaker": "initiator",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.joke.open.1",
         "dialogue.townstead_social.joke.open.2"
@@ -23,6 +24,7 @@
     },
     "warm": {
       "speaker": "responder",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.joke.warm.1",
         "dialogue.townstead_social.joke.warm.2"
@@ -51,6 +53,7 @@
     },
     "cool": {
       "speaker": "responder",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.joke.cool.1",
         "dialogue.townstead_social.joke.cool.2"
@@ -79,6 +82,7 @@
     },
     "follow_warm": {
       "speaker": "initiator",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.joke.follow_warm.1",
         "dialogue.townstead_social.joke.follow_warm.2"
@@ -96,6 +100,7 @@
     },
     "follow_cool": {
       "speaker": "initiator",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.joke.follow_cool.1",
         "dialogue.townstead_social.joke.follow_cool.2"
@@ -113,6 +118,7 @@
     },
     "end_warm": {
       "speaker": "responder",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.joke.end_warm.1",
         "dialogue.townstead_social.joke.end_warm.2"
@@ -146,6 +152,7 @@
     },
     "end_cool": {
       "speaker": "responder",
+      "move": "townstead:say",
       "lines": [
         "dialogue.townstead_social.joke.end_cool.1",
         "dialogue.townstead_social.joke.end_cool.2"

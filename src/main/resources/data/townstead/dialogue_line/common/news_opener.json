@@ -1,0 +1,52 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "news_opener",
+  "groups": [
+    {
+      "lines": {
+        "did_you_hear": { "text": "Did you hear?", "act": "rhetorical" },
+        "listen_to_this": "Listen to this.",
+        "you_wont_believe_this": "You won't believe this.",
+        "have_you_heard": { "text": "Have you heard?", "act": "rhetorical" },
+        "so": "So.",
+        "oh_youll_want_to_hear": "Oh, you'll want to hear this.",
+        "okay_so": "Okay, so.",
+        "get_this": "Get this.",
+        "guess_what": "Guess what.",
+        "so_i_heard_something": "So, I heard something."
+      }
+    },
+    { "valence": "positive", "lines": {"oh_news": "Oh! News!"} },
+    {
+      "lines": {
+        "okay_listen": "Okay, listen.",
+        "you_know_what_happened": "You know what happened?",
+        "hey_did_you_know": "Hey, did you know?"
+      }
+    },
+    { "valence": "positive", "lines": {"oh_this_is_good": "Oh, this is good."} },
+    {
+      "lines": {
+        "okay_dont_tell_anyone_but": "Okay, don't tell anyone, but.",
+        "i_just_heard": "I just heard.",
+        "so_apparently": "So, apparently.",
+        "guess_what_2": { "text": "Guess what!", "stages": "child" },
+        "oh_my_gosh_guess_what": { "text": "Oh my gosh, guess what!", "stages": "child" },
+        "okay_so_like": { "text": "Okay, so, like.", "stages": "teen" },
+        "now_you_may_have_heard": { "text": "Now, you may have heard.", "stages": "senior" },
+        "ugh_youll_hear_anyway": { "text": "Ugh, you'll hear anyway.", "personalities": ["crabby", "grumpy"] }
+      }
+    },
+    {
+      "valence": "positive",
+      "lines": {
+        "ooh_youre_going_to_love": { "text": "Ooh, you're going to love this!", "personalities": ["upbeat", "peppy"] }
+      }
+    },
+    {
+      "lines": {
+        "sweetheart_have_you_heard_the": { "text": "Sweetheart, have you heard the latest?", "personalities": "flirty" }
+      }
+    }
+  ]
+}

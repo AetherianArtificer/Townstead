@@ -1,0 +1,52 @@
+{
+  "type": "pheno:resource",
+  "min": 0,
+  "max": 100,
+  "start": 0,
+  "regen": -1,
+  "regen_interval": 40,
+  "color": "#7A4A2A",
+  "display": {
+    "shape": "horizontal",
+    "fill_mode": "continuous",
+    "frame": "townstead:gauge",
+    "color_theme": "townstead:mechanical",
+    "visibility": "when_referenced",
+    "priority": 20
+  },
+  "on_reach": [
+    {
+      "at": 100,
+      "then": "reset",
+      "do": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:slowness",
+            "duration": 200,
+            "amplifier": 1
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:weakness",
+            "duration": 200,
+            "amplifier": 0
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:mining_fatigue",
+            "duration": 200,
+            "amplifier": 0
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:entity.player.burp",
+            "volume": 1.0,
+            "pitch": 0.6
+          }
+        ]
+      }
+    }
+  ]
+}

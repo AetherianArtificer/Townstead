@@ -143,9 +143,6 @@ class WorkTaskSchemaTest {
                 "every shipped Baker task must parse");
 
         assertFalse(baker.has("mods"), "the Baker must exist in a vanilla-only installation");
-        assertNull(WorkTaskSchemaTest.class.getResource(
-                        "/data/townstead/profession/baker/path/boulanger/path.json"),
-                "Boulanger is simply French for Baker, not a specialization");
         assertFalse(work.has("path_worksites"),
                 "mod-gated Baker paths must own their stations so skipped paths leave no stale work links");
         JsonObject jamMaker = resourceJson(

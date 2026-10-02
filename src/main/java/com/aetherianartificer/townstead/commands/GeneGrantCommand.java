@@ -57,7 +57,7 @@ public final class GeneGrantCommand {
     }
 
     private static int apply(CommandSourceStack source, Entity entity, String geneId, boolean grant) {
-        if (!(entity instanceof VillagerEntityMCA villager)) {
+        if (!(entity instanceof VillagerEntityMCA) && !(entity instanceof net.minecraft.server.level.ServerPlayer)) {
             source.sendFailure(Component.translatable("command.townstead.gene_grant.invalid_target"));
             return 0;
         }
@@ -67,6 +67,21 @@ public final class GeneGrantCommand {
             source.sendFailure(Component.translatable("command.townstead.gene_grant.unknown_gene", geneId));
             return 0;
         }
+        if (entity instanceof net.minecraft.server.level.ServerPlayer player) {
+            var genotype = com.aetherianartificer.townstead.root.PlayerRoot.getOrSeedGenotype(player, player.getRandom());
+            Allele allele = grant ? Heredity.grantAllele(gene, player.getRandom()) : Allele.WILD;
+            genotype.set(Heredity.locusOf(gene), allele, allele);
+            com.aetherianartificer.townstead.root.PlayerRoot.setGenotype(player, genotype);
+            com.aetherianartificer.townstead.root.GeneExpressionSync.tick(player);
+            Component variant = grant && allele.variantId() != null
+                    ? Component.translatable("command.townstead.gene_grant.variant", allele.variantId())
+                    : Component.empty();
+            source.sendSuccess(() -> Component.translatable(grant
+                            ? "command.townstead.gene_grant.granted" : "command.townstead.gene_grant.revoked",
+                    gene.id().toString(), variant, player.getDisplayName()), false);
+            return 1;
+        }
+        VillagerEntityMCA villager = (VillagerEntityMCA)entity;
         TownsteadVillager state = TownsteadVillagers.get(villager);
         if (!state.life().hasGenotype()) {
             source.sendFailure(Component.translatable("command.townstead.gene_grant.no_genotype"));
@@ -83,7 +98,7 @@ public final class GeneGrantCommand {
                 : Component.empty();
         source.sendSuccess(() -> Component.translatable(grant
                         ? "command.townstead.gene_grant.granted" : "command.townstead.gene_grant.revoked",
-                gene.id(), variant, villager.getDisplayName()), false);
+                gene.id().toString(), variant, villager.getDisplayName()), false);
         return 1;
     }
 

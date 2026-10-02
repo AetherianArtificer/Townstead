@@ -1,5 +1,7 @@
 {
   "schema": "townstead:extended_building/v1",
+  "catalog": {"node_item": "minecraft:loom"},
+  "workers": ["minecraft:shepherd"],
   "spirit": {
     "industrious": 5,
     "pastoral": 2

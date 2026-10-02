@@ -39,7 +39,9 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
             ResourceLocation file = entry.getKey();
             String id = file.getNamespace() + ":" + file.getPath();
             try {
-                parsed.put(id, parse(id, GsonHelper.convertToJsonObject(entry.getValue(), file.toString())));
+                JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
+                if (!com.aetherianartificer.townstead.data.ModGate.allows(obj)) continue;
+                parsed.put(id, parse(id, obj));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse rig {}: {}", file, ex.getMessage());
             }
@@ -177,7 +179,10 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
             float h = GsonHelper.getAsFloat(hb, "height", 2.0f);
             // Optional crouch box; 0 (absent) derives it from height at vanilla's ratio.
             float ch = GsonHelper.getAsFloat(hb, "crouch_height", 0f);
-            if (w > 0f && h > 0f) hitbox = new RigDefinition.Hitbox(w, h, Math.max(0f, ch));
+            hitbox = new RigDefinition.Hitbox(w, h, ch,
+                    GsonHelper.getAsFloat(hb, "swim_height", 0f),
+                    GsonHelper.getAsFloat(hb, "eye_height", 0f),
+                    GsonHelper.getAsBoolean(hb, "scale_with_entity", true));
         }
 
         // Equipment slots this body refuses: { "equipment": { "disabled": ["head","chest", ...] } }.
@@ -194,7 +199,43 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
         // emotes it will play at all. Absent = the rig expresses emotes the plain humanoid way.
         RigDefinition.EmoteMap emote = parseEmote(obj);
 
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, disabledSlots, cameraBone, emote);
+        RigDefinition.Animation animation = parseAnimation(obj);
+
+        String modelClass = geometry ? "" : GsonHelper.getAsString(model, "class", "");
+
+        float cameraOffset = obj.has("camera") && obj.get("camera").isJsonObject()
+                ? GsonHelper.getAsFloat(obj.getAsJsonObject("camera"), "height_offset", 0f) : 0f;
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, disabledSlots, cameraBone, emote, animation, modelClass, cameraOffset);
+    }
+
+    /**
+     * Keyframe clips by state:
+     * {@code "animation": { "file": "ns:animations/x.animation.json", "transition": 4,
+     * "clips": [ { "state": "moving", "when": {...}, "clip": "walk", "speed": 1 }, { "clip": "idle" } ] }}.
+     * Rules are kept in order; the first match plays.
+     */
+    private static RigDefinition.Animation parseAnimation(JsonObject obj) {
+        if (!obj.has("animation") || !obj.get("animation").isJsonObject()) return null;
+        JsonObject anim = obj.getAsJsonObject("animation");
+        String file = GsonHelper.getAsString(anim, "file", "");
+        if (file.isEmpty()) return null;
+        float transition = GsonHelper.getAsFloat(anim, "transition", 4f);
+        java.util.List<RigDefinition.AnimationRule> rules = new java.util.ArrayList<>();
+        if (anim.has("clips") && anim.get("clips").isJsonArray()) {
+            for (JsonElement e : anim.getAsJsonArray("clips")) {
+                if (!e.isJsonObject()) continue;
+                JsonObject rule = e.getAsJsonObject();
+                String clip = GsonHelper.getAsString(rule, "clip", "");
+                if (clip.isEmpty()) continue;
+                rules.add(new RigDefinition.AnimationRule(
+                        GsonHelper.getAsString(rule, "state", ""),
+                        rule.has("when") ? rule.get("when").toString() : "",
+                        clip,
+                        GsonHelper.getAsFloat(rule, "transition", transition),
+                        GsonHelper.getAsFloat(rule, "speed", 1f)));
+            }
+        }
+        return rules.isEmpty() ? null : new RigDefinition.Animation(file, java.util.List.copyOf(rules));
     }
 
     /**
@@ -394,7 +435,9 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
     private static RigDefinition.Adjust adjust(JsonObject obj) {
         return new RigDefinition.Adjust(
                 vec(obj, "offset", 3, new float[]{0f, 0f, 0f}),
-                vec(obj, "rotation", 3, new float[]{0f, 0f, 0f}));
+                vec(obj, "rotation", 3, new float[]{0f, 0f, 0f}),
+                GsonHelper.getAsFloat(obj, "scale", 1F),
+                vec(obj, "scale_axes", 3, new float[]{1f, 1f, 1f}));
     }
 
     /** Parse a worn-anchor ({@code base} offset/rotation + per-item-id {@code items} deltas) under {@code key}. */

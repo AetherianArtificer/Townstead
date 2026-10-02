@@ -83,8 +83,8 @@ public record BedrockPerformanceClip(float durationTicks, Loop loop, Map<String,
                 Channel position = channel(channels.get("position"));
                 Channel scale = channel(channels.get("scale"));
                 if (rotation == null && position == null && scale == null) continue;
-                if (name.equals("root") && (rotation != null || scale != null))
-                    throw new IllegalArgumentException("root supports position only; keep its rest rotation and scale neutral");
+                if (name.equals("root") && scale != null)
+                    throw new IllegalArgumentException("root supports position and rotation, not scale");
                 if (name.endsWith("forearm") || name.endsWith("shin")) {
                     if (position != null || scale != null) throw new IllegalArgumentException(name + ": hinge supports rotation only");
                     for (Frame frame : rotation.frames) {

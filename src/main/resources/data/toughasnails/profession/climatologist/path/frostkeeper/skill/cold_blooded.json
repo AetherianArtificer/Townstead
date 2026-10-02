@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.frostkeeper.cold_blooded"
+  },
+  "icon": "minecraft:snowball",
+  "description": {
+    "translate": "skill.townstead.climatologist.frostkeeper.cold_blooded.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:thermal_tolerance",
+    "cold": 0.0,
+    "heat": 1.0
+  }
+}

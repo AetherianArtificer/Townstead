@@ -16,14 +16,22 @@ public abstract class VillagerProfessionClothingMixin {
     @Unique private String townstead$previousClothes;
     @Unique private boolean townstead$professionChanged;
 
+    //? if neoforge {
     @Inject(method = "setVillagerData", at = @At("HEAD"))
+    //?} else {
+    /*@Inject(method = "m_34375_", remap = false, at = @At("HEAD"))
+    *///?}
     private void townstead$captureClothing(VillagerData next, CallbackInfo ci) {
         VillagerEntityMCA self = (VillagerEntityMCA) (Object) this;
         townstead$professionChanged = self.getVillagerData().getProfession() != next.getProfession();
         townstead$previousClothes = townstead$professionChanged ? self.getClothes() : null;
     }
 
+    //? if neoforge {
     @Inject(method = "setVillagerData", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_34375_", remap = false, at = @At("TAIL"))
+    *///?}
     private void townstead$resolveProfessionClothing(VillagerData next, CallbackInfo ci) {
         if (!townstead$professionChanged) return;
         VillagerEntityMCA self = (VillagerEntityMCA) (Object) this;

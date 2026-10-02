@@ -1,0 +1,22 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.lorekeeper.bestiary_undead"
+  },
+  "icon": "minecraft:bone",
+  "description": {
+    "translate": "skill.townstead.librarian.lorekeeper.bestiary_undead.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 1.25,
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:entity_group",
+        "group": "undead"
+      }
+    }
+  }
+}

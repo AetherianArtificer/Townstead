@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:conversation/v1",
+  "subjects": [
+    "townstead:weather"
+  ],
+  "register": "ambient",
+  "start": "t0_open_subject",
+  "turns": {
+    "t0_open_subject": {
+      "speaker": "initiator",
+      "move": "townstead:open_subject",
+      "replies": [
+        "t1_agree",
+        "t1_disagree"
+      ]
+    },
+    "t1_agree": {
+      "speaker": "responder",
+      "move": "townstead:agree",
+      "weight": 2,
+      "personality_weights": {
+        "peppy": 2,
+        "friendly": 2,
+        "default": 1
+      }
+    },
+    "t1_disagree": {
+      "speaker": "responder",
+      "move": "townstead:disagree",
+      "personality_weights": {
+        "crabby": 3,
+        "grumpy": 3,
+        "default": 1
+      }
+    }
+  },
+  "associated": [
+    "townstead:biome",
+    "townstead:joke",
+    "townstead:project"
+  ],
+  "expansions": {
+    "moves": [
+      "townstead:elaborate",
+      "townstead:opinion_ask",
+      "townstead:anecdote"
+    ],
+    "max": 2
+  }
+}

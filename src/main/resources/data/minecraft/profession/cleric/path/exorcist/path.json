@@ -1,0 +1,82 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.cleric.path.exorcist"
+  },
+  "title": {
+    "translate": "career.townstead.cleric.title.exorcist"
+  },
+  "color": "#E0C46A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:faith",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cleric/exorcist/zeal"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cleric/exorcist/holy_water"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cleric/exorcist/aspergillum"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 10,
+            "condition": {
+              "type": "pheno:entity_group",
+              "group": "undead"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:faith",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "hallowed_ground",
+      "turn_undead",
+      "censer"
+    ],
+    [
+      "smite",
+      "rebuke",
+      "bless_weapon"
+    ],
+    [
+      "zeal",
+      "holy_water",
+      "aspergillum"
+    ],
+    [
+      "undying_faith",
+      "exorcism",
+      "procession"
+    ],
+    [
+      "purifier",
+      "dawnbreak",
+      "sanctum"
+    ]
+  ]
+}

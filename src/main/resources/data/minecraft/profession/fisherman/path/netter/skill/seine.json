@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.netter.seine"
+  },
+  "icon": "minecraft:oak_fence",
+  "description": {
+    "translate": "skill.townstead.fisherman.netter.seine.description"
+  },
+  "cost": 1,
+  "requires": [
+    "drag_net"
+  ],
+  "skill_group": "townstead:netter_net",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:haze",
+      "kind": "townstead:net",
+      "blocks": {
+        "radius": 4,
+        "where": {
+          "type": "air"
+        }
+      }
+    }
+  }
+}

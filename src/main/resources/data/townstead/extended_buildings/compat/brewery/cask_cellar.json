@@ -2,6 +2,7 @@
   "schema": "townstead:extended_building/v1",
   "mods": "brewery",
   "storage_roles": ["townstead:brewed_drinks"],
+  "thermal": { "kind": "cooling", "offset": 6, "radius": 4 },
   "catalog": {
     "node_item": "brewery:barrel_main"
   },

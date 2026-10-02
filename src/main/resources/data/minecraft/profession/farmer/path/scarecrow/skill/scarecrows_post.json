@@ -1,0 +1,53 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.scarecrow.scarecrows_post"
+  },
+  "icon": "minecraft:oak_fence",
+  "description": {
+    "translate": "skill.townstead.farmer.scarecrow.scarecrows_post.description"
+  },
+  "cost": 1,
+  "requires": [
+    "chaff_in_the_wind"
+  ],
+  "skill_group": "townstead:scarecrow_straw",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:grit",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 200,
+          "amplifier": 1
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:slowness",
+          "duration": 200,
+          "amplifier": 1
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 6,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:add_velocity",
+            "away_from_other": 0.5,
+            "y": 0.3
+          }
+        }
+      ]
+    }
+  }
+}

@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 //? if forge {
 /*import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
@@ -159,7 +160,7 @@ public final class FishermanLineRenderer {
         *///?}
 
         Map<Integer, Integer> links = FishermanHookLinkStore.snapshot();
-        boolean debug = TownsteadConfig.DEBUG_VILLAGER_AI.get();
+        boolean debug = Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI);
         if (debug && (++diagnosticTick % 120 == 0)) {
             Townstead.LOGGER.info("[FishermanLine] tick links={}", links.size());
         }

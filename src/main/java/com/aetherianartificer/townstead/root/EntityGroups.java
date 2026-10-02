@@ -21,6 +21,31 @@ public final class EntityGroups {
         return genes.isEmpty() ? Group.DEFAULT : genes.get(0).group();
     }
 
+    /**
+     * The group an entity plays as: its {@code entity_group} gene when it has one, otherwise the
+     * group vanilla gives its type, so a plain zombie reads as undead. Only pheno conditions ask
+     * this; the gene-only {@link #of} stays what the combat hooks and mixins layer onto vanilla.
+     */
+    public static Group expressed(LivingEntity entity) {
+        Group gene = of(entity);
+        if (gene != Group.DEFAULT) return gene;
+        //? if >=1.21 {
+        var type = entity.getType();
+        if (type.is(net.minecraft.tags.EntityTypeTags.UNDEAD)) return Group.UNDEAD;
+        if (type.is(net.minecraft.tags.EntityTypeTags.ARTHROPOD)) return Group.ARTHROPOD;
+        if (type.is(net.minecraft.tags.EntityTypeTags.ILLAGER)) return Group.ILLAGER;
+        if (type.is(net.minecraft.tags.EntityTypeTags.AQUATIC)) return Group.AQUATIC;
+        return Group.DEFAULT;
+        //?} else {
+        /*net.minecraft.world.entity.MobType type = entity.getMobType();
+        if (type == net.minecraft.world.entity.MobType.UNDEAD) return Group.UNDEAD;
+        if (type == net.minecraft.world.entity.MobType.ARTHROPOD) return Group.ARTHROPOD;
+        if (type == net.minecraft.world.entity.MobType.ILLAGER) return Group.ILLAGER;
+        if (type == net.minecraft.world.entity.MobType.WATER) return Group.AQUATIC;
+        return Group.DEFAULT;
+        *///?}
+    }
+
     public static boolean isUndead(LivingEntity entity) {
         return of(entity) == Group.UNDEAD;
     }

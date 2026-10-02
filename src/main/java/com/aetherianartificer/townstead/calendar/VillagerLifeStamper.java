@@ -76,7 +76,7 @@ public final class VillagerLifeStamper {
             state.life().setBirth(fabricateDob(villager, server), false);
             stamped = true;
         } else if (townstead$birthIncoherent(state, server, villager)) {
-            // Re-place mid-stage by the current MCA body only when the stored birth no
+            // Re-place inside the current MCA body's stage only when the stored birth no
             // longer makes sense: older than the whole (possibly just re-rolled) cycle,
             // or a stale stamp disagreeing with the live body. A birth still coherent
             // after a stageDays re-roll is kept — apparent age derives from the birth
@@ -152,7 +152,7 @@ public final class VillagerLifeStamper {
     // ---- DOB fabrication ----
 
     private static long fabricateDob(VillagerEntityMCA villager, MinecraftServer server) {
-        // Place the villager mid-way through the stage matching its MCA AgeState,
+        // Place the villager inside the stage matching its MCA AgeState,
         // using its rolled stage durations — so a spawned adult lands inside the
         // adult stage rather than decades past death under the new game-year cycle.
         return com.aetherianartificer.townstead.root.LifeStageProgression.fabricateBirthLifeDay(

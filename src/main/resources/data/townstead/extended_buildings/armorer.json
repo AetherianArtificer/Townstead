@@ -1,8 +1,10 @@
 {
   "schema": "townstead:extended_building/v1",
+  "catalog": {"node_item": "minecraft:blast_furnace"},
   "workers": ["minecraft:armorer"],
   "spirit": {
     "martial": 5,
     "industrious": 2
-  }
+  },
+  "talk": { "tags": ["townstead:smithy"] }
 }

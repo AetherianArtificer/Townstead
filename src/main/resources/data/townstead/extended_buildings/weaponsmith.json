@@ -1,8 +1,10 @@
 {
   "schema": "townstead:extended_building/v1",
+  "catalog": {"node_item": "minecraft:grindstone"},
   "workers": ["minecraft:weaponsmith"],
   "spirit": {
     "martial": 5,
     "industrious": 2
-  }
+  },
+  "talk": { "tags": ["townstead:smithy"] }
 }

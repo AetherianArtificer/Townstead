@@ -24,8 +24,9 @@ public record StoragePreference(List<ResourceLocation> preferredRoles) {
     }
 
     /**
-     * Local worksite storage is always rank zero. A matching preferred role ranks next, followed
-     * by a general store. Buildings with neither are not part of the external storage route.
+     * Among external stores, a matching preferred role ranks first, followed by a general store.
+     * Buildings with neither are not part of the external storage route. Local worksite rank is
+     * operation-dependent and supplied by {@link #localRank(StorageUse)}.
      */
     public int buildingRank(String buildingType) {
         Set<ResourceLocation> roles = BuildingStorageRoles.rolesFor(buildingType);
@@ -36,6 +37,16 @@ public record StoragePreference(List<ResourceLocation> preferredRoles) {
             return EXTERNAL_BASE_RANK + preferredRoles.size();
         }
         return FALLBACK_RANK;
+    }
+
+    /**
+     * Worksite shelves remain nearest-first for supplies. At delivery time, however, an authored
+     * profession preference is a promise that its named store wins: preferred role, general
+     * village store, then an ordinary container left beside the worksite.
+     */
+    public int localRank(StorageUse use) {
+        if (use != StorageUse.OUTPUT || preferredRoles.isEmpty()) return LOCAL_RANK;
+        return EXTERNAL_BASE_RANK + preferredRoles.size() + 1;
     }
 
     public static StoragePreference forVillager(VillagerEntityMCA villager) {

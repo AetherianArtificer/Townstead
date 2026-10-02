@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "event_respond",
+  "groups": [
+    { "state": {"stance": "+"}, "lines": {"thank_you": "Thank you!", "aw_thanks": "Aw, thanks!"} },
+    { "lines": {"word_travels_fast": "Word travels fast.", "oh_you_heard": "Oh, you heard?"} },
+    {
+      "state": { "variant": "mastery" },
+      "lines": {
+        "im_still_getting_used_to": "I'm still getting used to it.",
+        "it_took_forever_but_i": "It took forever, but I did it!"
+      }
+    },
+    {
+      "state": { "stance": "-" },
+      "lines": {
+        "dont_remind_me": "Don't remind me.",
+        "id_rather_not_talk_about": "I'd rather not talk about it.",
+        "its_fine_well_sort_it": "It's fine. We'll sort it out."
+      }
+    },
+    {
+      "state": { "variant": "birth" },
+      "lines": {
+        "were_exhausted_but_happy": "We're exhausted, but happy.",
+        "thank_you_no_sleep_though": "Thank you! No sleep, though."
+      }
+    },
+    {
+      "state": { "variant": "marriage" },
+      "lines": { "were_very_happy": "We're very happy.", "thanks_im_still_smiling": "Thanks! I'm still smiling." }
+    },
+    {
+      "lines": {
+        "hmph_everyone_knows_everything_here": { "text": "Hmph. Everyone knows everything here.", "personalities": ["crabby", "grumpy"] }
+      }
+    },
+    {
+      "state": { "stance": "+" },
+      "lines": { "oh_its_the_best": {"text": "Oh, it's the best!", "personalities": ["upbeat", "peppy"]} }
+    }
+  ]
+}

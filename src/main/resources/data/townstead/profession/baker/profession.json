@@ -11,26 +11,9 @@
     "townstead:baker",
     "mca:baker"
   ],
-  "hidden": true,
-  "requirements": {
-    "type": "pheno:and",
-    "conditions": [
-      {
-        "type": "pheno:chronicle_count",
-        "key": "townstead_work:cook",
-        "at_least": 25
-      },
-      {
-        "type": "pheno:career_xp",
-        "career": "townstead:cook",
-        "at_least": 110
-      }
-    ]
-  },
-  "acquisition_routes": [
-    "self_discovery",
-    "mentor",
-    "institution"
+  "skills": [
+    "early_riser",
+    "flour_toss"
   ],
   "unlock_model": "experiential"
 }

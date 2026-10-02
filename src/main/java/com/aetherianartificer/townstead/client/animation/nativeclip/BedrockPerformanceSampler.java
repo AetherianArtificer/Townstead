@@ -14,15 +14,23 @@ public final class BedrockPerformanceSampler {
 
     public static List<AnimationTransform> sample(BedrockPerformanceClip clip, float elapsed,
                                                  float remaining, AnimationTargetMap<?> targets) {
+        return sample(clip, elapsed, remaining, targets, 1F);
+    }
+
+    public static List<AnimationTransform> sample(BedrockPerformanceClip clip, float elapsed,
+                                                 float remaining, AnimationTargetMap<?> targets,
+                                                 float lowerBodyWeight) {
         float time = time(clip, elapsed);
-        float blend = blend(clip, elapsed, remaining);
-        if (blend <= 0) return List.of();
+        float clipBlend = blend(clip, elapsed, remaining);
+        if (clipBlend <= 0) return List.of();
         List<AnimationTransform> out = new ArrayList<>();
         for (var entry : clip.bones().entrySet()) {
             String name = entry.getKey();
             if (name.equals("root")) continue; // Applied once to the entity render matrix, never individual parts.
             boolean hinge = name.endsWith("forearm") || name.endsWith("shin");
             String target = name.replace("forearm", "arm").replace("shin", "leg");
+            float blend = clipBlend * (target.endsWith("_leg") ? Mth.clamp(lowerBodyWeight, 0F, 1F) : 1F);
+            if (blend <= 0) continue; // Leave every leg channel, including knee bend, to the gait.
             ModelPart part = targets.resolve(target).orElse(null);
             if (part == null) continue;
             var track = entry.getValue();

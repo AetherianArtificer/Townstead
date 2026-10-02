@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.marksman.steady_breath"
+  },
+  "icon": "minecraft:feather",
+  "description": {
+    "translate": "skill.townstead.fletcher.marksman.steady_breath.description"
+  },
+  "cost": 1,
+  "requires": [
+    "spotter"
+  ],
+  "power": {
+    "type": "pheno:attribute",
+    "attribute": "minecraft:generic.knockback_resistance",
+    "amount": 1.0,
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "or",
+            "conditions": [
+              {
+                "type": "ingredient",
+                "item": "minecraft:bow"
+              },
+              {
+                "type": "ingredient",
+                "item": "minecraft:crossbow"
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:movement",
+            "movement": "moving"
+          }
+        }
+      ]
+    }
+  }
+}

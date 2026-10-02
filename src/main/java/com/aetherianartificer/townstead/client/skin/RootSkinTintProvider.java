@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.client.root.RootCatalogClient;
 import com.aetherianartificer.townstead.client.root.RootClientStore;
 import com.aetherianartificer.townstead.root.GeneCatalogEntry;
 import com.aetherianartificer.townstead.root.RootCatalogEntry;
+import com.aetherianartificer.townstead.root.gene.AllelePayload;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.OptionalInt;
@@ -27,8 +28,10 @@ public final class RootSkinTintProvider implements SkinTintProvider {
         // the same sync path as eyes, overlays, and other expressed appearance genes.
         for (String geneId : RootClientStore.expressedGenes(entity)) {
             GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
-            if (gene != null && gene.isColor()) return packed(gene);
+            if (gene != null && gene.isSkinTone()) return packed(entity, gene);
         }
+
+        if (RootClientStore.hasExpressionSync(entity)) return OptionalInt.empty();
 
         // Editor dummies and legacy entities may have only a root preview, with no expressed set.
         String rootId = RootClientStore.resolve(entity);
@@ -37,13 +40,24 @@ public final class RootSkinTintProvider implements SkinTintProvider {
         if (origin == null) return OptionalInt.empty();
         for (RootCatalogEntry.Inherited inherited : origin.inheritedGenes()) {
             GeneCatalogEntry gene = RootCatalogClient.gene(inherited.geneId());
-            if (gene != null && gene.isColor()) return packed(gene);
+            if (gene != null && gene.isSkinTone()) return packed(entity, gene);
         }
         return OptionalInt.empty();
     }
 
-    private static OptionalInt packed(GeneCatalogEntry gene) {
-        return OptionalInt.of(SkinBlend.pack(
-                gene.colorFrom(), gene.blendMode(), gene.blendStrength()));
+    /** A palette gene paints the bearer's carried variant (the first option when none is carried). */
+    private static OptionalInt packed(LivingEntity entity, GeneCatalogEntry gene) {
+        if (!gene.isVariants()) {
+            return OptionalInt.of(SkinBlend.pack(gene.colorFrom(), gene.blendMode(), gene.blendStrength()));
+        }
+        String carried = AllelePayload.parse(RootClientStore.resolveCarriedVariant(entity, gene.id())).variant();
+        GeneCatalogEntry.Variant chosen = null;
+        for (GeneCatalogEntry.Variant variant : gene.variants()) {
+            if (variant.tint() < 0) continue;
+            if (chosen == null) chosen = variant;
+            if (variant.id().equals(carried)) { chosen = variant; break; }
+        }
+        return chosen == null ? OptionalInt.empty()
+                : OptionalInt.of(SkinBlend.pack(chosen.tint(), chosen.blend(), chosen.strength()));
     }
 }

@@ -1,0 +1,82 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.climatologist.path.stormcaller"
+  },
+  "title": {
+    "translate": "career.townstead.climatologist.title.stormcaller"
+  },
+  "color": "#5A6A9A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:front",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:climatologist/stormcaller/stormborn"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:climatologist/stormcaller/lightning_strike"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:climatologist/stormcaller/squall"
+              }
+            ]
+          },
+          {
+            "type": "pheno:environment",
+            "weather": [
+              "rain",
+              "thunder"
+            ],
+            "exposure": "sky"
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:front",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "storm_sense",
+      "clear_skies",
+      "gust"
+    ],
+    [
+      "grounded",
+      "call_rain",
+      "tailwind"
+    ],
+    [
+      "stormborn",
+      "lightning_strike",
+      "squall"
+    ],
+    [
+      "tempest",
+      "summon_storm",
+      "cyclone"
+    ],
+    [
+      "eye_of_the_storm",
+      "wrath_of_heaven",
+      "hurricane"
+    ]
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.tanner.lash"
+  },
+  "icon": "minecraft:lead",
+  "description": {
+    "translate": "skill.townstead.leatherworker.tanner.lash.description"
+  },
+  "cost": 1,
+  "requires": [
+    "whip_crack"
+  ],
+  "skill_group": "townstead:tanner_whip",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:damage",
+              "amount": 4,
+              "source": "other"
+            },
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:slowness",
+              "duration": 100,
+              "amplifier": 1
+            }
+          ],
+          "on": {
+            "type": "pheno:ray",
+            "distance": 8
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.player.attack.knockback",
+          "volume": 1.0,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

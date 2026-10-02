@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_tfc_douglas_fir"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "tfc:wood/lumber/douglas_fir"
+    },
+    "L": {
+      "item": "tfc:wood/log/douglas_fir"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_tfc_douglas_fir",
+    "count": 1
+  }
+}

@@ -20,6 +20,11 @@ public final class HangoutClaims {
         }
     }
 
+    /** Physical seat cells are shared by all venues and by primary/linked furniture claims. */
+    public static Key seat(String dimension, long position, int slot) {
+        return new Key(dimension, "seat", position + "#" + slot);
+    }
+
     public record Lease(Key key, UUID owner, long expiresAt) {}
 
     private final Map<Key, Lease> leases = new HashMap<>();

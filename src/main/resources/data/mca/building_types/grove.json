@@ -1,0 +1,5 @@
+{
+  "color": "ff5c9b48", "visible": true, "priority": 13, "icon": false, "iconU": 241, "iconV": 213,
+  "margin": 6, "mergeRange": 18,
+  "blocks": {"minecraft:bell": 2, "#minecraft:leaves": 16}
+}

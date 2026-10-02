@@ -39,7 +39,7 @@ public record ServerChronicleWorld(MinecraftServer server) implements ChronicleW
     public static List<ChronicleSubject> subjects(List<VillagerEntityMCA> villagers) {
         List<ChronicleSubject> subjects = new ArrayList<>(villagers.size());
         for (VillagerEntityMCA villager : villagers) {
-            subjects.add(new ChronicleSubject(villager.getUUID(), villager.getName().getString(),
+            subjects.add(new ChronicleSubject(villager.getUUID(), villager.getDisplayName().getString(),
                     ChronicleRef.Kind.VILLAGER, villager.isBaby(), professionId(villager),
                     ageBands(villager)));
         }

@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 //? if >=1.21 {
 import net.minecraft.core.component.DataComponents;
 //?}
@@ -45,17 +46,23 @@ public final class FoodSafety {
                                       @org.jetbrains.annotations.Nullable net.minecraft.world.entity.LivingEntity eater) {
         if (stack == null || stack.isEmpty()) return false;
         if (isCannibalFare(stack) && !CannibalismPolicy.mayEat(eater, stack)) {
-            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
                 Townstead.LOGGER.info("[FoodSafety] rejected {} (cannibal fare)",
                         BuiltInRegistries.ITEM.getKey(stack.getItem()));
             }
             return false;
         }
+        if (eater != null) {
+            var nourishment = com.aetherianartificer.townstead.hunger.diet.Diets.nourishment(eater, stack);
+            if (nourishment == null) return false;
+            // An authored diet food carries no native food effects to screen.
+            if (!nourishment.nativeValues()) return true;
+        }
         FoodProperties food = foodPropertiesOf(stack);
         if (food == null) return false;
         String harmful = firstHarmfulEffectName(food);
         if (harmful != null) {
-            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
                 Townstead.LOGGER.info("[FoodSafety] rejected {} (harmful effect: {})",
                         BuiltInRegistries.ITEM.getKey(stack.getItem()), harmful);
             }
@@ -77,6 +84,11 @@ public final class FoodSafety {
                                                @org.jetbrains.annotations.Nullable net.minecraft.world.entity.LivingEntity eater) {
         if (stack == null || stack.isEmpty()) return false;
         if (isCannibalFare(stack) && !CannibalismPolicy.mayEat(eater, stack)) return false;
+        if (eater != null) {
+            var nourishment = com.aetherianartificer.townstead.hunger.diet.Diets.nourishment(eater, stack);
+            if (nourishment == null) return false;
+            if (!nourishment.nativeValues()) return nourishment.nutrition() > 0;
+        }
         FoodProperties food = foodPropertiesOf(stack);
         //? if >=1.21 {
         if (food == null || food.nutrition() <= 0) return false;
@@ -84,6 +96,25 @@ public final class FoodSafety {
         /*if (food == null || food.getNutrition() <= 0) return false;
         *///?}
         return firstHarmfulEffectName(food) == null;
+    }
+
+    /**
+     * What one {@code stack} restores for {@code eater}: its diet's authored nutrition when it has
+     * one, else the item's own. 0 for anything that is not food to them.
+     */
+    public static int nutritionFor(@org.jetbrains.annotations.Nullable net.minecraft.world.entity.LivingEntity eater,
+                                   ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return 0;
+        var nourishment = com.aetherianartificer.townstead.hunger.diet.Diets.nourishment(eater, stack);
+        if (nourishment == null) return 0;
+        if (!nourishment.nativeValues()) return nourishment.nutrition();
+        FoodProperties food = foodPropertiesOf(stack);
+        if (food == null) return 0;
+        //? if >=1.21 {
+        return food.nutrition();
+        //?} else {
+        /*return food.getNutrition();
+        *///?}
     }
 
     /**

@@ -70,6 +70,11 @@ public final class ItemConditions {
                 };
             }
             case "ingredient": {
+                if (json.has("story_item")) {
+                    ResourceLocation storyId = DataPackLang.parseId(GsonHelper.getAsString(json, "story_item", ""));
+                    if (storyId == null) return null;
+                    return (level, stack) -> com.aetherianartificer.townstead.item.StoryItems.is(stack, storyId);
+                }
                 if (json.has("tag")) {
                     ResourceLocation id = DataPackLang.parseId(GsonHelper.getAsString(json, "tag", ""));
                     if (id == null) return null;

@@ -29,7 +29,7 @@ class BeachpartyBuildingDataTest {
     @Test
     void eachCocktailBarTierReservesOneTradeBearingSandyMerchantProprietor() {
         JsonObject provider = resource(
-                "/data/townstead/career_provider/bartender_beachparty_venues.json");
+                "/data/townstead/career_provider/sandy_merchant_beachparty_venues.json");
         JsonObject building = provider.getAsJsonObject("contributes")
                 .getAsJsonObject("profession").getAsJsonArray("poi")
                 .get(0).getAsJsonObject();
@@ -43,9 +43,11 @@ class BeachpartyBuildingDataTest {
     }
 
     @Test
-    void bartenderProducesEveryPalmBarCocktailAndFreezesItsIce() {
+    void sandyMerchantProducesEveryPalmBarCocktailAndFreezesItsIce() {
         JsonObject provider = resource(
-                "/data/townstead/career_provider/bartender_beachparty.json");
+                "/data/townstead/career_provider/sandy_merchant_beachparty.json");
+        assertEquals("sandy_merchant", provider.get("path").getAsString(),
+                "Beach Party's own profession is its own Beverage Artisan path, not a plain Bartender");
         var tasks = provider.getAsJsonObject("contributes")
                 .getAsJsonObject("path").getAsJsonArray("work");
         assertEquals(2, tasks.size());

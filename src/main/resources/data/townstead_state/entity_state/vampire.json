@@ -1,0 +1,47 @@
+{
+  "schema": "pheno:entity_state/v1",
+  "mods": "vampirism",
+  "id": "townstead_state:vampire",
+  "body": "villager",
+  "min": 0,
+  "max": 19,
+  "initial": 0,
+  "tiers": [
+    {
+      "id": "turning",
+      "min": 0.5
+    },
+    {
+      "id": "fledgling",
+      "min": 1
+    },
+    {
+      "id": "vampire",
+      "min": 4
+    },
+    {
+      "id": "elder",
+      "min": 15
+    }
+  ],
+  "merge": "max",
+  "persistence": "persistent",
+  "death": "keep",
+  "aspect": {
+    "display": true,
+    "level": true,
+    "inheritance": {
+      "mode": "child_aspect",
+      "aspect": "townstead_state:dhampir",
+      "chance": 1,
+      "parents": "father_only"
+    },
+    "pickable": true,
+    "faction": "vampirism:vampire",
+    "pick": 1
+  },
+  "excludes": [
+    "townstead_state:thrall",
+    "townstead_state:werewolf"
+  ]
+}

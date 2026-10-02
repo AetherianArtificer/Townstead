@@ -8,7 +8,91 @@
     "translate": "career.townstead.beverage_artisan.title.barista"
   },
   "color": "#8B5A3C",
-  "clothing": ["townstead:barista"],
+  "clothing": [
+    "townstead:barista"
+  ],
   "worksites": [],
-  "skills": ["coffee_service"]
+  "skills": [
+    [
+      "morning_cup",
+      "espresso_shot",
+      "coffee_service"
+    ],
+    [
+      "steady_hands",
+      "double_shot",
+      "jitters"
+    ],
+    [
+      "crema",
+      "cold_brew",
+      "decaf"
+    ],
+    [
+      "caffeinated",
+      "rush_hour",
+      "spilled_coffee"
+    ],
+    [
+      "perfect_pour",
+      "rocket_fuel",
+      "last_drop"
+    ]
+  ],
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:buzz",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/barista/crema"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/barista/cold_brew"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/barista/decaf"
+              }
+            ]
+          },
+          {
+            "type": "pheno:block_in_radius",
+            "radius": 6,
+            "block_condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:in_tag",
+                  "tag": "townstead:kitchen/heat_sources"
+                },
+                {
+                  "type": "pheno:block_state",
+                  "property": "lit",
+                  "value": "true",
+                  "if_missing": "pass"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:buzz",
+        "amount": 1
+      }
+    }
+  ]
 }

@@ -57,6 +57,15 @@ public final class BuildingCandidatePolicy {
                 .orElse(null);
     }
 
+    /** Whether both types are tiers of one declared family, e.g. {@code dock_l1} and {@code dock_l3}. */
+    public static boolean sameTierFamily(String first, String second) {
+        if (first == null || second == null) return false;
+        if (first.equals(second)) return true;
+        CatalogDataLoader.GroupDef a = bestTierGroup(first, CatalogDataLoader.groups());
+        CatalogDataLoader.GroupDef b = bestTierGroup(second, CatalogDataLoader.groups());
+        return a != null && b != null && a.id().equals(b.id());
+    }
+
     /** Package-visible for regression tests without loading MCA registries. */
     static List<String> collapseTierFamilies(
             Collection<String> candidates,

@@ -93,10 +93,20 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
                          boolean available, String blocker, int makes, List<Need> needs,
                          List<Need> missing,
                          boolean activity, boolean tag, String label, boolean commission,
-                         boolean operated, ResourceLocation product) {
+                         boolean operated, ResourceLocation product, String labelKey) {
 
         public Option {
             product = product == null ? output : product;
+            labelKey = labelKey == null ? "" : labelKey;
+        }
+
+        /**
+         * A translatable label: {@code labelKey} is rendered by the client in its own locale
+         * with the output's name as {@code %s}, and {@code label} is the English fallback.
+         */
+        public Option withLabel(String key, String fallback) {
+            return new Option(output, stationLabel, stationIcon, available, blocker, makes,
+                    needs, missing, activity, tag, fallback, commission, operated, product, key);
         }
 
         /** Compatibility constructor for ordinary item/activity/category options. */
@@ -105,7 +115,7 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
                       List<Need> missing, boolean activity, boolean tag, String label,
                       boolean commission, boolean operated) {
             this(output, stationLabel, stationIcon, available, blocker, makes, needs, missing,
-                    activity, tag, label, commission, operated, output);
+                    activity, tag, label, commission, operated, output, "");
         }
 
         /** Something this place can make. */
@@ -114,7 +124,7 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
                                   int makes, List<Need> needs, List<Need> missing) {
             return new Option(output, stationLabel, stationIcon, available, blocker, makes, needs,
                     missing,
-                    false, false, "", false, false, output);
+                    false, false, "", false, false, output, "");
         }
 
         /** A component-bearing item such as one registered potion variant. */
@@ -123,7 +133,7 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
                                        boolean available, String blocker, int makes,
                                        List<Need> needs, List<Need> missing, String label) {
             return new Option(output, stationLabel, stationIcon, available, blocker, makes,
-                    needs, missing, false, false, label, false, false, product);
+                    needs, missing, false, false, label, false, false, product, "");
         }
 
         /**
@@ -136,25 +146,64 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
                                           List<Need> missing, String label) {
             return new Option(output, stationLabel, stationIcon, available, blocker, makes, needs,
                     missing,
-                    false, false, label, true, false, output);
+                    false, false, label, true, false, output, "");
         }
 
         /** A job this place can be told to prefer. It makes nothing, so it counts nothing. */
         public static Option job(ResourceLocation id, String label, ResourceLocation icon) {
             return new Option(id, "Job", icon, true, "", 0, List.of(), List.of(),
-                    true, false, label, false, false, id);
+                    true, false, label, false, false, id, "");
         }
 
         /** A set of things this place can make some of: "any cooked meat". */
         public static Option category(ResourceLocation tagId, String label, ResourceLocation icon,
                                       boolean available, String blocker, List<Need> missing) {
             return new Option(tagId, "Kind", icon, available, blocker, 1, List.of(), missing,
-                    false, true, label, false, false, tagId);
+                    false, true, label, false, false, tagId, "");
+        }
+
+        public Option withProduct(ResourceLocation value) {
+            return new Option(output, stationLabel, stationIcon, available, blocker, makes,
+                    needs, missing, activity, tag, label, commission, operated, value, labelKey);
+        }
+
+        /**
+         * Two offers of the same product become one: the village can make it if either station
+         * can, the needs and the shortfall come from the better route, and the station label
+         * names every station that offers it. The better route is the one that can run now,
+         * else the one with the shorter shortfall, else the first offered.
+         */
+        public static Option merge(Option first, Option second) {
+            if (first == null) return second;
+            if (second == null) return first;
+            Option base = better(first, second);
+            String stations = joinStations(first.stationLabel(), second.stationLabel());
+            return new Option(base.output(), stations, base.stationIcon(),
+                    first.available() || second.available(), base.blocker(), base.makes(),
+                    base.needs(), base.missing(), base.activity(), base.tag(), base.label(),
+                    base.commission(), first.operated() && second.operated(), base.product(), base.labelKey());
+        }
+
+        private static Option better(Option first, Option second) {
+            if (first.available() != second.available()) return first.available() ? first : second;
+            if (first.missing().size() != second.missing().size()) {
+                return first.missing().size() < second.missing().size() ? first : second;
+            }
+            return first;
+        }
+
+        private static String joinStations(String first, String second) {
+            if (first == null || first.isBlank()) return second == null ? "" : second;
+            if (second == null || second.isBlank() || first.equals(second)) return first;
+            for (String part : first.split(", ")) {
+                if (part.equals(second)) return first;
+            }
+            return first + ", " + second;
         }
 
         public Option withOperated(boolean value) {
             return new Option(output, stationLabel, stationIcon, available, blocker, makes,
-                    needs, missing, activity, tag, label, commission, value, product);
+                    needs, missing, activity, tag, label, commission, value, product, labelKey);
         }
     }
 
@@ -254,6 +303,7 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
             buf.writeUtf(option.label());
             buf.writeBoolean(option.commission());
             buf.writeBoolean(option.operated());
+            buf.writeUtf(option.labelKey());
         }
         buf.writeVarInt(stations.size());
         for (Station station : stations) {
@@ -356,9 +406,10 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
             String label = buf.readUtf();
             boolean commission = buf.readBoolean();
             boolean operated = buf.readBoolean();
+            String labelKey = buf.readUtf();
             options.add(new Option(output, stationLabel, stationIcon, available, blocker,
                     makes, List.copyOf(needs), List.copyOf(missing),
-                    activity, tag, label, commission, operated, product));
+                    activity, tag, label, commission, operated, product, labelKey));
         }
         int stationCount = buf.readVarInt();
         List<Station> stations = new ArrayList<>(stationCount);

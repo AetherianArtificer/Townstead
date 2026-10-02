@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.pastry_chef.candy_floss"
+  },
+  "icon": "minecraft:white_wool",
+  "description": {
+    "translate": "skill.townstead.baker.pastry_chef.candy_floss.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sugar_dust"
+  ],
+  "skill_group": "townstead:pastry_sugar",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:levitation",
+        "duration": 40,
+        "amplifier": 1
+      }
+    }
+  }
+}

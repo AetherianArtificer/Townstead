@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.journalist.fact_check"
+  },
+  "icon": "minecraft:shield",
+  "description": {
+    "translate": "skill.townstead.scribe.journalist.fact_check.description"
+  },
+  "cost": 1,
+  "requires": [
+    "eyewitness"
+  ],
+  "skill_group": "townstead:journalist_reveal",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 360,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:resistance",
+      "duration": 200,
+      "amplifier": 0
+    }
+  }
+}

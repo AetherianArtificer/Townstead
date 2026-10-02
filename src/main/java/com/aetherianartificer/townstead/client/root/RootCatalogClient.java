@@ -20,6 +20,7 @@ public final class RootCatalogClient {
     private static volatile List<RootCatalogEntry> ROOTS = List.of();
     private static volatile Map<String, GeneCatalogEntry> GENES = Map.of();
     private static volatile Map<String, RigDefinition> RIGS = Map.of();
+    private static volatile Map<String, com.aetherianartificer.townstead.root.RootLook> LOOKS = Map.of();
 
     private RootCatalogClient() {}
 
@@ -36,6 +37,10 @@ public final class RootCatalogClient {
             rigs.put(r.id(), r);
         }
         RIGS = Map.copyOf(rigs);
+        Map<String, com.aetherianartificer.townstead.root.RootLook> looks = new LinkedHashMap<>();
+        for (com.aetherianartificer.townstead.root.RootLook look : payload.looks()) looks.put(look.rootId(), look);
+        LOOKS = Map.copyOf(looks);
+        com.aetherianartificer.townstead.client.species.RigModels.invalidate();
         // Rig defs may have changed (e.g. a new camera bone); drop the derived eye-height cache.
         com.aetherianartificer.townstead.client.species.RigCamera.invalidate();
         // A rig's declared hitbox may have changed too (e.g. an edited height on /reload). Client dimensions
@@ -92,6 +97,11 @@ public final class RootCatalogClient {
     /** The synced rig definition for a rig id (resolving vanilla aliases), or {@code null} if unknown. */
     public static RigDefinition rig(String id) {
         return RigRegistry.resolve(RIGS, id);
+    }
+
+    /** A root's outfits and fitted skins, or null when it declares neither. */
+    public static com.aetherianartificer.townstead.root.RootLook look(String rootId) {
+        return rootId == null ? null : LOOKS.get(rootId);
     }
 
     public static boolean isEmpty() {

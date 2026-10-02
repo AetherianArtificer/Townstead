@@ -41,6 +41,20 @@ public final class RootSpawnHandler {
      * clobbered) and before the villager's first tick (so {@code backfillIfMissing} can't stamp
      * the default origin first).
      */
+    // A spawn that must honor more than the region (a replaced vampire needs a Root that can be one).
+    private static final ThreadLocal<java.util.function.Predicate<ResourceLocation>> ROOT_CONSTRAINT = new ThreadLocal<>();
+
+    /** Runs {@code spawn} with founder Root selection limited to Roots {@code allowed} accepts. */
+    public static <T> T withRootConstraint(java.util.function.Predicate<ResourceLocation> allowed,
+                                           java.util.function.Supplier<T> spawn) {
+        ROOT_CONSTRAINT.set(allowed);
+        try {
+            return spawn.get();
+        } finally {
+            ROOT_CONSTRAINT.remove();
+        }
+    }
+
     public static void onTrueSpawn(VillagerEntityMCA villager) {
         TownsteadVillager state = TownsteadVillagers.get(villager);
         assignSpawnRoot(villager, state);
@@ -61,6 +75,9 @@ public final class RootSpawnHandler {
         if (state.life().hasGenotype() || state.life().hasHeritage()) {
             ResourceLocation childRoot = ResourceLocation.tryParse(state.life().rootId());
             if (childRoot == null) childRoot = RootRegistry.DEFAULT_ID;
+            com.aetherianartificer.townstead.root.appearance.HairColors.clamp(villager,
+                    com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(
+                            childRoot, state.life().heritage()));
             assignPersonality(villager, state, childRoot);
             rollAndStoreStageDays(villager, state, childRoot);
             return;
@@ -75,15 +92,26 @@ public final class RootSpawnHandler {
         // clashes with the resident majority (so a hostile species never spawns into a peaceful town)
         // and honor any spawner building's authored origin policy. Outside a village, no constraint.
         VillageSpawnContext village = VillageSpawnContext.resolve(villager);
-        RootSelector.Selection selection = village.active()
-                ? RootSelector.select(villager.level(), villager.blockPosition(), villager.getRandom(), village::allows)
-                : RootSelector.select(villager.level(), villager.blockPosition(), villager.getRandom());
+        java.util.function.ToDoubleFunction<ResourceLocation> foundingWeight =
+                villager.level() instanceof net.minecraft.server.level.ServerLevel server
+                        ? com.aetherianartificer.townstead.politics.founding.FoundingPopulationWeights
+                                .at(server, villager.blockPosition())
+                        : ignored -> 1.0D;
+        java.util.function.Predicate<ResourceLocation> allowed = village.active()
+                ? village::allows : ignored -> true;
+        java.util.function.Predicate<ResourceLocation> constraint = ROOT_CONSTRAINT.get();
+        if (constraint != null) allowed = allowed.and(constraint);
+        RootSelector.Selection selection = RootSelector.select(villager.level(), villager.blockPosition(),
+                villager.getRandom(), allowed, foundingWeight);
         if (selection.isMixed()) {
             List<RootSelector.Weighted> mix = selection.mix();
             Heredity.seedMixedFounder(state.life(), mix, villager.getRandom());
             ResourceLocation mixedRoot = ResourceLocation.tryParse(state.life().rootId());
             assignPersonality(villager, state, mixedRoot == null ? RootRegistry.DEFAULT_ID : mixedRoot);
             RootGenes.apply(villager, blendBodyMetrics(mix), villager.getRandom());
+            com.aetherianartificer.townstead.root.appearance.HairColors.roll(villager,
+                    com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(
+                            mixedRoot, state.life().heritage()), villager.getRandom());
             rollBlendedTraitGenes(villager, mix);
             // Life cycle: roll once against the dominant root's cycle, exactly like a
             // bred child. A share-blended cycle can't be reconstructed on load, so it
@@ -109,6 +137,9 @@ public final class RootSpawnHandler {
                 villager.getRandom());
         rollTraitGenes(villager, state, rootId);
         Heredity.seedFounder(state.life(), rootId, villager.getRandom());
+        com.aetherianartificer.townstead.root.appearance.HairColors.roll(villager,
+                com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(
+                        rootId, state.life().heritage()), villager.getRandom());
         rollAndStoreStageDays(villager, state, rootId);
     }
 
@@ -187,6 +218,9 @@ public final class RootSpawnHandler {
             Heredity.migrateFounder(state.life(), rootId, villager.getRandom());
             MIGRATED_GENE_REVISION.put(villager, geneRevision);
         }
+        com.aetherianartificer.townstead.root.appearance.HairColors.clamp(villager,
+                com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(
+                        rootId, state.life().heritage()));
         LifeCycle cycle = RootRegistry.effectiveLifeCycle(rootId);
         // Re-roll when the stored stageDays don't match the current cycle — either a
         // different length (origin reassigned), a re-authored shape, or a changed

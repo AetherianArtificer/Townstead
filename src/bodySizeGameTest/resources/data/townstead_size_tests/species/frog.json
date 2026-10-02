@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:species/v2",
+  "display_name": "Sizing test frog",
+  "rig": {
+    "base": "townstead_size_tests:frog"
+  },
+  "genes": []
+}

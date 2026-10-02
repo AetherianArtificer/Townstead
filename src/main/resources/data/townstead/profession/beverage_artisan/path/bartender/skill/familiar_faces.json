@@ -1,0 +1,30 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.bartender.familiar_faces"
+  },
+  "icon": "minecraft:name_tag",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.bartender.familiar_faces.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 200,
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 4,
+      "include_self": false,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:invert",
+        "action": {
+          "type": "pheno:change_collection",
+          "collection": "townstead:patrons",
+          "operation": "add",
+          "amount": 1
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.sapper.shock_absorber"
+  },
+  "icon": "minecraft:slime_block",
+  "description": {
+    "translate": "skill.townstead.toolsmith.sapper.shock_absorber.description"
+  },
+  "cost": 1,
+  "requires": [
+    "powder_monkey"
+  ],
+  "power": {
+    "type": "pheno:attribute",
+    "attribute": "minecraft:generic.knockback_resistance",
+    "amount": 1.0,
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:knack",
+      "min": 50
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "blocks": [
+    "townstead:room_ownership_tag"
+  ],
+  "flag": 1000,
+  "mid": "townstead:snow/room_ownership_tag",
+  "snow_passable": true
+}

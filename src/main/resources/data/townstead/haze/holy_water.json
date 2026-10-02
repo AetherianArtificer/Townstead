@@ -1,0 +1,26 @@
+{
+  "shape": "layer",
+  "color": "#9FD4F0",
+  "duration": 300,
+  "texture": "townstead:haze/holy_water",
+  "inside": {
+    "interval": 10,
+    "condition": {
+      "type": "pheno:entity_group",
+      "group": "undead"
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:damage",
+          "amount": 2.0
+        },
+        {
+          "type": "pheno:ignite",
+          "seconds": 2
+        }
+      ]
+    }
+  }
+}

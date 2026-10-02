@@ -32,7 +32,7 @@ public final class McaBuildingCompat {
             ServerLevel level, Village village, BlockPos pos) {
         if (level == null || village == null || pos == null) return null;
         //? if >=1.21 {
-        return village.getFunctionalRoomAt(level, pos).orElse(null);
+        return village.findInteractionRoomAt(pos).orElse(null);
         //?} else {
         /*return village.getBuildingAt(pos).orElse(null);
         *///?}
@@ -138,6 +138,23 @@ public final class McaBuildingCompat {
     }
 
     /**
+     * MCA's candidates in MCA's order (highest priority first), without collapsing tier families,
+     * so a check that fails a high tier can fall back to a lower one.
+     */
+    public static List<String> candidateTypeNames(Village village, Building building) {
+        if (building == null) return List.of();
+        //? if >=1.21 {
+        List<String> names = RoomTypeResolver.create(village).resolve(building)
+                .visibleMatchingTypes().stream().map(BuildingType::name).toList();
+        //?} else {
+        /*List<String> names = building.getVisibleMatchingTypes().stream()
+                .map(BuildingType::name).toList();
+        *///?}
+        return com.aetherianartificer.townstead.client.catalog.CatalogDataLoader
+                .withoutActiveSupersededBuildingTypesForRecognition(names);
+    }
+
+    /**
      * Exact MCA floor footprint plus MCA-recorded POIs. Floor-system external buildings may own a
      * floor region too: an open Apiary is still a registered place with a finite footprint. Empty
      * means this MCA generation or building has no exact floor model and callers should use their
@@ -146,10 +163,9 @@ public final class McaBuildingCompat {
     public static Set<Long> exactWorkArea(Building building) {
         if (building == null) return Set.of();
         //? if >=1.21 {
-        if (building.getFloorRegions().isEmpty()) return Set.of();
+        if (building.getFloorCells().isEmpty()) return Set.of();
         Set<Long> cells = new HashSet<>();
-        building.getFloorRegions().forEach(region ->
-                region.cells().forEach(pos -> cells.add(pos.asLong())));
+        building.getFloorCells().forEach(pos -> cells.add(pos.asLong()));
         building.getBlockPosStream().forEach(pos -> cells.add(pos.asLong()));
         return Set.copyOf(cells);
         //?} else {
@@ -163,28 +179,29 @@ public final class McaBuildingCompat {
         return source == null ? building.getCenter() : source;
     }
 
-    /** Whether this functional room belongs to a structure containing another room. */
+    /** Whether this functional room belongs to an MCA logical building containing another room. */
     public static boolean hasWholeBuildingScope(Village village, Building building) {
         if (village == null || building == null) return false;
         //? if >=1.21 {
         if (!building.isFunctionalRoom()) return false;
-        var structure = village.getStructureFor(building);
-        if (structure.isEmpty()) return false;
-        int structureId = structure.get().getId();
-        return village.getRooms().filter(room -> room.getStructureId() == structureId)
+        int logicalBuildingId = village.getLogicalBuildingId(building.getStructureId());
+        if (logicalBuildingId < 0) return false;
+        return village.getRooms()
+                .filter(room -> village.getLogicalBuildingId(room.getStructureId()) == logicalBuildingId)
                 .limit(2).count() > 1;
         //?} else {
         /*return false;
         *///?}
     }
 
-    /** Whether two functional rooms are floors/parts of the same MCA structure. */
+    /** Whether two functional rooms are parts of the same MCA logical building. */
     public static boolean sameWholeBuilding(Village village, Building first, Building second) {
         if (village == null || first == null || second == null) return false;
         //? if >=1.21 {
         if (!first.isFunctionalRoom() || !second.isFunctionalRoom()) return false;
-        var structure = village.getStructureFor(first);
-        return structure.isPresent() && second.getStructureId() == structure.get().getId();
+        int firstLogicalBuildingId = village.getLogicalBuildingId(first.getStructureId());
+        return firstLogicalBuildingId >= 0
+                && firstLogicalBuildingId == village.getLogicalBuildingId(second.getStructureId());
         //?} else {
         /*return first.getId() == second.getId();
         *///?}

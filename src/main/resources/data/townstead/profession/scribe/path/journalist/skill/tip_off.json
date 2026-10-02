@@ -1,0 +1,44 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.journalist.tip_off"
+  },
+  "icon": "minecraft:paper",
+  "description": {
+    "translate": "skill.townstead.scribe.journalist.tip_off.description"
+  },
+  "cost": 1,
+  "requires": [
+    "legwork"
+  ],
+  "skill_group": "townstead:journalist_alert",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 360,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "condition": {
+      "type": "pheno:entity_in_radius",
+      "radius": 16,
+      "condition": {
+        "type": "pheno:hostile"
+      }
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 10,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:speed",
+        "duration": 200,
+        "amplifier": 0
+      }
+    }
+  }
+}

@@ -1,6 +1,8 @@
 {
   "schema": "townstead:extended_building/v1",
-  "workers": ["minecraft:butcher"],
+  "workers": [
+    "minecraft:butcher"
+  ],
   "catalog": {
     "node_item": "butchery:blood_grate"
   },
@@ -8,8 +10,12 @@
     "pastoral": 4,
     "industrious": 2
   },
-  "enclosure": {
-    "minInterior": 4,
-    "maxInterior": 1024
-  }
+  "enclosure": "optional",
+  "requires": [
+    {
+      "enclosed": true,
+      "min_interior": 4,
+      "max_interior": 4096
+    }
+  ]
 }

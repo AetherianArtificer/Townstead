@@ -12,7 +12,12 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Pseudo
-@Mixin(targets = "vectorwing.farmersdelight.common.block.StoveBlock")
+// Farmer's Delight moved the burn from StoveBlock into AbstractStoveBlock (1.3.4); target both so
+// older and newer builds are covered. Each target only binds where it declares stepOn.
+@Mixin(targets = {
+        "vectorwing.farmersdelight.common.block.StoveBlock",
+        "vectorwing.farmersdelight.common.block.AbstractStoveBlock"
+})
 public abstract class StoveVillagerDamageMixin {
     //? if >=1.21 {
     @Inject(method = "stepOn", at = @At("HEAD"), cancellable = true, require = 0)

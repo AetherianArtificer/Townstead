@@ -1,13 +1,21 @@
 package com.aetherianartificer.townstead.dialogue.conversation;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.commands.*;
 import net.minecraft.commands.arguments.*;
 import net.minecraft.network.chat.Component;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.phys.AABB;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 /** Previews use the real lifecycle and safety gates but never grant social rewards. */
 public final class ConversationCommand {
@@ -30,7 +38,53 @@ public final class ConversationCommand {
                                                 .executes(context -> pair(context, ResourceLocationArgument.getId(context, "topic"), false))))))
                 .then(Commands.literal("inspect")
                         .then(Commands.argument("first", EntityArgument.entity())
-                                .then(Commands.argument("second", EntityArgument.entity()).executes(context -> pair(context, null, true)))))));
+                                .then(Commands.argument("second", EntityArgument.entity()).executes(context -> pair(context, null, true)))))
+                .then(Commands.literal("simulate")
+                        .executes(context -> simulate(context, 20, 32))
+                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 500))
+                                .executes(context -> simulate(context, IntegerArgumentType.getInteger(context, "count"), 32))
+                                .then(Commands.argument("radius", IntegerArgumentType.integer(4, 256))
+                                        .executes(context -> simulate(context, IntegerArgumentType.getInteger(context, "count"),
+                                                IntegerArgumentType.getInteger(context, "radius")))))
+                        .then(Commands.literal("pair")
+                                .then(Commands.argument("first", EntityArgument.entity())
+                                        .then(Commands.argument("second", EntityArgument.entity())
+                                                .executes(context -> simulatePair(context, 10))
+                                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 200))
+                                                        .executes(context -> simulatePair(context, IntegerArgumentType.getInteger(context, "count"))))))))));
+    }
+
+    /** A dry run over villagers near the source: whole encounters at once, written to a transcript. */
+    private static int simulate(CommandContext<CommandSourceStack> context, int count, int radius) {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        List<VillagerEntityMCA> villagers = level.getEntitiesOfClass(VillagerEntityMCA.class,
+                new AABB(BlockPos.containing(source.getPosition())).inflate(radius), VillagerEntityMCA::isAlive);
+        if (villagers.size() < 2) { source.sendFailure(Component.literal("Found fewer than two MCA villagers within " + radius + " blocks.")); return 0; }
+        long seed = level.getRandom().nextLong();
+        return report(source, ConversationSimulation.simulate(level, ConversationSimulation.pairs(villagers, count, new Random(seed)), seed), seed);
+    }
+
+    private static int simulatePair(CommandContext<CommandSourceStack> context, int count) throws CommandSyntaxException {
+        if (!(EntityArgument.getEntity(context, "first") instanceof VillagerEntityMCA first)
+                || !(EntityArgument.getEntity(context, "second") instanceof VillagerEntityMCA second) || first == second) {
+            context.getSource().sendFailure(Component.literal("Select two different MCA villagers.")); return 0;
+        }
+        long seed = context.getSource().getLevel().getRandom().nextLong();
+        List<VillagerEntityMCA[]> pairs = new ArrayList<>();
+        for (int i = 0; i < count; i++) pairs.add(i % 2 == 0 ? new VillagerEntityMCA[]{first, second} : new VillagerEntityMCA[]{second, first});
+        return report(context.getSource(), ConversationSimulation.simulate(context.getSource().getLevel(), pairs, seed), seed);
+    }
+
+    private static int report(CommandSourceStack source, ConversationSimulation.Report report, long seed) {
+        source.sendSuccess(() -> Component.literal(ConversationSimulation.summary(report)), false);
+        try {
+            ConversationSimulation.write(report, seed);
+            source.sendSuccess(() -> Component.literal("Transcript: " + ConversationSimulation.TRANSCRIPT), false);
+        } catch (java.io.IOException ex) {
+            source.sendFailure(Component.literal("Could not write the transcript: " + ex.getMessage()));
+        }
+        return report.encounters.size();
     }
     private static int pair(CommandContext<CommandSourceStack> context, ResourceLocation topic, boolean inspect) throws CommandSyntaxException {
         if (!(EntityArgument.getEntity(context, "first") instanceof VillagerEntityMCA first)

@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "world.danger",
+  "weight": 10,
+  "rarity": "legendary",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "survival",
+    "key": "townstead:village_fell_to_vampires"
+  },
+  "reach": "village",
+  "news_value": 9.0,
+  "roles": [
+    {
+      "id": "resident",
+      "kind": "villager"
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.village_fell_to_vampires"
+    },
+    "params": [
+      "village"
+    ]
+  },
+  "impact": {
+    "witness": {
+      "mood": -5.0,
+      "memory": {
+        "valence": -0.8,
+        "strength": 3.0
+      }
+    },
+    "on_learn": {
+      "mood": -3.0,
+      "memory": {
+        "valence": -0.6,
+        "strength": 2.0
+      }
+    }
+  }
+}

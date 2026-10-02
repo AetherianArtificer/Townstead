@@ -333,6 +333,8 @@ final class RecordPage {
             // and the one you are working toward, under the bar that measures the distance.
             boolean hasCap = career.dailyCap() > 0;
             String next = career.nextRankName();
+            boolean tail = next.isEmpty() && career.insightNext() > career.insightPrev();
+            if (tail) next = Component.translatable("townstead.career.screen.next_insight").getString();
             boolean caption = hasCap || !next.isEmpty();
             int h = RecordArt.stripHeight() + 2 + 5 + ROW_GAP + 8
                     + (caption ? ROW_GAP + font.lineHeight : 0) + FOOT;
@@ -344,15 +346,22 @@ final class RecordPage {
                     bands.size(), career.tier(), 0, RecordArt.ACCENT, null);
             cy += 5 + ROW_GAP;
             int total = career.xp() + career.xpToNext();
-            RecordArt.meter(g, x + PAD, cy + 2, inner - 2 * PAD,
-                    total <= 0 ? 1f : career.xp() / (float) total, false);
+            float frac = total <= 0 ? 1f : career.xp() / (float) total;
+            if (tail) {
+                frac = (career.xp() - career.insightPrev())
+                        / (float) (career.insightNext() - career.insightPrev());
+            }
+            RecordArt.meter(g, x + PAD, cy + 2, inner - 2 * PAD, frac, false);
             cy += 8;
             if (caption) {
                 if (hasCap) {
-                    g.drawString(font, Component.translatable("townstead.career.screen.today")
-                                    .getString() + " " + career.xpToday() + " / "
-                                    + career.dailyCap(),
-                            x + PAD, cy + ROW_GAP, RecordArt.INK_DIM, false);
+                    // Past the cap work still counts, at a reduced rate; say so instead of showing
+                    // a tally that has overrun its own limit.
+                    String today = career.xpToday() >= career.dailyCap()
+                            ? Component.translatable("townstead.career.screen.today_reduced").getString()
+                            : Component.translatable("townstead.career.screen.today").getString()
+                                    + " " + career.xpToday() + " / " + career.dailyCap();
+                    g.drawString(font, today, x + PAD, cy + ROW_GAP, RecordArt.INK_DIM, false);
                 }
                 if (!next.isEmpty()) {
                     // A drawn chevron rather than an arrow character: the record is pixel art, and

@@ -1,0 +1,2269 @@
+{
+  "name": "Dhampir Founder",
+  "requires_mods": [
+    "vampirism"
+  ],
+  "unique": "world",
+  "downed": true,
+  "arrival": "walk_in",
+  "arrives": [
+    {
+      "text": "A vampire comes near your village",
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:state",
+            "state": "vampirism:vampire_level",
+            "min": 1,
+            "inverted": true
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 48,
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:entity_type",
+                  "entity_type": "minecraft:player",
+                  "inverted": true
+                },
+                {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:state",
+                      "state": "townstead_state:vampire"
+                    },
+                    {
+                      "type": "pheno:entity_type",
+                      "entity_type": "vampirism:vampire"
+                    },
+                    {
+                      "type": "pheno:entity_type",
+                      "entity_type": "vampirism:advanced_vampire"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "villager": {
+    "profession": "townstead:hunter",
+    "mainhand": "minecraft:iron_sword",
+    "states": {
+      "townstead_state:dhampir": 1,
+      "townstead_state:blood_pull": 40
+    }
+  },
+  "names": {
+    "given": {
+      "female": [
+        "Adelheid",
+        "Agnes",
+        "Brigitta",
+        "Clara",
+        "Dorothea",
+        "Elisabeth",
+        "Emilia",
+        "Franziska",
+        "Gisela",
+        "Greta",
+        "Hedwig",
+        "Helena",
+        "Ilona",
+        "Irma",
+        "Judit",
+        "Katalin",
+        "Klara",
+        "Liesel",
+        "Magda",
+        "Margit",
+        "Marta",
+        "Mathilde",
+        "Mira",
+        "Ottilie",
+        "Rosalind",
+        "Sabine",
+        "Sofia",
+        "Teodora",
+        "Ursula",
+        "Veronika",
+        "Wilhelmina",
+        "Zsofia",
+        "Ioana",
+        "Irina",
+        "Viorica",
+        "Adela",
+        "Anca",
+        "Rada",
+        "Erzsi",
+        "Livia"
+      ],
+      "male": [
+        "Richter",
+        "Simon",
+        "Konrad",
+        "Anselm",
+        "Lukas",
+        "Matthias",
+        "Tobias",
+        "Ulrich",
+        "Reinhold",
+        "Kaspar",
+        "Gregor",
+        "Albrecht",
+        "Emeric",
+        "Balthasar",
+        "Dietrich",
+        "Gottfried",
+        "Hartmann",
+        "Jakob",
+        "Lorenz",
+        "Lothar",
+        "Magnus",
+        "Nikolaus",
+        "Oswald",
+        "Roland",
+        "Rupert",
+        "Stefan",
+        "Viktor",
+        "Wilhelm",
+        "Florian",
+        "Anton",
+        "Adrian",
+        "Julian",
+        "Leon",
+        "Andor",
+        "Laszlo",
+        "Tibor",
+        "Zoltan",
+        "Radu",
+        "Sorin",
+        "Mihail"
+      ]
+    },
+    "family": [
+      "Roth",
+      "Schuller",
+      "Binder",
+      "Kessler",
+      "Zimmermann",
+      "Krauss",
+      "Theil",
+      "Folberth",
+      "Wellmann",
+      "Teutsch",
+      "Hager",
+      "Schobel",
+      "Menning",
+      "Kroner",
+      "Lurtz",
+      "Farkas",
+      "Veres",
+      "Fekete",
+      "Kovács",
+      "Szabó",
+      "Bíró",
+      "Bartha",
+      "Csiki",
+      "Orbán",
+      "Kelemen",
+      "Deák",
+      "Pál",
+      "Szentes",
+      "Gál",
+      "Bakó",
+      "Lupu",
+      "Ardelean",
+      "Mureșan",
+      "Crișan",
+      "Moldovan",
+      "Oltean",
+      "Bucur",
+      "Vlaicu",
+      "Dobrin",
+      "Morar",
+      "Sas",
+      "Rusu",
+      "Onea",
+      "Pop",
+      "Iancu"
+    ],
+    "extra": {
+      "house": [
+        "von Aschenau",
+        "von Schwarzfels",
+        "von Nachtweil",
+        "von Wolfsgrund",
+        "von Eisenholz",
+        "von Rotheck",
+        "von Stillbach",
+        "von Hallstein"
+      ]
+    }
+  },
+  "moves_on": [
+    "order_dissolved",
+    "town_fallen"
+  ],
+  "mca_menu": {
+    "hide": [
+      "hire",
+      "stay"
+    ]
+  },
+  "family_name": "told",
+  "actions": {
+    "found": {
+      "type": "pheno:found_faction",
+      "kind": "townstead:hunter_order"
+    },
+    "hunger_small": {
+      "type": "pheno:add_state",
+      "state": "townstead_state:blood_pull",
+      "amount": 3
+    },
+    "oath_small": {
+      "type": "pheno:add_state",
+      "state": "townstead_state:blood_pull",
+      "amount": -3
+    },
+    "walk_with": {
+      "type": "pheno:travel_with",
+      "leave_pets": false
+    },
+    "first_watch": {
+      "type": "pheno:spawn_at_edge",
+      "entity_type": "vampirism:vampire",
+      "count": 5
+    },
+    "rounds": {
+      "type": "pheno:make_rounds",
+      "count": 8
+    },
+    "thrall_arrives": {
+      "type": "pheno:visitor",
+      "role": "grieving_thrall",
+      "states": {
+        "townstead_state:thrall": 1
+      }
+    },
+    "mark_slipped": {
+      "type": "pheno:add_count",
+      "key": "townstead:founder_slipped",
+      "on": "other"
+    },
+    "bread_delivered": {
+      "type": "pheno:add_count",
+      "key": "townstead:seed_bread_delivered",
+      "on": "other"
+    },
+    "prime_slip": {
+      "type": "pheno:add_count",
+      "key": "townstead:ready_to_slip"
+    },
+    "slipped": {
+      "type": "pheno:add_count",
+      "key": "townstead:slipped"
+    },
+    "carry_question": {
+      "type": "pheno:add_count",
+      "key": "townstead:asked_neighbor",
+      "on": "other"
+    },
+    "walk_end": {
+      "type": "pheno:travel_end"
+    },
+    "take_garlic": {
+      "type": "pheno:take_items",
+      "tag": "townstead:garlic",
+      "count": 16
+    },
+    "fetch_wolf": {
+      "type": "pheno:errand",
+      "days": 1,
+      "adopt": "minecraft:wolf",
+      "essential": true
+    },
+    "wolf_rest_outside": {
+      "type": "pheno:pet_rest",
+      "building": "compat/vampirism/hunter_lodge",
+      "inside": false,
+      "entity_type": "minecraft:wolf"
+    },
+    "wolf_rest_inside": {
+      "type": "pheno:pet_rest",
+      "building": "compat/vampirism/hunter_lodge",
+      "inside": true,
+      "entity_type": "minecraft:wolf"
+    },
+    "mark_grave": {
+      "type": "pheno:mark_structure",
+      "key": "mother_grave",
+      "structures": "#townstead:story_ruins",
+      "min": 400,
+      "max": 1200,
+      "map_name": "map.townstead.where_the_house_was"
+    },
+    "grave_travel": {
+      "type": "pheno:travel_with",
+      "leave_pets": true
+    },
+    "grave_home": {
+      "type": "pheno:travel_end"
+    },
+    "build_grave": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:block_action",
+          "block_action": {
+            "type": "pheno:offset",
+            "x": 2,
+            "y": 0,
+            "z": 0,
+            "block_action": {
+              "type": "pheno:set_block",
+              "block": "minecraft:mossy_stone_brick_wall"
+            }
+          }
+        },
+        {
+          "type": "pheno:block_action",
+          "block_action": {
+            "type": "pheno:offset",
+            "x": 2,
+            "y": 0,
+            "z": 1,
+            "block_action": {
+              "type": "pheno:set_block",
+              "block": "minecraft:candle",
+              "properties": {
+                "lit": "true",
+                "candles": "3"
+              }
+            }
+          }
+        },
+        {
+          "type": "pheno:block_action",
+          "block_action": {
+            "type": "pheno:offset",
+            "x": 2,
+            "y": 0,
+            "z": -1,
+            "block_action": {
+              "type": "pheno:set_block",
+              "block": "minecraft:poppy"
+            }
+          }
+        },
+        {
+          "type": "pheno:block_action",
+          "block_action": {
+            "type": "pheno:offset",
+            "x": 3,
+            "y": 0,
+            "z": 1,
+            "block_action": {
+              "type": "pheno:set_block",
+              "block": "minecraft:cornflower"
+            }
+          }
+        }
+      ]
+    },
+    "drop_signet": {
+      "type": "pheno:give_story_item",
+      "item": "townstead:court_signet",
+      "drop": true
+    },
+    "court_arrives": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:spawn_at_edge",
+          "entity_type": "vampirism:advanced_vampire",
+          "count": 1
+        },
+        {
+          "type": "pheno:spawn_at_edge",
+          "entity_type": "vampirism:vampire",
+          "count": 2
+        }
+      ]
+    },
+    "take_book": {
+      "type": "pheno:take_items",
+      "story_item": "townstead:book_of_oaths",
+      "count": 1
+    },
+    "restore_oath": {
+      "type": "pheno:add_count",
+      "key": "townstead:oath_restored"
+    },
+    "mark_wounded_seen": {
+      "type": "pheno:add_count",
+      "key": "townstead:wolf_wounded_seen",
+      "on": "other"
+    },
+    "bringer_arrives": {
+      "type": "pheno:visitor",
+      "role": "candle_bringer",
+      "gender": "female",
+      "states": {
+        "townstead_state:thrall": 1
+      }
+    },
+    "bringer_leave": {
+      "type": "pheno:visitor_leave",
+      "role": "candle_bringer",
+      "radius": 24
+    },
+    "bringer_stay": {
+      "type": "pheno:visitor_stay",
+      "role": "candle_bringer",
+      "radius": 24
+    },
+    "take_signet": {
+      "type": "pheno:take_items",
+      "story_item": "townstead:court_signet",
+      "count": 1
+    },
+    "mark_midpoint": {
+      "type": "pheno:add_count",
+      "key": "townstead:midpoint_done",
+      "on": "other"
+    },
+    "debug_adopt_wolf": {
+      "type": "pheno:adopt",
+      "entity_type": "minecraft:wolf",
+      "essential": true
+    },
+    "debug_give_book": {
+      "type": "pheno:give_story_item",
+      "item": "townstead:book_of_oaths"
+    },
+    "settler_arrives": {
+      "type": "pheno:visitor",
+      "role": "settler",
+      "states": {
+        "townstead_state:vampire": 1
+      }
+    },
+    "settler_stay": {
+      "type": "pheno:visitor_stay",
+      "role": "settler",
+      "radius": 48
+    },
+    "settler_leave": {
+      "type": "pheno:visitor_leave",
+      "role": "settler",
+      "radius": 48
+    },
+    "couple_arrives": {
+      "type": "pheno:visitor",
+      "role": "couple",
+      "gender": "male",
+      "states": {
+        "townstead_state:vampire": 1
+      },
+      "thrall": {
+        "states": {
+          "townstead_state:thrall": 1
+        }
+      }
+    },
+    "couple_stay": {
+      "type": "pheno:visitor_stay",
+      "role": "couple",
+      "radius": 48
+    },
+    "couple_leave": {
+      "type": "pheno:visitor_leave",
+      "role": "couple",
+      "radius": 48
+    },
+    "break_bond": {
+      "type": "pheno:visitor_action",
+      "role": "couple_thrall",
+      "radius": 24,
+      "action": {
+        "type": "pheno:release_thrall"
+      }
+    },
+    "fledgling_arrives": {
+      "type": "pheno:visitor",
+      "role": "fledgling",
+      "states": {
+        "townstead_state:vampire": 1
+      }
+    },
+    "fledgling_stay": {
+      "type": "pheno:visitor_stay",
+      "role": "fledgling",
+      "radius": 48
+    },
+    "fledgling_leave": {
+      "type": "pheno:visitor_leave",
+      "role": "fledgling",
+      "radius": 48
+    },
+    "asked_cure": {
+      "type": "pheno:add_count",
+      "key": "townstead:asked_cure",
+      "on": "other"
+    },
+    "take_collar_things": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:take_items",
+          "item": "minecraft:leather",
+          "count": 1
+        },
+        {
+          "type": "pheno:take_items",
+          "tag": "townstead:bell_metal",
+          "count": 1
+        }
+      ]
+    },
+    "take_bone": {
+      "type": "pheno:take_items",
+      "item": "minecraft:bone",
+      "count": 1
+    },
+    "mark_shepherd": {
+      "type": "pheno:mark_structure",
+      "key": "shepherd_grave",
+      "structures": "#townstead:story_ruins",
+      "min": 300,
+      "max": 900,
+      "map_name": "map.townstead.the_shepherds_gate"
+    },
+    "shepherd_travel": {
+      "type": "pheno:travel_with",
+      "leave_pets": false
+    },
+    "shepherd_home": {
+      "type": "pheno:travel_end"
+    },
+    "build_shepherd_grave": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:block_action",
+          "block_action": {
+            "type": "pheno:offset",
+            "x": 2,
+            "y": 0,
+            "z": 0,
+            "block_action": {
+              "type": "pheno:set_block",
+              "block": "minecraft:mossy_cobblestone_wall"
+            }
+          }
+        },
+        {
+          "type": "pheno:block_action",
+          "block_action": {
+            "type": "pheno:offset",
+            "x": 2,
+            "y": 0,
+            "z": 1,
+            "block_action": {
+              "type": "pheno:set_block",
+              "block": "minecraft:dandelion"
+            }
+          }
+        },
+        {
+          "type": "pheno:block_action",
+          "block_action": {
+            "type": "pheno:offset",
+            "x": 3,
+            "y": 0,
+            "z": -1,
+            "block_action": {
+              "type": "pheno:set_block",
+              "block": "minecraft:oxeye_daisy"
+            }
+          }
+        }
+      ]
+    },
+    "mark_court": {
+      "type": "pheno:mark_structure",
+      "key": "father_court",
+      "structures": "#townstead:father_court",
+      "min": 1200,
+      "max": 4000,
+      "map_name": "map.townstead.his_house"
+    },
+    "court_travel": {
+      "type": "pheno:travel_with",
+      "leave_pets": true
+    },
+    "court_home": {
+      "type": "pheno:travel_end"
+    },
+    "court_hosts": {
+      "type": "pheno:visitor",
+      "role": "father",
+      "from": "near",
+      "distance": 10,
+      "gender": "male",
+      "states": {
+        "townstead_state:vampire": 1
+      },
+      "thrall": {
+        "gender": "female",
+        "states": {
+          "townstead_state:thrall": 1
+        }
+      }
+    },
+    "end_father": {
+      "type": "pheno:visitor_action",
+      "role": "father",
+      "radius": 48,
+      "action": {
+        "type": "pheno:damage",
+        "amount": 1000,
+        "source": "other"
+      }
+    },
+    "father_spared": {
+      "type": "pheno:add_count",
+      "key": "townstead:father_spared",
+      "on": "other"
+    },
+    "father_leave": {
+      "type": "pheno:visitor_leave",
+      "role": "father",
+      "radius": 48
+    },
+    "quiet_leave": {
+      "type": "pheno:visitor_leave",
+      "role": "father_thrall",
+      "radius": 48
+    },
+    "ending_a": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:set_state",
+          "state": "townstead_state:blood_pull",
+          "amount": 10
+        },
+        {
+          "type": "pheno:add_count",
+          "key": "townstead:founder_humanity"
+        },
+        {
+          "type": "pheno:add_count",
+          "key": "townstead:founder_humanity",
+          "on": "other"
+        }
+      ]
+    },
+    "ending_b": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:set_state",
+          "state": "townstead_state:blood_pull",
+          "amount": 100
+        },
+        {
+          "type": "pheno:add_count",
+          "key": "townstead:founder_fallen"
+        },
+        {
+          "type": "pheno:add_count",
+          "key": "townstead:founder_fallen",
+          "on": "other"
+        },
+        {
+          "type": "pheno:pet_rest",
+          "building": "compat/vampirism/hunter_lodge",
+          "inside": false,
+          "entity_type": "minecraft:wolf"
+        }
+      ]
+    },
+    "turn_player": {
+      "type": "pheno:target_action",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "vampirism:sanguinare",
+        "duration": 1200
+      }
+    },
+    "b_accord": {
+      "type": "pheno:add_count",
+      "key": "townstead:founder_accord",
+      "on": "other"
+    },
+    "b_rival": {
+      "type": "pheno:add_count",
+      "key": "townstead:founder_rival",
+      "on": "other"
+    },
+    "take_werewolf_things": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:take_items",
+          "tag": "townstead:werewolf_silver",
+          "count": 1
+        },
+        {
+          "type": "pheno:take_items",
+          "tag": "townstead:wolfsbane",
+          "count": 1
+        }
+      ]
+    },
+    "tell_family": {
+      "type": "pheno:share_family_name"
+    }
+  },
+  "conditions": {
+    "vampire_near": {
+      "type": "pheno:entity_in_radius",
+      "radius": 24,
+      "condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:state",
+            "state": "townstead_state:vampire"
+          },
+          {
+            "type": "pheno:entity_type",
+            "entity_type": "vampirism:vampire"
+          },
+          {
+            "type": "pheno:entity_type",
+            "entity_type": "vampirism:advanced_vampire"
+          }
+        ]
+      }
+    },
+    "made_kill": {
+      "type": "pheno:chronicle_count",
+      "key": "townstead:slew_vampire",
+      "at_least": 1
+    },
+    "has_wolf": {
+      "type": "pheno:has_pet",
+      "entity_type": "minecraft:wolf",
+      "radius": 32
+    },
+    "hungry": {
+      "type": "pheno:state",
+      "state": "townstead_state:blood_pull",
+      "min": 50
+    },
+    "hurt": {
+      "type": "pheno:health",
+      "max": 0.6,
+      "relative": true
+    },
+    "wet": {
+      "type": "pheno:wet"
+    },
+    "night": {
+      "type": "pheno:time_of_day",
+      "min": 13000,
+      "max": 23000
+    },
+    "altar_placed": {
+      "type": "pheno:order_altar"
+    },
+    "altar_graveyard": {
+      "type": "pheno:order_altar",
+      "building": "graveyard"
+    },
+    "altar_house": {
+      "type": "pheno:order_altar",
+      "building": [
+        "house",
+        "big_house"
+      ]
+    },
+    "altar_inn": {
+      "type": "pheno:order_altar",
+      "building": "inn"
+    },
+    "altar_infirmary": {
+      "type": "pheno:order_altar",
+      "building": "infirmary"
+    },
+    "altar_arms": {
+      "type": "pheno:order_altar",
+      "building": [
+        "armory",
+        "weaponsmith",
+        "armorer",
+        "blacksmith",
+        "toolsmith"
+      ]
+    },
+    "altar_open_sky": {
+      "type": "pheno:order_altar",
+      "outside": true,
+      "sky": true
+    },
+    "altar_underground": {
+      "type": "pheno:order_altar",
+      "sky": false,
+      "outside": true
+    },
+    "lodge_built": {
+      "type": "pheno:village",
+      "has_building": "hunter_lodge"
+    },
+    "second_kill": {
+      "type": "pheno:chronicle_count",
+      "key": "townstead:slew_vampire",
+      "at_least": 2
+    },
+    "parent_volunteer": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:life_stage",
+          "stage": "adult"
+        },
+        {
+          "type": "pheno:personality",
+          "personality": [
+            "athletic",
+            "confident"
+          ]
+        },
+        {
+          "type": "pheno:state",
+          "state": "townstead_state:vampire",
+          "inverted": true
+        },
+        {
+          "type": "pheno:has_child"
+        }
+      ]
+    },
+    "first_oath": {
+      "type": "pheno:chronicle_count",
+      "key": "townstead:officiated/hunter_oath",
+      "at_least": 1
+    },
+    "sworn_hunter": {
+      "type": "pheno:faction_bond",
+      "kind": "townstead:oath"
+    },
+    "player_sworn": {
+      "type": "pheno:other",
+      "condition": {
+        "type": "pheno:faction_bond",
+        "kind": "townstead:oath"
+      }
+    },
+    "evening": {
+      "type": "pheno:time_of_day",
+      "min": 11500,
+      "max": 18000
+    },
+    "late_night": {
+      "type": "pheno:time_of_day",
+      "min": 13500,
+      "max": 21000
+    },
+    "raid_near": {
+      "type": "pheno:entity_in_radius",
+      "radius": 64,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:entity_type",
+            "entity_type": "minecraft:player",
+            "inverted": true
+          },
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:state",
+                "state": "townstead_state:vampire"
+              },
+              {
+                "type": "pheno:entity_type",
+                "entity_type": "vampirism:vampire"
+              },
+              {
+                "type": "pheno:entity_type",
+                "entity_type": "vampirism:advanced_vampire"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "resident_vampire": {
+      "type": "pheno:state",
+      "state": "townstead_state:vampire"
+    },
+    "neighbor_biter": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:state",
+          "state": "townstead_state:vampire"
+        },
+        {
+          "type": "pheno:chronicle_count",
+          "key": "townstead:bit_unwilling",
+          "at_least": 1
+        }
+      ]
+    },
+    "neighbor_willing": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:state",
+          "state": "townstead_state:vampire"
+        },
+        {
+          "type": "pheno:chronicle_count",
+          "key": "townstead:fed_on_person",
+          "at_least": 1
+        },
+        {
+          "type": "pheno:chronicle_count",
+          "key": "townstead:bit_unwilling",
+          "at_least": 0,
+          "at_most": 0
+        }
+      ]
+    },
+    "neighbor_clean": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:state",
+          "state": "townstead_state:vampire"
+        },
+        {
+          "type": "pheno:chronicle_count",
+          "key": "townstead:fed_on_person",
+          "at_least": 0,
+          "at_most": 0
+        }
+      ]
+    },
+    "heard_neighbor": {
+      "type": "pheno:other",
+      "condition": {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:heard_neighbor",
+        "at_least": 1
+      }
+    },
+    "turning_villager": {
+      "type": "pheno:status_effect",
+      "effect": "vampirism:sanguinare"
+    },
+    "cured_villager": {
+      "type": "pheno:chronicle_count",
+      "key": "townstead:vampire_cured",
+      "at_least": 1
+    },
+    "thrall_near": {
+      "type": "pheno:visitor",
+      "role": "grieving_thrall",
+      "radius": 128
+    },
+    "pull_steady": {
+      "type": "pheno:state",
+      "state": "townstead_state:blood_pull",
+      "min": 25,
+      "max": 49.99
+    },
+    "pull_hungry": {
+      "type": "pheno:state",
+      "state": "townstead_state:blood_pull",
+      "min": 50,
+      "max": 74.99
+    },
+    "pull_predator": {
+      "type": "pheno:state",
+      "state": "townstead_state:blood_pull",
+      "min": 75,
+      "max": 99.99
+    },
+    "pull_fallen": {
+      "type": "pheno:state",
+      "state": "townstead_state:blood_pull",
+      "min": 100
+    },
+    "midwife_bread": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:other",
+          "condition": {
+            "type": "pheno:chronicle_count",
+            "key": "townstead:carries_seed_bread",
+            "at_least": 1
+          }
+        },
+        {
+          "type": "pheno:other",
+          "condition": {
+            "type": "pheno:chronicle_count",
+            "key": "townstead:seed_bread_delivered",
+            "at_least": 0,
+            "at_most": 0
+          }
+        }
+      ]
+    },
+    "heard_birth": {
+      "type": "pheno:other",
+      "condition": {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:heard_birth",
+        "at_least": 1
+      }
+    },
+    "player_dhampir": {
+      "type": "pheno:other",
+      "condition": {
+        "type": "pheno:state",
+        "state": "townstead_state:dhampir"
+      }
+    },
+    "at_grave": {
+      "type": "pheno:near_marker",
+      "key": "mother_grave",
+      "radius": 24
+    },
+    "wolf_down": {
+      "type": "pheno:has_pet",
+      "entity_type": "minecraft:wolf",
+      "radius": 64,
+      "downed": true
+    },
+    "carries_book": {
+      "type": "pheno:other",
+      "condition": {
+        "type": "pheno:inventory",
+        "min": 1,
+        "item_condition": {
+          "type": "pheno:ingredient",
+          "story_item": "townstead:book_of_oaths"
+        }
+      }
+    },
+    "oath_restored": {
+      "type": "pheno:chronicle_count",
+      "key": "townstead:oath_restored",
+      "at_least": 1
+    },
+    "carries_signet": {
+      "type": "pheno:other",
+      "condition": {
+        "type": "pheno:inventory",
+        "min": 1,
+        "item_condition": {
+          "type": "pheno:ingredient",
+          "story_item": "townstead:court_signet"
+        }
+      }
+    },
+    "midwife_forgiven": {
+      "type": "pheno:other",
+      "condition": {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:midwife_forgiven",
+        "at_least": 1
+      }
+    },
+    "midwife_cast_out": {
+      "type": "pheno:other",
+      "condition": {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:midwife_cast_out",
+        "at_least": 1
+      }
+    },
+    "player_killed": {
+      "type": "pheno:other",
+      "condition": {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:slew_vampire",
+        "at_least": 1
+      }
+    },
+    "never_bit": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:state",
+          "state": "townstead_state:vampire"
+        },
+        {
+          "type": "pheno:chronicle_count",
+          "key": "townstead:bit_unwilling",
+          "at_least": 0,
+          "at_most": 0
+        }
+      ]
+    },
+    "fed_on_person": {
+      "type": "pheno:chronicle_count",
+      "key": "townstead:fed_on_person",
+      "at_least": 1
+    },
+    "cold_night": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:time_of_day",
+          "min": 13000,
+          "max": 23000
+        },
+        {
+          "type": "pheno:ambient_temperature",
+          "max": 0
+        }
+      ]
+    },
+    "wolf_close": {
+      "type": "pheno:has_pet",
+      "entity_type": "minecraft:wolf",
+      "radius": 6
+    },
+    "wolf_named": {
+      "type": "pheno:has_pet",
+      "entity_type": "minecraft:wolf",
+      "radius": 64,
+      "named": true
+    },
+    "carries_collar_things": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:other",
+          "condition": {
+            "type": "pheno:inventory",
+            "min": 1,
+            "item_condition": {
+              "type": "pheno:ingredient",
+              "item": "minecraft:leather"
+            }
+          }
+        },
+        {
+          "type": "pheno:other",
+          "condition": {
+            "type": "pheno:inventory",
+            "min": 1,
+            "item_condition": {
+              "type": "pheno:ingredient",
+              "tag": "townstead:bell_metal"
+            }
+          }
+        }
+      ]
+    },
+    "carries_bone": {
+      "type": "pheno:other",
+      "condition": {
+        "type": "pheno:inventory",
+        "min": 1,
+        "item_condition": {
+          "type": "pheno:ingredient",
+          "item": "minecraft:bone"
+        }
+      }
+    },
+    "hearts_close": {
+      "type": "pheno:hearts",
+      "min": 25
+    },
+    "hearts_dear": {
+      "type": "pheno:hearts",
+      "min": 50
+    },
+    "hearts_love": {
+      "type": "pheno:hearts",
+      "min": 75
+    },
+    "at_court": {
+      "type": "pheno:near_marker",
+      "key": "father_court",
+      "radius": 32
+    },
+    "at_shepherd": {
+      "type": "pheno:near_marker",
+      "key": "shepherd_grave",
+      "radius": 24
+    },
+    "carries_relic": {
+      "type": "pheno:other",
+      "condition": {
+        "type": "pheno:inventory",
+        "min": 1,
+        "item_condition": {
+          "type": "pheno:ingredient",
+          "tag": "townstead:father_bane"
+        }
+      }
+    },
+    "werewolf_near": {
+      "type": "pheno:entity_in_radius",
+      "radius": 48,
+      "condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:entity_type",
+            "entity_type": "werewolves:werewolf_beast"
+          },
+          {
+            "type": "pheno:entity_type",
+            "entity_type": "werewolves:werewolf_survivalist"
+          },
+          {
+            "type": "pheno:entity_type",
+            "entity_type": "werewolves:alpha_werewolf"
+          }
+        ]
+      }
+    },
+    "carries_werewolf_things": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:other",
+          "condition": {
+            "type": "pheno:inventory",
+            "min": 1,
+            "item_condition": {
+              "type": "pheno:ingredient",
+              "tag": "townstead:werewolf_silver"
+            }
+          }
+        },
+        {
+          "type": "pheno:other",
+          "condition": {
+            "type": "pheno:inventory",
+            "min": 1,
+            "item_condition": {
+              "type": "pheno:ingredient",
+              "tag": "townstead:wolfsbane"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "goals": {
+    "altar_placed": {
+      "text": "Place the Oath Altar",
+      "condition": {
+        "type": "pheno:order_altar"
+      }
+    },
+    "lodge_built": {
+      "text": "Build the lodge: the altar and two workbenches in one room",
+      "condition": {
+        "type": "pheno:village",
+        "has_building": "hunter_lodge"
+      }
+    },
+    "founder_kills": {
+      "text": "Vampires put down",
+      "value": {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:slew_vampire"
+      },
+      "target": 1
+    },
+    "player_kills": {
+      "text": "Vampires put down",
+      "subject": "player",
+      "value": {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:slew_vampire"
+      },
+      "target": 1
+    },
+    "founder_oaths": {
+      "text": "Oaths sworn in",
+      "value": {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:officiated/hunter_oath"
+      },
+      "target": 1
+    },
+    "founder_toyed": {
+      "text": "Finishing blows held back",
+      "value": {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:toyed"
+      },
+      "target": 1
+    },
+    "garlic_pile": {
+      "text": "Carry {count} garlic",
+      "subject": "player",
+      "count": 16,
+      "condition": {
+        "type": "pheno:inventory",
+        "min": 16,
+        "item_condition": {
+          "type": "pheno:ingredient",
+          "tag": "townstead:garlic"
+        }
+      }
+    },
+    "wolf_downs": {
+      "text": "Times the wolf went down",
+      "value": {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:pet_downed"
+      },
+      "target": 1
+    }
+  },
+  "gifts": [
+    {
+      "items": [
+        "minecraft:beef",
+        "minecraft:mutton",
+        "minecraft:porkchop",
+        "minecraft:chicken",
+        "minecraft:rabbit"
+      ],
+      "response": "likes",
+      "knot": "gift_meat"
+    },
+    {
+      "items": [
+        "minecraft:bread"
+      ],
+      "response": "likes",
+      "knot": "gift_bread"
+    }
+  ],
+  "checkpoints": {
+    "scene01_meeting": {
+      "vars": {
+        "met": 0
+      },
+      "knot": "meeting",
+      "note": "Scene 1. Best with a vampire killed nearby (made_kill), else the cold-trail opening."
+    },
+    "scene02_wolf": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true
+      },
+      "knot": "wolf",
+      "act": [
+        "found",
+        "debug_adopt_wolf"
+      ],
+      "note": "Founds the lodge order and gives the founder a wolf."
+    },
+    "scene03_altar": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true
+      },
+      "knot": "altar_offer",
+      "note": "Place the Oath Altar you got when the lodge was founded."
+    },
+    "scene04_garlic": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true
+      },
+      "knot": "garlic_offer",
+      "villager_counters": {
+        "townstead:slew_vampire": 2
+      }
+    },
+    "scene05_volunteers": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true
+      },
+      "knot": "volunteers",
+      "villager_counters": {
+        "townstead:slew_vampire": 2
+      },
+      "note": "Needs a resident adult (athletic or confident) with a young child, or the name is blank."
+    },
+    "scene06_first_oath": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true
+      },
+      "knot": "first_oath",
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1
+      }
+    },
+    "scene07_walk": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true
+      },
+      "knot": "walk_offer",
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1
+      },
+      "note": "You must be sworn into the lodge for the walk to be offered normally."
+    },
+    "scene08_watch": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true
+      },
+      "knot": "watch_offer",
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1
+      },
+      "note": "Brings real vampires in. Needs night, and the lodge to have a sworn hunter."
+    },
+    "scene09_neighbor": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true
+      },
+      "knot": "neighbor_offer",
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1
+      },
+      "note": "Needs a resident vampire villager."
+    },
+    "scene09b_bitten": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true
+      },
+      "knot": "bitten_offer",
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1
+      },
+      "note": "Needs a villager with Sanguinare."
+    },
+    "scene10_thrall": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true
+      },
+      "knot": "thrall_arrival",
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1
+      },
+      "note": "Brings a thrall visitor in."
+    },
+    "scene11_counting": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true
+      },
+      "knot": "counting",
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1
+      }
+    },
+    "scene12_name": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true
+      },
+      "knot": "the_name",
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1
+      }
+    },
+    "scene13_count": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true,
+        "named": true
+      },
+      "knot": "the_count",
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1
+      },
+      "act": [
+        "tell_family"
+      ]
+    },
+    "m1_slip": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true,
+        "named": true,
+        "done_count_talk": true
+      },
+      "knot": "slip_after",
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1,
+        "townstead:ready_to_slip": 1
+      },
+      "act": [
+        "tell_family"
+      ]
+    },
+    "m2_midwife": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true,
+        "named": true,
+        "done_count_talk": true,
+        "done_slip": true
+      },
+      "knot": "greet",
+      "counters": {
+        "townstead:founder_slipped": 1
+      },
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1,
+        "townstead:ready_to_slip": 1,
+        "townstead:slipped": 1
+      },
+      "note": "The midwife arrives at your village shortly (Persona arrival).",
+      "act": [
+        "tell_family"
+      ]
+    },
+    "m3_grave": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true,
+        "named": true,
+        "done_count_talk": true,
+        "done_slip": true,
+        "bread_known": true
+      },
+      "knot": "grave_offer",
+      "counters": {
+        "townstead:founder_slipped": 1,
+        "townstead:seed_bread_delivered": 1
+      },
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1,
+        "townstead:ready_to_slip": 1,
+        "townstead:slipped": 1
+      },
+      "act": [
+        "tell_family"
+      ]
+    },
+    "wounded": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true,
+        "named": true,
+        "done_count_talk": true,
+        "done_slip": true,
+        "bread_known": true,
+        "grave_seen": true,
+        "done_grave": true
+      },
+      "knot": "court_move",
+      "counters": {
+        "townstead:founder_slipped": 1,
+        "townstead:seed_bread_delivered": 1
+      },
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1,
+        "townstead:ready_to_slip": 1,
+        "townstead:slipped": 1
+      },
+      "note": "Brings the court's vampires in. Best at night, with the wolf around.",
+      "act": [
+        "tell_family"
+      ]
+    },
+    "m4_book": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true,
+        "named": true,
+        "done_count_talk": true,
+        "done_slip": true,
+        "bread_known": true,
+        "grave_seen": true,
+        "done_grave": true,
+        "court_came": true,
+        "done_wounded": true
+      },
+      "knot": "the_book",
+      "counters": {
+        "townstead:founder_slipped": 1,
+        "townstead:seed_bread_delivered": 1,
+        "townstead:wolf_wounded_seen": 1
+      },
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1,
+        "townstead:ready_to_slip": 1,
+        "townstead:slipped": 1
+      },
+      "act": [
+        "debug_give_book",
+        "tell_family"
+      ],
+      "note": "Gives you the Book of Oaths."
+    },
+    "midpoint": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true,
+        "named": true,
+        "done_count_talk": true,
+        "done_slip": true,
+        "bread_known": true,
+        "grave_seen": true,
+        "done_grave": true,
+        "court_came": true,
+        "done_wounded": true,
+        "done_book": true,
+        "book_day": -1
+      },
+      "knot": "bringer_arrival",
+      "counters": {
+        "townstead:founder_slipped": 1,
+        "townstead:seed_bread_delivered": 1,
+        "townstead:wolf_wounded_seen": 1
+      },
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1,
+        "townstead:ready_to_slip": 1,
+        "townstead:slipped": 1,
+        "townstead:oath_restored": 1
+      },
+      "note": "The candle-bringer walks in; talk to the founder again with them near.",
+      "act": [
+        "tell_family"
+      ]
+    },
+    "confession_after": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true,
+        "named": true,
+        "done_count_talk": true,
+        "done_slip": true,
+        "bread_known": true,
+        "grave_seen": true,
+        "done_grave": true,
+        "court_came": true,
+        "done_wounded": true,
+        "done_book": true,
+        "book_day": -1,
+        "bringer_called": true,
+        "done_midpoint": true
+      },
+      "knot": "confession_after",
+      "counters": {
+        "townstead:founder_slipped": 1,
+        "townstead:seed_bread_delivered": 1,
+        "townstead:wolf_wounded_seen": 1,
+        "townstead:midpoint_done": 1,
+        "townstead:midwife_forgiven": 1
+      },
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1,
+        "townstead:ready_to_slip": 1,
+        "townstead:slipped": 1,
+        "townstead:oath_restored": 1
+      },
+      "note": "Plays the founder's side after a forgiven confession.",
+      "act": [
+        "tell_family"
+      ]
+    },
+    "scene14_debrief": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true,
+        "named": true,
+        "done_count_talk": true
+      },
+      "knot": "debrief",
+      "villager_counters": {
+        "townstead:slew_vampire": 3,
+        "townstead:officiated/hunter_oath": 1
+      },
+      "note": "Scene 14. A debrief after a kill; lines follow the pull of the blood.",
+      "act": [
+        "tell_family"
+      ]
+    },
+    "scene15_stakeout": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true,
+        "named": true,
+        "done_count_talk": true
+      },
+      "knot": "stakeout_offer",
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1
+      },
+      "note": "Scene 15. Uses a resident vampire who never bit anyone (from scene 9), else a settler walks in. The nights need late_night talks on different days.",
+      "act": [
+        "tell_family"
+      ]
+    },
+    "scene16_willing": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true,
+        "named": true,
+        "done_count_talk": true,
+        "stake_offered": true,
+        "done_stakeout": true
+      },
+      "knot": "couple_arrival",
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1
+      },
+      "note": "Scene 16. A vampire and their thrall walk in; talk again once they are near.",
+      "act": [
+        "tell_family"
+      ]
+    },
+    "scene17_fledgling": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true,
+        "named": true,
+        "done_count_talk": true,
+        "stake_offered": true,
+        "done_stakeout": true,
+        "couple_called": true,
+        "done_willing": true,
+        "done_slip": true,
+        "bread_known": true
+      },
+      "knot": "fledgling_arrival",
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1
+      },
+      "note": "Scene 17. A fledgling walks in; talk again once they are near. The cure goes through the midwife.",
+      "act": [
+        "tell_family"
+      ]
+    },
+    "act3_inside": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true,
+        "named": true,
+        "done_count_talk": true,
+        "done_slip": true,
+        "bread_known": true,
+        "grave_seen": true,
+        "done_grave": true,
+        "court_came": true,
+        "done_wounded": true,
+        "done_book": true,
+        "book_day": -1,
+        "bringer_called": true,
+        "done_midpoint": true,
+        "done_confession_after": true
+      },
+      "knot": "inside_move",
+      "counters": {
+        "townstead:founder_slipped": 1,
+        "townstead:seed_bread_delivered": 1,
+        "townstead:wolf_wounded_seen": 1,
+        "townstead:midpoint_done": 1,
+        "townstead:midwife_forgiven": 1
+      },
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1,
+        "townstead:ready_to_slip": 1,
+        "townstead:slipped": 1,
+        "townstead:oath_restored": 1
+      },
+      "note": "Wolf beat 12, the start of Act 3: its bed moves inside.",
+      "act": [
+        "tell_family"
+      ]
+    },
+    "act3_court_offer": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true,
+        "named": true,
+        "done_count_talk": true,
+        "done_slip": true,
+        "bread_known": true,
+        "grave_seen": true,
+        "done_grave": true,
+        "court_came": true,
+        "done_wounded": true,
+        "done_book": true,
+        "book_day": -1,
+        "bringer_called": true,
+        "done_midpoint": true,
+        "done_confession_after": true,
+        "inside_moved": true,
+        "done_inside": true
+      },
+      "knot": "court_offer",
+      "counters": {
+        "townstead:founder_slipped": 1,
+        "townstead:seed_bread_delivered": 1,
+        "townstead:wolf_wounded_seen": 1,
+        "townstead:midpoint_done": 1,
+        "townstead:midwife_forgiven": 1
+      },
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1,
+        "townstead:ready_to_slip": 1,
+        "townstead:slipped": 1,
+        "townstead:oath_restored": 1
+      },
+      "note": "Act 3. Hands you a map to the father's house and walks with you.",
+      "act": [
+        "tell_family"
+      ]
+    },
+    "act3_court": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true,
+        "done_walk": true,
+        "done_watch": true,
+        "done_neighbor": true,
+        "thrall_called": true,
+        "thrall_seen": true,
+        "done_thrall": true,
+        "done_counting": true,
+        "named": true,
+        "done_count_talk": true,
+        "done_slip": true,
+        "bread_known": true,
+        "grave_seen": true,
+        "done_grave": true,
+        "court_came": true,
+        "done_wounded": true,
+        "done_book": true,
+        "book_day": -1,
+        "bringer_called": true,
+        "done_midpoint": true,
+        "done_confession_after": true,
+        "inside_moved": true,
+        "done_inside": true,
+        "court_offered": true,
+        "court_walking": true,
+        "court_arrived": true
+      },
+      "knot": "court_arrive",
+      "counters": {
+        "townstead:founder_slipped": 1,
+        "townstead:seed_bread_delivered": 1,
+        "townstead:wolf_wounded_seen": 1,
+        "townstead:midpoint_done": 1,
+        "townstead:midwife_forgiven": 1
+      },
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1,
+        "townstead:ready_to_slip": 1,
+        "townstead:slipped": 1,
+        "townstead:oath_restored": 1
+      },
+      "act": [
+        "court_travel",
+        "tell_family"
+      ],
+      "note": "Act 3 at the court, wherever you stand: brings the father and the quiet one up beside you. Talk again for the pivot. Set blood_pull to try either ending."
+    }
+  }
+}

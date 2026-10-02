@@ -17,8 +17,8 @@ import java.util.List;
  * Declares a per-entity collection store keyed by this gene's id (Apoli's {@code entity_set}). Any
  * gene or profession references it by id through {@code change_collection},
  * {@code collection_contains}, {@code collection_size}, and {@code for_each}, the same shared-by-id
- * model as {@code resource}. Transient (reset on reload, like resources and cooldowns); Apoli
- * persists its sets, a delta we can lift to all stores together later.
+ * model as {@code resource}. Persistent: members live in {@code CollectionSavedData} and survive
+ * reload and restart. A collection forgets only when it opts in with {@code forget_after}.
  *
  * <p>{@code of} is the element type ({@code entity}/{@code block}/{@code item}/{@code key}).
  * {@code max} + {@code on_full} bound it ({@code reject} or {@code evict_oldest}); {@code distinct}

@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:wardrobe_policy/v1",
+  "scope": "villager",
+  "priority": 0,
+  "layers": {
+    "base": {
+      "select": {
+        "occasion": "rest"
+      }
+    },
+    "outerwear": {
+      "require": "preferred",
+      "select": {
+        "occasion": "rest"
+      }
+    },
+    "accessory": {
+      "require": "preferred",
+      "select": {
+        "occasion": "rest"
+      }
+    }
+  }
+}

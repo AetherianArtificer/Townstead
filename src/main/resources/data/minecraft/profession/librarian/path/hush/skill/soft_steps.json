@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.hush.soft_steps"
+  },
+  "icon": "minecraft:white_wool",
+  "description": {
+    "translate": "skill.townstead.librarian.hush.soft_steps.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:prevent_game_event",
+    "events": [
+      "minecraft:step",
+      "minecraft:hit_ground"
+    ]
+  }
+}

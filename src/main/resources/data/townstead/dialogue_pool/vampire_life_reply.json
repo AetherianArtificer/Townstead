@@ -1,0 +1,6 @@
+{
+  "schema": "townstead:dialogue_pool/v1",
+  "mods": "vampirism",
+  "subjects": "vampire_life",
+  "empty": 2
+}

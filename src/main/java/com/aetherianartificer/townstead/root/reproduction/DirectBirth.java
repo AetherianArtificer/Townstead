@@ -87,6 +87,7 @@ public final class DirectBirth {
                     family.assignParent(tree.getOrCreate(mother));
                     family.assignParent(tree.getOrCreate(spouse));
                     Heredity.inheritFromEntities(TownsteadVillagers.get(child).life(), List.of(mother, spouse), random);
+                    com.aetherianartificer.townstead.pheno.state.EntityStates.receiveAtBirth(child, List.of(mother, spouse));
                     RootSpawnHandler.backfillIfMissing(child);
                 }
 

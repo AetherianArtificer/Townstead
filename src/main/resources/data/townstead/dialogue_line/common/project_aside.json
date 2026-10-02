@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "project_aside",
+  "groups": [
+    {
+      "stance": "+",
+      "lines": {
+        "itll_be_worth_the_wait": "It'll be worth the wait.",
+        "i_like_the_look_of": "I like the look of it.",
+        "its_going_to_be_great": "It's going to be great."
+      }
+    },
+    {
+      "stance": "-",
+      "lines": {
+        "ive_stopped_asking": "I've stopped asking.",
+        "typical": "Typical.",
+        "honestly_same": "Honestly, same."
+      }
+    },
+    { "stance": "0", "lines": {"well_see": "We'll see.", "maybe": "Maybe."} }
+  ]
+}

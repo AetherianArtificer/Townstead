@@ -1,0 +1,69 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.tidecaller.whirlpool"
+  },
+  "icon": "minecraft:heart_of_the_sea",
+  "description": {
+    "translate": "skill.townstead.fisherman.tidecaller.whirlpool.description"
+  },
+  "cost": 1,
+  "requires": [
+    "undertow"
+  ],
+  "skill_group": "townstead:tidecaller_current",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 8,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:add_velocity",
+                "away_from_other": -1.0,
+                "y": 0.0
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:slowness",
+                "duration": 100,
+                "amplifier": 1
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:entity.generic.splash",
+              "volume": 1.0,
+              "pitch": 1.0
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:splash",
+              "count": 20,
+              "spread": 1.2
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

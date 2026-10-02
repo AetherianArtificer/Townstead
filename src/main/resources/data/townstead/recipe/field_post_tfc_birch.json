@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_tfc_birch"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "tfc:wood/lumber/birch"
+    },
+    "L": {
+      "item": "tfc:wood/log/birch"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_tfc_birch",
+    "count": 1
+  }
+}

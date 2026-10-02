@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.tenderizer.iron_butcher"
+  },
+  "icon": "minecraft:iron_block",
+  "description": {
+    "translate": "skill.townstead.butcher.tenderizer.iron_butcher.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tough_hide"
+  ],
+  "skill_group": "townstead:tenderizer_block",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:cut",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 400,
+          "amplifier": 2
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:strength",
+          "duration": 400,
+          "amplifier": 1
+        }
+      ]
+    }
+  }
+}

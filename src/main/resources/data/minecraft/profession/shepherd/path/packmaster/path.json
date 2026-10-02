@@ -1,0 +1,81 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.shepherd.path.packmaster"
+  },
+  "title": {
+    "translate": "career.townstead.shepherd.title.packmaster"
+  },
+  "color": "#8A6A4A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:flock",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:shepherd/packmaster/pack_bond"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:shepherd/packmaster/hunt"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:shepherd/packmaster/guard_dog"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 8,
+            "condition": {
+              "type": "pheno:tamed"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:flock",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "good_dog",
+      "heel",
+      "treat"
+    ],
+    [
+      "loyal_companions",
+      "sic_em",
+      "stay"
+    ],
+    [
+      "pack_bond",
+      "hunt",
+      "guard_dog"
+    ],
+    [
+      "alpha",
+      "pack_tactics",
+      "protect"
+    ],
+    [
+      "pack_leader",
+      "release_the_hounds",
+      "loyalty"
+    ]
+  ]
+}

@@ -56,7 +56,9 @@ public final class AreaOfEffectActionType implements ActionType {
                 if (!targetMode.equals("all")) {
                     boolean hostile = target instanceof net.minecraft.world.entity.monster.Enemy
                             || (target instanceof net.minecraft.world.entity.Mob mob
-                            && mob.getTarget() == self);
+                            && mob.getTarget() == self)
+                            || com.aetherianartificer.townstead.root.disposition.Dispositions.between(self, target)
+                            == com.aetherianartificer.townstead.root.disposition.Disposition.HOSTILE;
                     if (targetMode.equals("hostile") != hostile) continue;
                 }
                 // The actor is always the first argument, so "hostile" reads as "hostile to me".

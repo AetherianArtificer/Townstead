@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_afc_ipe"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "afc:wood/lumber/ipe"
+    },
+    "L": {
+      "item": "afc:wood/log/ipe"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_afc_ipe",
+    "count": 1
+  }
+}

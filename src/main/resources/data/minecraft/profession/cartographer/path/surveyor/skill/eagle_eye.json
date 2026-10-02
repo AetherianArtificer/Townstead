@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.surveyor.eagle_eye"
+  },
+  "icon": "minecraft:ender_eye",
+  "description": {
+    "translate": "skill.townstead.cartographer.surveyor.eagle_eye.description"
+  },
+  "cost": 1,
+  "requires": [
+    "vantage"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:bearing",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:bearing",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:night_vision",
+      "duration": 300,
+      "amplifier": 0
+    }
+  }
+}

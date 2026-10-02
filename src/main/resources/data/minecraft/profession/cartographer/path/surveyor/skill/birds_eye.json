@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.surveyor.birds_eye"
+  },
+  "icon": "minecraft:elytra",
+  "description": {
+    "translate": "skill.townstead.cartographer.surveyor.birds_eye.description"
+  },
+  "cost": 1,
+  "requires": [
+    "updraft"
+  ],
+  "skill_group": "townstead:surveyor_flight",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:levitation",
+          "duration": 60,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:slow_falling",
+          "duration": 200,
+          "amplifier": 0
+        }
+      ]
+    }
+  }
+}

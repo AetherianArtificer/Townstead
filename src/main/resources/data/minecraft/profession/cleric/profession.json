@@ -8,5 +8,9 @@
   "description": {
     "text": "Brew remedies and other potions while building a history of clerical practice."
   },
+  "skills": [
+    "hallowed",
+    "benediction"
+  ],
   "unlock_model": "experiential"
 }

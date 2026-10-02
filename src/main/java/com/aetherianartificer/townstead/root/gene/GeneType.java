@@ -16,6 +16,12 @@ import java.util.Map;
  */
 public interface GeneType {
 
+    /**
+     * Whether the standard condition gates this gene's presence and its companions.
+     * Behavior types that already evaluate condition with their own event context keep false.
+     */
+    default boolean conditionControlsExpression() { return false; }
+
     /** Wire key matched against a gene JSON's {@code "type"} (e.g. {@code townstead_roots:scaled_part}). */
     String key();
 

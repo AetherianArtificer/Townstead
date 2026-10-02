@@ -1,0 +1,61 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.hexer.covens_curse"
+  },
+  "icon": "minecraft:wither_skeleton_skull",
+  "description": {
+    "translate": "skill.townstead.witch.hexer.covens_curse.description"
+  },
+  "cost": 1,
+  "requires": [
+    "curse_of_frailty"
+  ],
+  "skill_group": "townstead:hexer_curse",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:hex",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 16,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:invert",
+                "action": {
+                  "type": "pheno:change_collection",
+                  "collection": "townstead:hexed",
+                  "operation": "add"
+                }
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:wither",
+                "duration": 100,
+                "amplifier": 0
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.witch.celebrate",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

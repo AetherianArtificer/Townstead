@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "pheno:action_over_time",
+  "display_name": {
+    "translate": "gene.townstead_roots.vampire_sun_weakness"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.vampire_sun_weakness.desc"
+  },
+  "category": "Abilities",
+  "interval": 20,
+  "condition": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "pheno:environment",
+        "exposure": [
+          "sun"
+        ]
+      },
+      {
+        "type": "pheno:equipped_item",
+        "slot": "head",
+        "inverted": true
+      }
+    ]
+  },
+  "action": {
+    "type": "pheno:apply_effect",
+    "effect": "minecraft:weakness",
+    "duration": 60
+  },
+  "avoid": true
+}

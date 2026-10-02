@@ -1,0 +1,179 @@
+package com.aetherianartificer.townstead.decoration;
+
+import com.aetherianartificer.townstead.temperature.ThermalStructures;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.util.GsonHelper;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+
+import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * A furniture set: an anchor block with a bag of other blocks within a small radius. Not a room and
+ * not a building; several can share a house or stand in a yard. Recognised the moment the last
+ * block lands. Schema {@code townstead:decoration/v1}:
+ * <pre>{
+ *   "anchor": ["#townstead:thermal/heat_sources"],
+ *   "radius": 3,
+ *   "requires": { "#townstead:masonry_materials": 4 },
+ *   "thermal": { "kind": "warming", "offset": 10, "radius": 6 },
+ *   "spirits": { "pastoral": 1 },
+ *   "icon": "minecraft:campfire"
+ * }</pre>
+ * A definition may instead provide {@code variants}, each with its own anchor and requirements,
+ * so local material forms share one catalog identity. {@code supersedes} lists smaller sets this
+ * one includes: when both match one anchor, this one takes it, and the smaller set comes back if
+ * this one is dismantled.
+ * Spirit points apply once per built decoration, regardless of its material variant.
+ */
+public record DecorationDefinition(ResourceLocation id, List<Variant> variants, int radius,
+                                  @Nullable ThermalStructures.Spec thermal,
+                                  @Nullable ResourceLocation icon, Map<String, Integer> spirits,
+                                  List<ResourceLocation> supersedes) {
+    public DecorationDefinition { spirits = Map.copyOf(spirits); supersedes = List.copyOf(supersedes); }
+
+    /** A bigger set that includes a smaller one (a Council Fire over a Hearth) takes its anchor. */
+    public boolean supersedes(ResourceLocation other) {
+        return supersedes.contains(other);
+    }
+    public static final String SCHEMA = "townstead:decoration/v1";
+    public static final int MAX_RADIUS = 6;
+
+    public record Requirement(String raw, @Nullable ResourceLocation blockId, @Nullable TagKey<Block> tag, int count) {
+        public boolean matches(BlockState state) {
+            if (tag != null) return state.is(tag);
+            return blockId != null && BuiltInRegistries.BLOCK.getKey(state.getBlock()).equals(blockId);
+        }
+
+        static @Nullable Requirement parse(String selector, int count) {
+            if (selector == null || selector.isBlank() || count < 0) return null;
+            boolean isTag = selector.startsWith("#");
+            ResourceLocation target = ResourceLocation.tryParse(isTag ? selector.substring(1) : selector);
+            if (target == null) return null;
+            return isTag ? new Requirement(selector, null, TagKey.create(Registries.BLOCK, target), count)
+                    : new Requirement(selector, target, null, count);
+        }
+    }
+
+    /** One material form of the same logical set (for example a desert or taiga well). */
+    public record Variant(List<Requirement> anchors, List<Requirement> requires) {
+        public Variant {
+            anchors = List.copyOf(anchors);
+            requires = List.copyOf(requires);
+            if (anchors.isEmpty()) throw new IllegalArgumentException("variant anchors must not be empty");
+        }
+
+        boolean isAnchor(BlockState state) {
+            for (Requirement anchor : anchors) if (anchor.matches(state)) return true;
+            return false;
+        }
+    }
+
+    /** Flattened selectors are retained for catalog display and touch indexing. */
+    public List<Requirement> anchors() {
+        return variants.stream().flatMap(variant -> variant.anchors().stream()).distinct().toList();
+    }
+
+    public List<Requirement> requires() {
+        return variants.stream().flatMap(variant -> variant.requires().stream()).distinct().toList();
+    }
+
+    public boolean isAnchor(BlockState state) {
+        for (Variant variant : variants) if (variant.isAnchor(state)) return true;
+        return false;
+    }
+
+    /** True when the block could be part of this set at all, as anchor or member. */
+    public boolean touches(BlockState state) {
+        if (isAnchor(state)) return true;
+        for (Variant variant : variants) {
+            for (Requirement requirement : variant.requires()) if (requirement.matches(state)) return true;
+        }
+        return false;
+    }
+
+    public String translationKey() {
+        return "decoration." + id.getNamespace() + "." + id.getPath().replace('/', '.');
+    }
+
+    public static @Nullable DecorationDefinition parse(ResourceLocation id, JsonObject json) {
+        List<Variant> variants = new ArrayList<>();
+        if (json.has("variants")) {
+            if (!json.get("variants").isJsonArray()) return null;
+            for (JsonElement element : json.getAsJsonArray("variants")) {
+                if (!element.isJsonObject()) return null;
+                Variant variant = parseVariant(element.getAsJsonObject());
+                if (variant == null) return null;
+                variants.add(variant);
+            }
+        } else {
+            Variant variant = parseVariant(json);
+            if (variant == null) return null;
+            variants.add(variant);
+        }
+        if (variants.isEmpty()) return null;
+
+        int radius = Math.max(1, Math.min(MAX_RADIUS, GsonHelper.getAsInt(json, "radius", 3)));
+        ThermalStructures.Spec thermal = json.has("thermal") && json.get("thermal").isJsonObject()
+                ? ThermalStructures.parse(id.toString(), json.getAsJsonObject("thermal")) : null;
+        ResourceLocation icon = json.has("icon") ? ResourceLocation.tryParse(GsonHelper.getAsString(json, "icon", "")) : null;
+        Map<String, Integer> spirits = new java.util.LinkedHashMap<>();
+        if (json.has("spirits")) {
+            if (!json.get("spirits").isJsonObject()) return null;
+            for (var entry : json.getAsJsonObject("spirits").entrySet()) {
+                if (!com.aetherianartificer.townstead.spirit.SpiritRegistry.contains(entry.getKey())
+                        || !entry.getValue().isJsonPrimitive() || !entry.getValue().getAsJsonPrimitive().isNumber()) return null;
+                double points = entry.getValue().getAsDouble();
+                if (!Double.isFinite(points) || points < 0 || points > Integer.MAX_VALUE || points != Math.floor(points)) return null;
+                if (points > 0) spirits.put(entry.getKey(), (int) points);
+            }
+        }
+        List<ResourceLocation> supersedes = new ArrayList<>();
+        if (json.has("supersedes")) {
+            if (!json.get("supersedes").isJsonArray()) return null;
+            for (JsonElement element : json.getAsJsonArray("supersedes")) {
+                ResourceLocation other = ResourceLocation.tryParse(element.getAsString());
+                if (other == null) return null;
+                supersedes.add(other);
+            }
+        }
+        return new DecorationDefinition(id, List.copyOf(variants), radius, thermal, icon, spirits, supersedes);
+    }
+
+    private static @Nullable Variant parseVariant(JsonObject json) {
+        List<Requirement> anchors = new ArrayList<>();
+        JsonElement anchorJson = json.get("anchor");
+        if (anchorJson == null) return null;
+        if (anchorJson.isJsonPrimitive()) {
+            Requirement anchor = Requirement.parse(anchorJson.getAsString(), 1);
+            if (anchor == null) return null;
+            anchors.add(anchor);
+        } else if (anchorJson.isJsonArray()) {
+            for (JsonElement element : anchorJson.getAsJsonArray()) {
+                if (!element.isJsonPrimitive()) return null;
+                Requirement anchor = Requirement.parse(element.getAsString(), 1);
+                if (anchor == null) return null;
+                anchors.add(anchor);
+            }
+        }
+        if (anchors.isEmpty()) return null;
+        List<Requirement> requires = new ArrayList<>();
+        if (json.has("requires") && json.get("requires").isJsonObject()) {
+            for (Map.Entry<String, JsonElement> entry : json.getAsJsonObject("requires").entrySet()) {
+                if (!entry.getValue().isJsonPrimitive() || !entry.getValue().getAsJsonPrimitive().isNumber()) return null;
+                Requirement requirement = Requirement.parse(entry.getKey(), entry.getValue().getAsInt());
+                if (requirement == null) return null;
+                requires.add(requirement);
+            }
+        }
+        return new Variant(anchors, requires);
+    }
+}

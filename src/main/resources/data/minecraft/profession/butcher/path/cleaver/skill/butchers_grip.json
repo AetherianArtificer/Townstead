@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.cleaver.butchers_grip"
+  },
+  "icon": "minecraft:stone_axe",
+  "description": {
+    "translate": "skill.townstead.butcher.cleaver.butchers_grip.description"
+  },
+  "cost": 1,
+  "requires": [
+    "keen_edge"
+  ],
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 1.25,
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "or",
+        "conditions": [
+          {
+            "type": "ingredient",
+            "tag": "townstead:butcher_cleavers"
+          },
+          {
+            "type": "ingredient",
+            "tag": "minecraft:axes"
+          }
+        ]
+      }
+    }
+  }
+}

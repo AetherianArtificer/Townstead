@@ -1,0 +1,102 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.climatologist.path.heatwarden"
+  },
+  "title": {
+    "translate": "career.townstead.climatologist.title.heatwarden"
+  },
+  "color": "#E08A3A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:front",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "toughasnails:climatologist/heatwarden/kindle"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "toughasnails:climatologist/heatwarden/firebrand"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "toughasnails:climatologist/heatwarden/mirage"
+              }
+            ]
+          },
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:environment",
+                "exposure": "sun"
+              },
+              {
+                "type": "pheno:block_in_radius",
+                "radius": 6,
+                "block_condition": {
+                  "type": "pheno:and",
+                  "conditions": [
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "townstead:kitchen/heat_sources"
+                    },
+                    {
+                      "type": "pheno:block_state",
+                      "property": "lit",
+                      "value": "true",
+                      "if_missing": "pass"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:front",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "warm_blooded",
+      "flare",
+      "cool_down"
+    ],
+    [
+      "heatproof",
+      "heat_wave",
+      "heat_shimmer"
+    ],
+    [
+      "kindle",
+      "firebrand",
+      "mirage"
+    ],
+    [
+      "searing_touch",
+      "wildfire",
+      "sunstroke"
+    ],
+    [
+      "living_flame",
+      "inferno",
+      "solar_flare"
+    ]
+  ]
+}

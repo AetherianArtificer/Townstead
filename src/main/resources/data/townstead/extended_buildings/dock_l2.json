@@ -1,10 +1,17 @@
 {
   "schema": "townstead:extended_building/v1",
+  "enclosure": "optional",
   "catalog": {
     "node_item": "minecraft:birch_boat"
   },
   "spirit": {
     "nautical": 10,
     "industrious": 5
-  }
+  },
+  "requires": [
+    {
+      "surface_over": "#townstead:liquids",
+      "count": 24
+    }
+  ]
 }

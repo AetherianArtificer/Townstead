@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:story_item/v1",
+  "base": "minecraft:gold_nugget",
+  "name": {
+    "translate": "story_item.townstead.court_signet"
+  },
+  "lore": [
+    {
+      "translate": "story_item.townstead.court_signet.lore"
+    }
+  ],
+  "glint": true
+}

@@ -15,7 +15,7 @@ import java.util.Map;
  * <p>{@code sources} are the per-state pose origins (unlisted -> {@link Source#HUMANOID}, opt-out).
  * {@code providers} is the animation-bridge fall-through chain: a list of entity identities whose
  * Fresh-Animations/EMF CEM should drive the rig's idle/walk, tried in order, with {@code "humanoid"}
- * meaning "our own setupAnim", the always-available floor. Empty -> just the base.</p>
+ * meaning humanoid EMF with our own setupAnim as its always-available floor. Empty -> just the base.</p>
  */
 public record Animations(Map<State, Source> sources, List<String> providers) {
 

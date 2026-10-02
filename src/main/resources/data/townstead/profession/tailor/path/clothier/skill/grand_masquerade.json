@@ -1,0 +1,61 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.clothier.grand_masquerade"
+  },
+  "icon": "minecraft:dragon_head",
+  "description": {
+    "translate": "skill.townstead.tailor.clothier.grand_masquerade.description"
+  },
+  "cost": 1,
+  "requires": [
+    "master_of_disguise"
+  ],
+  "skill_group": "townstead:clothier_costume",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 2400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stitch",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:wear_cosmetic",
+              "slot": "head",
+              "item": [
+                "minecraft:dragon_head"
+              ],
+              "duration": 1200
+            },
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:item.armor.equip_leather",
+              "volume": 1.0,
+              "pitch": 1.2
+            }
+          ]
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 12,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:invisibility",
+            "duration": 400,
+            "amplifier": 0
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.pathfinder.trail_legs"
+  },
+  "icon": "minecraft:oak_stairs",
+  "description": {
+    "translate": "skill.townstead.cartographer.pathfinder.trail_legs.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sure_stride"
+  ],
+  "power": {
+    "type": "pheno:step_height",
+    "amount": 1.0
+  }
+}

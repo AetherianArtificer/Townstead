@@ -18,11 +18,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * pathfinding plan through gaps only a crouched body fits. That distinction is what keeps this cheap —
  * path clearance is baked once per path from {@code getBbHeight()}, so a crouch-aware planner would have
  * to commit every path to the crouched height and then guarantee the pose flips at exactly the right
- * node. {@link RigHitboxes#DOOR_SAFE_HEIGHT} handles the case that actually mattered (a tall rig getting
+ * node. {@link BodySize#MAX_HEIGHT} handles the case that actually mattered (a tall rig getting
  * through its own front door) without any of that.</p>
  *
- * <p>Only entities whose rig declares a hitbox take part; a plain MCA villager resolves no crouch box, so
- * it is left exactly as it was.</p>
+ * <p>Both humanoid villagers and custom rigs use the shared physical-size policy.</p>
  */
 public final class RigCrouch {
 

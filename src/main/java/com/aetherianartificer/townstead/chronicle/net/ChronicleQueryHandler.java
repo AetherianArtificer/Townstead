@@ -69,7 +69,7 @@ public final class ChronicleQueryHandler {
                     return;
                 }
                 sendKnowledge(player, payload, villager.getUUID(), pageSize,
-                        villager.getName().getString(), "townstead.chronicle.source.conversation");
+                        villager.getDisplayName().getString(), "townstead.chronicle.source.conversation");
             }
             case ChronicleQueryC2SPayload.SCOPE_ADMIN_TRUTH -> {
                 if (!player.hasPermissions(2)) {
@@ -300,7 +300,7 @@ public final class ChronicleQueryHandler {
         int points = Math.max(1, Math.round(bestScore * 10f));
         ChronicleSavedData.get(server).addNewsPoints(player.getUUID(), points);
         player.displayClientMessage(Component.translatable("townstead.chronicle.share.delivered",
-                villager.getName().getString(), points), true);
+                villager.getDisplayName().getString(), points), true);
     }
 
     private static boolean rateLimit(ServerPlayer player) {

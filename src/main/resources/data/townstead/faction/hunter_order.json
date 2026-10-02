@@ -1,0 +1,92 @@
+{
+  "schema": "townstead:faction/v1",
+  "mods": "vampirism",
+  "display": {
+    "name": {
+      "translate": "faction.townstead.hunter_order"
+    },
+    "description": {
+      "translate": "faction.townstead.hunter_order.description"
+    }
+  },
+  "tags": [
+    "townstead:political"
+  ],
+  "holds_land": false,
+  "membership": {
+    "bond": "townstead:oath",
+    "admission": "townstead:application",
+    "approval": "townstead:review_membership_requests",
+    "approvals": 1
+  },
+  "offices": [
+    {
+      "bond": "townstead:lodge_master",
+      "min": 1,
+      "max": 1,
+      "founder": true
+    }
+  ],
+  "founding": {
+    "procedure": "townstead:charter",
+    "gifts": [
+      "townstead:oath_altar"
+    ],
+    "teaches": [
+      "townstead:oath_altar"
+    ]
+  },
+  "presentation": {
+    "faction_names": "townstead:hunter_orders",
+    "faction_name_patterns": [
+      "{name}"
+    ]
+  },
+  "members": {
+    "group": "hunter",
+    "profession": "townstead:hunter",
+    "shift": "townstead:night_watch"
+  },
+  "recruitment": {
+    "ritual": "townstead:hunter_oath",
+    "training_nights": 3,
+    "room": {
+      "building": "compat/vampirism/hunter_lodge",
+      "per_block": "#townstead:lodge/workbenches"
+    },
+    "volunteers": {
+      "chance": 0.15,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          { "type": "pheno:life_stage", "stage": "adult" },
+          { "type": "pheno:personality", "personality": ["athletic", "confident"] },
+          { "type": "pheno:state", "state": "townstead_state:vampire", "inverted": true },
+          { "type": "pheno:has_child", "inverted": true }
+        ]
+      }
+    }
+  },
+  "governance": {
+    "head": "townstead:lodge_master",
+    "routes": [
+      {
+        "route": "townstead:favor",
+        "office": "townstead:lodge_master"
+      }
+    ],
+    "succession": "townstead:favor",
+    "legitimacy": {
+      "base": 60,
+      "sources": [
+        {
+          "label": "townstead:leader_standing",
+          "value": {
+            "type": "pheno:standing"
+          },
+          "weight": 0.5
+        }
+      ]
+    }
+  }
+}

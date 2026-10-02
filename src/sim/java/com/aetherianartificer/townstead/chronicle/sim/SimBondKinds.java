@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * Loads {@code bond_kind} definitions off disk into the same registry the
+ * Loads {@code bond} (and older {@code bond_kind}) definitions off disk into the same registry the
  * server fills, so the harness honours a pack's own arity and pairing rules
  * rather than assuming Townstead's.
  */
@@ -36,8 +36,8 @@ public final class SimBondKinds {
         if (!Files.isDirectory(dataRoot)) return warnings;
 
         try (Stream<Path> namespaces = Files.list(dataRoot)) {
-            for (Path namespaceDir : namespaces.filter(Files::isDirectory).toList()) {
-                Path dir = namespaceDir.resolve("bond_kind");
+            for (Path namespaceDir : namespaces.filter(Files::isDirectory).toList()) for (String folder : List.of("bond_kind", "bond")) {
+                Path dir = namespaceDir.resolve(folder);
                 if (!Files.isDirectory(dir)) continue;
                 String namespace = namespaceDir.getFileName().toString();
                 try (Stream<Path> files = Files.walk(dir)) {
@@ -52,7 +52,7 @@ public final class SimBondKinds {
                                             JsonElement.class), id.toString());
                             kinds.put(id, BondKind.parse(id, json, lang));
                         } catch (Exception ex) {
-                            warnings.add("failed to parse bond_kind " + id + ": " + ex.getMessage());
+                            warnings.add("failed to parse bond " + id + ": " + ex.getMessage());
                         }
                     }
                 }

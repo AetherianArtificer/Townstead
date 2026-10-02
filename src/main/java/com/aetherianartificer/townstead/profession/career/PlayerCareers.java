@@ -35,6 +35,15 @@ public final class PlayerCareers {
         store(player, root);
     }
 
+    /** Starts the player over with an empty career record, as when they begin a new life. */
+    public static void reset(Player player) {
+        CareerProfile fresh = CareerProfile.fromTag(new CompoundTag());
+        CACHE.put(player.getUUID(), fresh);
+        CompoundTag root = root(player);
+        root.put(KEY, fresh.toTag());
+        store(player, root);
+    }
+
     /** Drop the parsed cache entry; the persistent tag is untouched. Wired to player logout. */
     public static void invalidate(UUID uuid) {
         CACHE.remove(uuid);

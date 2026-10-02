@@ -21,6 +21,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -32,8 +33,8 @@ import org.slf4j.Logger;
  * Townstead's global Career-pack source.
  *
  * <p>World data packs are normally discovered after the vanilla registries freeze. Townstead
- * scans Career packs from the profile-level {@code datapacks} directory used by launchers such
- * as CurseForge, and from the manual {@code config/townstead/career-packs} directory, before
+ * scans Career, Root and culture packs from the profile-level {@code datapacks} directory used by launchers
+ * such as CurseForge, and every pack in {@code config/townstead/career-packs}, before
  * that freeze. Complete pack folders nested under {@code kubejs/data} are also mounted, allowing
  * the same folder to carry its server data and assets. It then mounts them as required server-data
  * and client-resource packs. This lets one ordinary pack contain a real custom villager
@@ -84,17 +85,17 @@ public final class CareerPackSource {
     }
 
     private static void loadPacks(Path directory, PackType type, Consumer<Pack> output,
-                                  boolean requireCareerDocument, String source) {
+                                  boolean requireTownsteadContent, String source) {
         try {
             Files.createDirectories(directory);
             //? if >=1.21 {
             DirectoryValidator validator = new DirectoryValidator(path -> true);
             FolderRepositorySource.discoverPacks(directory, validator, (path, resources) -> {
-                if (requireCareerDocument && !isCareerPack(path)) return;
+                if (requireTownsteadContent && !isTownsteadPack(path)) return;
                 String id = packId(path, type, source);
                 PackLocationInfo info = new PackLocationInfo(
                         id,
-                        Component.translatable("townstead.pack.career.name", displayName(path)),
+                        Component.translatable(packNameKey(path), displayName(path)),
                         PackSource.BUILT_IN,
                         Optional.empty());
                 Pack pack = Pack.readMetaAndCreate(
@@ -106,10 +107,10 @@ public final class CareerPackSource {
             });
             //?} else {
             /*FolderRepositorySource.discoverPacks(directory, false, (path, resources) -> {
-                if (requireCareerDocument && !isCareerPack(path)) return;
+                if (requireTownsteadContent && !isTownsteadPack(path)) return;
                 Pack pack = Pack.readMetaAndCreate(
                         packId(path, type, source),
-                        Component.translatable("townstead.pack.career.name", displayName(path)),
+                        Component.translatable(packNameKey(path), displayName(path)),
                         true,
                         resources,
                         type,
@@ -169,6 +170,49 @@ public final class CareerPackSource {
     private static boolean isZip(Path path) {
         String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
         return Files.isRegularFile(path) && name.endsWith(".zip");
+    }
+
+    /** Profile-folder packs Townstead mounts itself: Careers, and Roots, peoples and cultures. */
+    static boolean isTownsteadPack(Path entry) {
+        return isCareerPack(entry) || hasPeoplesContent(entry);
+    }
+
+    private static String packNameKey(Path entry) {
+        return isCareerPack(entry) ? "townstead.pack.career.name" : "townstead.pack.global.name";
+    }
+
+    private static final java.util.regex.Pattern PEOPLES_ENTRY = java.util.regex.Pattern.compile(
+            "data/[^/]+/(root|species|ancestry|lineage|culture|heritage|origin)/.+\\.json");
+
+    private static final List<String> PEOPLES_DIRECTORIES =
+            List.of("root", "species", "ancestry", "lineage", "culture", "heritage", "origin");
+
+    static boolean hasPeoplesContent(Path entry) {
+        if (Files.isDirectory(entry)) {
+            Path data = entry.resolve("data");
+            if (!Files.isRegularFile(entry.resolve("pack.mcmeta")) || !Files.isDirectory(data)) return false;
+            try (var namespaces = Files.list(data)) {
+                for (Path namespace : namespaces.filter(Files::isDirectory).toList()) {
+                    for (String directory : PEOPLES_DIRECTORIES) {
+                        if (Files.isDirectory(namespace.resolve(directory))) return true;
+                    }
+                }
+            } catch (IOException error) {
+                LOGGER.warn("Could not inspect potential Townstead pack {}", entry, error);
+            }
+            return false;
+        }
+        if (!isZip(entry)) return false;
+        try (ZipFile zip = new ZipFile(entry.toFile())) {
+            if (zip.getEntry("pack.mcmeta") == null) return false;
+            var entries = zip.entries();
+            while (entries.hasMoreElements()) {
+                if (PEOPLES_ENTRY.matcher(entries.nextElement().getName()).matches()) return true;
+            }
+        } catch (Exception error) {
+            LOGGER.warn("Could not inspect potential Townstead pack {}", entry, error);
+        }
+        return false;
     }
 
     static boolean isCareerPack(Path entry) {

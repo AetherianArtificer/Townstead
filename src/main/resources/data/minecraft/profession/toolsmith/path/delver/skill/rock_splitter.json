@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.delver.rock_splitter"
+  },
+  "icon": "minecraft:diamond_pickaxe",
+  "description": {
+    "translate": "skill.townstead.toolsmith.delver.rock_splitter.description"
+  },
+  "cost": 1,
+  "requires": [
+    "deep_work"
+  ],
+  "power": {
+    "type": "pheno:block_break_speed",
+    "tag": "minecraft:mineable/pickaxe",
+    "value": 2.0,
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:knack",
+      "min": 50
+    }
+  }
+}

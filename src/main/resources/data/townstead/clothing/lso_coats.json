@@ -1,0 +1,93 @@
+{
+  "schema": "townstead:clothing/v1",
+  "mods": "legendarysurvivaloverhaul",
+  "entries": [
+    {
+      "id": "heating_coat_1",
+      "item": "legendarysurvivaloverhaul:heating_coat_1",
+      "layer": "outerwear",
+      "slot": "body",
+      "material": [
+        "wool",
+        "fur"
+      ]
+    },
+    {
+      "id": "heating_coat_2",
+      "item": "legendarysurvivaloverhaul:heating_coat_2",
+      "layer": "outerwear",
+      "slot": "body",
+      "material": [
+        "wool",
+        "fur"
+      ]
+    },
+    {
+      "id": "heating_coat_3",
+      "item": "legendarysurvivaloverhaul:heating_coat_3",
+      "layer": "outerwear",
+      "slot": "body",
+      "material": [
+        "wool",
+        "fur"
+      ]
+    },
+    {
+      "id": "cooling_coat_1",
+      "item": "legendarysurvivaloverhaul:cooling_coat_1",
+      "layer": "outerwear",
+      "slot": "body",
+      "material": [
+        "linen"
+      ]
+    },
+    {
+      "id": "cooling_coat_2",
+      "item": "legendarysurvivaloverhaul:cooling_coat_2",
+      "layer": "outerwear",
+      "slot": "body",
+      "material": [
+        "linen"
+      ]
+    },
+    {
+      "id": "cooling_coat_3",
+      "item": "legendarysurvivaloverhaul:cooling_coat_3",
+      "layer": "outerwear",
+      "slot": "body",
+      "material": [
+        "linen"
+      ]
+    },
+    {
+      "id": "thermal_coat_1",
+      "item": "legendarysurvivaloverhaul:thermal_coat_1",
+      "layer": "outerwear",
+      "slot": "body",
+      "material": [
+        "wool",
+        "linen"
+      ]
+    },
+    {
+      "id": "thermal_coat_2",
+      "item": "legendarysurvivaloverhaul:thermal_coat_2",
+      "layer": "outerwear",
+      "slot": "body",
+      "material": [
+        "wool",
+        "linen"
+      ]
+    },
+    {
+      "id": "thermal_coat_3",
+      "item": "legendarysurvivaloverhaul:thermal_coat_3",
+      "layer": "outerwear",
+      "slot": "body",
+      "material": [
+        "wool",
+        "linen"
+      ]
+    }
+  ]
+}

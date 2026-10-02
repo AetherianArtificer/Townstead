@@ -21,8 +21,8 @@ public final class RigEyeColor {
         RootCatalogEntry origin = RootCatalogClient.origin(RootClientStore.resolve(entity));
         if (origin == null) return -1;
         GeneCatalogEntry colorGene = null;
-        for (RootCatalogEntry.Inherited inherited : origin.inheritedGenes()) {
-            GeneCatalogEntry gene = RootCatalogClient.gene(inherited.geneId());
+        for (String geneId : RootClientStore.appearanceGenes(entity)) {
+            GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
             if (gene != null && gene.isEyeColor()) {
                 colorGene = gene;
                 break;

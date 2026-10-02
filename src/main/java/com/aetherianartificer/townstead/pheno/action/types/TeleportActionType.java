@@ -107,6 +107,18 @@ public final class TeleportActionType implements ActionType {
     @Nullable
     private static Destination destination(JsonElement value) {
         if (value == null || value.isJsonNull()) return null;
+        // {"blocks": <block selector>} lands on the first selected position, so a stored block
+        // collection (a marked waypoint) can be a destination.
+        if (value.isJsonObject() && value.getAsJsonObject().has("blocks")) {
+            com.aetherianartificer.townstead.pheno.selector.BlockSelector blocks =
+                    com.aetherianartificer.townstead.pheno.selector.BlockSelectors.parse(
+                            value.getAsJsonObject().get("blocks"));
+            if (blocks == null) return null;
+            return ctx -> {
+                List<BlockPos> positions = blocks.select(ctx);
+                return positions.isEmpty() ? null : center(positions.get(0));
+            };
+        }
         Region spatial = Spatial.parse(value);
         if (spatial != null) return ctx -> center(spatial.anchor(ctx));
 

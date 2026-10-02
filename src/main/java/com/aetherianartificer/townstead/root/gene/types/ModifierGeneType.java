@@ -32,6 +32,11 @@ import java.util.Locale;
  * <p>Client-predicted scalars (swim speed, fov, scale, falling, ...) are intentionally not here:
  * they need the value on the client too, which awaits a capability sync channel.</p>
  *
+ * <p>{@code item_condition} scopes a modifier to the item the mechanic acts on (the tool taking
+ * wear, the rod, the item on the anvil); such a modifier never applies where there is no item.
+ * {@code applies_to} makes it an aura: {@code {"radius":8, "self":true, "condition":{...}}}
+ * applies it to every creature within the radius that passes the condition.</p>
+ *
  * <p>v1: {@code { "type":"pheno:modifier", "modifier":"break_speed", "value":1.5 }}<br>
  * v2: {@code { "type":"pheno:modifier", "target":"healing",
  *      "modify":{"operation":"multiply","value":1.5}, "when":{...} }}</p>
@@ -52,7 +57,23 @@ public final class ModifierGeneType implements GeneType {
         BREEDING_COOLDOWN("breeding_cooldown"),
         STATUS_EFFECT_DURATION("status_effect_duration"),
         STATUS_EFFECT_AMPLIFIER("status_effect_amplifier"),
-        ENCHANTMENT_LEVEL("enchantment_level");
+        ENCHANTMENT_LEVEL("enchantment_level"),
+        /** Wear an item takes per use; the subject item is the item taking it. */
+        DURABILITY_LOSS("durability_loss"),
+        /** Lure levels on a cast; the subject item is the rod. */
+        FISHING_LURE("fishing_lure"),
+        /** Luck of the Sea levels on a cast; the subject item is the rod. */
+        FISHING_LUCK("fishing_luck"),
+        /** Chance the anvil degrades per use (vanilla 0.12); the subject item is the worked item. */
+        ANVIL_BREAK_CHANCE("anvil_break_chance"),
+        /** Durability fraction per repair material unit (vanilla 0.25); subject is the worked item. */
+        ANVIL_MATERIAL_REPAIR("anvil_material_repair"),
+        /** Growth of the prior-work cost per anvil use (1 = vanilla doubling, 0 = none). */
+        ANVIL_PRIOR_WORK("anvil_prior_work"),
+        /** Chance that landing on farmland tramples it (vanilla 1 when trampling applies). */
+        FARMLAND_TRAMPLE("farmland_trample"),
+        /** How far around its holder a map fills in (vanilla 128 blocks at every scale). */
+        MAP_FILL_RADIUS("map_fill_radius");
 
         private final String key;
 
@@ -84,13 +105,38 @@ public final class ModifierGeneType implements GeneType {
     /** One operation in a modifier's {@code modify} list. */
     public record Mod(Op op, float value) {}
 
+    /**
+     * Projects the modifier onto creatures around the bearer instead of (or as well as) the
+     * bearer. {@code condition} is tested on each receiver.
+     */
+    public record Aura(int radius, boolean includeSelf, @Nullable Condition condition) {
+        public static final int MAX_RADIUS = 16;
+    }
+
     public record Instance(Modifier modifier,
                            @Nullable ResourceLocation discriminator,
                            List<Mod> mods,
-                           @Nullable Condition condition)
+                           @Nullable Condition condition,
+                           @Nullable com.aetherianartificer.townstead.pheno.condition.item.ItemCondition itemCondition,
+                           @Nullable Aura aura)
             implements GeneInstance {
+        public Instance(Modifier modifier, @Nullable ResourceLocation discriminator, List<Mod> mods,
+                        @Nullable Condition condition) {
+            this(modifier, discriminator, mods, condition, null, null);
+        }
+
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
+
+        /**
+         * Whether an item-scoped modifier applies to the mechanic's subject item. A modifier with
+         * an {@code item_condition} never applies to a mechanic that acts on no item.
+         */
+        public boolean appliesToItem(net.minecraft.world.level.Level level,
+                                     @Nullable net.minecraft.world.item.ItemStack subject) {
+            if (itemCondition == null) return true;
+            return subject != null && !subject.isEmpty() && itemCondition.test(level, subject);
+        }
     }
 
     @Override
@@ -131,7 +177,24 @@ public final class ModifierGeneType implements GeneType {
         if (json.has("condition")) condition = Conditions.parse(json.get("condition"));
         else if (json.has("when")) condition = Conditions.parse(json.get("when"));
 
-        return new Instance(modifier, discriminator, List.copyOf(mods), condition);
+        com.aetherianartificer.townstead.pheno.condition.item.ItemCondition itemCondition = null;
+        if (json.has("item_condition")) {
+            itemCondition = com.aetherianartificer.townstead.pheno.condition.item.ItemConditions
+                    .parse(json.get("item_condition"));
+            // A malformed item filter must not widen into "every item".
+            if (itemCondition == null) return null;
+        }
+
+        Aura aura = null;
+        if (json.has("applies_to") && json.get("applies_to").isJsonObject()) {
+            JsonObject a = json.getAsJsonObject("applies_to");
+            int radius = Math.max(0, Math.min(Aura.MAX_RADIUS, GsonHelper.getAsInt(a, "radius", 8)));
+            boolean self = GsonHelper.getAsBoolean(a, "self", true);
+            Condition receiver = a.has("condition") ? Conditions.parse(a.get("condition")) : null;
+            aura = new Aura(radius, self, receiver);
+        }
+
+        return new Instance(modifier, discriminator, List.copyOf(mods), condition, itemCondition, aura);
     }
 
     private static Mod parseMod(JsonObject o) {

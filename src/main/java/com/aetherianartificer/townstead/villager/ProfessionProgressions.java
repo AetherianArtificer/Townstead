@@ -51,6 +51,6 @@ public final class ProfessionProgressions {
         for (int i = 0; i < arr.length && i < thresholds.size(); i++) {
             arr[i] = thresholds.get(i);
         }
-        return new ProgressionSpec(arr, track.dailyCap(), track.maxXp());
+        return new ProgressionSpec(arr, track.dailyCap(), track.maxXp(), track.overCapPercent());
     }
 }

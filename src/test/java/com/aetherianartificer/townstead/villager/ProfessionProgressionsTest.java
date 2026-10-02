@@ -79,18 +79,26 @@ class ProfessionProgressionsTest {
     void addXpRespectsDailyCapAndTiersUp() {
         registerFarmer(new ProgressionTrack(List.of(0, 120, 320, 700, 1300), 240, 200000));
         MapStore store = new MapStore();
-        // Farmer: daily cap 240, tier 2 at 120 xp. Request 1000 in one day -> only 240 applied.
+        // Farmer: daily cap 240. Request 1000 in one day -> 240 in full, then a quarter of 760.
         ProfessionProgress.GainResult r1 = ProfessionProgress.addXp(store, FARMER, 1000, 0L);
-        assertEquals(240, r1.appliedXp(), "daily cap clamps the gain");
-        assertTrue(r1.tierUp(), "240 xp crosses the tier-2 threshold");
-        assertEquals(2, r1.tierAfter());
+        assertEquals(430, r1.appliedXp(), "the daily cap slows the gain past 240");
+        assertTrue(r1.tierUp());
+        assertEquals(3, r1.tierAfter(), "430 xp crosses the tier-3 threshold");
 
-        // Same day: no further gain.
+        // Same day: still a quarter.
         ProfessionProgress.GainResult r2 = ProfessionProgress.addXp(store, FARMER, 100, 0L);
-        assertEquals(0, r2.appliedXp());
+        assertEquals(25, r2.appliedXp());
 
         // Next day: cap resets.
         ProfessionProgress.GainResult r3 = ProfessionProgress.addXp(store, FARMER, 100, 24000L);
         assertEquals(100, r3.appliedXp());
+    }
+
+    @Test
+    void zeroOverCapPercentKeepsAHardCap() {
+        registerFarmer(new ProgressionTrack(List.of(0, 120), 240, 200000, 3, 0));
+        MapStore store = new MapStore();
+        assertEquals(240, ProfessionProgress.addXp(store, FARMER, 1000, 0L).appliedXp());
+        assertEquals(0, ProfessionProgress.addXp(store, FARMER, 100, 0L).appliedXp());
     }
 }

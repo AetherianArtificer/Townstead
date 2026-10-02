@@ -1,0 +1,25 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "register_profession": true,
+  "poi": [],
+  "tasks": [
+    {
+      "type": "townstead_work:hunter_patrol",
+      "weight": 10,
+      "requirements": { "type": "pheno:faction_bond", "kind": "townstead:oath" },
+      "order": { "name": "Patrol", "icon": "vampirism:stake" }
+    },
+    {
+      "type": "townstead_work:hunter_sweep",
+      "weight": 10,
+      "requirements": { "type": "pheno:faction_bond", "kind": "townstead:oath" },
+      "order": { "name": "Sweep", "icon": "minecraft:spyglass" }
+    },
+    {
+      "type": "townstead_work:hunter_drill",
+      "weight": 10,
+      "requirements": { "type": "pheno:faction_bond", "kind": "townstead:oath", "inverted": true },
+      "order": { "name": "Drill", "icon": "minecraft:iron_sword" }
+    }
+  ]
+}

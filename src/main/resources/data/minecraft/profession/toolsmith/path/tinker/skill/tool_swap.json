@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tinker.tool_swap"
+  },
+  "icon": "minecraft:chest",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tinker.tool_swap.description"
+  },
+  "cost": 1,
+  "requires": [
+    "quick_fix"
+  ],
+  "skill_group": "townstead:tinker_repair",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:if_else",
+      "condition": {
+        "type": "pheno:not",
+        "condition": {
+          "type": "pheno:hostile"
+        }
+      },
+      "if_action": {
+        "type": "pheno:equipped_item_action",
+        "slot": "mainhand",
+        "item_action": {
+          "type": "pheno:damage",
+          "amount": -20
+        }
+      },
+      "on": {
+        "type": "pheno:ray",
+        "distance": 6
+      }
+    }
+  }
+}

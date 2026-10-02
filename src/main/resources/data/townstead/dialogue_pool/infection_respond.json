@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:dialogue_pool/v1",
+  "act": "react",
+  "subjects": "infection",
+  "persp": { "who": "me" },
+  "responds": "news"
+}

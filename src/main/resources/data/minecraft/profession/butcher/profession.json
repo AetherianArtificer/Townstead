@@ -8,5 +8,9 @@
   "description": {
     "text": "Slaughter and process livestock to build a history of butchery mastery."
   },
+  "skills": [
+    "strong_stomach",
+    "carve"
+  ],
   "unlock_model": "experiential"
 }

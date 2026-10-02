@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "ruler_claim",
+  "lines": {
+    "they_say_ruler_hasnt_left": "They say {ruler} hasn't left the keep in weeks.",
+    "i_heard_ruler_raised_the": "I heard {ruler} raised the taxes again.",
+    "someone_said_ruler_is_unwell": "Someone said {ruler} is unwell.",
+    "word_is_ruler_is_in": "Word is {ruler} is in a terrible mood lately.",
+    "they_say_ruler_doesnt_trust": "They say {ruler} doesn't trust anyone anymore.",
+    "i_heard_ruler_threw_a": "I heard {ruler} threw a feast while we ate bread.",
+    "someone_said_ruler_talks_to": "Someone said {ruler} talks to the portraits.",
+    "they_say_ruler_is_looking": "They say {ruler} is looking for a new advisor. Again.",
+    "people_say_heir_and_ruler": "People say {heir} and {ruler} aren't speaking.",
+    "i_heard_heir_wants_to": "I heard {heir} wants to leave court, and {ruler} won't allow it.",
+    "word_is_theres_trouble_at": "Word is there's trouble at court.",
+    "people_are_saying_the_court": "People are saying the court is a mess.",
+    "they_say_heir_has_been": "They say {heir} has been sneaking out at night.",
+    "i_heard_heir_is_secretly": "I heard {heir} is secretly engaged."
+  }
+}

@@ -18,6 +18,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VineryBreweryPackDataTest {
+    @Test
+    void finishedBeerLeavesOneMugForReturnToItsSource() {
+        JsonObject drink = data("consumable/brewery_drink_villager.json");
+        JsonObject remainder = transaction(drink).getAsJsonObject("remainder");
+        assertEquals("consume_one", transaction(drink).get("accounting").getAsString());
+        assertEquals("item", remainder.get("mode").getAsString());
+        assertEquals("brewery:beer_mug", remainder.get("item").getAsString());
+        assertEquals("source", remainder.get("destination").getAsString());
+    }
+
     private static final Set<String> VINERY_BUILDING_BLOCKS = Set.of(
             "vinery:fermentation_barrel", "vinery:apple_press", "vinery:grapevine_pot",
             "vinery:storage_pot", "vinery:wine_box");
@@ -97,7 +107,11 @@ class VineryBreweryPackDataTest {
     @Test
     void nativeWinemakerIsEnrichedWithoutInventingVintnerWork() {
         JsonObject provider = data("career_provider/winemaker_vinery.json");
-        assertEquals("vinery:winemaker", provider.get("profession").getAsString());
+        assertEquals("townstead:beverage_artisan", provider.get("profession").getAsString());
+        assertEquals("winemaker", provider.get("path").getAsString());
+        assertTrue(provider.getAsJsonArray("aliases").asList().stream()
+                        .anyMatch(value -> "vinery:winemaker".equals(value.getAsString())),
+                "Vinery's own profession becomes the Beverage Artisan's Winemaker path");
         assertFalse(provider.toString().toLowerCase().contains("vintner"));
         assertFalse(provider.getAsJsonObject("contributes").getAsJsonObject("profession").has("tasks"),
                 "cross-version Vinery inventory and juice staging are intentionally not simulated");
@@ -110,7 +124,7 @@ class VineryBreweryPackDataTest {
 
     @Test
     void winemakerPrefersTheDedicatedWineCellar() {
-        JsonObject work = resource("/data/vinery/profession/winemaker/work.json");
+        JsonObject work = resource("/data/townstead/profession/beverage_artisan/path/winemaker/path.json");
         assertEquals("townstead:wine", work.getAsJsonObject("storage")
                 .getAsJsonArray("preferred_roles").get(0).getAsString());
 

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "infection_advice",
+  "groups": [
+    {
+      "lines": {
+        "a_golden_apple_can_cure": "A golden apple can cure it.",
+        "someone_has_to_find_a": "Someone has to find a golden apple.",
+        "rest_and_stay_inside": "Rest. And stay inside.",
+        "go_to_the_infirmary": { "text": "Go to the infirmary.", "requires": "here.building:infirmary" }
+      }
+    }
+  ]
+}

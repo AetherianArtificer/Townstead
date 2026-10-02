@@ -17,7 +17,8 @@ import java.util.Map;
  * professions with a minimum level each; a character whose career history meets every
  * threshold has it — automatically, no point cost, for players and villagers alike (career
  * records persist across job changes, so a cook who spent years as a butcher qualifies).
- * Grants ride the same capability layer as ordinary skill grants.
+ * Grants ride the same capability layer as ordinary skill grants; a {@code power} (with any
+ * {@code companions}) is expressed while the combo is held, as a skill's is.
  */
 public record ComboSkillDef(
         ResourceLocation id,
@@ -25,11 +26,21 @@ public record ComboSkillDef(
         @Nullable Component description,
         @Nullable ResourceLocation icon,
         Map<ResourceLocation, Integer> thresholds,
-        List<SkillGrant> grants) {
+        List<SkillGrant> grants,
+        @Nullable com.aetherianartificer.townstead.pheno.power.PowerComponent power,
+        Map<String, com.aetherianartificer.townstead.pheno.power.PowerComponent> companions) {
 
     public ComboSkillDef {
         thresholds = Map.copyOf(thresholds);
         grants = List.copyOf(grants);
+        companions = Map.copyOf(companions);
+    }
+
+    /** A combo with grants only, no power. */
+    public ComboSkillDef(ResourceLocation id, Component displayName, @Nullable Component description,
+                         @Nullable ResourceLocation icon, Map<ResourceLocation, Integer> thresholds,
+                         List<SkillGrant> grants) {
+        this(id, displayName, description, icon, thresholds, grants, null, Map.of());
     }
 
     @Nullable
@@ -57,7 +68,10 @@ public record ComboSkillDef(
                 : null;
         ResourceLocation icon = obj.has("icon")
                 ? ResourceLocation.tryParse(GsonHelper.getAsString(obj, "icon", "")) : null;
+        // A combo carries a free power, and companions, exactly as a skill does.
         return new ComboSkillDef(id, name, description, icon, thresholds,
-                ProfessionDataLoader.parseGrants(obj, diag));
+                ProfessionDataLoader.parseGrants(obj, diag),
+                ProfessionDataLoader.parsePower(obj, lang, diag),
+                ProfessionDataLoader.parseCompanions(obj, lang, diag));
     }
 }

@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_tfc_blackwood"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "tfc:wood/lumber/blackwood"
+    },
+    "L": {
+      "item": "tfc:wood/log/blackwood"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_tfc_blackwood",
+    "count": 1
+  }
+}

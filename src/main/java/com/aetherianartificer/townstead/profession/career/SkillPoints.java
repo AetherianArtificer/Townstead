@@ -20,8 +20,9 @@ import java.util.Set;
 import java.util.function.ToIntFunction;
 
 /**
- * Insight is one shared, derived budget. Advancing any registered career earns it; learning a
- * skill in any registered career spends it. Because both sides are rebuilt from career progress
+ * Insight is one shared, derived budget. Working any registered career earns it at the
+ * checkpoints its XP passes (see {@link com.aetherianartificer.townstead.profession.def.InsightSchedule});
+ * learning a skill in any registered career spends it. Because both sides are rebuilt from career progress
  * and learned skills, the balance cannot drift from the save and needs no separate ledger.
  */
 public final class SkillPoints {
@@ -31,7 +32,7 @@ public final class SkillPoints {
     public static int earned(LivingEntity entity, ProfessionDef def) {
         ProfessionXpStore store = CareerTreeRows.storeOf(entity);
         if (store == null) return 0;
-        return def.skillPointsThrough(ProfessionProgress.getTier(store, def.id()));
+        return def.insightAt(ProfessionProgress.getXp(store, def.id()));
     }
 
     /** Insight earned across every career in which the character has actual standing. */
@@ -45,8 +46,7 @@ public final class SkillPoints {
         int total = 0;
         for (ProfessionDef def : ProfessionDefs.all().values()) {
             if (!hasStanding(profile, store, def)) continue;
-            total += Math.max(0,
-                    def.skillPointsThrough(ProfessionProgress.getTier(store, def.id())));
+            total += Math.max(0, def.insightAt(ProfessionProgress.getXp(store, def.id())));
         }
         return total;
     }

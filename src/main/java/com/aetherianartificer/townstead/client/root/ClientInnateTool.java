@@ -39,7 +39,7 @@ public final class ClientInnateTool {
     public static boolean allowsHarvest(Player player, BlockState state) {
         if (player == null || state == null || !player.getMainHandItem().isEmpty()) return false;
         ConditionContext ctx = new ConditionContext(player);
-        for (String geneId : RootClientStore.expressedGenes(player.getId())) {
+        for (String geneId : RootClientStore.behaviorGenes(player.getId())) {
             GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
             if (gene == null || !gene.isInnateTool()) continue;
             if (!condition(gene.conditionJson()).test(ctx)) continue;
@@ -54,7 +54,7 @@ public final class ClientInnateTool {
         float speed = current;
         ConditionContext ctx = null;
         boolean bareHand = player.getMainHandItem().isEmpty();
-        for (String geneId : RootClientStore.expressedGenes(player.getId())) {
+        for (String geneId : RootClientStore.behaviorGenes(player.getId())) {
             GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
             if (gene == null) continue;
             if (gene.isInnateTool() && bareHand) {

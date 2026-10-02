@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:profession/v2",
+  "mods": {
+    "any": [
+      "accents",
+      "legendarysurvivaloverhaul",
+      "weaversparadise"
+    ]
+  },
+  "display_name": {
+    "translate": "career.townstead.tailor"
+  },
+  "description": {
+    "translate": "career.townstead.tailor.description"
+  },
+  "icon": "minecraft:shears",
+  "work_sound": "minecraft:entity.villager.work_shepherd",
+  "skills": [
+    "layered",
+    "quick_stitch"
+  ],
+  "unlock_model": "experiential"
+}

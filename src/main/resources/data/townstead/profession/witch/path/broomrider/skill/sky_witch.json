@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.broomrider.sky_witch"
+  },
+  "icon": "minecraft:elytra",
+  "description": {
+    "translate": "skill.townstead.witch.broomrider.sky_witch.description"
+  },
+  "cost": 1,
+  "requires": [
+    "broomstick"
+  ],
+  "power": {
+    "type": "pheno:flight_speed",
+    "multiplier": 1.5,
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:hex",
+      "min": 75
+    }
+  }
+}

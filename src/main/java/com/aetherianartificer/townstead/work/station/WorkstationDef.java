@@ -142,7 +142,58 @@ public record WorkstationDef(
      */
     public record Produce(List<String> inputs, @Nullable ResourceLocation extrasTag, int extrasMax,
                           ResourceLocation output, int outputCount, int timeTicks,
-                          @Nullable ResourceLocation copies) {}
+                          @Nullable ResourceLocation copies, @Nullable String modifies,
+                          @Nullable String name) {
+
+        public Produce(List<String> inputs, @Nullable ResourceLocation extrasTag, int extrasMax,
+                       ResourceLocation output, int outputCount, int timeTicks,
+                       @Nullable ResourceLocation copies) {
+            this(inputs, extrasTag, extrasMax, output, outputCount, timeTicks, copies, null, null);
+        }
+
+        public Produce(List<String> inputs, @Nullable ResourceLocation extrasTag, int extrasMax,
+                       ResourceLocation output, int outputCount, int timeTicks,
+                       @Nullable ResourceLocation copies, @Nullable String modifies) {
+            this(inputs, extrasTag, extrasMax, output, outputCount, timeTicks, copies, modifies, null);
+        }
+
+        public static final String COPY_KEY = "townstead.orders.produce.copy";
+        public static final String ON_HELD_ARMOR_KEY = "townstead.orders.produce.on_held_armor";
+        public static final String ON_HELD_KEY = "townstead.orders.produce.on_held";
+
+        /**
+         * The translation key the Produce tab shows this line under, with the output's name as
+         * {@code %s}: the declared {@code name}, else {@link #COPY_KEY} for a copy,
+         * {@link #ON_HELD_ARMOR_KEY} or {@link #ON_HELD_KEY} for a modification, and null for a
+         * plain line, which is shown as its output.
+         */
+        public @Nullable String labelKey() {
+            if (name != null && !name.isBlank()) return name;
+            if (copies != null) return COPY_KEY;
+            if (modifies != null) return "armor".equals(modifies) ? ON_HELD_ARMOR_KEY : ON_HELD_KEY;
+            return null;
+        }
+
+        /**
+         * Whether a commissioned workpiece may be handed to this line. {@code modifies} is the
+         * kind token {@code armor}, a {@code #tag}, or one item id; the line's {@code output}
+         * (the coat, the trim) is what gets sewn onto it.
+         */
+        public boolean admits(net.minecraft.world.item.ItemStack stack) {
+            if (modifies == null || stack == null || stack.isEmpty()) return false;
+            if (modifies.equals("armor")) {
+                return stack.getItem() instanceof net.minecraft.world.item.ArmorItem;
+            }
+            if (modifies.startsWith("#")) {
+                ResourceLocation tagId = ResourceLocation.tryParse(modifies.substring(1));
+                return tagId != null && stack.is(net.minecraft.tags.TagKey.create(
+                        net.minecraft.core.registries.Registries.ITEM, tagId));
+            }
+            ResourceLocation itemId = ResourceLocation.tryParse(modifies);
+            return itemId != null && itemId.equals(net.minecraft.core.registries.BuiltInRegistries.ITEM
+                    .getKey(stack.getItem()));
+        }
+    }
 
     public WorkstationDef(ResourceLocation id, Set<ResourceLocation> blocks, List<ResourceLocation> blockTags,
                           StationType role, int containerSlot, int ingredientSlots,
@@ -252,12 +303,18 @@ public record WorkstationDef(
                     copies = ResourceLocation.tryParse(GsonHelper.getAsString(p, "copies", ""));
                     if (copies == null) return null;
                 }
+                String modifies = null;
+                if (p.has("modifies")) {
+                    modifies = GsonHelper.getAsString(p, "modifies", "").trim();
+                    if (modifies.isEmpty() || copies != null) return null;
+                }
+                String name = p.has("name") ? GsonHelper.getAsString(p, "name", "").trim() : null;
                 produces.add(new Produce(List.copyOf(inputs), extrasTag,
                         GsonHelper.getAsInt(p, "extras_max", 0),
                         output,
                         GsonHelper.getAsInt(p, "count", 1),
                         GsonHelper.getAsInt(p, "time", 200),
-                        copies));
+                        copies, modifies, name == null || name.isEmpty() ? null : name));
             }
         }
         // A protocol station has to say what comes out of it, one way or the other: either inline

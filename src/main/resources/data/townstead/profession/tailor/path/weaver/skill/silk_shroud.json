@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.weaver.silk_shroud"
+  },
+  "icon": "minecraft:white_banner",
+  "description": {
+    "translate": "skill.townstead.tailor.weaver.silk_shroud.description"
+  },
+  "cost": 1,
+  "requires": [
+    "cocoon"
+  ],
+  "skill_group": "townstead:weaver_bind",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stitch",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:invisibility",
+        "duration": 160,
+        "amplifier": 0
+      }
+    }
+  }
+}

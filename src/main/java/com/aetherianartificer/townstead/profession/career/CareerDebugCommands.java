@@ -165,7 +165,7 @@ public final class CareerDebugCommands {
             return 0;
         }
         int before = ProfessionProgress.getTier(store, def.id());
-        int earnedBefore = def.skillPointsThrough(before);
+        int earnedBefore = def.insightAt(ProfessionProgress.getXp(store, def.id()));
         int maxLevel = ProfessionProgressions.spec(def.id()).maxTier();
         int wanted;
         if (grant) {
@@ -191,7 +191,7 @@ public final class CareerDebugCommands {
             }
         }
         int reached = ProfessionProgress.setLevel(store, def.id(), wanted);
-        int delta = def.skillPointsThrough(reached) - earnedBefore;
+        int delta = def.insightAt(ProfessionProgress.getXp(store, def.id())) - earnedBefore;
         source.sendSuccess(() -> Component.translatable("townstead.command.career.debug.level_changed",
                         def.displayName(), before, reached, String.format("%+d", delta))
                 .withStyle(ChatFormatting.GREEN), true);

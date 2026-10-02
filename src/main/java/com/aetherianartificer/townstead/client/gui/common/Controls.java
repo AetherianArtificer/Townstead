@@ -165,6 +165,12 @@ public final class Controls {
 
     public static void drawTabs(GuiGraphics g, Font font, Rect[] rects, String[] labels,
                                 int selected, int hovered) {
+        drawTabs(g, font, rects, labels, selected, hovered, true);
+    }
+
+    /** Inline tabs can share their containing toolbar's rule instead of adding a second one. */
+    public static void drawTabs(GuiGraphics g, Font font, Rect[] rects, String[] labels,
+                                int selected, int hovered, boolean separator) {
         for (int i = 0; i < rects.length; i++) {
             Rect r = rects[i];
             boolean active = i == selected;
@@ -176,9 +182,11 @@ public final class Controls {
             g.drawCenteredString(font, labels[i], r.x() + r.w() / 2, r.y() + 3,
                     active ? 0xFFFFFFFF : hot ? 0xFFDDDDDD : 0xFFAAAAAA);
         }
-        Rect first = rects[0];
-        g.fill(first.x(), first.y() + TAB_H + 1, rects[rects.length - 1].right(),
-                first.y() + TAB_H + 2, 0x40FFDEA0);
+        if (separator) {
+            Rect first = rects[0];
+            g.fill(first.x(), first.y() + TAB_H + 1, rects[rects.length - 1].right(),
+                    first.y() + TAB_H + 2, 0x40FFDEA0);
+        }
     }
 
     // ── Stepper ──

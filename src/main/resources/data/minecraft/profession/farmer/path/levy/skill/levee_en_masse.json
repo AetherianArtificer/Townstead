@@ -1,0 +1,59 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.levee_en_masse"
+  },
+  "icon": "minecraft:white_banner",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.levee_en_masse.description"
+  },
+  "cost": 1,
+  "requires": [
+    "shield_wall"
+  ],
+  "skill_group": "townstead:levy_muster",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:grit",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 16,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:strength",
+                "duration": 600,
+                "amplifier": 1
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:resistance",
+                "duration": 600,
+                "amplifier": 0
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:event.raid.horn",
+          "volume": 0.8,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

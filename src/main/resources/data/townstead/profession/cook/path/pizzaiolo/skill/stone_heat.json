@@ -8,14 +8,17 @@
     "translate": "skill.townstead.cook.pizzaiolo.stone_heat.description"
   },
   "cost": 1,
-  "requires": ["stone_oven"],
+  "requires": [
+    "oven_mouth"
+  ],
+  "skill_group": "townstead:pizzaiolo_service",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 700,
     "ai_trigger": "when_hurt",
     "resource_cost": {
-      "resource": "townstead:stamina",
-      "amount": 30
+      "resource": "townstead:char",
+      "amount": 40
     },
     "action": {
       "type": "pheno:and",
@@ -45,6 +48,7 @@
           "speed": 0.05
         }
       ]
-    }
+    },
+    "slot": 1
   }
 }

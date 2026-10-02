@@ -41,6 +41,7 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
     private static final String TEX_DIR = "textures";
     private static final String GEO_DIR = "geo";
     private static final String BB_DIR = "bbmodel";
+    private static final String ANIM_DIR = "animations";
 
     @Override
     public void onResourceManagerReload(ResourceManager manager) {
@@ -129,7 +130,22 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
             }
         });
 
-        AttachmentServerData.set(defs, slots, blobs, namedTextures, namedGeo, sources);
+        // Named datapack animations ("data/<ns>/animations/**.animation.json"): a rig's clips, referenced
+        // by the same logical id, e.g. "townstead_frogs:animations/frog.animation.json".
+        Map<String, String> namedAnimations = new LinkedHashMap<>();
+        manager.listResources(ANIM_DIR, rl -> rl.getPath().endsWith(".animation.json")).forEach((file, resource) -> {
+            byte[] bytes = readBytes(manager, file, MAX_GEO_BYTES);
+            if (bytes == null) return;
+            try {
+                String sha = sha1(bytes);
+                blobs.put(sha, new AttachmentServerData.Blob(bytes, AttachmentServerData.KIND_ANIMATION));
+                namedAnimations.put(file.toString(), sha);
+            } catch (Exception e) {
+                Townstead.LOGGER.error("Failed to hash datapack animation {}", file, e);
+            }
+        });
+
+        AttachmentServerData.set(defs, slots, blobs, namedTextures, namedGeo, namedAnimations, sources);
         PhenoDiagnostics.replace("attachment", diagnostics.all());
         int errors = diagnostics.count(Severity.ERROR);
         Townstead.LOGGER.info("Loaded {} attachment definitions, {} points, {} blobs ({} diagnostic{})",

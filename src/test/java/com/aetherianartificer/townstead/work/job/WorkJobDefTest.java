@@ -12,6 +12,65 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class WorkJobDefTest {
     @Test
+    void lsoFuelReserveIsIndependentOfThermostatDemandAndUsesTheCorrectDepot() throws Exception {
+        registerProcedurePrimitives();
+        for (String kind : List.of("boilers", "coolers")) {
+            try (var stream = getClass().getResourceAsStream("/data/townstead/work_job/lso_" + kind + ".json")) {
+                assertNotNull(stream);
+                var json = JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject();
+                var def = WorkJobDef.parse(id("townstead:lso_" + kind), json);
+                assertNotNull(def);
+                var target = json.getAsJsonObject("target");
+                // A thermostat pausing the appliance must not abort an in-flight fuel delivery.
+                assertFalse(target.has("condition"));
+                assertEquals(1, target.getAsJsonArray("blocks").size());
+                assertFalse(target.getAsJsonArray("blocks").toString().contains("heater_top"));
+                var interaction = def.target().interactions().get(0);
+                String depot = kind.equals("boilers") ? "fuel_store" : "icehouse";
+                String wrong = kind.equals("boilers") ? "icehouse" : "fuel_store";
+                assertTrue(interaction.matchesSourceBuilding("compat/toughasnails/climate_" + depot));
+                assertTrue(interaction.matchesSourceBuilding("compat.toughasnails.climate_" + depot));
+                assertFalse(interaction.matchesSourceBuilding("compat/toughasnails/climate_" + wrong));
+                assertFalse(interaction.matchesSourceBuilding("house"));
+                var action = target.getAsJsonArray("interactions").get(0).getAsJsonObject().getAsJsonObject("action");
+                assertEquals(1, action.get("inventory_limit").getAsInt());
+                assertEquals(0, action.get("slot").getAsInt());
+                assertEquals("up", action.get("side").getAsString());
+            }
+        }
+    }
+    @Test
+    void climatologistUsesSeparateExclusiveDepots() throws Exception {
+        registerProcedurePrimitives();
+        try (var stream = getClass().getResourceAsStream(
+                "/data/townstead/work_job/tough_as_nails_thermoregulators.json")) {
+            assertNotNull(stream);
+            var json = JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
+                    .getAsJsonObject();
+            WorkJobDef def = WorkJobDef.parse(id("townstead:climate"), json);
+            assertNotNull(def);
+            assertEquals(2, def.target().interactions().size());
+            var cooling = def.target().interactions().get(0);
+            var heating = def.target().interactions().get(1);
+            assertTrue(cooling.matchesSourceBuilding("compat/toughasnails/climate_icehouse"));
+            assertTrue(heating.matchesSourceBuilding("compat.toughasnails.climate_fuel_store"));
+            assertFalse(cooling.matchesSourceBuilding("compat/toughasnails/climate_fuel_store"));
+            assertFalse(heating.matchesSourceBuilding("compat/toughasnails/climate_icehouse"));
+            for (var interaction : def.target().interactions()) {
+                assertFalse(interaction.matchesSourceBuilding("storage"));
+                assertFalse(interaction.matchesSourceBuilding("house"));
+                assertFalse(interaction.matchesSourceBuilding("armory"));
+            }
+            var interactionJson = json.getAsJsonObject("target").getAsJsonArray("interactions")
+                    .get(0).getAsJsonObject();
+            for (String invalid : List.of("[]", "null", "[\"\"]", "\"storage\"", "[17]")) {
+                interactionJson.add("source_buildings", JsonParser.parseString(invalid));
+                assertNull(WorkJobDef.parse(id("townstead:invalid_depot"), json), invalid);
+            }
+        }
+    }
+
+    @Test
     void entityDeliveryUsesSemanticSourceAndDestinationFields() {
         registerEntityPrimitives();
         WorkJobDef def = WorkJobDef.parse(id("test:delivery"), JsonParser.parseString("""
@@ -92,6 +151,7 @@ class WorkJobDefTest {
                 new com.aetherianartificer.townstead.pheno.action.block.types.SetBlockBlockActionType(),
                 new com.aetherianartificer.townstead.pheno.action.block.types.OffsetBlockActionType(),
                 new com.aetherianartificer.townstead.pheno.action.block.types.ModifyBlockStateBlockActionType(),
+                new com.aetherianartificer.townstead.pheno.action.block.types.InsertItemBlockActionType(),
                 new com.aetherianartificer.townstead.pheno.action.block.types.DestroyBlockActionType(),
                 new com.aetherianartificer.townstead.pheno.action.block.types.ChangeBlockDataBlockActionType(),
                 new com.aetherianartificer.townstead.pheno.action.block.types.ItemActionBlockActionType(),

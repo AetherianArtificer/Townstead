@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:behavior_profile/v1",
+  "mods": "vampirism",
+  "behaviors": [
+    {
+      "type": "pheno:hunt",
+      "radius": 16,
+      "shun_daylight": true
+    },
+    "pheno:bite"
+  ]
+}

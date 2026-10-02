@@ -1,0 +1,34 @@
+{
+  "schema": "townstead:mob_replacement/v1",
+  "mods": "vampirism",
+  "replaces": [
+    "vampirism:vampire"
+  ],
+  "setting": "vampirism.replaceSpawns",
+  "states": {
+    "townstead_state:vampire": [
+      4,
+      8
+    ]
+  },
+  "behavior": "townstead:wild_vampire",
+  "group": "wild_vampire",
+  "outfit": {
+    "chest": [
+      "vampirism:vampire_cloak_black_blue",
+      "vampirism:vampire_cloak_black_red",
+      "vampirism:vampire_cloak_black_white",
+      "vampirism:vampire_cloak_red_black",
+      "vampirism:vampire_cloak_white_black",
+      "minecraft:air"
+    ],
+    "legs": [
+      "vampirism:vampire_clothing_legs"
+    ],
+    "feet": [
+      "vampirism:vampire_clothing_boots"
+    ]
+  },
+  "credit_kills": true,
+  "loot": "replaced"
+}

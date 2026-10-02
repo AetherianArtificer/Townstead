@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.heavyweight.anchor"
+  },
+  "icon": "minecraft:anvil",
+  "description": {
+    "translate": "skill.townstead.armorer.heavyweight.anchor.description"
+  },
+  "cost": 1,
+  "requires": [
+    "siege_armor"
+  ],
+  "skill_group": "townstead:heavy_plate",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:temper",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 160,
+          "amplifier": 3
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:slowness",
+          "duration": 160,
+          "amplifier": 3
+        }
+      ]
+    }
+  }
+}

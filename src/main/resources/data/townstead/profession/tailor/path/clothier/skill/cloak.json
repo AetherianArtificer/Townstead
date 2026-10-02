@@ -1,0 +1,34 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.clothier.cloak"
+  },
+  "icon": "minecraft:leather_chestplate",
+  "description": {
+    "translate": "skill.townstead.tailor.clothier.cloak.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:clothier_outfit",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:resistance",
+        "duration": 300,
+        "amplifier": 0
+      }
+    }
+  }
+}

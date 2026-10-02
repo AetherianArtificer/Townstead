@@ -1,7 +1,7 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.work.WorkPathing;
-import com.aetherianartificer.townstead.dock.DockScanner;
+import com.aetherianartificer.townstead.recognition.SiteRequirements;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
@@ -27,6 +27,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * with a short TTL, matching the other worksite spatial indexes.
  */
 public final class FishingWaterIndex {
+    private static final SiteRequirements.SurfaceOver DECK_OVER_WATER = new SiteRequirements.SurfaceOver(
+            null, net.minecraft.resources.ResourceLocation.tryParse("minecraft:water"), 1, 6);
     private static final long SNAPSHOT_TTL_TICKS = 60L;
     /** Longer TTL when the scan found nothing — cuts re-scan cost in waterless areas. */
     private static final long SNAPSHOT_EMPTY_TTL_TICKS = 200L;
@@ -166,13 +168,10 @@ public final class FishingWaterIndex {
                     BlockPos stand = waterPos.offset(dx, yOffset, dz);
                     if (!insideBounds(standBounds, stand)) continue;
                     if (!WorkPathing.isSafeStandPosition(level, stand)) continue;
-                    // Dock bounds include a one-block margin around the planks
-                    // (so decorations next to the deck count toward tier
-                    // checks), which means a stand position one block off the
-                    // deck on shore terrain still passes the bounds check. Pin
-                    // the fisherman to the actual deck by requiring the block
-                    // under their feet to be a recognized dock surface.
-                    if (!DockScanner.isDockSurface(level.getBlockState(stand.below()))) continue;
+                    // Dock bounds take in the furniture around the deck, so a stand
+                    // position on shore terrain still passes the bounds check. Pin the
+                    // fisherman to the deck itself: a surface with water beneath it.
+                    if (!SiteRequirements.isSurfaceOver(level, stand.below(), DECK_OVER_WATER)) continue;
                     double dist = villager.distanceToSqr(
                             stand.getX() + 0.5,
                             stand.getY() + 0.5,

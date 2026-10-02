@@ -19,14 +19,14 @@ class ChefSkillLocalizationTest {
     private static final List<String> SKILLS = List.of(
             "appetizer_menu", "chef_de_cuisine", "chefs_knife", "dessert_menu",
             "dinner_rush", "flambe", "grand_banquet", "kitchen_flow", "kitchen_pace",
-            "main_course", "mise_en_place", "precision_cut", "running_the_pass",
+            "main_course", "honed_edge", "precision_cut", "running_the_pass",
             "saute_toss", "soup_course");
 
     private static final Map<String, String> REQUIRES = Map.ofEntries(
-            Map.entry("mise_en_place", "kitchen_pace"),
+            Map.entry("honed_edge", "kitchen_pace"),
             Map.entry("soup_course", "appetizer_menu"),
             Map.entry("precision_cut", "chefs_knife"),
-            Map.entry("kitchen_flow", "mise_en_place"),
+            Map.entry("kitchen_flow", "honed_edge"),
             Map.entry("main_course", "soup_course"),
             Map.entry("saute_toss", "precision_cut"),
             Map.entry("running_the_pass", "kitchen_flow"),

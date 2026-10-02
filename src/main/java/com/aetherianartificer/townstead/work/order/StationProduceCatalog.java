@@ -24,6 +24,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -58,8 +59,7 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
         String buildingType = WorksiteWork.buildingTypeOf(level, site);
 
         Map<ResourceLocation, Integer> onHand = null;
-        Set<ResourceLocation> seen = new LinkedHashSet<>();
-        List<Option> out = new ArrayList<>();
+        Map<ResourceLocation, Option> out = new LinkedHashMap<>();
         for (WorkstationDef def : Workstations.all()) {
             List<com.aetherianartificer.townstead.profession.def.WorkTaskDef> declared =
                     declarationsForDef(level, site, extent, worked, def);
@@ -77,26 +77,38 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
             for (DiscoveredRecipe recipe : ProtocolRecipes.discover(level, def)) {
                 if (!BuildingRecipeScopes.allows(buildingType, recipe.id())) continue;
                 if (!allowedByAny(declared, recipe)) continue;
-                if (!seen.add(OrderProducts.key(recipe))) continue;
                 // A duplicating line is a service, not production: the option says so, and the
                 // screen asks for the workpiece instead of adding a plain line.
                 var produce = com.aetherianartificer.townstead.work.station.StationProtocols
                         .produceFor(def, recipe);
+                boolean commission = produce != null && (produce.copies() != null || produce.modifies() != null);
                 DiscoveredRecipe catalogueRecipe = withLiveRequirements(
                         level, anchor, def, recipe);
-                if (produce != null && produce.copies() != null) {
+                if (commission) {
                     var plain = StationCatalogs.option(catalogueRecipe, label, icon, onHand);
-                    out.add(com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload
+                    // The label travels as a key plus its English, the way calendar names do,
+                    // and the client fills in the item's name in its own locale.
+                    String key = produce.labelKey();
+                    String english = com.aetherianartificer.townstead.data.DataPackLang
+                            .resolveFallback(key, "en_us", "%s");
+                    var option = com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload
                             .Option.commissioned(plain.output(), plain.stationLabel(),
                                     plain.stationIcon(), plain.available(), plain.blocker(),
-                                    plain.makes(), plain.needs(), plain.missing(),
-                                    "Copy " + StationCatalogs.itemNameOf(produce.copies())));
+                                    plain.makes(), plain.needs(), plain.missing(), "")
+                            .withLabel(key, english);
+                    if (produce.modifies() != null) {
+                        // A commission is a different offer from making the same item: a bench
+                        // that makes coats and a table that sews them on both belong on the sheet.
+                        option = option.withProduct(ModifiedProducts.marker(produce.output()));
+                    }
+                    out.merge(option.product(), option, Option::merge);
                     continue;
                 }
-                out.add(StationCatalogs.option(catalogueRecipe, label, icon, onHand));
+                Option option = StationCatalogs.option(catalogueRecipe, label, icon, onHand);
+                out.merge(option.product(), option, Option::merge);
             }
         }
-        return out;
+        return new ArrayList<>(out.values());
     }
 
     @Override

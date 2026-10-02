@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.stonewarden.safe_house"
+  },
+  "icon": "minecraft:oak_door",
+  "description": {
+    "translate": "skill.townstead.mason.stonewarden.safe_house.description"
+  },
+  "cost": 1,
+  "requires": [
+    "keystone"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:mortar",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:mortar",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 10,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:building"
+        },
+        "if_action": {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 30,
+          "amplifier": 0
+        }
+      }
+    }
+  }
+}

@@ -80,12 +80,18 @@ public record GeneCatalogEntry(
      */
     public record Variant(String id, String label, int weight, String labelKey, int tint,
                           String texture, boolean glow, String attachment, List<Channel> channels,
-                          List<Integer> palette) {
+                          List<Integer> palette, int blend, float strength) {
         public Variant {
             texture = texture == null ? "" : texture;
             attachment = attachment == null ? "" : attachment;
             channels = channels == null ? List.of() : List.copyOf(channels);
             palette = palette == null ? List.of() : List.copyOf(palette);
+        }
+
+        public Variant(String id, String label, int weight, String labelKey, int tint,
+                       String texture, boolean glow, String attachment, List<Channel> channels,
+                       List<Integer> palette) {
+            this(id, label, weight, labelKey, tint, texture, glow, attachment, channels, palette, 0, 1f);
         }
     }
 
@@ -154,6 +160,7 @@ public record GeneCatalogEntry(
     public String eyesTexture() { return eyesPart(0, ""); }
     public boolean eyesGlow() { return "1".equals(eyesPart(1, "0")); }
     public String eyesTint() { return eyesPart(3, ""); }
+    public String eyesVisibleHalf() { return eyesPart(4, "both"); }
 
     /** The head-front UV row the strip's top lands on, or {@code -1} for the vanilla eye baseline. */
     public int eyesRow() {
@@ -190,6 +197,18 @@ public record GeneCatalogEntry(
 
     public boolean isColor() {
         return displayKind == GeneDisplay.Kind.COLOR.ordinal();
+    }
+
+    /**
+     * A skin tone, single-colour or a palette of tinted variants. Older catalogs sent a palette
+     * with no face slot, so a tinted variant gene with none still counts.
+     */
+    public boolean isSkinTone() {
+        if ("skin_tone".equals(faceSlot)) return true;
+        if (!faceSlot.isEmpty()) return false;
+        if (isColor()) return true;
+        for (Variant variant : variants) if (variant.tint() >= 0) return true;
+        return false;
     }
 
     public boolean isAttachment() {
@@ -386,10 +405,51 @@ public record GeneCatalogEntry(
         int second = first < 0 ? -1 : targetId.indexOf(';', first + 1);
         if (second < 0) return 0;
         try {
-            return Integer.parseInt(targetId.substring(second + 1).trim());
+            int third = targetId.indexOf(';', second + 1);
+            return Integer.parseInt(targetId.substring(second + 1,
+                    third < 0 ? targetId.length() : third).trim());
         } catch (NumberFormatException e) {
             return 0;
         }
+    }
+
+    /** A SKIN_OVERLAY tint blend: 0 multiply, 1 screen, 2 overlay, 3 color. */
+    public int skinOverlayTintBlend() {
+        try { return Integer.parseInt(skinOverlayPart(3, "0")); }
+        catch (NumberFormatException e) { return 0; }
+    }
+
+    /** A SKIN_OVERLAY tint strength in [0,1]. */
+    public float skinOverlayTintStrength() {
+        try { return Math.max(0f, Math.min(1f, Float.parseFloat(skinOverlayPart(4, "1")))); }
+        catch (NumberFormatException e) { return 1f; }
+    }
+
+    /** A SKIN_OVERLAY drawn above MCA's face layer (eyes) rather than on the skin under it. */
+    public boolean skinOverlayOverFace() {
+        return "1".equals(skinOverlayPart(5, "0"));
+    }
+
+    /** A SKIN_OVERLAY's texel shift ({@code [x, y]} in 64x64 texels), for art drawn for another face layout. */
+    public int skinOverlayOffsetX() {
+        try { return Integer.parseInt(skinOverlayPart(7, "0").trim()); }
+        catch (NumberFormatException e) { return 0; }
+    }
+
+    public int skinOverlayOffsetY() {
+        try { return Integer.parseInt(skinOverlayPart(8, "0").trim()); }
+        catch (NumberFormatException e) { return 0; }
+    }
+
+    /** A SKIN_OVERLAY drawn emissive, full-bright. */
+    public boolean skinOverlayGlow() {
+        return "1".equals(skinOverlayPart(6, "0"));
+    }
+
+    private String skinOverlayPart(int index, String fallback) {
+        if (!isSkinOverlay() || targetId == null) return fallback;
+        String[] parts = targetId.split(";", -1);
+        return index < parts.length ? parts[index] : fallback;
     }
 
     /** PARTICLE emitter params, parsed from {@code targetId} {@code "particleId;count;spread;speed;yOffset"}. */
@@ -419,6 +479,13 @@ public record GeneCatalogEntry(
     }
 
     /** Whether this gene suppresses the given need ({@code hunger}/{@code thirst}/{@code sleep}). */
+    /** The icon prefix a NEED_ICON gene draws {@code need} with, or null. */
+    public @org.jetbrains.annotations.Nullable String needIconPrefix(String need) {
+        if (displayKind != GeneDisplay.Kind.NEED_ICON.ordinal() || targetId == null) return null;
+        int semi = targetId.indexOf(';');
+        return semi > 0 && targetId.substring(0, semi).equals(need) ? targetId.substring(semi + 1) : null;
+    }
+
     public boolean suppressesNeed(String need) {
         if (!isSuppressNeed() || targetId == null || targetId.isEmpty()) return false;
         for (String entry : targetId.split(";")) {

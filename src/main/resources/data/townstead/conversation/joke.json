@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:conversation/v1",
+  "subjects": [
+    "townstead:joke"
+  ],
+  "register": "humor",
+  "start": "t0_tell_joke",
+  "turns": {
+    "t0_tell_joke": {
+      "speaker": "initiator",
+      "move": "townstead:tell_joke",
+      "replies": [
+        "t1_praise",
+        "t1_groan"
+      ]
+    },
+    "t1_praise": {
+      "speaker": "responder",
+      "move": "townstead:praise",
+      "weight": 2,
+      "personality_weights": {
+        "peppy": 3,
+        "friendly": 2,
+        "default": 1
+      },
+      "replies": [
+        "t2_joke_close"
+      ]
+    },
+    "t1_groan": {
+      "speaker": "responder",
+      "move": "townstead:groan",
+      "personality_weights": {
+        "crabby": 3,
+        "witty": 2,
+        "default": 1
+      },
+      "replies": [
+        "t2_joke_close"
+      ]
+    },
+    "t2_joke_close": {
+      "speaker": "initiator",
+      "move": "townstead:joke_close"
+    }
+  }
+}

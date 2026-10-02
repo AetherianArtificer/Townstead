@@ -42,16 +42,28 @@ public record RootCatalogEntry(
         Animations animations,
         // Whether this species' body shows breasts (false hides MCA's breast part for it).
         boolean breasts,
+        // Effective founder policy for MCA's native hair layer. Realized heritage may override it.
+        boolean hair,
+        List<com.aetherianartificer.townstead.root.appearance.HairColorRange> hairColorRanges,
+        List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> hairColors,
+        List<com.aetherianartificer.townstead.root.appearance.HairGradient> hairGradients,
         // Per-life-stage rig override, one entry per stage of this origin's effective life cycle (empty
         // string = species rig). Empty list when no stage overrides the rig. Lets a stage (e.g. "egg")
         // render a different model; the client renderer indexes it by the villager's current stage.
         List<String> stageRigs,
         // Data-pack Character-editor layout from the species (null = keep MCA's full native tab).
         CharacterEditorLayout characterEditor,
-        // Server-config blocklisted: hidden from picker lists and rejected on apply, but kept in the
+        // Off in this world: hidden from picker lists and rejected on apply, but kept in the
         // catalog so entities that already carry this root still resolve their rig/labels client-side.
-        boolean blocked
+        boolean blocked,
+        // Whether a player may choose this root for themselves.
+        boolean choosable
 ) {
+    /** Whether the picker lists this root for a player choosing their own, or for a villager. */
+    public boolean listedFor(boolean self) {
+        return self ? choosable : !blocked;
+    }
+
     /** A gene this origin inherits, with its base occurrence (presence probability). */
     public record Inherited(String geneId, float occurrence) {}
 

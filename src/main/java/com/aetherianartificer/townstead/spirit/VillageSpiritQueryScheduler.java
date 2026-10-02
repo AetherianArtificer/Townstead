@@ -50,6 +50,7 @@ public final class VillageSpiritQueryScheduler {
     }
 
     public static void tick(MinecraftServer server) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.SPIRIT)) return;
         if (server == null || QUEUE.isEmpty()) return;
         long deadline = System.nanoTime() + MAX_NANOS_PER_TICK;
         int processed = 0;
@@ -72,9 +73,11 @@ public final class VillageSpiritQueryScheduler {
 
     private static void complete(MinecraftServer server, Job job) {
         SpiritTotals totals = new SpiritTotals(Map.copyOf(job.perSpirit), job.total, job.contributingBuildings);
-        SpiritReadout readout = VillageSpiritAggregator.readoutFor(totals);
         java.util.Map<String, java.util.List<ContributorRow>> contributors = job.buildContributors();
-        VillageSpiritCache.Entry entry = new VillageSpiritCache.Entry(totals, readout, contributors);
+        var snapshot = DecorationSpiritContributions.addTo(new VillageSpiritAggregator.Snapshot(totals, contributors),
+                job.level, net.conczin.mca.server.world.data.VillageManager.get(job.level).getOrEmpty(job.villageId).orElse(null));
+        SpiritReadout readout = VillageSpiritAggregator.readoutFor(snapshot.totals());
+        VillageSpiritCache.Entry entry = new VillageSpiritCache.Entry(snapshot.totals(), readout, snapshot.contributors());
         VillageSpiritCache.put(job.level, job.villageId, entry);
 
         ServerPlayer player = server.getPlayerList().getPlayer(job.playerUuid);

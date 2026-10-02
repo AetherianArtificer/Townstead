@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class StoragePreferenceTest {
@@ -45,6 +46,24 @@ class StoragePreferenceTest {
 
         assertEquals(StoragePreference.EXTERNAL_BASE_RANK,
                 StoragePreference.NONE.buildingRank("storage"));
+    }
+
+    @Test
+    void authoredOutputStoreRanksAheadOfLocalStorage() {
+        ResourceLocation agricultural = ResourceLocation.tryParse("townstead:agricultural");
+        BuildingStorageRoles.replaceAll(Map.of(
+                "granary", Set.of(agricultural),
+                "storage", Set.of(BuildingStorageRoles.GENERAL)));
+        StoragePreference preference = new StoragePreference(List.of(agricultural));
+
+        assertTrue(preference.buildingRank("granary")
+                < preference.buildingRank("storage"));
+        assertTrue(preference.buildingRank("storage")
+                < preference.localRank(StorageUse.OUTPUT));
+        assertEquals(StoragePreference.LOCAL_RANK,
+                preference.localRank(StorageUse.INGREDIENT));
+        assertEquals(StoragePreference.LOCAL_RANK,
+                preference.localRank(StorageUse.TOOL));
     }
 
     @Test

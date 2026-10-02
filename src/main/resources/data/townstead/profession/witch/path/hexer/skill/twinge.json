@@ -1,0 +1,49 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.hexer.twinge"
+  },
+  "icon": "minecraft:redstone",
+  "description": {
+    "translate": "skill.townstead.witch.hexer.twinge.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:hexer_punish",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 240,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:for_each",
+          "in": "townstead:hexed",
+          "where": {
+            "type": "pheno:distance",
+            "max": 24
+          },
+          "do": {
+            "type": "pheno:target_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 3,
+              "source": "other"
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.witch.ambient",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

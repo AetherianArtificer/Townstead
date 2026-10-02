@@ -32,7 +32,6 @@ public final class DataDrivenThirstCompat {
     private static final Map<Item, PreviousDrink> TWT_PREVIOUS = new HashMap<>();
     private static volatile Map<ResourceLocation, Consumables.ResolvedEffect> resolved = Map.of();
 
-    private static Object lsoDelegate;
     private static Object lsoProxy;
     private static Class<?> lsoManagerInterface;
     private static Constructor<?> lsoConsumableConstructor;
@@ -41,6 +40,21 @@ public final class DataDrivenThirstCompat {
     private record LsoEntry(Object consumable, boolean fallback) {}
 
     private DataDrivenThirstCompat() {}
+
+    /** TAN has tag-based lookups rather than a mutable consumable manager. */
+    public static NeedEffectProjection tanProjection(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return NeedEffectProjection.NONE;
+        Consumables.ResolvedEffect entry = resolved.get(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+        // Read the unmodified tags, never the patched TAN lookup (which would recurse).
+        return tanProjection(entry, entry != null && entry.fallback()
+                && ToughAsNailsThirstBridge.INSTANCE.itemRestoresThirst(stack));
+    }
+
+    static NeedEffectProjection tanProjection(Consumables.ResolvedEffect entry, boolean nativeDrink) {
+        if (entry == null || (entry.fallback() && nativeDrink))
+            return NeedEffectProjection.NONE;
+        return entry.projection();
+    }
 
     /** Installs the server's freshly reloaded definitions. */
     public static synchronized void refresh() {
@@ -129,9 +143,7 @@ public final class DataDrivenThirstCompat {
                 logInstalled("Legendary Survival Overhaul", configured.size());
                 return;
             }
-            lsoDelegate = current;
-            lsoProxy = Proxy.newProxyInstance(lsoManagerInterface.getClassLoader(),
-                    new Class<?>[]{lsoManagerInterface}, (proxy, method, args) -> invokeLso(method, args));
+            lsoProxy = wrapLsoManager(lsoManagerInterface, current);
             managerField.set(null, lsoProxy);
             logInstalled("Legendary Survival Overhaul", configured.size());
         } catch (Exception exception) {
@@ -139,7 +151,25 @@ public final class DataDrivenThirstCompat {
         }
     }
 
-    private static Object invokeLso(Method method, Object[] args) throws Throwable {
+    /** LSO registers the manager itself as a reload listener on every world load. */
+    static Object wrapLsoManager(Class<?> managerInterface, Object delegate) {
+        Class<?> reload = net.minecraft.server.packs.resources.PreparableReloadListener.class;
+        Class<?>[] interfaces = reload.isInstance(delegate)
+                ? new Class<?>[]{managerInterface, reload} : new Class<?>[]{managerInterface};
+        return Proxy.newProxyInstance(managerInterface.getClassLoader(), interfaces, (proxy, method, args) -> {
+            if (method.getDeclaringClass() == Object.class) {
+                return switch (method.getName()) {
+                    case "equals" -> proxy == args[0];
+                    case "hashCode" -> System.identityHashCode(proxy);
+                    case "toString" -> "Townstead LSO consumable wrapper";
+                    default -> invokeLsoDelegate(delegate, method, args);
+                };
+            }
+            return invokeLso(delegate, method, args);
+        });
+    }
+
+    private static Object invokeLso(Object delegate, Method method, Object[] args) throws Throwable {
         if ("get".equals(method.getName()) && args != null && args.length == 1) {
             ResourceLocation itemId = null;
             if (args[0] instanceof ResourceLocation id) itemId = id;
@@ -149,19 +179,19 @@ public final class DataDrivenThirstCompat {
             LsoEntry configured = itemId == null ? null : lsoConsumables.get(itemId);
             if (configured != null) {
                 if (configured.fallback()) {
-                    Object nativeValue = invokeLsoDelegate(method, args);
+                    Object nativeValue = invokeLsoDelegate(delegate, method, args);
                     if (hasLsoValue(nativeValue)) return nativeValue;
                 }
                 return args[0] instanceof ResourceLocation
                         ? List.of(configured.consumable()) : configured.consumable();
             }
         }
-        return invokeLsoDelegate(method, args);
+        return invokeLsoDelegate(delegate, method, args);
     }
 
-    private static Object invokeLsoDelegate(Method method, Object[] args) throws Throwable {
+    private static Object invokeLsoDelegate(Object delegate, Method method, Object[] args) throws Throwable {
         try {
-            return method.invoke(lsoDelegate, args);
+            return method.invoke(delegate, args);
         } catch (InvocationTargetException exception) {
             throw exception.getCause();
         }

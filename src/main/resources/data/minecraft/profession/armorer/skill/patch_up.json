@@ -1,0 +1,73 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.patch_up"
+  },
+  "icon": "minecraft:anvil",
+  "description": {
+    "translate": "skill.townstead.armorer.patch_up.description"
+  },
+  "tier": 2,
+  "cost": 1,
+  "requires": [
+    "iron_skin"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 25
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:equipped_item_action",
+              "slot": "head",
+              "item_action": {
+                "type": "pheno:damage",
+                "amount": -20
+              }
+            },
+            {
+              "type": "pheno:equipped_item_action",
+              "slot": "chest",
+              "item_action": {
+                "type": "pheno:damage",
+                "amount": -20
+              }
+            },
+            {
+              "type": "pheno:equipped_item_action",
+              "slot": "legs",
+              "item_action": {
+                "type": "pheno:damage",
+                "amount": -20
+              }
+            },
+            {
+              "type": "pheno:equipped_item_action",
+              "slot": "feet",
+              "item_action": {
+                "type": "pheno:damage",
+                "amount": -20
+              }
+            }
+          ]
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.anvil.use",
+          "volume": 0.7,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

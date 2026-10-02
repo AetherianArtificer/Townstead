@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "doubt_body",
+  "lines": {
+    "people_say_a_lot_of": "People say a lot of things.",
+    "ill_believe_it_when_i": "I'll believe it when I see it.",
+    "that_doesnt_sound_right": "That doesn't sound right.",
+    "sounds_exaggerated": "Sounds exaggerated.",
+    "who_told_you_that": { "text": "Who told you that?", "asks": "townstead:source" },
+    "are_you_sure_about_that": { "text": "Are you sure about that?", "asks": "townstead:confirm" },
+    "that_sounds_like_a_rumour": "That sounds like a rumour to me.",
+    "i_dont_believe_that_for": "I don't believe that for a second.",
+    "that_cant_be_true": "That can't be true.",
+    "sounds_made_up": "Sounds made up.",
+    "youre_pulling_my_leg": "You're pulling my leg.",
+    "no_way_really": "No way. Really?",
+    "i_heard_it_differently": "I heard it differently.",
+    "thats_just_gossip": "That's just gossip.",
+    "where_did_you_hear_that": { "text": "Where did you hear that?", "asks": "townstead:source" },
+    "is_that_really_true": { "text": "Is that really true?", "asks": "townstead:confirm" },
+    "im_not_sure_i_buy": "I'm not sure I buy it.",
+    "that_seems_unlikely": "That seems unlikely.",
+    "hmm_i_doubt_it": "Hmm, I doubt it.",
+    "you_always_believe_everything": "You always believe everything.",
+    "thats_nonsense_and_you_know": { "text": "That's nonsense and you know it.", "personalities": ["crabby", "grumpy"] },
+    "lies_all_lies": { "text": "Lies. All lies.", "personalities": ["crabby", "grumpy"] },
+    "nothing_good_is_ever_true": { "text": "Nothing good is ever true.", "personalities": "gloomy" },
+    "nice_try": { "text": "Nice try.", "personalities": ["playful", "witty"] },
+    "oh_is_that_true_im": { "text": "Oh! Is that true? I'm worried now.", "personalities": "anxious" }
+  }
+}

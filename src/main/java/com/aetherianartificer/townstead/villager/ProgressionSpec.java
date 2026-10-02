@@ -6,7 +6,12 @@ package com.aetherianartificer.townstead.villager;
  * Generalised to an arbitrary number of tiers; the shipped built-in defs are five-tier and
  * reproduce the legacy hardcoded behaviour exactly.
  */
-public record ProgressionSpec(int[] tierThresholds, int dailyXpCap, int maxXp) {
+public record ProgressionSpec(int[] tierThresholds, int dailyXpCap, int maxXp, int overCapPercent) {
+
+    /** A spec with a hard daily cap: nothing is earned past the allowance. */
+    public ProgressionSpec(int[] tierThresholds, int dailyXpCap, int maxXp) {
+        this(tierThresholds, dailyXpCap, maxXp, 0);
+    }
 
     public int maxTier() {
         return Math.max(1, tierThresholds.length);

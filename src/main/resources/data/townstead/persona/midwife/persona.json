@@ -1,0 +1,144 @@
+{
+ "name": "Midwife",
+ "requires_mods": [
+  "vampirism"
+ ],
+ "unique": "world",
+ "downed": true,
+ "arrival": "walk_in",
+ "arrives": [
+  {
+   "text": "The hunter slips into an old oath",
+   "condition": {
+    "type": "pheno:chronicle_count",
+    "key": "townstead:founder_slipped",
+    "at_least": 1
+   }
+  }
+ ],
+ "villager": {
+  "profession": "minecraft:cleric",
+  "gender": "female"
+ },
+ "names": {
+  "given": {
+   "female": [
+    "Agnes",
+    "Hedwig",
+    "Ottilie",
+    "Ursula",
+    "Gisela",
+    "Dorothea",
+    "Mathilde",
+    "Brigitta",
+    "Margit",
+    "Judit",
+    "Irma",
+    "Magda",
+    "Viorica",
+    "Rada",
+    "Erzsi",
+    "Wilhelmina",
+    "Katalin",
+    "Anca"
+   ]
+  },
+  "family": [
+   "Roth",
+   "Schuller",
+   "Binder",
+   "Kessler",
+   "Theil",
+   "Hager",
+   "Menning",
+   "Kroner",
+   "Farkas",
+   "Veres",
+   "Bartha",
+   "Kelemen",
+   "Deak",
+   "Lupu",
+   "Ardelean",
+   "Moldovan",
+   "Bucur",
+   "Morar"
+  ]
+ },
+ "actions": {
+  "give_bread": {
+   "type": "pheno:target_action",
+   "action": {
+    "type": "pheno:give",
+    "item": "minecraft:bread",
+    "count": 1
+   }
+  },
+  "bread_carried": {
+   "type": "pheno:add_count",
+   "key": "townstead:carries_seed_bread",
+   "on": "other"
+  },
+  "heard_birth": {
+   "type": "pheno:add_count",
+   "key": "townstead:heard_birth",
+   "on": "other"
+  },
+  "give_book": {
+   "type": "pheno:give_story_item",
+   "item": "townstead:book_of_oaths"
+  },
+  "forgiven": {
+   "type": "pheno:add_count",
+   "key": "townstead:midwife_forgiven",
+   "on": "other"
+  },
+  "cast_out": {
+   "type": "pheno:add_count",
+   "key": "townstead:midwife_cast_out",
+   "on": "other"
+  }
+ },
+ "conditions": {
+  "bread_delivered": {
+   "type": "pheno:other",
+   "condition": {
+    "type": "pheno:chronicle_count",
+    "key": "townstead:seed_bread_delivered",
+    "at_least": 1
+   }
+  },
+  "wounded_seen": {
+   "type": "pheno:other",
+   "condition": {
+    "type": "pheno:chronicle_count",
+    "key": "townstead:wolf_wounded_seen",
+    "at_least": 1
+   }
+  },
+  "after_midpoint": {
+   "type": "pheno:other",
+   "condition": {
+    "type": "pheno:chronicle_count",
+    "key": "townstead:midpoint_done",
+    "at_least": 1
+   }
+  },
+  "founder_hungry": {
+   "type": "pheno:entity_in_radius",
+   "radius": 12,
+   "condition": {
+    "type": "pheno:state",
+    "state": "townstead_state:blood_pull",
+    "min": 50
+   }
+  },
+  "asked_cure": {
+   "type": "pheno:other",
+   "condition": {
+    "type": "pheno:chronicle_count",
+    "key": "townstead:asked_cure",
+    "at_least": 1
+   }
+  }
+ }
+}

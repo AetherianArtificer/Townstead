@@ -36,7 +36,13 @@ public class TownsteadJeiPlugin implements IModPlugin {
 
     @Override
     public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
+        JeiContentGates.attach(jeiRuntime);
         if (!ModCompat.isLoaded("justenoughprofessions")) return;
         JepConsolidation.hideAbsorbedFlavors(jeiRuntime);
+    }
+
+    @Override
+    public void onRuntimeUnavailable() {
+        JeiContentGates.detach();
     }
 }

@@ -1,0 +1,38 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.vine_snare"
+  },
+  "icon": "minecraft:vine",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.vine_snare.description"
+  },
+  "cost": 1,
+  "requires": [
+    "crush"
+  ],
+  "skill_group": "townstead:winemaker_vineyard",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:vintage",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:haze",
+        "kind": "townstead:grapevine",
+        "blocks": {
+          "radius": 0
+        }
+      }
+    }
+  }
+}

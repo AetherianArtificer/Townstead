@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.needle.keen_shears"
+  },
+  "icon": "minecraft:shears",
+  "description": {
+    "translate": "skill.townstead.tailor.needle.keen_shears.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sharp_shears"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "durability_loss",
+    "operation": "set",
+    "value": 0,
+    "item_condition": {
+      "type": "pheno:ingredient",
+      "item": "minecraft:shears"
+    }
+  }
+}

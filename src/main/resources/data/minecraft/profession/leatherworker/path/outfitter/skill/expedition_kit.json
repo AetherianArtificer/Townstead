@@ -1,0 +1,57 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.outfitter.expedition_kit"
+  },
+  "icon": "minecraft:ender_chest",
+  "description": {
+    "translate": "skill.townstead.leatherworker.outfitter.expedition_kit.description"
+  },
+  "cost": 1,
+  "requires": [
+    "canteen"
+  ],
+  "skill_group": "townstead:outfitter_kit",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 2400,
+    "slot": 1,
+    "ai_trigger": "always",
+    "resource_cost": {
+      "resource": "townstead:hide",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 12,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:speed",
+            "duration": 2400,
+            "amplifier": 0
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:night_vision",
+            "duration": 2400,
+            "amplifier": 0
+          },
+          {
+            "type": "pheno:energize",
+            "amount": 10
+          },
+          {
+            "type": "pheno:hydrate",
+            "immediate": 8,
+            "lasting": 4
+          }
+        ]
+      }
+    }
+  }
+}

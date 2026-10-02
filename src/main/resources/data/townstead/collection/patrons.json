@@ -1,0 +1,14 @@
+{
+  "of": "entity",
+  "forget_after": 6000,
+  "on_reach": [
+    {
+      "at": 6,
+      "do": {
+        "type": "pheno:change_collection",
+        "collection": "townstead:regulars",
+        "operation": "add"
+      }
+    }
+  ]
+}

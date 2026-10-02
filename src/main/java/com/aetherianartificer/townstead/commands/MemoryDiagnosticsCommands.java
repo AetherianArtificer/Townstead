@@ -47,10 +47,10 @@ public final class MemoryDiagnosticsCommands {
         source.sendSuccess(() -> Component.translatable("command.townstead.memory.report",
                         villageStats.villages, villageStats.buildings, villageStats.blockRefs,
                         savedData.loadedSchemaVersion(), TownsteadVillageSavedData.SCHEMA_VERSION,
-                        savedData.schemaMigrationComplete(), savedData.recordCount(), savedData.overlayCount(),
-                        savedData.trackedPositionCount(), memory.targetReachability(),
+                        savedData.schemaMigrationComplete(), savedData.recordCount(),
+                        memory.targetReachability(),
                         memory.nearbyStorageSnapshots(), memory.villageStorageSnapshots(),
-                        memory.kitchenStorageSnapshots(), memory.dockScanCache(), memory.dockIndexedDocks(),
+                        memory.kitchenStorageSnapshots(), memory.dockIndexedDocks(),
                         memory.dockBerthGroups(), memory.producerStationClaims(), memory.villagerStates(),
                         memory.dirtyVillagerStates(), memory.aiBudgetScopes(), budget.granted(), budget.throttled()),
                 false);

@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "quest_claim",
+  "lines": {
+    "someone_posted_a_job_about": "Someone posted a job about {quest}.",
+    "the_boards_asking_for_help": "The board's asking for help with {quest}.",
+    "nobodys_taken_the_job_about": "Nobody's taken the job about {quest} yet.",
+    "have_you_seen_the_board": "Have you seen the board? There's a job about {quest}.",
+    "theres_a_job_about_quest": "There's a job about {quest} on the board.",
+    "somebody_needs_help_with_quest": "Somebody needs help with {quest}.",
+    "theyre_paying_for_help_with": "They're paying for help with {quest}.",
+    "the_job_about_quest_is": "The job about {quest} is still open.",
+    "anyone_brave_enough_to_deal": "Anyone brave enough to deal with {quest}?",
+    "theres_work_going_if_you": "There's work going, if you want it. Something about {quest}.",
+    "the_board_has_something_about": "The board has something about {quest}.",
+    "somebodys_looking_for_help_with": "Somebody's looking for help with {quest}. Again.",
+    "theres_a_new_job_on": "There's a new job on the board: \"{quest_title}\".",
+    "have_you_seen_quest_title": "Have you seen \"{quest_title}\" on the board?",
+    "quest_title_thats_the_job": "\"{quest_title}\". That's the job everyone's talking about.",
+    "someone_put_up_quest_title": "Someone put up \"{quest_title}\" this morning.",
+    "the_board_says_quest_title": "The board says \"{quest_title}\". Sounds like trouble.",
+    "theres_a_posting_called_quest": "There's a posting called \"{quest_title}\".",
+    "quest_title_is_still_up": "\"{quest_title}\" is still up. Nobody wants it.",
+    "a_new_one_went_up": "A new one went up: \"{quest_title}\".",
+    "theres_a_job_about_quest_2": { "text": "There's a job about {quest}! I want to do it!", "stages": "child" },
+    "a_job_about_quest_ugh": { "text": "A job about {quest}. Ugh. Not for me.", "personalities": ["crabby", "grumpy"] },
+    "a_job_about_quest_i": { "text": "A job about {quest}! I bet it pays well.", "personalities": "greedy" }
+  }
+}

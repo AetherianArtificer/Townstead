@@ -39,10 +39,9 @@ import java.util.Set;
  *   <li>a {@code not_storage} declaration;</li>
  *   <li>an explicit storage-role declaration, including narrowly routed roles such as
  *       {@code tools};</li>
- *   <li>a declared workstation, since an otherwise-unlabelled station is a machine rather than
- *       a shelf;</li>
- *   <li>failing all of that, the guesses in {@code NearbyItemSources} (a furnace-like block
- *       entity, a name that reads like machinery). They are last, so data always overrules one.</li>
+ *   <li>blocks with no declaration are not storage. Exposing an inventory capability is an
+ *       implementation detail shared by workstations, machines, and storage, so it is never
+ *       sufficient permission on its own.</li>
  * </ol>
  */
 public final class StorageRoles {
@@ -73,11 +72,10 @@ public final class StorageRoles {
     /**
      * Whether villagers may use this block as a shelf.
      *
-     * <p>Config first, then a machine check, then a stated role, then "does it actually hold
-     * things". The Farmer's Delight cabinet/chest tag list that used to sit in the middle of this
-     * was redundant — every one of those blocks is a {@link net.minecraft.world.Container} with
-     * slots, so the container branch already answered yes. Dropping it is what makes this
-     * mod-neutral.</p>
+     * <p>Storage is deny-by-default. Config may protect a block, data must then assign it a
+     * storage role, and finally the block must expose a usable inventory. This keeps automation
+     * out of crafting tables and modded machines while remaining mod-neutral: compatibility packs
+     * extend {@code #townstead:storage} or one of the semantic role tags.</p>
      */
     public static boolean isStorageCandidate(net.minecraft.server.level.ServerLevel level,
                                              net.minecraft.core.BlockPos pos,
@@ -85,12 +83,9 @@ public final class StorageRoles {
         BlockState state = level.getBlockState(pos);
         if (com.aetherianartificer.townstead.TownsteadConfig.isProtectedStorage(state)) return false;
         if (denied(state)) return false;
-        // A station can also expose a deliberately routed shelf. Cutting boards are the canonical
-        // example: a knife displayed on one is a tool source, and an empty board may receive that
-        // borrowed knife back, but its TOOLS role keeps ingredients and finished goods out.
-        if (allowed(state)) return true;
-        if (com.aetherianartificer.townstead.hunger.NearbyItemSources
-                .isProcessingContainer(level, pos, be)) return false;
+        // A station can expose a deliberately routed shelf. Cutting boards are the canonical
+        // example: their TOOLS role admits the inventory but keeps ingredients and outputs out.
+        if (!allowed(state)) return false;
         if (be instanceof net.minecraft.world.Container container) {
             return container.getContainerSize() > 0;
         }

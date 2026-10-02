@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "mob_coda",
+  "groups": [
+    {
+      "stance": "-",
+      "lines": {
+        "i_barely_slept": "I barely slept.",
+        "lock_your_door_tonight": "Lock your door tonight.",
+        "the_guards_need_to_do": "The guards need to do better.",
+        "its_getting_worse": "It's getting worse.",
+        "im_staying_in_after_dark": "I'm staying in after dark.",
+        "makes_you_think": "Makes you think.",
+        "im_still_shaking": "I'm still shaking.",
+        "keep_a_torch_lit_tonight": "Keep a torch lit tonight.",
+        "we_need_a_better_wall": "We need a better wall.",
+        "i_hate_this_time_of": "I hate this time of year."
+      }
+    },
+    {
+      "persp": { "who": "you" },
+      "lines": {
+        "that_was_brave_of_you": "That was brave of you.",
+        "youre_lucky_youre_okay": "You're lucky you're okay."
+      }
+    },
+    {
+      "persp": { "who": "me" },
+      "lines": {
+        "my_hearts_still_pounding": "My heart's still pounding.",
+        "ive_never_run_so_fast": "I've never run so fast."
+      }
+    }
+  ]
+}

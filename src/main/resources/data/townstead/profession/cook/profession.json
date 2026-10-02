@@ -14,8 +14,8 @@
     "minecraft:butcher"
   ],
   "skills": [
-    "seasoned_hands",
-    "steady_simmer"
+    "hot_hands",
+    "service"
   ],
   "unlock_model": "experiential",
   "mods": {

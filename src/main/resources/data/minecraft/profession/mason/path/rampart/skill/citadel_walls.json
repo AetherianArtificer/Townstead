@@ -1,0 +1,160 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.rampart.citadel_walls"
+  },
+  "icon": "minecraft:obsidian",
+  "description": {
+    "translate": "skill.townstead.mason.rampart.citadel_walls.description"
+  },
+  "cost": 1,
+  "requires": [
+    "fort"
+  ],
+  "skill_group": "townstead:rampart_wall",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:mortar",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:stone_wall",
+          "blocks": [
+            {
+              "radius": [
+                3,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  3
+                ]
+              }
+            },
+            {
+              "radius": [
+                3,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  -3
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                3
+              ],
+              "around": {
+                "offset": [
+                  3,
+                  1,
+                  0
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                3
+              ],
+              "around": {
+                "offset": [
+                  -3,
+                  1,
+                  0
+                ]
+              }
+            },
+            {
+              "radius": [
+                6,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  6
+                ]
+              }
+            },
+            {
+              "radius": [
+                6,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  -6
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                6
+              ],
+              "around": {
+                "offset": [
+                  6,
+                  1,
+                  0
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                6
+              ],
+              "around": {
+                "offset": [
+                  -6,
+                  1,
+                  0
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.stone.place",
+          "volume": 1.0,
+          "pitch": 0.8
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.bell.use",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.smokehouse.smokehouse_fog"
+  },
+  "icon": "minecraft:smoker",
+  "description": {
+    "translate": "skill.townstead.butcher.smokehouse.smokehouse_fog.description"
+  },
+  "cost": 1,
+  "requires": [
+    "chimney"
+  ],
+  "skill_group": "townstead:smokehouse_smoke",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:cut",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:smoke",
+          "blocks": {
+            "radius": 7,
+            "around": "above",
+            "where": {
+              "type": "air"
+            }
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 10,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:weakness",
+            "duration": 200,
+            "amplifier": 1
+          }
+        }
+      ]
+    }
+  }
+}

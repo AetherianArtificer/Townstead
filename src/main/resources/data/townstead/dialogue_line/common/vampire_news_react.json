@@ -1,0 +1,57 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "vampire_news_react",
+  "groups": [
+    {
+      "variant": "bitten",
+      "lines": {
+        "poor_who_v": "Poor {who}.",
+        "will_they_turn": "Will they turn?",
+        "i_keep_garlic_by_the_door": {
+          "text": "I keep garlic by the door now.",
+          "personalities": [
+            "anxious",
+            "shy"
+          ]
+        }
+      }
+    },
+    {
+      "variant": "turned",
+      "lines": {
+        "not_who": "Not {who}...",
+        "i_saw_them_just_last_week": "I saw them just last week.",
+        "do_they_still_know_us": "Do they still know us?"
+      }
+    },
+    {
+      "variant": "cured",
+      "lines": {
+        "thank_goodness_v": "Thank goodness.",
+        "what_a_relief_v": "What a relief."
+      }
+    },
+    {
+      "variant": "slain",
+      "lines": {
+        "that_is_terrible": "That's terrible.",
+        "they_were_one_of_us": "They were one of us, all the same."
+      }
+    },
+    {
+      "variant": "fell",
+      "lines": {
+        "what_happens_to_us_now": "What happens to us now?",
+        "lock_the_doors_tonight": "Lock the doors tonight."
+      }
+    },
+    {
+      "variant": "retaken",
+      "lines": {
+        "finally_v": "Finally!",
+        "i_can_sleep_again": "I can sleep again."
+      }
+    }
+  ]
+}

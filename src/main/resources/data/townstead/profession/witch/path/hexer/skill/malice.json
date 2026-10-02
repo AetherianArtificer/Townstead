@@ -1,0 +1,32 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.hexer.malice"
+  },
+  "icon": "minecraft:wither_rose",
+  "description": {
+    "translate": "skill.townstead.witch.hexer.malice.description"
+  },
+  "cost": 1,
+  "requires": [
+    "lingering_curse"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:hex",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:collection_size",
+      "collection": "townstead:hexed",
+      "min": 1
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:hex",
+      "amount": 3
+    }
+  }
+}

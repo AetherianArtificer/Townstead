@@ -34,6 +34,8 @@ public final class OrderProducts {
         if (recipe.id() != null && PIZZA_STATION_RECIPE.equals(recipe.id().toString())) {
             return assembledPizzaKey();
         }
+        ResourceLocation modified = ModifiedProducts.keyForRecipe(recipe.id());
+        if (modified != null) return modified;
         ResourceLocation potion = PotionBrewingRecipes.productKey(recipe.id());
         return potion == null ? recipe.output() : potion;
     }
@@ -46,6 +48,8 @@ public final class OrderProducts {
                 .isAssembledPizza(stack)) {
             return assembledPizzaKey();
         }
+        ResourceLocation applied = ModifiedProducts.appliedOf(stack);
+        if (applied != null) return ModifiedProducts.key(applied, itemId);
         ResourceLocation potionId = potionId(stack);
         return potionId == null ? itemId : potionKey(itemId, potionId);
     }
@@ -62,6 +66,11 @@ public final class OrderProducts {
     /** Representative stack used by the Order Sheet for its icon and vanilla hover name. */
     public static ItemStack displayStack(@Nullable ResourceLocation product,
                                          @Nullable ResourceLocation fallbackItem) {
+        ModifiedProducts.Parts modified = ModifiedProducts.decode(product);
+        if (modified != null) {
+            Item base = BuiltInRegistries.ITEM.get(modified.item());
+            return base == null || base == Items.AIR ? ItemStack.EMPTY : new ItemStack(base);
+        }
         PotionParts potion = decodePotion(product);
         if (potion != null) {
             Item form = BuiltInRegistries.ITEM.get(potion.form());
@@ -83,6 +92,8 @@ public final class OrderProducts {
 
     public static String label(ResourceLocation product, ResourceLocation fallbackItem) {
         if (assembledPizzaKey().equals(product)) return "Prepared Pizza";
+        ModifiedProducts.Parts modified = ModifiedProducts.decode(product);
+        if (modified != null) return ModifiedProducts.label(modified.modifier(), modified.item());
         ItemStack stack = displayStack(product, fallbackItem);
         return stack.isEmpty() ? fallbackItem.toString() : stack.getHoverName().getString();
     }
@@ -99,6 +110,8 @@ public final class OrderProducts {
 
     /** Physical item used to draw a synthetic exact-product identity. */
     public static @Nullable ResourceLocation fallbackItem(@Nullable ResourceLocation product) {
+        ModifiedProducts.Parts modified = ModifiedProducts.decode(product);
+        if (modified != null) return modified.item();
         PotionParts potion = decodePotion(product);
         if (potion != null) return potion.form();
         if (assembledPizzaKey().equals(product)) {

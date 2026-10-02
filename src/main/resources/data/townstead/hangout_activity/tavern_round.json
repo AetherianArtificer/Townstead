@@ -14,10 +14,6 @@
     "type": "pheno:life_stage",
     "tag": "townstead_lifecycle:can_consume_alcohol"
   },
-  "start_when": {
-    "type": "pheno:thirst",
-    "max": 15
-  },
   "service_when": {
     "type": "pheno:state",
     "state": "townstead_state:drunk",

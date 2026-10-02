@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.outfitter.pack_light"
+  },
+  "icon": "minecraft:feather",
+  "description": {
+    "translate": "skill.townstead.leatherworker.outfitter.pack_light.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:outfitter_kit",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 600,
+      "amplifier": 0
+    }
+  }
+}

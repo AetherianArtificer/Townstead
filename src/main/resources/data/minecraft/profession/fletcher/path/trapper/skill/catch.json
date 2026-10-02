@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.trapper.catch"
+  },
+  "icon": "minecraft:string",
+  "description": {
+    "translate": "skill.townstead.fletcher.trapper.catch.description"
+  },
+  "cost": 1,
+  "requires": [
+    "game_trails"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:draw",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:entity_in_radius",
+      "radius": 8,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:hostile"
+          },
+          {
+            "type": "pheno:status_effect",
+            "effect": "minecraft:slowness"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:draw",
+      "amount": 3
+    }
+  }
+}

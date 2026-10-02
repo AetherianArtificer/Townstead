@@ -4,5 +4,6 @@
   "spirit": {
     "industrious": 5,
     "martial": 2
-  }
+  },
+  "talk": { "tags": ["townstead:smithy"] }
 }

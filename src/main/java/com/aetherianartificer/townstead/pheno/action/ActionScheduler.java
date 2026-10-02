@@ -46,6 +46,8 @@ public final class ActionScheduler {
     }
 
     public static void clear() {
+        Leaps.clear();
+        ItemRetrievals.clear();
         for (Entry entry : PENDING) {
             if (entry.ctx().reservations() != null) entry.ctx().reservations().closeReference();
         }

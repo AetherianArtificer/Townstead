@@ -8,14 +8,17 @@
     "translate": "skill.townstead.cook.pizzaiolo.peel_sweep.description"
   },
   "cost": 1,
-  "requires": ["stone_heat"],
+  "requires": [
+    "peel_slam"
+  ],
+  "skill_group": "townstead:pizzaiolo_peel",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 180,
     "ai_trigger": "when_threatened",
     "resource_cost": {
-      "resource": "townstead:stamina",
-      "amount": 25
+      "resource": "townstead:char",
+      "amount": 40
     },
     "action": {
       "type": "pheno:and",
@@ -39,6 +42,7 @@
           "pitch": 0.9
         }
       ]
-    }
+    },
+    "slot": 2
   }
 }

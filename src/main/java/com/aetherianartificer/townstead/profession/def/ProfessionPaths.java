@@ -97,7 +97,6 @@ public final class ProfessionPaths {
     @Nullable
     public static Path byId(ResourceLocation professionId, String pathId) {
         if (pathId == null) return null;
-        pathId = CareerIdAliases.canonicalPath(professionId, pathId);
         for (Path path : pathsFor(professionId)) {
             if (path.id().equals(pathId)) return path;
         }

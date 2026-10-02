@@ -1,6 +1,8 @@
 {
   "replace": false,
   "values": [
+    { "id": "#townstead:compat/toughasnails/purified_water", "required": false },
+    { "id": "#townstead:compat/toughasnails/juices", "required": false },
     { "id": "#c:drinks", "required": false },
     { "id": "#forge:drinks", "required": false },
     { "id": "#townstead:compat/brewery/drinks", "required": false },

@@ -95,6 +95,16 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        // MCA Descendants: one mixin over its utilities and event handlers, only when it is installed.
+        if (mixinClassName.endsWith("DescendantsMixin")) {
+            return TownsteadMixinPlugin.class.getClassLoader()
+                    .getResource("net/dannyfather/mca_descendants/util/ModUtils.class") != null;
+        }
+        // Only MCA builds whose Destiny reads its locations from config have this method; newer
+        // builds send the locations, and Townstead adds "Where you died" to that list instead.
+        if (mixinClassName.endsWith("DestinyScreenWhereYouDiedMixin")) {
+            return TownsteadMixinPlugin.class.getClassLoader().getResource(FORGE_LOADER_MARKER) != null;
+        }
         if (mixinClassName.endsWith("McaPlayerArmOverlayMixin")) {
             return isMcaForge();
         }
@@ -110,9 +120,8 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
         if (mixinClassName.endsWith("BlueprintScreenLegacyIconMixin")) {
             return !hasWidgetUtils();
         }
-        // Legacy MCA only. On the floor-system build the payload bloat is already
-        // prevented at the source (BuildingTypeSyntheticBlockMixin stops houses
-        // recording their walls) and the decode-cap raise
+        // Legacy MCA only. On the floor-system build no building type lists generic
+        // structural material, so houses do not record their walls, and the decode-cap raise
         // (GetVillageResponseLargePacketMixin) covers any legacy save data, so the
         // slimmer is unnecessary there — and keeping it off that version avoids the
         // wire-rewrite touching the block geometry the new map renderer reads.

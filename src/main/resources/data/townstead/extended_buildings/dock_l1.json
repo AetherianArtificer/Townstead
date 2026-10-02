@@ -1,10 +1,17 @@
 {
   "schema": "townstead:extended_building/v1",
+  "enclosure": "optional",
   "catalog": {
     "node_item": "minecraft:oak_boat"
   },
   "spirit": {
     "nautical": 4,
     "industrious": 1
-  }
+  },
+  "requires": [
+    {
+      "surface_over": "#townstead:liquids",
+      "count": 5
+    }
+  ]
 }

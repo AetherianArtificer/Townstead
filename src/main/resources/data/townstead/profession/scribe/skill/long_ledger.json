@@ -3,17 +3,25 @@
   "display_name": {
     "translate": "skill.townstead.scribe.long_ledger"
   },
-  "icon": "minecraft:barrier",
+  "icon": "minecraft:bookshelf",
   "description": {
     "translate": "skill.townstead.scribe.long_ledger.description"
   },
-  "tier": 3,
-  "cost": 2,
-  "grants": [
-    {
-      "capability": "townstead:scribe_xp_per_tier",
-      "op": "add",
-      "value": 1
+  "tier": 2,
+  "cost": 1,
+  "requires": [
+    "steady_hand"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 60,
+    "condition": {
+      "type": "pheno:building",
+      "building_prefix": "archives"
+    },
+    "action": {
+      "type": "pheno:heal",
+      "amount": 1.0
     }
-  ]
+  }
 }

@@ -75,7 +75,7 @@ public final class PlayerWorkHooks {
         CareerProgression.completeWork(sp, Careers.COOK, completed, sp.serverLevel().getGameTime(),
                 WorkTaskTypes.COOK.toString(), BuiltInRegistries.ITEM.getKey(stack.getItem()),
                 "dish", completed,
-                Map.of("station", stationKind, "amount", Integer.toString(completed)));
+                Map.of("station", stationKind, "amount", Integer.toString(completed)), null, stack);
     }
 
     /** Furnace family: only food results count as cooking. */
@@ -86,7 +86,15 @@ public final class PlayerWorkHooks {
         //?} else {
         /*food = stack.getItem().isEdible();
         *///?}
-        if (food) onCookingCompleted(player, stack, stack.getCount(), "furnace");
+        if (food) {
+            onCookingCompleted(player, stack, stack.getCount(), "furnace");
+            return;
+        }
+        ResourceLocation station = PlayerWorkEvents.furnaceStation(player.containerMenu);
+        if (station != null) {
+            PlayerWorkEvents.creditStation(player, PlayerWorkEvents.SMELTING_TYPES, station, stack,
+                    PlayerWorkEvents.XP_STATION);
+        }
     }
 
     /**

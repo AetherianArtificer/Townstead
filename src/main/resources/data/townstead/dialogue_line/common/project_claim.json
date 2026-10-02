@@ -1,0 +1,61 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "project_claim",
+  "groups": [
+    {
+      "stance": "+",
+      "lines": {
+        "project_is_coming_along": "{project} is coming along.",
+        "theyre_nearly_done_with_project": "They're nearly done with {project}.",
+        "have_you_seen_project_its": "Have you seen {project}? It's actually looking good.",
+        "project_is_looking_great": "{project} is looking great.",
+        "they_made_so_much_progress": "They made so much progress on {project}.",
+        "project_is_almost_finished": "{project} is almost finished!",
+        "project_is_going_to_be": "{project} is going to be amazing.",
+        "i_walked_past_project_today": "I walked past {project} today. It's really something.",
+        "they_put_the_roof_on": "They put the roof on {project}!",
+        "project_is_finally_taking_shape": "{project} is finally taking shape.",
+        "the_work_on_project_is": "The work on {project} is going well.",
+        "they_say_project_will_be": "They say {project} will be done soon."
+      }
+    },
+    {
+      "stance": "-",
+      "lines": {
+        "project_is_taking_forever": "{project} is taking forever.",
+        "work_on_project_stopped_again": "Work on {project} stopped again.",
+        "theyve_been_at_project_for": "They've been at {project} for weeks.",
+        "project_is_still_a_mess": "{project} is still a mess.",
+        "nobodys_worked_on_project_in": "Nobody's worked on {project} in days.",
+        "project_is_way_behind": "{project} is way behind.",
+        "project_ran_out_of_materials": "{project} ran out of materials again.",
+        "theyre_still_arguing_about_project": "They're still arguing about {project}.",
+        "project_is_so_noisy": "{project} is so noisy.",
+        "im_tired_of_hearing_about": "I'm tired of hearing about {project}."
+      }
+    },
+    {
+      "stance": "0",
+      "lines": {
+        "theyve_started_on_project": "They've started on {project}.",
+        "theyre_building_project_now": "They're building {project} now.",
+        "work_on_project_started_this": "Work on {project} started this week.",
+        "they_broke_ground_on_project": "They broke ground on {project}.",
+        "have_you_heard_about_project": "Have you heard about {project}?"
+      }
+    },
+    {
+      "stance": "+",
+      "lines": {
+        "theyre_building_project_i_watched": { "text": "They're building {project}! I watched them all day!", "stages": "child" }
+      }
+    },
+    {
+      "stance": "-",
+      "lines": {
+        "project_great_more_noise": { "text": "{project}. Great. More noise.", "personalities": ["crabby", "grumpy"] },
+        "project_will_probably_fall_down": { "text": "{project} will probably fall down.", "personalities": "gloomy" }
+      }
+    }
+  ]
+}

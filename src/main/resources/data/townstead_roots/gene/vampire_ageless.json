@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "townstead_roots:ageless",
+  "display_name": { "translate": "gene.townstead_roots.vampire_ageless" },
+  "description": { "translate": "gene.townstead_roots.vampire_ageless.desc" },
+  "category": "Lifespan"
+}

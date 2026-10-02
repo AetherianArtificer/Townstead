@@ -5,21 +5,13 @@
     "need",
     "cold"
   ],
-  "cooldown": "60s",
-  "chance": "15%",
+  "cooldown": "35s",
+  "chance": "30%",
   "triggers": [
     {
       "type": "context_present",
       "tags": [
-        "freezing",
-        "under_open_sky"
-      ]
-    },
-    {
-      "type": "context_present",
-      "tags": [
-        "cold",
-        "under_open_sky"
+        "feeling_cold"
       ]
     }
   ],

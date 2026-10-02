@@ -27,6 +27,11 @@ public final class ModGate {
 
     private ModGate() {}
 
+    /** Whether a document may load: it declares no {@code "mods"} gate, or its gate is met. */
+    public static boolean allows(@Nullable JsonObject document) {
+        return document == null || !document.has("mods") || Boolean.TRUE.equals(evaluate(document.get("mods")));
+    }
+
     public static @Nullable Boolean evaluate(JsonElement expr) {
         return evaluate(expr, ModCompat::isLoaded);
     }

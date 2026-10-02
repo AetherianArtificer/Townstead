@@ -29,11 +29,16 @@ import java.util.stream.Stream;
  */
 public final class RecipeProjectionAccess {
     public record Accessor(List<String> aliases, Operation operation, boolean required,
-                           @Nullable JsonElement fallback) {
+                           @Nullable JsonElement fallback, List<String> merge) {
         public Accessor {
             aliases = aliases == null ? List.of() : List.copyOf(aliases);
             operation = operation == null ? Operation.RAW : operation;
             fallback = fallback == null ? null : fallback.deepCopy();
+            merge = merge == null ? List.of() : List.copyOf(merge);
+        }
+
+        public Accessor(List<String> aliases, Operation operation, boolean required, @Nullable JsonElement fallback) {
+            this(aliases, operation, required, fallback, List.of());
         }
     }
 
@@ -73,7 +78,7 @@ public final class RecipeProjectionAccess {
         if (!value.isJsonObject()) throw new IllegalArgumentException("projection accessor must be an object");
         JsonObject object = value.getAsJsonObject();
         for (String key : object.keySet()) {
-            if (!List.of("path", "aliases", "operation", "required", "default").contains(key)) {
+            if (!List.of("path", "aliases", "operation", "required", "default", "merge").contains(key)) {
                 throw new IllegalArgumentException("unknown projection accessor field '" + key + "'");
             }
         }
@@ -83,15 +88,22 @@ public final class RecipeProjectionAccess {
             if (!object.get("aliases").isJsonArray()) throw new IllegalArgumentException("aliases must be an array");
             for (JsonElement alias : object.getAsJsonArray("aliases")) addAlias(alias, aliases);
         }
-        if (aliases.isEmpty() && !object.has("default")) {
-            throw new IllegalArgumentException("projection accessor needs path, aliases, or default");
+        // A recipe that exposes its inputs one getter at a time (a base and an addition) has no
+        // single path to a list; "merge" reads each path and concatenates what it finds.
+        List<String> merge = new ArrayList<>();
+        if (object.has("merge")) {
+            if (!object.get("merge").isJsonArray()) throw new IllegalArgumentException("merge must be an array");
+            for (JsonElement alias : object.getAsJsonArray("merge")) addAlias(alias, merge);
+        }
+        if (aliases.isEmpty() && merge.isEmpty() && !object.has("default")) {
+            throw new IllegalArgumentException("projection accessor needs path, aliases, merge, or default");
         }
         Operation operation = Operation.parse(object.has("operation")
                 ? object.get("operation").getAsString() : "raw");
         if (operation == null) throw new IllegalArgumentException("unknown projection operation");
         boolean required = object.has("required") && object.get("required").getAsBoolean();
         return new Accessor(aliases, operation, required,
-                object.has("default") ? object.get("default") : null);
+                object.has("default") ? object.get("default") : null, merge);
     }
 
     private static void addAlias(JsonElement value, List<String> out) {
@@ -104,6 +116,15 @@ public final class RecipeProjectionAccess {
 
     public static Read read(@Nullable Object root, Accessor accessor) {
         List<String> failures = new ArrayList<>();
+        if (!accessor.merge().isEmpty()) {
+            List<Object> merged = new ArrayList<>();
+            for (String path : accessor.merge()) {
+                Read part = read(root, new Accessor(List.of(path), Operation.RAW, false, null));
+                if (part.found()) merged.addAll(elements(part.value()));
+                else failures.addAll(part.failures());
+            }
+            if (!merged.isEmpty()) return new Read(true, List.copyOf(merged), merged, "<merge>", failures);
+        }
         for (String alias : accessor.aliases()) {
             Object current = root;
             boolean failed = false;

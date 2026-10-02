@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "doubt_lead",
+  "lines": {
+    "really": "Really?",
+    "hm": "Hm.",
+    "i_dont_know": "I don't know.",
+    "wait": "Wait.",
+    "huh": "Huh.",
+    "are_you_sure": "Are you sure?",
+    "hmm": "Hmm.",
+    "pfft": { "text": "Pfft.", "personalities": ["crabby", "grumpy"] },
+    "oh_please": { "text": "Oh, please.", "personalities": ["crabby", "grumpy"] },
+    "ha": { "text": "Ha!", "personalities": ["playful", "witty"] },
+    "um": { "text": "Um.", "personalities": ["introverted", "shy"] }
+  }
+}

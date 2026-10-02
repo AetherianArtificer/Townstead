@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.roadwright.graded"
+  },
+  "icon": "minecraft:stone_stairs",
+  "description": {
+    "translate": "skill.townstead.mason.roadwright.graded.description"
+  },
+  "cost": 1,
+  "requires": [
+    "paved_way"
+  ],
+  "power": {
+    "type": "pheno:step_height",
+    "amount": 1.0
+  }
+}

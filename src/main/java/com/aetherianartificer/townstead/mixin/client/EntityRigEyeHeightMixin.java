@@ -11,12 +11,12 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Drops the first-person camera to where an alternate rig's head actually is. Vanilla keeps a humanoid's
+ * Visual camera fallback for alternate player rigs without a declared physical hitbox. Vanilla keeps a humanoid's
  * 1.62 eye height regardless of the body, so a low spider-folk player floats a tall column above its own
  * model. {@link RigCamera} derives the eye height from the rig's {@code camera.bone}; we override the
  * cached {@code getEyeHeight()} (what the camera and eye position read) with it. Client-only: the bone
  * position lives in the baked model, so the server keeps its default eye height (only the camera moves).
- * Filtered to players and villagers, the only entities that carry a Townstead rig.
+ * Hitbox-declaring rigs and MCA villagers instead use the shared physical eye height.
  *
  * <p>1.20.1 Forge SRG: {@code m_20192_} getEyeHeight.</p>
  */
@@ -32,6 +32,10 @@ public abstract class EntityRigEyeHeightMixin {
         Entity self = (Entity) (Object) this;
         if (!self.level().isClientSide) return;
         if (!(self instanceof Player) && !(self instanceof VillagerEntityMCA)) return;
+        // A physical hitbox supplies the same eye height on client and server.
+        if (self instanceof VillagerEntityMCA) return;
+        var definition = com.aetherianartificer.townstead.root.rig.RigHitboxes.definition((LivingEntity) self);
+        if (definition != null && definition.hitbox() != null) return;
         Float eye = RigCamera.eyeHeight((LivingEntity) self);
         if (eye != null) cir.setReturnValue(eye);
     }

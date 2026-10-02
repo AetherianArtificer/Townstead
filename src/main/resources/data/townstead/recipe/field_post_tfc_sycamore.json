@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_tfc_sycamore"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "tfc:wood/lumber/sycamore"
+    },
+    "L": {
+      "item": "tfc:wood/log/sycamore"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_tfc_sycamore",
+    "count": 1
+  }
+}

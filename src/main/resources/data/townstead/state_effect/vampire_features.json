@@ -1,0 +1,29 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "mods": "vampirism",
+  "state": "townstead_state:vampire",
+  "min_tier": "fledgling",
+  "priority": 25,
+  "condition": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "pheno:not",
+        "condition": {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:player"
+        }
+      },
+      {
+        "type": "pheno:rig",
+        "rig": "none"
+      }
+    ]
+  },
+  "genes": {
+    "grant": [
+      "townstead_roots:vampire_eyes",
+      "townstead_roots:vampire_fangs"
+    ]
+  }
+}

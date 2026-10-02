@@ -25,7 +25,7 @@ class CareerActivitiesTest {
                 List.of(), Set.of(), List.of(beehives), WorkJobDef.Placement.DEFAULT,
                 null, List.of(), List.of());
         WorkJobDef job = new WorkJobDef(id("townstead_beekeeping:beehive_harvest"),
-                taskId, WorkJobDef.BLOCK_INTERACTION, null, null, target);
+                taskId, WorkJobDef.BLOCK_INTERACTION, null, null, target, null);
 
         assertTrue(CareerActivities.matches(task, job));
     }
@@ -41,7 +41,7 @@ class CareerActivitiesTest {
                 WorkJobDef.Placement.DEFAULT, null, List.of(), List.of(comb, bottle));
         WorkJobDef job = new WorkJobDef(id("test:beehive_harvest"),
                 id("townstead_work:interact"), WorkJobDef.BLOCK_INTERACTION,
-                null, null, target);
+                null, null, target, null);
 
         assertEquals(List.of("test:honeycomb_harvested", "test:honey_bottled"),
                 job.activityKeys());

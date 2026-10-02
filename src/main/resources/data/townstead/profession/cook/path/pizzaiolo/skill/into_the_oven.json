@@ -1,0 +1,52 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.pizzaiolo.into_the_oven"
+  },
+  "icon": "minecraft:fire_charge",
+  "description": {
+    "translate": "skill.townstead.cook.pizzaiolo.into_the_oven.description"
+  },
+  "cost": 1,
+  "requires": [
+    "peel_sweep"
+  ],
+  "skill_group": "townstead:pizzaiolo_peel",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:char",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 5,
+      "include_self": false,
+      "target": "hostile",
+      "bientity_condition": {
+        "type": "pheno:hostile"
+      },
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:damage",
+            "amount": 6,
+            "source": "other"
+          },
+          {
+            "type": "pheno:ignite",
+            "seconds": 6
+          },
+          {
+            "type": "pheno:add_velocity",
+            "y": 0.8
+          }
+        ]
+      }
+    }
+  }
+}

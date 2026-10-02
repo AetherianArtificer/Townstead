@@ -7,11 +7,18 @@ import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 public final class AnimationTargetMap<T extends LivingEntity> {
+    // Render-thread caches, bounded even if a preview repeatedly creates fresh models.
+    // Strong, bounded keys avoid weak-key/value cycles through custom ModelPart graphs.
+    private static final int CACHE_LIMIT = 128;
+    private static final Map<HumanoidModel<?>, AnimationTargetMap<?>> MODEL_CACHE = new IdentityHashMap<>();
+    private static final Map<ModelPart, RigEntry> RIG_CACHE = new IdentityHashMap<>();
+
     private final Map<String, ModelPart> targets = new HashMap<>();
     /**
      * Extra ModelParts to apply bend to alongside the primary. MCA's villager
@@ -52,13 +59,55 @@ public final class AnimationTargetMap<T extends LivingEntity> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public static <T extends LivingEntity> AnimationTargetMap<T> forMcaModel(HumanoidModel<T> model) {
-        return new AnimationTargetMap<>(model);
+        AnimationTargetMap<?> cached = MODEL_CACHE.get(model);
+        if (cached == null || !cached.matchesModel(model)) {
+            cached = new AnimationTargetMap<>(model);
+            if (MODEL_CACHE.size() >= CACHE_LIMIT) MODEL_CACHE.clear();
+            MODEL_CACHE.put(model, cached);
+        }
+        return (AnimationTargetMap<T>) cached;
     }
 
+    @SuppressWarnings("unchecked")
     public static <T extends LivingEntity> AnimationTargetMap<T> forRig(ModelPart root, RigDefinition def) {
-        return new AnimationTargetMap<>(root, def);
+        RigEntry cached = RIG_CACHE.get(root);
+        if (cached == null || cached.definition() != def || !cached.targets().matchesRig(root, def)) {
+            cached = new RigEntry(def, new AnimationTargetMap<>(root, def));
+            if (RIG_CACHE.size() >= CACHE_LIMIT) RIG_CACHE.clear();
+            RIG_CACHE.put(root, cached);
+        }
+        return (AnimationTargetMap<T>) cached.targets();
     }
+
+    public static void clearCache() {
+        MODEL_CACHE.clear();
+        RIG_CACHE.clear();
+    }
+
+    private boolean matchesModel(HumanoidModel<?> model) {
+        return targets.get("head") == model.head && targets.get("headwear") == model.hat
+                && targets.get("body") == model.body && targets.get("left_arm") == model.leftArm
+                && targets.get("right_arm") == model.rightArm && targets.get("left_leg") == model.leftLeg
+                && targets.get("right_leg") == model.rightLeg
+                && (!(model instanceof VillagerEntityModelMCA<?> mca)
+                    || bendCompanions.get("left_arm").get(0) == mca.leftArmwear
+                    && bendCompanions.get("right_arm").get(0) == mca.rightArmwear
+                    && bendCompanions.get("left_leg").get(0) == mca.leftLegwear
+                    && bendCompanions.get("right_leg").get(0) == mca.rightLegwear);
+    }
+
+    private boolean matchesRig(ModelPart root, RigDefinition def) {
+        for (String channel : RigDefinition.CHANNELS) {
+            String bone = def.boneFor(channel);
+            ModelPart current = root.hasChild(bone) ? root.getChild(bone) : null;
+            if (targets.get(channel) != current) return false;
+        }
+        return true;
+    }
+
+    private record RigEntry(RigDefinition definition, AnimationTargetMap<?> targets) {}
 
     public Optional<ModelPart> resolve(String target) {
         // Emotecraft/Bedrock convention calls the humanoid body bone "torso" while

@@ -1,0 +1,32 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "infection_news_react",
+  "groups": [
+    {
+      "variant": "bitten",
+      "lines": {
+        "oh_no_is_there_a": "Oh no. Is there a cure?",
+        "poor_who": "Poor {who}.",
+        "someone_has_to_help_them": "Someone has to help them.",
+        "im_staying_away_from_them": { "text": "I'm staying away from them.", "personalities": ["anxious", "shy"] }
+      }
+    },
+    {
+      "variant": "turned",
+      "lines": {
+        "no_not_who": "No... not {who}.",
+        "thats_awful_turned": "That's awful.",
+        "i_cant_believe_it_turned": "I can't believe it.",
+        "i_saw_them_just_yesterday": "I saw them just yesterday."
+      }
+    },
+    {
+      "variant": "cured",
+      "lines": {
+        "thank_goodness_cured": "Thank goodness!",
+        "what_a_relief_cured": "What a relief.",
+        "i_was_so_worried_cured": "I was so worried."
+      }
+    }
+  ]
+}

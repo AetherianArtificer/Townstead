@@ -10,5 +10,7 @@ public record TownsteadNeedsSnapshot(
         float thirstExhaustion,
         int fatigue,
         boolean collapsed,
-        boolean gated
+        boolean gated,
+        int bodyTemperatureTenths,
+        int ambientTemperatureTenths
 ) {}

@@ -1,0 +1,57 @@
+{
+  "schema": "townstead:story/v1",
+  "attach": {
+    "when": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:state",
+          "state": "townstead_state:vampire"
+        },
+        {
+          "type": "pheno:other",
+          "condition": {
+            "type": "pheno:chronicle_count",
+            "key": "townstead:asked_neighbor",
+            "at_least": 1
+          }
+        },
+        {
+          "type": "pheno:other",
+          "condition": {
+            "type": "pheno:chronicle_count",
+            "key": "townstead:heard_neighbor",
+            "at_least": 0,
+            "at_most": 0
+          }
+        }
+      ]
+    }
+  },
+  "bind": "player",
+  "conditions": {
+    "bit_more": {
+      "type": "pheno:chronicle_count",
+      "key": "townstead:bit_unwilling",
+      "at_least": 2
+    },
+    "bit_once": {
+      "type": "pheno:chronicle_count",
+      "key": "townstead:bit_unwilling",
+      "at_least": 1,
+      "at_most": 1
+    },
+    "fed_on_person": {
+      "type": "pheno:chronicle_count",
+      "key": "townstead:fed_on_person",
+      "at_least": 1
+    }
+  },
+  "actions": {
+    "heard": {
+      "type": "pheno:add_count",
+      "key": "townstead:heard_neighbor",
+      "on": "other"
+    }
+  }
+}

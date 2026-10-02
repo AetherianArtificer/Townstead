@@ -1,0 +1,32 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.night_watch.shepherds_crook"
+  },
+  "icon": "minecraft:shears",
+  "description": {
+    "translate": "skill.townstead.shepherd.night_watch.shepherds_crook.description"
+  },
+  "cost": 1,
+  "requires": [
+    "vigil"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "durability_loss",
+    "operation": "set",
+    "value": 0,
+    "item_condition": {
+      "type": "pheno:ingredient",
+      "item": "minecraft:shears"
+    },
+    "condition": {
+      "type": "pheno:entity_in_radius",
+      "radius": 3,
+      "condition": {
+        "type": "pheno:entity_type",
+        "entity_type": "minecraft:sheep"
+      }
+    }
+  }
+}

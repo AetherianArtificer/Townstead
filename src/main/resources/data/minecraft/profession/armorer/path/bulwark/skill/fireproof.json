@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.bulwark.fireproof"
+  },
+  "icon": "minecraft:blaze_powder",
+  "description": {
+    "translate": "skill.townstead.armorer.bulwark.fireproof.description"
+  },
+  "cost": 1,
+  "requires": [
+    "take_the_hit"
+  ],
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.6,
+    "damage_tag": "minecraft:is_fire"
+  }
+}

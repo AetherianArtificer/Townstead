@@ -1,0 +1,28 @@
+{
+  "display": {
+    "translate": "townstead.incident.building_raised"
+  },
+  "default_delta": 6,
+  "visibility": "village",
+  "severity": "moderate",
+  "tags": [
+    "service",
+    "building"
+  ],
+  "decay": {
+    "type": "linear_to_zero",
+    "delay_ticks": 96000,
+    "amount_per_day": 1
+  },
+  "gossip": {
+    "tone": "praise",
+    "phrase": "townstead.gossip.building_raised",
+    "with": [
+      "player",
+      "building"
+    ]
+  },
+  "pinned": false,
+  "retain_unwitnessed": false,
+  "max_override_abs": 40
+}

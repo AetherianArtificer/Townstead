@@ -205,10 +205,25 @@ public final class WorksiteStorageIndex {
         public @Nullable NearbyItemSources.ContainerSlot findBestSlot(
                 VillagerEntityMCA villager, Predicate<ItemStack> matcher,
                 ToIntFunction<ItemStack> scorer, StorageUse use) {
+            return findBestSlot(villager, matcher, scorer, use, pos -> true);
+        }
+
+        /** Select only exact registered depot cells, excluding nearby/fallback shelves. */
+        public @Nullable NearbyItemSources.ContainerSlot findBestSlotAt(
+                VillagerEntityMCA villager, Predicate<ItemStack> matcher,
+                StorageUse use, Set<Long> positions) {
+            return findBestSlot(villager, matcher, ItemStack::getCount, use,
+                    pos -> positions.contains(pos.asLong()));
+        }
+
+        private @Nullable NearbyItemSources.ContainerSlot findBestSlot(
+                VillagerEntityMCA villager, Predicate<ItemStack> matcher,
+                ToIntFunction<ItemStack> scorer, StorageUse use, Predicate<BlockPos> allowedPosition) {
             NearbyItemSources.ContainerSlot best = null;
             int bestBuildingRank = StoragePreference.FALLBACK_RANK;
             int bestStorageRank = StoragePreference.FALLBACK_RANK;
             for (Entry entry : entries) {
+                if (!allowedPosition.test(entry.pos())) continue;
                 int storageRank = roleRank(entry.roles(), use);
                 if (storageRank == Integer.MAX_VALUE) continue;
                 for (SlotView slot : entry.slots()) {
@@ -288,7 +303,7 @@ public final class WorksiteStorageIndex {
 
     private record CandidatePosition(BlockPos pos, int buildingRank) {}
 
-    private record Entry(BlockPos pos, List<SlotView> slots, int buildingRank,
+    record Entry(BlockPos pos, List<SlotView> slots, int buildingRank,
                          Set<StorageRoleDef.Role> roles) {}
 
     record SlotView(BlockPos pos, @Nullable Container container, boolean itemHandler, int slot,

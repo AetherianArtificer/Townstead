@@ -92,6 +92,7 @@ public final class CareerScreen extends Screen {
 
     /** Opens the screen, or refreshes the open one after a choose round-trip. */
     public static void openOrUpdate(CareerGraphS2CPayload payload) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CAREERS)) return;
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.screen instanceof CareerScreen open) {
             open.apply(payload);

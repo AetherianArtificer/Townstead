@@ -1,0 +1,82 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "mods": "vampirism",
+  "name": {
+    "translate": "career.townstead.hunter.path.slayer"
+  },
+  "title": {
+    "translate": "career.townstead.hunter.title.slayer"
+  },
+  "color": "#8B1A1A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:vigil",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:hunter/slayer/blood_scent"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:hunter/slayer/through_the_heart"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:hunter/slayer/no_quarter"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 12,
+            "condition": {
+              "type": "pheno:hostile"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:vigil",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "hunters_grip",
+      "stake_thrust",
+      "pounce"
+    ],
+    [
+      "second_wind",
+      "heartseeker",
+      "harry"
+    ],
+    [
+      "blood_scent",
+      "through_the_heart",
+      "no_quarter"
+    ],
+    [
+      "relentless",
+      "executioner",
+      "silver_arc"
+    ],
+    [
+      "nightbane",
+      "final_rite",
+      "hunters_fury"
+    ]
+  ]
+}

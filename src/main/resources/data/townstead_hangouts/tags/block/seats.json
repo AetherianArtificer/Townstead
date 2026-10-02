@@ -10,6 +10,8 @@
     {"id":"#c:seats","required":false},
     {"id":"#forge:chairs","required":false},
     {"id":"#forge:seats","required":false},
+    {"id":"#c:thrones","required":false},
+    {"id":"#forge:thrones","required":false},
     {"id":"beachparty:beach_chair","required":false},
     {"id":"beachparty:hooded_beach_chair","required":false},
     {"id":"beachparty:palm_chair","required":false}

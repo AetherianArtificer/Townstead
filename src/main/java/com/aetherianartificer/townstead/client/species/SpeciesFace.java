@@ -61,8 +61,8 @@ public final class SpeciesFace {
         RootCatalogEntry origin = RootCatalogClient.origin(rootId);
         if (origin == null) return;
         GeneCatalogEntry eyesGene = null, mouthGene = null, colorGene = null;
-        for (RootCatalogEntry.Inherited inh : origin.inheritedGenes()) {
-            GeneCatalogEntry g = RootCatalogClient.gene(inh.geneId());
+        for (String geneId : RootClientStore.appearanceGenes(entity)) {
+            GeneCatalogEntry g = RootCatalogClient.gene(geneId);
             if (g == null) continue;
             if (g.isEyes()) eyesGene = g;
             else if (g.isMouth()) mouthGene = g;
@@ -84,6 +84,7 @@ public final class SpeciesFace {
             pose.scale(BABY_HEAD_SCALE, BABY_HEAD_SCALE, BABY_HEAD_SCALE);
             pose.translate(0f, BABY_HEAD_Y, 0f);
         }
+        RigModels.translateToParent(rigBase, face.bone(), pose);
         head.translateAndRotate(pose);
         if (eyes != null && !eyes.texture().isEmpty()) {
             int frame = FaceExpression.eyeFrame(entity);
