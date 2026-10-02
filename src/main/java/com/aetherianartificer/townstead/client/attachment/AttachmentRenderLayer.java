@@ -2,6 +2,10 @@ package com.aetherianartificer.townstead.client.attachment;
 
 import com.aetherianartificer.townstead.client.animation.AnimationTargetMap;
 import com.aetherianartificer.townstead.client.attachment.geo.AttachmentGeo;
+import com.aetherianartificer.townstead.client.devlink.BenchAnchorCapture;
+import com.aetherianartificer.townstead.client.devlink.BenchGizmos;
+import com.aetherianartificer.townstead.client.devlink.BenchLinkClient;
+import org.joml.Matrix4f;
 import com.aetherianartificer.townstead.client.root.RootCatalogClient;
 import com.aetherianartificer.townstead.client.root.RootClientStore;
 import com.aetherianartificer.townstead.client.species.InvisFade;
@@ -55,9 +59,15 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
         if (fade <= 0f) return;
         int fadeAlpha = Math.round(fade * 255f);
         List<Expressed> attachments = resolve(entity);
-        if (attachments.isEmpty()) return;
+        // Bench Link: a capture request or the held tool also needs bones and points drawn
+        // or recorded on entities that wear no attachments.
+        BenchAnchorCapture.Frame bench = BenchAnchorCapture.wants(entity.getId())
+                ? BenchAnchorCapture.begin(entity, pose.last().pose(), RigModels.rigBaseFor(entity)) : null;
+        boolean gizmos = BenchLinkClient.gizmos();
+        if (attachments.isEmpty() && bench == null && !gizmos) return;
 
         AnimationTargetMap<T> bones = AnimationTargetMap.forMcaModel(getParentModel());
+        if (bench != null || gizmos) benchFrame(entity, pose, buffers, bones, bench, gizmos);
         StageKeys stageKeys = stageKeys(entity);
         for (Expressed expressed : attachments) {
             AttachmentDef def = expressed.def();
@@ -130,6 +140,7 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                 float[] base = anchor.offset();
                 pose.pushPose();
                 bone.translateAndRotate(pose);
+                Matrix4f benchBone = bench == null ? null : new Matrix4f(pose.last().pose());
                 pose.translate((base[0] + def.offset()[0] + stageOffset[0]) / 16f,
                         (base[1] + def.offset()[1] + stageOffset[1]) / 16f,
                         (base[2] + def.offset()[2] + stageOffset[2]) / 16f);
@@ -149,6 +160,13 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                 }
                 if (scale != 1f) pose.scale(scale, scale, scale);
                 if (morphs.whole() != null) pose.scale(morphs.whole()[0], morphs.whole()[1], morphs.whole()[2]);
+                if (bench != null) {
+                    float[] r = poseSample == null ? NO_OFFSET : poseSample.rotation();
+                    boolean posed = r[0] != 0f || r[1] != 0f || r[2] != 0f;
+                    bench.attachment(def.id(), anchorIndex, anchor.bone(), anchor.mirror(), posed,
+                            benchBone, new Matrix4f(pose.last().pose()));
+                }
+                if (gizmos) BenchGizmos.tripod(pose, buffers, BenchGizmos.ATTACHMENT);
 
                 // Morph channels with named bones scale each about its own pivot (an ear
                 // shrinks toward the head surface it grows from); bakes are shared across
@@ -203,6 +221,44 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                 }
                 pose.popPose();
             }
+        }
+        if (bench != null) BenchAnchorCapture.finish(bench);
+    }
+
+    private static final String[] BENCH_CHANNELS =
+            {"head", "headwear", "body", "right_arm", "left_arm", "right_leg", "left_leg"};
+
+    /**
+     * Records (for a Bench Link capture) and draws (while the tool is held) the channel bones and
+     * every attachment point that applies to this rig, using the same bone frames and point math
+     * the attachment loop uses.
+     */
+    private static <T extends LivingEntity> void benchFrame(T entity, PoseStack pose, MultiBufferSource buffers,
+                                                            AnimationTargetMap<T> bones,
+                                                            @Nullable BenchAnchorCapture.Frame bench, boolean gizmos) {
+        if (bench != null) {
+            for (String channel : BENCH_CHANNELS) {
+                ModelPart part = bones.resolve(channel).orElse(null);
+                if (part == null) continue;
+                pose.pushPose();
+                part.translateAndRotate(pose);
+                bench.bone(channel, part, new Matrix4f(pose.last().pose()));
+                pose.popPose();
+            }
+        }
+        String rig = RigModels.rigBaseFor(entity);
+        for (AttachmentPointDef point : AttachmentClient.allPoints()) {
+            if (!point.rig().isEmpty() && !point.rig().equals(rig)) continue;
+            ModelPart part = bones.resolve(point.bone()).orElse(null);
+            if (part == null) continue;
+            pose.pushPose();
+            part.translateAndRotate(pose);
+            float[] offset = point.offset();
+            pose.translate(offset[0] / 16f, offset[1] / 16f, offset[2] / 16f);
+            rotateZyx(pose, point.rotation());
+            if (bench != null) bench.point(point.id(), point.bone(), new Matrix4f(pose.last().pose()));
+            if (gizmos) BenchGizmos.tripod(pose, buffers, BenchGizmos.POINT);
+            pose.popPose();
         }
     }
 

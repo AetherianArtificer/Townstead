@@ -368,6 +368,12 @@ public class Townstead {
     public static final Supplier<Item> JOURNAL = ITEMS.register("journal",
             () -> new com.aetherianartificer.townstead.item.JournalItem(new Item.Properties().stacksTo(1).fireResistant()));
 
+    // ── Bench Link (root authors' debug tool: the Blockbench live link) ──
+
+    public static final Supplier<Item> BENCH_LINK = ITEMS.register("bench_link",
+            () -> new com.aetherianartificer.townstead.devlink.BenchLinkItem(new Item.Properties().stacksTo(1)
+                    .rarity(net.minecraft.world.item.Rarity.EPIC)));
+
     // ── Accord letter (a proclaimed offer of accord, carried to another faction) ──
 
     public static final Supplier<Item> ACCORD_LETTER = ITEMS.register("accord_letter",
@@ -459,6 +465,8 @@ public class Townstead {
                                     add.accept(SCARF.get());
                                 }
                                 townstead$addLifePotions(output);
+                                // A debug tool: only offered with operator items enabled.
+                                if (params.hasPermissions()) output.accept(BENCH_LINK.get());
                             })
                             .build());
 
@@ -550,6 +558,7 @@ public class Townstead {
         // Live keybind detail for mods that own their bindings. No-ops when absent.
         if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
             com.aetherianartificer.townstead.compat.ironsspells.IronsQuickCast.register();
+            com.aetherianartificer.townstead.client.devlink.BenchLinkClient.init();
         }
         townstead$registerBlockEntityRenderers(modBus);
         NeoForge.EVENT_BUS.addListener(this::onStartTracking);
@@ -739,6 +748,16 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppedEvent e) ->
                 { com.aetherianartificer.townstead.switchboard.SwitchboardServer.onServerStopping();
                   com.aetherianartificer.townstead.rebirth.PlayerLives.onServerStopping(); });
+        // Bench Link never outlives the world it serves.
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppingEvent e) ->
+                com.aetherianartificer.townstead.devlink.BenchLink.stop());
+        // The Bench Link picks its preview subject before an MCA villager opens its own menu.
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.EntityInteract e) -> {
+            if (com.aetherianartificer.townstead.devlink.BenchLinkItem.onInteract(e.getEntity(), e.getTarget(), e.getHand())) {
+                e.setCanceled(true);
+                e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
+            }
+        });
         // A reborn player goes by the name of their current life in chat, death messages and nameplates.
         NeoForge.EVENT_BUS.addListener((PlayerEvent.NameFormat e) -> {
             String name = com.aetherianartificer.townstead.rebirth.Rebirth.characterName(e.getEntity());
@@ -828,6 +847,7 @@ public class Townstead {
                             com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload.snapshot());
                     PacketDistributor.sendToPlayer(sp, com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload.snapshot()); PacketDistributor.sendToPlayer(sp, com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload.snapshot());
                 });
+                com.aetherianartificer.townstead.devlink.BenchLink.onReload();
             }
         });
         ShiftTemplateRegistry.setChangeListener(Townstead::townstead$broadcastShiftTemplateSync);
@@ -934,6 +954,9 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.GeneGrantCommand.register(e.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.BenchLinkCommand.register(e.getDispatcher()));
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.RootCommand.register(e.getDispatcher()));
@@ -1167,6 +1190,7 @@ public class Townstead {
         // Live keybind detail for mods that own their bindings. No-ops when absent.
         if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) {
             com.aetherianartificer.townstead.compat.ironsspells.IronsQuickCast.register();
+            com.aetherianartificer.townstead.client.devlink.BenchLinkClient.init();
         }
         townstead$registerBlockEntityRenderers(modBus);
         modBus.addListener(this::onCommonSetup);
@@ -1351,6 +1375,16 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStoppedEvent e) ->
                 { com.aetherianartificer.townstead.switchboard.SwitchboardServer.onServerStopping();
                   com.aetherianartificer.townstead.rebirth.PlayerLives.onServerStopping(); });
+        // Bench Link never outlives the world it serves.
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStoppingEvent e) ->
+                com.aetherianartificer.townstead.devlink.BenchLink.stop());
+        // The Bench Link picks its preview subject before an MCA villager opens its own menu.
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.PlayerInteractEvent.EntityInteract e) -> {
+            if (com.aetherianartificer.townstead.devlink.BenchLinkItem.onInteract(e.getEntity(), e.getTarget(), e.getHand())) {
+                e.setCanceled(true);
+                e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
+            }
+        });
         // A reborn player goes by the name of their current life in chat, death messages and nameplates.
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.NameFormat e) -> {
             String name = com.aetherianartificer.townstead.rebirth.Rebirth.characterName(e.getEntity());
@@ -1444,6 +1478,7 @@ public class Townstead {
                             com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload.snapshot());
                     TownsteadNetwork.sendToPlayer(sp, com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload.snapshot()); TownsteadNetwork.sendToPlayer(sp, com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload.snapshot());
                 });
+                com.aetherianartificer.townstead.devlink.BenchLink.onReload();
             }
         });
         ShiftTemplateRegistry.setChangeListener(TownsteadNetwork::broadcastShiftTemplateSync);
@@ -1550,6 +1585,9 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.GeneGrantCommand.register(e.getDispatcher()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.BenchLinkCommand.register(e.getDispatcher()));
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.RootCommand.register(e.getDispatcher()));
@@ -3373,7 +3411,19 @@ public class Townstead {
 
     //? if neoforge {
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar(MOD_ID).versioned("13");
+        var registrar = event.registrar(MOD_ID).versioned("14");
+        registrar.playToServer(
+                com.aetherianartificer.townstead.devlink.BenchLinkActionC2SPayload.TYPE,
+                com.aetherianartificer.townstead.devlink.BenchLinkActionC2SPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof ServerPlayer sp) {
+                        com.aetherianartificer.townstead.devlink.BenchLinkStatus.handleAction(sp, payload);
+                    }
+                }));
+        registrar.playToClient(
+                com.aetherianartificer.townstead.devlink.BenchLinkStatusS2CPayload.TYPE,
+                com.aetherianartificer.townstead.devlink.BenchLinkStatusS2CPayload.STREAM_CODEC,
+                this::handleBenchLinkStatus);
         registrar.playToServer(
                 com.aetherianartificer.townstead.story.net.StoryC2SPayload.TYPE,
                 com.aetherianartificer.townstead.story.net.StoryC2SPayload.STREAM_CODEC,
@@ -4105,6 +4155,13 @@ public class Townstead {
                 PacketDistributor.sendToPlayersTrackingEntity(result.villager(), result.lifeSync());
             }
         });
+    }
+
+    private void handleBenchLinkStatus(
+            com.aetherianartificer.townstead.devlink.BenchLinkStatusS2CPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> com.aetherianartificer.townstead.client.devlink.BenchLinkClient.onStatus(payload));
     }
 
     private void handleRootSet(

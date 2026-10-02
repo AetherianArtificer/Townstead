@@ -86,7 +86,7 @@ import java.util.function.Function;
 public final class TownsteadNetwork {
     private TownsteadNetwork() {}
 
-    private static final String PROTOCOL_VERSION = "17";
+    private static final String PROTOCOL_VERSION = "18";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(Townstead.MOD_ID, "main"),
             () -> PROTOCOL_VERSION,
@@ -417,6 +417,16 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.calendar.CalendarStampActionC2SPayload::read,
                 TownsteadNetwork::handleStampAction);
 
+        // Bench Link
+        registerC2S(com.aetherianartificer.townstead.devlink.BenchLinkActionC2SPayload.class,
+                com.aetherianartificer.townstead.devlink.BenchLinkActionC2SPayload::write,
+                com.aetherianartificer.townstead.devlink.BenchLinkActionC2SPayload::read,
+                (payload, sp) -> com.aetherianartificer.townstead.devlink.BenchLinkStatus.handleAction(sp, payload));
+        registerS2C(com.aetherianartificer.townstead.devlink.BenchLinkStatusS2CPayload.class,
+                com.aetherianartificer.townstead.devlink.BenchLinkStatusS2CPayload::write,
+                com.aetherianartificer.townstead.devlink.BenchLinkStatusS2CPayload::read,
+                TownsteadNetwork::handleBenchLinkStatus);
+
         // Roots
         registerC2S(com.aetherianartificer.townstead.root.RootSetC2SPayload.class,
                 com.aetherianartificer.townstead.root.RootSetC2SPayload::write,
@@ -654,6 +664,10 @@ public final class TownsteadNetwork {
     private static void handleKeyPress(
             com.aetherianartificer.townstead.root.trigger.KeyPressC2SPayload payload, ServerPlayer sp) {
         com.aetherianartificer.townstead.root.trigger.GeneTriggers.firePress(sp, payload.key());
+    }
+
+    private static void handleBenchLinkStatus(com.aetherianartificer.townstead.devlink.BenchLinkStatusS2CPayload payload) {
+        com.aetherianartificer.townstead.client.devlink.BenchLinkClient.onStatus(payload);
     }
 
     private static void handleRootSync(com.aetherianartificer.townstead.root.RootSyncS2CPayload payload) {

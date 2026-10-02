@@ -92,16 +92,16 @@ final class Dials {
     }
 
     static List<Style> styles() {
-        // Dials: needs, work, peoples, social, records, time, rebirth, quests. Full is Townstead's
+        // Dials: needs, work, peoples, social, records, time, rebirth, quests, personas. Full is Townstead's
         // defaults for every dial; the others leave time and rebirth as they are, since those are a
         // matter of taste. Everything Off sets them all.
         return List.of(
-                new Style("full", new int[]{2, 2, 2, 1, 1, 2, 1, 1}),
-                new Style("cozy", new int[]{1, 2, 2, 1, 1, ANY, ANY, 1}),
-                new Style("hard", new int[]{3, 2, 2, 1, 1, ANY, ANY, 1}),
-                new Style("storybook", new int[]{0, 0, 2, 1, 1, ANY, ANY, 1}),
-                new Style("light", new int[]{0, 0, 1, 1, 0, ANY, ANY, 1}),
-                new Style("off", new int[]{0, 0, 0, 0, 0, 0, 0, 0}));
+                new Style("full", new int[]{2, 2, 2, 1, 1, 2, 1, 1, 1}),
+                new Style("cozy", new int[]{1, 2, 2, 1, 1, ANY, ANY, 1, 1}),
+                new Style("hard", new int[]{3, 2, 2, 1, 1, ANY, ANY, 1, 1}),
+                new Style("storybook", new int[]{0, 0, 2, 1, 1, ANY, ANY, 1, 1}),
+                new Style("light", new int[]{0, 0, 1, 1, 0, ANY, ANY, 1, 1}),
+                new Style("off", new int[]{0, 0, 0, 0, 0, 0, 0, 0, 0}));
     }
 
     /** The style whose dial levels match the world now, or -1 for Custom. */
@@ -110,7 +110,7 @@ final class Dials {
         for (int s = 0; s < styles.size(); s++) {
             boolean match = true;
             for (int d = 0; d < all().size(); d++) {
-                int wanted = styles.get(s).levels()[d];
+                int wanted = level(styles.get(s), d);
                 if (wanted != ANY && all().get(d).level(model) != wanted) {
                     match = false;
                     break;
@@ -124,8 +124,13 @@ final class Dials {
     static void applyStyle(SwitchboardModel model, Style style) {
         for (int d = 0; d < all().size(); d++) {
             Dial dial = all().get(d);
-            if (style.levels()[d] != ANY && !dial.locked(model)) dial.set(model, style.levels()[d]);
+            if (level(style, d) != ANY && !dial.locked(model)) dial.set(model, level(style, d));
         }
+    }
+
+    /** The style's level for dial {@code d}, or ANY when the style does not name it. */
+    private static int level(Style style, int d) {
+        return d < style.levels().length ? style.levels()[d] : ANY;
     }
 
     private static List<Dial> build() {
