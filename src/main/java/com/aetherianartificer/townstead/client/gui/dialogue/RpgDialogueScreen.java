@@ -130,9 +130,9 @@ public class RpgDialogueScreen extends Screen {
         switch (state) {
             case TYPEWRITER_PLAYING -> {
                 if (dialogueBox.getTypewriter().isComplete()) {
-                    if (storyActive && (dialogAnswers == null || dialogAnswers.isEmpty())) {
+                    if (storyActive && !hasChoices()) {
                         state = DialogueState.STORY_NEXT;
-                    } else if (dialogAnswers != null && !dialogAnswers.isEmpty()) {
+                    } else if (hasChoices()) {
                         // Choices are ready — show them alongside the current text
                         state = DialogueState.CHOICES_VISIBLE;
                         choicePanel.setVisible(true);
@@ -489,6 +489,16 @@ public class RpgDialogueScreen extends Screen {
     /** Whether the box is showing MCA's greeting, so a late Persona greeting can take its place. */
     private boolean showingMainGreeting;
 
+    /**
+     * Whether there is anything to choose. The main menu counts its own entries too (the story,
+     * careers): a Persona can hide every MCA answer and still have their story to offer.
+     */
+    private boolean hasChoices() {
+        if (dialogAnswers == null) return false;
+        if (!dialogAnswers.isEmpty()) return true;
+        return DialogueMenuOrganizer.isMainQuestion(dialogQuestionId) && !choicePanel.isEmpty();
+    }
+
     private List<String> forSpeaker(String questionId, List<String> answers) {
         if (!persona || answers == null || !DialogueMenuOrganizer.isMainQuestion(questionId)) return answers;
         return answers.stream().filter(a -> !personaHidden.contains(a)).toList();
@@ -505,7 +515,7 @@ public class RpgDialogueScreen extends Screen {
 
         // If typewriter is already done, show choices immediately
         if (dialogueBox.getTypewriter().isComplete() && dialogueBox.getTypewriter().hasText()) {
-            if (!answers.isEmpty()) {
+            if (hasChoices()) {
                 state = DialogueState.CHOICES_VISIBLE;
                 choicePanel.setVisible(true);
             }
@@ -747,6 +757,11 @@ public class RpgDialogueScreen extends Screen {
                     boolean visible = choicePanel.isVisible();
                     choicePanel.setChoices(dialogQuestionId, dialogAnswers, font);
                     choicePanel.layout(width, height, dialogueBox.getY());
+                    // The greeting finished with nothing to pick; now the story entry is here.
+                    if (state == DialogueState.ENDING && dialogueBox.getTypewriter().isComplete() && hasChoices()) {
+                        state = DialogueState.CHOICES_VISIBLE;
+                        visible = true;
+                    }
                     choicePanel.setVisible(visible);
                 }
             }
@@ -773,7 +788,7 @@ public class RpgDialogueScreen extends Screen {
         if (last) restoreMainMenu();
         awaitingResponseTimer = 0;
         if (payload.text().isEmpty()) {
-            state = dialogAnswers != null && !dialogAnswers.isEmpty() ? DialogueState.CHOICES_VISIBLE : DialogueState.ENDING;
+            state = hasChoices() ? DialogueState.CHOICES_VISIBLE : DialogueState.ENDING;
             choicePanel.setVisible(state == DialogueState.CHOICES_VISIBLE);
             return;
         }
@@ -798,7 +813,7 @@ public class RpgDialogueScreen extends Screen {
         storyActive = false;
         setSpeaker(villager.asEntity());
         restoreMainMenu();
-        if (dialogueBox.getTypewriter().isComplete() && dialogAnswers != null && !dialogAnswers.isEmpty()) {
+        if (dialogueBox.getTypewriter().isComplete() && hasChoices()) {
             state = DialogueState.CHOICES_VISIBLE;
             choicePanel.setVisible(true);
         } else if (dialogueBox.getTypewriter().isComplete()) {

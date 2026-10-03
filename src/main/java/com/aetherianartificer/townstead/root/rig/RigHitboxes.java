@@ -43,11 +43,12 @@ public final class RigHitboxes {
         if (box == null && !(entity instanceof VillagerEntityMCA)) return null;
         float width = 1, height = 1, growth = 1;
         if (entity instanceof VillagerEntityMCA villager) {
-            width = BodySize.factor(villager.getRawHorizontalScaleFactor());
             //? if neoforge {
-            height = BodySize.factor(villager.getRawVerticalScaleFactor());
+            width = BodySize.factor(villager.getVisualHorizontalScaleFactor());
+            height = BodySize.factor(villager.getVisualVerticalScaleFactor());
             //?} else {
-            /*height = BodySize.factor(villager.getRawVerticalScaleFactor());
+            /*width = BodySize.factor(villager.getRawHorizontalScaleFactor());
+            height = BodySize.factor(villager.getRawVerticalScaleFactor());
             *///?}
             growth = BodySize.factor(LifeStageScale.forVillager(entity));
         }

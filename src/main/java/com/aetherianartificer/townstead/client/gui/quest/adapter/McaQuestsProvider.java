@@ -47,6 +47,23 @@ public final class McaQuestsProvider implements QuestProvider {
     }
 
     @Override
+    public Map<java.util.UUID, Byte> giverMarks() {
+        Class<?> data = ReflectiveAccess.classOrNull(CLIENT_DATA);
+        if (data == null || !isAvailable()) return Map.of();
+        Map<java.util.UUID, Byte> marks = new HashMap<>();
+        try {
+            for (Object entry : ReflectiveAccess.list(ReflectiveAccess.callStatic(data, "active"))) {
+                // Only hand-ins: nearly everyone in an MCA village has some quest going.
+                if (!ReflectiveAccess.bool(ReflectiveAccess.callOrNull(entry, "ready"))) continue;
+                if (ReflectiveAccess.callOrNull(entry, "villagerUuid") instanceof java.util.UUID giver) marks.put(giver, (byte) 3);
+            }
+        } catch (Throwable ignored) {
+            return Map.of();
+        }
+        return marks;
+    }
+
+    @Override
     public List<QuestEntry> loadQuests() throws Exception {
         activeKeys.clear();
         List<QuestEntry> result = new ArrayList<>();

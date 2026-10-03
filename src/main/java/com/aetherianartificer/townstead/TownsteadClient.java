@@ -198,6 +198,7 @@ public final class TownsteadClient {
         com.aetherianartificer.townstead.replace.WildNameS2CPayload.clear();
         com.aetherianartificer.townstead.client.render.WildCostumeRender.clear();
         clearClientStore("com.aetherianartificer.townstead.hunger.HungerClientStore");
+        clearClientStore("com.aetherianartificer.townstead.client.story.StoryCallMarks");
         clearClientStore("com.aetherianartificer.townstead.client.rebirth.CharacterNameClient");
         clearClientStore("com.aetherianartificer.townstead.client.rebirth.RebirthDestinyClient");
         clearClientStore("com.aetherianartificer.townstead.hunger.FishermanHookLinkStore");
@@ -257,11 +258,15 @@ public final class TownsteadClient {
     private static void onRenderLivingPre(net.neoforged.neoforge.client.event.RenderLivingEvent.Pre<?, ?> event) {
         com.aetherianartificer.townstead.client.expression.ExpressionCueRenderer.render(
                 event.getEntity(), event.getPoseStack(), event.getMultiBufferSource(), event.getPackedLight(), event.getPartialTick());
+        com.aetherianartificer.townstead.client.story.StoryCallMarks.render(
+                event.getEntity(), event.getPoseStack(), event.getMultiBufferSource(), event.getPartialTick());
     }
     //?} else if forge {
     /*private static void onRenderLivingPre(net.minecraftforge.client.event.RenderLivingEvent.Pre<?, ?> event) {
         com.aetherianartificer.townstead.client.expression.ExpressionCueRenderer.render(
                 event.getEntity(), event.getPoseStack(), event.getMultiBufferSource(), event.getPackedLight(), event.getPartialTick());
+        com.aetherianartificer.townstead.client.story.StoryCallMarks.render(
+                event.getEntity(), event.getPoseStack(), event.getMultiBufferSource(), event.getPartialTick());
     }
     *///?}
 

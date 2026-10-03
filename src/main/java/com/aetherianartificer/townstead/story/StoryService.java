@@ -202,6 +202,25 @@ public final class StoryService {
         return entry == null || entry.villager.equals(villager.getUUID()) ? story : null;
     }
 
+    /**
+     * The story's call-out for this player and its scene, or null when it has none. Opens the story
+     * outside any conversation, so it is asked only now and then (see {@link StoryCalls}).
+     */
+    static @Nullable String[] calling(ServerPlayer player, VillagerEntityMCA villager, StoryDefinition story) {
+        if (!story.compiledJson().contains("calling") || SESSIONS.get(player.getUUID()) != null) return null;
+        PlayerStories.Entry entry = stories(player).get(PlayerStories.key(story, villager.getUUID()));
+        if (entry != null && !entry.villager.equals(villager.getUUID())) return null;
+        PlayerStories.Entry forCall = entry != null ? entry
+                : new PlayerStories.Entry(story.id(), villager.getUUID(), StorySession.displayName(villager));
+        try {
+            refresh(player.server, player.getUUID(), forCall, story, villager);
+            return StorySession.open(player, villager, story, forCall).calling();
+        } catch (Exception e) {
+            com.aetherianartificer.townstead.Townstead.LOGGER.warn("Story {} calling failed: {}", story.id(), e.getMessage());
+            return null;
+        }
+    }
+
     /** The menu label and the greeting line a story offers when the screen opens. */
     private record OfferTexts(String label, String greeting) {}
 
@@ -322,6 +341,7 @@ public final class StoryService {
     }
 
     private static void closeSession(ServerPlayer player) {
+        StoryCalls.forget(player.getUUID());
         StorySession session = SESSIONS.remove(player.getUUID());
         if (session == null) return;
         session.interrupt();
@@ -345,6 +365,7 @@ public final class StoryService {
     }
 
     static void sessionEnded(StorySession session) {
+        StoryCalls.forget(session.player.getUUID());
         if (SESSIONS.get(session.player.getUUID()) == session) SESSIONS.remove(session.player.getUUID());
         payOut(session.player);
         save(session.player);
@@ -385,6 +406,7 @@ public final class StoryService {
     public static void tick(MinecraftServer server) {
         StoryService.server = server;
         for (StorySession session : SESSIONS.values()) session.holdCast();
+        StoryCalls.tick(server);
         StoryOverheard.tick(server, ticks);
         if (++ticks % 20 == 0 && !DIRTY.isEmpty()) {
             for (UUID id : new ArrayList<>(DIRTY)) {

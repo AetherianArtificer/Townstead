@@ -739,14 +739,10 @@
   "conditions": {
     "vampire_near": {
       "type": "pheno:entity_in_radius",
-      "radius": 24,
+      "radius": 16,
       "condition": {
         "type": "pheno:or",
         "conditions": [
-          {
-            "type": "pheno:state",
-            "state": "townstead_state:vampire"
-          },
           {
             "type": "pheno:entity_type",
             "entity_type": "vampirism:vampire"

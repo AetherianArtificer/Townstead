@@ -392,7 +392,7 @@ public abstract class VillagerEditorRootMixin extends Screen {
 
         if (com.aetherianartificer.townstead.client.gui.aspect.AspectPage.PAGE.equals(page)) {
             com.aetherianartificer.townstead.client.gui.aspect.AspectPage.build(townstead$target,
-                    this.width / 2, this.height / 2 - 80, 175, this::addRenderableWidget, () -> {
+                    this.width / 2, this.height / 2 - 80, 175, button -> addRenderableWidget(button), () -> {
                         if (Minecraft.getInstance().screen == (Object) this
                                 && com.aetherianartificer.townstead.client.gui.aspect.AspectPage.PAGE.equals(this.page)) {
                             setPage(com.aetherianartificer.townstead.client.gui.aspect.AspectPage.PAGE);
@@ -696,7 +696,7 @@ public abstract class VillagerEditorRootMixin extends Screen {
         // voice), then constrain the genes the origin defines to its ranges. So the preview is
         // a representative member, not the opening skin re-tinted in place. A race can still pin
         // any of these by declaring a body-metric gene for it (apply runs after, so it wins).
-        villager.getGenetics().randomize();
+        com.aetherianartificer.townstead.compat.mca.McaGeneticsCompat.randomize(villager);
         RootGenes.apply(villager, ranges, villager.getRandom());
         RootClientStore.setHair(villager.getId(), entry.hair(), entry.hairColorRanges(),
                 entry.hairColors(), entry.hairGradients());
@@ -981,7 +981,7 @@ public abstract class VillagerEditorRootMixin extends Screen {
                     || "gui.villager_editor.hair_genetic".equals(key)) remove.add(widget);
             if ("gui.villager_editor.randHair".equals(key)) randomize = widget;
         }
-        remove.forEach(this::removeWidget);
+        for (net.minecraft.client.gui.components.AbstractWidget widget : remove) removeWidget(widget);
         if (geneticPicker != null) townstead$replaceHairPicker(geneticPicker, settings);
         if (randomize != null) {
             int x = randomize.getX();

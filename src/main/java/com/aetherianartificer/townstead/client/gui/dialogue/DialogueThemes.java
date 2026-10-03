@@ -24,6 +24,8 @@ import java.util.Map;
  */
 public final class DialogueThemes {
     public static final ResourceLocation CLASSIC = ResourceLocation.tryParse("townstead:classic");
+    /** Drawn to sit inside the Stoneborn resource pack; "auto" picks it when that pack is on. */
+    private static final String STONEBORN = "townstead:stoneborn";
     private static final String DIR = "dialogue_theme";
 
     private static volatile Map<ResourceLocation, JsonObject> themes = Map.of();
@@ -35,6 +37,7 @@ public final class DialogueThemes {
     private DialogueThemes() {}
 
     public static void reload(ResourceManager manager) {
+        com.aetherianartificer.townstead.client.compat.StonebornPack.refresh();
         Map<ResourceLocation, JsonObject> loaded = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, Resource> entry
                 : manager.listResources(DIR, path -> path.getPath().endsWith(".json")).entrySet()) {
@@ -81,6 +84,9 @@ public final class DialogueThemes {
     /** The look for a speaker whose own theme is {@code speakerTheme} (empty or null for none). */
     public static DialogueTheme resolve(@Nullable String speakerTheme) {
         String chosen = TownsteadConfig.dialogueTheme();
+        if (chosen.isBlank() || chosen.equals("auto")) {
+            chosen = com.aetherianartificer.townstead.client.compat.StonebornPack.active() ? STONEBORN : CLASSIC.toString();
+        }
         String speaker = speakerTheme == null || !TownsteadConfig.characterDialogueThemes() ? "" : speakerTheme;
         String key = chosen + "|" + speaker;
         synchronized (RESOLVED) {

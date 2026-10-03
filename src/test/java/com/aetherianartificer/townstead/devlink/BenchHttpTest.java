@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -42,7 +41,7 @@ class BenchHttpTest {
     private record Reply(int status, Map<String, String> headers, String body) {}
 
     private Reply exchange(String method, String target, String host, String... headers) throws Exception {
-        try (Socket socket = new Socket(InetAddress.getLoopbackAddress(), http.port())) {
+        try (Socket socket = new Socket("127.0.0.1", http.port())) {
             StringBuilder request = new StringBuilder(method + " " + target + " HTTP/1.1\r\n");
             if (host != null) request.append("Host: ").append(host).append("\r\n");
             for (String header : headers) request.append(header).append("\r\n");
@@ -69,6 +68,12 @@ class BenchHttpTest {
 
     private String host() {
         return "127.0.0.1:" + http.port();
+    }
+
+    @Test
+    void listensOnIpv4LoopbackEvenWhenTheJvmPrefersIpv6() {
+        // Blockbench connects to 127.0.0.1; a ::1 socket refuses it (seen with CurseForge launches).
+        assertEquals("/127.0.0.1", http.boundAddress().substring(http.boundAddress().indexOf('/'), http.boundAddress().lastIndexOf(':')));
     }
 
     @Test
@@ -111,7 +116,7 @@ class BenchHttpTest {
 
     @Test
     void streamsBroadcastEvents() throws Exception {
-        try (Socket socket = new Socket(InetAddress.getLoopbackAddress(), http.port())) {
+        try (Socket socket = new Socket("127.0.0.1", http.port())) {
             socket.setSoTimeout(3000);
             socket.getOutputStream().write(("GET /events?token=" + TOKEN + " HTTP/1.1\r\nHost: " + host() + "\r\n\r\n")
                     .getBytes(StandardCharsets.UTF_8));

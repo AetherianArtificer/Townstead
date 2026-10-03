@@ -82,6 +82,7 @@
     "DialogueSelectAnswerGuardMixin",
     "accessor.EntityCommandHandlerAccessor",
     "accessor.VillageBuildingMapsAccessor",
+    "accessor.GeneticsGenomesAccessor",
     "MessengerVoiceMixin",
     "VillagerHungerMixin",
     "VillageOptionalBuildingMixin",

@@ -72,7 +72,7 @@ public final class JepMcaVillagerPreview {
      * JEP's preview exists solely in a ClientLevel and must not manufacture world identity.
      */
     private static void initializePresentation(VillagerEntityMCA villager) {
-        villager.getGenetics().randomize();
+        com.aetherianartificer.townstead.compat.mca.McaGeneticsCompat.randomize(villager);
         villager.getTraits().randomize();
         villager.setAgeState(AgeState.byCurrentAge(villager.getAge()));
         villager.initializeSkin(false);

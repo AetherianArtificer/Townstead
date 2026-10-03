@@ -31,7 +31,7 @@ public record McaAnimationParameters(
                 limbAngle /= 3.0F;
             }
             //? if neoforge {
-            limbAngle /= 0.2F + villager.getRawVerticalScaleFactor();
+            limbAngle /= 0.2F + villager.getVisualVerticalScaleFactor();
             //?} else {
             /*limbAngle /= 1.2F;
             *///?}

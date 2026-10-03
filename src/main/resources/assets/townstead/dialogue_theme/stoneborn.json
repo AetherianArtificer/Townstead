@@ -1,0 +1,35 @@
+{
+  "box": {
+    "texture": "townstead:textures/gui/dialogue/stoneborn/frame.png",
+    "texture_size": [
+      32,
+      32
+    ],
+    "slice": 8
+  },
+  "name_tab": {
+    "texture": "townstead:textures/gui/dialogue/stoneborn/tab.png",
+    "texture_size": [
+      16,
+      16
+    ],
+    "slice": 4,
+    "name_color": "#E0B230"
+  },
+  "text_color": "#E8DCC2",
+  "indicator_color": "#E0B230",
+  "choices": {
+    "texture": "townstead:textures/gui/dialogue/stoneborn/frame.png",
+    "texture_size": [
+      32,
+      32
+    ],
+    "slice": 8,
+    "text_color": "#CBBFA6",
+    "hover_color": "#E0B230",
+    "selected_background": "#30E0B230",
+    "back_color": "#9A8F7C",
+    "number_color": "#8F846F"
+  },
+  "type_sound": "minecraft:block.stone_button.click_on"
+}

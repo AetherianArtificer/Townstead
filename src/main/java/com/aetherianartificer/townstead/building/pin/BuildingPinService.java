@@ -7,9 +7,6 @@ import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
 import net.conczin.mca.resources.BuildingTypes;
 import net.conczin.mca.resources.data.BuildingType;
 import net.conczin.mca.server.world.data.Building;
-//? if neoforge {
-import net.conczin.mca.server.world.data.BuildingFloorRegion;
-//?}
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -266,20 +263,17 @@ public final class BuildingPinService {
         int minZ = Math.min(a.getZ(), b.getZ());
         int maxZ = Math.max(a.getZ(), b.getZ());
         //? if neoforge {
-        List<BuildingFloorRegion> footprint = building.getFloorRegion().map(List::of).orElse(List.of());
+        java.util.Set<Long> footprint = new java.util.HashSet<>();
+        for (net.minecraft.core.BlockPos cell : building.getFloorCells()) {
+            footprint.add(net.minecraft.world.level.ChunkPos.asLong(cell.getX(), cell.getZ()));
+        }
         //?}
         net.minecraft.core.BlockPos.MutableBlockPos cursor = new net.minecraft.core.BlockPos.MutableBlockPos();
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
                 //? if neoforge {
-                boolean insideFootprint = footprint.isEmpty();
-                for (BuildingFloorRegion region : footprint) {
-                    if (region.containsHorizontally(x, z)) {
-                        insideFootprint = true;
-                        break;
-                    }
-                }
-                if (!insideFootprint) continue;
+                if (!footprint.isEmpty()
+                        && !footprint.contains(net.minecraft.world.level.ChunkPos.asLong(x, z))) continue;
                 //?}
                 for (int y = minY; y <= maxY; y++) {
                     cursor.set(x, y, z);

@@ -109,6 +109,8 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.client.gui.dialogue.DialogueTextSpeed> DIALOGUE_TEXT_SPEED;
     public static final ModConfigSpec.ConfigValue<String> DIALOGUE_THEME;
     public static final ModConfigSpec.BooleanValue CHARACTER_DIALOGUE_THEMES;
+    public static final ModConfigSpec.BooleanValue SHOW_STORY_MARKS;
+    public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.client.story.StoryMarkStyle> STORY_MARK_STYLE;
     public static final ModConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.temperature.TemperatureData.Unit> TEMPERATURE_UNIT;
     public static final ModConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
@@ -227,6 +229,8 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.client.gui.dialogue.DialogueTextSpeed> DIALOGUE_TEXT_SPEED;
     public static final ForgeConfigSpec.ConfigValue<String> DIALOGUE_THEME;
     public static final ForgeConfigSpec.BooleanValue CHARACTER_DIALOGUE_THEMES;
+    public static final ForgeConfigSpec.BooleanValue SHOW_STORY_MARKS;
+    public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.client.story.StoryMarkStyle> STORY_MARK_STYLE;
     public static final ForgeConfigSpec.EnumValue<ResourceHudAnchor> RESOURCE_HUD_ANCHOR;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.temperature.TemperatureData.Unit> TEMPERATURE_UNIT;
     public static final ForgeConfigSpec.EnumValue<ResourceHudVisibility> RESOURCE_HUD_VISIBILITY;
@@ -840,12 +844,20 @@ public final class TownsteadConfig {
                 .defineEnum("dialogueTextSpeed", com.aetherianartificer.townstead.client.gui.dialogue.DialogueTextSpeed.NORMAL);
         DIALOGUE_THEME = clientBuilder
                 .translation("townstead.configuration.dialogue.theme")
-                .comment("The dialogue theme to use, by id. Resource packs add themes under assets/<namespace>/dialogue_theme/, data packs under data/<namespace>/dialogue_theme/.")
-                .define("dialogueTheme", "townstead:classic");
+                .comment("The dialogue theme to use, by id, or \"auto\" (townstead:stoneborn when the Stoneborn resource pack is on, else townstead:classic). Resource packs add themes under assets/<namespace>/dialogue_theme/, data packs under data/<namespace>/dialogue_theme/.")
+                .define("dialogueTheme", "auto");
         CHARACTER_DIALOGUE_THEMES = clientBuilder
                 .translation("townstead.configuration.dialogue.characterThemes")
                 .comment("Let characters with their own dialogue theme restyle the dialogue screen while they speak.")
                 .define("characterDialogueThemes", true);
+        SHOW_STORY_MARKS = clientBuilder
+                .translation("townstead.configuration.dialogue.storyMarks")
+                .comment("Show a speech mark over villagers who have something for you: a scene, a quest to hand back, or one in progress.")
+                .define("showStoryMarks", true);
+        STORY_MARK_STYLE = clientBuilder
+                .translation("townstead.configuration.dialogue.storyMarkStyle")
+                .comment("How story marks look: AUTO (Stoneborn when that resource pack is on, else Bright), BRIGHT (a white bubble), PARCHMENT (warm paper and ink), EMBER (a dark bubble with a glowing mark) or STONEBORN (a stone plaque).")
+                .defineEnum("storyMarkStyle", com.aetherianartificer.townstead.client.story.StoryMarkStyle.AUTO);
         SHOW_VILLAGER_AGE = clientBuilder
                 .translation("townstead.configuration.dialogue.showVillagerAge")
                 .comment("Show a villager's age next to their birthday when you hover their name on the interact screen.")
@@ -1026,6 +1038,22 @@ public final class TownsteadConfig {
             return DIALOGUE_THEME == null ? "townstead:classic" : DIALOGUE_THEME.get();
         } catch (Exception e) {
             return "townstead:classic";
+        }
+    }
+
+    public static com.aetherianartificer.townstead.client.story.StoryMarkStyle storyMarkStyle() {
+        try {
+            return STORY_MARK_STYLE == null ? com.aetherianartificer.townstead.client.story.StoryMarkStyle.BRIGHT : STORY_MARK_STYLE.get();
+        } catch (Exception e) {
+            return com.aetherianartificer.townstead.client.story.StoryMarkStyle.BRIGHT;
+        }
+    }
+
+    public static boolean showStoryMarks() {
+        try {
+            return SHOW_STORY_MARKS == null || SHOW_STORY_MARKS.get();
+        } catch (Exception e) {
+            return true;
         }
     }
 

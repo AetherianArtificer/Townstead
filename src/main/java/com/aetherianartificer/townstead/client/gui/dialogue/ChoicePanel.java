@@ -27,9 +27,7 @@ public class ChoicePanel {
     /** Right edge of the badge a mod paints for itself, measured from the panel edge. */
     private static final int GUEST_BADGE_END = 18;
     private static final int GAP_ABOVE_DIALOGUE = 8;
-    /** The speech mark on a story choice that moves the story on: an 8x8 sprite, with room left for it in the text. */
-    private static final net.minecraft.resources.ResourceLocation ADVANCE_MARK =
-            net.minecraft.resources.ResourceLocation.tryParse("townstead:textures/gui/dialogue/advance.png");
+    /** Room in a story choice's text for its "!" mark, drawn over it when the choice moves the story on. */
     private static final String ADVANCE_ROOM = "   ";
     /** Story rows that carry the speech mark. */
     private final java.util.Set<Integer> advanceRows = new java.util.HashSet<>();
@@ -241,7 +239,8 @@ public class ChoicePanel {
                 List<FormattedCharSequence> lines = wrappedEntries.get(i);
                 if (advanceRows.contains(i) && STORY_QUESTION.equals(questionId)) {
                     graphics.setColor(1f, 1f, 1f, a);
-                    graphics.blit(ADVANCE_MARK, x + PADDING + gutterWidth, entryY, 0f, 0f, 8, 8, 8, 8);
+                    graphics.blit(com.aetherianartificer.townstead.client.story.StoryCallMarks.sprite((byte) 2),
+                            x + PADDING + gutterWidth, entryY - 1, 10, 10, 0f, 0f, 16, 16, 16, 16);
                     graphics.setColor(1f, 1f, 1f, 1f);
                 }
                 int lineY = entryY;

@@ -116,6 +116,22 @@ VAR interrupted = false
 }
 ~ return "Got a moment?"
 
+// What they call the player over with when a scene is waiting ("" for nothing): the game shows a
+// mark over their head and, once you come close, they wave and say it. A scene is waiting when
+// menu() has something other than the everyday label; walks and trips in progress never call.
+=== function calling() ===
+{
+- menu() == "Got a moment?" or interrupted:
+    ~ return ""
+- walking or watching or grave_walking or court_walking or shepherd_walking:
+    ~ return ""
+- met == 0:
+    ~ return "You. Hold up a moment."
+- ending == "B":
+    ~ return "There you are. Come here."
+}
+~ return "Have you got a minute? I want a word."
+
 === greet ===
 # label: Talk
 {

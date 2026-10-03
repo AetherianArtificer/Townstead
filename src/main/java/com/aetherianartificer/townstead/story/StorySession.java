@@ -257,6 +257,25 @@ final class StorySession {
      * The menu entry the story's own {@code menu()} function gives right now, or null when it has
      * none or gives nothing. Reads the story without moving it on.
      */
+    /**
+     * What the story calls the player over with, and which scene it is for: {@code calling()} gives
+     * the line ({@code ""} for nothing); the scene is that line with the {@code menu()} label. Null when the story has no
+     * {@code calling()}.
+     */
+    @Nullable String[] calling() {
+        try {
+            if (!story.hasFunction("calling")) return null;
+            Object line = story.evaluateFunction("calling");
+            String text = line == null ? "" : line.toString().trim();
+            if (text.isEmpty()) return new String[]{"", ""};
+            String scene = menuLabel();
+            return new String[]{text, (scene == null ? "" : scene) + "|" + text};
+        } catch (Exception e) {
+            LOGGER.warn("Story {}: calling() failed: {}", definition.id(), e.getMessage());
+            return null;
+        }
+    }
+
     /** The story's own {@code greeting()} line, said in place of MCA's greeting; null when it has none. */
     @Nullable String greetingLine() {
         try {

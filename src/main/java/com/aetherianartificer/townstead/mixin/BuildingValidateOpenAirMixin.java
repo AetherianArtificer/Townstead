@@ -37,7 +37,9 @@ public abstract class BuildingValidateOpenAirMixin {
         // positions whose world block no longer matches). Not called directly
         // because not every MCA build exposes it on Building; this mixin only
         // applies where its validateBuilding target exists (see TownsteadMixinPlugin).
-        self.setLastScan(world.getGameTime());
+        //? if forge {
+        /*self.setLastScan(world.getGameTime());
+        *///?}
         for (var positions : self.getBlocks().entrySet()) {
             positions.getValue().removeIf(pos -> !net.minecraft.core.registries.BuiltInRegistries.BLOCK
                     .getKey(world.getBlockState(pos).getBlock()).equals(positions.getKey()));

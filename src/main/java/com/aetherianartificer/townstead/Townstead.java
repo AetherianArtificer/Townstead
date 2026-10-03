@@ -3944,6 +3944,12 @@ public class Townstead {
                 })
         );
         registrar.playToClient(
+                com.aetherianartificer.townstead.story.net.StoryCallS2CPayload.TYPE,
+                com.aetherianartificer.townstead.story.net.StoryCallS2CPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.client.story.StoryCallMarks.set(payload.entityId(), payload.state()))
+        );
+        registrar.playToClient(
                 com.aetherianartificer.townstead.aspect.AspectS2CPayload.TYPE,
                 com.aetherianartificer.townstead.aspect.AspectS2CPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->

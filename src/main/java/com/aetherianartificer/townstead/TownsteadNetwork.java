@@ -448,6 +448,10 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.aspect.AspectC2SPayload::write,
                 com.aetherianartificer.townstead.aspect.AspectC2SPayload::read,
                 (payload, sp) -> com.aetherianartificer.townstead.aspect.AspectC2SPayload.handle(sp, payload));
+        registerS2C(com.aetherianartificer.townstead.story.net.StoryCallS2CPayload.class,
+                com.aetherianartificer.townstead.story.net.StoryCallS2CPayload::write,
+                com.aetherianartificer.townstead.story.net.StoryCallS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.story.StoryCallMarks.set(payload.entityId(), payload.state()));
         registerS2C(com.aetherianartificer.townstead.aspect.AspectS2CPayload.class,
                 com.aetherianartificer.townstead.aspect.AspectS2CPayload::write,
                 com.aetherianartificer.townstead.aspect.AspectS2CPayload::read,

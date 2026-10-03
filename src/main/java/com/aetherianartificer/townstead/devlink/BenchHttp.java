@@ -78,6 +78,16 @@ final class BenchHttp {
     // Its own logger, not Townstead.LOGGER: the HTTP layer must not pull in the mod class.
     private static final Logger LOGGER = LoggerFactory.getLogger("townstead/bench-link");
 
+    private static final InetAddress LOOPBACK;
+
+    static {
+        try {
+            LOOPBACK = InetAddress.getByAddress("localhost", new byte[]{127, 0, 0, 1});
+        } catch (java.net.UnknownHostException impossible) {
+            throw new IllegalStateException(impossible);
+        }
+    }
+
     private static final int MAX_HEADER_BYTES = 16 * 1024;
     private static final int MAX_BODY_BYTES = 16 * 1024 * 1024;
     private static final int SOCKET_TIMEOUT_MS = 10_000;
@@ -93,7 +103,9 @@ final class BenchHttp {
     BenchHttp(String token, Handler handler) throws IOException {
         this.token = token;
         this.handler = handler;
-        this.socket = new ServerSocket(0, 50, InetAddress.getLoopbackAddress());
+        // Always IPv4 127.0.0.1: getLoopbackAddress() is ::1 when the launcher sets
+        // java.net.preferIPv6Addresses, and Blockbench connects to 127.0.0.1.
+        this.socket = new ServerSocket(0, 50, LOOPBACK);
         AtomicInteger count = new AtomicInteger();
         this.workers = new ThreadPoolExecutor(1, 16, 30, TimeUnit.SECONDS, new LinkedBlockingQueue<>(64), r -> {
             Thread thread = new Thread(r, "Townstead Bench Link worker " + count.incrementAndGet());
@@ -114,6 +126,11 @@ final class BenchHttp {
 
     int port() {
         return socket.getLocalPort();
+    }
+
+    /** The address actually bound, for the log (proves which loopback family it is on). */
+    String boundAddress() {
+        return String.valueOf(socket.getLocalSocketAddress());
     }
 
     /** Open event streams, one per connected Blockbench session. */

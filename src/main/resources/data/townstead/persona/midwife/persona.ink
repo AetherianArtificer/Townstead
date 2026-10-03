@@ -43,6 +43,20 @@ VAR forgiven = false
 }
 ~ return "Oh, it's you. Good."
 
+// What she calls the player over with when she has something for them ("" for nothing).
+=== function calling() ===
+{
+- asked_bring and not confessed and here("dhampir_founder"):
+    ~ return "Oh. You've brought them. Come here, both of you."
+- check("after_midpoint") and told_night and not asked_bring:
+    ~ return "Could I trouble you for a moment, dear?"
+- check("bread_delivered") and not told_birth:
+    ~ return "Did they eat it? Come and tell me."
+- told_birth and check("wounded_seen") and not told_night:
+    ~ return "Have you a minute? Come and sit with me."
+}
+~ return ""
+
 === greet ===
 # label: Talk
 {met == 0:

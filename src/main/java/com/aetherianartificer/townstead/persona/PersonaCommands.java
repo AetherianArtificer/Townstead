@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.persona;
 
+import java.util.List;
 import com.aetherianartificer.townstead.story.Stories;
 import com.aetherianartificer.townstead.story.StoryService;
 import com.aetherianartificer.townstead.village.TownRange;
@@ -41,6 +42,9 @@ public final class PersonaCommands {
                 .then(Commands.literal("reset")
                         .then(Commands.argument("id", ResourceLocationArgument.id()).suggests(IDS)
                                 .executes(c -> reset(c.getSource(), ResourceLocationArgument.getId(c, "id")))))
+                .then(Commands.literal("remove")
+                        .then(Commands.argument("id", ResourceLocationArgument.id()).suggests(IDS)
+                                .executes(c -> remove(c.getSource(), ResourceLocationArgument.getId(c, "id")))))
                 .then(Commands.literal("travel")
                         .then(Commands.argument("id", ResourceLocationArgument.id()).suggests(IDS)
                                 .executes(c -> travel(c.getSource(), ResourceLocationArgument.getId(c, "id")))))));
@@ -54,6 +58,12 @@ public final class PersonaCommands {
             String line = persona.id() + " (" + persona.name() + "): " + persona.arrives().size() + " arrival goals, "
                     + living + " in the world";
             source.sendSuccess(() -> Component.literal(line), false);
+            for (PersonaInstances.Instance instance : instances.of(persona.id())) {
+                VillagerEntityMCA villager = PersonaService.find(source.getServer(), instance.villager());
+                String where = villager == null ? "not loaded, village " + instance.village() + " in " + instance.dimension()
+                        : villager.getBlockX() + " " + villager.getBlockY() + " " + villager.getBlockZ();
+                source.sendSuccess(() -> Component.literal("  " + instance.name() + ": " + where), false);
+            }
         }
         for (var entry : Stories.problems().entrySet()) {
             if (!entry.getKey().getPath().startsWith("persona/")) continue;
@@ -99,6 +109,35 @@ public final class PersonaCommands {
         String what = removed ? "Reset " + id + " for you here." : "Nothing to reset for " + id + ".";
         source.sendSuccess(() -> Component.literal(what), false);
         return removed ? 1 : 0;
+    }
+
+    /**
+     * Removes every copy of a Persona from the world: each loaded one is taken out, each one in an
+     * unloaded place is unlinked and stays as an ordinary villager. Your bond and story with them
+     * are cleared, and so is what the world rolled for them.
+     */
+    private static int remove(CommandSourceStack source, ResourceLocation id) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        PersonaInstances instances = PersonaInstances.get(source.getServer());
+        int removed = 0, unloaded = 0;
+        for (PersonaInstances.Instance instance : List.copyOf(instances.of(id))) {
+            VillagerEntityMCA villager = PersonaService.find(source.getServer(), instance.villager());
+            instances.remove(instance.villager());
+            if (villager != null) {
+                villager.discard();
+                removed++;
+            } else {
+                unloaded++;
+            }
+        }
+        PersonaBonds.remove(player, id);
+        PersonaBonds.forgetGifts(player, id);
+        StoryService.reset(player, Personas.storyId(id));
+        instances.clearRolls(id);
+        int gone = removed, left = unloaded;
+        source.sendSuccess(() -> Component.literal("Removed " + gone + " of " + id
+                + (left > 0 ? "; " + left + " in unloaded places stay as ordinary villagers" : "") + "."), false);
+        return gone + left;
     }
 
     private static int travel(CommandSourceStack source, ResourceLocation id) throws CommandSyntaxException {

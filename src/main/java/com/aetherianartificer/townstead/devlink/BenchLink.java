@@ -77,7 +77,7 @@ public final class BenchLink {
             return false;
         }
         writeDiscovery(srv);
-        Townstead.LOGGER.info("Bench Link listening on 127.0.0.1:{}", port());
+        Townstead.LOGGER.info("Bench Link listening on {} (discovery file {})", http.boundAddress(), discoveryFile(srv));
         BenchLinkStatus.broadcast(srv);
         return true;
     }
