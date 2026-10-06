@@ -734,6 +734,11 @@
     },
     "tell_family": {
       "type": "pheno:share_family_name"
+    },
+    "adopt_wolf": {
+      "type": "pheno:adopt",
+      "entity_type": "minecraft:wolf",
+      "essential": true
     }
   },
   "conditions": {
@@ -1274,6 +1279,11 @@
           }
         }
       ]
+    },
+    "has_wolf_anywhere": {
+      "type": "pheno:has_pet",
+      "entity_type": "minecraft:wolf",
+      "radius": 128
     }
   },
   "goals": {

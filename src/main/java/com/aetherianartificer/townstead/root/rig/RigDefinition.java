@@ -93,9 +93,30 @@ public record RigDefinition(
         // a ModelPart constructor), so its own setupAnim animates the body. Empty = the built-in table
         // (vanilla non-humanoids) or the humanoid default.
         String modelClass,
-        float cameraHeightOffset
+        float cameraHeightOffset,
+        // Textures drawn over the body with the same model and UVs (a werewolf's eyes), each optionally
+        // glowing in the dark. A texture may hold a {name:N} placeholder (see StateForms).
+        List<Overlay> overlays
 ) {
     public enum ModelType { ENTITY_LAYER, GEOMETRY }
+
+    /**
+     * A texture drawn over the rig's body; {@code glow} draws it full-bright, like eyes in the dark.
+     * With {@code glowVariant}, the entity's form variant of that name decides instead (0 is off).
+     */
+    public record Overlay(String texture, boolean glow, String glowVariant) {}
+
+    /** A rig without overlays. */
+    public RigDefinition(String id, ModelType modelType, String modelRef, String modelLayer, String texture,
+                         Map<String, String> bones, ArmorType armorType, String armorInner, String armorOuter,
+                         Face face, WornAnchor back, WornAnchor head, List<Boot> boots, Hold hold, boolean hair,
+                         Map<String, PoseState> poses, @Nullable Hitbox hitbox, Set<EquipmentSlot> disabledSlots,
+                         @Nullable String cameraBone, @Nullable EmoteMap emote, @Nullable Animation animation, String modelClass,
+                         float cameraHeightOffset) {
+        this(id, modelType, modelRef, modelLayer, texture, bones, armorType, armorInner, armorOuter, face, back, head,
+                boots, hold, hair, poses, hitbox, disabledSlots, cameraBone, emote, animation, modelClass,
+                cameraHeightOffset, List.of());
+    }
 
     /**
      * The collision/interaction box a rig imposes, in blocks (width is the square footprint side).

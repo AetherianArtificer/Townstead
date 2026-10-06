@@ -205,7 +205,22 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
 
         float cameraOffset = obj.has("camera") && obj.get("camera").isJsonObject()
                 ? GsonHelper.getAsFloat(obj.getAsJsonObject("camera"), "height_offset", 0f) : 0f;
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, disabledSlots, cameraBone, emote, animation, modelClass, cameraOffset);
+        java.util.List<RigDefinition.Overlay> overlays = new java.util.ArrayList<>();
+        if (obj.has("overlays") && obj.get("overlays").isJsonArray()) {
+            for (JsonElement e : obj.getAsJsonArray("overlays")) {
+                if (!e.isJsonObject()) continue;
+                JsonObject o = e.getAsJsonObject();
+                String tex = GsonHelper.getAsString(o, "texture", "");
+                if (tex.isEmpty()) continue;
+                // "glow": true or false, or the name of a form variant that decides it per entity.
+                boolean glow = o.has("glow") && o.get("glow").isJsonPrimitive() && o.getAsJsonPrimitive("glow").isBoolean()
+                        && o.get("glow").getAsBoolean();
+                String glowVariant = o.has("glow") && o.get("glow").isJsonPrimitive() && o.getAsJsonPrimitive("glow").isString()
+                        ? o.get("glow").getAsString() : "";
+                overlays.add(new RigDefinition.Overlay(tex, glow, glowVariant));
+            }
+        }
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, disabledSlots, cameraBone, emote, animation, modelClass, cameraOffset, java.util.List.copyOf(overlays));
     }
 
     /**

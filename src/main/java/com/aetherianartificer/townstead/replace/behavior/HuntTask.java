@@ -89,6 +89,8 @@ public class HuntTask extends Behavior<VillagerEntityMCA> {
         if (other == villager || !other.isAlive()) return false;
         if (other instanceof Player player && (player.isCreative() || player.isSpectator())) return false;
         if (hunt.shunDaylight() && level.isDay() && level.canSeeSky(other.blockPosition())) return false;
+        if (hunt.monsters() && other instanceof net.minecraft.world.entity.monster.Enemy
+                && !(other instanceof net.minecraft.world.entity.monster.Creeper)) return true;
         return Dispositions.between(villager, other) == Disposition.HOSTILE;
     }
 }

@@ -37,15 +37,22 @@ public final class KeybindAssignables {
      * into an id that would not press the thing it names.</p>
      */
     public static ResourceLocation idOf(KeyMapping mapping) {
+        // "keybind/" and then the binding's own name, whatever its mod calls it ("key.", "keys.", ...).
         return mapping == null ? null
-                : ResourceLocation.tryBuild(Townstead.MOD_ID, mapping.getName());
+                : ResourceLocation.tryBuild(Townstead.MOD_ID, PREFIX + mapping.getName());
     }
+
+    /** Marks a keybind id, so any binding name round-trips, not only those that start "key.". */
+    public static final String PREFIX = "keybind/";
 
     /** The binding an id refers to, or empty when the id is not one of ours. */
     public static String keyOf(String id) {
         ResourceLocation parsed = id == null ? null : ResourceLocation.tryParse(id);
-        return parsed != null && Townstead.MOD_ID.equals(parsed.getNamespace())
-                && parsed.getPath().startsWith("key.") ? parsed.getPath() : "";
+        if (parsed == null || !Townstead.MOD_ID.equals(parsed.getNamespace())) return "";
+        String path = parsed.getPath();
+        if (path.startsWith(PREFIX)) return path.substring(PREFIX.length());
+        // Slots saved before the prefix: a binding named "key.<mod>.<what>".
+        return path.startsWith("key.") ? path : "";
     }
 
     /**
@@ -69,7 +76,7 @@ public final class KeybindAssignables {
             out.add(new AbilityLoadoutS2CPayload.Option(
                     id.toString(),
                     nameOf(mapping, pack, live),
-                    iconOf(pack, live),
+                    KeybindDetails.pick(iconOf(pack, live), guessIcon(mapping.getName())),
                     // SOURCE stays with the pack. It is the tab heading, and a live source answers
                     // per binding, so taking it from there would scatter one mod's keys across as
                     // many tabs as it has spells.
@@ -92,7 +99,7 @@ public final class KeybindAssignables {
      */
     private static String modNameOf(String keybind) {
         String[] parts = keybind.split("\\.");
-        if (parts.length < 3 || !"key".equals(parts[0])) return "";
+        if (parts.length < 3 || !("key".equals(parts[0]) || "keys".equals(parts[0]))) return "";
         String modId = parts[1];
         //? if neoforge {
         return net.neoforged.fml.ModList.get().getModContainerById(modId)
@@ -114,6 +121,21 @@ public final class KeybindAssignables {
      */
     private static String iconOf(KeybindDetails.Detail pack, KeybindDetails.Detail live) {
         return KeybindDetails.pick(live.icon(), pack.icon());
+    }
+
+    /**
+     * Art for a binding no pack describes: the owning mod's own action icon of the same name, when it
+     * ships one ({@code keys.werewolves.leap} finds {@code werewolves:textures/actions/leap.png}, the
+     * art Vampirism and its addons draw on their own action wheel). Empty when there is none.
+     */
+    private static String guessIcon(String keybind) {
+        String[] parts = keybind.split("\\.");
+        if (parts.length < 3) return "";
+        String candidate = parts[1] + ":textures/actions/" + parts[parts.length - 1] + ".png";
+        ResourceLocation id = ResourceLocation.tryParse(candidate);
+        Minecraft mc = Minecraft.getInstance();
+        if (id == null || mc == null) return "";
+        return mc.getResourceManager().getResource(id).isPresent() ? candidate : "";
     }
 
     /** A pack's heading, else the owning mod's name, else the binding's own category. */
@@ -148,7 +170,7 @@ public final class KeybindAssignables {
         }
         String source = sourceOf(key, pack, category);
         return new AbilityLoadoutS2CPayload.Entry(entry.slot(), entry.id(), name,
-                iconOf(pack, live), false, false, entry.cooldownTicks(), entry.readyAt(),
+                KeybindDetails.pick(iconOf(pack, live), guessIcon(key)), false, false, entry.cooldownTicks(), entry.readyAt(),
                 0, "", Assignable.Kind.KEYBIND.ordinal(), key, source, 0, 0);
     }
 }

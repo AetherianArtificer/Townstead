@@ -34,6 +34,12 @@ final class PresetsScreen extends MenuBackgroundScreen {
 
     @Override
     protected void init() {
+        // Added first: on 1.20.1 the list paints dirt over the header band, so the field must draw after it.
+        list = new PresetList(minecraft, width, height - 64 - 80, 80);
+        list.set(PresetStore.all(
+                Component.translatable("townstead.switchboard.presets.defaults").getString(),
+                Component.translatable("townstead.switchboard.presets.defaults.description").getString()));
+        addRenderableWidget(list);
         EditBox box = new EditBox(font, width / 2 - 155, 40, 246, 20,
                 Component.translatable("townstead.switchboard.presets.field"));
         box.setMaxLength(65536);
@@ -45,12 +51,6 @@ final class PresetsScreen extends MenuBackgroundScreen {
                 b -> importField()).bounds(width / 2 + 95, 40, 60, 20).build();
         importButton.active = !loading;
         addRenderableWidget(importButton);
-
-        list = new PresetList(minecraft, width, height - 64 - 80, 80);
-        list.set(PresetStore.all(
-                Component.translatable("townstead.switchboard.presets.defaults").getString(),
-                Component.translatable("townstead.switchboard.presets.defaults.description").getString()));
-        addRenderableWidget(list);
 
         int rowOne = height - 52;
         addRenderableWidget(Button.builder(Component.translatable("townstead.switchboard.presets.save"),

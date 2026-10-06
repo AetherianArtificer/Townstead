@@ -37,10 +37,10 @@ public final class RebirthDeathButton {
             event.addListener(Button.builder(Component.translatable("townstead.rebirth.descendant"), b -> {
                         //? if neoforge {
                         net.neoforged.neoforge.network.PacketDistributor.sendToServer(
-                                new com.aetherianartificer.townstead.rebirth.RebirthRequestC2SPayload("", true));
+                                new com.aetherianartificer.townstead.rebirth.RebirthRequestC2SPayload(true));
                         //?} else if forge {
                         /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(
-                                new com.aetherianartificer.townstead.rebirth.RebirthRequestC2SPayload("", true));
+                                new com.aetherianartificer.townstead.rebirth.RebirthRequestC2SPayload(true));
                         *///?}
                         b.active = false;
                         mc.player.respawn();

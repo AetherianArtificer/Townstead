@@ -62,6 +62,7 @@ repositories {
     // EMI and REI plugin APIs (runtime optional; each plugin class is only loaded by its viewer's scan).
     maven("https://maven.terraformersmc.com/releases")
     maven("https://maven.shedaniel.me")
+    maven("https://maven.fabricmc.net/") { content { includeGroup("net.fabricmc") } }
     mavenCentral()
 }
 
@@ -74,6 +75,8 @@ dependencies {
     // Resolve through flatDir so ForgeGradle can remap the universal production jar for the
     // named development/test runtime. A files(...) dependency cannot be deobfuscated.
     compileOnly(fg.deobf("townstead.libs:$mcaArtifact:$mcaVersion-universal"))
+    // MCA's shared classes carry Fabric's @Environment(EnvType.CLIENT); this only lets javac resolve the enum.
+    compileOnly("net.fabricmc:fabric-loader:0.16.14") { isTransitive = false }
     compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:${property("mixin_extras_version")}")!!)
     implementation(jarJar("io.github.llamalad7:mixinextras-forge:${property("mixin_extras_version")}")) {
         jarJar.ranged(this, "[0.5.4,0.6)")

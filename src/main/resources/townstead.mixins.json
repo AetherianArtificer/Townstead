@@ -4,6 +4,7 @@
   "plugin": "com.aetherianartificer.townstead.TownsteadMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "StateFormSleepMixin",
     "LivingFieldAbilitiesMixin",
     "ItemStackPhenoMixin",
     "FishingHookPhenoMixin",
@@ -89,6 +90,7 @@
     "VillageMourningGravesMixin",
     "VillageManagerBuildingMatchingMixin",
     "RoomWorkflowBuildingMatchingMixin",
+    "SeekIndoorShelterWildMixin",
     "accessor.RoomWorkflowInvoker",
     "VillagerServerTickMixin",
     "LivingEntityPowerCacheMixin",
@@ -151,6 +153,7 @@
     "CleanPhraseEffectTagsMixin",
     "accessor.AbstractDynamicScreenAccessor",
     "client.VillagerDressMenuMixin",
+    "client.KeyBindsListSystemsMixin",
     "accessor.BlueprintScreenAccessor",
     "accessor.ColorPickerWidgetAccessor",
     "accessor.InteractScreenAccessor",

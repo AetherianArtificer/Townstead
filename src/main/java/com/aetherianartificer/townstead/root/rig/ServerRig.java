@@ -32,6 +32,8 @@ public final class ServerRig {
     /** The rig id for this entity (life-stage override / species rig), or null. */
     public static String rigIdFor(LivingEntity entity) {
         if (entity instanceof VillagerEntityMCA villager) {
+            String form = com.aetherianartificer.townstead.pheno.state.StateForms.rig(villager);
+            if (form != null) return form;
             LifeStage stage = LifeStageProgression.currentStage(villager);
             if (stage != null && stage.rig() != null && !stage.rig().isEmpty()) return stage.rig();
             return speciesRig(TownsteadVillagers.get(villager).life().rootId());

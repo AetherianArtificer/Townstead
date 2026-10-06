@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 
@@ -42,7 +43,19 @@ public record EntityStateDefinition(
     /** Which parents must carry the aspect: any, both, or only the father (or mother) and not the other. */
     public enum Parents { ANY, BOTH, FATHER_ONLY, MOTHER_ONLY }
 
-    public record Tier(String id, double min) {}
+    /**
+     * A named band of the state. {@code rig}, {@code talk} and {@code sleep} change the body and day of
+     * whoever is in it (see {@link StateForms}): a werewolf's beast wears another rig, will not talk
+     * and does not sleep. {@code variants} names, for each placeholder in the rig's textures (such as
+     * {@code {coat:11}}), the state whose amount (1 and up) picks it; one never set comes from who they
+     * are, so it never changes. {@code variant_state} is the same for a {@code {variant:N}} placeholder.
+     */
+    public record Tier(String id, double min, String rig, boolean talk, boolean sleep,
+                       Map<String, ResourceLocation> variants) {
+        public Tier(String id, double min) {
+            this(id, min, "", true, true, Map.of());
+        }
+    }
 
     /**
      * Marks a lasting identity state (vampire, dhampir) as opposed to a passing one (drunk).
@@ -54,7 +67,14 @@ public record EntityStateDefinition(
      * and anyone else is set to {@code pick}.
      */
     public record Aspect(boolean display, @Nullable Inheritance inheritance, boolean level,
-                         boolean pickable, @Nullable ResourceLocation faction, double pick) {}
+                         boolean pickable, @Nullable ResourceLocation faction, double pick, List<Option> options) {}
+
+    /**
+     * A look the Aspects page lets someone choose while they have this aspect, such as a werewolf's
+     * coat: one of {@code count} values, kept in {@code state} (the value plus one). For a player whose
+     * look a mod keeps, {@code player} names the setter that writes it there instead.
+     */
+    public record Option(String id, ResourceLocation state, int count, @Nullable String player) {}
 
     /** A child born to carriers of this aspect receives {@code aspect} with {@code chance}. */
     public record Inheritance(ResourceLocation aspect, double chance, Parents parents) {}
@@ -118,7 +138,9 @@ public record EntityStateDefinition(
                 if (!Double.isFinite(threshold) || threshold < min || threshold > max) {
                     throw new IllegalArgumentException("tier '" + name + "' threshold is outside the state range");
                 }
-                tiers.add(new Tier(name, threshold));
+                tiers.add(new Tier(name, threshold, GsonHelper.getAsString(tierJson, "rig", "").trim(),
+                        GsonHelper.getAsBoolean(tierJson, "talk", true), GsonHelper.getAsBoolean(tierJson, "sleep", true),
+                        variants(tierJson)));
             }
         }
         tiers.sort(Comparator.comparingDouble(Tier::min));
@@ -146,6 +168,21 @@ public record EntityStateDefinition(
     public double receivedAmount() {
         for (Tier tier : tiers) if (tier.min() > min) return tier.min();
         return max;
+    }
+
+    private static Map<String, ResourceLocation> variants(JsonObject tierJson) {
+        Map<String, ResourceLocation> out = new java.util.LinkedHashMap<>();
+        if (tierJson.has("variant_state")) {
+            ResourceLocation state = DataPackLang.parseId(GsonHelper.getAsString(tierJson, "variant_state"));
+            if (state != null) out.put("variant", state);
+        }
+        if (tierJson.has("variants") && tierJson.get("variants").isJsonObject()) {
+            for (Map.Entry<String, JsonElement> e : tierJson.getAsJsonObject("variants").entrySet()) {
+                ResourceLocation state = DataPackLang.parseId(e.getValue().getAsString());
+                if (state != null) out.put(e.getKey(), state);
+            }
+        }
+        return Map.copyOf(out);
     }
 
     private static Aspect aspect(ResourceLocation self, JsonElement element) {
@@ -176,9 +213,20 @@ public record EntityStateDefinition(
             }
         }
         ResourceLocation faction = json.has("faction") ? DataPackLang.parseId(GsonHelper.getAsString(json, "faction")) : null;
+        List<Option> options = new java.util.ArrayList<>();
+        if (json.has("options") && json.get("options").isJsonArray()) {
+            for (JsonElement entry : json.getAsJsonArray("options")) {
+                if (!entry.isJsonObject()) throw new IllegalArgumentException("each aspect option must be an object");
+                JsonObject o = entry.getAsJsonObject();
+                ResourceLocation optionState = DataPackLang.parseId(GsonHelper.getAsString(o, "state", ""));
+                if (optionState == null) throw new IllegalArgumentException("aspect option needs a 'state'");
+                options.add(new Option(GsonHelper.getAsString(o, "id"), optionState, Math.max(1, GsonHelper.getAsInt(o, "count", 1)),
+                        o.has("player") ? GsonHelper.getAsString(o, "player") : null));
+            }
+        }
         return new Aspect(GsonHelper.getAsBoolean(json, "display", true), inheritance,
                 GsonHelper.getAsBoolean(json, "level", false), GsonHelper.getAsBoolean(json, "pickable", false),
-                faction, GsonHelper.getAsDouble(json, "pick", 1));
+                faction, GsonHelper.getAsDouble(json, "pick", 1), List.copyOf(options));
     }
 
     private static <E extends Enum<E>> E enumValue(JsonObject json, String key, E fallback, Class<E> type) {

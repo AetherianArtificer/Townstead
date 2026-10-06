@@ -163,6 +163,10 @@ VAR interrupted = false
     -> cure_after
 - founded and not wolf_seen and check("has_wolf"):
     -> wolf
+// Back from fetching the wolf without it (it could not be spawned, or was lost): bring it now.
+- founded and asked_wolf and not wolf_seen and today > wolf_day and not check("has_wolf_anywhere"):
+    ~ act("adopt_wolf")
+    -> wolf
 - founded and not altar_started and not done_lodge:
     -> altar_offer
 - walking and (count("founder_kills") > walk_kills or count("player_kills") > walk_player_kills):

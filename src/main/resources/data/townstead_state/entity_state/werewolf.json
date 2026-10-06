@@ -28,7 +28,27 @@
     "level": true,
     "pickable": true,
     "faction": "werewolves:werewolf",
-    "pick": 1
+    "pick": 1,
+    "options": [
+      {
+        "id": "coat",
+        "state": "townstead_state:werewolf_coat",
+        "count": 11,
+        "player": "werewolves:coat"
+      },
+      {
+        "id": "eyes",
+        "state": "townstead_state:werewolf_eyes",
+        "count": 9,
+        "player": "werewolves:eyes"
+      },
+      {
+        "id": "glow",
+        "state": "townstead_state:werewolf_glow",
+        "count": 2,
+        "player": "werewolves:glow"
+      }
+    ]
   },
   "excludes": [
     "townstead_state:vampire",

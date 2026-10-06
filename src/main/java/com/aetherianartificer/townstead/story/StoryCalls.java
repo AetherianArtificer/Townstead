@@ -18,13 +18,13 @@ import java.util.UUID;
 
 /**
  * Who wants a word with whom. Once a second, each player's nearby story villagers are checked for
- * something waiting: a quest ready to hand back, a scene the story is calling them over for (its
- * {@code calling()} function returns a line), or a quest still open. Each player hears only the
+ * something waiting: a quest ready to hand back, or a scene the story is calling them over for (its
+ * {@code calling()} function returns a line). Each player hears only the
  * changes, and sees a mark over those heads. Coming close to one who is calling, they wave and say
  * their line once for that scene.
  */
 public final class StoryCalls {
-    public static final byte NONE = 0, WAITING = 1, CALLING = 2, READY = 3;
+    public static final byte NONE = 0, CALLING = 2, READY = 3;
     private static final double SCAN = 32, CALL_OUT = 8;
     /** Asking the Ink costs a story load, so its answer is kept this long unless a conversation ends. */
     private static final long INK_TTL = 200;
@@ -65,8 +65,7 @@ public final class StoryCalls {
             byte state = NONE;
             if (entry != null) {
                 for (PlayerStories.QuestRecord record : entry.quests.values()) {
-                    if (record.state == PlayerStories.QuestState.READY) state = READY;
-                    else if (record.state == PlayerStories.QuestState.ACTIVE && state == NONE) state = WAITING;
+                    if (record.state == PlayerStories.QuestState.READY && story.quests().containsKey(record.knot)) state = READY;
                 }
             }
             Ink ink = null;
@@ -108,7 +107,11 @@ public final class StoryCalls {
                     PerformanceRequest.Fallback.NONE));
         }
         String line = StoryText.resolve(ink.line(), key -> key);
-        player.sendSystemMessage(Component.literal("§7" + villager.getDisplayName().getString() + ": §o" + line));
+        // A Persona who keeps their family name back is only their given name until they tell it.
+        String name = com.aetherianartificer.townstead.persona.PersonaService.familyNameKnown(villager, player)
+                ? villager.getDisplayName().getString()
+                : com.aetherianartificer.townstead.naming.VillagerNames.parts(villager).given();
+        player.sendSystemMessage(Component.literal("§7" + name + ": §o" + line));
     }
 
     private static void send(ServerPlayer player, int entityId, byte state) {

@@ -1,0 +1,18 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "mods": "werewolves",
+  "state": "townstead_state:werewolf",
+  "min_tier": "werewolf",
+  "priority": 25,
+  "condition": {
+    "type": "pheno:state",
+    "state": "townstead_state:werewolf_eyes",
+    "min": 3,
+    "max": 3.5
+  },
+  "genes": {
+    "grant": [
+      "townstead_roots:werewolf_eyes_amber"
+    ]
+  }
+}

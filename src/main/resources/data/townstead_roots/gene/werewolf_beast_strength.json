@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "werewolves",
+  "type": "pheno:attribute",
+  "display_name": {
+    "translate": "gene.townstead_roots.werewolf_beast_strength"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.werewolf_beast_strength.desc"
+  },
+  "category": "Abilities",
+  "attribute": "minecraft:generic.attack_damage",
+  "amount": 5.0
+}

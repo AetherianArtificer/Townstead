@@ -1,23 +1,19 @@
 package com.aetherianartificer.townstead.client.gui.rebirth;
 
 import com.aetherianartificer.townstead.client.rebirth.CharacterNameClient;
-import com.aetherianartificer.townstead.rebirth.Rebirth;
 import com.aetherianartificer.townstead.rebirth.RebirthRequestC2SPayload;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.MultiLineLabel;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
-/** Names the new person before the player respawns as them. */
+/** Explains what rebirth keeps and loses before the player respawns as someone new. Destiny names them. */
 public final class RebirthScreen extends Screen {
     private static final int TEXT_WIDTH = 260;
 
     private final Screen deathScreen;
-    private String name = "";
-    private Button confirm;
     private MultiLineLabel body = MultiLineLabel.EMPTY;
 
     public RebirthScreen(Screen deathScreen) {
@@ -32,30 +28,18 @@ public final class RebirthScreen extends Screen {
                         minecraft.player.getGameProfile().getName());
         body = MultiLineLabel.create(font, Component.translatable("townstead.rebirth.body", current), TEXT_WIDTH);
         int top = height / 2 - 50;
-        EditBox box = new EditBox(font, width / 2 - 100, top + 50, 200, 20, Component.translatable("townstead.rebirth.name"));
-        box.setMaxLength(Rebirth.MAX_NAME_LENGTH);
-        box.setHint(Component.translatable("townstead.rebirth.name"));
-        box.setValue(name);
-        box.setResponder(text -> {
-            name = text;
-            confirm.active = Rebirth.cleanName(name) != null;
-        });
-        addRenderableWidget(box);
-        setInitialFocus(box);
-        confirm = addRenderableWidget(Button.builder(Component.translatable("townstead.rebirth.confirm"), b -> begin())
-                .bounds(width / 2 - 100, top + 80, 200, 20).build());
-        confirm.active = Rebirth.cleanName(name) != null;
+        addRenderableWidget(Button.builder(Component.translatable("townstead.rebirth.confirm"), b -> begin())
+                .bounds(width / 2 - 100, top + 56, 200, 20).build());
         addRenderableWidget(Button.builder(CommonComponents.GUI_BACK, b -> onClose())
-                .bounds(width / 2 - 100, top + 104, 200, 20).build());
+                .bounds(width / 2 - 100, top + 80, 200, 20).build());
     }
 
     private void begin() {
-        String clean = Rebirth.cleanName(name);
-        if (clean == null || minecraft.player == null) return;
+        if (minecraft.player == null) return;
         //? if neoforge {
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(new RebirthRequestC2SPayload(clean, false));
+        net.neoforged.neoforge.network.PacketDistributor.sendToServer(new RebirthRequestC2SPayload(false));
         //?} else if forge {
-        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(new RebirthRequestC2SPayload(clean, false));
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(new RebirthRequestC2SPayload(false));
         *///?}
         // The same order as the death screen's own Respawn: back to it, then respawn.
         minecraft.setScreen(deathScreen);

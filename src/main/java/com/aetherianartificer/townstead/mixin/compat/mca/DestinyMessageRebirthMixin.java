@@ -15,7 +15,11 @@ public abstract class DestinyMessageRebirthMixin {
     private void townstead$whereYouDied(net.minecraft.world.entity.player.Player player, CallbackInfo ci) {
         var destination = ((DestinyMessage) (Object) this).destination();
         if (destination.isEmpty() || !Rebirth.DESTINY_LOCATION.equals(destination.get().location())) return;
-        if (player instanceof net.minecraft.server.level.ServerPlayer sp) Rebirth.chooseWhereYouDied(sp);
+        if (player instanceof net.minecraft.server.level.ServerPlayer sp) {
+            // A structure search from an earlier pick would otherwise still teleport the player.
+            com.aetherianartificer.townstead.compat.mca.McaStructureLocatorCompat.cancel(sp.getUUID());
+            Rebirth.chooseWhereYouDied(sp);
+        }
         ci.cancel();
     }
     //?} else {

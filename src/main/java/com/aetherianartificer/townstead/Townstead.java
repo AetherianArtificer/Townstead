@@ -565,6 +565,8 @@ public class Townstead {
         com.aetherianartificer.townstead.assign.Assignables.register(
                 new com.aetherianartificer.townstead.assign.AbilityAssignableProvider());
         com.aetherianartificer.townstead.assign.Assignables.register(WHEEL_ACTIONS);
+        com.aetherianartificer.townstead.assign.Assignables.register(
+                new com.aetherianartificer.townstead.compat.vampirism.VampirismActionAssignables());
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         com.aetherianartificer.townstead.story.StoryService.init();
         // Minecraft's own GameEvents as a chronicle source; the tap early-outs unless a
@@ -591,6 +593,7 @@ public class Townstead {
             com.aetherianartificer.townstead.journey.Rounds.tick(e.getServer());
             com.aetherianartificer.townstead.contract.Contracts.tick(e.getServer());
             com.aetherianartificer.townstead.livery.LiverySync.tick(e.getServer());
+            com.aetherianartificer.townstead.rebirth.Rebirth.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
             townstead$profile("server.village_startup_seed", () ->
@@ -1199,6 +1202,8 @@ public class Townstead {
         com.aetherianartificer.townstead.assign.Assignables.register(
                 new com.aetherianartificer.townstead.assign.AbilityAssignableProvider());
         com.aetherianartificer.townstead.assign.Assignables.register(WHEEL_ACTIONS);
+        com.aetherianartificer.townstead.assign.Assignables.register(
+                new com.aetherianartificer.townstead.compat.vampirism.VampirismActionAssignables());
         MinecraftForge.EVENT_BUS.addListener(this::addReloadListeners);
         com.aetherianartificer.townstead.story.StoryService.init();
         MinecraftForge.EVENT_BUS.addListener(
@@ -1224,6 +1229,7 @@ public class Townstead {
             com.aetherianartificer.townstead.journey.Rounds.tick(e.getServer());
             com.aetherianartificer.townstead.contract.Contracts.tick(e.getServer());
             com.aetherianartificer.townstead.livery.LiverySync.tick(e.getServer());
+            com.aetherianartificer.townstead.rebirth.Rebirth.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.tick(e.getServer());
                 com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
                 townstead$profile("server.village_startup_seed", () ->
@@ -3944,6 +3950,12 @@ public class Townstead {
                 })
         );
         registrar.playToClient(
+                com.aetherianartificer.townstead.pheno.state.StateFormS2CPayload.TYPE,
+                com.aetherianartificer.townstead.pheno.state.StateFormS2CPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.client.state.StateFormClient.set(payload.entityId(), payload.rig(), payload.talk(), payload.variants()))
+        );
+        registrar.playToClient(
                 com.aetherianartificer.townstead.story.net.StoryCallS2CPayload.TYPE,
                 com.aetherianartificer.townstead.story.net.StoryCallS2CPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
@@ -5447,6 +5459,7 @@ public class Townstead {
     private void onStartTracking(PlayerEvent.StartTracking event) {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
         com.aetherianartificer.townstead.livery.LiverySync.onStartTracking(sp, event.getTarget());
+        com.aetherianartificer.townstead.pheno.state.StateForms.syncTo(sp, event.getTarget());
 
         // Tracked player: send their origin keyed by network id so the observer's
         // skin-tint layer can paint their genetics model. Players don't receive the

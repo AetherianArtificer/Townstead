@@ -96,6 +96,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.compat.vampirism.VampireFeeding> VAMPIRE_FEEDING;
     public static final ModConfigSpec.BooleanValue VAMPIRE_INFECTION;
     public static final ModConfigSpec.BooleanValue VAMPIRE_REPLACE_SPAWNS;
+    public static final ModConfigSpec.BooleanValue WEREWOLF_REPLACE_SPAWNS;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -216,6 +217,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.compat.vampirism.VampireFeeding> VAMPIRE_FEEDING;
     public static final ForgeConfigSpec.BooleanValue VAMPIRE_INFECTION;
     public static final ForgeConfigSpec.BooleanValue VAMPIRE_REPLACE_SPAWNS;
+    public static final ForgeConfigSpec.BooleanValue WEREWOLF_REPLACE_SPAWNS;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -572,6 +574,10 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.vampirism.replaceSpawns")
                 .comment("Vampirism's vampires spawn as wild vampire villagers of the region's Roots, who count as vampires for kills and loot.")
                 .define("replaceSpawns", true);
+        WEREWOLF_REPLACE_SPAWNS = b
+                .translation("townstead.configuration.vampirism.replaceWerewolfSpawns")
+                .comment("With Werewolves installed, its human werewolves spawn as wild werewolf villagers of the region's Roots. They still change into the beast at night.")
+                .define("replaceWerewolfSpawns", true);
         b.pop();
 
         // ── Caregiving ──

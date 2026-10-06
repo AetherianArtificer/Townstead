@@ -109,6 +109,9 @@ public final class RigModels {
         // is inheritance data only (see embodied): fall back to the default, reverting every downstream
         // consumer (rig layer, first-person arm, suppress mixins, eye height, hitbox).
         if (!embodied(entity)) return VILLAGER;
+        // A state's form (a werewolf's beast) comes before the Root's own body.
+        String form = com.aetherianartificer.townstead.client.state.StateFormClient.rig(entity.getId());
+        if (form != null && RootCatalogClient.rig(form) != null) return form;
         String rootId = RootClientStore.resolve(entity);
         if (rootId == null || rootId.isEmpty()) return VILLAGER;
         RootCatalogEntry origin = RootCatalogClient.origin(rootId);
@@ -599,9 +602,60 @@ public final class RigModels {
         return def == null ? null : def.bodyPose("crawl");
     }
 
+    /** A texture placeholder: {@code {name:N}}, one of N textures numbered from 0. */
+    private static final java.util.regex.Pattern VARIANT = java.util.regex.Pattern.compile("\\{(\\w+):(\\d+)}");
+
+    /**
+     * The rig's texture for this entity. Each {@code {name:N}} placeholder takes the entity's form
+     * variant of that name (see {@code StateForms}), so each one keeps their own look.
+     */
+    public static ResourceLocation texture(String rigBase, LivingEntity entity) {
+        RigDefinition def = RootCatalogClient.rig(rigBase);
+        if (def == null || def.texture() == null || def.texture().isEmpty()) return null;
+        return RigAssets.texture(fill(def.texture(), entity));
+    }
+
+    /** Fills a texture's placeholders for this entity (0 for each, with no entity). */
+    public static String fill(String template, LivingEntity entity) {
+        if (template.indexOf('{') < 0) return template;
+        java.util.regex.Matcher m = VARIANT.matcher(template);
+        StringBuilder out = new StringBuilder();
+        while (m.find()) {
+            int count = Math.max(1, Integer.parseInt(m.group(2)));
+            int value = entity == null ? 0 : Math.floorMod(
+                    com.aetherianartificer.townstead.client.state.StateFormClient.variant(entity.getId(), m.group(1)), count);
+            m.appendReplacement(out, Integer.toString(value));
+        }
+        m.appendTail(out);
+        return out.toString();
+    }
+
+    /** Draws the rig's overlays (a werewolf's eyes) over a body already drawn with the same model. */
+    public static void renderOverlays(String rigBase, LivingEntity entity, net.minecraft.client.model.EntityModel<?> model,
+                                      com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.client.renderer.MultiBufferSource buffers,
+                                      int light) {
+        RigDefinition def = RootCatalogClient.rig(rigBase);
+        if (def == null || def.overlays().isEmpty()) return;
+        for (RigDefinition.Overlay overlay : def.overlays()) {
+            ResourceLocation tex = RigAssets.texture(fill(overlay.texture(), entity));
+            if (tex == null) continue;
+            boolean glow = overlay.glowVariant().isEmpty() ? overlay.glow()
+                    : com.aetherianartificer.townstead.client.state.StateFormClient.variant(entity.getId(), overlay.glowVariant()) != 0;
+            com.mojang.blaze3d.vertex.VertexConsumer buffer = buffers.getBuffer(glow
+                    ? net.minecraft.client.renderer.RenderType.eyes(tex)
+                    : net.minecraft.client.renderer.RenderType.entityCutoutNoCull(tex));
+            //? if neoforge {
+            model.renderToBuffer(pose, buffer, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, -1);
+            //?} else {
+            /*model.renderToBuffer(pose, buffer, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
+            *///?}
+        }
+    }
+
     public static ResourceLocation texture(String rigBase) {
         RigDefinition def = RootCatalogClient.rig(rigBase);
         if (def == null || def.texture() == null || def.texture().isEmpty()) return null;
+        if (def.texture().indexOf('{') >= 0) return RigAssets.texture(fill(def.texture(), null));
         // Prefer a datapack-synced texture (no resource pack needed); fall back to a plain resource
         // location for vanilla / resource-pack textures (e.g. minecraft:textures/entity/skeleton).
         return RigAssets.texture(def.texture());

@@ -197,6 +197,12 @@ public final class ActiveAbilities {
     public static void prepare(ServerPlayer player, Map<Integer, ResourceLocation> bySlot) {
         java.util.Set<ResourceLocation> owned = new java.util.LinkedHashSet<>();
         for (Slotted slotted : arrangeable(player)) owned.add(slotted.geneId());
+        // Anything the catalogue offers this player can be slotted: data-pack wheel actions and other
+        // mods' actions (Vampirism, Werewolves) as well as our own abilities.
+        for (com.aetherianartificer.townstead.assign.Assignable offered
+                : com.aetherianartificer.townstead.assign.Assignables.collect(player)) {
+            owned.add(offered.id());
+        }
         Map<Integer, ResourceLocation> valid = new LinkedHashMap<>();
         for (Map.Entry<Integer, ResourceLocation> entry : bySlot.entrySet()) {
             ResourceLocation id = entry.getValue();
@@ -394,7 +400,7 @@ public final class ActiveAbilities {
                     entries.add(new AbilityLoadoutS2CPayload.Entry(slot.getKey(), id.toString(),
                             "", "", false, false, 0, 0L, 0, "",
                             com.aetherianartificer.townstead.assign.Assignable.Kind.KEYBIND.ordinal(),
-                            id.getPath(), "", 0, 0));
+                            id.getPath().startsWith("keybind/") ? id.getPath().substring("keybind/".length()) : id.getPath(), "", 0, 0));
                 }
                 continue;
             }
@@ -431,7 +437,7 @@ public final class ActiveAbilities {
      */
     private static boolean isClientBinding(ResourceLocation id) {
         return id != null && com.aetherianartificer.townstead.Townstead.MOD_ID.equals(id.getNamespace())
-                && id.getPath().startsWith("key.");
+                && (id.getPath().startsWith("keybind/") || id.getPath().startsWith("key."));
     }
 
     /**

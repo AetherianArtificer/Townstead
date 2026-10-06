@@ -92,6 +92,18 @@ public class RpgDialogueScreen extends Screen {
 
     @Override
     protected void init() {
+        if (!initialized && !com.aetherianartificer.townstead.client.state.StateFormClient.canTalk(villagerUUIDEntityId())) {
+            // A state that will not talk (a werewolf's beast): no conversation, only a growl.
+            initialized = true;
+            userInitiatedClose = true;
+            if (minecraft != null && minecraft.player != null) {
+                minecraft.player.displayClientMessage(Component.translatable("message.townstead.form.no_talk",
+                        com.aetherianartificer.townstead.client.naming.ClientNames.displayName(villager.asEntity())), true);
+            }
+            Minecraft mc = Minecraft.getInstance();
+            mc.tell(() -> { if (mc.screen == this) mc.setScreen(null); });
+            return;
+        }
         dialogueBox.layout(width, height);
         // The header names whoever you are talking to, so it shows their full name: the
         // family name their culture gave them, not just the given name MCA tracks.
@@ -720,6 +732,10 @@ public class RpgDialogueScreen extends Screen {
         choicePanel.setTheme(theme);
     }
 
+    private int villagerUUIDEntityId() {
+        return villager.asEntity().getId();
+    }
+
     public int villagerEntityId() {
         return villager.asEntity().getId();
     }
@@ -785,7 +801,7 @@ public class RpgDialogueScreen extends Screen {
                     payload::questChoice, font);
             choicePanel.layout(width, height, dialogueBox.getY());
         }
-        if (last) restoreMainMenu();
+        if (last) afterStory();
         awaitingResponseTimer = 0;
         if (payload.text().isEmpty()) {
             state = hasChoices() ? DialogueState.CHOICES_VISIBLE : DialogueState.ENDING;
@@ -812,13 +828,28 @@ public class RpgDialogueScreen extends Screen {
     private void finishStory() {
         storyActive = false;
         setSpeaker(villager.asEntity());
-        restoreMainMenu();
+        afterStory();
         if (dialogueBox.getTypewriter().isComplete() && hasChoices()) {
             state = DialogueState.CHOICES_VISIBLE;
             choicePanel.setVisible(true);
         } else if (dialogueBox.getTypewriter().isComplete()) {
             state = DialogueState.ENDING;
         }
+    }
+
+    /**
+     * Where a finished scene leaves the player. A Persona's conversation ends with their scene: the
+     * last line stays up and the next click closes the screen, since their menu holds nothing but
+     * the story and would only start it over. Anyone else gets their menu back.
+     */
+    private void afterStory() {
+        if (!persona) {
+            restoreMainMenu();
+            return;
+        }
+        dialogQuestionId = null;
+        dialogAnswers = null;
+        choicePanel.setVisible(false);
     }
 
     /** Puts the villager's main menu back under the story's last line. */

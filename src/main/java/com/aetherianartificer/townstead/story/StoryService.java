@@ -340,6 +340,11 @@ public final class StoryService {
         return "greet";
     }
 
+    private static void reoffer(StorySession session) {
+        if (!session.villager.isAlive() || SESSIONS.get(session.player.getUUID()) != null) return;
+        offer(session.player, session.villager.getId(), storyFor(session.player, session.villager));
+    }
+
     private static void closeSession(ServerPlayer player) {
         StoryCalls.forget(player.getUUID());
         StorySession session = SESSIONS.remove(player.getUUID());
@@ -370,6 +375,8 @@ public final class StoryService {
         payOut(session.player);
         save(session.player);
         sync(session.player);
+        // The screen goes back to the villager's menu: give it the label for where the story is now.
+        reoffer(session);
     }
 
     /**
@@ -629,14 +636,14 @@ public final class StoryService {
                         long current = i < record.values.length ? record.values[i] : 0L;
                         objectives.add(new StoryQuestSyncS2CPayload.Objective(
                                 withMarker(goal.label(entry.givenName.isEmpty() ? entry.villagerName : entry.givenName,
-                                        player.getGameProfile().getName()), goal.marker(), player),
+                                        com.aetherianartificer.townstead.dialogue.McaPlayerName.of(player)), goal.marker(), player),
                                 Math.min(current, goal.total()), goal.total(),
                                 complete || record.skipped || current >= goal.total()));
                     }
                     List<StoryQuestSyncS2CPayload.Reward> rewards = new ArrayList<>();
                     String teller = entry.givenName.isEmpty() ? entry.villagerName : entry.givenName;
                     for (var reward : quest.rewards()) {
-                        for (var preview : reward.preview(teller, player.getGameProfile().getName())) {
+                        for (var preview : reward.preview(teller, com.aetherianartificer.townstead.dialogue.McaPlayerName.of(player))) {
                             rewards.add(new StoryQuestSyncS2CPayload.Reward(preview.text(), preview.itemId(), preview.count()));
                         }
                     }

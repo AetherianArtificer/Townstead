@@ -103,7 +103,24 @@ public final class TownsteadKeybinds {
         }
     }
 
+    /** Keys that only do something while their system is on; the Controls screen leaves them out otherwise. */
+    private static final java.util.Map<KeyMapping, java.util.function.BooleanSupplier> SHOWN_WHILE = java.util.Map.of(
+            QUEST_LEDGER, com.aetherianartificer.townstead.switchboard.Systems.gate(
+                    com.aetherianartificer.townstead.switchboard.Systems.QUESTS),
+            DIALOGUE_SKIP, TownsteadConfig::isRpgDialogueEnabled,
+            DIALOGUE_LOG, TownsteadConfig::isRpgDialogueEnabled);
+
     private TownsteadKeybinds() {}
+
+    /** The bindings the Controls screen should list, without the keys of systems that are off. */
+    public static KeyMapping[] shownInControls(KeyMapping[] mappings) {
+        return java.util.Arrays.stream(mappings)
+                .filter(m -> {
+                    java.util.function.BooleanSupplier shown = SHOWN_WHILE.get(m);
+                    return shown == null || shown.getAsBoolean();
+                })
+                .toArray(KeyMapping[]::new);
+    }
 
     /** The remappable key for a 1-based ability slot, or null when the slot is out of range. */
     public static KeyMapping abilityKey(int slot) {

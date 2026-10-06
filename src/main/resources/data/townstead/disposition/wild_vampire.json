@@ -19,6 +19,8 @@
   "hostile": [
     "townsfolk",
     "hunter",
-    "dhampir"
+    "dhampir",
+    "werewolf",
+    "wild_werewolf"
   ]
 }

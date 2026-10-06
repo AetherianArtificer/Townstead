@@ -177,8 +177,7 @@ public final class DescendantsBridge {
     }
 
     private static void reconcileName(ServerPlayer player) {
-        String name = nodeName(player);
-        if (name != null && !name.isBlank() && !name.equals(Rebirth.nameOf(player))) Rebirth.rename(player, name);
+        Rebirth.adoptFamilyTreeName(player);
     }
 
     private static @Nullable String nodeName(ServerPlayer player) {

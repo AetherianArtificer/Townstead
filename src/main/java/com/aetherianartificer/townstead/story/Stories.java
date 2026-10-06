@@ -65,6 +65,9 @@ public final class Stories {
     /** Errors and warnings from the last reload, by story. */
     public static Map<ResourceLocation, List<String>> problems() { return problems; }
 
+    /** The priority a Persona's own story has unless its story.json sets one. */
+    static final int PERSONA_PRIORITY = 1000;
+
     /** The story this villager tells the player, if any. Highest priority wins, then id order. */
     public static @Nullable StoryDefinition forVillager(VillagerEntityMCA villager, Player player) {
         StoryDefinition best = null;
@@ -258,7 +261,7 @@ public final class Stories {
                 issues.add("error: " + jsonFile + ": " + e.getMessage());
             }
         }
-        if (persona == null && json != null && json.has("requires_mods")) {
+        if (json != null && json.has("requires_mods")) {
             for (String mod : strings(json.get("requires_mods"))) {
                 if (!com.aetherianartificer.townstead.compat.ModCompat.isLoaded(mod)) {
                     issues.add("warning: not loaded, because mod '" + mod + "' is not installed");
@@ -377,6 +380,9 @@ public final class Stories {
                 if (parsed != null) demeanor = parsed;
             }
         }
+        // A Persona's own story speaks for them over any story that attaches to people like them (a
+        // Huntmaster's, once they lead a lodge), unless story.json says otherwise.
+        if (persona != null && (json == null || !json.has("priority"))) priority = PERSONA_PRIORITY;
         if (countErrors(issues) > errorsBefore) return null;
         if (persona != null) {
             if (personaDefinition == null) return null;

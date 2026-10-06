@@ -11,7 +11,11 @@ import com.aetherianartificer.townstead.root.RootAssignment;
 import com.aetherianartificer.townstead.root.RootRegistry;
 import com.aetherianartificer.townstead.switchboard.Switchboard;
 import net.conczin.mca.entity.ai.Memories;
+import net.conczin.mca.entity.ai.relationship.Gender;
+import net.conczin.mca.resources.Names;
 import net.conczin.mca.server.ServerInteractionManager;
+import net.conczin.mca.server.world.data.FamilyTree;
+import net.conczin.mca.server.world.data.FamilyTreeNode;
 import net.conczin.mca.server.world.data.PlayerSaveData;
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
@@ -53,11 +57,8 @@ public final class Rebirth {
     /** The Destiny location that takes a reborn player back to where the last life ended. */
     public static final String DESTINY_LOCATION = "townstead:where_you_died";
 
-    /** Marks a pending hand-off to MCA Descendants instead of a name. Not a printable name. */
-    private static final String DESCENDANT = "\u0000descendant";
-
-    /** Players who asked, from the death screen, to be reborn on their next respawn. */
-    private static final Map<UUID, String> PENDING = new ConcurrentHashMap<>();
+    /** Players who asked, from the death screen, to be reborn on their next respawn; true for a hand-off to MCA Descendants. */
+    private static final Map<UUID, Boolean> PENDING = new ConcurrentHashMap<>();
 
     /** Where each just-reborn player's last life ended, until Destiny closes or they go there. */
     private static final Map<UUID, GlobalPos> LAST_DEATH = new ConcurrentHashMap<>();
@@ -112,26 +113,24 @@ public final class Rebirth {
         if (!player.isDeadOrDying()) return;
         if (payload.descendant()) {
             if (com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.canHandOff(player)) {
-                PENDING.put(player.getUUID(), DESCENDANT);
+                PENDING.put(player.getUUID(), true);
             }
             return;
         }
-        if (!available(player)) return;
-        String name = cleanName(payload.name());
-        if (name != null) PENDING.put(player.getUUID(), name);
+        if (available(player)) PENDING.put(player.getUUID(), false);
     }
 
     public static void onRespawn(ServerPlayer player, boolean endConquered) {
-        String requested = PENDING.remove(player.getUUID());
+        Boolean requested = PENDING.remove(player.getUUID());
         if (endConquered) return;
-        if (DESCENDANT.equals(requested)) {
+        if (Boolean.TRUE.equals(requested)) {
             com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.handOff(player);
             return;
         }
         if (!available(player)) return;
         if (requested == null && mode() != RebirthMode.FORCED) return;
         try {
-            begin(player, requested != null ? requested : nameOf(player));
+            begin(player);
         } catch (RuntimeException e) {
             Townstead.LOGGER.error("[Rebirth] Could not start a new life for {}", player.getGameProfile().getName(), e);
         }
@@ -146,11 +145,14 @@ public final class Rebirth {
         LAST_DEATH.remove(player.getUUID());
     }
 
-    private static void begin(ServerPlayer player, String newName) {
-        MinecraftServer server = player.server;
+    private static void begin(ServerPlayer player) {
         ServerLevel level = player.serverLevel();
         UUID id = player.getUUID();
+        Gender gender = FamilyTree.get(level).getOrEmpty(id).map(FamilyTreeNode::gender).orElse(Gender.NEUTRAL);
+        String newName = Names.pickCitizenName(gender);
         endLife(player, UUID.randomUUID(), nameOf(player), newName, true, player.getLastDeathLocation().orElse(null));
+        // Destiny's name field starts from the player's custom name: offer the new name, not the old one.
+        player.setCustomName(Component.literal(newName));
 
         PlayerSaveData data = PlayerSaveData.get(player);
         Optional<Village> home = data.getLastSeenVillage(VillageManager.get(level));
@@ -193,6 +195,21 @@ public final class Rebirth {
     public static void rename(ServerPlayer player, String name) {
         PlayerLives.get(player.server).rename(player.getUUID(), name);
         syncNames(player);
+    }
+
+    /** Destiny and MCA's editor name a reborn player through the family tree; the shown name follows it. */
+    public static void tick(MinecraftServer server) {
+        if (server.getTickCount() % 40 != 0) return;
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (!PlayerLives.livesOf(player.getUUID()).isEmpty()) adoptFamilyTreeName(player);
+        }
+    }
+
+    /** Takes the player's family-tree name as the name they go by, when it differs. */
+    public static void adoptFamilyTreeName(ServerPlayer player) {
+        String name = cleanName(FamilyTree.get(player.serverLevel()).getOrEmpty(player.getUUID())
+                .map(FamilyTreeNode::getName).orElse(null));
+        if (name != null && !name.equals(nameOf(player))) rename(player, name);
     }
 
     private static void syncNames(ServerPlayer player) {

@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:disposition/v1",
+  "mods": "werewolves",
+  "welcome": {
+    "translate": "disposition.townstead.werewolf"
+  },
+  "friendly": [
+    "werewolf",
+    "wild_werewolf"
+  ],
+  "hostile": [
+    "vampire",
+    "wild_vampire",
+    "hunter"
+  ]
+}

@@ -27,9 +27,9 @@ public interface QuestProvider {
     }
 
     /**
-     * The people who gave the player quests from this source, and how each stands: {@code 1} a quest
-     * still in progress, {@code 3} one ready to hand back. Drawn as a mark over their heads. Sources
-     * with no person behind their quests (boards, books, advancements) leave it empty.
+     * The people the player has a quest from this source ready to hand back to ({@code 3}). Drawn as a
+     * mark over their heads. Sources with no person behind their quests (boards, books,
+     * advancements) leave it empty.
      */
     default java.util.Map<java.util.UUID, Byte> giverMarks() {
         return java.util.Map.of();

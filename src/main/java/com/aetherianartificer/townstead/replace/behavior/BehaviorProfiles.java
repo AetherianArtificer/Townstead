@@ -27,11 +27,18 @@ public final class BehaviorProfiles {
 
     private BehaviorProfiles() {}
 
-    /** The profile of a wild replacement whose states still hold, else null. */
+    /** The profile of a wild replacement whose states still hold, else one whose {@code while_state} is active, else null. */
     public static @Nullable BehaviorProfile of(LivingEntity entity) {
         if (loaded.isEmpty()) return null;
         MobReplacement replacement = MobReplacer.activeReplacement(entity);
-        return replacement == null || replacement.behavior() == null ? null : loaded.get(replacement.behavior());
+        if (replacement != null && replacement.behavior() != null) return loaded.get(replacement.behavior());
+        for (BehaviorProfile profile : loaded.values()) {
+            if (profile.whileState() != null
+                    && com.aetherianartificer.townstead.pheno.state.EntityStates.resolve(entity, profile.whileState()).active()) {
+                return profile;
+            }
+        }
+        return null;
     }
 
     public static <T extends BehaviorProfile.Behavior> @Nullable T behavior(LivingEntity entity, ResourceLocation type, Class<T> kind) {

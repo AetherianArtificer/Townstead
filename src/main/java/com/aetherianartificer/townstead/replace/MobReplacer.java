@@ -64,7 +64,8 @@ public final class MobReplacer {
         if (probe.single() == null && probe.mix() == null) return false;
 
         VillagerEntityMCA villager = RootSpawnHandler.withRootConstraint(eligible, () -> {
-            VillagerEntityMCA spawned = VillagerFactory.newVillager(level).withPosition(mob.position()).build();
+            // Always grown: the person a wild mob wears fights and moves as that mob does.
+            VillagerEntityMCA spawned = VillagerFactory.newVillager(level).withAge(0).withPosition(mob.position()).build();
             spawned.setYRot(mob.getYRot());
             spawned.getPersistentData().putString(WILD, replacement.id().toString());
             spawned.getPersistentData().putString(REPLACED, BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()).toString());
@@ -75,6 +76,7 @@ public final class MobReplacer {
             //?} else {
             /*spawned.finalizeSpawn(level, level.getCurrentDifficultyAt(pos), spawnType, null, null);
             *///?}
+            if (spawned.isBaby()) spawned.setAge(0);
             return spawned;
         });
         // The region's fallback can still land on a Root that refuses; keep the mob then.

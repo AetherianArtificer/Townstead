@@ -7,6 +7,8 @@
 
 VAR wolf_seen = false
 VAR asked_scraps = false
+// The day they left to fetch it; they are back the day after.
+VAR wolf_day = -1
 
 === wolf ===
 ~ wolf_seen = true

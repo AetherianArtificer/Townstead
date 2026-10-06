@@ -454,13 +454,16 @@ final class StorySession {
     private void setHostVariables() {
         String villageName = goalContext().village().map(Village::getName).orElse("");
         ResourceLocation profession = BuiltInRegistries.VILLAGER_PROFESSION.getKey(villager.getVillagerData().getProfession());
-        setIfDeclared("player_name", player.getGameProfile().getName());
+        setIfDeclared("player_name", com.aetherianartificer.townstead.dialogue.McaPlayerName.of(player));
         setIfDeclared("villager_name", entry.villagerName);
         setIfDeclared("village_name", villageName);
         setIfDeclared("profession", profession == null ? "" : profession.getPath());
         setIfDeclared("today", (int) Math.min(Integer.MAX_VALUE, TownsteadCalendar.worldDay(player.server)));
-        setIfDeclared("quest_ready", entry.quests.values().stream().anyMatch(q -> q.state == PlayerStories.QuestState.READY));
-        setIfDeclared("quest_open", entry.quests.values().stream().anyMatch(q -> q.state == PlayerStories.QuestState.ACTIVE));
+        // Only quests the story still has: a record left from an edited story must not hold these on.
+        setIfDeclared("quest_ready", entry.quests.values().stream().anyMatch(q -> q.state == PlayerStories.QuestState.READY
+                && definition.quests().containsKey(q.knot)));
+        setIfDeclared("quest_open", entry.quests.values().stream().anyMatch(q -> q.state == PlayerStories.QuestState.ACTIVE
+                && definition.quests().containsKey(q.knot)));
         setIfDeclared("interrupted", entry.interrupted);
         // A fresh 1 to 100 each time the conversation opens: Ink's RANDOM repeats itself from a saved state.
         setIfDeclared("chance", player.getRandom().nextInt(100) + 1);
@@ -596,7 +599,7 @@ final class StorySession {
     }
 
     private String who(String role) {
-        if (role.equalsIgnoreCase("player")) return player.getGameProfile().getName();
+        if (role.equalsIgnoreCase("player")) return com.aetherianartificer.townstead.dialogue.McaPlayerName.of(player);
         if (role.equalsIgnoreCase("me")) return entry.villagerName;
         // A condition the story names: the first resident it holds for.
         Condition condition = definition.conditions().get(role);

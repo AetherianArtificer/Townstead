@@ -43,6 +43,19 @@ public final class VampirismStateProviders {
         if (ModCompat.isLoaded(WEREWOLVES_MOD_ID)) {
             StateProviders.register(ResourceLocation.tryParse(WEREWOLVES_MOD_ID + ":werewolf_level"), entity -> level(entity, WEREWOLF, false));
             StateProviders.register(ResourceLocation.tryParse(WEREWOLVES_MOD_ID + ":werewolf_lord_level"), entity -> level(entity, WEREWOLF, true));
+            StateProviders.register(ResourceLocation.tryParse(WEREWOLVES_MOD_ID + ":beast_form"), VampirismStateProviders::beastForm);
+            StateProviders.register(ResourceLocation.tryParse(WEREWOLVES_MOD_ID + ":coat"), entity ->
+                    entity instanceof Player player && level(player, WEREWOLF, false) != null ? (double) coat(player) + 1 : null);
+            com.aetherianartificer.townstead.aspect.AspectOptionSetters.register(WEREWOLVES_MOD_ID + ":coat",
+                    VampirismStateProviders::coat, VampirismStateProviders::setCoat);
+            StateProviders.register(ResourceLocation.tryParse(WEREWOLVES_MOD_ID + ":eyes"), entity ->
+                    entity instanceof Player player && level(player, WEREWOLF, false) != null ? (double) eyes(player) + 1 : null);
+            com.aetherianartificer.townstead.aspect.AspectOptionSetters.register(WEREWOLVES_MOD_ID + ":eyes",
+                    VampirismStateProviders::eyes, VampirismStateProviders::setEyes);
+            StateProviders.register(ResourceLocation.tryParse(WEREWOLVES_MOD_ID + ":glow"), entity ->
+                    entity instanceof Player player && level(player, WEREWOLF, false) != null ? (double) glow(player) + 1 : null);
+            com.aetherianartificer.townstead.aspect.AspectOptionSetters.register(WEREWOLVES_MOD_ID + ":glow",
+                    VampirismStateProviders::glow, VampirismStateProviders::setGlow);
         }
         if (ModCompat.isLoaded(AGEING_MOD_ID)) {
             StateProviders.register(ResourceLocation.tryParse(AGEING_MOD_ID + ":vampire_age_rank"), VampirismStateProviders::ageRank);
@@ -90,6 +103,139 @@ public final class VampirismStateProviders {
 
     private static ResourceLocation id(String path) {
         return ResourceLocation.tryParse(MOD_ID + ":" + path);
+    }
+
+    /** The player's Vampirism faction handler, unwrapped on either version, or null. */
+    static @Nullable Object handlerOf(Player player) {
+        if (!ModCompat.isLoaded(MOD_ID) || !ensureProbe()) return null;
+        try {
+            return unwrap(getHandler.invoke(null, player));
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * A werewolf player's form, as the Werewolves mod has it: 1 on four legs (survivalist or
+     * four-legged beast), 2 upright, null in human form or for anyone else.
+     */
+    private static @Nullable Double beastForm(LivingEntity entity) {
+        if (!(entity instanceof Player player) || level(player, WEREWOLF, false) == null) return null;
+        try {
+            Object holder = Class.forName("de.teamlapen.werewolves.entities.player.werewolf.WerewolfPlayer")
+                    .getMethod("getOpt", Player.class).invoke(null, player);
+            Object werewolf = holder instanceof Optional<?> optional ? optional.orElse(null) : unwrap(holder);
+            if (werewolf == null) return null;
+            Object form = werewolf.getClass().getMethod("getForm").invoke(werewolf);
+            String name = String.valueOf(form.getClass().getMethod("getName").invoke(form));
+            return switch (name) {
+                case "beast" -> 2.0;
+                case "survivalist", "beast4l" -> 1.0;
+                default -> null;
+            };
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static @Nullable Object werewolfPlayer(Player player) {
+        try {
+            Object holder = Class.forName("de.teamlapen.werewolves.entities.player.werewolf.WerewolfPlayer")
+                    .getMethod("getOpt", Player.class).invoke(null, player);
+            return holder instanceof Optional<?> optional ? optional.orElse(null) : unwrap(holder);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static @Nullable Object werewolfForm(String field) {
+        try {
+            return Class.forName("de.teamlapen.werewolves.api.entities.werewolf.WerewolfForm").getField(field).get(null);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    /** The coat a werewolf player chose in the mod (their beast form's), 0 and up. */
+    private static int coat(Player player) {
+        return lookOf(player, "getSkinType");
+    }
+
+    private static int eyes(Player player) {
+        return lookOf(player, "getEyeType");
+    }
+
+    /** Writes a coat to every beast form in the mod, so its own look and Townstead's agree. */
+    private static void setCoat(Player player, int coat) {
+        setLook(player, "setSkinType", coat);
+    }
+
+    private static void setEyes(Player player, int eyes) {
+        setLook(player, "setEyeType", eyes);
+    }
+
+    /** 1 when the player's beast eyes glow in the mod, else 0. */
+    private static int glow(Player player) {
+        Object werewolf = werewolfPlayer(player);
+        Object beast = werewolfForm("BEAST");
+        if (werewolf == null || beast == null) return 1;
+        try {
+            for (java.lang.reflect.Method m : werewolf.getClass().getMethods()) {
+                if (m.getName().equals("hasGlowingEyes") && m.getParameterCount() == 1) return Boolean.TRUE.equals(m.invoke(werewolf, beast)) ? 1 : 0;
+            }
+        } catch (Throwable ignored) {
+            // Fall through.
+        }
+        return 1;
+    }
+
+    private static void setGlow(Player player, int on) {
+        Object werewolf = werewolfPlayer(player);
+        if (werewolf == null) return;
+        try {
+            for (java.lang.reflect.Method m : werewolf.getClass().getMethods()) {
+                if (!m.getName().equals("setGlowingEyes") || m.getParameterCount() != 2) continue;
+                for (String field : new String[]{"BEAST", "BEAST4L", "SURVIVALIST"}) {
+                    Object form = werewolfForm(field);
+                    if (form != null) m.invoke(werewolf, form, on != 0);
+                }
+                return;
+            }
+        } catch (Throwable ignored) {
+            // The mod moved its API; the glow stays as it was.
+        }
+    }
+
+    private static int lookOf(Player player, String getter) {
+        Object werewolf = werewolfPlayer(player);
+        Object beast = werewolfForm("BEAST");
+        if (werewolf == null || beast == null) return 0;
+        try {
+            for (java.lang.reflect.Method m : werewolf.getClass().getMethods()) {
+                if (m.getName().equals(getter) && m.getParameterCount() == 1) return Math.max(0, ((Number) m.invoke(werewolf, beast)).intValue());
+            }
+        } catch (Throwable ignored) {
+            // Fall through.
+        }
+        return 0;
+    }
+
+    private static void setLook(Player player, String setter, int value) {
+        Object werewolf = werewolfPlayer(player);
+        if (werewolf == null) return;
+        try {
+            java.lang.reflect.Method set = null;
+            for (java.lang.reflect.Method m : werewolf.getClass().getMethods()) {
+                if (m.getName().equals(setter) && m.getParameterCount() == 2) set = m;
+            }
+            if (set == null) return;
+            for (String field : new String[]{"BEAST", "BEAST4L", "SURVIVALIST"}) {
+                Object form = werewolfForm(field);
+                if (form != null) set.invoke(werewolf, form, value);
+            }
+        } catch (Throwable ignored) {
+            // The mod moved its API; the look stays as it was.
+        }
     }
 
     /** The id of the player's Vampirism faction (vampire, hunter, werewolf...), or null for none. */

@@ -24,8 +24,8 @@ import java.util.Map;
  * <p>Both halves of a press are sent because mods read keys three ways. {@code setDown} covers
  * anything polling {@code isDown()} and anything latching a rising edge (Iron's
  * {@code ExtendedKeyMapping} does the latter, which is why their unbound slots work at all). The
- * click counter covers {@code consumeClick()}. A mod reading raw GLFW or {@code InputEvent.Key} sees
- * neither, and cannot be reached this way.</p>
+ * click counter covers {@code consumeClick()}. A key event is posted as well, for mods that only look
+ * at their keys when one arrives. A mod reading raw GLFW still cannot be reached this way.</p>
  */
 public final class SyntheticKey {
 
@@ -48,10 +48,41 @@ public final class SyntheticKey {
     public static boolean press(String name) {
         KeyMapping mapping = find(name);
         if (mapping == null) return false;
-        mapping.setDown(true);
+        // A move that rides on a jump (Werewolves' leap) only fires with Jump held as well.
+        if (RIDES_ON_JUMP.contains(name)) hold(Minecraft.getInstance().options.keyJump);
+        hold(mapping);
         bumpClickCount(mapping);
-        HELD.put(mapping, HOLD_TICKS);
+        postKeyEvent(mapping);
         return true;
+    }
+
+    /** Bindings whose mod only acts on them with Jump down, as their own key handler checks. */
+    private static final java.util.Set<String> RIDES_ON_JUMP = java.util.Set.of("keys.werewolves.leap");
+
+    private static void hold(KeyMapping mapping) {
+        mapping.setDown(true);
+        HELD.put(mapping, HOLD_TICKS);
+    }
+
+    /**
+     * Sends the key event a real press makes, for mods that only look at their keys when one arrives
+     * (Werewolves reads Leap and Bite this way). They check which binding is down, which is now ours.
+     */
+    private static void postKeyEvent(KeyMapping mapping) {
+        com.mojang.blaze3d.platform.InputConstants.Key key = mapping.getKey();
+        int code = key == null || key.getType() != com.mojang.blaze3d.platform.InputConstants.Type.KEYSYM
+                ? com.mojang.blaze3d.platform.InputConstants.UNKNOWN.getValue() : key.getValue();
+        try {
+            //? if neoforge {
+            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(new net.neoforged.neoforge.client.event.InputEvent.Key(
+                    code, 0, org.lwjgl.glfw.GLFW.GLFW_PRESS, 0));
+            //?} else {
+            /*net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.InputEvent.Key(
+                    code, 0, org.lwjgl.glfw.GLFW.GLFW_PRESS, 0));
+            *///?}
+        } catch (RuntimeException ignored) {
+            // A listener that failed on a press it did not expect; the binding is still held down.
+        }
     }
 
     /** Releases anything whose hold has run out. Call once per client tick. */

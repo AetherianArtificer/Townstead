@@ -76,6 +76,25 @@ public final class AspectPage {
             button.active = answer.allowed() && !id.equals(answer.current());
             add.accept(button);
         }
+        // The looks of their aspect, such as a werewolf's coat: "< Coat 3 of 11 >".
+        int top = y + rows.size() * ROW + 6;
+        for (int i = 0; i < answer.looks().size(); i++) {
+            AspectS2CPayload.Look look = answer.looks().get(i);
+            int rowY = top + i * ROW;
+            String valueKey = "townstead.aspect.option." + look.id() + "." + look.value();
+            Component name = I18n.exists(valueKey) ? Component.translatable(valueKey)
+                    : Component.translatable("townstead.aspect.option." + look.id(), look.value() + 1, look.count());
+            Button value = Button.builder(name, b -> {}).bounds(x + 22, rowY, w - 44, 20).build();
+            value.active = false;
+            Button prev = Button.builder(Component.literal("<"),
+                    b -> send(new AspectC2SPayload(target, "", false, look.id(), look.value() - 1))).bounds(x, rowY, 20, 20).build();
+            Button next = Button.builder(Component.literal(">"),
+                    b -> send(new AspectC2SPayload(target, "", false, look.id(), look.value() + 1))).bounds(x + w - 20, rowY, 20, 20).build();
+            prev.active = next.active = answer.styleAllowed();
+            add.accept(prev);
+            add.accept(value);
+            add.accept(next);
+        }
     }
 
     /** The page closed: stop rebuilding it. */

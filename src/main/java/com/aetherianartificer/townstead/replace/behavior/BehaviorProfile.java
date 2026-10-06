@@ -13,9 +13,12 @@ import java.util.Map;
 
 /**
  * How a replaced mob acts while it is wild: a set of behaviors, each a registered type with its
- * own options. {@code "behaviors": [{"type":"pheno:hunt","radius":16}, "pheno:bite"]}.
+ * own options. {@code "behaviors": [{"type":"pheno:hunt","radius":16}, "pheno:bite"]}. With
+ * {@code "while_state"}, the profile applies to anyone that state is active on (a werewolf's beast),
+ * not only to wild replacements.
  */
-public record BehaviorProfile(ResourceLocation id, Map<ResourceLocation, Behavior> behaviors) {
+public record BehaviorProfile(ResourceLocation id, Map<ResourceLocation, Behavior> behaviors,
+                              @org.jetbrains.annotations.Nullable ResourceLocation whileState) {
     public static final String SCHEMA = "townstead:behavior_profile/v1";
 
     public BehaviorProfile {
@@ -38,7 +41,9 @@ public record BehaviorProfile(ResourceLocation id, Map<ResourceLocation, Behavio
             if (parser == null) throw new IllegalArgumentException("unknown behavior type '" + raw + "'");
             behaviors.put(type, parser.parse(options));
         }
-        return new BehaviorProfile(id, behaviors);
+        ResourceLocation whileState = json.has("while_state")
+                ? DataPackLang.parseId(GsonHelper.getAsString(json, "while_state")) : null;
+        return new BehaviorProfile(id, behaviors, whileState);
     }
 
     /** One configured behavior. */

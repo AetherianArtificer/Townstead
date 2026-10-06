@@ -29,10 +29,12 @@ import java.util.List;
 @Mixin(value = net.conczin.mca.item.BabyItem.class, remap = false)
 public abstract class BabyItemInheritanceMixin {
 
+    // Newer MCA returns Optional<VillagerEntityMCA> (empty when there is no room to place the baby).
     @Inject(method = "birthChild", at = @At("RETURN"))
-    private void townstead$inheritOnBirth(CallbackInfoReturnable<VillagerEntityMCA> cir) {
-        VillagerEntityMCA child = cir.getReturnValue();
-        if (child == null || child.level().isClientSide) return;
+    private void townstead$inheritOnBirth(CallbackInfoReturnable<Object> cir) {
+        Object result = cir.getReturnValue();
+        if (result instanceof java.util.Optional<?> optional) result = optional.orElse(null);
+        if (!(result instanceof VillagerEntityMCA child) || child.level().isClientSide) return;
         List<Entity> parents = child.getRelationships().getParents().toList();
         Heredity.inheritFromEntities(TownsteadVillagers.get(child).life(), parents, child.getRandom());
         // MCA hands the parents over unordered; its family tree knows which one is the mother.

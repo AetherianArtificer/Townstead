@@ -224,9 +224,15 @@ public final class Journeys extends SavedData {
             if (villager == null) continue;
             ResourceLocation adopt = ResourceLocation.tryParse(journey.data().getString("adopt"));
             if (adopt != null && !journey.data().getString("adopt").isEmpty()) {
-                net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getOptional(adopt).ifPresent(type ->
-                        com.aetherianartificer.townstead.pet.VillagerPets.adoptNew(level, type, villager,
-                                journey.data().getBoolean("adopt_essential")));
+                var type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getOptional(adopt).orElse(null);
+                var pet = type == null ? null : com.aetherianartificer.townstead.pet.VillagerPets.adoptNew(level, type, villager,
+                        journey.data().getBoolean("adopt_essential"));
+                if (pet == null) {
+                    LOGGER.warn("{} came back without the {} they went to fetch: it could not be spawned at {}",
+                            villager.getName().getString(), adopt, villager.blockPosition());
+                } else {
+                    LOGGER.info("{} came back with a {} at {}", villager.getName().getString(), adopt, pet.blockPosition());
+                }
             }
         }
     }

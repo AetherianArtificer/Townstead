@@ -350,6 +350,7 @@ public final class EntityStates {
             }
             previous.put(definition.id(), current);
         }
+        StateForms.update(entity);
     }
 
     public static void forget(LivingEntity entity) {

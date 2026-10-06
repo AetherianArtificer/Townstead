@@ -104,7 +104,6 @@
   "townstead.rebirth.button": "Переродитися...",
   "townstead.rebirth.title": "Почати нове життя",
   "townstead.rebirth.body": "%s помирає, і про нього пам'ятають. Ви повертаєтеся кимось новим, чужим для міста, з новим ім'ям, тілом і Коренем. Ваші землі й будівлі залишаються вашими.",
-  "townstead.rebirth.name": "Ваше нове ім'я",
   "townstead.rebirth.confirm": "Переродитися",
   "townstead.rebirth.descendant": "Продовжити за нащадка...",
   "townstead.rebirth.descendant.failed": "MCA Descendants не зміг перехопити. Ви відродилися як зазвичай.",

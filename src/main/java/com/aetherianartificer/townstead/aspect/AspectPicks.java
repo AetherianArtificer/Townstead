@@ -67,6 +67,47 @@ public final class AspectPicks {
                 && VampirismStateProviders.factionOf(sp) == null;
     }
 
+    /** The definition of the pickable aspect {@code target} has now, or null. */
+    public static @Nullable EntityStateDefinition currentDefinition(LivingEntity target) {
+        ResourceLocation id = current(target);
+        return id == null ? null : EntityStates.definition(id);
+    }
+
+    /** Whether {@code sp} may change how {@code target}'s aspect looks: their own always, anyone's as an operator. */
+    public static boolean mayStyle(ServerPlayer sp, LivingEntity target) {
+        return target == sp || sp.hasPermissions(2) || sp.isCreative();
+    }
+
+    /** The value an aspect option has on {@code target} now, 0 to count-1. */
+    public static int optionValue(LivingEntity target, EntityStateDefinition.Option option) {
+        if (target instanceof net.minecraft.world.entity.player.Player player && option.player() != null) {
+            AspectOptionSetters.Setter setter = AspectOptionSetters.get(option.player());
+            if (setter != null) return Math.floorMod(setter.get().applyAsInt(player), option.count());
+        }
+        EntityStates.Resolved chosen = EntityStates.resolve(target, option.state());
+        if (chosen.active() && chosen.amount() >= 1) return Math.floorMod((int) chosen.amount() - 1, option.count());
+        // Unchosen: the same one a state form falls back to, so the page shows what is drawn.
+        return Math.floorMod(com.aetherianartificer.townstead.pheno.state.StateForms.fallback(target, option.id()), option.count());
+    }
+
+    /** Sets an option of {@code target}'s current aspect. False when it is not theirs to set. */
+    public static boolean setOption(ServerPlayer sp, LivingEntity target, String optionId, int value) {
+        EntityStateDefinition definition = currentDefinition(target);
+        if (definition == null || !mayStyle(sp, target)) return false;
+        for (EntityStateDefinition.Option option : definition.aspect().options()) {
+            if (!option.id().equals(optionId)) continue;
+            int v = Math.floorMod(value, option.count());
+            if (target instanceof net.minecraft.world.entity.player.Player player && option.player() != null
+                    && AspectOptionSetters.get(option.player()) != null) {
+                AspectOptionSetters.get(option.player()).set().accept(player, v);
+            } else {
+                EntityStates.set(target, option.state(), v + 1, 0, null);
+            }
+            return true;
+        }
+        return false;
+    }
+
     /** Makes {@code target} {@code aspect} (null for none). False when nothing changed. */
     public static boolean pick(ServerPlayer sp, LivingEntity target, @Nullable ResourceLocation aspect) {
         if (!mayPick(sp, target)) return false;

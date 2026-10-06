@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "werewolves",
+  "type": "townstead_roots:iris",
+  "display_name": {
+    "translate": "gene.townstead_roots.werewolf_eyes_blue"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.werewolf_eyes.desc"
+  },
+  "category": "Appearance",
+  "tint": "#126BC3"
+}

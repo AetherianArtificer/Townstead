@@ -16,14 +16,14 @@ import java.util.Map;
 
 /**
  * The speech mark over a villager who has something for you: "?" on gold when a quest is ready to
- * hand back, "!" when they are calling you over, a grey "..." while a quest of theirs is still open. Stories come from the server (see {@code StoryCalls}); every quest-ledger
+ * hand back, "!" when they are calling you over. Stories come from the server (see {@code StoryCalls}); every quest-ledger
  * source that knows who gave its quests (MCA: Quests) adds its givers here on the client.
  */
 public final class StoryCallMarks {
-    private static final byte WAITING = 1, CALLING = 2, READY = 3;
+    private static final byte CALLING = 2, READY = 3;
     /** The sprite for a state in the player's chosen style (Bright, or Ember for dark). */
     public static ResourceLocation sprite(byte state) {
-        String name = state == READY ? "ready" : state == WAITING ? "waiting" : "calling";
+        String name = state == READY ? "ready" : "calling";
         return ResourceLocation.tryParse("townstead:textures/gui/story_mark/"
                 + TownsteadConfig.storyMarkStyle().resolved().name().toLowerCase(java.util.Locale.ROOT) + "_" + name + ".png");
     }
@@ -87,14 +87,14 @@ public final class StoryCallMarks {
         if (mc.player == null || mc.level == null || entity.distanceToSqr(mc.player) > RANGE * RANGE) return;
         refreshGivers(mc);
         byte state = state(entity);
-        if (state == 0) return;
+        if (state != CALLING && state != READY) return;
         // An expression cue already floats there; the mark waits its turn.
         if (com.aetherianartificer.townstead.client.expression.ExpressionCueClientStore.get(entity.getId()) != null) return;
         if (mc.screen instanceof com.aetherianartificer.townstead.client.gui.dialogue.RpgDialogueScreen screen
                 && screen.villagerEntityId() == entity.getId()) return;
 
         float time = entity.tickCount + partialTick;
-        float bob = state == WAITING ? 0f : (float) Math.sin(time * 0.12f) * 0.06f;
+        float bob = (float) Math.sin(time * 0.12f) * 0.06f;
         pose.pushPose();
         pose.translate(0d, entity.getBbHeight() + 0.55d + bob, 0d);
         pose.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());
@@ -105,24 +105,25 @@ public final class StoryCallMarks {
     }
 
     private static void quad(ResourceLocation texture, PoseStack pose, MultiBufferSource buffers, int color) {
+        // The billboard is scaled -1 on X, which mirrors it; the U coordinates are swapped to undo that.
         VertexConsumer vertices = buffers.getBuffer(RenderType.entityTranslucent(texture));
         org.joml.Matrix4f matrix = pose.last().pose();
         int light = LightTexture.FULL_BRIGHT;
         //? if >=1.21 {
-        vertices.addVertex(matrix, -8f, 8f, 0f).setColor(color).setUv(0f, 1f)
+        vertices.addVertex(matrix, -8f, 8f, 0f).setColor(color).setUv(1f, 1f)
                 .setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(0f, 0f, -1f);
-        vertices.addVertex(matrix, 8f, 8f, 0f).setColor(color).setUv(1f, 1f)
+        vertices.addVertex(matrix, 8f, 8f, 0f).setColor(color).setUv(0f, 1f)
                 .setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(0f, 0f, -1f);
-        vertices.addVertex(matrix, 8f, -8f, 0f).setColor(color).setUv(1f, 0f)
+        vertices.addVertex(matrix, 8f, -8f, 0f).setColor(color).setUv(0f, 0f)
                 .setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(0f, 0f, -1f);
-        vertices.addVertex(matrix, -8f, -8f, 0f).setColor(color).setUv(0f, 0f)
+        vertices.addVertex(matrix, -8f, -8f, 0f).setColor(color).setUv(1f, 0f)
                 .setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(0f, 0f, -1f);
         //?} else {
         /*float a = ((color >>> 24) & 255) / 255f;
-        vertices.vertex(matrix, -8f, 8f, 0f).color(1f,1f,1f,a).uv(0f,1f).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(0f,0f,-1f).endVertex();
-        vertices.vertex(matrix, 8f, 8f, 0f).color(1f,1f,1f,a).uv(1f,1f).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(0f,0f,-1f).endVertex();
-        vertices.vertex(matrix, 8f, -8f, 0f).color(1f,1f,1f,a).uv(1f,0f).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(0f,0f,-1f).endVertex();
-        vertices.vertex(matrix, -8f, -8f, 0f).color(1f,1f,1f,a).uv(0f,0f).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(0f,0f,-1f).endVertex();
+        vertices.vertex(matrix, -8f, 8f, 0f).color(1f,1f,1f,a).uv(1f,1f).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(0f,0f,-1f).endVertex();
+        vertices.vertex(matrix, 8f, 8f, 0f).color(1f,1f,1f,a).uv(0f,1f).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(0f,0f,-1f).endVertex();
+        vertices.vertex(matrix, 8f, -8f, 0f).color(1f,1f,1f,a).uv(0f,0f).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(0f,0f,-1f).endVertex();
+        vertices.vertex(matrix, -8f, -8f, 0f).color(1f,1f,1f,a).uv(1f,0f).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(0f,0f,-1f).endVertex();
         *///?}
     }
 }

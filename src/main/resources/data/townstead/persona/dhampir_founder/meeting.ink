@@ -214,5 +214,6 @@ Good. Thank you. I'll start looking for the ones who don't mind the dark. They u
     I'll be gone a day first. There's a rope I need to go and cut.
 }
 // They walk out once no one is watching and come back in a day with the wolf (scene 2).
+~ wolf_day = today
 ~ act("fetch_wolf")
 -> DONE

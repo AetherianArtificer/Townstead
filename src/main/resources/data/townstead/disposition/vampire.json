@@ -9,6 +9,8 @@
     "wild_vampire"
   ],
   "hostile": [
-    "hunter"
+    "hunter",
+    "werewolf",
+    "wild_werewolf"
   ]
 }

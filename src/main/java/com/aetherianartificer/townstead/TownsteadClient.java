@@ -199,6 +199,7 @@ public final class TownsteadClient {
         com.aetherianartificer.townstead.client.render.WildCostumeRender.clear();
         clearClientStore("com.aetherianartificer.townstead.hunger.HungerClientStore");
         clearClientStore("com.aetherianartificer.townstead.client.story.StoryCallMarks");
+        clearClientStore("com.aetherianartificer.townstead.client.state.StateFormClient");
         clearClientStore("com.aetherianartificer.townstead.client.rebirth.CharacterNameClient");
         clearClientStore("com.aetherianartificer.townstead.client.rebirth.RebirthDestinyClient");
         clearClientStore("com.aetherianartificer.townstead.hunger.FishermanHookLinkStore");

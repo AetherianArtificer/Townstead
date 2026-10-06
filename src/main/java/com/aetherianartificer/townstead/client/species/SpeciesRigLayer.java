@@ -73,7 +73,7 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
             return;
         }
         HumanoidModel<LivingEntity> model = RigModels.model(rigBase);
-        ResourceLocation texture = RigModels.texture(rigBase);
+        ResourceLocation texture = RigModels.texture(rigBase, entity);
         if (model == null || texture == null) return;
 
         Animations anim = RigModels.animations(entity);
@@ -118,6 +118,7 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
         *///?}
 
         RigSkins.render(entity, model, pose, buffers, light, fade);
+        if (fade >= 1f) RigModels.renderOverlays(rigBase, entity, model, pose, buffers, light);
 
         // Face, armor, and held items have no alpha channel to fade through, so they keep
         // the hard cut at the flag flip (fade start) — matching vanilla-armor pop timing —
@@ -280,7 +281,7 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
                                float limbSwing, float limbSwingAmount, float partialTick, float ageInTicks,
                                float netHeadYaw, float headPitch, String rigBase) {
         EntityModel<LivingEntity> model = RigModels.genericModel(rigBase, entity);
-        ResourceLocation texture = RigModels.texture(rigBase);
+        ResourceLocation texture = RigModels.texture(rigBase, entity);
         if (model == null || texture == null) return;
         model.attackTime = entity.getAttackAnim(partialTick);
         model.young = babyProportions(entity);
@@ -347,6 +348,7 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
                 ((tone >>> 24) & 0xFF) / 255f);
         *///?}
         RigSkins.render(entity, model, pose, buffers, light, fade);
+        if (fade >= 1f) RigModels.renderOverlays(rigBase, entity, model, pose, buffers, light);
         // Face, boots, and held items keep the hard cut at the flag flip (see the humanoid path).
         if (fade >= 1f) {
             // Generic (non-humanoid) models don't apply the vanilla humanoid baby head transform, so the

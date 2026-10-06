@@ -164,27 +164,33 @@ public class SwitchboardScreen extends MenuBackgroundScreen {
                 Component.translatable("townstead.switchboard.details." + dial.id()), keys));
     }
 
+    /** Scrolls, since its rows outgrow short windows. */
     private void initPeoples(int y) {
-        y = worldToggle(SettingIndex.keyOf(TownsteadConfig.ALLOW_ROOT_CHOICE_IN_DESTINY), y);
-        y = worldToggle(SettingIndex.keyOf(TownsteadConfig.ALLOW_ASPECT_START), y);
+        PageList list = new PageList(minecraft, width, height - 36 - y, y, COLUMN);
+        worldToggle(list, SettingIndex.keyOf(TownsteadConfig.ALLOW_ROOT_CHOICE_IN_DESTINY));
+        worldToggle(list, SettingIndex.keyOf(TownsteadConfig.ALLOW_ASPECT_START));
         if (model.catalog.roots.stream().anyMatch(ContentCatalog.RootRow::hostile)) {
-            y = worldToggle(SettingIndex.keyOf(TownsteadConfig.ROOT_HOSTILITY), y);
+            worldToggle(list, SettingIndex.keyOf(TownsteadConfig.ROOT_HOSTILITY));
         }
-        y = link("townstead.switchboard.peoples.roots", "townstead.switchboard.peoples.roots.hint", y, true,
+        list.add(linkButton("townstead.switchboard.peoples.roots", true,
                 () -> new SettingsListScreen(this, model, SettingsListScreen.Kind.ROOTS,
                         Component.translatable("townstead.switchboard.tab.roots"),
-                        Component.translatable("townstead.switchboard.intro.roots"), null));
+                        Component.translatable("townstead.switchboard.intro.roots"), null)),
+                Component.translatable("townstead.switchboard.peoples.roots.hint"));
         boolean cultures = Boolean.TRUE.equals(model.value(Systems.key(Systems.CULTURES)));
-        y = link("townstead.switchboard.peoples.cultures", cultures ? "townstead.switchboard.peoples.cultures.hint"
-                        : "townstead.switchboard.peoples.cultures.off", y, cultures,
+        list.add(linkButton("townstead.switchboard.peoples.cultures", cultures,
                 () -> new SettingsListScreen(this, model, SettingsListScreen.Kind.CULTURES,
                         Component.translatable("townstead.switchboard.tab.cultures"),
-                        Component.translatable("townstead.switchboard.intro.cultures"), null));
-        link("townstead.switchboard.peoples.names", "townstead.switchboard.peoples.names.hint", y, true,
+                        Component.translatable("townstead.switchboard.intro.cultures"), null)),
+                Component.translatable(cultures ? "townstead.switchboard.peoples.cultures.hint"
+                        : "townstead.switchboard.peoples.cultures.off"));
+        list.add(linkButton("townstead.switchboard.peoples.names", true,
                 () -> new SettingsListScreen(this, model, SettingsListScreen.Kind.CATEGORY,
                         Component.translatable("townstead.switchboard.peoples.names.title"),
                         Component.translatable("townstead.switchboard.details.peoples"),
-                        Dials.get(Dials.PEOPLES).details()));
+                        Dials.get(Dials.PEOPLES).details())),
+                Component.translatable("townstead.switchboard.peoples.names.hint"));
+        addRenderableWidget(list);
     }
 
     private void initMore(int y) {
@@ -202,9 +208,8 @@ public class SwitchboardScreen extends MenuBackgroundScreen {
 
     /** A full-width button that opens another screen, with an optional line of explanation under it. */
     private int link(String labelKey, @Nullable String hintKey, int y, boolean active, Supplier<Screen> next) {
-        Button button = Button.builder(Component.translatable(labelKey), b -> minecraft.setScreen(next.get()))
-                .bounds(left(), y, COLUMN, 20).build();
-        button.active = active;
+        Button button = linkButton(labelKey, active, next);
+        button.setY(y);
         addRenderableWidget(button);
         y += 24;
         if (hintKey != null) {
@@ -215,17 +220,23 @@ public class SwitchboardScreen extends MenuBackgroundScreen {
         return y;
     }
 
+    private Button linkButton(String labelKey, boolean active, Supplier<Screen> next) {
+        Button button = Button.builder(Component.translatable(labelKey), b -> minecraft.setScreen(next.get()))
+                .bounds(left(), 0, COLUMN, 20).build();
+        button.active = active;
+        return button;
+    }
+
     /** A full-width "Label: ON" button for a world setting. */
-    private int worldToggle(@Nullable String key, int y) {
+    private void worldToggle(PageList list, @Nullable String key) {
         SettingIndex.Entry entry = key == null ? null : SettingIndex.get(key);
-        if (entry == null) return y;
+        if (entry == null) return;
         boolean value = Boolean.TRUE.equals(model.value(key));
         CycleButton<Boolean> toggle = CycleButton.booleanBuilder(SettingControls.on(), SettingControls.off())
                 .withInitialValue(value)
-                .create(left(), y, COLUMN, 20, SettingLabels.label(entry), (b, v) -> model.set(key, v));
+                .create(left(), 0, COLUMN, 20, SettingLabels.label(entry), (b, v) -> model.set(key, v));
         if (model.isLocked(key)) lock(toggle);
-        addRenderableWidget(toggle);
-        return y + 30;
+        list.add(toggle, null);
     }
 
     private static Component custom() {

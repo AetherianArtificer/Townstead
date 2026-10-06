@@ -507,6 +507,12 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         }
         buf.writeUtf(r.modelClass() == null ? "" : r.modelClass());
         buf.writeFloat(r.cameraHeightOffset());
+        buf.writeVarInt(r.overlays().size());
+        for (RigDefinition.Overlay overlay : r.overlays()) {
+            buf.writeUtf(overlay.texture());
+            buf.writeBoolean(overlay.glow());
+            buf.writeUtf(overlay.glowVariant());
+        }
     }
 
     /** Serialize the emote remap: present flag, body-motion gate, per-channel remaps, and policy. */
@@ -694,7 +700,12 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
             }
             animation = new RigDefinition.Animation(file, List.copyOf(rules));
         }
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, java.util.Set.copyOf(disabledSlots), cameraBone, emote, animation, buf.readUtf(), buf.readFloat());
+        String modelClass = buf.readUtf();
+        float cameraOffset = buf.readFloat();
+        int overlayCount = Math.min(buf.readVarInt(), 16);
+        List<RigDefinition.Overlay> overlays = new ArrayList<>(overlayCount);
+        for (int i = 0; i < overlayCount; i++) overlays.add(new RigDefinition.Overlay(buf.readUtf(), buf.readBoolean(), buf.readUtf()));
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, java.util.Set.copyOf(disabledSlots), cameraBone, emote, animation, modelClass, cameraOffset, List.copyOf(overlays));
     }
 
     private static void writeNullableUtf(FriendlyByteBuf buf, String value) {

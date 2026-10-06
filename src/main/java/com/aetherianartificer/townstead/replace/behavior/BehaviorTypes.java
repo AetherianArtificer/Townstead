@@ -10,12 +10,15 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** The behavior types a profile can name. Compat code may register more. */
 public final class BehaviorTypes {
-    /** Attacks what it regards as hostile, within {@code radius}; {@code shun_daylight} keeps it out of the sun. */
+    /**
+     * Attacks what it regards as hostile, within {@code radius}; {@code shun_daylight} keeps it out of the
+     * sun; {@code monsters} also takes on hostile mobs (never creepers).
+     */
     public static final ResourceLocation HUNT = ResourceLocation.tryParse("pheno:hunt");
     /** Feeds on the people it hunts, not only on those its feeding rules allow. */
     public static final ResourceLocation BITE = ResourceLocation.tryParse("pheno:bite");
 
-    public record Hunt(double radius, boolean shunDaylight) implements BehaviorProfile.Behavior {}
+    public record Hunt(double radius, boolean shunDaylight, boolean monsters) implements BehaviorProfile.Behavior {}
     public record Bite() implements BehaviorProfile.Behavior {}
 
     @FunctionalInterface
@@ -27,7 +30,8 @@ public final class BehaviorTypes {
 
     static {
         register(HUNT, options -> new Hunt(GsonHelper.getAsDouble(options, "radius", 16),
-                GsonHelper.getAsBoolean(options, "shun_daylight", false)));
+                GsonHelper.getAsBoolean(options, "shun_daylight", false),
+                GsonHelper.getAsBoolean(options, "monsters", false)));
         register(BITE, options -> new Bite());
     }
 

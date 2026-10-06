@@ -60,6 +60,10 @@ final class SettingsListScreen extends MenuBackgroundScreen {
     @Override
     protected void init() {
         boolean grouped = kind == Kind.ROOTS;
+        // Added first: on 1.20.1 the list paints dirt over the header band, so widgets there must draw after it.
+        list = new SettingList(minecraft, width, height - 36 - 66, 66,
+                kind == Kind.ROOTS || kind == Kind.CULTURES ? 400 : 330);
+        addRenderableWidget(list);
         EditBox search = new EditBox(font, width / 2 - 155, 40, grouped ? 200 : 310, 20,
                 Component.translatable("townstead.switchboard.search"));
         search.setHint(Component.translatable("townstead.switchboard.search").withStyle(ChatFormatting.DARK_GRAY));
@@ -79,9 +83,6 @@ final class SettingsListScreen extends MenuBackgroundScreen {
                                 fill(false);
                             }));
         }
-        list = new SettingList(minecraft, width, height - 36 - 66, 66,
-                kind == Kind.ROOTS || kind == Kind.CULTURES ? 400 : 330);
-        addRenderableWidget(list);
         fill(false);
 
         boolean packDefaults = kind != Kind.CLIENT && !model.pack.isEmpty();
