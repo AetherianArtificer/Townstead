@@ -9,6 +9,7 @@ import com.aetherianartificer.townstead.clothing.ClothingLayer;
 import com.aetherianartificer.townstead.clothing.ClothingSources;
 import com.aetherianartificer.townstead.clothing.WornPiece;
 import com.aetherianartificer.townstead.clothing.policy.WardrobeResolver;
+import com.aetherianartificer.townstead.clothing.wardrobe.WeatherLayers;
 import com.aetherianartificer.townstead.compat.curios.CuriosCompat;
 import com.aetherianartificer.townstead.compat.mca.McaRegistryCompat;
 import com.aetherianartificer.townstead.culture.Culture;
@@ -132,11 +133,12 @@ public class DressTask extends Behavior<VillagerEntityMCA> {
         List<WornPiece> worn = new ArrayList<>(ClothingSources.worn(villager));
         worn.addAll(ClothingSources.carried(villager));
         Culture culture = CultureAssignment.recorded(villager);
-        CultureClothing cultureClothing = culture == null ? CultureClothing.NONE : culture.clothing();
+        CultureClothing cultureClothing = culture == null ? CultureClothing.NONE
+                : com.aetherianartificer.townstead.culture.CultureBlends.clothing(villager);
         List<ClothingEntry> fitted = fitted(villager);
 
         List<DressDecision.Action> actions = DressDecision.decide(plan, worn, armourManaged(villager), tier,
-                onShift, cultureClothing, fitted);
+                onShift, cultureClothing, fitted, WeatherLayers.on(villager, true), WeatherLayers.on(villager, false));
         if (actions.isEmpty()) {
             VillagerSearchCadence.schedule(level, villager, SEARCH_CADENCE_KEY, SEARCH_RETRY_TICKS, 100);
             return false;

@@ -16,7 +16,7 @@ import java.util.function.Supplier;
  * spirits during classification, and the canonical pair ordering used when
  * looking up blend readout keys.
  *
- * Twelve spirits define the complete Community Spirit vocabulary. Each
+ * Thirteen spirits define the complete Community Spirit vocabulary. Each
  * Spirit carries the translation key for its display name ("Nautical") and
  * an ARGB color used to tint bars and
  * recognition particles. The former "adjective" form used in "Fishing Town"
@@ -51,6 +51,8 @@ public final class SpiritRegistry {
         register(new Spirit("haunted",     "townstead.spirit.haunted",     0xFF7A4A8A, () -> Items.SKELETON_SKULL));
         register(new Spirit("mining",      "townstead.spirit.mining",      0xFF8A8A9A, () -> Items.RAW_IRON));
         register(new Spirit("natural",     "townstead.spirit.natural",     0xFF3E7A4E, () -> Items.OAK_SAPLING));
+        // Appended last: insertion order is load-bearing, so new axes never reorder the old ones.
+        register(new Spirit("clandestine", "townstead.spirit.clandestine", 0xFF4A5468, () -> Items.SPYGLASS));
     }
 
     private static void register(Spirit s) {

@@ -39,6 +39,8 @@ public final class PersonaInstances extends SavedData {
     private final Map<UUID, Instance> byVillager = new LinkedHashMap<>();
     private final Map<ResourceLocation, Map<String, String>> rolls = new LinkedHashMap<>();
     private final List<Pending> pending = new java.util.ArrayList<>();
+    /** Towns each Persona was asked to leave, by {@link #key}: they never come back to them. */
+    private final java.util.Set<String> dismissed = new java.util.LinkedHashSet<>();
 
     public static PersonaInstances get(MinecraftServer server) {
         //? if >=1.21 {
@@ -137,6 +139,22 @@ public final class PersonaInstances extends SavedData {
         if (pending.remove(entry)) setDirty();
     }
 
+    /** The Persona was asked to leave this town and will not come back to it. */
+    public void dismiss(ResourceLocation persona, ResourceLocation dimension, int village) {
+        if (dismissed.add(key(persona, dimension, village))) setDirty();
+    }
+
+    public boolean isDismissed(ResourceLocation persona, ResourceLocation dimension, int village) {
+        return dismissed.contains(key(persona, dimension, village));
+    }
+
+    /** Lets the Persona come back to this town. Returns whether they had been asked to leave it. */
+    public boolean undismiss(ResourceLocation persona, ResourceLocation dimension, int village) {
+        boolean removed = dismissed.remove(key(persona, dimension, village));
+        if (removed) setDirty();
+        return removed;
+    }
+
     public boolean remove(UUID villager) {
         boolean removed = byVillager.remove(villager) != null;
         if (removed) setDirty();
@@ -176,6 +194,8 @@ public final class PersonaInstances extends SavedData {
             for (String roll : values.getAllKeys()) map.put(roll, values.getString(roll));
             data.rolls.put(id, map);
         }
+        ListTag dismissedList = tag.getList("dismissed", Tag.TAG_STRING);
+        for (int i = 0; i < dismissedList.size(); i++) data.dismissed.add(dismissedList.getString(i));
         return data;
     }
 
@@ -216,6 +236,9 @@ public final class PersonaInstances extends SavedData {
             pendingList.add(entry);
         }
         tag.put("pending", pendingList);
+        ListTag dismissedList = new ListTag();
+        for (String key : dismissed) dismissedList.add(net.minecraft.nbt.StringTag.valueOf(key));
+        tag.put("dismissed", dismissedList);
         return tag;
     }
 }

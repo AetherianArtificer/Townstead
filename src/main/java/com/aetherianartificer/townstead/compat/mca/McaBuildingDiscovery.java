@@ -141,7 +141,10 @@ public final class McaBuildingDiscovery {
                 return;
             }
         } else {
-            result = manager.processBuilding(source);
+            // Discovery only keeps existing villages current. Founding one here would turn every
+            // bed or barrel placed in the wild into a resident-less village.
+            diagnostic("no-village", source, Building.validationResult.NOT_IN_BUILDING, java.util.List.of());
+            return;
         }
 
         if (result != Building.validationResult.SUCCESS) {

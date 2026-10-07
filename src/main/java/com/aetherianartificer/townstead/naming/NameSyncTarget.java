@@ -24,7 +24,7 @@ public final class NameSyncTarget {
     public static void syncToPlayer(net.minecraft.server.level.ServerPlayer player, VillagerEntityMCA villager) {
         NameParts parts = VillagerNames.parts(villager);
         NameSyncPayload payload = new NameSyncPayload(
-                villager.getId(), familyFor(player, villager, parts), Naming.cultureOf(villager), parts.order(),
+                villager.getId(), familyFor(player, villager, parts), com.aetherianartificer.townstead.culture.Cultures.rootOf(Naming.cultureOf(villager)), parts.order(),
                 rule(villager), traditionOf(villager));
         //? if neoforge {
         PacketDistributor.sendToPlayer(player, payload);
@@ -45,7 +45,7 @@ public final class NameSyncTarget {
             return;
         }
         NameSyncPayload payload = new NameSyncPayload(
-                villager.getId(), parts.family(), Naming.cultureOf(villager), parts.order(),
+                villager.getId(), parts.family(), com.aetherianartificer.townstead.culture.Cultures.rootOf(Naming.cultureOf(villager)), parts.order(),
                 rule(villager), traditionOf(villager));
         //? if neoforge {
         PacketDistributor.sendToPlayersTrackingEntity(villager, payload);

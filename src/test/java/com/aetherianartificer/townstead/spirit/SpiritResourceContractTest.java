@@ -78,7 +78,7 @@ class SpiritResourceContractTest {
         for (String key : english.keySet()) {
             if (key.startsWith("townstead.spirit.blend.")) actualKeys.add(key);
         }
-        assertEquals(66, expectedKeys.size(), "twelve spirits should have 66 unique pairs");
+        assertEquals(78, expectedKeys.size(), "thirteen spirits should have 78 unique pairs");
         assertEquals(expectedKeys, actualKeys,
                 "blend translations must use registry order and cover each pair exactly once");
     }

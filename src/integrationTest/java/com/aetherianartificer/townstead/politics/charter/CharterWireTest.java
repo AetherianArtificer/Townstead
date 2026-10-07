@@ -44,7 +44,7 @@ class CharterWireTest {
                         List.of(text), List.of(action)),
                 List.of(new CharterSnapshotS2CPayload.StyleOption("pack:plate", literal("Plate"),
                         new com.aetherianartificer.townstead.livery.LiveryView(net.minecraft.resources.ResourceLocation.tryParse("pack:plate"), true, 0x8A1C1C, 0xC9A227,
-                                java.util.Map.of("chest", new com.aetherianartificer.townstead.livery.LiveryView.Trim("minecraft:ward", "minecraft:gold"))))),
+                                java.util.Set.of("minecraft:iron"), java.util.Map.of("chest", new com.aetherianartificer.townstead.livery.LiveryView.Trim("minecraft:ward", "minecraft:gold"))))),
                 List.of(new CharterSnapshotS2CPayload.Welcome("vampire", literal("Vampires"), true)),
                 List.of(new CharterSnapshotS2CPayload.Accord("test:court", literal("Night Court"), true)));
         var original = new CharterSnapshotS2CPayload(BlockPos.ZERO, new BlockPos(0, 1, 1), CharterSnapshotS2CPayload.FOUNDED, false,

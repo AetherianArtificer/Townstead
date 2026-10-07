@@ -221,6 +221,23 @@ public final class StoryService {
         }
     }
 
+    /** The villager's {@code farewell()} line for this player, or null when their story has none. */
+    public static @Nullable String farewellLine(ServerPlayer player, VillagerEntityMCA villager) {
+        StoryDefinition story = storyFor(player, villager);
+        if (story == null || !story.compiledJson().contains("farewell")) return null;
+        if (SESSIONS.get(player.getUUID()) != null) closeSession(player);
+        PlayerStories.Entry entry = stories(player).get(PlayerStories.key(story, villager.getUUID()));
+        PlayerStories.Entry forLine = entry != null ? entry
+                : new PlayerStories.Entry(story.id(), villager.getUUID(), StorySession.displayName(villager));
+        try {
+            refresh(player.server, player.getUUID(), forLine, story, villager);
+            return StorySession.open(player, villager, story, forLine).farewellLine();
+        } catch (Exception e) {
+            com.aetherianartificer.townstead.Townstead.LOGGER.warn("Story {} farewell failed: {}", story.id(), e.getMessage());
+            return null;
+        }
+    }
+
     /** The menu label and the greeting line a story offers when the screen opens. */
     private record OfferTexts(String label, String greeting) {}
 

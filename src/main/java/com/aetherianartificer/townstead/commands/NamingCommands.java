@@ -56,6 +56,7 @@ public final class NamingCommands {
                     Cultures.allIds().stream().map(ResourceLocation::toString).sorted(), builder);
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext ctx) {
+        CultureCommands.register(dispatcher);
         dispatcher.register(Commands.literal("townstead").then(Commands.literal("naming")
                 .executes(c -> report(c.getSource(), null))
                 .then(Commands.literal("village").executes(c -> village(c.getSource())))

@@ -118,7 +118,7 @@ class VillageSpiritAggregatorTest {
                 pairs++;
             }
         }
-        assertEquals(66, pairs);
+        assertEquals(78, pairs);
     }
 
     private static SpiritReadout readout(Map<String, Integer> points) {

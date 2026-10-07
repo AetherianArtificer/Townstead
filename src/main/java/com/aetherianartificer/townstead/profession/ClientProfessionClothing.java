@@ -32,6 +32,8 @@ public final class ClientProfessionClothing {
      */
     public static void ensureRenderable(VillagerEntityMCA villager) {
         if (villager == null || villager.isClothingLocked()) return;
+        // A renderable outfit is never replaced here: it may be a Wardrobe pick or an editor preview tile.
+        if (textureAvailable(villager.getClothes())) return;
 
         Collection<Clothing> catalogue = ProfessionClothing.catalogue();
         if (catalogue.isEmpty()) return;
@@ -44,10 +46,6 @@ public final class ClientProfessionClothing {
         if (!choices.isEmpty() && applyFirstAvailable(villager, catalogue, choices)) {
             return;
         }
-
-        // An unlisted outfit may be the villager's deliberately preserved clothes. Keep it when
-        // the client can render it; only a blank, missing, or disabled-pack texture falls through.
-        if (textureAvailable(villager.getClothes())) return;
 
         applyFirstAvailable(villager, catalogue, List.of(new ClothingChoice(CIVILIAN)));
     }

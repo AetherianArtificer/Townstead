@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +27,7 @@ import java.util.Map;
  *   "schema": "townstead:livery_style/v1",
  *   "name": { "translate": "livery_style.example_pack.lacquered_plate" },
  *   "tint": true,
+ *   "tint_armor": ["minecraft:iron", "minecraft:chainmail"],
  *   "colors": { "primary": "#8A1C1C", "secondary": "#C9A227" },
  *   "trims": { "chest": { "pattern": "minecraft:ward", "material": "minecraft:gold" } }
  * }
@@ -75,7 +77,13 @@ public final class LiveryStyles {
             JsonObject trim = GsonHelper.getAsJsonObject(trimJson, slot);
             trims.put(slot, new LiveryView.Trim(GsonHelper.getAsString(trim, "pattern"), GsonHelper.getAsString(trim, "material")));
         }
-        return new LiveryStyle(id, name, GsonHelper.getAsBoolean(json, "tint", false), primary, secondary, trims);
+        LinkedHashSet<String> tintArmor = new LinkedHashSet<>();
+        for (JsonElement material : GsonHelper.getAsJsonArray(json, "tint_armor", new com.google.gson.JsonArray())) {
+            ResourceLocation materialId = ResourceLocation.tryParse(material.getAsString());
+            if (materialId == null) throw new IllegalArgumentException("bad tint_armor material: " + material);
+            tintArmor.add(materialId.toString());
+        }
+        return new LiveryStyle(id, name, GsonHelper.getAsBoolean(json, "tint", false), primary, secondary, tintArmor, trims);
     }
 
     static int colour(String raw) {

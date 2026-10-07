@@ -963,6 +963,10 @@ public final class TownsteadVillager {
         // who has neither. nameList is which of the culture's given-name lists this villager was
         // named from, rolled once; familyName is the resolved surname. See naming/Naming.
         private String culture = "";
+        // Shares of the cultures this person carries, summing to 1. Empty means wholly `culture`.
+        // `culture` is always the largest share; drift moves the shares, never the name fields.
+        private final Map<String, Float> cultureBlend = new java.util.LinkedHashMap<>();
+        private long cultureDriftDay = -1;
         private String namingTradition = "";
         private String nameList = "";
         private String familyName = "";
@@ -1078,6 +1082,46 @@ public final class TownsteadVillager {
 
         public void setCulture(String id) {
             culture = id == null ? "" : id;
+            cultureBlend.clear();
+            markDirty();
+        }
+
+        /** Shares of each culture this person carries, summing to 1; a single culture when unmixed. */
+        public Map<String, Float> cultureBlend() {
+            if (cultureBlend.isEmpty()) return culture.isEmpty() ? Map.of() : Map.of(culture, 1.0F);
+            return Collections.unmodifiableMap(cultureBlend);
+        }
+
+        /**
+         * Replaces the blend, normalized, and makes the largest share the recorded culture. Name
+         * fields are untouched: a person keeps the name they were given as their culture shifts.
+         */
+        public void setCultureBlend(Map<String, Float> shares) {
+            cultureBlend.clear();
+            float total = 0;
+            for (Map.Entry<String, Float> e : shares.entrySet()) {
+                if (e.getKey() != null && !e.getKey().isEmpty() && e.getValue() != null && e.getValue() > 0) total += e.getValue();
+            }
+            String largest = "";
+            float best = -1;
+            for (Map.Entry<String, Float> e : shares.entrySet()) {
+                if (e.getKey() == null || e.getKey().isEmpty() || e.getValue() == null || e.getValue() <= 0) continue;
+                float share = e.getValue() / total;
+                cultureBlend.put(e.getKey(), share);
+                if (share > best) { best = share; largest = e.getKey(); }
+            }
+            if (cultureBlend.size() == 1) cultureBlend.clear();
+            if (!largest.isEmpty()) culture = largest;
+            markDirty();
+        }
+
+        /** The last world day culture drift was applied, or -1 before the first. */
+        public long cultureDriftDay() {
+            return cultureDriftDay;
+        }
+
+        public void setCultureDriftDay(long day) {
+            cultureDriftDay = day;
             markDirty();
         }
 
@@ -1311,6 +1355,12 @@ public final class TownsteadVillager {
                 tag.putString("personalityId", personalityId);
             }
             if (!culture.isEmpty()) tag.putString("culture", culture);
+            if (!cultureBlend.isEmpty()) {
+                CompoundTag blend = new CompoundTag();
+                cultureBlend.forEach(blend::putFloat);
+                tag.put("cultureBlend", blend);
+            }
+            if (cultureDriftDay >= 0) tag.putLong("cultureDriftDay", cultureDriftDay);
             if (!namingTradition.isEmpty()) tag.putString("namingTradition", namingTradition);
             if (!nameList.isEmpty()) tag.putString("nameList", nameList);
             if (!familyName.isEmpty()) tag.putString("familyName", familyName);
@@ -1360,6 +1410,10 @@ public final class TownsteadVillager {
             rootId = tag.contains("rootId") ? tag.getString("rootId") : tag.getString("originId"); // legacy fallback
             personalityId = tag.getString("personalityId");
             culture = tag.getString("culture");
+            cultureBlend.clear();
+            CompoundTag blend = tag.getCompound("cultureBlend");
+            for (String key : blend.getAllKeys()) cultureBlend.put(key, blend.getFloat(key));
+            cultureDriftDay = tag.contains("cultureDriftDay") ? tag.getLong("cultureDriftDay") : -1;
             namingTradition = tag.getString("namingTradition");
             nameList = tag.getString("nameList");
             familyName = tag.getString("familyName");

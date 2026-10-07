@@ -6,7 +6,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -80,5 +83,61 @@ public final class Cultures {
     /** Every culture that can currently be assigned. */
     public static Set<ResourceLocation> allIds() {
         return new LinkedHashSet<>(authored.keySet());
+    }
+
+    /** Cultures that are not subcultures: the identities players see and the Switchboard lists. */
+    public static Set<ResourceLocation> rootIds() {
+        Set<ResourceLocation> out = new LinkedHashSet<>();
+        for (Culture culture : authored.values()) if (!culture.isSubculture()) out.add(culture.id());
+        return out;
+    }
+
+    /** The culture players see for this one: itself, or the root its subculture belongs to. */
+    public static @Nullable ResourceLocation rootOf(@Nullable ResourceLocation id) {
+        Culture culture = get(id);
+        for (int depth = 0; culture != null && culture.isSubculture() && depth < 16; depth++) {
+            Culture parent = authored.get(culture.parent());
+            if (parent == null) break;
+            culture = parent;
+        }
+        return culture == null ? null : culture.id();
+    }
+
+    public static String rootOf(@Nullable String id) {
+        ResourceLocation root = id == null || id.isBlank() ? null : rootOf(ResourceLocation.tryParse(id.trim()));
+        return root == null ? (id == null ? "" : id) : root.toString();
+    }
+
+    /** Whether {@code id} is {@code ancestor} or one of its subcultures, at any depth. */
+    public static boolean within(@Nullable ResourceLocation id, @Nullable ResourceLocation ancestor) {
+        if (id == null || ancestor == null) return false;
+        ResourceLocation target = canonicalId(ancestor);
+        Culture culture = get(id);
+        for (int depth = 0; culture != null && depth < 16; depth++) {
+            if (culture.id().equals(target)) return true;
+            culture = culture.parent() == null ? null : authored.get(culture.parent());
+        }
+        return false;
+    }
+
+    /** Whether a culture reference in data matches {@code id}: the same culture, or an ancestor of it. */
+    public static boolean matches(@Nullable String id, Collection<?> references) {
+        if (id == null || id.isBlank() || references.isEmpty()) return false;
+        ResourceLocation self = ResourceLocation.tryParse(id.trim());
+        for (Object reference : references) {
+            ResourceLocation ancestor = reference instanceof ResourceLocation r ? r : ResourceLocation.tryParse(String.valueOf(reference));
+            if (within(self, ancestor)) return true;
+        }
+        return false;
+    }
+
+    /** The subcultures directly or indirectly under {@code root}. */
+    public static List<Culture> subculturesOf(@Nullable ResourceLocation root) {
+        List<Culture> out = new ArrayList<>();
+        if (root == null) return out;
+        for (Culture culture : authored.values()) {
+            if (culture.isSubculture() && !culture.id().equals(root) && within(culture.id(), root)) out.add(culture);
+        }
+        return out;
     }
 }

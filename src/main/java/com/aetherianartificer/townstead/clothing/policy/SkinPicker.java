@@ -24,10 +24,13 @@ import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
+import java.util.Set;
+import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
 
 /**
@@ -45,11 +48,65 @@ public final class SkinPicker {
     /** One candidate with the weight the engine gives it. */
     public record Candidate(String skin, @Nullable ClothingEntry entry, double weight) {}
 
+    /** Skins a player starred or picked for this villager; each one is much more likely to be drawn. */
+    public record Favourites(Set<String> starred, Map<String, Integer> picks) {
+        public static final Favourites NONE = new Favourites(Set.of(), Map.of());
+        static final double STAR_WEIGHT = 40.0;
+        static final double PICK_WEIGHT = 10.0;
+        static final int PICK_CAP = 4;
+
+        public Favourites {
+            starred = starred == null ? Set.of() : Set.copyOf(starred);
+            picks = picks == null ? Map.of() : Map.copyOf(picks);
+        }
+
+        public boolean isEmpty() {
+            return starred.isEmpty() && picks.isEmpty();
+        }
+
+        public double score(String skin) {
+            return (starred.contains(skin) ? STAR_WEIGHT : 0.0)
+                    + PICK_WEIGHT * Math.min(PICK_CAP, picks.getOrDefault(skin, 0));
+        }
+
+        public Set<String> skins() {
+            Set<String> out = new LinkedHashSet<>(starred);
+            out.addAll(picks.keySet());
+            return out;
+        }
+    }
+
     public static Optional<String> pick(VillagerEntityMCA villager, WardrobePolicy.Selector selector, long day) {
+        return pick(villager, selector, day, Favourites.NONE);
+    }
+
+    public static Optional<String> pick(VillagerEntityMCA villager, WardrobePolicy.Selector selector, long day,
+                                        Favourites favourites) {
         List<Candidate> candidates = candidates(villager, selector);
         if (candidates.isEmpty()) return Optional.empty();
-        long seed = villager.getUUID().getLeastSignificantBits() * 31L + day;
-        return Optional.ofNullable(choose(candidates, new Random(seed)));
+        if (!favourites.isEmpty()) {
+            List<Candidate> boosted = new ArrayList<>(candidates.size());
+            for (Candidate c : candidates) {
+                boosted.add(new Candidate(c.skin(), c.entry(), c.weight() * (1.0 + favourites.score(c.skin()))));
+            }
+            candidates = boosted;
+        }
+        return Optional.ofNullable(choose(candidates, new Random(seed(villager, day))));
+    }
+
+    /** A daily draw among the villager's favourites alone, for days no rule names a base. */
+    public static Optional<String> pickFavourite(VillagerEntityMCA villager, Favourites favourites, long day,
+                                                 Predicate<String> exists) {
+        List<Candidate> candidates = new ArrayList<>();
+        for (String skin : favourites.skins()) {
+            if (exists.test(skin)) candidates.add(new Candidate(skin, null, favourites.score(skin)));
+        }
+        if (candidates.isEmpty()) return Optional.empty();
+        return Optional.ofNullable(choose(candidates, new Random(seed(villager, day))));
+    }
+
+    private static long seed(VillagerEntityMCA villager, long day) {
+        return villager.getUUID().getLeastSignificantBits() * 31L + day;
     }
 
     public static List<Candidate> candidates(VillagerEntityMCA villager, WardrobePolicy.Selector selector) {
@@ -64,7 +121,8 @@ public final class SkinPicker {
         boolean bodyOnly = !onMcaRig(rootId);
 
         Culture culture = CultureAssignment.recorded(villager);
-        CultureClothing cultureClothing = culture == null ? CultureClothing.NONE : culture.clothing();
+        CultureClothing cultureClothing = culture == null ? CultureClothing.NONE
+                : com.aetherianartificer.townstead.culture.CultureBlends.clothing(villager);
         ToDoubleFunction<String> shares = VillageSpirits.sharesOf(villager);
 
         List<Candidate> out = new ArrayList<>();
@@ -127,6 +185,14 @@ public final class SkinPicker {
         double weight = 1.0;
         for (String axis : entry.spirits()) weight *= 1.0 + Math.max(0.0, shares.applyAsDouble(axis));
         return weight;
+    }
+
+    /** Whether the skin fits the villager's body: any skin on MCA's villager, else only a fitted one. */
+    public static boolean fitsBody(VillagerEntityMCA villager, String skin) {
+        var life = TownsteadVillagers.get(villager).life();
+        ResourceLocation rootId = com.aetherianartificer.townstead.data.DataPackLang.parseId(life.rootId());
+        if (onMcaRig(rootId)) return true;
+        return fits(BodyClothingResolver.fitted(rootId, life.hasHeritage() ? life.heritage() : null), skin);
     }
 
     static boolean onMcaRig(@Nullable ResourceLocation rootId) {

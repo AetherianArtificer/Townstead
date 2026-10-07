@@ -155,6 +155,7 @@
     "client.VillagerDressMenuMixin",
     "client.KeyBindsListSystemsMixin",
     "accessor.BlueprintScreenAccessor",
+    "accessor.VillagerEditorClothingAccessor",
     "accessor.ColorPickerWidgetAccessor",
     "accessor.InteractScreenAccessor",
     "accessor.VillagerEditorScreenAccessor",

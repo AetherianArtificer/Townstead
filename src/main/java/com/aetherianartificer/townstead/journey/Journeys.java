@@ -94,6 +94,7 @@ public final class Journeys extends SavedData {
         journeys.setDirty();
         villager.discard();
         LOGGER.info("{} left on a journey ({})", journey.name(), purpose);
+        for (java.util.function.Consumer<Journey> listener : DEPARTED) listener.accept(journey);
         return journey;
     }
 
@@ -127,11 +128,11 @@ public final class Journeys extends SavedData {
     }
 
     /** Someone walking out of town before a journey starts. */
-    private record Leaving(ServerLevel level, BlockPos edge, long until, @Nullable ResourceLocation purpose, int days, CompoundTag data) {}
+    private record Leaving(ServerLevel level, BlockPos edge, @Nullable ResourceLocation purpose, int days, CompoundTag data) {}
 
     private static final Map<UUID, Leaving> LEAVING = new java.util.HashMap<>();
     private static final double UNSEEN = 24;
-    private static final long LEAVE_LIMIT = 20 * 60;
+    private static final String LEAVING_TAG = "townstead:leaving";
 
     /**
      * Sends {@code villager} on an errand: they walk out of town and leave once no player is near,
@@ -156,9 +157,29 @@ public final class Journeys extends SavedData {
         if (adopt != null) data.putString("adopt", adopt.toString());
         if (adoptEssential) data.putBoolean("adopt_essential", true);
         if (leavePets) data.putBoolean(LEAVE_PETS, true);
-        BlockPos edge = edgeOf(level, village);
-        LEAVING.put(villager.getUUID(), new Leaving(level, edge == null ? villager.blockPosition() : edge,
-                level.getGameTime() + LEAVE_LIMIT, ERRAND, days, data));
+        queue(villager, level, ERRAND, days, data);
+        return true;
+    }
+
+    /** Called with each journey as its traveller leaves the world. */
+    private static final java.util.List<java.util.function.Consumer<Journey>> DEPARTED = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public static void onDepart(java.util.function.Consumer<Journey> listener) {
+        DEPARTED.add(listener);
+    }
+
+    /** Whether {@code villager} is walking out of town to leave. */
+    public static boolean isLeaving(UUID villager) {
+        return LEAVING.containsKey(villager);
+    }
+
+    /**
+     * Walks {@code villager} out of town and starts a journey once no player can see them go, the
+     * way an errand starts. Returns false when they are not in a world.
+     */
+    public static boolean departUnseen(VillagerEntityMCA villager, ResourceLocation purpose, int days, CompoundTag data) {
+        if (!(villager.level() instanceof ServerLevel level)) return false;
+        queue(villager, level, purpose, days, data);
         return true;
     }
 
@@ -168,12 +189,34 @@ public final class Journeys extends SavedData {
      */
     public static boolean leave(VillagerEntityMCA villager) {
         if (!(villager.level() instanceof ServerLevel level)) return false;
+        queue(villager, level, null, 0, new CompoundTag());
+        return true;
+    }
+
+    /**
+     * Sets {@code villager} walking to the edge of their town to leave. What they are leaving for is
+     * also written on them, so a world closed while they wait picks it up again when they load.
+     */
+    private static void queue(VillagerEntityMCA villager, ServerLevel level, @Nullable ResourceLocation purpose, int days, CompoundTag data) {
         var village = net.conczin.mca.server.world.data.VillageManager.get(level)
                 .findNearestVillage(villager.blockPosition(), net.conczin.mca.server.world.data.Village.MERGE_MARGIN).orElse(null);
         BlockPos edge = village == null ? null : edgeOf(level, village);
-        LEAVING.put(villager.getUUID(), new Leaving(level, edge == null ? villager.blockPosition() : edge,
-                level.getGameTime() + LEAVE_LIMIT, null, 0, new CompoundTag()));
-        return true;
+        LEAVING.put(villager.getUUID(), new Leaving(level, edge == null ? villager.blockPosition() : edge, purpose, days, data));
+        CompoundTag saved = new CompoundTag();
+        if (purpose != null) saved.putString("purpose", purpose.toString());
+        saved.putInt("days", days);
+        saved.put("data", data.copy());
+        villager.getPersistentData().put(LEAVING_TAG, saved);
+    }
+
+    /** Join hook: someone who was walking out of town when the world closed sets off again. */
+    public static void onJoin(Entity entity) {
+        if (!(entity instanceof VillagerEntityMCA villager) || !(entity.level() instanceof ServerLevel level)
+                || LEAVING.containsKey(entity.getUUID())) return;
+        CompoundTag saved = villager.getPersistentData().getCompound(LEAVING_TAG);
+        if (saved.isEmpty()) return;
+        ResourceLocation purpose = saved.contains("purpose") ? ResourceLocation.tryParse(saved.getString("purpose")) : null;
+        queue(villager, level, purpose, saved.getInt("days"), saved.getCompound("data"));
     }
 
     /** Walks leavers out of town and starts their journey once no player can see them go. */
@@ -186,9 +229,13 @@ public final class Journeys extends SavedData {
                 it.remove();
                 continue;
             }
+            // Never in front of anyone: a villager held still in a conversation cannot walk away, and
+            // leaving on a timer made them vanish mid-sentence. They go when nobody is near to see it.
             boolean seen = leaving.level().getNearestPlayer(villager, UNSEEN) != null;
-            if (!seen || leaving.level().getGameTime() >= leaving.until()) {
+            if (!seen) {
                 it.remove();
+                // Off them before they are saved for the road, or they would set out again on arrival.
+                villager.getPersistentData().remove(LEAVING_TAG);
                 if (leaving.purpose() == null) {
                     villager.getResidency().leaveHome();
                     villager.discard();

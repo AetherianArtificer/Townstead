@@ -624,6 +624,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.downed.DownedService.onJoin(e.getEntity());
                 com.aetherianartificer.townstead.pet.VillagerPets.onJoin(e.getEntity());
                 com.aetherianartificer.townstead.journey.Companions.onJoin(e.getEntity());
+                com.aetherianartificer.townstead.journey.Journeys.onJoin(e.getEntity());
                 if (e.getEntity() instanceof VillagerEntityMCA villager) {
                     com.aetherianartificer.townstead.villager.TownsteadVillagerState.root(villager);
                     com.aetherianartificer.townstead.root.trait.TraitBridge.migrate(villager);
@@ -1261,6 +1262,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.downed.DownedService.onJoin(e.getEntity());
                 com.aetherianartificer.townstead.pet.VillagerPets.onJoin(e.getEntity());
                 com.aetherianartificer.townstead.journey.Companions.onJoin(e.getEntity());
+                com.aetherianartificer.townstead.journey.Journeys.onJoin(e.getEntity());
                 if (e.getEntity() instanceof VillagerEntityMCA villager) {
                     com.aetherianartificer.townstead.villager.TownsteadVillagerState.root(villager);
                     com.aetherianartificer.townstead.root.trait.TraitBridge.migrate(villager);
@@ -1966,6 +1968,7 @@ public class Townstead {
             com.aetherianartificer.townstead.politics.standing.StandingDeeds.init();
             com.aetherianartificer.townstead.village.HarvestTally.init();
             com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService.init();
+            com.aetherianartificer.townstead.culture.CultureDrift.init();
             com.aetherianartificer.townstead.politics.state.PoliticalVillageBootstrap.init();
             com.aetherianartificer.townstead.reaction.trigger.TriggerTypes.register(
                     new com.aetherianartificer.townstead.reaction.trigger.types.GestureTriggerType());
@@ -2974,6 +2977,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.compat.clothing.LsoItemDataSource.Loader());
         event.addListener(new com.aetherianartificer.townstead.clothing.policy.WardrobePolicies.Loader());
         event.addListener(new com.aetherianartificer.townstead.culture.CultureJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.spirit.SpiritBaseline.Loader());
         event.addListener(new com.aetherianartificer.townstead.livery.LiveryStyles.Loader());
         event.addListener(new com.aetherianartificer.townstead.compat.mcacapitals.CapitalsSurnameRegisters());
         event.addListener(new com.aetherianartificer.townstead.root.HeritageJsonLoader());
@@ -3960,6 +3964,19 @@ public class Townstead {
                 com.aetherianartificer.townstead.story.net.StoryCallS2CPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
                         com.aetherianartificer.townstead.client.story.StoryCallMarks.set(payload.entityId(), payload.state()))
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.persona.PersonaMenuC2SPayload.TYPE,
+                com.aetherianartificer.townstead.persona.PersonaMenuC2SPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof ServerPlayer sp) com.aetherianartificer.townstead.persona.PersonaMenuC2SPayload.handle(sp, payload);
+                })
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.persona.PersonaMenuS2CPayload.TYPE,
+                com.aetherianartificer.townstead.persona.PersonaMenuS2CPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.client.persona.PersonaMenuClient.accept(payload.entityId(), payload.persona()))
         );
         registrar.playToClient(
                 com.aetherianartificer.townstead.aspect.AspectS2CPayload.TYPE,
@@ -4970,9 +4987,8 @@ public class Townstead {
                                       IPayloadContext context) {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer sp) || sp.getServer() == null) return;
-            com.aetherianartificer.townstead.clothing.wardrobe.WardrobeServer.apply(sp, payload);
             PacketDistributor.sendToPlayer(sp,
-                    com.aetherianartificer.townstead.clothing.wardrobe.WardrobeServer.snapshot(sp.getServer()));
+                    com.aetherianartificer.townstead.clothing.wardrobe.WardrobeServer.handle(sp, payload));
         });
     }
 

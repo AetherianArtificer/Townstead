@@ -2,7 +2,7 @@ package com.aetherianartificer.townstead.livery;
 
 import com.aetherianartificer.townstead.culture.Culture;
 import com.aetherianartificer.townstead.culture.Cultures;
-import com.aetherianartificer.townstead.naming.Naming;
+import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.aetherianartificer.townstead.politics.definition.FactionKind;
 import com.aetherianartificer.townstead.politics.definition.PoliticalDefinitions;
 import com.aetherianartificer.townstead.politics.heraldry.HeraldryService;
@@ -180,11 +180,11 @@ public final class LiveryService {
         Village village = source == null ? null : VillageManager.get(source).getOrEmpty(settlement.villageId()).orElse(null);
         ResourceLocation best = null;
         if (village != null) {
-            Map<String, Integer> counts = new LinkedHashMap<>();
+            // Each resident counts by their blend, so a town of half-assimilated newcomers is half theirs.
+            Map<String, Float> counts = new LinkedHashMap<>();
             village.getResidentsUUIDs().forEach(person -> {
                 if (person != null && source.getEntity(person) instanceof VillagerEntityMCA resident) {
-                    String culture = Naming.cultureOf(resident);
-                    if (!culture.isBlank()) counts.merge(culture, 1, Integer::sum);
+                    TownsteadVillagers.get(resident).life().cultureBlend().forEach((culture, share) -> counts.merge(culture, share, Float::sum));
                 }
             });
             best = counts.entrySet().stream().max(Map.Entry.comparingByValue())

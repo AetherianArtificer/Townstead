@@ -6,6 +6,8 @@ import com.aetherianartificer.townstead.clothing.dress.OuterwearDoffDon;
 import com.aetherianartificer.townstead.clothing.policy.SkinPicker;
 import com.aetherianartificer.townstead.clothing.policy.WardrobePolicy;
 import com.aetherianartificer.townstead.clothing.policy.WardrobeResolver;
+import com.aetherianartificer.townstead.clothing.wardrobe.WardrobeAssignments;
+import com.aetherianartificer.townstead.clothing.wardrobe.WardrobeServer;
 import com.aetherianartificer.townstead.pheno.condition.types.ShiftStateConditionType;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.server.MinecraftServer;
@@ -20,8 +22,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Evaluates wardrobe policies for a villager on the same cadence as ambient temperature sampling,
  * staggered by entity id so a village does not re-dress on one tick.
  *
- * <p>The base layer changes here, because a skin costs nothing to change. The other layers'
- * unmet rules are kept in the plan for the dress behaviour to act on. Clothing locks always
+ * <p>The base layer changes here, from the Wardrobe's picks, because a skin costs nothing to
+ * change. The other layers' unmet rules are kept in the plan for the dress behaviour to act on. Clothing locks always
  * win, and a villager with no matching policy dresses for the weather. The same cadence runs
  * the doff-and-don rule that takes a coat off indoors and puts it back on outside.</p>
  */
@@ -35,9 +37,10 @@ public final class WardrobeVillagerTicker {
         long nextTick;
         WardrobeResolver.Plan plan = WardrobeResolver.Plan.EMPTY;
         long planDay = Long.MIN_VALUE;
-        /** The skin the profession chain or MCA gave the villager, kept while a policy overrides it. */
+        /** The skin the profession chain or MCA gave the villager, kept while the wardrobe overrides it. */
         @Nullable String workSkin;
-        boolean overridden;
+        /** The skin the wardrobe last put on, or null when the villager wears their work skin. */
+        @Nullable String applied;
         final OuterwearDoffDon.Dwell dwell = new OuterwearDoffDon.Dwell();
     }
 
@@ -56,6 +59,13 @@ public final class WardrobeVillagerTicker {
         if (villager == null) return WardrobeResolver.Plan.EMPTY;
         State state = STATE.get(villager.getId());
         return state == null ? WardrobeResolver.Plan.EMPTY : state.plan;
+    }
+
+    /** Re-dresses the villager now, after a Wardrobe edit, instead of at their next turn. */
+    public static void refresh(VillagerEntityMCA self) {
+        if (self == null || !(self.level() instanceof ServerLevel)) return;
+        STATE.computeIfAbsent(self.getId(), id -> new State()).nextTick = 0;
+        tick(self);
     }
 
     public static void tick(VillagerEntityMCA self) {
@@ -79,10 +89,10 @@ public final class WardrobeVillagerTicker {
     }
 
     /**
-     * Work clothes win on shift: a policy only changes the base layer off shift, and the skin
-     * the profession chain gave the villager comes back the moment they clock in. Anything that
-     * changes the skin while it is not overridden (a profession change, the editor) is taken as
-     * the new work skin.
+     * On shift the villager wears the Work pick, else the skin the profession chain or MCA gave
+     * them. Off shift they wear the day's picked skin, else their own choice: a pack or template
+     * rule's draw, or one of their favourites, weighted toward favourites either way. Anything
+     * else that changes the skin (a profession change, the editor) is taken as the new work skin.
      */
     static void applyBase(VillagerEntityMCA villager, State state, WardrobeResolver.Plan plan, long day) {
         if (villager.isClothingLocked()) return;
@@ -90,23 +100,45 @@ public final class WardrobeVillagerTicker {
         // fitted work skin first.
         com.aetherianartificer.townstead.clothing.policy.RigSkinPicker.ensureFitted(villager);
         String current = villager.getClothes();
-        boolean onShift = ShiftStateConditionType.stateOf(villager) == ShiftStateConditionType.State.ON_SHIFT;
-        WardrobePolicy.LayerRule rule = plan.rule(ClothingLayer.BASE);
-        boolean wanted = rule != null && rule.requirement() != WardrobePolicy.Requirement.NONE && !onShift;
+        if (state.applied != null && !state.applied.equals(current)) state.applied = null;
+        if (state.applied == null) state.workSkin = current;
 
-        if (!wanted) {
-            if (state.overridden) {
+        boolean onShift = ShiftStateConditionType.stateOf(villager) == ShiftStateConditionType.State.ON_SHIFT;
+        String desired = desiredSkin(villager, plan, day, onShift);
+        if (desired == null || desired.equals(state.workSkin)) {
+            if (state.applied != null) {
                 if (state.workSkin != null && !state.workSkin.equals(current)) villager.setClothes(state.workSkin);
-                state.overridden = false;
+                state.applied = null;
             }
-            state.workSkin = villager.getClothes();
             return;
         }
+        if (!desired.equals(current)) villager.setClothes(desired);
+        state.applied = desired;
+    }
 
-        if (!state.overridden) state.workSkin = current;
-        Optional<String> chosen = SkinPicker.pick(villager, rule.selector(), day);
-        if (chosen.isEmpty()) return;
-        if (!chosen.get().equals(current)) villager.setClothes(chosen.get());
-        state.overridden = true;
+    static @Nullable String desiredSkin(VillagerEntityMCA villager, WardrobeResolver.Plan plan, long day,
+                                        boolean onShift) {
+        MinecraftServer server = villager.getServer();
+        if (server == null) return null;
+        String work = WardrobeServer.workSkin(server, villager);
+        String fallback = work.isEmpty() ? null : work;
+        if (onShift) return fallback;
+
+        WardrobeAssignments assignments = WardrobeAssignments.get(server);
+        String cell = assignments.villager(villager.getUUID(), WardrobeServer.today(server));
+        if (!cell.isEmpty() && WardrobeServer.templateOf(cell) == null) {
+            return WardrobeServer.skinExists(cell) ? cell : fallback;
+        }
+        WardrobeAssignments.Entry entry = assignments.entry(villager.getUUID());
+        SkinPicker.Favourites favourites = entry == null ? SkinPicker.Favourites.NONE
+                : new SkinPicker.Favourites(entry.starred(), entry.picks());
+        WardrobePolicy.LayerRule rule = plan.rule(ClothingLayer.BASE);
+        Optional<String> chosen;
+        if (rule != null && rule.requirement() != WardrobePolicy.Requirement.NONE) {
+            chosen = SkinPicker.pick(villager, rule.selector(), day, favourites);
+        } else {
+            chosen = SkinPicker.pickFavourite(villager, favourites, day, WardrobeServer::skinExists);
+        }
+        return chosen.orElse(fallback);
     }
 }

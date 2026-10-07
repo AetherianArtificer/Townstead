@@ -101,6 +101,8 @@ public final class PersonaCommands {
         if (village != null) {
             PersonaInstances.Instance instance = instances.in(id, player.serverLevel().dimension().location(), village.getId());
             if (instance != null) removed = instances.remove(instance.villager());
+            // Asked to leave this town: they may come back to it again.
+            removed |= instances.undismiss(id, player.serverLevel().dimension().location(), village.getId());
         }
         removed |= PersonaBonds.remove(player, id);
         PersonaBonds.forgetGifts(player, id);

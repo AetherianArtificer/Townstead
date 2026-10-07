@@ -11,10 +11,21 @@
     "constraints": "!baby"
   },
   {
-    "identifier": "gui.button.backarrow",
+    "identifier": "gui.button.townstead_persona_leave",
     "x": -90,
     "y": 10,
     "row": 1,
+    "width": 80,
+    "height": 20,
+    "notifyServer": false,
+    "targetServer": false,
+    "constraints": ""
+  },
+  {
+    "identifier": "gui.button.backarrow",
+    "x": -90,
+    "y": 10,
+    "row": 2,
     "width": 80,
     "height": 20,
     "notifyServer": false,

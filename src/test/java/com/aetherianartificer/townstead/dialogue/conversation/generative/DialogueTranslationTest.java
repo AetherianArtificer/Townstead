@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Translated dialogue lines must name real lines, use only slots the line has, and pick word forms safely. */
 class DialogueTranslationTest {
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{([^}]*)}");
-    private static final Pattern PLAIN = Pattern.compile("[a-z0-9_]+");
+    private static final Pattern PLAIN = Pattern.compile("([a-z0-9_]+)(?:/[a-z0-9_.]+)?");
     private static final Pattern SELECTOR = Pattern.compile("([a-z0-9_]+)\\.(gender|number):(.+)");
     private static final Set<String> VALUES = Set.of("m", "f", "n", "singular", "plural", "*");
 
@@ -51,8 +51,9 @@ class DialogueTranslationTest {
         Matcher m = PLACEHOLDER.matcher(text);
         while (m.find()) {
             String body = m.group(1);
-            if (PLAIN.matcher(body).matches()) {
-                if (!allowed.contains(body)) out.add(where + ": prints {" + body + "}, which the line does not have");
+            Matcher plain = PLAIN.matcher(body);
+            if (plain.matches()) {
+                if (!allowed.contains(plain.group(1))) out.add(where + ": prints {" + body + "}, which the line does not have");
                 continue;
             }
             Matcher s = SELECTOR.matcher(body);

@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.clothing.ClothingLayer;
 import com.aetherianartificer.townstead.clothing.Weather;
 import com.aetherianartificer.townstead.clothing.wardrobe.WardrobeAssignments;
 import com.aetherianartificer.townstead.clothing.wardrobe.WardrobeServer;
+import com.aetherianartificer.townstead.clothing.wardrobe.WeatherLayers;
 import com.aetherianartificer.townstead.culture.Culture;
 import com.aetherianartificer.townstead.culture.CultureAssignment;
 import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
@@ -25,12 +26,10 @@ import java.util.Map;
  * and worksite, are skipped here and land with the Wardrobe screen and the Tailor.</p>
  *
  * <p>Any layer no policy names falls to the weather default ({@link WeatherPolicy}), read from
- * the outdoors at the villager, so every villager dresses for the day without a single policy
- * document loaded.</p>
+ * the outdoors at the villager, when the Wardrobe's matching weather layers are on.</p>
  *
- * <p>The Wardrobe screen's assignments come first: the villager's own cell for today at the
- * villager scope, then the Village row at the village scope, both lifted above every data
- * policy so a player's choice wins.</p>
+ * <p>A Wardrobe cell that names an outfit template comes first, lifted above every data policy
+ * so a player's choice wins.</p>
  */
 public final class WardrobeResolver {
 
@@ -72,8 +71,6 @@ public final class WardrobeResolver {
             WardrobeAssignments assignments = WardrobeAssignments.get(server);
             offer(rules, sources, ctx, WardrobeServer.templateOf(assignments.villager(villager.getUUID(), day)),
                     WardrobePolicy.Scope.VILLAGER);
-            offer(rules, sources, ctx, WardrobeServer.templateOf(assignments.village(day)),
-                    WardrobePolicy.Scope.VILLAGE);
         }
         for (WardrobePolicy policy : WardrobePolicies.all()) {
             if (!applies(policy, culture, onShift)) continue;
@@ -87,7 +84,8 @@ public final class WardrobeResolver {
             }
         }
         if (villager.level() instanceof ServerLevel level) {
-            fill(rules, sources, WeatherPolicy.of(Weather.outdoorKind(level, villager.blockPosition())));
+            Weather.Kind kind = Weather.outdoorKind(level, villager.blockPosition());
+            if (WeatherLayers.on(villager, kind != Weather.Kind.HOT)) fill(rules, sources, WeatherPolicy.of(kind));
         }
         return rules.isEmpty() ? Plan.EMPTY : new Plan(rules, sources);
     }
@@ -122,7 +120,7 @@ public final class WardrobeResolver {
     static boolean applies(WardrobePolicy policy, @Nullable Culture culture, boolean onShift) {
         switch (policy.scope()) {
             case VILLAGE: return true;
-            case CULTURE: return culture != null && policy.cultures().contains(culture.id());
+            case CULTURE: return culture != null && com.aetherianartificer.townstead.culture.Cultures.matches(culture.id().toString(), policy.cultures());
             case WORKSITE: return false;
             case VILLAGER: return false;
             default: return false;

@@ -232,8 +232,7 @@ public final class HeraldryScreen extends BookScreen {
         if (liveryStyle.isEmpty()) return target().livery().inheritedView();
         var option = styles().stream().filter(o -> o.id().equals(liveryStyle)).findFirst().orElse(null);
         if (option == null) return null;
-        LiveryView view = option.view();
-        return new LiveryView(view.style(), view.tint(), liveryPrimary, liverySecondary, view.trims());
+        return option.view().withColors(liveryPrimary, liverySecondary);
     }
 
     /** A stand in full iron, only ever drawn here, so the preview shows what a guard would wear. */

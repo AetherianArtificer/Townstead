@@ -13,7 +13,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.armortrim.ArmorTrim;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,9 +24,11 @@ import java.util.regex.Pattern;
  * Draws livery without touching the worn item: the armour layer is handed a display copy carrying
  * the style's trims and dye, and each armour texture is swapped for the style's own art when a pack
  * provides it. Art lives at {@code <ns>:textures/livery/<style>/<material>_layer_<n>.png}, with
- * {@code any_layer_<n>.png} for materials that have none of their own. A culture data pack ships it
- * under {@code data/<ns>/textures/livery/...}, synced from the server; a resource pack may ship it
- * under {@code assets/} instead.
+ * {@code any_layer_<n>.png} for materials that have none of their own. Art drawn on top of whatever
+ * armour is worn lives beside it as {@code overlay_layer_<n>.png} (primary colour),
+ * {@code overlay_layer_<n>_secondary.png} (secondary colour) and {@code overlay_layer_<n>_detail.png}
+ * (never tinted). A culture data pack ships it under {@code data/<ns>/textures/livery/...}, synced
+ * from the server; a resource pack may ship it under {@code assets/} instead.
  */
 public final class LiveryRender {
     private static final Pattern ARMOUR = Pattern.compile("(?:.*/)?([a-z0-9_.-]+)_layer_([12])(_[a-z0-9_]+)?\\.png");
@@ -38,11 +42,16 @@ public final class LiveryRender {
 
     private record Display(ItemStack original, LiveryView view, ItemStack copy) {}
 
+    /** One extra draw over an armour layer, with its colour as ARGB. */
+    public record Overlay(ResourceLocation texture, int argb) {}
+
     private static final Map<Long, Display> DISPLAYS = new HashMap<>();
     private static final Map<ResourceLocation, Long> MISSING = new HashMap<>();
     private static final Map<ResourceLocation, Boolean> PRESENT = new HashMap<>();
     /** The tint for the texture just swapped, read by the draw that follows it. */
     private static final ThreadLocal<Integer> PENDING_TINT = ThreadLocal.withInitial(() -> 0);
+    /** The overlays for the texture just swapped, drawn after it. */
+    private static final ThreadLocal<List<Overlay>> PENDING_OVERLAYS = ThreadLocal.withInitial(List::of);
 
     private LiveryRender() {}
 
@@ -109,19 +118,28 @@ public final class LiveryRender {
 
     /**
      * The texture to draw for one armour layer. With the style's art present it replaces the
-     * material's, and the next draw is tinted with the primary colour if the style asks. A layer the
-     * style replaces but has no matching extra (a leather overlay, say) is drawn blank.
+     * material's, and the next draw is tinted with the primary colour if the style asks. Without art,
+     * the material's own texture is tinted when the style lists it in {@code tint_armor}. A layer the
+     * style replaces but has no matching extra (a leather overlay, say) is drawn blank. The base layer
+     * also queues the style's overlays.
      */
     public static ResourceLocation texture(Entity entity, ResourceLocation original) {
         PENDING_TINT.set(0);
+        PENDING_OVERLAYS.set(List.of());
         LiveryView view = LiveryClientStore.of(entity.getId());
         if (view == null) return original;
         Matcher match = ARMOUR.matcher(original.getPath());
         if (!match.matches()) return original;
         String material = match.group(1), layer = match.group(2), extra = match.group(3) == null ? "" : match.group(3);
+        if (extra.isEmpty()) PENDING_OVERLAYS.set(overlays(view, layer));
         ResourceLocation base = art(view.style(), material + "_layer_" + layer);
         if (base == null) base = art(view.style(), "any_layer_" + layer);
-        if (base == null) return original;
+        if (base == null) {
+            if (extra.isEmpty() && view.tintArmor().contains(original.getNamespace() + ":" + material)) {
+                PENDING_TINT.set(0xFF000000 | view.primary());
+            }
+            return original;
+        }
         if (!extra.isEmpty()) {
             ResourceLocation own = art(view.style(), material + "_layer_" + layer + extra);
             return own != null ? own : BLANK;
@@ -135,6 +153,24 @@ public final class LiveryRender {
         int tint = PENDING_TINT.get();
         PENDING_TINT.set(0);
         return tint == 0 ? fallback : tint;
+    }
+
+    /** The overlays queued by the last {@link #texture} call, emptied as they are read. */
+    public static List<Overlay> overlays() {
+        List<Overlay> overlays = PENDING_OVERLAYS.get();
+        PENDING_OVERLAYS.set(List.of());
+        return overlays;
+    }
+
+    private static List<Overlay> overlays(LiveryView view, String layer) {
+        List<Overlay> out = new ArrayList<>(3);
+        ResourceLocation primary = art(view.style(), "overlay_layer_" + layer);
+        if (primary != null) out.add(new Overlay(primary, view.tint() ? 0xFF000000 | view.primary() : 0xFFFFFFFF));
+        ResourceLocation secondary = art(view.style(), "overlay_layer_" + layer + "_secondary");
+        if (secondary != null) out.add(new Overlay(secondary, view.tint() ? 0xFF000000 | view.secondary() : 0xFFFFFFFF));
+        ResourceLocation detail = art(view.style(), "overlay_layer_" + layer + "_detail");
+        if (detail != null) out.add(new Overlay(detail, 0xFFFFFFFF));
+        return out;
     }
 
     private static @Nullable ResourceLocation art(ResourceLocation style, String file) {

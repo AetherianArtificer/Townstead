@@ -171,6 +171,32 @@ public final class DebugVillageSpawner {
      * also sets the village area to air, from the lowest building floor up, and removes loose items, frames,
      * armor stands, golems and villagers there. Players are never touched.
      */
+    /**
+     * Villages nobody lives in whose rooms are all generic: what building discovery used to found
+     * around a bed or barrel placed in the wild. A recognized room of any real type keeps a village.
+     */
+    public static List<Village> ghosts(ServerLevel level) {
+        List<Village> out = new java.util.ArrayList<>();
+        for (Village village : VillageManager.get(level)) {
+            if (village.getResidentsUUIDs().anyMatch(java.util.Objects::nonNull)) continue;
+            boolean generic = true;
+            for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
+                if (!"building".equals(building.getType())) { generic = false; break; }
+            }
+            if (generic) out.add(village);
+        }
+        return out;
+    }
+
+    /** Removes every {@link #ghosts ghost village}'s record. Blocks are left as they are. */
+    public static int removeGhosts(ServerLevel level) {
+        VillageManager villages = VillageManager.get(level);
+        List<Village> ghosts = ghosts(level);
+        for (Village ghost : ghosts) villages.removeVillage(ghost.getId());
+        if (!ghosts.isEmpty()) villages.setDirty();
+        return ghosts.size();
+    }
+
     public static RemovalResult remove(CommandSourceStack source, boolean clear) {
         if (source == null) return RemovalResult.failed("invalid_request");
         ServerLevel level = source.getLevel();

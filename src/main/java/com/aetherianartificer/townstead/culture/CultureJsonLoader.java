@@ -13,17 +13,24 @@ import com.aetherianartificer.townstead.naming.NameLists;
 import com.aetherianartificer.townstead.naming.NamingTradition;
 import com.aetherianartificer.townstead.naming.NamingTraditionJsonLoader;
 import com.aetherianartificer.townstead.naming.NamingTraditions;
+import com.aetherianartificer.townstead.root.Demonym;
+import com.aetherianartificer.townstead.spirit.SpiritRegistry;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Loads cultures from {@code data/<ns>/culture/<id>.json}.
@@ -49,6 +56,10 @@ import java.util.Map;
  *   }
  * }
  * }</pre>
+ *
+ * <p>An optional {@code demonym} names the culture's people, with the same fields as a Root's:
+ * {@code singular}, {@code plural} (defaults to singular) and {@code adjective}. Dialogue prints it
+ * through the {@code self_demonym} family of placeholders.</p>
  */
 public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
 
@@ -124,7 +135,9 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
                 }
                 loaded.put(file, new Culture(file, displayName, traditionId, settlementNamesId,
                         CultureClothing.parse(root), root.has("faction_names")
-                                ? ResourceLocation.tryParse(GsonHelper.getAsString(root, "faction_names")) : null));
+                                ? ResourceLocation.tryParse(GsonHelper.getAsString(root, "faction_names")) : null,
+                        Demonym.parse(root, file.toString(), lang), parent(root, file), spirit(root, file),
+                        forms(root, file)));
                 for (ResourceLocation legacyId : aliases) legacyIds.put(legacyId, file);
             } catch (Exception exception) {
                 LOGGER.warn("Could not load culture {}", file, exception);
@@ -141,8 +154,90 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
                         canonical, claimant);
             }
         }
-        Cultures.replace(loaded, legacyIds);
-        LOGGER.info("Loaded {} culture(s)", loaded.size());
+        Map<ResourceLocation, Culture> resolved = inherit(loaded);
+        Cultures.replace(resolved, legacyIds);
+        LOGGER.info("Loaded {} culture(s)", resolved.size());
     }
 
+    private static @Nullable ResourceLocation parent(JsonObject root, ResourceLocation file) {
+        if (!root.has("parent")) return null;
+        ResourceLocation parent = DataPackLang.parseId(GsonHelper.getAsString(root, "parent"));
+        if (parent == null) throw new IllegalArgumentException("'parent' must be a culture id");
+        if (parent.equals(file)) throw new IllegalArgumentException("A culture cannot be its own parent");
+        return parent;
+    }
+
+    /** {@code "spirit": { "commercial": 1.0, "nautical": 0.6 }}: Community Spirit axes and their pull. */
+    private static Map<String, Float> spirit(JsonObject root, ResourceLocation file) {
+        JsonObject json = GsonHelper.getAsJsonObject(root, "spirit", null);
+        if (json == null) return Map.of();
+        Map<String, Float> out = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonElement> e : json.entrySet()) {
+            float weight = GsonHelper.convertToFloat(e.getValue(), "spirit." + e.getKey());
+            if (!Float.isFinite(weight) || weight < 0) throw new IllegalArgumentException("Spirit weight for " + e.getKey() + " must be non-negative");
+            if (SpiritRegistry.get(e.getKey()).isEmpty()) {
+                LOGGER.warn("Culture {} names unknown spirit '{}'", file, e.getKey());
+                continue;
+            }
+            if (weight > 0) out.put(e.getKey(), weight);
+        }
+        return out;
+    }
+
+    /** {@code "forms": [ { "profile": "ns:id", "weight": 3 } ]}: founding profiles this culture's towns use. */
+    private static List<Culture.Form> forms(JsonObject root, ResourceLocation file) {
+        if (!root.has("forms")) return List.of();
+        List<Culture.Form> out = new ArrayList<>();
+        for (JsonElement element : GsonHelper.getAsJsonArray(root, "forms")) {
+            JsonObject json = GsonHelper.convertToJsonObject(element, "forms[]");
+            ResourceLocation profile = DataPackLang.parseId(GsonHelper.getAsString(json, "profile"));
+            if (profile == null) throw new IllegalArgumentException("Every form needs a founding profile id");
+            float weight = GsonHelper.getAsFloat(json, "weight", 1.0F);
+            if (!Float.isFinite(weight) || weight < 0) throw new IllegalArgumentException("Form weight must be non-negative");
+            if (weight > 0) out.add(new Culture.Form(profile, weight));
+        }
+        return out;
+    }
+
+    /**
+     * Fills each subculture's unset fields from its parent, root first. Players see only the root, so
+     * a subculture always takes the root's display name. A parent that is missing or loops back is
+     * dropped with a warning, and the culture stands alone.
+     */
+    static Map<ResourceLocation, Culture> inherit(Map<ResourceLocation, Culture> loaded) {
+        Map<ResourceLocation, Culture> resolved = new LinkedHashMap<>();
+        for (ResourceLocation id : loaded.keySet()) resolve(id, loaded, resolved, new LinkedHashSet<>());
+        return resolved;
+    }
+
+    private static Culture resolve(ResourceLocation id, Map<ResourceLocation, Culture> loaded,
+                                   Map<ResourceLocation, Culture> resolved, Set<ResourceLocation> visiting) {
+        Culture done = resolved.get(id);
+        if (done != null) return done;
+        Culture own = loaded.get(id);
+        if (own.parent() == null) {
+            resolved.put(id, own);
+            return own;
+        }
+        visiting.add(id);
+        Culture parentDef = loaded.get(own.parent());
+        if (parentDef == null || visiting.contains(own.parent())) {
+            LOGGER.warn("Culture {} has parent {} which is {}; it stands alone", id, own.parent(),
+                    parentDef == null ? "not loaded" : "part of a loop");
+            Culture alone = new Culture(id, own.displayName(), own.namingTradition(), own.settlementNames(),
+                    own.clothing(), own.factionNames(), own.demonym(), null, own.spirit(), own.forms());
+            resolved.put(id, alone);
+            return alone;
+        }
+        Culture parent = resolve(own.parent(), loaded, resolved, visiting);
+        Culture merged = new Culture(id, parent.displayName(),
+                own.namingTradition() != null ? own.namingTradition() : parent.namingTradition(),
+                own.settlementNames() != null ? own.settlementNames() : parent.settlementNames(),
+                own.clothing().inheriting(parent.clothing()),
+                own.factionNames() != null ? own.factionNames() : parent.factionNames(),
+                own.demonym() != null ? own.demonym() : parent.demonym(),
+                own.parent(), own.spirit(), own.forms());
+        resolved.put(id, merged);
+        return merged;
+    }
 }

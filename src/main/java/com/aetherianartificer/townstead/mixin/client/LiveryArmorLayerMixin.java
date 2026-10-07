@@ -1,6 +1,11 @@
 package com.aetherianartificer.townstead.mixin.client;
 
 import com.aetherianartificer.townstead.client.livery.LiveryRender;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.model.Model;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
@@ -12,21 +17,16 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 //? if neoforge {
 import net.minecraft.world.item.ArmorMaterial;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
 //?} else {
-/*import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.model.Model;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.world.item.ArmorItem;
+/*import net.minecraft.world.item.ArmorItem;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 *///?}
 
 /**
  * Livery on armour, drawn without changing the item: the layer draws a display copy carrying the
- * style's trims and dye, and each armour texture may be swapped for the style's art and tinted.
+ * style's trims and dye, each armour texture may be swapped for the style's art and tinted, and the
+ * style's overlays are drawn over the base layer with the same model.
  * Players and villagers alike pass through here; anyone without a livery is untouched.
  */
 @Mixin(HumanoidArmorLayer.class)
@@ -45,11 +45,15 @@ public abstract class LiveryArmorLayerMixin {
         return LiveryRender.texture(entity, net.neoforged.neoforge.client.ClientHooks.getArmorTexture(entity, stack, layer, inner, slot));
     }
 
-    @ModifyArg(method = "renderArmorPiece(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/EquipmentSlot;ILnet/minecraft/client/model/HumanoidModel;FFFFFF)V",
+    @WrapOperation(method = "renderArmorPiece(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/EquipmentSlot;ILnet/minecraft/client/model/HumanoidModel;FFFFFF)V",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/layers/HumanoidArmorLayer;renderModel(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/client/model/Model;ILnet/minecraft/resources/ResourceLocation;)V"),
-            index = 4, require = 1)
-    private int townstead$liveryTint(int colour) {
-        return LiveryRender.tint(colour);
+            require = 1)
+    private void townstead$liveryDraw(HumanoidArmorLayer<?, ?, ?> layer, PoseStack pose, MultiBufferSource buffers,
+                                      int light, Model model, int colour, ResourceLocation texture, Operation<Void> original) {
+        original.call(layer, pose, buffers, light, model, LiveryRender.tint(colour), texture);
+        for (LiveryRender.Overlay overlay : LiveryRender.overlays()) {
+            original.call(layer, pose, buffers, light, model, overlay.argb(), overlay.texture());
+        }
     }
     //?} else {
     /*@Redirect(method = "m_117118_(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/EquipmentSlot;ILnet/minecraft/client/model/HumanoidModel;)V",
@@ -78,6 +82,11 @@ public abstract class LiveryArmorLayerMixin {
             b = (tint & 255) / 255f;
         }
         original.call(layer, pose, buffers, light, item, model, glint, r, g, b, texture);
+        for (LiveryRender.Overlay overlay : LiveryRender.overlays()) {
+            int argb = overlay.argb();
+            original.call(layer, pose, buffers, light, item, model, glint,
+                    (argb >> 16 & 255) / 255f, (argb >> 8 & 255) / 255f, (argb & 255) / 255f, overlay.texture());
+        }
     }
     *///?}
 }

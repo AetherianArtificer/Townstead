@@ -15,10 +15,11 @@ import java.util.Set;
  * "Dress for the weather": the policy every villager has when nothing else says otherwise.
  *
  * <p>Three built-in village policies, one per outdoor reading, at the lowest possible priority
- * so any data or screen policy beats them layer by layer. Cold wants a warm base, warm body
- * outerwear, and a warm hat; hot wants a cool base, no warm outerwear, and a cool hat; a mild
- * day only sheds warm outerwear. The reading is the outdoors, so a coat is not stowed just
- * because the villager stepped into a warm kitchen; see the doff-and-don rule for that.</p>
+ * so any data or screen policy beats them layer by layer. Weather is layers only, so the base
+ * skin stays: cold wants warm body outerwear and a warm hat; hot wants no warm outerwear and a
+ * cool hat; a mild day only sheds warm outerwear. The reading is the outdoors, so a coat is not
+ * stowed just because the villager stepped into a warm kitchen; see the doff-and-don rule for
+ * that.</p>
  */
 public final class WeatherPolicy {
 
@@ -27,8 +28,6 @@ public final class WeatherPolicy {
 
     private static final ClothingQuery WARM = new ClothingQuery(null, null, Set.of(), Set.of(), Set.of(),
             ClothingQuery.Thermal.WARM, Set.of());
-    private static final ClothingQuery COOL = new ClothingQuery(null, null, Set.of(), Set.of(), Set.of(),
-            ClothingQuery.Thermal.COOL, Set.of());
     private static final ClothingQuery WARM_BODY = new ClothingQuery(null, ClothingChannel.BODY, Set.of(), Set.of(),
             Set.of(), ClothingQuery.Thermal.WARM, Set.of());
     private static final ClothingQuery WARM_HEAD = new ClothingQuery(null, ClothingChannel.HEAD, Set.of(), Set.of(),
@@ -37,13 +36,11 @@ public final class WeatherPolicy {
             Set.of(), ClothingQuery.Thermal.COOL, Set.of());
 
     private static final WardrobePolicy COLD = build("cold", Map.of(
-            ClothingLayer.BASE, rule(WardrobePolicy.Requirement.REQUIRED, WARM),
             ClothingLayer.OUTERWEAR, rule(WardrobePolicy.Requirement.REQUIRED, WARM_BODY),
             ClothingLayer.ACCESSORY, rule(WardrobePolicy.Requirement.PREFERRED, WARM_HEAD)));
     private static final WardrobePolicy MILD = build("mild", Map.of(
             ClothingLayer.OUTERWEAR, rule(WardrobePolicy.Requirement.NONE, WARM)));
     private static final WardrobePolicy HOT = build("hot", Map.of(
-            ClothingLayer.BASE, rule(WardrobePolicy.Requirement.REQUIRED, COOL),
             ClothingLayer.OUTERWEAR, rule(WardrobePolicy.Requirement.NONE, WARM),
             ClothingLayer.ACCESSORY, rule(WardrobePolicy.Requirement.PREFERRED, COOL_HEAD)));
 

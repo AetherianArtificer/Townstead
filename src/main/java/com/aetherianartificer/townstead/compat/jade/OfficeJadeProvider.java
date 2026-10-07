@@ -31,14 +31,23 @@ enum OfficeJadeProvider implements IEntityComponentProvider, IServerDataProvider
         if (!(accessor.getEntity() instanceof LivingEntity entity) || entity.getServer() == null) return;
         PoliticalSavedData politics = PoliticalSavedData.get(entity.getServer());
         Party self = Party.person(entity.getUUID());
+        java.util.UUID viewer = accessor.getPlayer() == null ? null : accessor.getPlayer().getUUID();
         ListTag list = new ListTag();
         for (BondInstance bond : politics.activeBonds(self)) {
             Party other = bond.other(self);
             Faction faction = other == null ? null : politics.faction(other.faction());
             FactionKind kind = faction == null ? null : PoliticalDefinitions.snapshot().kind(faction.kind());
             if (kind == null || kind.office(bond.kind()) == null) continue;
+            var office = BondKinds.byId(bond.kind());
+            // A hidden office, such as a Mask of an Umbral Table, shows only to the faction's own members.
+            var holderRole = office.roleFor(com.aetherianartificer.townstead.social.BondKind.Party.PERSON);
+            if (holderRole != null && holderRole.membersOnly()
+                    && (viewer == null || !com.aetherianartificer.townstead.politics.state.FactionBonds.member(
+                            politics, viewer, faction.id(), kind.membership().bond()))) continue;
             CompoundTag entry = new CompoundTag();
-            entry.putString("office", BondKinds.byId(bond.kind()).displayLangKey());
+            entry.putString("office", office.displayLangKey());
+            // Data-pack offices have no client lang key; the server's resolved name is the fallback.
+            entry.putString("office_text", office.displayName().getString());
             entry.putString("faction", faction.name());
             list.add(entry);
         }
@@ -52,8 +61,9 @@ enum OfficeJadeProvider implements IEntityComponentProvider, IServerDataProvider
         ListTag list = data.getList(KEY, Tag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++) {
             CompoundTag entry = list.getCompound(i);
-            tooltip.add(Component.translatable("townstead.jade.office",
-                    Component.translatable(entry.getString("office")), entry.getString("faction")));
+            String key = entry.getString("office"), text = entry.getString("office_text");
+            Component office = key.isEmpty() ? Component.literal(text) : Component.translatableWithFallback(key, text);
+            tooltip.add(Component.translatable("townstead.jade.office", office, entry.getString("faction")));
         }
     }
 

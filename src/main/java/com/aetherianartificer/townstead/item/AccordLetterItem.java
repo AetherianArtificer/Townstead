@@ -17,9 +17,13 @@ import java.util.List;
  */
 public class AccordLetterItem extends Item {
 
-    /** What a letter says. {@code addressee}, {@code office} and {@code seat} are empty when unknown. */
+    /**
+     * What a letter says. {@code addressee}, {@code office} and {@code seat} are empty when unknown.
+     * {@code officeText} is the office's name as the server resolved it, shown when the client has no
+     * translation for {@code office}, as for an office from a data pack.
+     */
     public record Letter(ResourceLocation proposer, String proposerName, ResourceLocation recipient,
-                         String recipientName, String addressee, String office, String seat) {}
+                         String recipientName, String addressee, String office, String officeText, String seat) {}
 
     public AccordLetterItem(Properties properties) {
         super(properties);
@@ -34,6 +38,7 @@ public class AccordLetterItem extends Item {
         tag.putString("recipient_name", letter.recipientName());
         tag.putString("addressee", letter.addressee());
         tag.putString("office", letter.office());
+        tag.putString("office_text", letter.officeText());
         tag.putString("seat", letter.seat());
         //? if >=1.21 {
         stack.set(net.minecraft.core.component.DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.of(tag));
@@ -56,7 +61,7 @@ public class AccordLetterItem extends Item {
         ResourceLocation recipient = ResourceLocation.tryParse(tag.getString("recipient"));
         if (proposer == null || recipient == null || tag.getString("proposer").isEmpty()) return null;
         return new Letter(proposer, tag.getString("proposer_name"), recipient, tag.getString("recipient_name"),
-                tag.getString("addressee"), tag.getString("office"), tag.getString("seat"));
+                tag.getString("addressee"), tag.getString("office"), tag.getString("office_text"), tag.getString("seat"));
     }
 
     @Override
@@ -86,7 +91,8 @@ public class AccordLetterItem extends Item {
             lines.add(Component.translatable("item.townstead.accord_letter.nobody").withStyle(ChatFormatting.GRAY));
         } else {
             lines.add(Component.translatable("item.townstead.accord_letter.addressee", letter.addressee(),
-                    Component.translatable(letter.office()), letter.recipientName())
+                    letter.officeText().isEmpty() ? Component.translatable(letter.office())
+                            : Component.translatableWithFallback(letter.office(), letter.officeText()), letter.recipientName())
                     .withStyle(ChatFormatting.GRAY));
         }
         if (!letter.seat().isEmpty()) {

@@ -79,8 +79,9 @@ public final class CharterAccords {
         Holder first = holders.isEmpty() ? null : holders.get(0);
         String addressee = first == null ? "" : CharterPeople.name(ringer, first.person()).getString();
         String office = first == null ? "" : first.office().displayLangKey();
+        String officeText = first == null ? "" : first.office().displayName().getString();
         return AccordLetterItem.create(Townstead.ACCORD_LETTER.get(), new AccordLetterItem.Letter(proposer.id(), proposer.name(),
-                recipient.id(), recipient.name(), addressee, office, seat(ringer.server, data, recipient)));
+                recipient.id(), recipient.name(), addressee, office, officeText, seat(ringer.server, data, recipient)));
     }
 
     private static String seat(MinecraftServer server, PoliticalSavedData data, Faction faction) {

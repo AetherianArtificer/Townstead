@@ -86,6 +86,9 @@ public final class FoundingCommands {
         villageCommand.then(Commands.literal("remove")
                 .executes(command -> remove(command.getSource(), false))
                 .then(Commands.literal("clear").executes(command -> remove(command.getSource(), true))));
+        villageCommand.then(Commands.literal("ghosts")
+                .executes(command -> ghosts(command.getSource(), false))
+                .then(Commands.literal("remove").executes(command -> ghosts(command.getSource(), true))));
         villageCommand.then(profileArgument);
         dispatcher.register(Commands.literal("townstead")
                 .then(Commands.literal("debug").then(villageCommand)));
@@ -205,6 +208,27 @@ public final class FoundingCommands {
     private static int noVillage(CommandSourceStack source) {
         line(source, "command.townstead.founding.no_village");
         return 0;
+    }
+
+    /** Lists, or with {@code remove} deletes, the villages nobody lives in that hold only generic rooms. */
+    private static int ghosts(CommandSourceStack source, boolean remove) {
+        var level = source.getLevel();
+        var ghosts = DebugVillageSpawner.ghosts(level);
+        if (ghosts.isEmpty()) {
+            line(source, "command.townstead.founding.ghosts.none");
+            return 0;
+        }
+        if (remove) {
+            line(source, "command.townstead.founding.ghosts.removed", DebugVillageSpawner.removeGhosts(level));
+            return ghosts.size();
+        }
+        for (var village : ghosts) {
+            var center = village.getCenter();
+            line(source, "command.townstead.founding.ghosts.entry", village.getName(), village.getId(),
+                    (int) center.getX(), (int) center.getY(), (int) center.getZ());
+        }
+        line(source, "command.townstead.founding.ghosts.count", ghosts.size());
+        return ghosts.size();
     }
 
     private static void line(CommandSourceStack source, String key, Object... args) {

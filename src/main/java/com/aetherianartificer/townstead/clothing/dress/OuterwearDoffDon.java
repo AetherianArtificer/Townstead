@@ -39,6 +39,7 @@ public final class OuterwearDoffDon {
     public static void tick(ServerLevel level, VillagerEntityMCA villager, Dwell dwell, long gameTime) {
         if (villager == null || dwell == null || villager.isBaby()) return;
         if (!com.aetherianartificer.townstead.temperature.ThermalExposure.enabled(villager)) return;
+        if (!com.aetherianartificer.townstead.clothing.wardrobe.WeatherLayers.on(villager, true)) return;
         // Personal exposure takes precedence over a universal indoor/outdoor threshold.
         var exposure = com.aetherianartificer.townstead.temperature.ThermalExposure.at(level, villager, villager.blockPosition(), 0);
         if (exposure.outfitCost() > ThermalDressing.MIN_GAIN) {

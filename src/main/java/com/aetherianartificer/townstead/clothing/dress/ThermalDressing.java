@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.clothing.dress;
 
 import com.aetherianartificer.townstead.clothing.*;
+import com.aetherianartificer.townstead.clothing.wardrobe.WeatherLayers;
 import com.aetherianartificer.townstead.compat.curios.CuriosCompat;
 import com.aetherianartificer.townstead.temperature.*;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
@@ -75,7 +76,9 @@ public final class ThermalDressing {
     }
 
     public static float gain(VillagerEntityMCA villager, ItemStack stack, ThermalExposure exposure) {
-        if (stack.isEmpty() || ClothingDefs.forStack(villager.level(), stack) == null) return 0;
+        if (stack.isEmpty()) return 0;
+        var entry = ClothingDefs.forStack(villager.level(), stack);
+        if (entry == null || !WeatherLayers.mayWear(villager, entry)) return 0;
         float best = 0;
         for (var placement : placements(villager, stack)) best = Math.max(best, gain(exposure, stack, placement));
         return best;
@@ -106,6 +109,7 @@ public final class ThermalDressing {
         float improvement = MIN_GAIN;
         for (var piece : ClothingSources.worn(villager)) {
             if (!piece.isStack() || DressTask.armourManaged(villager) && DressDecision.ARMOR_SOURCE.equals(piece.source())) continue;
+            if (!WeatherLayers.mayShed(villager, piece.entry())) continue;
             var after = exposure.withProtection(exposure.protection().minus(Insulation.pieceProtection(villager.level(), piece)));
             float gain = exposure.outfitCost() - after.outfitCost();
             if (gain > improvement && canRemove(villager, piece, exposure)) { best = piece; improvement = gain; }

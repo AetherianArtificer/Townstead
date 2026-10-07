@@ -16,8 +16,10 @@ public final class CultureRules {
         return (Double) Switchboard.content(WorldKeys.cultureRate(canonical(cultureId)));
     }
 
+    /** A subculture follows its root's rules: the Switchboard lists cultures, not subcultures. */
     private static String canonical(String cultureId) {
         ResourceLocation id = Cultures.canonicalId(ResourceLocation.tryParse(cultureId));
-        return id == null ? cultureId : id.toString();
+        ResourceLocation root = Cultures.rootOf(id);
+        return root != null ? root.toString() : id == null ? cultureId : id.toString();
     }
 }

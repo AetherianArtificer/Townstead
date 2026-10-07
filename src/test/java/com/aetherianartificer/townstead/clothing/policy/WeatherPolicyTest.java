@@ -35,12 +35,12 @@ class WeatherPolicyTest {
             "{ \"item\": \"acc:sun_hat\", \"layer\": \"accessory\", \"slot\": \"head\", \"thermal\": { \"heat_resistance\": 0.5 } }");
 
     @Test
-    void coldWantsWarmEverywhereAndHotShedsWarmOuterwear() {
+    void coldWantsWarmLayersAndHotShedsWarmOuterwear() {
         WardrobePolicy cold = WeatherPolicy.of(Weather.Kind.COLD);
         assertEquals(WardrobePolicy.Scope.VILLAGE, cold.scope());
         assertEquals(WeatherPolicy.PRIORITY, cold.priority());
         assertTrue(WeatherPolicy.isWeather(cold));
-        assertEquals(WardrobePolicy.Requirement.REQUIRED, cold.rule(ClothingLayer.BASE).requirement());
+        assertNull(cold.rule(ClothingLayer.BASE));
         assertEquals(WardrobePolicy.Requirement.REQUIRED, cold.rule(ClothingLayer.OUTERWEAR).requirement());
         assertTrue(cold.rule(ClothingLayer.OUTERWEAR).selector().query().test(COAT));
         assertFalse(cold.rule(ClothingLayer.OUTERWEAR).selector().query().test(SUN_HAT));
@@ -48,6 +48,7 @@ class WeatherPolicyTest {
         assertNull(cold.rule(ClothingLayer.ARMOUR));
 
         WardrobePolicy hot = WeatherPolicy.of(Weather.Kind.HOT);
+        assertNull(hot.rule(ClothingLayer.BASE));
         assertEquals(WardrobePolicy.Requirement.NONE, hot.rule(ClothingLayer.OUTERWEAR).requirement());
         assertTrue(hot.rule(ClothingLayer.OUTERWEAR).selector().query().test(COAT));
         assertTrue(hot.rule(ClothingLayer.ACCESSORY).selector().query().test(SUN_HAT));
@@ -73,8 +74,8 @@ class WeatherPolicyTest {
 
         assertSame(data, sources.get(ClothingLayer.OUTERWEAR));
         assertEquals(WardrobePolicy.Requirement.PREFERRED, rules.get(ClothingLayer.OUTERWEAR).requirement());
-        assertTrue(WeatherPolicy.isWeather(sources.get(ClothingLayer.BASE)));
+        assertNull(sources.get(ClothingLayer.BASE));
         assertTrue(WeatherPolicy.isWeather(sources.get(ClothingLayer.ACCESSORY)));
-        assertEquals(3, rules.size());
+        assertEquals(2, rules.size());
     }
 }

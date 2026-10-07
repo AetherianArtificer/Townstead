@@ -289,6 +289,19 @@ final class StorySession {
         }
     }
 
+    /** The story's own {@code farewell()} line, said when the player asks them to leave town; null when it has none. */
+    @Nullable String farewellLine() {
+        try {
+            if (!story.hasFunction("farewell")) return null;
+            Object line = story.evaluateFunction("farewell");
+            String text = line == null ? "" : line.toString().trim();
+            return text.isEmpty() ? null : text;
+        } catch (Exception e) {
+            LOGGER.warn("Story {}: farewell() failed: {}", definition.id(), e.getMessage());
+            return null;
+        }
+    }
+
     @Nullable String menuLabel() {
         try {
             if (!story.hasFunction("menu")) return null;

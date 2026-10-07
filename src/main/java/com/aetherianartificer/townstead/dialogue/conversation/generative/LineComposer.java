@@ -56,9 +56,16 @@ public final class LineComposer {
         void release(ResourceLocation pool, Collection<String> keys);
     }
 
+    /** {@code ambient} holds slots every line may use whatever the subject, such as the speakers' demonyms. */
     public record Request(ResourceLocation move, Speaker speaker, UUID listener, UUID initiator, @Nullable Subject subject,
                           String register, boolean finalLine, @Nullable ResourceLocation bridgePool, ConversationState state,
-                          Balance balance, Random random) {}
+                          Balance balance, Random random, Map<String, SlotValue> ambient) {
+        public Request(ResourceLocation move, Speaker speaker, UUID listener, UUID initiator, @Nullable Subject subject,
+                       String register, boolean finalLine, @Nullable ResourceLocation bridgePool, ConversationState state,
+                       Balance balance, Random random) {
+            this(move, speaker, listener, initiator, subject, register, finalLine, bridgePool, state, balance, random, Map.of());
+        }
+    }
 
     public record Line(ResourceLocation move, DialogueFrame frame, List<DialoguePart> parts, boolean marked) {}
 
@@ -262,7 +269,7 @@ public final class LineComposer {
             }
         }
         for (String arg : part.args()) {
-            if (arg.equals("other") || arg.equals("self")) continue;
+            if (arg.equals("other") || arg.equals("self") || req.ambient().containsKey(arg)) continue;
             SlotValue value = subject == null ? null : subject.slots().get(arg);
             if (value == null) return false;
             if (value.person() != null && !part.persp().containsKey(arg)

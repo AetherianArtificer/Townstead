@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:spirit_baseline/v1",
+  "shares": {
+    "pastoral": 0.45,
+    "industrious": 0.22,
+    "martial": 0.14,
+    "scholar": 0.10,
+    "spiritual": 0.08,
+    "commercial": 0.06,
+    "nautical": 0.04
+  }
+}

@@ -180,6 +180,25 @@ class DressDecisionTest {
     }
 
     @Test
+    void weatherLayerSwitchesGateTheTiers() {
+        List<WornPiece> sweater = List.of(worn(SWEATER, "townstead:curios_slots"));
+        assertTrue(DressDecision.decide(WardrobeResolver.Plan.EMPTY, List.of(), false, TemperatureData.Tier.COLD,
+                false, CultureClothing.NONE, List.of(), false, true).isEmpty());
+        assertEquals(1, DressDecision.decide(WardrobeResolver.Plan.EMPTY, List.of(), false, TemperatureData.Tier.COLD,
+                false, CultureClothing.NONE, List.of(), true, false).size());
+        assertTrue(DressDecision.decide(WardrobeResolver.Plan.EMPTY, sweater, false, TemperatureData.Tier.HOT,
+                false, CultureClothing.NONE, List.of(), true, false).isEmpty());
+
+        // With the switch off, a pack's own rule still applies while the villager is uncomfortable.
+        WardrobeResolver.Plan festival = plan(policy(
+                "{ \"accessory\": { \"require\": \"required\", \"select\": { \"thermal\": \"cool\" } } }"));
+        List<DressDecision.Action> actions = DressDecision.decide(festival, List.of(), false,
+                TemperatureData.Tier.COLD, false, CultureClothing.NONE, List.of(), false, true);
+        assertEquals(1, actions.size());
+        assertEquals(ClothingLayer.ACCESSORY, actions.get(0).layer());
+    }
+
+    @Test
     void selectorsAdmitStacksBySetCultureBodyAndQuery() {
         var set = com.aetherianartificer.townstead.clothing.ClothingSet.parse(id("t:winter"), json(
                 "{ \"members\": [ { \"item\": \"wp:sweater\", \"layer\": \"outerwear\" } ] }"), Map.of());

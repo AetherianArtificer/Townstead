@@ -48,11 +48,16 @@ public final class GenerativeDialogue {
             return null;
         }
 
-        /** The voice chain for a culture: its own voice, then every voice it extends, ending in common. */
+        /**
+         * The voice chain for a culture: its own voice, then every voice it extends, ending in common.
+         * A subculture with no voice of its own speaks with its parent's.
+         */
         public List<ResourceLocation> voiceChain(@Nullable String culture) {
             ResourceLocation start = COMMON_VOICE;
-            if (culture != null && !culture.isEmpty()) {
-                for (DialogueVoice voice : voices.values()) if (voice.cultures().contains(culture)) { start = voice.id(); break; }
+            for (String at = culture, next; at != null && !at.isEmpty() && start == COMMON_VOICE; at = next) {
+                for (DialogueVoice voice : voices.values()) if (voice.cultures().contains(at)) { start = voice.id(); break; }
+                var known = com.aetherianartificer.townstead.culture.Cultures.get(at);
+                next = known == null || known.parent() == null ? null : known.parent().toString();
             }
             List<ResourceLocation> chain = new ArrayList<>();
             for (ResourceLocation at = start; at != null && !chain.contains(at); ) {

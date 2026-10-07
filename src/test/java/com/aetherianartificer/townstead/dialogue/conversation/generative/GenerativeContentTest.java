@@ -24,6 +24,7 @@ class GenerativeContentTest {
     @Test void everyPartHasEnglishWithKnownPlaceholders() throws Exception {
         GenerativeDialogue.Data data = ShippedDialogue.data();
         Set<String> slots = new HashSet<>(Set.of("other", "self"));
+        slots.addAll(com.aetherianartificer.townstead.dialogue.conversation.CultureSlots.NAMES);
         data.subjects().values().forEach(subject -> slots.addAll(subject.slots().keySet()));
         for (List<DialoguePart> pool : data.partsByPool().values()) {
             for (DialoguePart part : pool) {

@@ -66,7 +66,7 @@ public final class SwitchboardCatalog {
         root.add("groupNames", names);
 
         JsonArray cultures = new JsonArray();
-        for (ResourceLocation id : Cultures.allIds()) {
+        for (ResourceLocation id : Cultures.rootIds()) {
             Culture culture = Cultures.get(id);
             if (culture == null) continue;
             JsonObject row = new JsonObject();

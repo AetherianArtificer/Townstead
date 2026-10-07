@@ -35,7 +35,7 @@ public record DialoguePart(ResourceLocation pool, ResourceLocation voice, @Nulla
             "personality_weights", "relationship_weights", "when", "evaluation"};
 
     /** {@code {name}} or {@code {name.meta:value=text|*=text}} in a text. */
-    static final Pattern PLACEHOLDER = Pattern.compile("\\{([a-z0-9_]+)(?:\\.[a-z0-9_]+:[^}]*)?}");
+    static final Pattern PLACEHOLDER = Pattern.compile("\\{([a-z0-9_]+)(?:/[a-z0-9_.]+)?(?:\\.[a-z0-9_]+:[^}]*)?}");
 
     public boolean empty() { return key == null; }
 

@@ -49,7 +49,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.List;
 
 @Mixin(InteractScreen.class)
-public abstract class InteractScreenMixin extends Screen {
+public abstract class InteractScreenMixin extends Screen implements com.aetherianartificer.townstead.client.persona.PersonaMenuClient.VillagerScreen {
     // Icons live in the townstead_icons namespace (assets/townstead_icons/*.png).
     //? if >=1.21 {
     private static final ResourceLocation HUNGER_FULL = ResourceLocation.fromNamespaceAndPath("townstead_icons", "hunger_full.png");
@@ -106,7 +106,7 @@ public abstract class InteractScreenMixin extends Screen {
     private void townstead$interceptTalkButton(MCAButton button, CallbackInfo ci) {
         String id = button.identifier();
         if (timeSinceLastClick <= 2) return;
-        if (townstead$openDress(id, ci)) return;
+        if (townstead$openMore(id, ci)) return;
         if ("gui.button.talk".equals(id) && TownsteadConfig.isRpgDialogueEnabled()) {
             ci.cancel();
             townstead$transitioning = true;
@@ -122,7 +122,7 @@ public abstract class InteractScreenMixin extends Screen {
     private void townstead$interceptTalkButton(Button button, CallbackInfo ci) {
         String id = button.identifier();
         if (timeSinceLastClick <= 2) return;
-        if (townstead$openDress(id, ci)) return;
+        if (townstead$openMore(id, ci)) return;
         if ("gui.button.talk".equals(id) && TownsteadConfig.isRpgDialogueEnabled()) {
             ci.cancel();
             townstead$transitioning = true;
@@ -180,15 +180,45 @@ public abstract class InteractScreenMixin extends Screen {
         }
     }
 
+    @Override
+    public int townstead$villagerEntityId() {
+        return villager.asEntity().getId();
+    }
+
+    /** The More page, and "Ask to Leave" on it, which asks for confirmation first. */
     @Unique
-    private boolean townstead$openDress(String id, CallbackInfo ci) {
-        if (!"gui.button.townstead_dress".equals(id)) return false;
-        ci.cancel();
-        if (com.aetherianartificer.townstead.compat.hats.HatsCompat.present()) {
+    private boolean townstead$openMore(String id, CallbackInfo ci) {
+        if ("gui.button.townstead_more".equals(id)) {
+            ci.cancel();
             timeSinceLastClick = 0;
-            ((net.conczin.mca.client.gui.AbstractDynamicScreen) (Object) this).setLayout("townstead_dress");
+            ((net.conczin.mca.client.gui.AbstractDynamicScreen) (Object) this).setLayout("townstead_more");
+            return true;
         }
+        if (!"gui.button.townstead_persona_leave".equals(id)) return false;
+        ci.cancel();
+        timeSinceLastClick = 0;
+        Screen parent = this;
+        int entityId = villager.asEntity().getId();
+        Component name = villager.asEntity().getName();
+        Minecraft.getInstance().setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(yes -> {
+            Minecraft.getInstance().setScreen(parent);
+            if (!yes) return;
+            com.aetherianartificer.townstead.client.persona.PersonaMenuClient.leave(entityId);
+            parent.onClose();
+        }, Component.translatable("gui.townstead.persona.leave.title", name),
+                Component.translatable("gui.townstead.persona.leave.message", name),
+                Component.translatable("gui.townstead.persona.leave.confirm"),
+                net.minecraft.network.chat.CommonComponents.GUI_CANCEL));
         return true;
+    }
+
+    //? if neoforge {
+    @Inject(method = "init", at = @At("TAIL"))
+    //?} else {
+    /*@Inject(method = "m_7856_", remap = false, at = @At("TAIL"))
+    *///?}
+    private void townstead$askIfPersona(CallbackInfo ci) {
+        com.aetherianartificer.townstead.client.persona.PersonaMenuClient.ask(villager.asEntity().getId());
     }
 
     //? if neoforge {

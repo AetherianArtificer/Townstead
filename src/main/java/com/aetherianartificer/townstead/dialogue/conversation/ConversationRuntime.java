@@ -48,7 +48,7 @@ final class ConversationRuntime {
         if ("baby".equals(stage) || "toddler".equals(stage)) stage = "child";
         String personality = McaPersonalityCompat.id(villager.getVillagerBrain().getPersonality());
         if (personality.startsWith("mca:")) personality = personality.substring(4);
-        List<ResourceLocation> voices = data.voiceChain(culture(level, villager));
+        List<ResourceLocation> voices = data.voiceChain(voiceCulture(villager));
         DialogueVoice own = data.voices().get(voices.get(0));
         ResourceLocation persona = com.aetherianartificer.townstead.persona.PersonaVoice.of(villager);
         if (persona != null) {
@@ -62,9 +62,18 @@ final class ConversationRuntime {
         return new LineComposer.Speaker(villager.getUUID(), stage, stageId, personality, voices, children, target);
     }
 
-    /** The recorded culture. Spawn and the villager tick settle cultures; conversation only reads. */
+    /**
+     * The culture players see for this villager: the root of their recorded culture. Spawn and the
+     * villager tick settle cultures; conversation only reads.
+     */
     static String culture(ServerLevel level, VillagerEntityMCA villager) {
         var culture = CultureAssignment.recorded(villager);
+        return culture == null ? "" : com.aetherianartificer.townstead.culture.Cultures.rootOf(culture.id().toString());
+    }
+
+    /** The culture this line is spoken in: drawn from the speaker's blend, so a mixed person sounds mixed. */
+    static String voiceCulture(VillagerEntityMCA villager) {
+        var culture = com.aetherianartificer.townstead.culture.CultureBlends.pick(villager, java.util.concurrent.ThreadLocalRandom.current());
         return culture == null ? "" : culture.id().toString();
     }
 
@@ -213,6 +222,11 @@ final class ConversationRuntime {
         Map<String, DialogueText.Value> values = new HashMap<>();
         values.put("self", person(speaker.getName().getString(), speaker));
         values.put("other", person(listener.getName().getString(), listener));
+        if (speaker.level() instanceof ServerLevel level) {
+            for (var e : CultureSlots.of(level, speaker, listener).entrySet()) {
+                values.put(e.getKey(), new DialogueText.Value(e.getValue().english(), e.getValue().key(), e.getValue().meta()));
+            }
+        }
         if (subject != null) for (var e : subject.slots().entrySet()) {
             LineComposer.SlotValue slot = e.getValue();
             Map<String, String> meta = new HashMap<>(slot.meta());

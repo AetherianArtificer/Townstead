@@ -318,7 +318,8 @@ public final class ConversationEngine {
             @Override public boolean filtered(Set<String> contentTags) { return false; }
         };
         LineComposer.Request req = new LineComposer.Request(move, facts, listener.getUUID(), initiator, subject, register,
-                speak.finalLine(), bridge, live.run.state(), live.run.balance(speak.speaker()), live.random);
+                speak.finalLine(), bridge, live.run.state(), live.run.balance(speak.speaker()), live.random,
+                CultureSlots.of(level, speaker, listener));
         return LineComposer.compose(data, req, world, recency(level, runtime, speaker));
     }
 

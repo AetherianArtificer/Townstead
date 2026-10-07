@@ -36,9 +36,19 @@ public final class FoundingProfileApplier {
 
     private FoundingProfileApplier() {}
 
+    /**
+     * Applies a profile to a village founded on its own. Its people take the subculture of the
+     * profile's culture that suits what the village has built, when one of them founds this profile.
+     */
     public static Result apply(ServerLevel level, Village village, FoundingProfileDefinition profile,
                                BlockPos sampleAt) {
-        return apply(level, village, profile, sampleAt, null, profile == null ? null : profile.culture(), true, null);
+        ResourceLocation culture = profile == null ? null : profile.culture();
+        if (culture != null && level != null && village != null) {
+            culture = com.aetherianartificer.townstead.culture.Subcultures.forFounding(culture, profile.id(),
+                    com.aetherianartificer.townstead.spirit.VillageSpiritAggregator.totalsFor(village),
+                    net.minecraft.util.RandomSource.create(level.getSeed() ^ (village.getId() * 0x632BE59BD9B4E019L)));
+        }
+        return apply(level, village, profile, sampleAt, null, culture, true, null);
     }
 
     /** Applies independently chosen Charter values without mutating the source data-pack definition. */

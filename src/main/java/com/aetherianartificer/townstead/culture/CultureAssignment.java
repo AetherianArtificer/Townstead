@@ -165,7 +165,7 @@ public final class CultureAssignment {
     private static String anyCulture(RandomSource random) {
         List<ResourceLocation> all = new ArrayList<>();
         double total = 0;
-        for (ResourceLocation id : Cultures.allIds()) {
+        for (ResourceLocation id : Cultures.rootIds()) {
             if (!CultureRules.enabled(id.toString())) continue;
             all.add(id);
             total += CultureRules.rate(id.toString());

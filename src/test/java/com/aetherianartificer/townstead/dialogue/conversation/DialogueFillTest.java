@@ -23,6 +23,10 @@ class DialogueFillTest {
         assertEquals("the plains are", DialogueText.fill("{biome} {biome.number:plural=are|*=is}", VALUES, "en_us"));
     }
 
+    @Test void printsTheBaseValueWhenALocaleHasNoForm() {
+        assertEquals("Ilse came from the plains.", DialogueText.fill("{who/f} came from {biome/pl.gen}.", VALUES, "ru_ru"));
+    }
+
     @Test void usesTheDefaultFormForAnUnknownValue() {
         assertEquals("marié·e", DialogueText.fill("{nobody.gender:m=marié|f=mariée|*=marié·e}", VALUES, "fr_fr"));
     }

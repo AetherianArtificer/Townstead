@@ -414,7 +414,7 @@ public final class CharterBellService {
                 external ? List.of() : CharterMemberships.requests(player, politics, faction),
                 draftView(player, politics, faction),
                 civic,
-                liveryStyles(),
+                liveryStyles(politics, faction),
                 external ? List.of() : welcomes(politics, faction),
                 external ? List.of() : accords(level, politics, faction, village));
         return new CharterSnapshotS2CPayload(lectern, bell, intact ? CharterSnapshotS2CPayload.FOUNDED : CharterSnapshotS2CPayload.REPAIR,
@@ -577,11 +577,34 @@ public final class CharterBellService {
         return out;
     }
 
-    private static List<CharterSnapshotS2CPayload.StyleOption> liveryStyles() {
+    /**
+     * Every livery style, the faction's own culture's first. A style belongs to the culture whose pack
+     * namespace it shares; styles from other cultures carry that culture's name, so a borrowed style
+     * reads as borrowed.
+     */
+    private static List<CharterSnapshotS2CPayload.StyleOption> liveryStyles(PoliticalSavedData politics, Faction faction) {
+        SettlementRef seat = faction.seatSettlement();
+        var founding = seat == null ? null : politics.founding(seat);
+        ResourceLocation own = founding == null ? null : Cultures.rootOf(founding.culture());
+        Map<String, Culture> byNamespace = new java.util.HashMap<>();
+        for (ResourceLocation root : Cultures.rootIds()) byNamespace.putIfAbsent(root.getNamespace(), Cultures.get(root));
         return com.aetherianartificer.townstead.livery.LiveryStyles.all().values().stream()
-                .sorted(Comparator.comparing(style -> style.name().getString()))
-                .map(style -> new CharterSnapshotS2CPayload.StyleOption(style.id().toString(), text(style.name()),
-                        com.aetherianartificer.townstead.livery.LiveryView.of(style, style.primary(), style.secondary())))
+                .sorted(Comparator.comparing((com.aetherianartificer.townstead.livery.LiveryStyle style) -> {
+                            Culture culture = byNamespace.get(style.id().getNamespace());
+                            return own != null && culture != null && culture.id().equals(own) ? 0 : 1;
+                        })
+                        .thenComparing(style -> {
+                            Culture culture = byNamespace.get(style.id().getNamespace());
+                            return culture == null ? "" : culture.displayName().getString();
+                        })
+                        .thenComparing(style -> style.name().getString()))
+                .map(style -> {
+                    Culture culture = byNamespace.get(style.id().getNamespace());
+                    Component name = culture == null || culture.id().equals(own) ? style.name()
+                            : Component.translatable("charter.townstead.livery_of_culture", style.name(), culture.displayName());
+                    return new CharterSnapshotS2CPayload.StyleOption(style.id().toString(), text(name),
+                            com.aetherianartificer.townstead.livery.LiveryView.of(style, style.primary(), style.secondary()));
+                })
                 .toList();
     }
 
@@ -713,7 +736,7 @@ public final class CharterBellService {
         out.add(new CharterSnapshotS2CPayload.Option("", text(Component.translatable("charter.townstead.no_founding_culture")),
                 text(Component.translatable("charter.townstead.no_culture_description")),
                 text(Component.translatable("charter.townstead.consequences.no_culture")), false, List.of()));
-        Cultures.authoredIds().stream().sorted(Comparator.comparing(ResourceLocation::toString)).forEach(id -> {
+        Cultures.rootIds().stream().sorted(Comparator.comparing(ResourceLocation::toString)).forEach(id -> {
             Culture culture = Cultures.get(id);
             if (culture != null) out.add(new CharterSnapshotS2CPayload.Option(id.toString(), text(culture.displayName()),
                     text(Component.translatable("charter.townstead.founding_culture_description")),
@@ -770,7 +793,7 @@ public final class CharterBellService {
         int counted = 0;
         for (Entity entity : people.values()) {
             if (!(entity instanceof VillagerEntityMCA villager)) continue;
-            String culture = Naming.cultureOf(villager);
+            String culture = Cultures.rootOf(Naming.cultureOf(villager));
             if (culture.isBlank() || Cultures.get(culture) == null) culture = "";
             counts.merge(culture, 1, Integer::sum);
             counted++;

@@ -57,6 +57,14 @@ public record CultureClothing(List<SkinBias> skins,
         palette = palette == null ? List.of() : List.copyOf(palette);
     }
 
+    /** A subculture's clothing: each part it leaves unset comes from its parent's. */
+    public CultureClothing inheriting(CultureClothing parent) {
+        if (parent == null || parent.isEmpty()) return this;
+        return new CultureClothing(skins.isEmpty() ? parent.skins : skins, types.isEmpty() ? parent.types : types,
+                sets.isEmpty() ? parent.sets : sets, palette.isEmpty() ? parent.palette : palette,
+                livery != null ? livery : parent.livery);
+    }
+
     public boolean isEmpty() {
         return skins.isEmpty() && types.isEmpty() && sets.isEmpty() && palette.isEmpty() && livery == null;
     }

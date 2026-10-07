@@ -61,7 +61,8 @@ public final class Companions {
         data.putString("return_dimension", level.dimension().location().toString());
         data.putInt("return_village", home.getId());
         data.putBoolean(Journeys.KEEP_HOME, true);
-        Journeys.depart(villager, Journeys.ERRAND, 0, data);
+        // They set off home once nobody is watching, not the moment the trip ends mid-conversation.
+        Journeys.departUnseen(villager, Journeys.ERRAND, 0, data);
     }
 
     public static @Nullable UUID leader(Entity entity) {

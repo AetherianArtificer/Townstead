@@ -32,10 +32,13 @@ public final class FoundingSelection {
         List<FoundingProfileDefinition> eligible = new ArrayList<>();
         List<Float> weights = new ArrayList<>();
         float total = 0;
+        // What was already built leans the roll toward forms whose subcultures suit it.
+        var spirit = com.aetherianartificer.townstead.spirit.VillageSpiritAggregator.totalsFor(village);
         for (FoundingProfileDefinition profile : candidates) {
             if (profile.when() != Conditions.ALWAYS
                     && (resident == null || !profile.when().test(new ConditionContext(resident)))) continue;
-            float weight = FoundingProfileApplier.environment(level, center, profile).naturalWeight();
+            float weight = FoundingProfileApplier.environment(level, center, profile).naturalWeight()
+                    * com.aetherianartificer.townstead.culture.Subcultures.foundingFactor(profile.culture(), profile.id(), spirit);
             if (weight <= 0) continue;
             eligible.add(profile);
             weights.add(weight);

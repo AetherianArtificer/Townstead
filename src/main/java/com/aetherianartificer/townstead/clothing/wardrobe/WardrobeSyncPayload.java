@@ -14,14 +14,58 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Server -> Client: every outfit template plus the whole assignment grid. */
+/** Server -> Client: outfit template names, the village weather layers, and each asked-for resident's wardrobe. */
 //? if neoforge {
-public record WardrobeSyncPayload(List<WardrobeTemplate> templates, List<String> village,
-                                  Map<UUID, List<String>> villagers) implements CustomPacketPayload {
+public record WardrobeSyncPayload(List<WardrobeTemplate> templates, boolean villageWarm, boolean villageLight,
+                                  Map<UUID, Resident> residents) implements CustomPacketPayload {
 //?} else {
-/*public record WardrobeSyncPayload(List<WardrobeTemplate> templates, List<String> village,
-                                  Map<UUID, List<String>> villagers) {
+/*public record WardrobeSyncPayload(List<WardrobeTemplate> templates, boolean villageWarm, boolean villageLight,
+                                  Map<UUID, Resident> residents) {
 *///?}
+
+    /**
+     * One resident's row and what the picker needs to know about them.
+     *
+     * @param gender    MCA gender ordinal
+     * @param household a key shared by villagers with the same home, or empty
+     * @param worksite  a key shared by villagers with the same workplace, or empty
+     */
+    public record Resident(List<String> row, String work, byte warm, byte light, List<String> starred,
+                           Map<String, Integer> picks, int gender, String rootId, boolean locked,
+                           String household, String worksite, String clothes) {
+
+        void write(FriendlyByteBuf buf) {
+            writeStrings(buf, row);
+            buf.writeUtf(work);
+            buf.writeByte(warm);
+            buf.writeByte(light);
+            writeStrings(buf, starred);
+            buf.writeVarInt(picks.size());
+            for (Map.Entry<String, Integer> e : picks.entrySet()) {
+                buf.writeUtf(e.getKey());
+                buf.writeVarInt(e.getValue());
+            }
+            buf.writeVarInt(gender);
+            buf.writeUtf(rootId);
+            buf.writeBoolean(locked);
+            buf.writeUtf(household);
+            buf.writeUtf(worksite);
+            buf.writeUtf(clothes);
+        }
+
+        static Resident read(FriendlyByteBuf buf) {
+            List<String> row = readStrings(buf);
+            String work = buf.readUtf();
+            byte warm = buf.readByte();
+            byte light = buf.readByte();
+            List<String> starred = readStrings(buf);
+            int n = buf.readVarInt();
+            Map<String, Integer> picks = new LinkedHashMap<>();
+            for (int i = 0; i < n; i++) picks.put(buf.readUtf(), buf.readVarInt());
+            return new Resident(row, work, warm, light, starred, picks, buf.readVarInt(), buf.readUtf(),
+                    buf.readBoolean(), buf.readUtf(), buf.readUtf(), buf.readUtf());
+        }
+    }
 
     //? if neoforge {
     public static final Type<WardrobeSyncPayload> TYPE =
@@ -51,37 +95,39 @@ public record WardrobeSyncPayload(List<WardrobeTemplate> templates, List<String>
     public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(templates.size());
         for (WardrobeTemplate template : templates) template.write(buf);
-        writeRow(buf, village);
-        buf.writeVarInt(villagers.size());
-        for (Map.Entry<UUID, List<String>> e : villagers.entrySet()) {
+        buf.writeBoolean(villageWarm);
+        buf.writeBoolean(villageLight);
+        buf.writeVarInt(residents.size());
+        for (Map.Entry<UUID, Resident> e : residents.entrySet()) {
             buf.writeUUID(e.getKey());
-            writeRow(buf, e.getValue());
+            e.getValue().write(buf);
         }
     }
 
-    private static void writeRow(FriendlyByteBuf buf, List<String> row) {
-        buf.writeVarInt(row.size());
-        for (String cell : row) buf.writeUtf(cell == null ? "" : cell);
+    private static void writeStrings(FriendlyByteBuf buf, List<String> values) {
+        buf.writeVarInt(values.size());
+        for (String value : values) buf.writeUtf(value == null ? "" : value);
     }
 
-    private static List<String> readRow(FriendlyByteBuf buf) {
+    private static List<String> readStrings(FriendlyByteBuf buf) {
         int n = buf.readVarInt();
-        List<String> row = new ArrayList<>(n);
-        for (int i = 0; i < n; i++) row.add(buf.readUtf());
-        return row;
+        List<String> out = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) out.add(buf.readUtf());
+        return out;
     }
 
     public static WardrobeSyncPayload read(FriendlyByteBuf buf) {
         int n = buf.readVarInt();
         List<WardrobeTemplate> templates = new ArrayList<>(n);
         for (int i = 0; i < n; i++) templates.add(WardrobeTemplate.read(buf));
-        List<String> village = readRow(buf);
+        boolean warm = buf.readBoolean();
+        boolean light = buf.readBoolean();
         int m = buf.readVarInt();
-        Map<UUID, List<String>> villagers = new LinkedHashMap<>();
+        Map<UUID, Resident> residents = new LinkedHashMap<>();
         for (int i = 0; i < m; i++) {
             UUID uuid = buf.readUUID();
-            villagers.put(uuid, readRow(buf));
+            residents.put(uuid, Resident.read(buf));
         }
-        return new WardrobeSyncPayload(templates, village, villagers);
+        return new WardrobeSyncPayload(templates, warm, light, residents);
     }
 }

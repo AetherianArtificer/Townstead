@@ -46,7 +46,7 @@ public record StoryAttach(Set<String> professions, Set<String> roots, Set<String
             if (key == null || !professions.contains(key.toString())) return false;
         }
         if (!roots.isEmpty() && !roots.contains(RootAssignment.currentRoot(villager))) return false;
-        if (!cultures.isEmpty() && !cultures.contains(Naming.cultureOf(villager))) return false;
+        if (!cultures.isEmpty() && !com.aetherianartificer.townstead.culture.Cultures.matches(Naming.cultureOf(villager), cultures)) return false;
         return when == null || when.test(new ConditionContext(villager, player));
     }
 }

@@ -97,6 +97,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue VAMPIRE_INFECTION;
     public static final ModConfigSpec.BooleanValue VAMPIRE_REPLACE_SPAWNS;
     public static final ModConfigSpec.BooleanValue WEREWOLF_REPLACE_SPAWNS;
+    public static final ModConfigSpec.BooleanValue HUNTER_REPLACE_SPAWNS;
     public static final ModConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ModConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -218,6 +219,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue VAMPIRE_INFECTION;
     public static final ForgeConfigSpec.BooleanValue VAMPIRE_REPLACE_SPAWNS;
     public static final ForgeConfigSpec.BooleanValue WEREWOLF_REPLACE_SPAWNS;
+    public static final ForgeConfigSpec.BooleanValue HUNTER_REPLACE_SPAWNS;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FEEDING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_HYDRATING_YOUNG;
     public static final ForgeConfigSpec.BooleanValue ENABLE_NON_PARENT_CAREGIVERS;
@@ -578,6 +580,10 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.vampirism.replaceWerewolfSpawns")
                 .comment("With Werewolves installed, its human werewolves spawn as wild werewolf villagers of the region's Roots. They still change into the beast at night.")
                 .define("replaceWerewolfSpawns", true);
+        HUNTER_REPLACE_SPAWNS = b
+                .translation("townstead.configuration.vampirism.replaceHunterSpawns")
+                .comment("Vampirism's vampire hunters spawn wearing a person of the region's Roots, in hunter gear. They keep their own behavior.")
+                .define("replaceHunterSpawns", true);
         b.pop();
 
         // ── Caregiving ──

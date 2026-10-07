@@ -70,6 +70,13 @@ public final class RelationshipLedger {
         return new View(from, toward, today, Map.copyOf(totals), List.copyOf(values.values()));
     }
 
+    /** Everyone {@code from} holds a relationship toward. At most {@link #MAX_TARGETS_PER_PERSON}. */
+    public List<UUID> targetsOf(UUID from) {
+        List<UUID> out = new java.util.ArrayList<>();
+        for (Pair pair : byPair.keySet()) if (pair.from().equals(from)) out.add(pair.toward());
+        return out;
+    }
+
     public int contributionCount(UUID from, UUID toward) {
         Map<String, Contribution> values = byPair.get(new Pair(from, toward));
         return values == null ? 0 : values.size();

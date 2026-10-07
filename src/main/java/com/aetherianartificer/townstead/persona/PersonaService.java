@@ -66,6 +66,7 @@ public final class PersonaService {
             if (village == null) continue;
             for (PersonaDefinition persona : Personas.all().values()) {
                 if (persona.arrives().isEmpty()) continue;
+                if (PersonaInstances.get(server).isDismissed(persona.id(), level.dimension().location(), village.getId())) continue;
                 PersonaInstances.Instance travelling = PersonaInstances.get(server).travelling(persona.id());
                 if (travelling != null) {
                     if (readyToArrive(server, travelling, level, village) && arrives(server, player, persona)) {
@@ -417,6 +418,7 @@ public final class PersonaService {
         PersonaInstances instances = PersonaInstances.get(player.server);
         ResourceLocation dimension = level.dimension().location();
         if (instances.in(personaId, dimension, village.getId()) != null || instances.isPending(personaId, dimension, village.getId())) return false;
+        if (instances.isDismissed(personaId, dimension, village.getId())) return false;
         if (persona.worldUnique() && (!instances.of(personaId).isEmpty() || instances.isPendingAnywhere(personaId))) return false;
         long due = com.aetherianartificer.townstead.calendar.TownsteadCalendar.worldDay(player.server) + Math.max(0, delayDays);
         instances.addPending(new PersonaInstances.Pending(personaId, dimension, village.getId(), due, player.getUUID()));
@@ -443,6 +445,7 @@ public final class PersonaService {
             Village village = net.conczin.mca.server.world.data.VillageManager.get(level).getOrEmpty(entry.village()).orElse(null);
             instances.removePending(entry);
             if (village != null && instances.in(persona.id(), entry.dimension(), village.getId()) == null
+                    && !instances.isDismissed(persona.id(), entry.dimension(), village.getId())
                     && !(persona.worldUnique() && !instances.of(persona.id()).isEmpty())) {
                 spawn(persona, player, village, false);
             }

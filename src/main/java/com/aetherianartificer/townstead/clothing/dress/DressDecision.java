@@ -62,6 +62,17 @@ public final class DressDecision {
     public static List<Action> decide(WardrobeResolver.Plan plan, List<WornPiece> worn, boolean armourManaged,
                                       @Nullable TemperatureData.Tier tier, boolean onShift,
                                       CultureClothing culture, List<ClothingEntry> fitted) {
+        return decide(plan, worn, armourManaged, tier, onShift, culture, fitted, true, true);
+    }
+
+    /**
+     * @param warmLayers  whether the body-tier fallback may add warm layers in the cold
+     * @param lightLayers whether it may shed warm layers and add cool ones in the heat
+     */
+    public static List<Action> decide(WardrobeResolver.Plan plan, List<WornPiece> worn, boolean armourManaged,
+                                      @Nullable TemperatureData.Tier tier, boolean onShift,
+                                      CultureClothing culture, List<ClothingEntry> fitted,
+                                      boolean warmLayers, boolean lightLayers) {
         List<Action> actions = new ArrayList<>();
         List<WornPiece> movable = new ArrayList<>();
         for (WornPiece piece : worn) {
@@ -71,8 +82,9 @@ public final class DressDecision {
             movable.add(piece);
         }
 
-        if (plan == null || plan.isEmpty() || tier != null && tier != TemperatureData.Tier.COMFORTABLE) {
-            fallback(actions, movable, tier);
+        boolean weatherAllowed = tier != null && (tier.isCold() ? warmLayers : lightLayers);
+        if (plan == null || plan.isEmpty() || weatherAllowed && tier != TemperatureData.Tier.COMFORTABLE) {
+            if (weatherAllowed) fallback(actions, movable, tier);
             return actions;
         }
 

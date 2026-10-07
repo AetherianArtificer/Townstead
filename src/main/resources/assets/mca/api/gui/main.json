@@ -92,7 +92,7 @@
     "constraints": "!baby"
   },
   {
-    "identifier": "gui.button.townstead_dress",
+    "identifier": "gui.button.townstead_more",
     "x": -90,
     "y": 10,
     "row": 7,

@@ -1,8 +1,12 @@
 package com.aetherianartificer.townstead.culture;
 
+import com.aetherianartificer.townstead.root.Demonym;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * A civic culture: what a community values and how it names its people.
@@ -19,13 +23,41 @@ import org.jetbrains.annotations.Nullable;
  * <p>A culture declares nothing about which mod supplies its names. Its tradition references name
  * lists, and a reference carries its own namespace, so a culture built on another mod's names says
  * so exactly once and in the place the names are actually used.</p>
+ *
+ * <p>A culture with a {@code parent} is a subculture: the customs of one people inside the parent,
+ * such as Rosaguarda's merchant houses. Players see only the parent. The loader fills every field a
+ * subculture leaves unset from its parent, so {@code displayName} is always the root's name.
+ * {@code spirit} weights the Community Spirit axes that draw people toward it, and {@code forms} are
+ * the founding profiles its towns use.</p>
  */
 public record Culture(ResourceLocation id,
                       Component displayName,
                       @Nullable ResourceLocation namingTradition,
                       @Nullable ResourceLocation settlementNames,
                       CultureClothing clothing,
-                      @Nullable ResourceLocation factionNames) {
+                      @Nullable ResourceLocation factionNames,
+                      @Nullable Demonym demonym,
+                      @Nullable ResourceLocation parent,
+                      Map<String, Float> spirit,
+                      List<Form> forms) {
+
+    /**
+     * A founding profile this culture's towns use, and how often. A subculture lists the government
+     * forms its towns found; the same form may appear under several subcultures.
+     */
+    public record Form(ResourceLocation profile, float weight) {}
+
+    public Culture(ResourceLocation id, Component displayName, @Nullable ResourceLocation namingTradition,
+                   @Nullable ResourceLocation settlementNames, CultureClothing clothing,
+                   @Nullable ResourceLocation factionNames, @Nullable Demonym demonym) {
+        this(id, displayName, namingTradition, settlementNames, clothing, factionNames, demonym, null, Map.of(), List.of());
+    }
+
+    public Culture(ResourceLocation id, Component displayName, @Nullable ResourceLocation namingTradition,
+                   @Nullable ResourceLocation settlementNames, CultureClothing clothing,
+                   @Nullable ResourceLocation factionNames) {
+        this(id, displayName, namingTradition, settlementNames, clothing, factionNames, null);
+    }
 
     public Culture(ResourceLocation id, Component displayName, ResourceLocation namingTradition,
                    ResourceLocation settlementNames, CultureClothing clothing) {
@@ -34,6 +66,13 @@ public record Culture(ResourceLocation id,
 
     public Culture {
         if (clothing == null) clothing = CultureClothing.NONE;
+        spirit = spirit == null ? Map.of() : Map.copyOf(spirit);
+        forms = forms == null ? List.of() : List.copyOf(forms);
+    }
+
+    /** A subculture: a people inside {@link #parent}, sharing its identity and inheriting what it leaves unset. */
+    public boolean isSubculture() {
+        return parent != null;
     }
 
     public Culture(ResourceLocation id, Component displayName, @Nullable ResourceLocation namingTradition) {
