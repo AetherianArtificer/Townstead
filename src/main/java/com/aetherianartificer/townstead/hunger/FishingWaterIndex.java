@@ -158,7 +158,7 @@ public final class FishingWaterIndex {
     ) {
         BlockPos best = null;
         double bestDist = Double.MAX_VALUE;
-        int[] verticalChoices = {-1, 0, 1, 2, 3};
+        int[] verticalChoices = {1, 2, 3};
         for (int dx = -2; dx <= 2; dx++) {
             for (int dz = -2; dz <= 2; dz++) {
                 if (dx == 0 && dz == 0) continue;
@@ -239,12 +239,7 @@ public final class FishingWaterIndex {
         for (BlockPos pos : BlockPos.betweenClosed(
                 anchor.offset(-horizontalRadius, -verticalRadiusDown, -horizontalRadius),
                 anchor.offset(horizontalRadius, verticalRadiusUp, horizontalRadius))) {
-            BlockState state = level.getBlockState(pos);
-            if (!state.getFluidState().isSource()) continue;
-            if (!state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) continue;
-            BlockPos above = pos.above();
-            BlockState aboveState = level.getBlockState(above);
-            if (!aboveState.isAir() && !aboveState.getCollisionShape(level, above).isEmpty()) continue;
+            if (!isOpenSurfaceWater(level, pos)) continue;
             BlockPos immutable = pos.immutable();
             candidates.add(immutable);
             candidateByKey.put(immutable.asLong(), immutable);
@@ -295,10 +290,30 @@ public final class FishingWaterIndex {
         return new WaterSnapshot(List.copyOf(spots), gameTime + ttl);
     }
 
+    /**
+     * Source water whose top face is open: no block and no more water above. Water under
+     * more water (a pond floor) or under a solid block (a cave pocket) cannot take a cast.
+     */
+    public static boolean isOpenSurfaceWater(net.minecraft.world.level.BlockGetter level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        if (!state.getFluidState().isSource()) return false;
+        if (!state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) return false;
+        BlockPos above = pos.above();
+        BlockState aboveState = level.getBlockState(above);
+        if (!aboveState.getFluidState().isEmpty()) return false;
+        return aboveState.isAir() || aboveState.getCollisionShape(level, above).isEmpty();
+    }
+
+    /** A stand below the water surface can only reach it through a wall or a bank. */
+    private static boolean standsAboveWater(BlockPos stand, BlockPos waterPos) {
+        return stand.getY() > waterPos.getY();
+    }
+
     private static @Nullable BlockPos findStandFor(ServerLevel level, BlockPos waterPos) {
-        List<BlockPos> candidates = WorkPathing.standCandidatesAround(level, waterPos, null);
-        if (candidates.isEmpty()) return null;
-        return candidates.get(0);
+        for (BlockPos candidate : WorkPathing.standCandidatesAround(level, waterPos, null)) {
+            if (standsAboveWater(candidate, waterPos)) return candidate;
+        }
+        return null;
     }
 
     private record WaterSearchKey(String dimensionId, long anchorKey, int horizontalRadius, int verticalRadiusDown, int verticalRadiusUp) {}
