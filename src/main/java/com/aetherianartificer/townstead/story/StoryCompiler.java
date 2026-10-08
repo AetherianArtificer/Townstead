@@ -9,15 +9,19 @@ import com.bladecoder.ink.runtime.Story;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Compiles a story folder's {@code .ink} files as one story. Every file is included, so writers
  * never manage INCLUDE lines, and the helper functions are declared for them unless a file
- * declares its own.
+ * declares its own. A root file may still INCLUDE its scenes and declare the helpers itself, so
+ * standard Ink tools can open it; files it includes are not included a second time.
  */
 final class StoryCompiler {
     private StoryCompiler() {}
@@ -51,6 +55,7 @@ final class StoryCompiler {
             Map.entry("contract_turn_in", "pool"));
 
     private static final String ROOT = "<story>";
+    private static final Pattern INCLUDE = Pattern.compile("(?m)^\\s*INCLUDE\\s+(\\S.*?)\\s*$");
 
     record Knot(String name, List<String> tags, List<String> stitches) {}
 
@@ -74,7 +79,15 @@ final class StoryCompiler {
                 root.append("EXTERNAL ").append(external.getKey()).append('(').append(external.getValue()).append(")\n");
             }
         }
-        for (String path : files.keySet()) root.append("INCLUDE ").append(path).append('\n');
+        // A file another file already INCLUDEs comes in through that file, not twice.
+        Set<String> included = new HashSet<>();
+        for (String source : files.values()) {
+            Matcher include = INCLUDE.matcher(source);
+            while (include.find()) included.add(include.group(1).trim());
+        }
+        for (String path : files.keySet()) {
+            if (!included.contains(path)) root.append("INCLUDE ").append(path).append('\n');
+        }
         root.append("-> DONE\n");
 
         Compiler.Options options = new Compiler.Options();

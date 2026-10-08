@@ -1,124 +1,252 @@
-// The dhampir founder. A hunter with a vampire father and a living mother, who arrives on the trail
-// of a vampire and stays to found a hunter lodge. The whole arc and the voice rules are in
-// docs/design/dhampir_founder.md. Act 1 lives in meeting.ink (scene 1), wolf.ink (scene 2), altar.ink (scene 3), garlic.ink (scene 4), volunteers.ink (scene 5), oath.ink (scene 6), walk.ink (scene 7), watch.ink (scene 8), neighbor.ink (scene 9), bitten.ink (scene 9b), thrall.ink (scene 10), counting.ink (scene 11) and name.ink (scene 12). Act 2: count_talk.ink (scene 13), debrief.ink (14), stakeout.ink (15), willing.ink (16), fledgling.ink (17), slip.ink (M1), midwife_side.ink (M2, the founder's side), grave.ink (M3), wounded.ink (wolf beat 10), book.ink (M4), midpoint.ink (the Truth), romance.ink. The wolf line: wolf_line.ink. Werewolves: werewolf.ink. Act 3 and the endings: court.ink. Contracts: contracts.ink.
+// The Dhampir founder
 //
-// Voice: guarded, dry, rage held in. The hunt delights them; that delight is for their quarry,
-// never the player. They respect the player and show care through what they do. Reveals are slow.
+// A hunter with a vampire father and a living mother. They arrive on the trail of a vampire and
+// stay to found a hunter lodge. The full arc is in docs/design/dhampir_founder.md.
 
+// Act 1
+INCLUDE act1/01_meeting/01_meeting.ink
+INCLUDE act1/01_meeting/02_after_kill.ink
+INCLUDE act1/01_meeting/03_cold_trail.ink
+INCLUDE act1/01_meeting/04_answers.ink
+INCLUDE act1/01_meeting/05_shepherd.ink
+INCLUDE act1/01_meeting/06_offer.ink
+INCLUDE act1/02_wolf.ink
+INCLUDE act1/03_altar.ink
+INCLUDE act1/04_garlic.ink
+INCLUDE act1/05_volunteers.ink
+INCLUDE act1/06_oath.ink
+INCLUDE act1/07_walk.ink
+INCLUDE act1/08_watch.ink
+INCLUDE act1/09_neighbor.ink
+INCLUDE act1/09b_bitten.ink
+INCLUDE act1/10_thrall.ink
+INCLUDE act1/11_counting.ink
+INCLUDE act1/12_name.ink
+
+// Act 2 and the midpoint
+INCLUDE act2/13_count_talk.ink
+INCLUDE act2/14_debrief.ink
+INCLUDE act2/15_stakeout/01_offer.ink
+INCLUDE act2/15_stakeout/02_night.ink
+INCLUDE act2/15_stakeout/03_verdict.ink
+INCLUDE act2/16_willing.ink
+INCLUDE act2/17_fledgling.ink
+INCLUDE act2/m1_slip.ink
+INCLUDE act2/m2_midwife_side.ink
+INCLUDE act2/m3_grave.ink
+INCLUDE act2/m4_book.ink
+INCLUDE act2/midpoint.ink
+INCLUDE act2/romance.ink
+
+// Act 3 and the endings
+INCLUDE act3/01_court_offer.ink
+INCLUDE act3/02_court_road.ink
+INCLUDE act3/03_court/01_court.ink
+INCLUDE act3/03_court/02_pivot.ink
+INCLUDE act3/03_court/03_ending_a.ink
+INCLUDE act3/03_court/04_ending_b.ink
+INCLUDE act3/04_epilogue.ink
+
+// The wolf line
+INCLUDE wolf_line/00_wolf_line.ink
+INCLUDE wolf_line/02_scraps.ink
+INCLUDE wolf_line/03_name.ink
+INCLUDE wolf_line/04_mutter.ink
+INCLUDE wolf_line/05_collar.ink
+INCLUDE wolf_line/06_tracker.ink
+INCLUDE wolf_line/07_cold_night.ink
+INCLUDE wolf_line/08_bone.ink
+INCLUDE wolf_line/09_flinch.ink
+INCLUDE wolf_line/10_wounded.ink
+INCLUDE wolf_line/11_shepherd.ink
+INCLUDE wolf_line/12_inside.ink
+
+// Through the whole story
+INCLUDE ongoing/contracts.ink
+INCLUDE ongoing/dusk.ink
+INCLUDE ongoing/greeting.ink
+INCLUDE ongoing/werewolf.ink
+
+// Shared building blocks
+INCLUDE lib/balance.ink
+INCLUDE lib/trips.ink
+
+// Stand-ins for the game's helpers, for Inky
+INCLUDE lib/fallbacks.ink
+
+
+
+// Set by the game.
 VAR given_name = ""
 VAR family_name = ""
 VAR house = ""
 VAR today = 0
+VAR quest_ready = false
+VAR quest_open = false
+VAR interrupted = false
 
-// 0: not met. 2: met.
+// 0 before the first meeting, 2 after it.
 VAR met = 0
 VAR offered = false
 VAR founded = false
 VAR asked_wolf = false
 
-VAR quest_ready = false
-VAR quest_open = false
-VAR interrupted = false
+// The menu line for the next scene. next_scene() sets it.
+VAR scene_line = ""
 
-// What the player says to open a conversation.
-=== function menu() ===
+-> inky_start
+
+// Every conversation starts here and goes to the first scene that is ready.
+=== greet ===
+# label: Talk
+~ temp next = next_scene()
+-> next
+
+// The scene that plays next, and what the player says to start it ("" for the everyday line).
+// The first one that is ready wins, so the order matters.
+=== function next_scene() ===
 {
-- interrupted:
-    ~ return "You were saying?"
-- court_arrived and not done_court and here("visitor:father"):
-    ~ return "They're here."
-- court_walking and not court_arrived and check("at_court"):
-    ~ return "Is this the place?"
-- court_walking and not court_arrived:
-    ~ return "How far now?"
-- done_court and not done_epilogue and not court_walking:
-    ~ return "Home again."
-- shepherd_walking and check("at_shepherd"):
-    ~ return "Is this where he is?"
-- shepherd_walking:
-    ~ return "Still with me?"
-- staking and check("late_night") and stake_last < today:
-    ~ return "Anything moving?"
-- couple_called and not done_willing and here("visitor:couple_thrall"):
-    ~ return "Who are they?"
-- fledgling_called and not done_fledgling and here("visitor:fledgling"):
-    ~ return "They're asking for you."
-- curing and not done_cure and is(fledgling_name, "cured_villager"):
-    ~ return "Did it work?"
-- met == 0:
-    ~ return "Who are you?"
-- met == 2 and not offered:
-    ~ return "About earlier..."
-- offered and not founded:
-    ~ return "About staying..."
-- founded and not wolf_seen and check("has_wolf"):
-    ~ return "Who's this?"
-- founded and not altar_started and not done_lodge:
-    ~ return "Still measuring?"
-- done_lodge and not garlic_started and not done_garlic and check("second_kill"):
-    ~ return "Another one?"
-- done_lodge and not done_first_oath and check("first_oath"):
-    ~ return "That went well."
-- walking:
-    ~ return "Anything?"
-- watching and check("raid_near"):
-    ~ return "Where do you want me?"
-- watching:
-    ~ return "Is that all of them?"
-- done_walk and not done_watch and who("sworn_hunter") != "" and check("late_night"):
-    ~ return "Quiet tonight."
-- asking:
-    ~ return "About your neighbor..."
-- bitten_asked and not done_bitten and not is(bitten, "turning_villager"):
-    ~ return "About " + bitten + "..."
-- thrall_called and not thrall_seen and check("thrall_near"):
-    ~ return "Who's that?"
-- thrall_seen and not done_thrall and not check("thrall_near"):
-    ~ return "It's decided."
-- done_count_talk and not done_slip and count("founder_oaths") > slip_oaths:
-    ~ return "About the oath..."
-- grave_walking and not grave_seen and check("at_grave"):
-    ~ return "Is this it?"
-- grave_walking:
-    ~ return "How are you doing?"
-- bringer_called and not done_midpoint and here("visitor:candle_bringer"):
-    ~ return "They came for me."
-- done_book and not bringer_called and today > book_day:
-    ~ return "Did you hear something?"
-- done_midpoint and not done_confession_after and (check("midwife_forgiven") or check("midwife_cast_out")):
-    ~ return "About her..."
-- bread_known and not done_grave:
-    ~ return "You're quiet today."
-- court_came and not done_wounded and count("wolf_downs") > court_downs and check("wolf_down"):
-    ~ return "Is it breathing?"
-- court_came and not done_wounded and count("wolf_downs") > court_downs:
-    ~ return "It's up."
-- done_grave and not court_came and check("late_night"):
-    ~ return "Something wrong?"
-- done_counting and not named and (done_walk or done_watch) and (done_neighbor or done_bitten) and rel("trust") >= 15 and check("evening"):
-    ~ return "Mind if I sit?"
-- done_watch and not done_neighbor and not bitten_asked and who("turning_villager") != "":
-    ~ return "You look worried."
-- done_watch and not done_neighbor and who("resident_vampire") != "":
-    ~ return "Something on your mind?"
-- done_first_oath and not done_walk and check("player_sworn") and check("evening"):
-    ~ return "Going out tonight?"
-- named and count("founder_kills") > debrief_kills and debrief_day < today:
-    ~ return "Good hunting?"
+- meeting_ready():
+    ~ return scene(-> meeting, "Who are you?")
+- meeting_resume_ready():
+    ~ return scene(-> meeting.resume, "About earlier...")
+- reoffer_ready():
+    ~ return scene(-> reoffer, "About staying...")
+- court_ready():
+    ~ return scene(-> court, "They're here.")
+- court_arrive_ready():
+    ~ return scene(-> court_arrive, "Is this the place?")
+- court_road_ready():
+    ~ return scene(-> court_road, "How far now?")
+- epilogue_ready():
+    ~ return scene(-> epilogue, "Home again.")
+- shepherd_arrive_ready():
+    ~ return scene(-> shepherd_arrive, "Is this where he is?")
+- shepherd_road_ready():
+    ~ return scene(-> shepherd_road, "Still with me?")
+- stakeout_night_ready():
+    ~ return scene(-> stakeout_night, "Anything moving?")
+- couple_meet_ready():
+    ~ return scene(-> couple_meet, "Who are they?")
+- fledgling_meet_ready():
+    ~ return scene(-> fledgling_meet, "They're asking for you.")
+- cure_after_ready():
+    ~ return scene(-> cure_after, "Did it work?")
+- wolf_ready():
+    ~ return scene(-> wolf, "Who's this?")
+- wolf_fetch_ready():
+    ~ return scene(-> wolf_fetch, "")
+- altar_offer_ready():
+    ~ return scene(-> altar_offer, "Still measuring?")
+- walk_after_ready():
+    ~ return scene(-> walk_after, "Anything?")
+- walk_quiet_ready():
+    ~ return scene(-> walk_quiet, "Anything?")
+- watch_during_ready():
+    ~ return scene(-> watch_during, "Where do you want me?")
+- watch_after_ready():
+    ~ return scene(-> watch_after, "Is that all of them?")
+- neighbor_back_ready():
+    ~ return scene(-> neighbor_back, "About your neighbor...")
+- bitten_after_ready():
+    ~ return scene(-> bitten_after, "About " + bitten + "...")
+- thrall_cold_ready():
+    ~ return scene(-> thrall_cold, "Who's that?")
+- thrall_after_ready():
+    ~ return scene(-> thrall_after, "It's decided.")
+- slip_after_ready():
+    ~ return scene(-> slip_after, "About the oath...")
+- grave_arrive_ready():
+    ~ return scene(-> grave_arrive, "Is this it?")
+- grave_stay_ready():
+    ~ return scene(-> grave_arrive.stay, "How are you doing?")
+- grave_road_ready():
+    ~ return scene(-> grave_road, "How are you doing?")
+- midpoint_ready():
+    ~ return scene(-> midpoint, "They came for me.")
+- bringer_arrival_ready():
+    ~ return scene(-> bringer_arrival, "Did you hear something?")
+- confession_after_ready():
+    ~ return scene(-> confession_after, "About her...")
+- wounded_down_ready():
+    ~ return scene(-> wounded_down, "Is it breathing?")
+- wounded_up_ready():
+    ~ return scene(-> wounded_up, "It's up.")
+- court_note_ready():
+    ~ return scene(-> court_note, "")
+- court_move_ready():
+    ~ return scene(-> court_move, "Something wrong?")
+- grave_offer_ready():
+    ~ return scene(-> grave_offer, "You're quiet today.")
+- first_oath_ready():
+    ~ return scene(-> first_oath, "That went well.")
+- volunteers_ready():
+    ~ return scene(-> volunteers, "")
+- walk_offer_ready():
+    ~ return scene(-> walk_offer, "Going out tonight?")
+- watch_offer_ready():
+    ~ return scene(-> watch_offer, "Quiet tonight.")
+- neighbor_offer_ready():
+    ~ return scene(-> neighbor_offer, "Something on your mind?")
+- bitten_offer_ready():
+    ~ return scene(-> bitten_offer, "You look worried.")
+- thrall_arrival_ready():
+    ~ return scene(-> thrall_arrival, "")
+- counting_ready():
+    ~ return scene(-> counting, "")
+- the_name_ready():
+    ~ return scene(-> the_name, "Mind if I sit?")
+- garlic_offer_ready():
+    ~ return scene(-> garlic_offer, "Another one?")
+- court_offer_ready():
+    ~ return scene(-> court_offer, "You've been quiet.")
+- debrief_ready():
+    ~ return scene(-> debrief, "Good hunting?")
 - romance_ready():
-    ~ return "Mind the company?"
-- done_midpoint and done_inside and not court_offered and (done_confession_after or today > midpoint_day + 5):
-    ~ return "You've been quiet."
+    ~ return scene(-> romance_beat, "Mind the company?")
+- stakeout_offer_ready():
+    ~ return scene(-> stakeout_offer, "")
+- couple_arrival_ready():
+    ~ return scene(-> couple_arrival, "")
+- fledgling_arrival_ready():
+    ~ return scene(-> fledgling_arrival, "")
+- fledgling_after_ready():
+    ~ return scene(-> fledgling_after, "")
+- werewolf_signs_ready():
+    ~ return scene(-> werewolf_signs, "")
+- werewolf_items_ready():
+    ~ return scene(-> werewolf_items, "")
+- werewolf_wolf_ready():
+    ~ return scene(-> werewolf_wolf, "")
+- wolf_beat_ready():
+    ~ return scene(-> wolf_beat_run, "")
+}
+{
 - quest_ready:
-    ~ return "Come and look."
+    ~ return scene(-> dusk, "Come and look.")
 - quest_open:
-    ~ return "About that job..."
+    ~ return scene(-> dusk, "About that job...")
+}
+~ return scene(-> dusk, "")
+
+// Sets the menu line for the scene that next_scene() picks.
+=== function scene(target, line) ===
+~ scene_line = line
+~ return target
+
+// What the player says to start the next scene.
+=== function menu() ===
+{interrupted:
+    ~ return "You were saying?"
+}
+~ next_scene()
+{scene_line != "":
+    ~ return scene_line
 }
 ~ return "Got a moment?"
 
-// What they call the player over with when a scene is waiting ("" for nothing): the game shows a
-// mark over their head and, once you come close, they wave and say it. A scene is waiting when
-// menu() has something other than the everyday label; walks and trips in progress never call.
+// What they call out to bring the player over when a scene is waiting, or "" for nothing.
+// They do not call during walks and trips, or for everyday talk.
 === function calling() ===
 {
 - menu() == "Got a moment?" or interrupted:
@@ -131,211 +259,3 @@ VAR interrupted = false
     ~ return "There you are. Come here."
 }
 ~ return "Have you got a minute? I want a word."
-
-=== greet ===
-# label: Talk
-{
-- met == 0:
-    -> meeting
-- met == 2 and not offered:
-    -> meeting.resume
-- offered and not founded:
-    -> reoffer
-- court_arrived and not done_court and here("visitor:father"):
-    -> court
-- court_walking and not court_arrived and check("at_court"):
-    -> court_arrive
-- court_walking and not court_arrived:
-    -> court_road
-- done_court and not done_epilogue and not court_walking and not check("at_court"):
-    -> epilogue
-- shepherd_walking and check("at_shepherd"):
-    -> shepherd_arrive
-- shepherd_walking:
-    -> shepherd_road
-- staking and check("late_night") and stake_last < today:
-    -> stakeout_night
-- couple_called and not done_willing and here("visitor:couple_thrall"):
-    -> couple_meet
-- fledgling_called and not done_fledgling and here("visitor:fledgling"):
-    -> fledgling_meet
-- curing and not done_cure and is(fledgling_name, "cured_villager"):
-    -> cure_after
-- founded and not wolf_seen and check("has_wolf"):
-    -> wolf
-// Back from fetching the wolf without it (it could not be spawned, or was lost): bring it now.
-- founded and asked_wolf and not wolf_seen and today > wolf_day and not check("has_wolf_anywhere"):
-    ~ act("adopt_wolf")
-    -> wolf
-- founded and not altar_started and not done_lodge:
-    -> altar_offer
-- walking and (count("founder_kills") > walk_kills or count("player_kills") > walk_player_kills):
-    -> walk_after
-- walking:
-    -> walk_quiet
-- watching and check("raid_near"):
-    -> watch_during
-- watching:
-    -> watch_after
-- asking:
-    -> neighbor_back
-- bitten_asked and not done_bitten and not is(bitten, "turning_villager"):
-    -> bitten_after
-- thrall_called and not thrall_seen and check("thrall_near"):
-    -> thrall_cold
-- thrall_seen and not done_thrall and not check("thrall_near"):
-    -> thrall_after
-- done_count_talk and not done_slip and count("founder_oaths") > slip_oaths:
-    -> slip_after
-- grave_walking and not grave_seen and check("at_grave"):
-    -> grave_arrive
-- grave_walking and grave_seen:
-    -> grave_arrive.stay
-- grave_walking:
-    -> grave_road
-- bringer_called and not done_midpoint and here("visitor:candle_bringer"):
-    -> midpoint
-- done_book and not bringer_called and today > book_day:
-    -> bringer_arrival
-- done_midpoint and not done_confession_after and (check("midwife_forgiven") or check("midwife_cast_out")):
-    -> confession_after
-- court_came and not done_wounded and count("wolf_downs") > court_downs and check("wolf_down"):
-    -> wounded_down
-- court_came and not done_wounded and count("wolf_downs") > court_downs:
-    -> wounded_up
-- court_came and not done_wounded and not done_court_note and not check("raid_near") and count("wolf_downs") <= court_downs:
-    -> court_note
-- done_grave and not court_came and check("late_night"):
-    -> court_move
-- bread_known and not done_grave and not grave_walking:
-    -> grave_offer
-- done_lodge and not done_first_oath and check("first_oath"):
-    -> first_oath
-- done_lodge and not done_volunteers and who("parent_volunteer") != "":
-    -> volunteers
-- done_first_oath and not done_walk and check("player_sworn") and check("evening"):
-    -> walk_offer
-- done_walk and not done_watch and who("sworn_hunter") != "" and check("late_night"):
-    -> watch_offer
-- done_watch and not done_neighbor and who("resident_vampire") != "":
-    -> neighbor_offer
-- done_watch and not done_neighbor and not bitten_asked and who("turning_villager") != "":
-    -> bitten_offer
-- (done_neighbor or done_bitten) and not thrall_called:
-    -> thrall_arrival
-- done_thrall and not done_counting and check("night"):
-    -> counting
-- done_counting and not named and (done_walk or done_watch) and (done_neighbor or done_bitten) and rel("trust") >= 15 and check("evening"):
-    -> the_name
-- done_lodge and not garlic_started and not done_garlic and check("second_kill"):
-    -> garlic_offer
-- done_midpoint and done_inside and not court_offered and (done_confession_after or today > midpoint_day + 5):
-    -> court_offer
-- named and count("founder_kills") > debrief_kills and debrief_day < today:
-    -> debrief
-- romance_ready():
-    -> romance_beat
-- done_count_talk and not stake_offered and not done_stakeout:
-    -> stakeout_offer
-- done_stakeout and not couple_called:
-    -> couple_arrival
-- done_willing and bread_known and not fledgling_called:
-    -> fledgling_arrival
-- done_fledgling and fledgling_end != "" and not done_fledgling_after and not check("oath_restored") and check("night") and today > fledgling_day:
-    -> fledgling_after
-- mod("werewolves") and done_lodge and not done_w1 and check("werewolf_near"):
-    -> werewolf_signs
-- w1_asked and not done_w1_items and check("carries_werewolf_things"):
-    -> werewolf_items
-- done_w1 and not done_w2 and check("werewolf_near") and check("has_wolf") and today > w1_day:
-    -> werewolf_wolf
-- wolf_beat() != "":
-    -> wolf_beat_run
-}
--> dusk
-
-// They offered to stay, and the player asked for time.
-=== reoffer ===
-Have you thought about it? I'm not trying to rush you. They are, though.
-+ [Stay. Build your lodge.]
-    -> meeting.stay
-+ [Not yet.]
-    All right. Keep your shutters barred in the meantime. I'll be around.
-    -> DONE
-
-// Between-quest talk, before the later scenes are written. They are in the middle of something,
-// and the opening follows what is really going on: hurt, soaked, out at night, or just working.
-=== dusk ===
-~ temp mood = neighbor_mood_line()
-{mood == "":
-    ~ mood = not_them_line()
-}
-{done_counting and check("night") and RANDOM(1, 4) == 1:
-    -> recite ->
-    Oh. It's you.
-    -> talk
-}
-{
-- ending == "B":
-    {~You again. Sit, if you like. I don't bite. Not you, anyway.|The lodge is quiet tonight. I like it quiet. I like a lot of things quiet now.}
-- ending == "A" and RANDOM(1, 3) == 1:
-    {~I said all nine again this morning. I'm getting faster. I'm trying not to.|It's a good night. I'm not going out. I don't have to, and I'm finding out what that's like.}
-- mood != "":
-    {mood}
-- check("hurt"):
-    Don't fuss, it's already closing up. I'd take some food, though, if you've got any. Not bread.
-- check("wet"):
-    Everything I own is wet, including some things I didn't know could get wet.
-- check("night"):
-    You're up late. Don't walk the edge on your own at this hour, I mean it. Stay where the torches are.
-- else:
-    {~Oh, it's you. Sit down if you want, I'm only sharpening this.|Afternoon. Or morning, I lose track. I sleep in the day more than I should.|It's you. Good. I was about to go and count your torches again.}
-}
-- (talk)
-* {who("farmer") != ""} [How are the people here?]
-    {who("farmer")} leaves the door on the latch most nights. Too tired to check it, I think. I close it on my way past.
-    Don't tell them. They'd only start locking it, and then lose the key, and then I'd be the one getting them in through a window.
-    -> talk
-* {who("farmer") == ""} [How are the people here?]
-    Quieter than they think they are. They talk about me when I walk past, which is fine. I'd talk about me too.
-    -> talk
-* {founded} [How's the lodge?]
-    It's a roof. I haven't had one I could call mine in a while, so I keep walking round it checking the corners. Force of habit.
-    -> talk
-* {wolf_seen and check("has_wolf")} [How's the wolf?]
-    {check("hungry"):
-        Keeping its distance lately. I think it's got more sense than I have.
-    - else:
-        Fat. Somebody keeps feeding it, and it isn't me, whatever it tells you.
-    }
-    -> talk
-* {check("carries_book") and not done_book} [I have something of your mother's.]
-    -> the_book
-* {check("heard_birth") and not told_father} [She says your father was at your birth.]
-    -> father_at_birth
-* {named and done_counting and not done_count_talk} [What were you reciting, that night?]
-    -> the_count
-+ {check("player_sworn")} [Any work?]
-    -> contracts ->
-    -> talk
-+ [Need anything?]
-    {~Torches. Always torches. You can't have too many, whatever your builders tell you.|Arrows, if anyone's making them. I go through them faster than I'd like.|Sleep, mostly. You can't get me any of that, but thanks for asking.}
-    -> talk
-+ [What do you do when you're not hunting?]
-    Sharpen things, mostly. Walk the edge of town. I tried fishing once, a whole afternoon, and I caught a boot and a saddle. I still don't know what a saddle was doing in a river. # emote:shrug
-    -> talk
-+ [Tell me about yourself.]
-    Not now. I'm not being difficult, I'm just tired, and it isn't a short story.
-    ++ [Some other time, then.]
-        Some other time. Sure.
-    ++ [Suit yourself.]
-        Sorry. Ask me when I've slept.
-    --
-    -> talk
-+ [I'll let you get on.]
-    {check("night"):
-        Goodnight. Stay in, if you can.
-    - else:
-        See you around.
-    }
-    -> DONE

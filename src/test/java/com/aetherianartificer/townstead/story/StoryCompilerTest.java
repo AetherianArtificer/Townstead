@@ -13,6 +13,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -30,9 +31,10 @@ class StoryCompilerTest {
         Map<String, String> files = new LinkedHashMap<>();
         // Every scene file beside persona.ink, as the Persona loader takes them.
         files.put("persona.ink", Files.readString(dir.resolve("persona.ink"), StandardCharsets.UTF_8));
-        try (var scenes = Files.list(dir)) {
+        Path base = dir;
+        try (var scenes = Files.walk(dir)) {
             for (Path scene : scenes.filter(f -> f.toString().endsWith(".ink")).sorted().toList()) {
-                files.putIfAbsent(scene.getFileName().toString(), Files.readString(scene, StandardCharsets.UTF_8));
+                files.putIfAbsent(base.relativize(scene).toString().replace(java.io.File.separatorChar, '/'), Files.readString(scene, StandardCharsets.UTF_8));
             }
         }
         StoryCompiler.Result result = StoryCompiler.compile(files);
@@ -62,6 +64,63 @@ class StoryCompilerTest {
         assertNotNull(result.knots().get("the_book"));
         assertNotNull(result.knots().get("midpoint"));
         assertNotNull(result.knots().get("confession_after"));
+    }
+
+    @Test
+    void dhampirFounderPlaysFromTheTopWithoutTheGame() throws Exception {
+        // As Inky runs it: from the top of persona.ink, no helpers bound, the Ink fallbacks instead.
+        Map<String, String> files = new LinkedHashMap<>();
+        Path dir = Path.of("src/main/resources/data/townstead/persona/dhampir_founder");
+        for (Path root = Path.of(System.getProperty("user.dir")).toAbsolutePath(); root != null; root = root.getParent()) {
+            if (Files.isDirectory(root.resolve(dir))) {
+                dir = root.resolve(dir);
+                break;
+            }
+        }
+        Path base = dir;
+        try (var scenes = Files.walk(dir)) {
+            for (Path scene : scenes.filter(f -> f.toString().endsWith(".ink")).sorted().toList()) {
+                files.put(base.relativize(scene).toString().replace(java.io.File.separatorChar, '/'), Files.readString(scene, StandardCharsets.UTF_8));
+            }
+        }
+        StoryCompiler.Result result = StoryCompiler.compile(files);
+        assertTrue(result.ok(), () -> "errors: " + result.errors());
+        com.bladecoder.ink.runtime.Story story = new com.bladecoder.ink.runtime.Story(result.json());
+        story.setAllowExternalFunctionFallbacks(true);
+        assertEquals("Who are you?", story.evaluateFunction("menu"));
+        String text = story.continueMaximally();
+        assertFalse(text.isBlank());
+        assertNotEquals("", story.getVariablesState().get("given_name"));
+
+        // Inky only sees what persona.ink includes, so every file must be listed there.
+        java.util.Set<String> listed = new java.util.TreeSet<>();
+        java.util.regex.Matcher include = java.util.regex.Pattern.compile("(?m)^INCLUDE\\s+(\\S+)").matcher(files.get("persona.ink"));
+        while (include.find()) listed.add(include.group(1));
+        java.util.Set<String> present = new java.util.TreeSet<>(files.keySet());
+        present.remove("persona.ink");
+        assertEquals(present, listed);
+        loadPersona("dhampir_founder");
+
+        // With nothing else waiting, the next wolf beat plays.
+        // Neutral helpers of its own, so values a writer puts in fallbacks.ink to steer Inky don't matter.
+        com.bladecoder.ink.runtime.Story wolf = new com.bladecoder.ink.runtime.Story(result.json());
+        for (String name : StoryCompiler.EXTERNALS.keySet()) {
+            wolf.bindExternalFunction(name, args -> switch (name) {
+                case "check", "here", "is", "mod", "can_build", "contract_accept" -> false;
+                case "count", "rel", "contract_ready", "contract_active", "contract_turn_in" -> 0;
+                case "trust", "contribute", "memory", "act", "contract_skip" -> null;
+                default -> "";
+            }, false);
+        }
+        for (String flag : List.of("offered", "founded", "wolf_seen", "done_lodge", "done_scraps")) {
+            wolf.getVariablesState().set(flag, true);
+        }
+        wolf.getVariablesState().set("met", 2);
+        assertEquals("Got a moment?", wolf.evaluateFunction("menu"));
+        wolf.choosePathString("greet");
+        assertTrue(wolf.continueMaximally().contains("what it's called"));
+        // The game starts at greet, so the Inky test values never apply.
+        assertEquals("", wolf.getVariablesState().get("given_name"));
     }
 
     @Test

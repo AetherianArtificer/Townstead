@@ -62,9 +62,10 @@ class StorySimulationTest {
         }
         Map<String, String> files = new LinkedHashMap<>();
         files.put("persona.ink", Files.readString(dir.resolve("persona.ink"), StandardCharsets.UTF_8));
-        try (var scenes = Files.list(dir)) {
+        Path base = dir;
+        try (var scenes = Files.walk(dir)) {
             for (Path scene : scenes.filter(f -> f.toString().endsWith(".ink")).sorted().toList()) {
-                files.putIfAbsent(scene.getFileName().toString(), Files.readString(scene, StandardCharsets.UTF_8));
+                files.putIfAbsent(base.relativize(scene).toString().replace(java.io.File.separatorChar, '/'), Files.readString(scene, StandardCharsets.UTF_8));
             }
         }
         StoryCompiler.Result result = StoryCompiler.compile(files);
