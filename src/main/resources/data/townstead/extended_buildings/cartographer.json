@@ -1,6 +1,9 @@
 {
   "schema": "townstead:extended_building/v1",
+  "catalog": {"node_item": "minecraft:cartography_table"},
+  "workers": ["minecraft:cartographer"],
   "spirit": {
-    "scholar": 5
+    "scholar": 5,
+    "commercial": 2
   }
 }

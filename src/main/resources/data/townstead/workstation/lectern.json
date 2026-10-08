@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:workstation/v1",
+  "type": "craft_surface",
+  "work_task": "townstead_work:craft",
+  "blocks": ["minecraft:lectern"],
+  "produces": [
+    {
+      "inputs": ["minecraft:written_book", "minecraft:writable_book"],
+      "output": "minecraft:written_book",
+      "count": 1,
+      "copies": "minecraft:written_book",
+      "time": 100
+    }
+  ]
+}

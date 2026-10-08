@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "mods": "butchery",
+  "trigger": "periodic",
+  "priority": 60,
+  "when": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "townstead:worksite",
+        "scope": "profession",
+        "buildings": ["compat/butchery/butcher_shop_l*"]
+      },
+      {
+        "type": "townstead:worksite",
+        "scope": "profession",
+        "buildings": ["compat/butchery/butcher_shop_l*"],
+        "block_condition": {
+          "type": "pheno:or",
+          "conditions": [
+            { "type": "pheno:in_tag", "tag": "butchery:carcass" },
+            { "type": "pheno:in_tag", "tag": "butchery:drained_carcass" }
+          ]
+        },
+        "compare_to": 0,
+        "comparison": "=="
+      },
+      {
+        "type": "townstead:worksite",
+        "scope": "profession",
+        "buildings": ["compat/butchery/butcher_shop_l*"],
+        "block_condition": { "type": "pheno:block", "block": "butchery:hook" },
+        "compare_to": 0,
+        "comparison": "=="
+      }
+    ]
+  },
+  "dialogue": {
+    "translate": "dialogue.chat.butcher_request.no_hook"
+  },
+  "variants": 4
+}

@@ -2,7 +2,10 @@ package com.aetherianartificer.townstead.client.species;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.client.attachment.geo.BedrockGeometryLoader;
+import com.aetherianartificer.townstead.compat.curios.CuriosClientCompat;
 import com.aetherianartificer.townstead.compat.curios.CuriosCompat;
+import com.aetherianartificer.townstead.compat.curios.GraftedWearableLayers;
+import net.minecraft.world.item.ItemDisplayContext;
 import com.aetherianartificer.townstead.item.Wearable;
 import com.aetherianartificer.townstead.root.rig.RigDefinition;
 import com.google.gson.JsonObject;
@@ -45,6 +48,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WornItemLayer<T extends LivingEntity, M extends HumanoidModel<T>> extends RenderLayer<T, M> {
 
     private static final Map<ResourceLocation, Optional<ModelPart>> GEO = new ConcurrentHashMap<>();
+    /** Worn placement of a block-space model, matching how backpack mods seat their own model on the body. */
+    private static final float BLOCK_MODEL_WORN_SCALE = 1.05f;
+    private static final float BLOCK_MODEL_WORN_LIFT = -0.06f;
+    private static final float BLOCK_MODEL_WORN_STANDOFF = 0.0625f;
 
     public WornItemLayer(RenderLayerParent<T, M> parent) {
         super(parent);
@@ -60,15 +67,64 @@ public class WornItemLayer<T extends LivingEntity, M extends HumanoidModel<T>> e
         if (head.getItem() instanceof Wearable wearable) {
             renderWearable(wearable, head, pose, buffers, light, entity);
         }
-        // Curios slots ride alongside the head slot. Only players are assigned Curios slots, so villagers
-        // (whose scarf lives in the head slot) skip the per-frame reflection walk entirely.
-        if (entity instanceof Player) {
-            CuriosCompat.forEachWorn(entity, stack -> {
-                if (stack.getItem() instanceof Wearable wearable) {
-                    renderWearable(wearable, stack, pose, buffers, light, entity);
-                }
-            });
+        // Curios slots ride alongside the head slot, for players and villagers alike. On a villager, a
+        // curio that no one else draws (no Curios renderer, no grafted mod layer) is seated on the body as
+        // its own item; a player keeps whatever its mod's own player-only layer draws.
+        boolean seatOrphans = !(entity instanceof Player);
+        CuriosCompat.forEachWornVisible(entity, (slotId, stack) -> {
+            if (stack.getItem() instanceof Wearable wearable) {
+                renderWearable(wearable, stack, pose, buffers, light, entity);
+            } else if (seatOrphans && !CuriosClientCompat.hasRenderer(stack) && !GraftedWearableLayers.claims(stack)) {
+                CurioItemSeat seat = CurioItemSeat.forSlot(slotId);
+                if (seat != null) renderSeatedItem(slotId, seat, stack, pose, buffers, light, entity);
+            }
+        });
+
+        net.minecraft.world.item.Item cosmetic =
+                com.aetherianartificer.townstead.pheno.cosmetic.CosmeticWear.wornItem(entity, EquipmentSlot.HEAD);
+        if (cosmetic != null && cosmetic != net.minecraft.world.item.Items.AIR) {
+            renderCosmeticHead(new ItemStack(cosmetic), pose, buffers, light, entity, limbSwing);
         }
+    }
+
+    private static net.minecraft.client.model.geom.EntityModelSet skullModelSet;
+    private static java.util.Map<net.minecraft.world.level.block.SkullBlock.Type,
+            net.minecraft.client.model.SkullModelBase> skullModels = java.util.Map.of();
+
+    /**
+     * A {@code pheno:wear_cosmetic} head, drawn exactly as vanilla's head layer draws a worn head item:
+     * a mob head through the skull renderer, anything else through the item's HEAD transform. Display
+     * only; the real helmet slot is untouched.
+     */
+    private void renderCosmeticHead(ItemStack stack, PoseStack pose, MultiBufferSource buffers, int light,
+                                    T entity, float limbSwing) {
+        ModelPart head = boneFor("head");
+        pose.pushPose();
+        head.translateAndRotate(pose);
+        if (stack.getItem() instanceof net.minecraft.world.item.BlockItem blockItem
+                && blockItem.getBlock() instanceof net.minecraft.world.level.block.AbstractSkullBlock skull) {
+            var models = Minecraft.getInstance().getEntityModels();
+            if (models != skullModelSet) {
+                skullModelSet = models;
+                skullModels = net.minecraft.client.renderer.blockentity.SkullBlockRenderer.createSkullRenderers(models);
+            }
+            var type = skull.getType();
+            var model = skullModels.get(type);
+            if (model != null) {
+                pose.scale(1.1875f, -1.1875f, -1.1875f);
+                pose.translate(-0.5f, 0.0f, -0.5f);
+                var renderType = net.minecraft.client.renderer.blockentity.SkullBlockRenderer.getRenderType(type, null);
+                net.minecraft.client.renderer.blockentity.SkullBlockRenderer.renderSkull(
+                        null, 180.0f, limbSwing, pose, buffers, light, model, renderType);
+            }
+        } else {
+            pose.translate(0.0f, -0.25f, 0.0f);
+            pose.mulPose(Axis.YP.rotationDegrees(180.0f));
+            pose.scale(0.625f, -0.625f, -0.625f);
+            Minecraft.getInstance().getEntityRenderDispatcher().getItemInHandRenderer().renderItem(
+                    entity, stack, ItemDisplayContext.HEAD, false, pose, buffers, light);
+        }
+        pose.popPose();
     }
 
     private void renderWearable(Wearable wearable, ItemStack stack, PoseStack pose, MultiBufferSource buffers,
@@ -96,11 +152,55 @@ public class WornItemLayer<T extends LivingEntity, M extends HumanoidModel<T>> e
         if (rotation[2] != 0f) pose.mulPose(Axis.ZP.rotationDegrees(rotation[2]));
         if (rotation[1] != 0f) pose.mulPose(Axis.YP.rotationDegrees(rotation[1]));
         if (rotation[0] != 0f) pose.mulPose(Axis.XP.rotationDegrees(rotation[0]));
-        float scale = wearable.wornScale();
-        if (scale != 1f) pose.scale(scale, scale, scale);
+        float scale = wearable.wornScale() * (delta == null ? 1F : delta.scale());
+        if (delta != null) pose.scale(scale*delta.scaleAxes()[0], scale*delta.scaleAxes()[1], scale*delta.scaleAxes()[2]);
+        else if (scale != 1f) pose.scale(scale, scale, scale);
 
         VertexConsumer buffer = buffers.getBuffer(RenderType.entityCutoutNoCull(wearable.wornTexture()));
         renderPart(geometry, pose, buffer, light, wearable.wornColor(stack));
+        pose.popPose();
+    }
+
+    /**
+     * Draws a plain item at its slot's seat: the humanoid seat, or on a generic rig the re-posed host
+     * bone plus the rig's per-item delta, the same anchoring a {@link Wearable} gets.
+     *
+     * <p>An item with its own renderer (a backpack mod's 3D backpack, say) is a block-space model meant
+     * to be worn at natural size, so it is flipped into entity space and drawn untransformed, the way
+     * such mods' own player layers draw it. An ordinary item goes through the fixed item transform and
+     * the seat's scale, which reads as the item pinned to the body.</p>
+     */
+    private void renderSeatedItem(String slotId, CurioItemSeat seat, ItemStack stack, PoseStack pose, MultiBufferSource buffers,
+                                  int light, T entity) {
+        ModelPart bone = boneFor(seat.channel());
+        if (bone == null) return;
+        RigDefinition.Adjust delta = rigDelta(entity, seat.channel(), itemId(stack), "slot:" + slotId);
+        float[] rotation = delta != null ? delta.rotation() : seat.rotation();
+        var itemRenderer = Minecraft.getInstance().getItemRenderer();
+        boolean ownRenderer = itemRenderer.getModel(stack, entity.level(), entity, 0).isCustomRenderer();
+
+        pose.pushPose();
+        bone.translateAndRotate(pose);
+        if (!ownRenderer || delta != null) {
+            float[] offset = delta != null ? delta.offset() : seat.offset();
+            pose.translate(offset[0] / 16f, offset[1] / 16f, offset[2] / 16f);
+        }
+        if (rotation[2] != 0f) pose.mulPose(Axis.ZP.rotationDegrees(rotation[2]));
+        if (rotation[1] != 0f) pose.mulPose(Axis.YP.rotationDegrees(rotation[1]));
+        if (rotation[0] != 0f) pose.mulPose(Axis.XP.rotationDegrees(rotation[0]));
+        if (delta != null) pose.scale(delta.scale()*delta.scaleAxes()[0], delta.scale()*delta.scaleAxes()[1], delta.scale()*delta.scaleAxes()[2]);
+        if (ownRenderer) {
+            // Block space (Y up, Z forward) into entity space (Y down, Z back), at worn size.
+            pose.mulPose(Axis.XP.rotationDegrees(180f));
+            pose.scale(BLOCK_MODEL_WORN_SCALE, BLOCK_MODEL_WORN_SCALE, BLOCK_MODEL_WORN_SCALE);
+            pose.translate(0f, BLOCK_MODEL_WORN_LIFT, BLOCK_MODEL_WORN_STANDOFF);
+            itemRenderer.renderStatic(stack, ItemDisplayContext.NONE, light,
+                    OverlayTexture.NO_OVERLAY, pose, buffers, entity.level(), entity.getId());
+        } else {
+            pose.scale(seat.scale(), seat.scale(), seat.scale());
+            itemRenderer.renderStatic(stack, ItemDisplayContext.FIXED, light,
+                    OverlayTexture.NO_OVERLAY, pose, buffers, entity.level(), entity.getId());
+        }
         pose.popPose();
     }
 
@@ -116,6 +216,10 @@ public class WornItemLayer<T extends LivingEntity, M extends HumanoidModel<T>> e
      * caller falls back to the item's own seat.
      */
     private static RigDefinition.Adjust rigDelta(LivingEntity entity, String channel, String itemId) {
+        return rigDelta(entity, channel, itemId, "");
+    }
+
+    private static RigDefinition.Adjust rigDelta(LivingEntity entity, String channel, String itemId, String slotKey) {
         String rigBase = RigModels.rigBaseFor(entity);
         if (!RigModels.isGeneric(rigBase)) return null;
         RigDefinition def = RigModels.definition(rigBase);
@@ -123,6 +227,7 @@ public class WornItemLayer<T extends LivingEntity, M extends HumanoidModel<T>> e
         RigDefinition.WornAnchor anchor = channel.equals("body") ? def.back() : def.head();
         if (anchor == null) return RigDefinition.Adjust.ZERO;
         RigDefinition.Adjust delta = anchor.items().get(itemId);
+        if (delta == null) delta = anchor.items().get(slotKey);
         return delta != null ? delta : RigDefinition.Adjust.ZERO;
     }
 

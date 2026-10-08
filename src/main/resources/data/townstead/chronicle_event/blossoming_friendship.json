@@ -1,0 +1,76 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "social.bond",
+  "weight": 8,
+  "rarity": "common",
+  "contexts": [
+    "live",
+    "pregen"
+  ],
+  "trigger": {
+    "type": "social",
+    "key": "townstead:friendship"
+  },
+  "cooldown_days": 1,
+  "reach": "witnesses",
+  "news_value": 1.0,
+  "roles": [
+    {
+      "id": "friend",
+      "kind": "villager",
+      "when": {
+        "type": "pheno:life_stage",
+        "stage": "adult"
+      }
+    },
+    {
+      "id": "companion",
+      "kind": "villager",
+      "when": {
+        "type": "pheno:life_stage",
+        "stage": "adult"
+      }
+    }
+  ],
+  "witnesses": {
+    "radius": 10.0,
+    "max": 4
+  },
+  "pregen": {
+    "bond": {
+      "kind": "townstead:friendship",
+      "with": "companion"
+    }
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.blossoming_friendship"
+    },
+    "params": [
+      "friend",
+      "companion"
+    ]
+  },
+  "impact": {
+    "friend": {
+      "mood": 2.0,
+      "memory": {
+        "valence": 0.6,
+        "strength": 0.8
+      }
+    },
+    "companion": {
+      "mood": 2.0,
+      "memory": {
+        "valence": 0.6,
+        "strength": 0.8
+      }
+    },
+    "on_learn": {
+      "sentiment": {
+        "toward": "friend",
+        "delta": 0.5
+      }
+    }
+  }
+}

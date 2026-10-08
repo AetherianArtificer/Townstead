@@ -1,0 +1,1 @@
+{"schema":"townstead:extended_building/v1","mods":"brewery","workers":["townstead:beverage_artisan"],"orders":{"recipe_namespaces":["brewery"]},"catalog":{"node_item":"brewery:netherite_brewingstation"},"dialogue":{"topics":["brewhouse","brewing","master_brew"]},"spirit":{"industrious":15,"pastoral":9}}

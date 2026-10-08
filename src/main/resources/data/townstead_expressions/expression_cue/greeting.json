@@ -1,0 +1,1 @@
+{"kind":"text","translation":"expression.townstead_expressions.greeting","duration_ticks":45,"cooldown_ticks":60,"rise":0.35,"drift":0.06,"scale":0.85,"color":"#FFFFE7A3","audience":"nearby","max_distance":40,"fallback_particle":"minecraft:happy_villager"}

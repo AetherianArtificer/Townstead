@@ -8,11 +8,11 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.GsonHelper;
-import net.minecraft.world.item.Item;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.aetherianartificer.townstead.pheno.data.ScalarData;
 
 /**
  * Parses an item-condition JSON into an {@link ItemCondition}. Parity-clean subset:
@@ -70,16 +70,19 @@ public final class ItemConditions {
                 };
             }
             case "ingredient": {
+                if (json.has("story_item")) {
+                    ResourceLocation storyId = DataPackLang.parseId(GsonHelper.getAsString(json, "story_item", ""));
+                    if (storyId == null) return null;
+                    return (level, stack) -> com.aetherianartificer.townstead.item.StoryItems.is(stack, storyId);
+                }
                 if (json.has("tag")) {
                     ResourceLocation id = DataPackLang.parseId(GsonHelper.getAsString(json, "tag", ""));
                     if (id == null) return null;
-                    TagKey<Item> tag = TagKey.create(Registries.ITEM, id);
-                    return (level, stack) -> stack.is(tag);
+                    return (level, stack) -> stack.is(TagKey.create(Registries.ITEM, id));
                 }
                 ResourceLocation id = DataPackLang.parseId(GsonHelper.getAsString(json, "item", ""));
                 if (id == null) return null;
-                Item item = BuiltInRegistries.ITEM.get(id);
-                return (level, stack) -> stack.is(item);
+                return (level, stack) -> stack.is(BuiltInRegistries.ITEM.get(id));
             }
             case "food":
                 return (level, stack) -> {
@@ -105,6 +108,27 @@ public final class ItemConditions {
                 return (level, stack) -> {
                     if (id == null) return stack.isEnchanted();
                     return enchantmentLevel(stack, id) >= min;
+                };
+            }
+            case "data": {
+                String key = GsonHelper.getAsString(json, "key", "");
+                JsonElement expected = json.get("value");
+                double min = GsonHelper.getAsDouble(json, "min", -Double.MAX_VALUE);
+                double max = GsonHelper.getAsDouble(json, "max", Double.MAX_VALUE);
+                double fallback = GsonHelper.getAsDouble(json, "default", 0);
+                boolean hasDefault = json.has("default");
+                boolean hasRange = json.has("min") || json.has("max");
+                boolean exists = GsonHelper.getAsBoolean(json, "exists", true);
+                if (key.isBlank() || (expected == null && !hasRange && !json.has("exists"))) return null;
+                return (level, stack) -> {
+                    var tag = ScalarData.itemTag(stack);
+                    if (expected != null) return ScalarData.matches(tag, key, expected);
+                    if (hasRange) {
+                        if (!tag.contains(key) && !hasDefault) return false;
+                        double value = tag.contains(key) ? tag.getDouble(key) : fallback;
+                        return value >= min && value <= max;
+                    }
+                    return tag.contains(key) == exists;
                 };
             }
             case "and": {

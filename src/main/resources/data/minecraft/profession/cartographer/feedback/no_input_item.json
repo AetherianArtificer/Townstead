@@ -1,0 +1,4 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "dialogue": { "translate": "dialogue.chat.cartographer_request.no_materials_item" }
+}

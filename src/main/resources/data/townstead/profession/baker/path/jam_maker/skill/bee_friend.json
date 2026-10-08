@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.jam_maker.bee_friend"
+  },
+  "icon": "minecraft:bee_nest",
+  "description": {
+    "translate": "skill.townstead.baker.jam_maker.bee_friend.description"
+  },
+  "cost": 1,
+  "requires": [
+    "pollinate"
+  ],
+  "power": {
+    "type": "pheno:mobs_ignore",
+    "mob_condition": {
+      "type": "pheno:entity_type",
+      "entity_type": "minecraft:bee"
+    }
+  }
+}

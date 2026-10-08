@@ -130,7 +130,7 @@ public final class RootPicker {
         String current = list.currentRootId();
         for (RootCatalogEntry e : RootCatalogClient.origins()) {
             // A blocked current root has no row to select; the target keeps it until a new pick applies.
-            if (e.id().equals(current) && !e.blocked()) {
+            if (e.id().equals(current) && e.listedFor(target == com.aetherianartificer.townstead.root.RootSetC2SPayload.SELF)) {
                 list.choose(e);
                 break;
             }

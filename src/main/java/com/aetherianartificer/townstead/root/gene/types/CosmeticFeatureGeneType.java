@@ -19,6 +19,9 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class CosmeticFeatureGeneType implements GeneType {
 
+    @Override
+    public boolean conditionControlsExpression() { return true; }
+
     public static final String KEY = "pheno:cosmetic_feature";
 
     public record Instance(String feature, @Nullable ResourceLocation model) implements GeneInstance {

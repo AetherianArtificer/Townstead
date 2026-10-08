@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "vampire_life_lead",
+  "groups": [
+    {
+      "lines": {
+        "sigh_vl": "Hm."
+      }
+    },
+    {
+      "lines": {
+        "long_night": "Long night."
+      }
+    }
+  ]
+}

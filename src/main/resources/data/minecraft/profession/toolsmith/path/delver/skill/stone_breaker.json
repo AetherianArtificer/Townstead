@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.delver.stone_breaker"
+  },
+  "icon": "minecraft:stone_pickaxe",
+  "description": {
+    "translate": "skill.townstead.toolsmith.delver.stone_breaker.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:block_break_speed",
+    "tag": "minecraft:mineable/pickaxe",
+    "value": 1.3
+  }
+}

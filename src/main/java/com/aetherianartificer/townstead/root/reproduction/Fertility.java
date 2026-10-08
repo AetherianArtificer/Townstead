@@ -29,9 +29,22 @@ public final class Fertility {
         return true;
     }
 
-    /** Whether two prospective parents can produce offspring (both fertile). */
+    /** Whether two prospective parents can produce offspring: both fertile, neither unable to bear. */
     public static boolean canBreed(LivingEntity a, LivingEntity b) {
-        return isFertile(a) && isFertile(b);
+        return isFertile(a) && isFertile(b) && canBear(a) && canBear(b);
+    }
+
+    /**
+     * False when a bearing gene says this person cannot carry a child. Packs grant it only to
+     * those who would carry one (a vampire woman), so a pair with such a partner never conceives.
+     */
+    public static boolean canBear(LivingEntity entity) {
+        if (entity == null) return true;
+        for (com.aetherianartificer.townstead.root.gene.types.BearingGeneType.Instance gene :
+                ExpressedGenes.instancesOf(entity, com.aetherianartificer.townstead.root.gene.types.BearingGeneType.Instance.class)) {
+            if (!gene.bearing()) return false;
+        }
+        return true;
     }
 
     /**

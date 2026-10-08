@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "sandy_merchant",
+  "mods": "beachparty",
+  "priority": 25,
+  "contributes": {
+    "profession": {
+      "poi": [
+        {
+          "type": "townstead:building",
+          "type_prefix": "compat/beachparty/beach_cocktail_bar_l",
+          "slots_per_tier": [
+            1,
+            2,
+            3
+          ],
+          "path_affinity": [
+            "sandy_merchant"
+          ],
+          "proprietor": {
+            "professions": [
+              "beachparty:sandymerchant"
+            ],
+            "slots": 1
+          }
+        }
+      ]
+    }
+  }
+}

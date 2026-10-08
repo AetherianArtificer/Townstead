@@ -14,7 +14,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
-import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.level.block.StemBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -55,17 +54,22 @@ public final class ClaimResolver {
             // Water column: look for rice in the water block itself
             if (level.getFluidState(groundPos).is(FluidTags.WATER)) {
                 String riceSeed = inferWaterCrop(groundState, aboveState, level, groundPos);
-                return new Resolution(SoilType.WATER, riceSeed != null ? riceSeed : SeedAssignment.AUTO);
+                // Water standing on farmland is a paddy (TFC rice roots in the farmland beneath).
+                SoilType waterSoil = FarmerCropCompatRegistry.providesPaddy()
+                        && com.aetherianartificer.townstead.farming.Farmland.is(level.getBlockState(groundPos.below()))
+                        ? SoilType.PADDY : SoilType.WATER;
+                return new Resolution(waterSoil, riceSeed != null ? riceSeed : SeedAssignment.AUTO);
             }
 
             // Is this a valid "ground" block worth considering?
-            boolean isFarmland = groundState.getBlock() instanceof FarmBlock;
+            boolean isFarmland = com.aetherianartificer.townstead.farming.Farmland.is(groundState);
             boolean isCompatSoil = FarmerCropCompatRegistry.isCompatibleSoil(level, groundPos);
             boolean isPlainDirt = groundState.is(Blocks.DIRT)
                     || groundState.is(Blocks.GRASS_BLOCK)
                     || groundState.is(Blocks.COARSE_DIRT)
                     || groundState.is(Blocks.DIRT_PATH)
-                    || groundState.is(Blocks.MUD);
+                    || groundState.is(Blocks.MUD)
+                    || com.aetherianartificer.townstead.farming.Farmland.canTill(level, groundPos, groundState);
             if (!isFarmland && !isCompatSoil && !isPlainDirt) continue;
 
             // Crop on top?

@@ -1,0 +1,56 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.tenderizer.pulverize"
+  },
+  "icon": "minecraft:anvil",
+  "description": {
+    "translate": "skill.townstead.butcher.tenderizer.pulverize.description"
+  },
+  "cost": 1,
+  "requires": [
+    "flatten"
+  ],
+  "skill_group": "townstead:tenderizer_blow",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:cut",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:damage",
+              "amount": 8,
+              "source": "other"
+            },
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:slowness",
+              "duration": 100,
+              "amplifier": 3
+            }
+          ],
+          "on": {
+            "type": "pheno:ray",
+            "distance": 4
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.anvil.land",
+          "volume": 0.5,
+          "pitch": 0.7
+        }
+      ]
+    }
+  }
+}

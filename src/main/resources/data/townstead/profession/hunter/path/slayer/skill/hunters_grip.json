@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.slayer.hunters_grip"
+  },
+  "icon": "minecraft:iron_sword",
+  "description": {
+    "translate": "skill.townstead.hunter.slayer.hunters_grip.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:attribute",
+    "attribute": "minecraft:generic.attack_damage",
+    "amount": 1
+  }
+}

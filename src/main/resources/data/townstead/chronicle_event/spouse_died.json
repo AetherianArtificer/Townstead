@@ -1,0 +1,74 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "lifecycle.death",
+  "weight": 4,
+  "rarity": "rare",
+  "keep": true,
+  "contexts": [
+    "pregen"
+  ],
+  "reach": "village",
+  "news_value": 5.0,
+  "roles": [
+    {
+      "id": "bereaved",
+      "kind": "villager",
+      "when": {
+        "type": "pheno:bond_count",
+        "kind": "townstead:marriage",
+        "comparison": ">=",
+        "compare_to": 1
+      }
+    },
+    {
+      "id": "deceased",
+      "kind": "villager",
+      "pregen": {
+        "from_bond": "townstead:marriage"
+      }
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
+  "pregen": {
+    "ends_bond": {
+      "kind": "townstead:marriage",
+      "with": "deceased"
+    },
+    "magnitude": [
+      0.9,
+      1.1
+    ]
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.spouse_died"
+    },
+    "params": [
+      "bereaved",
+      "deceased"
+    ]
+  },
+  "impact": {
+    "bereaved": {
+      "mood": -8.0,
+      "memory": {
+        "valence": -1.0,
+        "strength": 4.0
+      }
+    },
+    "on_learn": {
+      "mood": -2.0,
+      "memory": {
+        "valence": -0.7,
+        "strength": 1.5
+      }
+    }
+  },
+  "distortion": {
+    "magnitude_drift": 1.2,
+    "valence_drift": 0.15
+  }
+}

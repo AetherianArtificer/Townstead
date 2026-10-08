@@ -1,0 +1,71 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.barista.last_drop"
+  },
+  "icon": "minecraft:cauldron",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.barista.last_drop.description"
+  },
+  "cost": 1,
+  "requires": [
+    "spilled_coffee"
+  ],
+  "skill_group": "townstead:barista_grind",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:buzz",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 12,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:slowness",
+                "duration": 300,
+                "amplifier": 2
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:weakness",
+                "duration": 300,
+                "amplifier": 1
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 12,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:speed",
+            "duration": 300,
+            "amplifier": 1
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.bottle.fill",
+          "volume": 0.8,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.pilgrim.wellspring"
+  },
+  "icon": "minecraft:water_bucket",
+  "description": {
+    "translate": "skill.townstead.cleric.pilgrim.wellspring.description"
+  },
+  "cost": 1,
+  "requires": [
+    "rest_stop"
+  ],
+  "skill_group": "townstead:pilgrim_provision",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:faith",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 10,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:hydrate",
+            "immediate": 6,
+            "lasting": 3
+          },
+          {
+            "type": "pheno:energize",
+            "amount": 6
+          }
+        ]
+      }
+    }
+  }
+}

@@ -10,7 +10,15 @@ import net.minecraft.util.GsonHelper;
 
 import java.util.Optional;
 
-/** Tests the MCA/Townstead village resolved at the entity's current position. */
+/**
+ * Tests the MCA/Townstead village resolved at the entity's current position. Besides id, name,
+ * building and population bounds: {@code min_free_beds} counts beds nobody lives in yet,
+ * {@code player_founded} tells a village a player started from one that was already there, and
+ * {@code has_building} needs a recognized building of a type (a name or a list, any of; a plain
+ * name matches every tier from every mod, as in {@code pheno:can_build}).
+ * <pre>{ "type": "pheno:village", "player_founded": false, "min_free_beds": 2 }</pre>
+ * <pre>{ "type": "pheno:village", "has_building": ["farm", "granary"] }</pre>
+ */
 public final class VillageConditionType implements ConditionType {
 
     public static final String KEY = "pheno:village";
@@ -31,6 +39,14 @@ public final class VillageConditionType implements ConditionType {
         int minPopulation = GsonHelper.getAsInt(json, "min_population", Integer.MIN_VALUE);
         int maxPopulation = GsonHelper.getAsInt(json, "max_population", Integer.MAX_VALUE);
         boolean withinBorder = GsonHelper.getAsBoolean(json, "within_border", false);
+        int minFreeBeds = GsonHelper.getAsInt(json, "min_free_beds", Integer.MIN_VALUE);
+        Boolean playerFounded = json.has("player_founded") ? GsonHelper.getAsBoolean(json, "player_founded") : null;
+        java.util.List<String> hasBuilding = new java.util.ArrayList<>();
+        if (json.has("has_building")) {
+            var raw = json.get("has_building");
+            if (raw.isJsonArray()) raw.getAsJsonArray().forEach(e -> hasBuilding.add(e.getAsString().toLowerCase(java.util.Locale.ROOT)));
+            else hasBuilding.add(raw.getAsString().toLowerCase(java.util.Locale.ROOT));
+        }
 
         return ctx -> {
             if (!(ctx.level() instanceof ServerLevel serverLevel)) return false;
@@ -42,10 +58,20 @@ public final class VillageConditionType implements ConditionType {
             if (expectedId != Integer.MIN_VALUE && village.getId() != expectedId) return false;
             if (expectedVillageId != Integer.MIN_VALUE && village.getId() != expectedVillageId) return false;
             if (expectedName != null && !expectedName.equalsIgnoreCase(village.getName())) return false;
-            int buildingCount = village.getBuildings().size();
+            int buildingCount = com.aetherianartificer.townstead.compat.mca.McaBuildings.allById(village).size();
             if (buildingCount < minBuildings || buildingCount > maxBuildings) return false;
             int population = village.getResidents(serverLevel).size();
-            return population >= minPopulation && population <= maxPopulation;
+            if (population < minPopulation || population > maxPopulation) return false;
+            if (minFreeBeds != Integer.MIN_VALUE && village.getMaxPopulation() - population < minFreeBeds) return false;
+            if (!hasBuilding.isEmpty() && com.aetherianartificer.townstead.compat.mca.McaBuildings.allById(village).values().stream()
+                    .noneMatch(b -> hasBuilding.stream().anyMatch(name -> CanBuildConditionType.matches(b.getType(), name)))) return false;
+            if (playerFounded != null) {
+                var birth = com.aetherianartificer.townstead.calendar.WorldCalendarSavedData.get(serverLevel.getServer())
+                        .getVillageBirth(new com.aetherianartificer.townstead.calendar.WorldCalendarSavedData.VillageKey(
+                                serverLevel.dimension().location(), village.getId()));
+                if (birth == null || birth.playerFounded() != playerFounded) return false;
+            }
+            return true;
         };
     }
 

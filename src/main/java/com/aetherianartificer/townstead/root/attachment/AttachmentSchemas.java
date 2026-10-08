@@ -77,10 +77,14 @@ public final class AttachmentSchemas {
                             + "{ if: <pheno condition>, ... } entries; each entry carries { rotation, "
                             + "bones: { <bone>: { rotation } }, transition }. Evaluated client-side per frame."))
             .field(of("physics", PhenoType.OBJECT)
-                    .doc("{ chains: [ { bones (root->tip), stiffness, damping, gravity, max_angle, sway, "
+                    .doc("{ chains: [ { bones (root->tip), stiffness, damping, gravity, max_angle, "
+                            + "min_pitch, max_pitch, rest_pitch, sway, "
                             + "follow, droop_angle, sway_speed, snap, response: { vertical, forward, lateral, turn }, "
                             + "segments, axis } ] } — client-simulated secondary motion driven by the bearer's "
-                            + "movement. segments > 1 with one bone slices its geometry into a bending chain."))
+                            + "movement. min_pitch/max_pitch independently limit down/up movement (negative is "
+                            + "down) and default to -max_angle/+max_angle; rest_pitch shifts the neutral spring "
+                            + "target before gravity droop and defaults to 0. segments > 1 with one bone slices "
+                            + "its geometry into a bending chain."))
             .field(of("animations", PhenoType.OBJECT)
                     .doc("Keyframe clips from Blockbench .animation.json files "
                             + "(attachment/animations/<file>.animation.json, referenced '<file>' or '<file>#<clip>'): "

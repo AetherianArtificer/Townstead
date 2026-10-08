@@ -1,0 +1,167 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "agree_assess",
+  "groups": [
+    {
+      "state": { "form": ["claim", "quality"] },
+      "lines": {
+        "true": "True.",
+        "youre_right": "You're right.",
+        "cant_argue_with_that": "Can't argue with that.",
+        "exactly": "Exactly.",
+        "thats_the_truth": "That's the truth.",
+        "yeah": "Yeah.",
+        "totally": "Totally.",
+        "absolutely": "Absolutely.",
+        "right": "Right?",
+        "i_know": "I know!",
+        "so_true": "So true.",
+        "agreed": "Agreed.",
+        "for_sure": "For sure.",
+        "no_kidding": "No kidding.",
+        "you_said_it": "You said it.",
+        "yep": "Yep.",
+        "definitely": "Definitely.",
+        "thats_so_true": "That's so true.",
+        "i_was_thinking_the_same": "I was thinking the same.",
+        "couldnt_agree_more": "Couldn't agree more.",
+        "right_you_are": "Right you are.",
+        "thats_what_i_said": "That's what I said!",
+        "ive_said_the_same_thing": "I've said the same thing.",
+        "oh_i_know": "Oh, I know.",
+        "youre_not_wrong": "You're not wrong.",
+        "same_here": "Same here.",
+        "same": "Same.",
+        "ha_true": "Ha, true.",
+        "yeah_really": "Yeah, really.",
+        "fair_enough": "Fair enough.",
+        "good_point": "Good point.",
+        "thats_fair": "That's fair.",
+        "honestly_yes": "Honestly, yes.",
+        "oh_absolutely": "Oh, absolutely.",
+        "well_yes": "Well, yes.",
+        "cant_deny_it": "Can't deny it.",
+        "its_true_though": "It's true, though.",
+        "yup": "Yup."
+      }
+    },
+    {
+      "lines": {
+        "mm": { "text": "Mm.", "weight": 0.3 },
+        "huh": { "text": "Huh.", "weight": 0.3 },
+        "i_see": { "text": "I see.", "weight": 0.3 },
+        "oh": { "text": "Oh?", "weight": 0.3 },
+        "hmm": { "text": "Hmm.", "weight": 0.3 },
+        "right_2": { "text": "Right.", "weight": 0.3 }
+      }
+    },
+    {
+      "state": { "stance": "+", "form": "quality" },
+      "lines": {
+        "it_really_is": "It really is.",
+        "isnt_it_just": "Isn't it just.",
+        "its_so_nice": "It's so nice.",
+        "lovely_isnt_it": "Lovely, isn't it?",
+        "it_really_is_lovely": "It really is lovely.",
+        "isnt_it_great": "Isn't it great?",
+        "i_love_it": "I love it.",
+        "couldnt_be_better": "Couldn't be better."
+      }
+    },
+    {
+      "state": { "stance": "-", "form": ["claim", "quality"] },
+      "lines": {
+        "dont_i_know_it": { "text": "Don't I know it.", "responds": ["opinion", "complaint"] },
+        "ugh_i_know": { "text": "Ugh, I know.", "responds": ["opinion", "complaint"] },
+        "its_the_worst": "It's the worst.",
+        "ugh_right": { "text": "Ugh, right?", "responds": ["opinion", "complaint"] },
+        "dont_remind_me": { "text": "Don't remind me.", "responds": ["opinion", "complaint"] },
+        "i_know_its_awful": { "text": "I know, it's awful.", "responds": ["opinion", "complaint"] },
+        "sadly_yes": "Sadly, yes.",
+        "its_not_great": "It's not great."
+      }
+    },
+    {
+      "state": { "form": "musing" },
+      "lines": {
+        "me_too_sometimes": "Me too, sometimes.",
+        "i_know_what_you_mean": "I know what you mean.",
+        "i_wonder_that_too": "I wonder that too.",
+        "same_here_honestly": "Same here, honestly.",
+        "i_think_about_that_a": "I think about that a lot.",
+        "youre_not_the_only_one": "You're not the only one.",
+        "i_get_that": "I get that.",
+        "yeah_i_feel_that": "Yeah, I feel that."
+      }
+    },
+    {
+      "state": { "form": ["claim", "quality"] },
+      "lines": {
+        "yeah_well": { "text": "Yeah, well.", "personalities": ["crabby", "grumpy"] },
+        "obviously": { "text": "Obviously.", "personalities": ["crabby", "grumpy"] }
+      }
+    },
+    { "lines": {"i_guess": {"text": "I guess.", "personalities": ["crabby", "grumpy"]}} },
+    {
+      "state": { "form": ["claim", "quality"] },
+      "lines": {
+        "yes_totally_one_hundred_percent": { "text": "Yes! Totally! One hundred percent!", "personalities": ["upbeat", "peppy"] }
+      }
+    },
+    {
+      "state": { "stance": "+" },
+      "lines": { "oh_i_love_that": {"text": "Oh, I love that!", "personalities": ["upbeat", "peppy"]} }
+    },
+    {
+      "state": { "form": ["claim", "quality"] },
+      "lines": { "sadly_yes_like_everything": {"text": "Sadly, yes. Like everything.", "personalities": "gloomy"} }
+    },
+    {
+      "lines": {
+        "i_suppose_thats_true_unfortunately": { "text": "I suppose that's true. Unfortunately.", "personalities": "gloomy" }
+      }
+    },
+    {
+      "state": { "form": ["claim", "quality"] },
+      "lines": {
+        "correct_as_usual_me_i": { "text": "Correct, as usual. Me, I mean.", "personalities": ["playful", "witty"] },
+        "well_you_would_know": { "text": "Well, you would know.", "personalities": "flirty" },
+        "true_and_true_things_are": { "text": "True. And true things are valuable.", "personalities": "greedy" },
+        "precisely_said_the_turnip": { "text": "Precisely, said the turnip.", "personalities": "odd" }
+      }
+    },
+    {
+      "lines": { "oh_um_yes_i_agree": {"text": "Oh, um, yes. I agree.", "personalities": ["introverted", "shy"]} }
+    },
+    {
+      "state": { "form": ["claim", "quality"] },
+      "lines": { "yes_exactly": {"text": "Yes! Exactly!", "personalities": ["extroverted", "confident"]} }
+    },
+    {
+      "lines": {
+        "yeah_man": { "text": "Yeah, man.", "personalities": ["relaxed", "lazy"] },
+        "yes_i_mean_yes_i": { "text": "Yes! I mean, yes, I think so?", "personalities": "anxious" },
+        "thats_a_kind_way_to": { "text": "That's a kind way to see it.", "personalities": "peaceful" },
+        "thats_so_true_it_really": { "text": "That's so true. It really touches me.", "personalities": "sensitive" }
+      }
+    },
+    {
+      "state": { "form": ["claim", "quality"] },
+      "lines": { "youre_right_friend": {"text": "You're right, friend.", "personalities": "friendly"} }
+    },
+    {
+      "lines": {
+        "yeah_2": { "text": "Yeah!", "stages": "child" },
+        "uh_huh": { "text": "Uh-huh!", "stages": "child" },
+        "yeah_i_know": { "text": "Yeah, I know!", "stages": "child" },
+        "i_guess_2": { "text": "I guess.", "stages": "teen" },
+        "yeah_sure": { "text": "Yeah, sure.", "stages": "teen" },
+        "true_dear": { "text": "True, dear.", "stages": "senior" }
+      }
+    },
+    {
+      "state": { "form": ["claim", "quality"] },
+      "lines": { "in_my_day_too": {"text": "In my day, too.", "stages": "senior"} }
+    }
+  ]
+}

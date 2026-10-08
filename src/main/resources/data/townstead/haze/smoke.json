@@ -1,0 +1,10 @@
+{
+  "shape": "cloud",
+  "color": "#3A3836",
+  "duration": 360,
+  "conceals": true,
+  "fog": {
+    "distance": 2.0
+  },
+  "particle": "minecraft:smoke"
+}

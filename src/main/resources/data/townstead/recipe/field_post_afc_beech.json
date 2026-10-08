@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_afc_beech"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "afc:wood/lumber/beech"
+    },
+    "L": {
+      "item": "afc:wood/log/beech"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_afc_beech",
+    "count": 1
+  }
+}

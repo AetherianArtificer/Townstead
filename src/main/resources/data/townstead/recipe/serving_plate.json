@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": ["C C", " C "],
+  "key": {
+    "C": { "item": "minecraft:clay_ball" }
+  },
+  "result": {
+    "id": "townstead:serving_plate",
+    "count": 2
+  }
+}

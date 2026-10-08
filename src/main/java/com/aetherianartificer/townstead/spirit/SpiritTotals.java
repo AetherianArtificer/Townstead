@@ -4,7 +4,7 @@ import java.util.Map;
 
 /**
  * Aggregate spirit points for a single village. Computed fresh from the live
- * building list — never cached inside this record; caching is the caller's
+ * buildings and decorations — never cached inside this record; caching is the caller's
  * responsibility (server savedData, client store, etc.).
  *
  * {@code perSpirit} is immutable and contains only spirit ids that received

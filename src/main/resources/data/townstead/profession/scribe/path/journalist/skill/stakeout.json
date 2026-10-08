@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.journalist.stakeout"
+  },
+  "icon": "minecraft:spyglass",
+  "description": {
+    "translate": "skill.townstead.scribe.journalist.stakeout.description"
+  },
+  "cost": 1,
+  "requires": [
+    "shorthand"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 100,
+    "condition": {
+      "type": "pheno:brightness",
+      "max": 4
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:night_vision",
+      "duration": 300,
+      "amplifier": 0
+    }
+  }
+}

@@ -57,11 +57,7 @@ public final class HeritageRegistry {
             return new Resolved(originDisplayName, null);
         }
 
-        HeritageProfile best = null;
-        for (HeritageProfile profile : ENTRIES.values()) {
-            if (!profile.matches(heritage)) continue;
-            if (best == null || profile.priority() > best.priority()) best = profile;
-        }
+        HeritageProfile best = bestMatch(heritage);
         if (best != null) return new Resolved(best.displayName(), best.demonym());
 
         // No named blend matched. A near-pure villager keeps its founder assignment-profile/lineage
@@ -75,6 +71,18 @@ public final class HeritageRegistry {
         return new Resolved(generatedBlendName(ranked), null);
     }
 
+    /** Highest-priority authored profile matching this realized heritage, or null. */
+    @Nullable
+    public static HeritageProfile bestMatch(@Nullable Heritage heritage) {
+        if (heritage == null || heritage.isEmpty()) return null;
+        HeritageProfile best = null;
+        for (HeritageProfile profile : ENTRIES.values()) {
+            if (!profile.matches(heritage)) continue;
+            if (best == null || profile.priority() > best.priority()) best = profile;
+        }
+        return best;
+    }
+
     /** "Human-Elf" from the two largest ancestry shares; single-name when only one resolves. */
     private static Component generatedBlendName(List<ResourceLocation> ranked) {
         List<Component> names = new ArrayList<>(2);
@@ -83,7 +91,7 @@ public final class HeritageRegistry {
             names.add(ancestry != null ? ancestry.displayName() : Component.literal(id.getPath()));
             if (names.size() == 2) break;
         }
-        if (names.isEmpty()) return Component.literal("Mixed");
+        if (names.isEmpty()) return Component.translatable("townstead.heritage.mixed");
         if (names.size() == 1) return names.get(0);
         return Component.empty().append(names.get(0)).append(Component.literal("-")).append(names.get(1));
     }

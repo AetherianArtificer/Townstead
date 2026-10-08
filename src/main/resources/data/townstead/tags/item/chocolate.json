@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "#c:chocolate", "required": false },
+    { "id": "bakery:chocolate_cake_slice", "required": false },
+    { "id": "bakery:chocolate_gateau_slice", "required": false },
+    { "id": "bakery:chocolate_tart_slice", "required": false },
+    { "id": "bakery:chocolate_glazed_cookie", "required": false },
+    { "id": "farmersdelight:chocolate_pie_slice", "required": false },
+    { "id": "rusticdelight:chocolate_pancake", "required": false }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "color": "ff8f5f32",
+  "visible": true,
+  "priority": 4,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 184,
+  "noBeds": true,
+  "blocks": {
+    "brewinandchewin:keg": 1,
+    "#townstead:kitchen/storage": 1
+  }
+}

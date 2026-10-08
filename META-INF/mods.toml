@@ -30,6 +30,6 @@ side = "BOTH"
 [[dependencies.townstead]]
 modId = "mca"
 mandatory = true
-versionRange = "[7.6.0,)"
+versionRange = "[7.7.1-alpha.3,)"
 ordering = "AFTER"
 side = "BOTH"

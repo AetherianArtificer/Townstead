@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:serving_menu/v1",
+  "mods": "brewinandchewin",
+  "buildings": ["inn", "compat/brewinandchewin/taproom_l1"],
+  "products": [
+    "brewinandchewin:beer",
+    "brewinandchewin:mead",
+    "brewinandchewin:rice_wine",
+    "brewinandchewin:egg_grog"
+  ]
+}

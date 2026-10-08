@@ -1,7 +1,11 @@
 {
   "schema": "townstead:extended_building/v1",
+  "workers": ["minecraft:butcher"],
   "catalog": {
     "node_item": "minecraft:smoker"
+  },
+  "dialogue": {
+    "topics": ["butchery", "smokehouse"]
   },
   "spirit": {
     "pastoral": 4,

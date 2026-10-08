@@ -1,0 +1,24 @@
+{
+  "required_mods": [
+    "cold_sweat",
+    "caupona"
+  ],
+  "block": {
+    "blocks": [
+      "caupona:brick_kitchen_stove",
+      "caupona:mud_kitchen_stove",
+      "caupona:opus_incertum_kitchen_stove",
+      "caupona:opus_latericium_kitchen_stove",
+      "caupona:stone_brick_kitchen_stove"
+    ],
+    "state": {
+      "lit": true
+    }
+  },
+  "temperature": 0.33,
+  "units": "mc",
+  "range": 7,
+  "max_effect": 0.88,
+  "max_temp": 12.6,
+  "fade": true
+}

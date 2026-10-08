@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": { "translate": "skill.townstead.cook.chef.chefs_knife" },
+  "icon": "farmersdelight:iron_knife",
+  "description": { "translate": "skill.townstead.cook.chef.chefs_knife.description" },
+  "cost": 1,
+  "skill_group": "townstead:chef_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 100,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": { "resource": "townstead:stamina", "amount": 20 },
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": { "type": "pheno:ingredient", "tag": "townstead:kitchen_knives" }
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 2.5,
+          "target": "hostile",
+          "bientity_condition": { "type": "pheno:relative_rotation", "max_angle": 55 },
+          "action": { "type": "pheno:damage", "source": "other", "amount": 6.0 }
+        },
+        { "type": "pheno:swing_hand", "hand": "mainhand" },
+        { "type": "pheno:play_sound", "sound": "minecraft:entity.player.attack.sweep", "volume": 1.0, "pitch": 1.1 },
+        { "type": "pheno:spawn_particles", "particle": "minecraft:sweep_attack", "count": 4, "spread": 0.5, "speed": 0.0 }
+      ]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "replace": false,
+  "values": [
+    "#townstead:masonry_materials",
+    "minecraft:bricks",
+    "minecraft:brick_wall",
+    "minecraft:mud_bricks",
+    "minecraft:mud_brick_wall",
+    "minecraft:stone_bricks",
+    "minecraft:stone_brick_wall",
+    "minecraft:deepslate_bricks",
+    "minecraft:deepslate_brick_wall",
+    "minecraft:polished_blackstone_bricks",
+    "minecraft:polished_blackstone_brick_wall",
+    "minecraft:nether_bricks",
+    "minecraft:red_nether_bricks",
+    "minecraft:red_nether_brick_wall"
+  ]
+}

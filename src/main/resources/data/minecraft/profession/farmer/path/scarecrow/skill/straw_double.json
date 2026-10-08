@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.scarecrow.straw_double"
+  },
+  "icon": "minecraft:armor_stand",
+  "description": {
+    "translate": "skill.townstead.farmer.scarecrow.straw_double.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:scarecrow_straw",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 25
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:invisibility",
+      "duration": 100,
+      "amplifier": 0
+    }
+  }
+}

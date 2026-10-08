@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": ["brewinandchewin", "cocktailsdelight"],
+  "items": ["cocktailsdelight:boilermaker"],
+  "effects": {
+    "type": "pheno:add_state",
+    "state": "townstead_state:drunk",
+    "amount": 25,
+    "duration": 1400,
+    "source": "townstead:cocktail_serving"
+  },
+  "transaction": {
+    "mode": "replace_with_pheno",
+    "accounting": "consume_one",
+    "consumers": ["villager"],
+    "remainder": { "mode": "item", "item": "brewinandchewin:tankard", "destination": "source" },
+    "effect_admission": { "default": "deny", "allow": ["attribute"] }
+  }
+}

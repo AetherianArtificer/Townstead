@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.headsman.clean_stroke"
+  },
+  "icon": "minecraft:iron_axe",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.headsman.clean_stroke.description"
+  },
+  "cost": 1,
+  "requires": [
+    "finishing_blow"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "durability_loss",
+    "operation": "multiply",
+    "value": 0.5,
+    "item_condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:ingredient",
+          "tag": "minecraft:swords"
+        },
+        {
+          "type": "pheno:ingredient",
+          "tag": "minecraft:axes"
+        }
+      ]
+    }
+  }
+}

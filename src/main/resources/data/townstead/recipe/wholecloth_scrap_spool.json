@@ -1,0 +1,12 @@
+{
+  "neoforge:conditions": [
+    { "type": "neoforge:mod_loaded", "modid": "wholecloth" },
+    { "type": "neoforge:mod_loaded", "modid": "weaversparadise" }
+  ],
+  "type": "weaversparadise:spinning_jenny",
+  "input": { "item": "wholecloth:cloth_scrap" },
+  "catalyst": { "item": "weaversparadise:empty_spool" },
+  "result": { "id": "weaversparadise:cotton_spool", "count": 1 },
+  "count_required": 4,
+  "craft_time": 100
+}

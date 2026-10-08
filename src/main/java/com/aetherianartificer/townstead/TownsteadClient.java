@@ -6,6 +6,8 @@ import com.aetherianartificer.townstead.compat.travelerstitles.ClientCapsPayload
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.hunger.FishermanLineRenderer;
 import com.aetherianartificer.townstead.hunger.FishingRodCastPredicates;
+import com.aetherianartificer.townstead.needs.ConsumableEffectsClientStore;
+import com.aetherianartificer.townstead.needs.NeedEffectProjection;
 import net.minecraft.resources.ResourceLocation;
 //? if neoforge {
 import com.aetherianartificer.townstead.fatigue.EnergyTooltipComponent;
@@ -47,29 +49,20 @@ public final class TownsteadClient {
     public static void registerConfigScreen(ModContainer modContainer) {
         //? if neoforge {
         modContainer.registerExtensionPoint(IConfigScreenFactory.class,
-                (IConfigScreenFactory) (container, parent) -> new ConfigurationScreen(container, parent,
-                        (screen, type, config, title) -> new ConfigurationScreen.ConfigurationSectionScreen(
-                                screen, type, config, title) {
-                            @Override
-                            protected Element createSection(String key,
-                                    com.electronwill.nightconfig.core.UnmodifiableConfig subconfig,
-                                    com.electronwill.nightconfig.core.UnmodifiableConfig subsection) {
-                                // The roots blocklists are server-admin lists of
-                                // resource-location ids, managed in the config file;
-                                // the GUI list editor is not a usable surface for them.
-                                if ("roots".equals(key)) {
-                                    return null;
-                                }
-                                return super.createSection(key, subconfig, subsection);
-                            }
-                        }));
+                (IConfigScreenFactory) (container, parent) -> townstead$configScreen(container, parent));
         if (!hooksRegistered) {
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onPlaySound);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientConnect);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onGatherTooltipComponents);
+            NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.ItemTooltipEvent e) ->
+                    com.aetherianartificer.townstead.ritual.Blessings.tooltip(e.getItemStack(), e.getToolTip()));
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onRenderNameTag);
+            NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGHEST,
+                    com.aetherianartificer.townstead.client.render.WildCostumeRender::onRenderLivingPre);
+            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.render.WildCostumeRender::onEntityLeave);
+            NeoForge.EVENT_BUS.addListener(TownsteadClient::onRenderLivingPre);
             NeoForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             NeoForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPre);
@@ -77,7 +70,14 @@ public final class TownsteadClient {
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPost);
             NeoForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbView::onComputeCameraAngles);
+            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onRenderFog);
+            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onFogColor);
+            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardLink::onScreenInit);
+            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.gui.rebirth.RebirthDeathButton::onScreenInit);
+            com.aetherianartificer.townstead.switchboard.Switchboard.onChange(() -> net.minecraft.client.Minecraft.getInstance()
+                    .execute(com.aetherianartificer.townstead.client.root.CreativeTabRefresh::refreshTownsteadTab));
             hooksRegistered = true;
+            Townstead.LOGGER.info("[ClientPresentation] registered expression and animation render hooks");
         }
         //?} else if forge {
         /*if (!net.minecraftforge.fml.ModList.get().isLoaded("configured")) {
@@ -91,6 +91,12 @@ public final class TownsteadClient {
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onRenderNameTag);
+            MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.ItemTooltipEvent e) ->
+                    com.aetherianartificer.townstead.ritual.Blessings.tooltip(e.getItemStack(), e.getToolTip()));
+            MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.HIGHEST,
+                    com.aetherianartificer.townstead.client.render.WildCostumeRender::onRenderLivingPre);
+            MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.render.WildCostumeRender::onEntityLeave);
+            MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onRenderLivingPre);
             MinecraftForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             MinecraftForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPre);
@@ -98,10 +104,51 @@ public final class TownsteadClient {
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPost);
             MinecraftForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbView::onComputeCameraAngles);
+            MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onRenderFog);
+            MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onFogColor);
+            MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.gui.rebirth.RebirthDeathButton::onScreenInit);
+            com.aetherianartificer.townstead.switchboard.Switchboard.onChange(() -> net.minecraft.client.Minecraft.getInstance()
+                    .execute(com.aetherianartificer.townstead.client.root.CreativeTabRefresh::refreshTownsteadTab));
             hooksRegistered = true;
         }
         *///?}
     }
+
+    //? if neoforge {
+    private static net.minecraft.client.gui.screens.Screen townstead$configScreen(
+            ModContainer container, net.minecraft.client.gui.screens.Screen parent) {
+        return com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardLink.track(new ConfigurationScreen(container, parent,
+                (screen, type, config, title) -> new ConfigurationScreen.ConfigurationSectionScreen(
+                        screen, type, config, title) {
+                    @Override
+                    protected Element createSection(String key,
+                            com.electronwill.nightconfig.core.UnmodifiableConfig subconfig,
+                            com.electronwill.nightconfig.core.UnmodifiableConfig subsection) {
+                        if ("resource_hud".equals(key)) {
+                            net.minecraft.network.chat.Component name = net.minecraft.network.chat.Component
+                                    .translatable("townstead.configuration.resource_hud");
+                            net.minecraft.network.chat.Component tooltip = net.minecraft.network.chat.Component
+                                    .translatable("townstead.configuration.resource_hud.tooltip");
+                            net.minecraft.client.gui.components.Button button =
+                                    net.minecraft.client.gui.components.Button.builder(
+                                            net.minecraft.network.chat.Component.translatable(
+                                                    "townstead.resource_hud.config.open"),
+                                            pressed -> minecraft.setScreen(
+                                                    com.aetherianartificer.townstead.client.root.ResourceHudConfigScreen
+                                                            .create(this)))
+                                            .tooltip(net.minecraft.client.gui.components.Tooltip.create(tooltip))
+                                            .width(net.minecraft.client.gui.components.Button.DEFAULT_WIDTH)
+                                            .build();
+                            return new Element(name, tooltip, button, false);
+                        }
+                        // The roots blocklists are server-admin lists of resource-location ids,
+                        // managed in the config file; the GUI list editor is not useful for them.
+                        if ("roots".equals(key)) return null;
+                        return super.createSection(key, subconfig, subsection);
+                    }
+                }));
+    }
+    //?}
 
     //? if neoforge {
     private static void onClientConnect(ClientPlayerNetworkEvent.LoggingIn event) {
@@ -147,7 +194,14 @@ public final class TownsteadClient {
     //?} else if forge {
     /*private static void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
     *///?}
+        com.aetherianartificer.townstead.pheno.cosmetic.CosmeticClientBridge.clear();
+        com.aetherianartificer.townstead.replace.WildNameS2CPayload.clear();
+        com.aetherianartificer.townstead.client.render.WildCostumeRender.clear();
         clearClientStore("com.aetherianartificer.townstead.hunger.HungerClientStore");
+        clearClientStore("com.aetherianartificer.townstead.client.story.StoryCallMarks");
+        clearClientStore("com.aetherianartificer.townstead.client.state.StateFormClient");
+        clearClientStore("com.aetherianartificer.townstead.client.rebirth.CharacterNameClient");
+        clearClientStore("com.aetherianartificer.townstead.client.rebirth.RebirthDestinyClient");
         clearClientStore("com.aetherianartificer.townstead.hunger.FishermanHookLinkStore");
         clearClientStore("com.aetherianartificer.townstead.thirst.ThirstClientStore");
         clearClientStore("com.aetherianartificer.townstead.fatigue.FatigueClientStore");
@@ -156,7 +210,10 @@ public final class TownsteadClient {
         clearClientStore("com.aetherianartificer.townstead.profession.ProfessionClientStore");
         clearClientStore("com.aetherianartificer.townstead.village.VillageResidentClientStore");
         clearClientStore("com.aetherianartificer.townstead.calendar.CalendarStampClientStore");
+        clearClientStore("com.aetherianartificer.townstead.needs.ConsumableEffectsClientStore");
         clearClientStore("com.aetherianartificer.townstead.client.species.InvisFade");
+        clearClientStore("com.aetherianartificer.townstead.client.expression.ExpressionCueClientStore");
+        clearClientStore("com.aetherianartificer.townstead.client.animation.nativeclip.NativePlaybackRegistry");
     }
 
     /**
@@ -170,7 +227,14 @@ public final class TownsteadClient {
                 && net.minecraft.client.Minecraft.getInstance().player != null
                 && player.isInvisibleTo(net.minecraft.client.Minecraft.getInstance().player)) {
             event.setCanRender(net.neoforged.neoforge.common.util.TriState.FALSE);
+            return;
         }
+        if (com.aetherianartificer.townstead.replace.WildNameS2CPayload.hidden(event.getEntity().getId())) {
+            event.setCanRender(net.neoforged.neoforge.common.util.TriState.FALSE);
+            return;
+        }
+        com.aetherianartificer.townstead.client.naming.NamePlate.render(
+                event.getEntity(), event.getContent(), event::setContent);
     }
     //?} else if forge {
     /*private static void onRenderNameTag(net.minecraftforge.client.event.RenderNameTagEvent event) {
@@ -178,7 +242,32 @@ public final class TownsteadClient {
                 && net.minecraft.client.Minecraft.getInstance().player != null
                 && player.isInvisibleTo(net.minecraft.client.Minecraft.getInstance().player)) {
             event.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
+            return;
         }
+        if (com.aetherianartificer.townstead.replace.WildNameS2CPayload.hidden(event.getEntity().getId())) {
+            event.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
+            return;
+        }
+        com.aetherianartificer.townstead.client.naming.NamePlate.render(
+                event.getEntity(), event.getContent(), event::setContent);
+    }
+    *///?}
+
+    // Expression cues belong to the living render lifecycle, not the optional name-tag lifecycle:
+    // unnamed mobs and custom-rig entities must render them too.
+    //? if neoforge {
+    private static void onRenderLivingPre(net.neoforged.neoforge.client.event.RenderLivingEvent.Pre<?, ?> event) {
+        com.aetherianartificer.townstead.client.expression.ExpressionCueRenderer.render(
+                event.getEntity(), event.getPoseStack(), event.getMultiBufferSource(), event.getPackedLight(), event.getPartialTick());
+        com.aetherianartificer.townstead.client.story.StoryCallMarks.render(
+                event.getEntity(), event.getPoseStack(), event.getMultiBufferSource(), event.getPartialTick());
+    }
+    //?} else if forge {
+    /*private static void onRenderLivingPre(net.minecraftforge.client.event.RenderLivingEvent.Pre<?, ?> event) {
+        com.aetherianartificer.townstead.client.expression.ExpressionCueRenderer.render(
+                event.getEntity(), event.getPoseStack(), event.getMultiBufferSource(), event.getPackedLight(), event.getPartialTick());
+        com.aetherianartificer.townstead.client.story.StoryCallMarks.render(
+                event.getEntity(), event.getPoseStack(), event.getMultiBufferSource(), event.getPartialTick());
     }
     *///?}
 
@@ -199,7 +288,10 @@ public final class TownsteadClient {
         tryWarmSpiritIndex();
         com.aetherianartificer.townstead.client.species.ClimbState.tick();
         com.aetherianartificer.townstead.client.species.InvisFade.tick();
+        com.aetherianartificer.townstead.client.expression.ExpressionCueClientStore.tick();
         com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge.ensureRegistered();
+        com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardScreen.tickPending();
+        com.aetherianartificer.townstead.client.gui.charter.CharterCeremonyClient.tick();
     }
     //?} else if forge {
     /*private static void onClientTick(net.minecraftforge.event.TickEvent.ClientTickEvent event) {
@@ -209,16 +301,24 @@ public final class TownsteadClient {
         tryWarmSpiritIndex();
         com.aetherianartificer.townstead.client.species.ClimbState.tick();
         com.aetherianartificer.townstead.client.species.InvisFade.tick();
+        com.aetherianartificer.townstead.client.expression.ExpressionCueClientStore.tick();
         com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge.ensureRegistered();
+        com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardScreen.tickPending();
+        com.aetherianartificer.townstead.client.gui.charter.CharterCeremonyClient.tick();
     }
     *///?}
 
     //? if neoforge {
 
     private static void onGatherTooltipComponents(RenderTooltipEvent.GatherComponents event) {
-        if (FatigueData.isEnergyRestoring(event.getItemStack())) {
+        NeedEffectProjection configured = ConsumableEffectsClientStore.projection(event.getItemStack());
+        int energy = configured.energy();
+        if (energy <= 0 && event.getItemStack().is(FatigueData.ENERGY_RESTORING_TAG)) {
+            energy = FatigueData.ENERGY_RESTORE_AMOUNT;
+        }
+        if (energy > 0) {
             event.getTooltipElements().add(Either.right(
-                    new EnergyTooltipComponent(FatigueData.ENERGY_RESTORE_AMOUNT)));
+                    new EnergyTooltipComponent(energy)));
         }
     }
     //?}
@@ -267,12 +367,21 @@ public final class TownsteadClient {
         private final Screen parent;
 
         ConfigInfoScreen(Screen parent) {
-            super(Component.literal("Townstead Configuration"));
+            super(Component.translatable("townstead.configuration.title", "Townstead"));
             this.parent = parent;
         }
 
         @Override
         protected void init() {
+            addRenderableWidget(Button.builder(
+                            Component.translatable("townstead.resource_hud.config.open"),
+                            btn -> minecraft.setScreen(
+                                    com.aetherianartificer.townstead.client.root.ResourceHudConfigScreen
+                                            .create(this)))
+                    .bounds(width / 2 - 100, 90, 200, 20)
+                    .build());
+            addRenderableWidget(com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardLink.button(
+                    width / 2 - 100, 114, 200));
             addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, btn -> minecraft.setScreen(parent))
                     .bounds(width / 2 - 100, height - 28, 200, 20)
                     .build());
@@ -282,10 +391,10 @@ public final class TownsteadClient {
         public void render(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             renderBackground(graphics);
             graphics.drawCenteredString(font, title, width / 2, 20, 0xFFFFFF);
-            int y = 50;
+            int y = 38;
             graphics.drawCenteredString(font, "Server config: <world>/serverconfig/townstead-server.toml", width / 2, y, 0xAAAAAA);
             graphics.drawCenteredString(font, "Client config: config/townstead-client.toml", width / 2, y + 14, 0xAAAAAA);
-            graphics.drawCenteredString(font, "Edit these files with a text editor.", width / 2, y + 36, 0xCCCCCC);
+            graphics.drawCenteredString(font, "Feature settings", width / 2, y + 38, 0xCCCCCC);
             super.render(graphics, mouseX, mouseY, partialTick);
         }
     }

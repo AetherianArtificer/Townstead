@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:chronicle_work_history/v1",
+  "profession": "townstead:cook",
+  "per_year": {
+    "townstead_work:cook": 240,
+    "townstead:produced": 40
+  }
+}

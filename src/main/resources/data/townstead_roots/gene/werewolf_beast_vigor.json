@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "werewolves",
+  "type": "pheno:attribute",
+  "display_name": {
+    "translate": "gene.townstead_roots.werewolf_beast_vigor"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.werewolf_beast_vigor.desc"
+  },
+  "category": "Health",
+  "attribute": "minecraft:generic.max_health",
+  "amount": 16.0
+}

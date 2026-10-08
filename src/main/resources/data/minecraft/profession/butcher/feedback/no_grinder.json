@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "mods": "butchery",
+  "trigger": "periodic",
+  "priority": 30,
+  "when": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "pheno:inventory",
+        "item_condition": { "type": "pheno:ingredient", "tag": "butchery:raw_meats" }
+      },
+      {
+        "type": "townstead:worksite",
+        "scope": "village",
+        "block_condition": { "type": "pheno:block", "block": "butchery:meat_grinder" },
+        "compare_to": 0,
+        "comparison": "=="
+      }
+    ]
+  },
+  "dialogue": {
+    "translate": "dialogue.chat.butcher_request.no_grinder"
+  },
+  "variants": 3
+}

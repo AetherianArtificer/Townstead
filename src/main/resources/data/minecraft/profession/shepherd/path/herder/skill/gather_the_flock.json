@@ -1,0 +1,65 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.herder.gather_the_flock"
+  },
+  "icon": "minecraft:bell",
+  "description": {
+    "translate": "skill.townstead.shepherd.herder.gather_the_flock.description"
+  },
+  "cost": 1,
+  "requires": [
+    "great_drive"
+  ],
+  "skill_group": "townstead:herder_drive",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:flock",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 32,
+          "include_self": false,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:entity_type",
+              "tag": "townstead:livestock"
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:add_velocity",
+                  "away_from_other": -1.6,
+                  "y": 0.3
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:slowness",
+                  "duration": 200,
+                  "amplifier": 3
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.bell.use",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

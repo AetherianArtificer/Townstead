@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.needle.master_cutter"
+  },
+  "icon": "minecraft:shears",
+  "description": {
+    "translate": "skill.townstead.tailor.needle.master_cutter.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tailor_made"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "target": "other",
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "ingredient",
+            "item": "minecraft:shears"
+          }
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:stitch",
+          "min": 75
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:weakness",
+      "duration": 100,
+      "amplifier": 1
+    }
+  }
+}

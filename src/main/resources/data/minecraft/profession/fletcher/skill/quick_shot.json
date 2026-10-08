@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.quick_shot"
+  },
+  "icon": "minecraft:arrow",
+  "description": {
+    "translate": "skill.townstead.fletcher.quick_shot.description"
+  },
+  "tier": 2,
+  "cost": 1,
+  "requires": [
+    "archers_eye"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 60,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 15
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:fire_projectile",
+              "entity": "minecraft:arrow",
+              "speed": 2.5,
+              "inaccuracy": 1.0
+            }
+          ]
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.arrow.shoot",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "joke_close",
+  "groups": [
+    {
+      "state": { "reaction": "praise" },
+      "lines": {
+        "im_here_all_week": "I'm here all week.",
+        "tell_your_friends": "Tell your friends.",
+        "ive_got_a_hundred_of": "I've got a hundred of them.",
+        "thank_you_thank_you": "Thank you, thank you.",
+        "i_know_im_a_genius": "I know, I'm a genius.",
+        "ill_be_here_all_day": "I'll be here all day.",
+        "glad_you_liked_it": "Glad you liked it!",
+        "ive_been_saving_that_one": "I've been saving that one.",
+        "wait_until_you_hear_the": "Wait until you hear the next one.",
+        "my_grandmother_told_me_that": "My grandmother told me that one.",
+        "i_made_it_up_myself": "I made it up myself!",
+        "i_knew_youd_like_it": "I knew you'd like it.",
+        "you_can_use_it_just": "You can use it. Just say it was mine.",
+        "ha_i_knew_thatd_get": "Ha! I knew that'd get you.",
+        "ive_got_more_where_that": "I've got more where that came from.",
+        "okay_ill_stop_while_im": "Okay, I'll stop while I'm ahead.",
+        "comedy_is_my_true_calling": "Comedy is my true calling.",
+        "laughing_is_good_for_you": "Laughing is good for you, you know.",
+        "see_im_funny": "See? I'm funny.",
+        "ill_take_a_bow_later": "I'll take a bow later.",
+        "im_the_funniest_in_the": { "text": "I'm the funniest in the village!", "stages": "child" },
+        "took_me_all_morning_to": { "text": "Took me all morning to think of it.", "stages": "child" },
+        "dont_tell_anyone_im_funny": { "text": "Don't tell anyone I'm funny.", "personalities": ["crabby", "grumpy"] },
+        "yay_you_laughed": { "text": "Yay! You laughed!", "personalities": ["upbeat", "peppy"] },
+        "enjoy_it_happiness_never_lasts": { "text": "Enjoy it. Happiness never lasts.", "personalities": "gloomy" },
+        "that_ones_free_the_next": { "text": "That one's free. The next one costs.", "personalities": "greedy" },
+        "laughter_and_beauty_all_in": { "text": "Laughter and beauty, all in one person.", "personalities": "flirty" },
+        "th_thanks_i_practised_it": { "text": "Th-thanks. I practised it.", "personalities": ["introverted", "shy"] }
+      }
+    },
+    {
+      "state": { "reaction": "groan" },
+      "lines": {
+        "you_laughed_i_saw_it": "You laughed. I saw it.",
+        "tough_crowd": "Tough crowd.",
+        "fine_fine_ill_stop": "Fine, fine. I'll stop.",
+        "youll_be_telling_that_one": "You'll be telling that one tomorrow.",
+        "one_day_youll_get_it": "One day you'll get it.",
+        "everyones_a_critic": "Everyone's a critic.",
+        "youre_no_fun": "You're no fun.",
+        "its_funnier_when_i_tell": "It's funnier when I tell it at night.",
+        "i_thought_it_was_funny": "I thought it was funny.",
+        "okay_that_one_needs_work": "Okay, that one needs work.",
+        "my_cousin_thought_it_was": "My cousin thought it was funny.",
+        "wow_okay": "Wow. Okay.",
+        "next_time_ill_try_a": "Next time I'll try a knock-knock joke.",
+        "youre_smiling_admit_it": "You're smiling. Admit it.",
+        "fine_ill_find_a_better": "Fine. I'll find a better audience.",
+        "ill_try_it_on_the": "I'll try it on the chickens.",
+        "rude": "Rude.",
+        "thats_the_last_joke_you": "That's the last joke you get from me. For today.",
+        "ugh_youre_impossible": "Ugh, you're impossible.",
+        "ill_get_you_next_time": "I'll get you next time.",
+        "hmph_you_just_dont_get": { "text": "Hmph. You just don't get it.", "stages": "child" },
+        "whatever_it_was_funny": { "text": "Whatever, it was funny.", "stages": "teen" },
+        "hmph_your_loss": { "text": "Hmph. Your loss.", "personalities": ["crabby", "grumpy"] },
+        "i_knew_it_nobody_likes": { "text": "I knew it. Nobody likes my jokes.", "personalities": "gloomy" },
+        "aw_ill_find_a_better": { "text": "Aw, I'll find a better one!", "personalities": ["upbeat", "peppy"] },
+        "it_was_funnier_in_my": { "text": "It was funnier in my head.", "personalities": ["introverted", "shy"] }
+      }
+    }
+  ]
+}

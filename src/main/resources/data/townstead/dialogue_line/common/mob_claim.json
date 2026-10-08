@@ -1,0 +1,63 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "mob_claim",
+  "groups": [
+    {
+      "lines": {
+        "there_was_a_mob_by": "There was {a_mob} by {where} last night.",
+        "someone_saw_a_mob_near": "Someone saw {a_mob} near {where}.",
+        "a_mob_got_right_up": "{a_mob} got right up to {where} before dawn.",
+        "theres_been_a_mob_around": "There's been {a_mob} around {where} again.",
+        "a_mob_was_prowling_by": "{a_mob} was prowling by {where} last night.",
+        "a_mob_showed_up_at": "{a_mob} showed up at {where} in the middle of the night.",
+        "there_was_a_mob_hanging": "There was {a_mob} hanging around {where}.",
+        "somebody_spotted_a_mob_over": "Somebody spotted {a_mob} over by {where}.",
+        "a_mob_wandered_into_where": "{a_mob} wandered into {where} last night!",
+        "they_say_a_mob_was": "They say {a_mob} was lurking near {where}.",
+        "a_mob_came_way_too": "{a_mob} came way too close to {where} last night.",
+        "there_were_noises_by_where": "There were noises by {where}. {a_mob}, they think.",
+        "did_you_hear_a_mob": "Did you hear? {a_mob} near {where}!",
+        "a_mob_got_into_where": "{a_mob} got into {where}. Can you believe it?",
+        "i_heard_a_mob_outside": "I heard {a_mob} outside my window.",
+        "a_mob_kept_me_up": "{a_mob} kept me up all night.",
+        "i_think_a_mob_was": "I think {a_mob} was outside my door last night.",
+        "there_was_a_mob_right": "There was {a_mob} right outside the village.",
+        "a_mob_tried_to_get": "{a_mob} tried to get in last night.",
+        "something_was_scratching_at_my": "Something was scratching at my door. {a_mob}, I bet.",
+        "who_chased_a_mob_away": "{who} chased {a_mob} away from {where}.",
+        "who_saw_a_mob_by": "{who} saw {a_mob} by {where} last night.",
+        "who_ran_into_a_mob": "{who} ran into {a_mob} near {where}!",
+        "who_scared_off_a_mob": "{who} scared off {a_mob} by {where}.",
+        "who_said_a_mob_followed": "{who} said {a_mob} followed them past {where}.",
+        "a_mob_nearly_got_who": "{a_mob} nearly got {who} near {where}!"
+      }
+    },
+    {
+      "persp": { "who": "me" },
+      "lines": {
+        "i_chased_a_mob_away": "I chased {a_mob} away from {where} last night.",
+        "i_saw_a_mob_by": "I saw {a_mob} by {where} last night.",
+        "a_mob_followed_me_past": "{a_mob} followed me past {where}!",
+        "i_nearly_ran_into_a": "I nearly ran into {a_mob} at {where}.",
+        "i_scared_off_a_mob": "I scared off {a_mob} near {where}. With a bucket."
+      }
+    },
+    {
+      "persp": { "who": "you" },
+      "lines": {
+        "i_heard_you_chased_a": "I heard you chased {a_mob} away from {where}!",
+        "is_it_true_a_mob": "Is it true {a_mob} followed you past {where}?",
+        "someone_said_you_ran_into": "Someone said you ran into {a_mob} at {where}!"
+      }
+    },
+    {
+      "lines": {
+        "there_was_a_mob_a": { "text": "There was {a_mob}! A real one! By {where}!", "stages": "child" },
+        "i_saw_a_mob_it": { "text": "I saw {a_mob}! It was SO scary!", "stages": "child" },
+        "a_mob_near_where_of": { "text": "{a_mob}. Near {where}. Of course.", "personalities": "gloomy" },
+        "a_mob_near_where_oh": { "text": "{a_mob} near {where}! Oh, I'm so worried!", "personalities": "anxious" },
+        "some_mob_was_loitering_near": { "text": "Some {mob} was loitering near {where}. The nerve.", "personalities": ["crabby", "grumpy"] }
+      }
+    }
+  ]
+}

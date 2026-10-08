@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "arrival",
+  "lines": {
+    "mind_if_i_sit": { "text": "Mind if I sit?", "asks": "townstead:sit", "requires": ["venue.amenity:seating"] },
+    "is_this_seat_free": { "text": "Is this seat free?", "asks": "townstead:sit", "requires": ["venue.amenity:seating"] },
+    "room_for_one_more": { "text": "Room for one more?", "asks": "townstead:sit" },
+    "can_i_join_you": { "text": "Can I join you?", "asks": "townstead:sit" },
+    "mind_some_company": { "text": "Mind some company?", "asks": "townstead:sit" },
+    "anyone_sitting_here": { "text": "Anyone sitting here?", "asks": "townstead:sit", "requires": ["venue.amenity:seating"] },
+    "care_if_i_pull_up": { "text": "Care if I pull up a chair?", "asks": "townstead:sit", "requires": ["venue.amenity:seating"] },
+    "can_i_sit_with_you": { "text": "Can I sit with you?", "asks": "townstead:sit", "requires": ["venue.amenity:seating"] },
+    "save_me_a_seat": { "text": "Save me a seat?", "asks": "townstead:sit", "requires": ["venue.amenity:seating"] },
+    "is_this_spot_taken": { "text": "Is this spot taken?", "asks": "townstead:sit" },
+    "oh_good_a_friendly_face": "Oh good, a friendly face.",
+    "i_was_hoping_youd_be": "I was hoping you'd be here.",
+    "there_you_are_ill_sit": { "text": "There you are! I'll sit with you.", "requires": ["venue.amenity:seating"] },
+    "scoot_over_im_joining_you": { "text": "Scoot over, I'm joining you.", "requires": ["venue.amenity:seating"] },
+    "finally_somewhere_to_sit": { "text": "Finally, somewhere to sit!", "requires": ["venue.amenity:seating"] },
+    "oh_youre_here_too": "Oh, you're here too!",
+    "can_i_sit_with_you_2": {
+      "text": "Can I sit with you? Please?",
+      "asks": "townstead:sit",
+      "stages": "child",
+      "requires": ["venue.amenity:seating"]
+    },
+    "oh_its_you_fine_ill": {
+      "text": "Oh. It's you. Fine, I'll sit.",
+      "personalities": ["crabby", "grumpy"],
+      "requires": ["venue.amenity:seating"]
+    },
+    "um_is_it_okay_if": {
+      "text": "Um... is it okay if I sit here?",
+      "asks": "townstead:sit",
+      "personalities": ["introverted", "shy"],
+      "requires": ["venue.amenity:seating"]
+    },
+    "hey_im_joining_you_whether": {
+      "text": "Hey! I'm joining you whether you like it or not!",
+      "personalities": ["extroverted", "confident"]
+    },
+    "ooh_a_seat_with_a": {
+      "text": "Ooh, a seat with a view of you.",
+      "personalities": "flirty",
+      "requires": ["venue.amenity:seating"]
+    }
+  }
+}

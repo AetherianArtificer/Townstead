@@ -1,0 +1,55 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "reputation.resolution",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "reputation",
+    "key": "mcareputation:resolved"
+  },
+  "reach": "village",
+  "news_value": 3.0,
+  "roles": [
+    {
+      "id": "player",
+      "kind": "player"
+    },
+    {
+      "id": "subject",
+      "kind": "villager"
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.compat.deed_resolved"
+    },
+    "params": [
+      "player",
+      "status"
+    ]
+  },
+  "impact": {
+    "witness": {
+      "mood": 2.0,
+      "memory": {
+        "valence": 0.7,
+        "strength": 1.2
+      }
+    },
+    "on_learn": {
+      "mood": 1.0,
+      "memory": {
+        "valence": 0.6,
+        "strength": 0.8
+      }
+    }
+  }
+}

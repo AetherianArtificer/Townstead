@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "mods": "butchery",
+  "dialogue": {
+    "translate": "dialogue.chat.butcher_request.no_hammer"
+  },
+  "variants": 3
+}

@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.miller.millrace"
+  },
+  "icon": "minecraft:heart_of_the_sea",
+  "description": {
+    "translate": "skill.townstead.baker.miller.millrace.description"
+  },
+  "cost": 1,
+  "requires": [
+    "gale_force"
+  ],
+  "skill_group": "townstead:miller_wind",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 16,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:add_velocity",
+            "away_from_other": 2.0,
+            "y": 0.5
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.bell.use",
+          "volume": 1.0,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

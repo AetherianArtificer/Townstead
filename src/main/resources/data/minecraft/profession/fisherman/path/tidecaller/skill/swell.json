@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.tidecaller.swell"
+  },
+  "icon": "minecraft:water_bucket",
+  "description": {
+    "translate": "skill.townstead.fisherman.tidecaller.swell.description"
+  },
+  "cost": 1,
+  "requires": [
+    "deep_breath"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:in_fluid",
+      "fluid": "water"
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:tide",
+      "amount": 3
+    }
+  }
+}

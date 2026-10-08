@@ -18,14 +18,20 @@ public record ReactionContext(
         @Nullable Player playerCause,
         @Nullable BlockPos location,
         Set<String> contextTags,
-        int mirrorDepth) {
+        int mirrorDepth,
+        @Nullable net.minecraft.world.entity.LivingEntity counterpart) {
+
+    public ReactionContext(TriggerSource source, @Nullable Player playerCause, @Nullable BlockPos location,
+                           Set<String> contextTags, int mirrorDepth) {
+        this(source, playerCause, location, contextTags, mirrorDepth, playerCause);
+    }
 
     public static ReactionContext command(@Nullable BlockPos location) {
         return new ReactionContext(TriggerSource.COMMAND, null, location, Set.of(), 0);
     }
 
     public ReactionContext withDepth(int newDepth) {
-        return new ReactionContext(source, playerCause, location, contextTags, newDepth);
+        return new ReactionContext(source, playerCause, location, contextTags, newDepth, counterpart);
     }
 
     public enum TriggerSource {
@@ -35,6 +41,8 @@ public record ReactionContext(
         MIRROR,
         IDLE_SPOT,
         TIME,
+        DAMAGE,
+        CHRONICLE_LEARNED,
         COMMAND
     }
 }

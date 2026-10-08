@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.delver.hard_hat"
+  },
+  "icon": "minecraft:iron_helmet",
+  "description": {
+    "translate": "skill.townstead.toolsmith.delver.hard_hat.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:delver_deep",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:resistance",
+      "duration": 600,
+      "amplifier": 0
+    }
+  }
+}

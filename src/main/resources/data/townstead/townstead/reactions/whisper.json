@@ -1,0 +1,22 @@
+{
+  "schema": "townstead:reaction/v3",
+  "display_name": "reaction.townstead.whisper",
+  "tags": [
+    "social"
+  ],
+  "cooldown": "20s",
+  "chance": "100%",
+  "triggers": [],
+  "choices": [
+    {
+      "do": {
+        "type": "pheno:performance",
+        "performance": "townstead:reaction_whisper",
+        "channel": "reaction",
+        "duration_ticks": 40,
+        "priority": 30,
+        "fallback": "stand"
+      }
+    }
+  ]
+}

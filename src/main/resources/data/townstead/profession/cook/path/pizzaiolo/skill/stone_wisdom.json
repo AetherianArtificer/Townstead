@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.pizzaiolo.stone_wisdom"
+  },
+  "icon": "minecraft:blast_furnace",
+  "description": {
+    "translate": "skill.townstead.cook.pizzaiolo.stone_wisdom.description"
+  },
+  "cost": 1,
+  "requires": [
+    "blistered_crust"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:char",
+      "min": 75
+    },
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 3,
+        "where": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:block_entity"
+            },
+            {
+              "type": "pheno:block",
+              "block": "pizzadelight:raw_pizza"
+            }
+          ]
+        }
+      },
+      "do": {
+        "type": "pheno:accelerate",
+        "ticks": 10
+      }
+    }
+  }
+}

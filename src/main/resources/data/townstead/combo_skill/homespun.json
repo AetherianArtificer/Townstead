@@ -1,0 +1,47 @@
+{
+  "display_name": {
+    "translate": "combo_skill.townstead.homespun"
+  },
+  "description": {
+    "translate": "combo_skill.townstead.homespun.description"
+  },
+  "icon": "minecraft:white_wool",
+  "professions": {
+    "minecraft:shepherd": 3,
+    "townstead:tailor": 3
+  },
+  "power": {
+    "type": "pheno:damage_modifier",
+    "damage_tag": "minecraft:is_fall",
+    "modifier": 0,
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:block",
+          "y": -1,
+          "block_condition": {
+            "type": "pheno:in_tag",
+            "tag": "minecraft:wool"
+          }
+        },
+        {
+          "type": "pheno:block",
+          "y": -1,
+          "block_condition": {
+            "type": "pheno:block",
+            "block": "minecraft:hay_block"
+          }
+        },
+        {
+          "type": "pheno:block",
+          "y": 0,
+          "block_condition": {
+            "type": "pheno:in_tag",
+            "tag": "minecraft:wool_carpets"
+          }
+        }
+      ]
+    }
+  }
+}

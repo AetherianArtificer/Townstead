@@ -2,15 +2,17 @@ package com.aetherianartificer.townstead.tick;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 //? if forge {
 /*import com.aetherianartificer.townstead.TownsteadNetwork;
 *///?}
 import com.aetherianartificer.townstead.fatigue.FatigueData;
+import com.aetherianartificer.townstead.fatigue.BorrowBedWhenFatiguedTask;
+import com.aetherianartificer.townstead.fatigue.EmergencyBedReservation;
 import com.aetherianartificer.townstead.fatigue.RestCoordinator;
 import com.aetherianartificer.townstead.fatigue.RestDebugData;
 import com.aetherianartificer.townstead.fatigue.RestDecision;
 import com.aetherianartificer.townstead.fatigue.SleepReason;
-import com.aetherianartificer.townstead.fatigue.SeekBedWhenFatiguedTask;
 import com.aetherianartificer.townstead.root.chronotype.Chronotypes;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
@@ -125,13 +127,6 @@ public final class FatigueVillagerTicker {
             self.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
             self.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
             self.getNavigation().stop();
-            // Spawn exhaustion particles every 10 ticks
-            if (self.tickCount % 10 == 0) {
-                level.sendParticles(
-                        net.minecraft.core.particles.ParticleTypes.SMOKE,
-                        self.getX(), self.getEyeY() + 0.3, self.getZ(),
-                        2, 0.15, 0.1, 0.15, 0.01);
-            }
         }
 
         // --- Accumulation / recovery on interval (dayTime-based) ---
@@ -151,6 +146,8 @@ public final class FatigueVillagerTicker {
         // slowly. tick-hour 0 == 6 AM == dayTime 0, matching the sleep window + the UI.
         int tickHour = (int) (timeOfDay / 1000L);
         boolean inSleepWindow = chronotype.isPreferredSleepHour(tickHour);
+        float loungeRecovery = com.aetherianartificer.townstead.hangout.HangoutEngine
+                .restRecovery(self.getUUID());
 
         int fatigueIterations = 0;
         while (dayTime - state.lastFatigueDayTime >= FatigueData.ACCUMULATION_INTERVAL && fatigueIterations < 100) {
@@ -161,6 +158,12 @@ public final class FatigueVillagerTicker {
                 // Collapsed recovery runs on gameTime below so it's robust to
                 // doDaylightCycle=false and time-scaling mods. Skip here.
                 continue;
+            } else if (loungeRecovery > 0F) {
+                // An active lounge surface owns this interval, replacing ordinary MEET
+                // accumulation with its authored recovery rate.
+                applyFatigueDelta(needs, state, -loungeRecovery);
+            } else if (com.aetherianartificer.townstead.performance.CollapsePlayback.sleepingRough(self)) {
+                applyFatigueDelta(needs, state, FatigueData.RECOVERY_ROUGH);
             } else if (inBed) {
                 // Sleeping inside the chronotype window = full recovery; an
                 // off-window nap recovers at the reduced rate.
@@ -182,13 +185,14 @@ public final class FatigueVillagerTicker {
                 if (inCombat) {
                     rate *= FatigueData.COMBAT_MULTIPLIER;
                 }
-                float alignedMult = TownsteadConfig.FATIGUE_NOCTURNAL_MULTIPLIER.get().floatValue();
-                float misalignedMult = TownsteadConfig.FATIGUE_MISALIGNED_MULTIPLIER.get().floatValue();
+                float alignedMult = Switchboard.get(TownsteadConfig.FATIGUE_NOCTURNAL_MULTIPLIER).floatValue();
+                float misalignedMult = Switchboard.get(TownsteadConfig.FATIGUE_MISALIGNED_MULTIPLIER).floatValue();
                 if (isCycleAligned) {
                     rate *= alignedMult;
                 } else {
                     rate *= misalignedMult;
                 }
+                rate *= (float) com.aetherianartificer.townstead.needs.NeedPace.pace();
                 applyFatigueDelta(needs, state, rate);
             }
         }
@@ -204,7 +208,11 @@ public final class FatigueVillagerTicker {
                 collapsedIterations++;
                 applyFatigueDelta(needs, state, FatigueData.RECOVERY_COLLAPSED);
                 FatigueData.tryAutoDrinkCoffee(self);
-                if (!needs.collapsed()) break;
+                if (!needs.collapsed()) {
+                    com.aetherianartificer.townstead.api.impl.v1.ApiEvents.recovered(self,
+                            FatigueData.MAX_FATIGUE - needs.fatigue());
+                    break;
+                }
             }
         } else {
             state.lastCollapsedGameTime = gameTime;
@@ -225,7 +233,9 @@ public final class FatigueVillagerTicker {
                 needs.setCollapsed(false);
                 needs.setGated(false);
                 changed = true;
-                if (TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
+                com.aetherianartificer.townstead.api.impl.v1.ApiEvents.recovered(self,
+                        FatigueData.MAX_FATIGUE - currentFatigue);
+                if (Switchboard.get(TownsteadConfig.ENABLE_FATIGUE_ALERTS)) {
                     self.sendChatToAllAround("dialogue.chat.energy.recovered/"
                             + (1 + level.random.nextInt(4)));
                 }
@@ -235,8 +245,11 @@ public final class FatigueVillagerTicker {
             if (currentFatigue >= collapseThreshold && !self.isSleeping() && !needs.collapsed()) {
                 needs.setCollapsed(true);
                 needs.setGated(true);
+                com.aetherianartificer.townstead.performance.CollapsePlayback.startFatigue(self);
                 changed = true;
-                if (TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
+                com.aetherianartificer.townstead.api.impl.v1.ApiEvents.collapsed(self,
+                        FatigueData.MAX_FATIGUE - currentFatigue);
+                if (Switchboard.get(TownsteadConfig.ENABLE_FATIGUE_ALERTS)) {
                     self.sendChatToAllAround("dialogue.chat.energy.collapsed/"
                             + (1 + level.random.nextInt(4)));
                 }
@@ -248,7 +261,7 @@ public final class FatigueVillagerTicker {
                 needs.setGated(false);
                 needs.setCollapsed(false);
                 changed = true;
-                if (wasCollapsedHere && TownsteadConfig.ENABLE_FATIGUE_ALERTS.get()) {
+                if (wasCollapsedHere && Switchboard.get(TownsteadConfig.ENABLE_FATIGUE_ALERTS)) {
                     self.sendChatToAllAround("dialogue.chat.energy.recovered/"
                             + (1 + level.random.nextInt(4)));
                 }
@@ -318,16 +331,29 @@ public final class FatigueVillagerTicker {
         RestDecision restDecision = RestCoordinator.decide(
                 RestCoordinator.capture(self, needs, true, false, decisionScheduleActivity, overrideActive)
         );
-        // Townstead decides why emergency rest is needed. MCA owns HOME
-        // acquisition, reservation, validation, navigation, and SleepInBed.
+        // Townstead decides why emergency rest is needed. MCA owns any
+        // permanent HOME; Townstead may separately borrow a spare bed.
         boolean shouldSeek = restDecision.shouldSeekBed();
         // An existing HOME belongs entirely to MCA. Do not second-guess its
         // bed validation or occupancy handling; MCA's REST package will
         // validate/forget it and perform all pathing and sleeping behavior.
         BlockPos assignedBed = shouldSeek ? assignedHome(level, self) : null;
         RestCoordinator.recordDecision(self, needs, restDecision, assignedBed);
-        SeekBedWhenFatiguedTask.requestEmergencyFallback(
-                self, shouldSeek && assignedBed == null && !needs.hasEmergencyBed());
+        boolean activelyBorrowingBed = needs.usesDirectEmergencyBed()
+                && BorrowBedWhenFatiguedTask.isNavigating(self);
+        BorrowBedWhenFatiguedTask.requestEmergencyFallback(
+                self, shouldSeek && assignedBed == null
+                        && (!needs.hasEmergencyBed() || activelyBorrowingBed));
+        // No home bed and none to borrow: after a short wait, lie down where they are.
+        boolean noBed = overrideActive && shouldSeek && assignedBed == null && !needs.hasEmergencyBed()
+                && !self.isSleeping() && !needs.collapsed();
+        if (!noBed) state.noBedSince = -1L;
+        else if (state.noBedSince < 0L) state.noBedSince = level.getGameTime();
+        if (noBed && !com.aetherianartificer.townstead.performance.CollapsePlayback.sleepingRough(self)
+                && level.getGameTime() - state.noBedSince >= FatigueData.ROUGH_SLEEP_GRACE
+                && self.onGround() && !self.isInWater() && keepsSleepingRough(self)) {
+            com.aetherianartificer.townstead.performance.CollapsePlayback.startRough(self);
+        }
         if (assignedBed != null) {
             // MCA's REST package owns HOME navigation and SleepInBed, but its
             // UpdateActivityFromSchedule behavior may replace the active
@@ -351,8 +377,13 @@ public final class FatigueVillagerTicker {
         }
 
         if (!self.isSleeping() && needs.ownsEmergencyBedPoi()) {
-            if (state.emergencyBedStartedAt < 0L) state.emergencyBedStartedAt = level.getGameTime();
-            boolean keepBorrowing = restDecision.shouldSeekBed()
+            boolean directReservationOrphaned = needs.usesDirectEmergencyBed()
+                    && !BorrowBedWhenFatiguedTask.isNavigating(self);
+            if (state.emergencyBedStartedAt < 0L) {
+                state.emergencyBedStartedAt = level.getGameTime();
+            }
+            boolean keepBorrowing = !directReservationOrphaned
+                    && restDecision.shouldSeekBed()
                     && level.getGameTime() - state.emergencyBedStartedAt < EMERGENCY_BED_TIMEOUT_TICKS;
             if (!keepBorrowing) {
                 restoreHomeAfterEmergencySleep(self, needs);
@@ -407,15 +438,22 @@ public final class FatigueVillagerTicker {
         }
     }
 
+    /** Whether a villager sleeping rough stays down: still in forced rest, and nothing is attacking them. */
+    public static boolean keepsSleepingRough(VillagerEntityMCA self) {
+        TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
+        return needs.restOverrideActive() && needs.fatigue() > 0 && !needs.collapsed()
+                && self.getLastHurtByMob() == null && !self.getVillagerBrain().isPanicking();
+    }
+
     /** Drop memory-only ticker state when the dispatcher observes removal. */
     public static void forget(VillagerEntityMCA self) {
         if (self == null) return;
-        SeekBedWhenFatiguedTask.forget(self);
+        BorrowBedWhenFatiguedTask.forget(self);
         STATE.remove(self.getUUID());
     }
 
     private static void clearRuntimeOverride(VillagerEntityMCA self, ServerLevel level) {
-        SeekBedWhenFatiguedTask.forget(self);
+        BorrowBedWhenFatiguedTask.forget(self);
         TickState state = STATE.remove(self.getUUID());
         TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
         boolean changed = false;
@@ -502,10 +540,10 @@ public final class FatigueVillagerTicker {
     }
 
     /**
-     * Restores the villager's original HOME memory after an emergency bed
-     * sleep and clears the emergency bed tracking from fatigue NBT.
-     * MCA owns bed occupancy — stopSleeping() already handles clearing
-     * BedBlock.OCCUPIED, so we only need to fix the HOME pointer.
+     * Releases Townstead's temporary reservation and clears its persisted
+     * tracking. Old saves may still contain the temporary HOME written by the
+     * deleted fallback; erase that value and let MCA rebuild its canonical
+     * HOME from residency instead of restoring Townstead's saved snapshot.
      */
     private static void restoreHomeAfterEmergencySleep(VillagerEntityMCA self, TownsteadVillager.Needs needs) {
         if (!needs.hasEmergencyBed()) return;
@@ -520,23 +558,18 @@ public final class FatigueVillagerTicker {
         // If MCA has already erased/replaced the temporary HOME, its POI
         // validation path may also have released the ticket. Never release a
         // second ticket that could now belong to another villager.
-        if (stillUsingTemporaryHome
+        if ((needs.usesDirectEmergencyBed() || stillUsingTemporaryHome)
                 && needs.ownsEmergencyBedPoi()
                 && emergency != null
                 && self.getServer() != null) {
             ServerLevel claimLevel = self.getServer().getLevel(emergency.dimension());
-            if (claimLevel != null) claimLevel.getPoiManager().release(emergency.pos());
+            if (claimLevel != null) EmergencyBedReservation.releaseIfClaimed(claimLevel, emergency.pos());
         }
 
-        if (stillUsingTemporaryHome && needs.hasSavedHome()) {
-            if (needs.wasPreviouslyHomeless()) {
-                self.getBrain().eraseMemory(MemoryModuleType.HOME);
-            } else {
-                net.minecraft.core.GlobalPos savedHome = needs.savedHome();
-                if (savedHome != null) {
-                    self.getBrain().setMemory(MemoryModuleType.HOME, savedHome);
-                }
-            }
+        if (!needs.usesDirectEmergencyBed() && stillUsingTemporaryHome) {
+            self.getBrain().eraseMemory(MemoryModuleType.HOME);
+        }
+        if (needs.hasSavedHome()) {
             needs.clearSavedHome();
         }
         needs.clearEmergencyBed();
@@ -586,5 +619,6 @@ public final class FatigueVillagerTicker {
         private Schedule preOverrideSchedule = null;
         private net.minecraft.world.entity.ai.Brain<?> overrideBrain = null;
         private long emergencyBedStartedAt = -1L;
+        private long noBedSince = -1L;
     }
 }

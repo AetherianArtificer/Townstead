@@ -35,7 +35,7 @@ public final class MirrorPropagator {
         for (VillagerEntityMCA neighbor : level.getEntitiesOfClass(VillagerEntityMCA.class, box)) {
             if (neighbor == source) continue;
             if (mirrorChance < 1.0F && rand.nextFloat() >= mirrorChance) continue;
-            ReactionDispatcher.onGesture(level, null, neighbor, emoteName, 1);
+            ReactionDispatcher.onGesture(level, source, neighbor, emoteName, 1);
         }
     }
 }

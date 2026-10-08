@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:naming_tradition/v1",
+  "given": "mca:india",
+  "family": {
+    "type": "inherited",
+    "list": "townstead_naming:india",
+    "descent": "father"
+  }
+}

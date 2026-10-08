@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.night_watch.night_eyes"
+  },
+  "icon": "minecraft:ender_eye",
+  "description": {
+    "translate": "skill.townstead.shepherd.night_watch.night_eyes.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:time_of_day",
+      "min": 13000,
+      "max": 23000
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:night_vision",
+      "duration": 300,
+      "amplifier": 0
+    }
+  }
+}

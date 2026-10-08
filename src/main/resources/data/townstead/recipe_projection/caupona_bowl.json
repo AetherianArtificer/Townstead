@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:recipe_projection/v1",
+  "mods": "caupona",
+  "recipe_types": ["caupona:bowl"],
+  "domain": "cooking.serving",
+  "fields": {
+    "input_fluid": {"aliases": ["getFluid", "fluid"], "operation": "raw", "required": true},
+    "fluid_amount": {"default": 250, "operation": "integer"},
+    "container": {"aliases": ["getInBowl", "inBowl"], "operation": "raw", "required": true},
+    "output": {"aliases": ["getBowl", "bowl"], "operation": "item_id", "required": true},
+    "readiness": {"default": true, "operation": "boolean"}
+  }
+}

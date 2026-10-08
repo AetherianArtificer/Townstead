@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.barista.morning_cup"
+  },
+  "icon": "minecraft:clock",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.barista.morning_cup.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:buzz",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:time_of_day",
+          "min": 23000,
+          "max": 24000
+        },
+        {
+          "type": "pheno:time_of_day",
+          "min": 0,
+          "max": 2000
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:buzz",
+      "amount": 2
+    }
+  }
+}

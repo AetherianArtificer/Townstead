@@ -89,8 +89,9 @@ public final class CalendarCommands {
         WorldCalendarSavedData data = WorldCalendarSavedData.get(server);
         CalendarProfile profile = TownsteadCalendar.activeProfile(server);
         CalendarDate today = TownsteadCalendar.today(server);
-        String profileId = profile != null ? profile.id().toString() : "<none loaded>";
-        source.sendSuccess(() -> Component.literal(formatDate(profileId, today, data)), false);
+        Component profileId = profile != null ? Component.literal(profile.id().toString())
+                : Component.translatable("townstead.command.calendar.none_loaded");
+        source.sendSuccess(() -> formatDate(profileId, today, data), false);
         return 1;
     }
 
@@ -98,8 +99,8 @@ public final class CalendarCommands {
         MinecraftServer server = source.getServer();
         TownsteadCalendar.rebaseToDisplayYear(server, displayYear);
         CalendarDate today = TownsteadCalendar.today(server);
-        source.sendSuccess(() -> Component.literal(
-                "Calendar year set to " + today.year() + " (offset adjusted, counters unchanged)."),
+        source.sendSuccess(() -> Component.translatable(
+                "townstead.command.calendar.set_year", today.year()),
                 true);
         return 1;
     }
@@ -109,9 +110,10 @@ public final class CalendarCommands {
         if (idString.equalsIgnoreCase("auto")) {
             TownsteadCalendar.setProfileOverride(server, null);
             CalendarProfile p = TownsteadCalendar.activeProfile(server);
-            String resolved = p != null ? p.id().toString() : "<none loaded>";
-            source.sendSuccess(() -> Component.literal(
-                    "Calendar override cleared. Auto-resolved profile: " + resolved + "."),
+            Component resolved = p != null ? Component.literal(p.id().toString())
+                    : Component.translatable("townstead.command.calendar.none_loaded");
+            source.sendSuccess(() -> Component.translatable(
+                    "townstead.command.calendar.profile.cleared", resolved),
                     true);
             return 1;
         }
@@ -123,7 +125,7 @@ public final class CalendarCommands {
             /*id = new ResourceLocation(idString);
             *///?}
         } catch (Exception ex) {
-            source.sendFailure(Component.literal("Invalid profile id: " + idString));
+            source.sendFailure(Component.translatable("townstead.command.calendar.profile.invalid", idString));
             return 0;
         }
         // Accept either a JSON-registered profile or one currently supplied
@@ -132,12 +134,13 @@ public final class CalendarCommands {
         boolean known = CalendarProfileRegistry.byId(id) != null
                 || DynamicProfileSources.listKnownIds().contains(id);
         if (!known) {
-            source.sendFailure(Component.literal("Unknown profile: " + id
-                    + " (available: " + String.join(", ", CalendarProfileChoices.listAll()) + ")"));
+            source.sendFailure(Component.translatable("townstead.command.calendar.profile.unknown",
+                    id.toString(), String.join(", ", CalendarProfileChoices.listAll())));
             return 0;
         }
         TownsteadCalendar.setProfileOverride(server, id);
-        source.sendSuccess(() -> Component.literal("Calendar profile set to " + id + "."), true);
+        source.sendSuccess(() -> Component.translatable(
+                "townstead.command.calendar.profile.set", id.toString()), true);
         return 1;
     }
 
@@ -148,9 +151,8 @@ public final class CalendarCommands {
         // date stale on every connected client.
         TownsteadCalendar.setWorldDay(server, worldDay);
         CalendarDate today = TownsteadCalendar.today(server);
-        source.sendSuccess(() -> Component.literal(
-                "World day counter set to " + worldDay + ". Displayed date is now "
-                        + formatShortDate(today) + "."),
+        source.sendSuccess(() -> Component.translatable(
+                "townstead.command.calendar.set_day", worldDay, formatShortDate(today)),
                 true);
         return 1;
     }
@@ -162,12 +164,12 @@ public final class CalendarCommands {
         // falls where the calendar's own cycle puts it.
         CalendarDate result = TownsteadCalendar.setToDate(server, year, month, day);
         if (result == null) {
-            source.sendFailure(Component.literal("Could not set " + year + "-" + month + "-" + day
-                    + ": month/day out of range for the active profile (or no profile loaded)."));
+            source.sendFailure(Component.translatable("townstead.command.calendar.set_date.invalid",
+                    year + "-" + month + "-" + day));
             return 0;
         }
-        source.sendSuccess(() -> Component.literal(
-                "Calendar set to " + formatShortDate(result) + describeWeekday(server, result) + "."),
+        source.sendSuccess(() -> Component.translatable(
+                "townstead.command.calendar.set_date", formatShortDate(result), describeWeekday(server, result)),
                 true);
         return 1;
     }
@@ -175,20 +177,21 @@ public final class CalendarCommands {
     private static int matchToday(CommandSourceStack source) {
         MinecraftServer server = source.getServer();
         CalendarDate result = TownsteadCalendar.matchToday(server);
-        source.sendSuccess(() -> Component.literal(
-                "Calendar synced to today: " + formatShortDate(result) + describeWeekday(server, result) + "."),
+        source.sendSuccess(() -> Component.translatable(
+                "townstead.command.calendar.match_today", formatShortDate(result), describeWeekday(server, result)),
                 true);
         return 1;
     }
 
     /** " (Geos)"-style suffix naming the resulting weekday, or "" if the profile declares none. */
-    private static String describeWeekday(MinecraftServer server, CalendarDate date) {
+    private static Component describeWeekday(MinecraftServer server, CalendarDate date) {
         CalendarProfile profile = TownsteadCalendar.activeProfile(server);
-        if (profile == null || profile.weekdays() == null) return "";
+        if (profile == null || profile.weekdays() == null) return Component.empty();
         java.util.List<WeekdayDef> weekdays = profile.weekdays();
         int idx = date.dayOfWeek();
-        if (idx < 0 || idx >= weekdays.size()) return "";
-        return " (" + weekdays.get(idx).longName().getString() + ")";
+        if (idx < 0 || idx >= weekdays.size()) return Component.empty();
+        return Component.translatable("townstead.command.calendar.weekday_suffix",
+                weekdays.get(idx).longName());
     }
 
     private static int getTimeMode(CommandSourceStack source) {
@@ -197,34 +200,29 @@ public final class CalendarCommands {
         String override = data.timeModeOverride();
         String configMode = TownsteadConfig.getCalendarTimeMode();
         String effective = override != null ? override : configMode;
-        String msg = override != null
-                ? "Calendar time mode: " + effective + " (world override; config default: " + configMode + ")"
-                : "Calendar time mode: " + effective + " (from config)";
-        source.sendSuccess(() -> Component.literal(msg), false);
+        source.sendSuccess(() -> override != null
+                ? Component.translatable("townstead.command.calendar.time_mode.override", effective, configMode)
+                : Component.translatable("townstead.command.calendar.time_mode.config", effective), false);
         return 1;
     }
 
     private static int setTimeMode(CommandSourceStack source, String mode) {
         MinecraftServer server = source.getServer();
         TownsteadCalendar.setTimeModeOverride(server, mode);
-        String msg = mode == null
-                ? "Calendar time-mode override cleared. Now using config default: "
-                        + TownsteadConfig.getCalendarTimeMode() + "."
-                : "Calendar time mode set to: " + mode + " (saved with this world).";
-        source.sendSuccess(() -> Component.literal(msg), true);
+        source.sendSuccess(() -> mode == null
+                ? Component.translatable("townstead.command.calendar.time_mode.cleared",
+                        TownsteadConfig.getCalendarTimeMode())
+                : Component.translatable("townstead.command.calendar.time_mode.set", mode), true);
         return 1;
     }
 
-    private static String formatDate(String profileId, CalendarDate date, WorldCalendarSavedData data) {
-        return "Townstead calendar, profile=" + profileId
-                + ", year=" + date.year()
-                + ", month=" + date.monthIndex()
-                + ", day=" + date.dayOfMonth()
-                + ", dayOfYear=" + date.dayOfYear()
-                + ", dayOfWeek=" + date.dayOfWeek()
-                + (date.season() != null ? ", season=" + date.season().name().toLowerCase() : "")
-                + " (worldDay=" + data.worldDayCounter()
-                + ", epochOffset=" + data.epochYearOffset() + ")";
+    private static Component formatDate(Component profileId, CalendarDate date, WorldCalendarSavedData data) {
+        Component season = date.season() == null ? Component.empty()
+                : Component.translatable("townstead.command.calendar.status.season",
+                        date.season().name().toLowerCase());
+        return Component.translatable("townstead.command.calendar.status", profileId, date.year(),
+                date.monthIndex(), date.dayOfMonth(), date.dayOfYear(), date.dayOfWeek(), season,
+                data.worldDayCounter(), data.epochYearOffset());
     }
 
     private static String formatShortDate(CalendarDate date) {

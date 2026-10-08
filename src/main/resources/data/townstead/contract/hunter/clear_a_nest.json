@@ -1,0 +1,80 @@
+{
+  "schema": "townstead:contract/v1",
+  "mods": "vampirism",
+  "giver": {
+    "pool": "townstead:hunter_lodge"
+  },
+  "title": {
+    "translate": "contract.townstead.hunter.clear_a_nest.title"
+  },
+  "about": {
+    "translate": "contract.townstead.hunter.clear_a_nest.about"
+  },
+  "weight": 2,
+  "offer_group": "hunt",
+  "difficulty": "hard",
+  "time_limit_days": 5,
+  "when": {
+    "type": "pheno:faction_bond",
+    "kind": "townstead:oath"
+  },
+  "template": {
+    "variables": {
+      "mark": {
+        "kind": "int",
+        "min": 1,
+        "max": 1000000
+      },
+      "count": {
+        "kind": "int",
+        "min": 3,
+        "max": 5
+      }
+    }
+  },
+  "on_accept": {
+    "type": "pheno:mark_structure",
+    "key": "nest_{mark}",
+    "structures": "#townstead:vampire_nests",
+    "min": 300,
+    "max": 1200,
+    "map_name": "contract.townstead.hunter.clear_a_nest.map"
+  },
+  "objectives": [
+    {
+      "type": "townstead:find_marked",
+      "key": "nest_{mark}",
+      "radius": 48,
+      "text": {
+        "translate": "contract.townstead.hunter.clear_a_nest.find",
+        "with": [
+          "{x}",
+          "{z}"
+        ]
+      }
+    },
+    {
+      "type": "townstead:kill_entity",
+      "group": [
+        "vampire",
+        "wild_vampire"
+      ],
+      "count": "{count}",
+      "text": {
+        "translate": "contract.townstead.hunter.clear_a_nest.goal",
+        "with": [
+          "{count}"
+        ]
+      }
+    }
+  ],
+  "rewards": [
+    {
+      "type": "townstead:currency"
+    },
+    {
+      "type": "townstead:xp",
+      "amount": 30
+    }
+  ]
+}

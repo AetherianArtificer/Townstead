@@ -1,0 +1,30 @@
+{
+  "required_mods": [
+    "cold_sweat",
+    "candlelight"
+  ],
+  "block": {
+    "blocks": [
+      "candlelight:cobblestone_stove",
+      "candlelight:sandstone_stove",
+      "candlelight:stone_bricks_stove",
+      "candlelight:deepslate_stove",
+      "candlelight:granite_stove",
+      "candlelight:end_stove",
+      "candlelight:mud_stove",
+      "candlelight:quartz_stove",
+      "candlelight:red_nether_bricks_stove",
+      "candlelight:basalt_stove",
+      "candlelight:bamboo_stove"
+    ],
+    "state": {
+      "lit": true
+    }
+  },
+  "temperature": 0.33,
+  "units": "mc",
+  "range": 7,
+  "max_effect": 0.88,
+  "max_temp": 12.6,
+  "fade": true
+}

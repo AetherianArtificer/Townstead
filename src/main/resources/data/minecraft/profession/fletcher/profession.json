@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Fletcher"
+  },
+  "icon": "minecraft:bow",
+  "description": {
+    "text": "Fletch arrows and string bows to build a history of fletching mastery."
+  },
+  "skills": [
+    "archers_eye",
+    "quick_shot"
+  ],
+  "unlock_model": "experiential"
+}

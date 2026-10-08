@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:consumable/v1",
+  "mods": ["rusticdelight"],
+  "items": ["rusticdelight:dark_coffee"],
+  "effects": [
+    { "type": "pheno:hydrate", "immediate": 5, "lasting": 10 },
+    { "type": "pheno:energize", "amount": 5 }
+  ]
+}

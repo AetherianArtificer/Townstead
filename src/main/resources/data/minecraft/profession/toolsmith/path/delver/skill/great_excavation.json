@@ -1,0 +1,79 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.delver.great_excavation"
+  },
+  "icon": "minecraft:netherite_pickaxe",
+  "description": {
+    "translate": "skill.townstead.toolsmith.delver.great_excavation.description"
+  },
+  "cost": 1,
+  "requires": [
+    "gallery"
+  ],
+  "skill_group": "townstead:delver_tunnel",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:knack",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:at",
+          "blocks": {
+            "radius": [
+              2,
+              2,
+              2
+            ],
+            "around": "looking_at",
+            "where": {
+              "type": "and",
+              "conditions": [
+                {
+                  "type": "air",
+                  "inverted": true
+                },
+                {
+                  "type": "hardness",
+                  "min": 0.1,
+                  "max": 3.5
+                },
+                {
+                  "type": "block_entity",
+                  "inverted": true
+                },
+                {
+                  "type": "in_tag",
+                  "tag": "minecraft:mineable/pickaxe"
+                }
+              ]
+            }
+          },
+          "do": {
+            "type": "pheno:destroy",
+            "drop_item": true
+          }
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:haste",
+          "duration": 600,
+          "amplifier": 2
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.stone.break",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

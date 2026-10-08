@@ -1,0 +1,22 @@
+{
+  "shape": "cloud",
+  "color": "#E8DCB0",
+  "duration": 300,
+  "fog": {
+    "distance": 8.0
+  },
+  "particle": "minecraft:white_ash",
+  "inside": {
+    "interval": 10,
+    "condition": {
+      "type": "pheno:entity_group",
+      "group": "undead"
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:weakness",
+      "duration": 40,
+      "amplifier": 1
+    }
+  }
+}

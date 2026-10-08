@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_afc_teak"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "afc:wood/lumber/teak"
+    },
+    "L": {
+      "item": "afc:wood/log/teak"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_afc_teak",
+    "count": 1
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.needle.sew_up"
+  },
+  "icon": "minecraft:string",
+  "description": {
+    "translate": "skill.townstead.tailor.needle.sew_up.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:needle_mend",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_hurt",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:absorption",
+      "duration": 600,
+      "amplifier": 0
+    }
+  }
+}

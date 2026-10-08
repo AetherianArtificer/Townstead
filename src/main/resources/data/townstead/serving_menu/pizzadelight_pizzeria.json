@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:serving_menu/v1",
+  "buildings": [
+    "compat/pizzadelight/pizzeria_l1",
+    "compat/pizzadelight/pizzeria_l2",
+    "compat/pizzadelight/pizzeria_l3"
+  ],
+  "products": ["pizzadelight:pizza"]
+}

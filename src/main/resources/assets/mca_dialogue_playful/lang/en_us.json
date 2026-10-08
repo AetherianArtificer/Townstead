@@ -2,6 +2,7 @@
   "playful.dialogue.chat.butcher_request.no_livestock/1": "<happy>No animals! What, are we running a pretend butchery? Haha, hilarious.</happy>",
   "playful.dialogue.chat.butcher_request.no_hook/1": "<happy>No hook! I could do a little dance, but it wouldn't help. Still, a dance!</happy>",
   "playful.dialogue.chat.butcher_request.no_basin/1": "<happy>Basin? Please? I'll even say please-please. Look, I'm saying it!</happy>",
+  "playful.dialogue.chat.butcher_request.no_blood_grate/1": "<happy>Blood grate? Please? I'll even say please-please. Look, I'm saying it!</happy>",
   "playful.dialogue.chat.village_life.butcher_shop/1": "<excited>Our butcher does this funny little whistle when they work. Listen sometime!</excited>",
   "playful.dialogue.chat.village_life.slaughterhouse/1": "<happy>I dare the kids to run past the slaughterhouse at night. Classic.</happy>",
   "playful.dialogue.chat.village_life.smokehouse/1": "<excited>Smokehouse! Smokehouse! The best word in any language!</excited>",
@@ -124,5 +125,18 @@
   "playful.dialogue.chat.leatherworker_request.no_salt/1": "<happy>No salt. I tried tears. Hide was unmoved.</happy>",
   "playful.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<happy>I'd lick the hide if it would help. It would not. Wet sponge, please.</happy>",
   "playful.dialogue.chat.leatherworker_request.no_storage/1": "<happy>My pack is leather all the way down, %1$s. Like an onion. A tannier onion.</happy>",
-  "playful.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Cured! It's me. I cured it. With my hands and several waiting periods.</happy>"
+  "playful.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Cured! It's me. I cured it. With my hands and several waiting periods.</happy>",
+  "playful.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<happy>The room is twice as charming and only one of us changed.</happy>",
+  "playful.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<happy>My cup is half full, and so is my sense of direction.</happy>",
+  "playful.dialogue.chat.townstead_drunk.drunk_arrival/1": "<excited>Who taught the floor that dance? I want lessons!</excited>",
+  "playful.dialogue.chat.townstead_drunk.drunk_ambient/1": "<excited>This story has three endings. I intend to discover all of them.</excited>",
+  "playful.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>New game: find the water, then find me a chair.</sleepy>",
+  "playful.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>I am playing statue until the room stops spinning.</sleepy>",
+  "playful.dialogue.chat.townstead_drunk.service_refused/1": "<happy>Retire my cup undefeated. Water can take the next round.</happy>",
+  "playful.dialogue.chat.townstead_drunk.recovered/1": "<happy>Good news: I survived my own excellent decisions.</happy>",
+  "playful.dialogue.chat.beverage_artisan_request.no_worksite/1": "<happy>Build me a drink station and I'll make the cups do tricks!</happy>",
+  "playful.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<happy>The shelves are playing hide-and-seek with the ingredients. They won!</happy>",
+  "playful.dialogue.chat.beverage_artisan_request.no_storage/1": "<happy>Drinks everywhere! We need a chest before they form a village!</happy>",
+  "playful.dialogue.chat.beverage_artisan_request.unreachable/1": "<happy>My station has invented an obstacle course. Clear the tricky bit?</happy>",
+  "playful.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<happy>%2$s is ready in my imagination. Now we just need ingredients!</happy>"
 }

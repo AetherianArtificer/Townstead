@@ -38,8 +38,13 @@ public final class GeneCapabilitySource implements CapabilitySource {
                 boolean active = ability.condition() == null || ability.condition().test(ctx);
                 out.flag(key, Provenance.gene(power.id(), ability.mode().name().toLowerCase(Locale.ROOT)), active);
             } else if (component instanceof ModifierGeneType.Instance modifier) {
+                // An aura reaches the bearer only when it says so; others get it from the aura source.
+                if (modifier.aura() != null && !modifier.aura().includeSelf()) continue;
                 CapabilityKey key = ModifierCapability.key(modifier.modifier(), modifier.discriminator());
-                boolean active = modifier.condition() == null || modifier.condition().test(ctx);
+                boolean active = (modifier.condition() == null || modifier.condition().test(ctx))
+                        && modifier.appliesToItem(entity.level(), out.subjectItem())
+                        && (modifier.aura() == null || modifier.aura().condition() == null
+                                || modifier.aura().condition().test(ctx));
                 for (ModifierGeneType.Mod mod : modifier.mods()) {
                     out.numeric(key, ModifierCapability.op(mod.op()), mod.value(),
                             Provenance.gene(power.id()), active);

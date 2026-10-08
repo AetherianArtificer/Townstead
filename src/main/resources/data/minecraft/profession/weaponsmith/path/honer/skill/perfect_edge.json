@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.honer.perfect_edge"
+  },
+  "icon": "minecraft:netherite_sword",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.honer.perfect_edge.description"
+  },
+  "cost": 1,
+  "requires": [
+    "armor_breaker"
+  ],
+  "skill_group": "townstead:honer_edge",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:edge",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:strength",
+          "duration": 400,
+          "amplifier": 2
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.trident.hit",
+          "volume": 0.8,
+          "pitch": 1.6
+        }
+      ]
+    }
+  }
+}

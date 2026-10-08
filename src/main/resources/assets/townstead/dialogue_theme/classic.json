@@ -1,0 +1,28 @@
+{
+  "box": {
+    "background": "#CC0E0E0E",
+    "border_light": "#A0A0A0",
+    "border_dark": "#373737",
+    "inner_light": "#606060",
+    "inner_dark": "#252525",
+    "accent": "#707070",
+    "corner": "#B0B0B0"
+  },
+  "name_tab": {
+    "background": "#DD0E0E0E",
+    "name_color": "#FFD700"
+  },
+  "text_color": "#FFFFFF",
+  "indicator_color": "#FFFFFF",
+  "choices": {
+    "background": "#AA000000",
+    "border_light": "#888888",
+    "border_dark": "#555555",
+    "text_color": "#AAFFFFFF",
+    "hover_color": "#D7D784",
+    "selected_background": "#44FFFFFF",
+    "back_color": "#8888AA",
+    "number_color": "#88FFFFFF"
+  },
+  "type_sound": "minecraft:block.wooden_button.click_on"
+}

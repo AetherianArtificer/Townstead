@@ -1,0 +1,27 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.bulwark.unbreakable"
+  },
+  "icon": "minecraft:netherite_chestplate",
+  "description": {
+    "translate": "skill.townstead.armorer.bulwark.unbreakable.description"
+  },
+  "cost": 1,
+  "requires": [
+    "fireproof"
+  ],
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.7,
+    "damage_condition": {
+      "type": "pheno:constant",
+      "value": true
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:temper",
+      "min": 75
+    }
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "adapters": [
+    {
+      "mod": "vampirism",
+      "into": "townstead:skins/clothing/adapted/vampirism",
+      "sources": [
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter1.png",
+          "hat_rows": 4
+        },
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter2.png",
+          "hat_rows": 4
+        },
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter3.png",
+          "hat_rows": 4
+        },
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter4.png",
+          "hat_rows": 4
+        },
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter5_slim.png",
+          "slim": true
+        },
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter6_slim.png",
+          "slim": true
+        },
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter7_slim.png",
+          "slim": true,
+          "hat_rows": 4
+        },
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter8_slim.png",
+          "slim": true
+        },
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter9.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter10.png",
+          "hat_rows": 4
+        },
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter11.png",
+          "hat_rows": 4
+        },
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter12_slim.png",
+          "slim": true,
+          "hat_rows": 4
+        },
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter13.png",
+          "hat_rows": 4
+        },
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter14.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter15.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/hunter/hunter16.png"
+        }
+      ]
+    }
+  ]
+}

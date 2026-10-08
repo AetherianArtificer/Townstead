@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:chronicle_work_history/v1",
+  "profession": "minecraft:fisherman",
+  "per_year": {
+    "townstead:fished": 240
+  }
+}

@@ -19,7 +19,7 @@ public final class ClientNeeds {
     private ClientNeeds() {}
 
     public static boolean suppresses(int entityId, String need) {
-        for (String geneId : RootClientStore.expressedGenes(entityId)) {
+        for (String geneId : RootClientStore.behaviorGenes(entityId)) {
             if (suppresses(geneId, need)) return true;
         }
         RootCatalogEntry origin = RootCatalogClient.origin(RootClientStore.get(entityId));
@@ -29,6 +29,25 @@ public final class ClientNeeds {
             }
         }
         return false;
+    }
+
+    /**
+     * The icon a need is drawn with for this entity: an expressed diet's own set (blood drops for a
+     * vampire) as {@code <prefix>_full/_half/_low.png}, else null for the standard icons.
+     */
+    public static @org.jetbrains.annotations.Nullable net.minecraft.resources.ResourceLocation icon(
+            int entityId, String need, String level) {
+        for (String geneId : RootClientStore.behaviorGenes(entityId)) {
+            GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
+            String prefix = gene == null ? null : gene.needIconPrefix(need);
+            if (prefix == null) continue;
+            // A data pack's own texture (data/<ns>/textures/...) first, else a resource-pack asset.
+            String id = prefix + "_" + level + ".png";
+            net.minecraft.resources.ResourceLocation synced =
+                    com.aetherianartificer.townstead.client.attachment.AttachmentClient.namedTexture(id);
+            return synced != null ? synced : net.minecraft.resources.ResourceLocation.tryParse(id);
+        }
+        return null;
     }
 
     private static boolean suppresses(String geneId, String need) {

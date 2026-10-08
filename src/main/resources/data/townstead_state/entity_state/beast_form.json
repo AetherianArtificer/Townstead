@@ -1,0 +1,37 @@
+{
+  "schema": "pheno:entity_state/v1",
+  "mods": "werewolves",
+  "id": "townstead_state:beast_form",
+  "min": 0,
+  "max": 2,
+  "initial": 0,
+  "tiers": [
+    {
+      "id": "four_legged",
+      "min": 1,
+      "rig": "townstead:werewolf_survivalist",
+      "talk": false,
+      "sleep": false,
+      "variants": {
+        "coat": "townstead_state:werewolf_coat",
+        "eyes": "townstead_state:werewolf_eyes",
+        "glow": "townstead_state:werewolf_glow"
+      }
+    },
+    {
+      "id": "upright",
+      "min": 2,
+      "rig": "townstead:werewolf_beast",
+      "talk": false,
+      "sleep": false,
+      "variants": {
+        "coat": "townstead_state:werewolf_coat",
+        "eyes": "townstead_state:werewolf_eyes",
+        "glow": "townstead_state:werewolf_glow"
+      }
+    }
+  ],
+  "merge": "max",
+  "persistence": "persistent",
+  "death": "clear"
+}

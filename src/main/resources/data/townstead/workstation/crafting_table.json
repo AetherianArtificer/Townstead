@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:workstation/v1",
+  "type": "craft_surface",
+  "work_task": "townstead_work:craft",
+  "blocks": ["minecraft:crafting_table"],
+  "recipe_type": "minecraft:crafting"
+}

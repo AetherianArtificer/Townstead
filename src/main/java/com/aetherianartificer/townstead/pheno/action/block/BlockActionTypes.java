@@ -1,7 +1,5 @@
 package com.aetherianartificer.townstead.pheno.action.block;
 
-import com.aetherianartificer.townstead.Townstead;
-
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -14,6 +12,8 @@ import java.util.Optional;
  */
 public final class BlockActionTypes {
 
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory
+            .getLogger("townstead/BlockActionTypes");
     private static final Map<String, BlockActionType> TYPES = new LinkedHashMap<>();
 
     private BlockActionTypes() {}
@@ -23,7 +23,7 @@ public final class BlockActionTypes {
         String key = type.key().toLowerCase(Locale.ROOT);
         BlockActionType existing = TYPES.put(key, type);
         if (existing != null) {
-            Townstead.LOGGER.warn("Block action type '{}' overwritten (was {}, now {})", key,
+            LOGGER.warn("Block action type '{}' overwritten (was {}, now {})", key,
                     existing.getClass().getName(), type.getClass().getName());
         }
     }

@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.roadwright.express"
+  },
+  "icon": "minecraft:sugar",
+  "description": {
+    "translate": "skill.townstead.mason.roadwright.express.description"
+  },
+  "cost": 1,
+  "requires": [
+    "road_run"
+  ],
+  "skill_group": "townstead:road_travel",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:mortar",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:speed",
+          "duration": 400,
+          "amplifier": 2
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:jump_boost",
+          "duration": 400,
+          "amplifier": 0
+        }
+      ]
+    }
+  }
+}

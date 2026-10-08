@@ -1,0 +1,53 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.trapper.snare_line"
+  },
+  "icon": "minecraft:string",
+  "description": {
+    "translate": "skill.townstead.fletcher.trapper.snare_line.description"
+  },
+  "cost": 1,
+  "requires": [
+    "snare"
+  ],
+  "skill_group": "townstead:trapper_snare",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 8,
+          "include_self": false,
+          "target": "hostile",
+          "bientity_condition": {
+            "type": "pheno:relative_rotation",
+            "max_angle": 45
+          },
+          "action": {
+            "type": "pheno:haze",
+            "kind": "townstead:snare",
+            "blocks": {
+              "radius": 0
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.tripwire.click_on",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

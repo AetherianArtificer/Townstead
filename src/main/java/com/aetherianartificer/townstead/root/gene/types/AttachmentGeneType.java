@@ -54,6 +54,9 @@ import java.util.List;
  */
 public final class AttachmentGeneType implements GeneType {
 
+    @Override
+    public boolean conditionControlsExpression() { return true; }
+
     public static final String KEY = "townstead_roots:attachment";
 
     /** The reserved channel names a {@code tint} block declares (one colour component each). */

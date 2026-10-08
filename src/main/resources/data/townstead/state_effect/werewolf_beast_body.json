@@ -1,0 +1,21 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "mods": "werewolves",
+  "state": "townstead_state:beast_form",
+  "min_tier": "four_legged",
+  "priority": 30,
+  "condition": {
+    "type": "pheno:not",
+    "condition": {
+      "type": "pheno:entity_type",
+      "entity_type": "minecraft:player"
+    }
+  },
+  "genes": {
+    "grant": [
+      "townstead_roots:werewolf_beast_vigor",
+      "townstead_roots:werewolf_beast_strength",
+      "townstead_roots:werewolf_beast_speed"
+    ]
+  }
+}

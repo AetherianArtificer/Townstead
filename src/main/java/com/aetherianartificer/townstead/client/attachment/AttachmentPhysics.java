@@ -235,7 +235,7 @@ public final class AttachmentPhysics {
                         + drive[3] * response[3], -MAX_DRIVE, MAX_DRIVE);
                 // Negative pitch is world-down for a chain extending backward (the tail
                 // case, matching the pre-shipped tail_root point).
-                float droop = -chain.gravity() * chain.droopAngle();
+                float droop = chain.restPitch() - chain.gravity() * chain.droopAngle();
                 float damping = Mth.clamp(chain.damping(), 0f, 0.99f);
                 float spring = Math.max(0.02f, chain.stiffness()) * SPRING;
                 float follow = Mth.clamp(chain.follow(), 0f, 1f);
@@ -263,10 +263,12 @@ public final class AttachmentPhysics {
                     joint.velY = joint.velY * damping + spring * (targetY - joint.y) + driveY * reach;
                     // Kill velocity into the clamp: without this a pinned joint winds up
                     // and snaps violently the moment the drive lets go.
-                    float max = chain.maxAngle();
+                    float minPitch = Math.min(chain.minPitch(), chain.maxPitch());
+                    float maxPitch = Math.max(chain.minPitch(), chain.maxPitch());
                     joint.x += joint.velX;
-                    if (joint.x > max) { joint.x = max; joint.velX = Math.min(joint.velX, 0f); }
-                    else if (joint.x < -max) { joint.x = -max; joint.velX = Math.max(joint.velX, 0f); }
+                    if (joint.x > maxPitch) { joint.x = maxPitch; joint.velX = Math.min(joint.velX, 0f); }
+                    else if (joint.x < minPitch) { joint.x = minPitch; joint.velX = Math.max(joint.velX, 0f); }
+                    float max = Math.abs(chain.maxAngle());
                     joint.y += joint.velY;
                     if (joint.y > max) { joint.y = max; joint.velY = Math.min(joint.velY, 0f); }
                     else if (joint.y < -max) { joint.y = -max; joint.velY = Math.max(joint.velY, 0f); }

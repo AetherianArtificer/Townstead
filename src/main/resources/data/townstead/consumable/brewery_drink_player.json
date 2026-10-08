@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": ["brewery"],
+  "items": ["#townstead:compat/brewery/drinks"],
+  "transaction": {
+    "mode": "observe_native",
+    "accounting": "native_result",
+    "consumers": ["player"],
+    "servings": 1,
+    "remainder": {
+      "mode": "native",
+      "destination": "holder"
+    }
+  }
+}

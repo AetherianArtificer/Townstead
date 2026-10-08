@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.honer.razor"
+  },
+  "icon": "minecraft:netherite_sword",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.honer.razor.description"
+  },
+  "cost": 1,
+  "requires": [
+    "building_edge"
+  ],
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 1.5,
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "or",
+            "conditions": [
+              {
+                "type": "ingredient",
+                "tag": "minecraft:swords"
+              },
+              {
+                "type": "ingredient",
+                "tag": "minecraft:axes"
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:edge",
+          "min": 75
+        }
+      ]
+    }
+  }
+}

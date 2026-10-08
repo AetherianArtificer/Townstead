@@ -1,0 +1,90 @@
+{
+  "schema": "townstead:profession_trade/v1",
+  "replace": true,
+  "1": [
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 2,
+      "result": "minecraft:cooked_chicken",
+      "result_count": 2,
+      "max_uses": 16,
+      "villager_xp": 1
+    },
+    {
+      "cost": "minecraft:emerald",
+      "result": "minecraft:bread",
+      "result_count": 4,
+      "max_uses": 16,
+      "villager_xp": 1
+    }
+  ],
+  "2": [
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 2,
+      "result": "minecraft:cooked_beef",
+      "result_count": 2,
+      "max_uses": 16,
+      "villager_xp": 5
+    },
+    {
+      "cost": "minecraft:emerald",
+      "result": "minecraft:baked_potato",
+      "result_count": 4,
+      "max_uses": 16,
+      "villager_xp": 5
+    }
+  ],
+  "3": [
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 2,
+      "result": "minecraft:cooked_porkchop",
+      "result_count": 2,
+      "max_uses": 16,
+      "villager_xp": 10
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 2,
+      "result": "minecraft:cooked_mutton",
+      "result_count": 2,
+      "max_uses": 16,
+      "villager_xp": 10
+    }
+  ],
+  "4": [
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 4,
+      "result": "minecraft:rabbit_stew",
+      "max_uses": 12,
+      "villager_xp": 15
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 3,
+      "result": "minecraft:pumpkin_pie",
+      "result_count": 2,
+      "max_uses": 12,
+      "villager_xp": 15
+    }
+  ],
+  "5": [
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 3,
+      "result": "minecraft:golden_carrot",
+      "result_count": 3,
+      "max_uses": 12,
+      "villager_xp": 30
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 5,
+      "result": "minecraft:suspicious_stew",
+      "max_uses": 8,
+      "villager_xp": 30
+    }
+  ]
+}

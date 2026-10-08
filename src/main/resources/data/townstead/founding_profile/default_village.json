@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:founding_profile/v1",
+  "name": {
+    "translate": "founding_profile.townstead.default_village"
+  },
+  "weight": 1,
+  "spawn_bias": {
+    "default": 1
+  },
+  "population": {
+    "strategy": "townstead:cultural_affinity",
+    "outsider_baseline": 0.1,
+    "adjustments": []
+  },
+  "faction": {
+    "kind": "townstead:village_council",
+    "seats": [
+      {
+        "offices": [
+          "townstead:presiding_councilor",
+          "townstead:councilor"
+        ],
+        "count": 1
+      },
+      {
+        "offices": [
+          "townstead:councilor"
+        ],
+        "count": 2
+      }
+    ]
+  }
+}

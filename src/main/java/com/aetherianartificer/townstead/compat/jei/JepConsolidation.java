@@ -1,0 +1,238 @@
+package com.aetherianartificer.townstead.compat.jei;
+
+import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.profession.def.JobSiteProvider;
+import com.aetherianartificer.townstead.profession.def.PoiHierarchy;
+import com.aetherianartificer.townstead.profession.def.ProfessionDef;
+import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
+import com.aetherianartificer.townstead.profession.def.WorkTaskDef;
+import mezz.jei.api.recipe.RecipeType;
+import mezz.jei.api.registration.IRecipeRegistration;
+import mezz.jei.api.runtime.IJeiRuntime;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.ai.village.poi.PoiType;
+import net.minecraft.world.entity.npc.VillagerProfession;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Builds the consolidated career entries for Just Enough Professions and hides the absorbed
+ * flavor entries. JEP has no plugin API, so its {@code PROFESSION_TYPE} recipe type and the
+ * {@code ProfessionEntry}/{@code ProfessionWrapper} records are reached by reflection; every
+ * call degrades to a no-op (with one log line) if JEP's internals move.
+ *
+ * <p>Entries come from profession defs. A building-acquired Career or a Career whose {@code poi}
+ * list declares a subordinate acquisition hierarchy gets ONE entry under its canonical
+ * profession, using its real work surfaces (tags expanded). Foreign professions mapped to that
+ * root or one of its Paths are hidden from JEP's native listing, so compatibility identities do
+ * not become sibling Careers. Special roles that hold no workstation while
+ * declaring every POI acquirable are hidden too; JEP otherwise lists them under every workstation
+ * in the game.</p>
+ *
+ * <p>Defs live server-side: in singleplayer and LAN the integrated server shares the registry
+ * statics, so hierarchy consolidation works there. On a dedicated-server client no defs are
+ * loaded, but the special-role filter still works from the client profession registry.</p>
+ */
+final class JepConsolidation {
+
+    private static final String[] JEP_PLUGIN_CLASSES = {
+            "com.mrbysco.justenoughprofessions.NeoForgeProfessionPlugin",
+            "com.mrbysco.justenoughprofessions.ForgeProfessionPlugin",
+            "com.mrbysco.justenoughprofessions.FabricProfessionPlugin"
+    };
+    private static final String JEP_ENTRY_CLASS = "com.mrbysco.justenoughprofessions.jei.ProfessionEntry";
+    private static final String JEP_WRAPPER_CLASS = "com.mrbysco.justenoughprofessions.jei.ProfessionWrapper";
+
+    private JepConsolidation() {}
+
+    static void addConsolidatedCareers(IRecipeRegistration registration) {
+        try {
+            RecipeType<?> type = professionType();
+            if (type == null) return;
+            List<Object> wrappers = new ArrayList<>();
+            for (ProfessionDef def : ProfessionDefs.all().values()) {
+                if (!presentationEnabled(def) || !needsSyntheticEntry(def)) continue;
+                VillagerProfession profession = registeredProfession(def.id());
+                if (profession == null) continue;
+                List<ItemStack> stacks = surfaceStacks(def);
+                if (stacks.isEmpty()) continue;
+                wrappers.add(wrap(profession, stacks));
+            }
+            if (wrappers.isEmpty()) return;
+            addRecipesUnchecked(registration, type, wrappers);
+        } catch (Throwable t) {
+            Townstead.LOGGER.warn("JEP consolidation skipped (incompatible JEP version?): {}", t.toString());
+        }
+    }
+
+    static void hideAbsorbedFlavors(IJeiRuntime runtime) {
+        try {
+            RecipeType<?> type = professionType();
+            if (type == null) return;
+            Set<ResourceLocation> hidden = absorbedProfessionIds();
+            if (hidden.isEmpty()) return;
+            List<Object> toHide = new ArrayList<>();
+            for (Object wrapper : lookupAll(runtime, type)) {
+                ResourceLocation id = wrapperProfessionId(wrapper);
+                if (id != null && hidden.contains(id)) toHide.add(wrapper);
+            }
+            if (toHide.isEmpty()) return;
+            hideRecipesUnchecked(runtime, type, toHide);
+        } catch (Throwable t) {
+            Townstead.LOGGER.warn("JEP flavor hiding skipped (incompatible JEP version?): {}", t.toString());
+        }
+    }
+
+    /** The blocks a career actually works at: via job blocks first, then declared workstations. */
+    private static List<ItemStack> surfaceStacks(ProfessionDef def) {
+        LinkedHashSet<ResourceLocation> blockIds = new LinkedHashSet<>();
+        for (JobSiteProvider provider : def.jobSites()) {
+            if (provider instanceof JobSiteProvider.JobBlock block && block.via() != null) {
+                blockIds.addAll(block.blocks());
+            }
+        }
+        for (WorkTaskDef task : def.workTasks()) {
+            blockIds.addAll(task.workstations().ids());
+            for (ResourceLocation tagId : task.workstations().tags()) {
+                TagKey<Block> tag = TagKey.create(Registries.BLOCK, tagId);
+                for (Holder<Block> holder : BuiltInRegistries.BLOCK.getTagOrEmpty(tag)) {
+                    ResourceLocation id = BuiltInRegistries.BLOCK.getKey(holder.value());
+                    if (id != null) blockIds.add(id);
+                }
+            }
+        }
+        List<ItemStack> stacks = new ArrayList<>();
+        Set<Item> seen = new LinkedHashSet<>();
+        for (ResourceLocation id : blockIds) {
+            if (!BuiltInRegistries.BLOCK.containsKey(id)) continue;
+            ItemStack stack = new ItemStack(BuiltInRegistries.BLOCK.get(id));
+            if (stack.isEmpty() || !seen.add(stack.getItem())) continue;
+            stacks.add(stack);
+        }
+        return stacks;
+    }
+
+    /** Registered compatibility and via professions represented by a synthetic Career entry. */
+    private static Set<ResourceLocation> absorbedProfessionIds() {
+        Set<ResourceLocation> hidden = new LinkedHashSet<>();
+        for (ProfessionDef def : ProfessionDefs.all().values()) {
+            if (!presentationEnabled(def) || !needsSyntheticEntry(def)) continue;
+            hidden.addAll(ProfessionDefs.compatibilityIds(def.id()));
+            for (JobSiteProvider provider : def.jobSites()) {
+                if (provider instanceof JobSiteProvider.JobBlock block && block.via() != null) {
+                    hidden.add(block.via());
+                }
+            }
+        }
+        for (VillagerProfession profession : BuiltInRegistries.VILLAGER_PROFESSION) {
+            if (!isUniversalAcquisitionWithoutWorkstation(
+                    profession.heldJobSite(), profession.acquirableJobSite())) {
+                continue;
+            }
+            ResourceLocation id = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
+            if (id != null) hidden.add(id);
+        }
+        return hidden;
+    }
+
+    /** Building careers need a synthetic JEP entry even when no foreign POI owns acquisition. */
+    private static boolean needsSyntheticEntry(ProfessionDef def) {
+        if (PoiHierarchy.hasAcquisitionHierarchy(def)) return true;
+        for (JobSiteProvider provider : def.jobSites()) {
+            if (provider instanceof JobSiteProvider.Building
+                    || provider instanceof JobSiteProvider.StationPost) return true;
+        }
+        return false;
+    }
+
+    private static boolean presentationEnabled(ProfessionDef def) {
+        return !"townstead:cook".equals(def.id().toString())
+                || com.aetherianartificer.townstead.TownsteadConfig.isTownsteadCookEnabled();
+    }
+
+    /**
+     * MCA uses this exact predicate pair for roles assigned outside vanilla workstation logic.
+     * Identity checks are deliberate: narrower custom predicates are real acquisition rules and
+     * must remain visible.
+     */
+    static boolean isUniversalAcquisitionWithoutWorkstation(
+            java.util.function.Predicate<Holder<PoiType>> held,
+            java.util.function.Predicate<Holder<PoiType>> acquirable) {
+        return isUniversalAcquisitionWithoutWorkstation(
+                held == PoiType.NONE,
+                acquirable == VillagerProfession.ALL_ACQUIRABLE_JOBS);
+    }
+
+    static boolean isUniversalAcquisitionWithoutWorkstation(
+            boolean holdsNoWorkstation, boolean acceptsEveryPoi) {
+        return holdsNoWorkstation && acceptsEveryPoi;
+    }
+
+    private static VillagerProfession registeredProfession(ResourceLocation id) {
+        if (id == null || !BuiltInRegistries.VILLAGER_PROFESSION.containsKey(id)) return null;
+        VillagerProfession profession = BuiltInRegistries.VILLAGER_PROFESSION.get(id);
+        return profession == VillagerProfession.NONE ? null : profession;
+    }
+
+    // ── Reflection against JEP ──
+
+    private static RecipeType<?> professionType() throws Exception {
+        for (String className : JEP_PLUGIN_CLASSES) {
+            try {
+                Class<?> plugin = Class.forName(className);
+                Object type = plugin.getField("PROFESSION_TYPE").get(null);
+                if (type instanceof RecipeType<?> recipeType) return recipeType;
+            } catch (ClassNotFoundException ignored) {
+                // Not this loader's plugin; try the next.
+            }
+        }
+        return null;
+    }
+
+    private static Object wrap(VillagerProfession profession, List<ItemStack> stacks) throws Exception {
+        Class<?> entryClass = Class.forName(JEP_ENTRY_CLASS);
+        Constructor<?> entryCtor = entryClass.getConstructor(VillagerProfession.class, List.class);
+        Object entry = entryCtor.newInstance(profession, stacks);
+        Class<?> wrapperClass = Class.forName(JEP_WRAPPER_CLASS);
+        return wrapperClass.getConstructor(entryClass).newInstance(entry);
+    }
+
+    private static ResourceLocation wrapperProfessionId(Object wrapper) throws Exception {
+        Method entryAccessor = wrapper.getClass().getMethod("entry");
+        Object entry = entryAccessor.invoke(wrapper);
+        Method professionAccessor = entry.getClass().getMethod("profession");
+        Object profession = professionAccessor.invoke(entry);
+        return profession instanceof VillagerProfession p
+                ? BuiltInRegistries.VILLAGER_PROFESSION.getKey(p)
+                : null;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void addRecipesUnchecked(IRecipeRegistration registration, RecipeType<?> type, List<Object> wrappers) {
+        registration.addRecipes((RecipeType) type, (List) wrappers);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static List<Object> lookupAll(IJeiRuntime runtime, RecipeType<?> type) {
+        return (List<Object>) runtime.getRecipeManager()
+                .createRecipeLookup((RecipeType) type)
+                .get().toList();
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void hideRecipesUnchecked(IJeiRuntime runtime, RecipeType<?> type, List<Object> wrappers) {
+        runtime.getRecipeManager().hideRecipes((RecipeType) type, (List) wrappers);
+    }
+}

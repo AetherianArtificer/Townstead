@@ -24,11 +24,13 @@ import java.util.Set;
  */
 //? if neoforge {
 public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCatalogEntry> genes,
-                                       List<TraitCatalogEntry> traits, List<RigDefinition> rigs)
+                                       List<TraitCatalogEntry> traits, List<RigDefinition> rigs,
+                                       List<String> entityGroups, List<RootLook> looks)
         implements CustomPacketPayload {
 //?} else {
 /*public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCatalogEntry> genes,
-                                       List<TraitCatalogEntry> traits, List<RigDefinition> rigs) {
+                                       List<TraitCatalogEntry> traits, List<RigDefinition> rigs,
+                                       List<String> entityGroups, List<RootLook> looks) {
 *///?}
 
     //? if neoforge {
@@ -81,10 +83,15 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
             buf.writeFloat(e.rigScale());
             writeAnimations(buf, e.animations());
             buf.writeBoolean(e.breasts());
+            buf.writeBoolean(e.hair());
+            writeHairRanges(buf, e.hairColorRanges());
+            writeHairColors(buf, e.hairColors());
+            writeHairGradients(buf, e.hairGradients());
             buf.writeVarInt(e.stageRigs().size());
             for (String r : e.stageRigs()) buf.writeUtf(r == null ? "" : r);
             writeCharacterEditor(buf, e.characterEditor());
             buf.writeBoolean(e.blocked());
+            buf.writeBoolean(e.choosable());
         }
         buf.writeVarInt(genes.size());
         for (GeneCatalogEntry g : genes) {
@@ -112,6 +119,8 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
                 buf.writeUtf(v.attachment());
                 writeChannels(buf, v.channels());
                 writePalette(buf, v.palette());
+                buf.writeVarInt(v.blend());
+                buf.writeFloat(v.strength());
             }
             buf.writeUtf(g.nameKey());
             buf.writeUtf(g.descriptionKey());
@@ -132,6 +141,10 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         }
         buf.writeVarInt(rigs.size());
         for (RigDefinition r : rigs) writeRig(buf, r);
+        buf.writeVarInt(entityGroups.size());
+        for (String group : entityGroups) buf.writeUtf(group);
+        buf.writeVarInt(looks.size());
+        for (RootLook look : looks) writeLook(buf, look);
     }
 
     public static RootCatalogSyncPayload read(FriendlyByteBuf buf) {
@@ -169,11 +182,16 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
             float rigScale = buf.readFloat();
             Animations animations = readAnimations(buf);
             boolean breasts = buf.readBoolean();
+            boolean hair = buf.readBoolean();
+            List<com.aetherianartificer.townstead.root.appearance.HairColorRange> hairRanges = readHairRanges(buf);
+            List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> hairColors = readHairColors(buf);
+            List<com.aetherianartificer.townstead.root.appearance.HairGradient> hairGradients = readHairGradients(buf);
             int stageRigCount = buf.readVarInt();
             List<String> stageRigs = new ArrayList<>(stageRigCount);
             for (int s = 0; s < stageRigCount; s++) stageRigs.add(buf.readUtf());
             CharacterEditorLayout characterEditor = readCharacterEditor(buf);
             boolean blocked = buf.readBoolean();
+            boolean choosable = buf.readBoolean();
             entries.add(new RootCatalogEntry(id,
                     localize(nameKey, name),
                     localize(singularKey, singular),
@@ -185,7 +203,8 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
                     inherited, ranges,
                     nameKey, singularKey, pluralKey, backstoryKey,
                     speciesNameKey, ancestryNameKey, lineageNameKey,
-                    rigBase, rigScale, animations, breasts, stageRigs, characterEditor, blocked));
+                    rigBase, rigScale, animations, breasts, hair, hairRanges, hairColors, hairGradients,
+                    stageRigs, characterEditor, blocked, choosable));
         }
         int m = buf.readVarInt();
         List<GeneCatalogEntry> genes = new ArrayList<>(m);
@@ -215,8 +234,10 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
                 String vattachment = buf.readUtf();
                 List<GeneCatalogEntry.Channel> vchannels = readChannels(buf);
                 List<Integer> vpalette = readPalette(buf);
+                int vblend = buf.readVarInt();
+                float vstrength = buf.readFloat();
                 variants.add(new GeneCatalogEntry.Variant(vid, localize(vlabelKey, vlabel), vweight, vlabelKey,
-                        vtint, vtexture, vglow, vattachment, vchannels, vpalette));
+                        vtint, vtexture, vglow, vattachment, vchannels, vpalette, vblend, vstrength));
             }
             String gNameKey = buf.readUtf();
             String gDescKey = buf.readUtf();
@@ -242,7 +263,129 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         int rn = buf.readVarInt();
         List<RigDefinition> rigs = new ArrayList<>(rn);
         for (int i = 0; i < rn; i++) rigs.add(readRig(buf));
-        return new RootCatalogSyncPayload(entries, genes, traits, rigs);
+        int groupCount = buf.readVarInt();
+        List<String> entityGroups = new ArrayList<>(groupCount);
+        for (int i = 0; i < groupCount; i++) entityGroups.add(buf.readUtf());
+        int lookCount = buf.readVarInt();
+        List<RootLook> looks = new ArrayList<>(lookCount);
+        for (int i = 0; i < lookCount; i++) looks.add(readLook(buf));
+        return new RootCatalogSyncPayload(entries, genes, traits, rigs, entityGroups, looks);
+    }
+
+    private static void writeLook(FriendlyByteBuf buf, RootLook look) {
+        buf.writeUtf(look.rootId());
+        buf.writeVarInt(look.outfits().size());
+        for (com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit outfit : look.outfits()) {
+            buf.writeUtf(outfit.id());
+            buf.writeUtf(outfit.whenJson());
+            buf.writeVarInt(outfit.pieces().size());
+            for (com.aetherianartificer.townstead.root.outfit.RootOutfits.Piece piece : outfit.pieces()) {
+                buf.writeUtf(piece.model());
+                buf.writeVarInt(piece.bones().size());
+                for (String bone : piece.bones()) buf.writeUtf(bone);
+            }
+        }
+        buf.writeVarInt(look.skins().size());
+        for (String skin : look.skins()) buf.writeUtf(skin);
+    }
+
+    private static RootLook readLook(FriendlyByteBuf buf) {
+        String rootId = buf.readUtf();
+        int outfitCount = buf.readVarInt();
+        List<com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit> outfits = new ArrayList<>(outfitCount);
+        for (int i = 0; i < outfitCount; i++) {
+            String id = buf.readUtf();
+            String when = buf.readUtf();
+            int pieceCount = buf.readVarInt();
+            List<com.aetherianartificer.townstead.root.outfit.RootOutfits.Piece> pieces = new ArrayList<>(pieceCount);
+            for (int j = 0; j < pieceCount; j++) {
+                String model = buf.readUtf();
+                int boneCount = buf.readVarInt();
+                List<String> bones = new ArrayList<>(boneCount);
+                for (int k = 0; k < boneCount; k++) bones.add(buf.readUtf());
+                pieces.add(new com.aetherianartificer.townstead.root.outfit.RootOutfits.Piece(model, List.copyOf(bones)));
+            }
+            outfits.add(new com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit(id, when, List.copyOf(pieces)));
+        }
+        int skinCount = buf.readVarInt();
+        List<String> skins = new ArrayList<>(skinCount);
+        for (int i = 0; i < skinCount; i++) skins.add(buf.readUtf());
+        return new RootLook(rootId, List.copyOf(outfits), List.copyOf(skins));
+    }
+
+    private static void writeHairRanges(FriendlyByteBuf buf,
+            List<com.aetherianartificer.townstead.root.appearance.HairColorRange> ranges) {
+        buf.writeVarInt(ranges.size());
+        for (var range : ranges) {
+            buf.writeFloat(range.darkness().min());
+            buf.writeFloat(range.darkness().max());
+            buf.writeFloat(range.redness().min());
+            buf.writeFloat(range.redness().max());
+            buf.writeVarInt(range.weight());
+        }
+    }
+
+    private static List<com.aetherianartificer.townstead.root.appearance.HairColorRange> readHairRanges(
+            FriendlyByteBuf buf) {
+        int count = buf.readVarInt();
+        List<com.aetherianartificer.townstead.root.appearance.HairColorRange> ranges = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            ranges.add(new com.aetherianartificer.townstead.root.appearance.HairColorRange(
+                    new GeneRange(buf.readFloat(), buf.readFloat()),
+                    new GeneRange(buf.readFloat(), buf.readFloat()), buf.readVarInt()));
+        }
+        return List.copyOf(ranges);
+    }
+
+    private static void writeHairColors(FriendlyByteBuf buf,
+            List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> colors) {
+        buf.writeVarInt(colors.size());
+        for (var color : colors) {
+            buf.writeInt(color.rgb());
+            buf.writeVarInt(color.weight());
+            buf.writeUtf(color.name());
+            buf.writeUtf(color.nameKey());
+        }
+    }
+
+    private static List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> readHairColors(
+            FriendlyByteBuf buf) {
+        int count = buf.readVarInt();
+        List<com.aetherianartificer.townstead.root.appearance.HairColorChoice> colors = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            colors.add(new com.aetherianartificer.townstead.root.appearance.HairColorChoice(
+                    buf.readInt(), buf.readVarInt(), buf.readUtf(), buf.readUtf()));
+        }
+        return List.copyOf(colors);
+    }
+
+    private static void writeHairGradients(FriendlyByteBuf buf,
+            List<com.aetherianartificer.townstead.root.appearance.HairGradient> gradients) {
+        buf.writeVarInt(gradients.size());
+        for (var gradient : gradients) {
+            buf.writeVarInt(gradient.stops().size());
+            for (int stop : gradient.stops()) buf.writeInt(stop);
+            buf.writeVarInt(gradient.weight());
+            buf.writeEnum(gradient.space());
+            buf.writeUtf(gradient.name());
+            buf.writeUtf(gradient.nameKey());
+        }
+    }
+
+    private static List<com.aetherianartificer.townstead.root.appearance.HairGradient> readHairGradients(
+            FriendlyByteBuf buf) {
+        int count = buf.readVarInt();
+        List<com.aetherianartificer.townstead.root.appearance.HairGradient> gradients = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            int stopCount = buf.readVarInt();
+            List<Integer> stops = new ArrayList<>(stopCount);
+            for (int j = 0; j < stopCount; j++) stops.add(buf.readInt());
+            gradients.add(new com.aetherianartificer.townstead.root.appearance.HairGradient(
+                    stops, buf.readVarInt(),
+                    buf.readEnum(com.aetherianartificer.townstead.root.appearance.HairGradient.Space.class),
+                    buf.readUtf(), buf.readUtf()));
+        }
+        return List.copyOf(gradients);
     }
 
     private static void writeChannels(FriendlyByteBuf buf, List<GeneCatalogEntry.Channel> channels) {
@@ -342,11 +485,34 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
             buf.writeFloat(hb.width());
             buf.writeFloat(hb.height());
             buf.writeFloat(hb.crouchHeight());
+            buf.writeFloat(hb.swimHeight());
+            buf.writeFloat(hb.eyeHeight());
+            buf.writeBoolean(hb.scaleWithEntity());
         }
         buf.writeVarInt(r.disabledSlots().size());
         for (net.minecraft.world.entity.EquipmentSlot slot : r.disabledSlots()) buf.writeByte(slot.ordinal());
         buf.writeUtf(r.cameraBone() == null ? "" : r.cameraBone());
         writeEmote(buf, r.emote());
+        buf.writeBoolean(r.animation() != null);
+        if (r.animation() != null) {
+            buf.writeUtf(r.animation().file());
+            buf.writeVarInt(r.animation().rules().size());
+            for (RigDefinition.AnimationRule rule : r.animation().rules()) {
+                buf.writeUtf(rule.state());
+                buf.writeUtf(rule.whenJson());
+                buf.writeUtf(rule.clip());
+                buf.writeFloat(rule.transitionTicks());
+                buf.writeFloat(rule.speed());
+            }
+        }
+        buf.writeUtf(r.modelClass() == null ? "" : r.modelClass());
+        buf.writeFloat(r.cameraHeightOffset());
+        buf.writeVarInt(r.overlays().size());
+        for (RigDefinition.Overlay overlay : r.overlays()) {
+            buf.writeUtf(overlay.texture());
+            buf.writeBoolean(overlay.glow());
+            buf.writeUtf(overlay.glowVariant());
+        }
     }
 
     /** Serialize the emote remap: present flag, body-motion gate, per-channel remaps, and policy. */
@@ -448,12 +614,16 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
     private static void writeAdjust(FriendlyByteBuf buf, RigDefinition.Adjust a) {
         for (int k = 0; k < 3; k++) buf.writeFloat(a.offset()[k]);
         for (int k = 0; k < 3; k++) buf.writeFloat(a.rotation()[k]);
+        buf.writeFloat(a.scale());
+        for (int k = 0; k < 3; k++) buf.writeFloat(a.scaleAxes()[k]);
     }
 
     private static RigDefinition.Adjust readAdjust(FriendlyByteBuf buf) {
         float[] offset = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
         float[] rotation = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
-        return new RigDefinition.Adjust(offset, rotation);
+        float scale = buf.readFloat();
+        float[] axes = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+        return new RigDefinition.Adjust(offset, rotation, scale, axes);
     }
 
     private static RigDefinition readRig(FriendlyByteBuf buf) {
@@ -507,7 +677,8 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         }
         RigDefinition.Hitbox hitbox = null;
         if (buf.readBoolean()) {
-            hitbox = new RigDefinition.Hitbox(buf.readFloat(), buf.readFloat(), buf.readFloat());
+            hitbox = new RigDefinition.Hitbox(buf.readFloat(), buf.readFloat(), buf.readFloat(),
+                    buf.readFloat(), buf.readFloat(), buf.readBoolean());
         }
         int disabledCount = buf.readVarInt();
         java.util.Set<net.minecraft.world.entity.EquipmentSlot> disabledSlots = disabledCount == 0
@@ -518,7 +689,23 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         }
         String cameraBone = buf.readUtf();
         RigDefinition.EmoteMap emote = readEmote(buf);
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, java.util.Set.copyOf(disabledSlots), cameraBone, emote);
+        RigDefinition.Animation animation = null;
+        if (buf.readBoolean()) {
+            String file = buf.readUtf();
+            int ruleCount = buf.readVarInt();
+            List<RigDefinition.AnimationRule> rules = new ArrayList<>(ruleCount);
+            for (int i = 0; i < ruleCount; i++) {
+                rules.add(new RigDefinition.AnimationRule(buf.readUtf(), buf.readUtf(), buf.readUtf(),
+                        buf.readFloat(), buf.readFloat()));
+            }
+            animation = new RigDefinition.Animation(file, List.copyOf(rules));
+        }
+        String modelClass = buf.readUtf();
+        float cameraOffset = buf.readFloat();
+        int overlayCount = Math.min(buf.readVarInt(), 16);
+        List<RigDefinition.Overlay> overlays = new ArrayList<>(overlayCount);
+        for (int i = 0; i < overlayCount; i++) overlays.add(new RigDefinition.Overlay(buf.readUtf(), buf.readBoolean(), buf.readUtf()));
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, java.util.Set.copyOf(disabledSlots), cameraBone, emote, animation, modelClass, cameraOffset, List.copyOf(overlays));
     }
 
     private static void writeNullableUtf(FriendlyByteBuf buf, String value) {

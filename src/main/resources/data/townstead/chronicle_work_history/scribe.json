@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:chronicle_work_history/v1",
+  "profession": "townstead:scribe",
+  "per_year": {
+    "townstead:produced": 90
+  }
+}

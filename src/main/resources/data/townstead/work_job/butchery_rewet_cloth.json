@@ -1,0 +1,116 @@
+{
+  "schema": "townstead:job/v3",
+  "mods": [
+    "butchery"
+  ],
+  "task": "townstead_work:clean",
+  "type": "townstead:block_interaction",
+  "target": {
+    "blocks": [
+      "minecraft:water",
+      "minecraft:water_cauldron"
+    ],
+    "interactions": [
+      {
+        "item": "butchery:sponge",
+        "item_condition": {
+          "type": "pheno:data",
+          "key": "spongeWetness",
+          "max": 0,
+          "default": 0
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:entity.fishing_bobber.splash",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:change_data",
+              "key": "spongeWetness",
+              "value": 10
+            }
+          },
+          {
+            "type": "pheno:if_else",
+            "if": {
+              "type": "pheno:block",
+              "block": "minecraft:water_cauldron"
+            },
+            "then": {
+              "type": "pheno:if_else",
+              "if": {
+                "type": "pheno:block_state",
+                "property": "level",
+                "value": "1"
+              },
+              "then": {
+                "type": "pheno:set_block",
+                "block": "minecraft:cauldron"
+              },
+              "else": {
+                "type": "pheno:modify_block_state",
+                "property": "level",
+                "operation": "add",
+                "amount": -1
+              }
+            }
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "butchery:rag",
+        "item_condition": {
+          "type": "pheno:data",
+          "key": "ragWetness",
+          "max": 0,
+          "default": 0
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:entity.fishing_bobber.splash",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:change_data",
+              "key": "ragWetness",
+              "value": 5
+            }
+          },
+          {
+            "type": "pheno:if_else",
+            "if": {
+              "type": "pheno:block",
+              "block": "minecraft:water_cauldron"
+            },
+            "then": {
+              "type": "pheno:if_else",
+              "if": {
+                "type": "pheno:block_state",
+                "property": "level",
+                "value": "1"
+              },
+              "then": {
+                "type": "pheno:set_block",
+                "block": "minecraft:cauldron"
+              },
+              "else": {
+                "type": "pheno:modify_block_state",
+                "property": "level",
+                "operation": "add",
+                "amount": -1
+              }
+            }
+          }
+        ],
+        "xp": 1
+      }
+    ]
+  }
+}

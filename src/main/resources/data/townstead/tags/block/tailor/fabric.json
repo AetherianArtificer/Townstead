@@ -1,0 +1,167 @@
+{
+  "replace": false,
+  "values": [
+    "#minecraft:wool",
+    "#minecraft:wool_carpets",
+    {
+      "id": "weaversparadise:cotton_cloth_block",
+      "required": false
+    },
+    {
+      "id": "weaversparadise:silk_cloth_block",
+      "required": false
+    },
+    {
+      "id": "weaversparadise:wool_cloth_block",
+      "required": false
+    },
+    {
+      "id": "weaversparadise:cotton_spool_block",
+      "required": false
+    },
+    {
+      "id": "weaversparadise:silk_spool_block",
+      "required": false
+    },
+    {
+      "id": "weaversparadise:wool_spool_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:white_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:orange_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:magenta_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:light_blue_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:yellow_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:lime_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:pink_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:gray_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:light_gray_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:cyan_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:purple_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:blue_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:brown_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:green_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:red_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:black_cloth_scrap_block",
+      "required": false
+    },
+    {
+      "id": "wholecloth:white_cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:orange_cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:magenta_cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:light_blue_cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:yellow_cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:lime_cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:pink_cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:gray_cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:light_gray_cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:cyan_cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:purple_cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:blue_cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:brown_cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:green_cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:red_cloth_scrap_carpet",
+      "required": false
+    },
+    {
+      "id": "wholecloth:black_cloth_scrap_carpet",
+      "required": false
+    }
+  ]
+}

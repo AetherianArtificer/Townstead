@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.trapper.flush_out"
+  },
+  "icon": "minecraft:goat_horn",
+  "description": {
+    "translate": "skill.townstead.fletcher.trapper.flush_out.description"
+  },
+  "cost": 1,
+  "requires": [
+    "ambush"
+  ],
+  "skill_group": "townstead:trapper_ambush",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:draw",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 10,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:add_velocity",
+            "away_from_other": 1.2,
+            "y": 0.3
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:slowness",
+            "duration": 160,
+            "amplifier": 0
+          }
+        ]
+      }
+    }
+  }
+}

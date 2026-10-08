@@ -28,10 +28,12 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Loads {@link Gene}s from {@code data/<ns>/gene/*.json}. Each file names a
+ * Loads {@link Gene}s recursively below {@code data/<ns>/gene/}. Each file names a
  * {@link GeneType} via {@code "type"}; the type parses its own config. Common
  * fields ({@code display_name}, {@code description}, {@code category}) are parsed
- * here. Unknown/invalid types are skipped with a warning.
+ * here. Folder segments are part of the canonical id, while {@link GeneRegistry}
+ * also exposes an unambiguous basename alias so existing references survive files
+ * being moved into organizational folders. Unknown/invalid types are skipped with a warning.
  */
 public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
 
@@ -49,10 +51,16 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
         Map<ResourceLocation, Gene> parsed = new LinkedHashMap<>();
         Map<ResourceLocation, List<ResourceLocation>> companions = new LinkedHashMap<>();
         Diagnostics diagnostics = new Diagnostics();
+        Map<ResourceLocation, com.aetherianartificer.townstead.pheno.condition.Condition> expressionRules = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
+                if (obj.has("mods") && com.aetherianartificer.townstead.data.ModGate.evaluate(obj.get("mods")) == null) {
+                    LOGGER.warn("Skipping gene {} — malformed 'mods' gate", file);
+                    continue;
+                }
+                if (!com.aetherianartificer.townstead.data.ModGate.allows(obj)) continue;
                 obj = PhenoNormalizer.normalize(obj);
                 PhenoValidator.validateGene(file, obj, diagnostics);
                 Map<ResourceLocation, JsonObject> companionConfigs = GeneCompanions.extract(file, obj);
@@ -65,6 +73,9 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                 Component displayName = DataPackLang.parseComponent(obj.get("display_name"), file.toString(), lang);
                 Component description = obj.has("description")
                         ? DataPackLang.parseComponent(obj.get("description"), file + ".description", lang)
+                        : null;
+                ResourceLocation icon = obj.has("icon")
+                        ? DataPackLang.parseId(GsonHelper.getAsString(obj, "icon", ""))
                         : null;
                 String category = GsonHelper.getAsString(obj, "category", "general");
                 Dominance dominance = Dominance.fromString(GsonHelper.getAsString(obj, "dominance", "dominant"));
@@ -81,13 +92,16 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                 if (locus == null) {
                     locus = type.get().defaultLocus(variants.get(0).instance());
                 }
-                parsed.put(file, new Gene(file, displayName, description, category,
+                com.aetherianartificer.townstead.pheno.condition.Condition expression = GeneExpression.parse(obj, type.get());
+                parsed.put(file, new Gene(file, displayName, description, icon, category,
                         dominance, locus, weight, variants));
-                registerCompanions(file, companionConfigs, lang, parsed, companions);
+                expressionRules.put(file, expression);
+                registerCompanions(file, companionConfigs, lang, parsed, companions, expressionRules);
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse gene {}: {}", file, ex.getMessage());
             }
         }
+        GeneExpression.replaceAll(expressionRules);
         GeneRegistry.replaceAll(parsed, companions);
         PhenoDiagnostics.replace("gene", diagnostics.all());
         for (Diagnostic d : diagnostics.all()) {
@@ -105,9 +119,10 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
      * parent->companions link so they ride along the parent's expression. Skipped with a warning
      * when a config is invalid.
      */
-    private static void registerCompanions(ResourceLocation parent, Map<ResourceLocation, JsonObject> configs,
+    static void registerCompanions(ResourceLocation parent, Map<ResourceLocation, JsonObject> configs,
                                            Map<String, String> lang, Map<ResourceLocation, Gene> parsed,
-                                           Map<ResourceLocation, List<ResourceLocation>> companions) {
+                                           Map<ResourceLocation, List<ResourceLocation>> companions,
+                                           Map<ResourceLocation, com.aetherianartificer.townstead.pheno.condition.Condition> expressionRules) {
         if (configs.isEmpty()) return;
         List<ResourceLocation> ids = new ArrayList<>();
         for (Map.Entry<ResourceLocation, JsonObject> e : configs.entrySet()) {
@@ -119,19 +134,24 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                 LOGGER.warn("Gene {} — companion '{}' has unknown type '{}', skipping", parent, id, typeKey);
                 continue;
             }
-            GeneInstance instance = type.get().parse(config, lang);
-            if (instance == null) {
-                LOGGER.warn("Gene {} — companion '{}' has invalid config, skipping", parent, id);
-                continue;
-            }
             String shortName = id.getPath().substring(id.getPath().lastIndexOf('/') + 1);
             Component name = config.has("display_name")
                     ? DataPackLang.parseComponent(config.get("display_name"), id.toString(), lang)
                     : Component.literal(shortName);
-            ResourceLocation locus = type.get().defaultLocus(instance);
-            String category = ResourceGeneType.KEY.equals(typeKey) ? "resource" : "companion";
-            parsed.put(id, new Gene(id, name, null, category, Dominance.fromString("recessive"),
-                    locus, 1, List.of(new GeneVariant(shortName, name, 1, instance))));
+            List<GeneVariant> variants = parseVariants(id, config, type.get(), name, 1, lang);
+            if (variants.isEmpty()) {
+                LOGGER.warn("Gene {} - companion '{}' has invalid config, skipping", parent, id);
+                continue;
+            }
+            var expression = GeneExpression.parse(config, type.get());
+            expressionRules.put(id, expression);
+            ResourceLocation locus = config.has("locus")
+                    ? DataPackLang.parseId(GsonHelper.getAsString(config, "locus", ""))
+                    : type.get().defaultLocus(variants.get(0).instance());
+            String category = GsonHelper.getAsString(config, "category",
+                    ResourceGeneType.KEY.equals(typeKey) ? "resource" : "companion");
+            parsed.put(id, new Gene(id, name, null, null, category,
+                    Dominance.fromString("recessive"), locus, 1, variants));
             ids.add(id);
         }
         if (!ids.isEmpty()) companions.put(parent, ids);

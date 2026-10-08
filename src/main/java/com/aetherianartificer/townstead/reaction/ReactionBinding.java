@@ -1,6 +1,5 @@
 package com.aetherianartificer.townstead.reaction;
 
-import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.pheno.action.Action;
 import com.aetherianartificer.townstead.pheno.action.Actions;
 import com.aetherianartificer.townstead.pheno.condition.Condition;
@@ -19,11 +18,10 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * One animation candidate inside a {@link Reaction}. The {@code ref} field
- * in JSON parses into a backend prefix (e.g. {@code emotecraft}) plus one
- * or more case-preserved backend-specific identifiers. When more than one
- * identifier is listed, the backend picks uniformly at fire time after the
- * picker has already chosen this binding.
+ * One weighted outcome inside a {@link Reaction}. In v3, an outcome may be a
+ * Pheno action bundle with no legacy animation at all. When {@code ref} is
+ * present it parses into a backend prefix (for example {@code emotecraft}) and
+ * one or more backend-specific identifiers.
  */
 public record ReactionBinding(
         String backendKey,
@@ -41,35 +39,31 @@ public record ReactionBinding(
         Optional<Action> phenoAction,
         Optional<SoundSpec> sound,
         Optional<ParticleSpec> particles,
-        Optional<String> speechPool) {
+        Optional<String> speechPool,
+        boolean animationRequired) {
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(
+            "townstead/ReactionBinding");
 
     /**
      * Parse a binding entry. Returns {@code null} when the entry is
-     * structurally invalid (no usable {@code ref}); the loader logs and
-     * skips. Bindings whose {@code ref} entries don't all share the same
-     * backend prefix are likewise rejected.
+     * structurally invalid. V1/v2 require a usable {@code ref}; v3 requires at
+     * least one animation or auxiliary output. Mixed backend prefixes are rejected.
      */
-    public static ReactionBinding parse(JsonElement entry, boolean phenoV2) {
+    public static ReactionBinding parse(JsonElement entry, int schemaVersion) {
         if (!entry.isJsonObject()) return null;
+        boolean pheno = schemaVersion >= 2;
+        boolean outcomeV3 = schemaVersion >= 3;
         JsonObject json = entry.getAsJsonObject().deepCopy();
-        if (phenoV2 && json.has("animation") && json.get("animation").isJsonObject()) {
+        if (pheno && json.has("animation") && json.get("animation").isJsonObject()) {
             lowerAnimation(json, json.getAsJsonObject("animation"));
         }
-        if (!json.has("ref")) {
-            Townstead.LOGGER.warn("Reaction binding missing 'ref' field; skipped");
-            return null;
-        }
-        List<String> rawRefs = parseRefField(json.get("ref"));
-        if (rawRefs.isEmpty()) {
-            Townstead.LOGGER.warn("Reaction binding has empty 'ref' list; skipped");
-            return null;
-        }
+        List<String> rawRefs = json.has("ref") ? parseRefField(json.get("ref")) : List.of();
         String backendKey = null;
         List<String> ids = new java.util.ArrayList<>(rawRefs.size());
         for (String raw : rawRefs) {
             int colon = raw.indexOf(':');
             if (colon <= 0 || colon >= raw.length() - 1) {
-                Townstead.LOGGER.warn("Reaction ref '{}' lacks '<backend>:<id>' shape; skipped", raw);
+                LOGGER.warn("Reaction ref '{}' lacks '<backend>:<id>' shape; skipped", raw);
                 return null;
             }
             String backend = raw.substring(0, colon).toLowerCase(Locale.ROOT);
@@ -77,7 +71,7 @@ public record ReactionBinding(
             if (backendKey == null) {
                 backendKey = backend;
             } else if (!backendKey.equals(backend)) {
-                Townstead.LOGGER.warn("Reaction binding mixes backends ('{}' vs '{}'); skipped", backendKey, backend);
+                LOGGER.warn("Reaction binding mixes backends ('{}' vs '{}'); skipped", backendKey, backend);
                 return null;
             }
             ids.add(id);
@@ -86,9 +80,9 @@ public record ReactionBinding(
                 ? Optional.of(json.getAsJsonObject("args"))
                 : Optional.empty();
         float weight = Math.max(0.0F, GsonHelper.getAsFloat(json, "weight", 1.0F));
-        float chance = clamp01(percent(json, "chance", 1.0F, phenoV2));
+        float chance = clamp01(percent(json, "chance", 1.0F, pheno));
         int shots = Math.max(1, GsonHelper.getAsInt(json, "shots", 1));
-        int cooldownTicks = Math.max(0, duration(json, "cooldown", "cooldown_ticks", 0, phenoV2));
+        int cooldownTicks = Math.max(0, duration(json, "cooldown", "cooldown_ticks", 0, pheno));
         boolean allowMovement = GsonHelper.getAsBoolean(json, "allow_movement", false);
         List<String> partsSkip = ReactionConditions.parseStringArray(json, "parts_skip");
         // When allow_movement is set without an explicit parts_skip,
@@ -103,23 +97,23 @@ public record ReactionBinding(
         List<String> requiredTags = ReactionConditions.parseStringArray(json, "required_tags");
         Optional<Condition> phenoCondition = Optional.empty();
         Optional<Action> phenoAction = Optional.empty();
-        if (phenoV2 && json.has("when")) {
+        if (pheno && json.has("when")) {
             if (!json.get("when").isJsonObject()) {
-                Townstead.LOGGER.warn("Reaction binding 'when' must be an object; skipped");
+                LOGGER.warn("Reaction binding 'when' must be an object; skipped");
                 return null;
             }
             Condition parsed = Conditions.parse(
                     PhenoNormalizer.normalizeCondition(json.getAsJsonObject("when")));
             if (parsed == null) {
-                Townstead.LOGGER.warn("Reaction binding has an invalid Pheno 'when'; skipped");
+                LOGGER.warn("Reaction binding has an invalid Pheno 'when'; skipped");
                 return null;
             }
             phenoCondition = Optional.of(parsed);
         }
-        if (phenoV2 && json.has("do")) {
+        if (pheno && json.has("do")) {
             Action parsed = Actions.parse(PhenoNormalizer.normalizeAction(json.get("do")));
             if (parsed == null) {
-                Townstead.LOGGER.warn("Reaction binding has an invalid Pheno 'do'; skipped");
+                LOGGER.warn("Reaction binding has an invalid Pheno 'do'; skipped");
                 return null;
             }
             phenoAction = Optional.of(parsed);
@@ -132,9 +126,39 @@ public record ReactionBinding(
                 : Optional.empty();
         Optional<String> speechPool =
                 json.has("speech_pool") ? Optional.of(GsonHelper.getAsString(json, "speech_pool")) : Optional.empty();
+        boolean auxiliaryOutput = phenoAction.isPresent() || sound.isPresent()
+                || particles.isPresent() || speechPool.filter(value -> !value.isBlank()).isPresent();
+        if (backendKey == null && !outcomeV3) {
+            LOGGER.warn("Reaction binding missing 'ref' field; skipped");
+            return null;
+        }
+        if (backendKey == null && !auxiliaryOutput) {
+            LOGGER.warn("Reaction v3 outcome has neither animation nor action; skipped");
+            return null;
+        }
+        // In v1/v2 the backend was the transaction gate. V3 treats a legacy animation as one
+        // optional output when the outcome also has Pheno/sound/particle/speech work, while an
+        // animation-only outcome still requires it to play.
+        boolean animationRequired = backendKey != null && (!outcomeV3 || !auxiliaryOutput);
         return new ReactionBinding(backendKey, Collections.unmodifiableList(ids), args, weight, chance, shots,
                 cooldownTicks, allowMovement, partsSkip, personality, requiredTags,
-                phenoCondition, phenoAction, sound, particles, speechPool);
+                phenoCondition, phenoAction, sound, particles, speechPool, animationRequired);
+    }
+
+    /** Implicit outcome for a v3 reaction whose only output is its top-level {@code do}. */
+    public static ReactionBinding actionOnly() {
+        return new ReactionBinding(null, List.of(), Optional.empty(), 1F, 1F, 1, 0,
+                false, List.of(), Map.of(), List.of(), Optional.empty(), Optional.empty(),
+                Optional.empty(), Optional.empty(), Optional.empty(), false);
+    }
+
+    public boolean hasAnimation() {
+        return backendKey != null && !backendKey.isBlank() && !refIds.isEmpty();
+    }
+
+    public boolean hasAuxiliaryOutput() {
+        return phenoAction.isPresent() || sound.isPresent() || particles.isPresent()
+                || speechPool.filter(value -> !value.isBlank()).isPresent();
     }
 
     private static void lowerAnimation(JsonObject choice, JsonObject animation) {

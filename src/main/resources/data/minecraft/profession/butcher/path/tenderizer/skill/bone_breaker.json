@@ -1,0 +1,54 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.tenderizer.bone_breaker"
+  },
+  "icon": "minecraft:bone",
+  "description": {
+    "translate": "skill.townstead.butcher.tenderizer.bone_breaker.description"
+  },
+  "cost": 1,
+  "requires": [
+    "momentum"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "target": "other",
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "ingredient",
+            "tag": "townstead:butcher_hammers"
+          }
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:cut",
+          "min": 75
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:weakness",
+          "duration": 60,
+          "amplifier": 1
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:slowness",
+          "duration": 60,
+          "amplifier": 1
+        }
+      ]
+    }
+  }
+}

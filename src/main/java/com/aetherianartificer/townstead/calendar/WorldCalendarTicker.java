@@ -157,6 +157,9 @@ public final class WorldCalendarTicker {
             Townstead.townstead$broadcastCalendarSync(server);
             // Push fresh senior-progress to every tracking client so hair desat lerps daily.
             com.aetherianartificer.townstead.root.LifeStageProgression.broadcastDailyUpdates(server);
+            // Chronicle daily housekeeping: memory/sentiment decay + archive WAL checkpoint.
+            com.aetherianartificer.townstead.chronicle.Chronicles.onDayRollover(server);
+            com.aetherianartificer.townstead.api.impl.v1.CalendarRollovers.onDayRollover(server, daysAdvanced);
         }
     }
 }

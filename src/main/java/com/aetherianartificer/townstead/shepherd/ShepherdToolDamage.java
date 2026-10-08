@@ -7,8 +7,7 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Durability bridge for shepherd shears. Mirrors {@code ButcherToolDamage}:
- * the displayed main-hand stack is a copy maintained by {@link
+ * Durability bridge for shepherd shears. The displayed main-hand stack is a copy maintained by {@link
  * com.aetherianartificer.townstead.tick.WorkToolTicker}, so damage applied
  * there does not persist. This helper damages the first matching shears in
  * the villager's inventory and breaks them when their durability hits zero.

@@ -2,20 +2,22 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+import com.aetherianartificer.townstead.profession.career.PlayerFishingEvents;
 import com.aetherianartificer.townstead.compat.starcatcher.StarcatcherCompat;
 import com.aetherianartificer.townstead.dock.Dock;
 import com.aetherianartificer.townstead.dock.DockBerthClaims;
 import com.aetherianartificer.townstead.dock.DockLocationIndex;
 import com.aetherianartificer.townstead.recognition.RecognitionEffects;
-import com.aetherianartificer.townstead.ai.work.WorkMovement;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationMetrics;
-import com.aetherianartificer.townstead.ai.work.WorkNavigationResult;
-import com.aetherianartificer.townstead.ai.work.WorkPathing;
-import com.aetherianartificer.townstead.ai.work.WorkSiteRef;
-import com.aetherianartificer.townstead.ai.work.WorkTarget;
-import com.aetherianartificer.townstead.ai.work.WorkTargetFailures;
-import com.aetherianartificer.townstead.ai.work.WorkTargetProgress;
-import com.aetherianartificer.townstead.ai.work.WorkTaskAdapter;
+import com.aetherianartificer.townstead.work.WorkMovement;
+import com.aetherianartificer.townstead.work.WorkNavigationMetrics;
+import com.aetherianartificer.townstead.work.WorkNavigationResult;
+import com.aetherianartificer.townstead.work.WorkPathing;
+import com.aetherianartificer.townstead.work.WorkSiteView;
+import com.aetherianartificer.townstead.work.WorkTarget;
+import com.aetherianartificer.townstead.work.WorkTargetFailures;
+import com.aetherianartificer.townstead.work.WorkTargetProgress;
+import com.aetherianartificer.townstead.work.WorkTaskAdapter;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
@@ -24,11 +26,14 @@ import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 *///?}
 import com.google.common.collect.ImmutableMap;
 import com.mojang.authlib.GameProfile;
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -103,7 +108,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private static final int IDLE_BACKOFF_TICKS = 60;
     private static final int REQUEST_RANGE = 24;
     private static final int REQUEST_INITIAL_DELAY_TICKS = 1200;
-    private static final int FETCH_ROD_TIMEOUT_TICKS = 200;
+    //? if >=1.21 {
+    private static final ResourceLocation PROFESSION = ResourceLocation.parse("minecraft:fisherman");
+    //?} else {
+    /*private static final ResourceLocation PROFESSION = new ResourceLocation("minecraft", "fisherman");
+    *///?}
     private static final int GO_TO_WATER_TIMEOUT_TICKS = 300;
     private static final int CAST_COOLDOWN_TICKS = 40;
     //? if forge {
@@ -138,10 +147,9 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private static final int STORAGE_DEPOSIT_RADIUS = 16;
     private static final int STORAGE_DEPOSIT_VERTICAL = 3;
     // Close-enough radius to consider the villager arrived at the barrel for
-    // deposit purposes. Wider than ARRIVAL_DISTANCE_SQ because the deposit
-    // code uses a 16-block storage radius — we don't need to be precisely on
-    // the nav-chosen stand block, just in the neighborhood of the barrel.
-    private static final double RETURN_TO_BARREL_ARRIVAL_RADIUS_SQ = 9.0; // 3 blocks
+    // Wider than ARRIVAL_DISTANCE_SQ so a worker beside a large modded container does not jitter
+    // while trying to occupy one exact stand block.
+    private static final double RETURN_TO_STORAGE_ARRIVAL_RADIUS_SQ = 9.0; // 3 blocks
 
     // Derive a stable FakePlayer UUID from the villager's UUID so each fisherman gets
     // their own owner (prevents multi-fisherman state collisions) and the FakePlayer
@@ -166,6 +174,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
     // ── Task state ──
     private Phase phase = Phase.IDLE;
+    /** While the clock reads earlier than this, the fisherman is at ease and ticks do nothing. */
+    private long restUntilTick;
     private long phaseEnteredTick;
     private @Nullable BlockPos stationAnchor;
     private @Nullable FishingWaterIndex.FishingSpot currentWaterSpot;
@@ -177,7 +187,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private long biteDeadline = Long.MAX_VALUE;
     private long nextCastReadyTick;
     private @Nullable WeakReference<FishingHook> currentHook;
+    private long hookSpawnedTick;
+    // Casts in a row whose bobber came to rest out of the water.
+    private int castMisfires;
     private @Nullable ItemStack currentRod;
+    private @Nullable BlockPos storageTarget;
     private long nextHookLinkSyncTick;
     // Set once per bite when NIBBLE_LEAD_TICKS remain — triggers the lean-in
     // look and plays a splash cue.
@@ -221,11 +235,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FISHERMAN) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.FISH)) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         BlockPos anchor = townstead$resolveBarrelAnchor(level, villager);
-        return anchor != null;
+        return anchor != null && townstead$orderAllowsFishing(level, villager, anchor);
     }
 
     @Override
@@ -239,6 +253,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         nextCastReadyTick = 0L;
         currentHook = null;
         currentRod = FishermanSupplyManager.findRodInInventory(villager.getInventory());
+        storageTarget = null;
+        restUntilTick = 0L;
         targetProgress.reset();
         nextRequestTick = 0L;
         nibbleTriggered = false;
@@ -251,7 +267,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (townstead$isFatigueGated(villager)) return false;
         VillagerBrain<?> brain = villager.getVillagerBrain();
-        if (villager.getVillagerData().getProfession() != VillagerProfession.FISHERMAN) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.FISH)) return false;
         if (brain.isPanicking() || villager.getLastHurtByMob() != null) return false;
         if (townstead$getCurrentScheduleActivity(villager) != Activity.WORK) return false;
         if (stationAnchor == null) {
@@ -270,6 +286,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         phase = Phase.IDLE;
         currentDock = null;
         currentRod = null;
+        storageTarget = null;
         biteDeadline = Long.MAX_VALUE;
         nextCastReadyTick = 0L;
         targetProgress.reset();
@@ -281,6 +298,10 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         debugTick(level, villager, gameTime);
+
+        // At ease: hopelessly blocked (no rod anywhere, no water) means rest on your feet and
+        // let the brain wander, not re-ask the world the same question every tick.
+        if (gameTime < restUntilTick) return;
 
         if (stationAnchor == null) {
             stationAnchor = townstead$resolveBarrelAnchor(level, villager);
@@ -327,8 +348,19 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     // ── Phase handlers ──
 
     private void tickIdle(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        int threshold = Math.max(1, TownsteadConfig.FISHERMAN_INVENTORY_FULL_THRESHOLD.get());
+        int threshold = Math.max(1, Switchboard.get(TownsteadConfig.FISHERMAN_INVENTORY_FULL_THRESHOLD));
         int nonRodCount = countNonRodItems(villager.getInventory());
+        // An activity line governs future casts, never a catch already in flight. Pausing while
+        // the bobber is out therefore lets that cast finish; once idle, the fisherman carries
+        // any result home before standing down instead of abandoning it in their pockets.
+        if (stationAnchor != null && !townstead$orderAllowsFishing(level, villager, stationAnchor)) {
+            if (nonRodCount > 0) {
+                enterPhase(Phase.RETURN_TO_BARREL, gameTime);
+            } else {
+                restUntilTick = gameTime + com.aetherianartificer.townstead.work.WorkRest.REST_TICKS;
+            }
+            return;
+        }
         if (nonRodCount >= threshold) {
             enterPhase(Phase.RETURN_TO_BARREL, gameTime);
             return;
@@ -349,12 +381,25 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         if (currentWaterSpot == null) {
             if (!acquireUnclaimedWaterSpot(level, villager, gameTime)) {
                 townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NO_WATER);
+                // Same at-ease rest as a missing rod: the water scan is not cheap, and the
+                // pond does not refill mid-stare.
+                restUntilTick = gameTime + com.aetherianartificer.townstead.work.WorkRest.REST_TICKS;
                 return;
             }
         }
 
         townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NONE);
         enterPhase(Phase.GO_TO_WATER, gameTime);
+    }
+
+    /** The Dock/Hut Order Sheet is an activity switch; the vanilla loot roll stays untouched. */
+    private static boolean townstead$orderAllowsFishing(ServerLevel level,
+                                                         VillagerEntityMCA villager,
+                                                         BlockPos anchor) {
+        return com.aetherianartificer.townstead.work.order.WorksiteOrders.allows(
+                        level, anchor, WorkTaskTypes.FISH)
+                && !com.aetherianartificer.townstead.work.order.WorksiteOrders.outranked(
+                        level, villager, anchor, WorkTaskTypes.FISH);
     }
 
     private void tickFetchRod(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -377,11 +422,12 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             }
         }
 
-        if (gameTime - phaseEnteredTick >= FETCH_ROD_TIMEOUT_TICKS) {
-            townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NO_ROD);
-            // Stay in FETCH_ROD but reset timer so we retry periodically.
-            phaseEnteredTick = gameTime;
-        }
+        // No rod on them and none in storage: at ease. Retrying every tick pinned the
+        // fisherman to the barrel and hammered the storage search; a rod does not appear by
+        // being stared at. The rest expires on its own and this asks again.
+        townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NO_ROD);
+        restUntilTick = gameTime + com.aetherianartificer.townstead.work.WorkRest.REST_TICKS;
+        enterPhase(Phase.IDLE, gameTime);
     }
 
     private void tickGoToWater(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -442,7 +488,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             return;
         }
         if (result == WorkNavigationResult.BLOCKED) {
-            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
                 LOGGER.info("[Fisherman] GO_TO_WATER blocked: villager@({},{},{}) stand={} water={} anchor={}",
                         villager.getX(), villager.getY(), villager.getZ(),
                         stand, currentWaterSpot == null ? "?" : currentWaterSpot.waterPos(),
@@ -518,18 +564,20 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             return;
         }
 
-        // The claimed waterPos is the block immediately next to our stand —
-        // always ~1 block away, which gives short disappointing casts. Pick a
-        // random-but-farther water block in the pond for the actual cast aim
-        // so the villager throws out into open water when there's room.
-        BlockPos waterPos = currentWaterSpot.waterPos();
-        BlockPos castTarget = townstead$pickCastTarget(level, villager, waterPos);
+        townstead$holdPosition(villager);
+        CastPlan plan = townstead$planCast(level, villager, currentWaterSpot.waterPos());
+        if (plan == null) {
+            // No arc from this stand reaches the pond: walls, the deck, or water that is
+            // not part of it. Give the stand up instead of casting into the scenery.
+            townstead$castMisfire(level, villager, gameTime, true);
+            return;
+        }
+        BlockPos castTarget = plan.target();
         villager.getLookControl().setLookAt(
                 castTarget.getX() + 0.5, castTarget.getY() + 0.5, castTarget.getZ() + 0.5);
-        townstead$holdPosition(villager);
         villager.swing(InteractionHand.MAIN_HAND);
 
-        if (!spawnHook(level, villager, castTarget)) {
+        if (!spawnHook(level, villager, plan)) {
             // Owner couldn't be obtained; stay in cast and try again next tick.
             return;
         }
@@ -539,7 +587,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                 net.minecraft.sounds.SoundSource.NEUTRAL,
                 0.5F, 0.4F / (level.random.nextFloat() * 0.4F + 0.8F));
 
-        int lure = townstead$fishingSpeedLevel(level, currentRod) + townstead$dockLureBonus();
+        int lure = com.aetherianartificer.townstead.root.hook.PhenoHooks.fishingLure(villager, currentRod,
+                townstead$fishingSpeedLevel(level, currentRod) + townstead$dockLureBonus());
         int wait = BITE_MIN_TICKS + level.random.nextInt(Math.max(1, BITE_RANDOM_TICKS))
                 - lure * BITE_LURE_REDUCTION_TICKS;
         int floor = BITE_MIN_TICKS;
@@ -560,25 +609,16 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
      * unavailable. Called from tickCast initially, and from tickWaitForBite if the
      * hook self-despawns (vanilla checks owner's hand/distance each tick).
      */
-    private boolean spawnHook(ServerLevel level, VillagerEntityMCA villager, BlockPos waterPos) {
+    private boolean spawnHook(ServerLevel level, VillagerEntityMCA villager, CastPlan plan) {
         if (currentRod == null || currentRod.isEmpty()) return false;
-        if (!townstead$isValidCastFluid(level, waterPos)) return false;
         ServerPlayer fakePlayer = getFishingActor(level, villager);
         if (fakePlayer == null) return false;
 
-        // Compute yaw (horizontal aim) directly toward the water. For PITCH
-        // we use BALLISTIC aim, not line-of-sight: given vanilla's ~0.94
-        // block/tick cast speed and gravity 0.03/tick², find the launch
-        // angle whose trajectory actually lands in the water block. Using
-        // line-of-sight pitch on water that's close and below produces a
-        // near-vertical cast that plops the bobber onto the shore instead
-        // of arcing into the pond.
-        double dx = (waterPos.getX() + 0.5) - villager.getX();
-        double dy = (waterPos.getY() + 0.5) - villager.getEyeY();
-        double dz = (waterPos.getZ() + 0.5) - villager.getZ();
-        double horizDist = Math.sqrt(dx * dx + dz * dz);
-        float yaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
-        float pitch = townstead$ballisticPitch(horizDist, dy);
+        // Yaw and pitch come from the cast simulation, so vanilla's own
+        // launch math sends the bobber along the arc that was checked.
+        BlockPos waterPos = plan.target();
+        float yaw = plan.yaw();
+        float pitch = plan.pitch();
 
         fakePlayer.setPos(villager.getX(), villager.getY(), villager.getZ());
         fakePlayer.setYRot(yaw);
@@ -594,14 +634,15 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         // the owner-hand check.
         fakePlayer.setItemInHand(InteractionHand.MAIN_HAND, townstead$vanillaRodProxy());
 
-        int luck = townstead$fishingLuckLevel(level, currentRod) + townstead$dockLuckBonus();
-        int lure = townstead$fishingSpeedLevel(level, currentRod) + townstead$dockLureBonus();
+        int luck = com.aetherianartificer.townstead.root.hook.PhenoHooks.fishingLuck(villager, currentRod,
+                townstead$fishingLuckLevel(level, currentRod) + townstead$dockLuckBonus());
+        int lure = com.aetherianartificer.townstead.root.hook.PhenoHooks.fishingLure(villager, currentRod,
+                townstead$fishingSpeedLevel(level, currentRod) + townstead$dockLureBonus());
 
         // Vanilla constructor places the hook 0.3 blocks forward of the
         // FakePlayer at eye height and applies the normalized look-vector
-        // velocity scaled by (0.6/length + 0.5) + gaussian jitter. Since
-        // we set the FakePlayer's yaw/pitch to the BALLISTIC angle, vanilla
-        // now produces a correctly-aimed cast arc. Do not override position
+        // velocity scaled by (0.6/length + 0.5) + small jitter: the same
+        // launch townstead$simulateCast checked. Do not override position
         // or deltaMovement afterwards.
         FishingHook hook = new FishingHook(fakePlayer, level, luck, lure);
         // Prime clients tracking the villager before the hook spawn packet can
@@ -612,98 +653,211 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                 waterPos.getX() + 0.5D, waterPos.getY() + 0.5D, waterPos.getZ() + 0.5D);
         level.addFreshEntity(hook);
         currentHook = new WeakReference<>(hook);
+        hookSpawnedTick = level.getGameTime();
         nextHookLinkSyncTick = level.getGameTime() + HOOK_LINK_REFRESH_TICKS;
         townstead$broadcastHookLink(level, hook, villager,
                 waterPos.getX() + 0.5D, waterPos.getY() + 0.5D, waterPos.getZ() + 0.5D);
-        if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
-            LOGGER.info("[Fisherman] cast hook id={} from ({},{},{}) yaw={} pitch={} horizDist={} dy={} v={}",
+        if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
+            LOGGER.info("[Fisherman] cast hook id={} from ({},{},{}) yaw={} pitch={} target={} v={}",
                     hook.getId(), villager.getX(), villager.getY(), villager.getZ(),
-                    yaw, pitch, horizDist, dy, hook.getDeltaMovement());
+                    yaw, pitch, waterPos, hook.getDeltaMovement());
         }
         return true;
     }
 
-    // Cast-target tuning. The villager stands right at the water edge, so the
-    // claimed "fishing spot" is always 1 block away — a limp cast. We scan
-    // water blocks in a box around the stand and pick a random one from the
-    // far-third of candidates, so casts land somewhere in the middle of the
-    // pond when there's room, but fall back gracefully on tiny puddles.
-    private static final int CAST_TARGET_HORIZ_RADIUS = 8;
-    private static final int CAST_TARGET_VERTICAL_RADIUS = 2;
+    // Cast-target tuning. The claimed spot is the water block beside the stand, so
+    // aim farther out into the same pond when it has room. Every candidate arc is
+    // run through townstead$simulateCast; only arcs that land in the pond count.
     private static final double CAST_TARGET_MIN_DIST = 3.0;
     private static final double CAST_TARGET_MAX_DIST = 8.0;
+    private static final int CAST_POOL_SCAN_CAP = 512;
+    private static final int CAST_FAR_ATTEMPTS = 6;
+    private static final int CAST_NEAR_ATTEMPTS = 4;
+    private static final int CAST_SIM_MAX_TICKS = 60;
+    private static final float CAST_PITCH_UP = -40.0F;
+    private static final float CAST_PITCH_DOWN = 70.0F;
+    private static final float CAST_PITCH_STEP = 2.5F;
+    // Vanilla FishingHook flight: gravity per tick, then drag after the move.
+    private static final double HOOK_GRAVITY = 0.03;
+    private static final double HOOK_DRAG = 0.92;
+    // A bobber that has not reached water this long after the cast never will.
+    private static final int HOOK_SETTLE_TICKS = 60;
+    private static final int MAX_CAST_MISFIRES = 3;
+
+    private record CastPlan(BlockPos target, float yaw, float pitch) {}
 
     /**
-     * Choose a water block to aim the cast at. Prefers blocks 3–8 blocks from
-     * the villager horizontally; if the pond is too small to offer any, falls
-     * back to the fallback nearWaterPos (the adjacent water block).
+     * Pick a cast into the pond that holds {@code nearWaterPos}, with an arc that
+     * really lands there from where the villager stands. Prefers water 3-8 blocks
+     * out; on a small pond, falls back to water closer in. Null when no arc
+     * from this stand reaches the pond.
      */
-    private static BlockPos townstead$pickCastTarget(ServerLevel level, VillagerEntityMCA villager, BlockPos fallbackNearWaterPos) {
-        double vx = villager.getX();
-        double vz = villager.getZ();
-        BlockPos center = fallbackNearWaterPos;
-        List<BlockPos> candidates = new java.util.ArrayList<>();
-        double maxDistSq = CAST_TARGET_MAX_DIST * CAST_TARGET_MAX_DIST;
+    private static @Nullable CastPlan townstead$planCast(ServerLevel level, VillagerEntityMCA villager, BlockPos nearWaterPos) {
+        if (!FishingWaterIndex.isOpenSurfaceWater(level, nearWaterPos)) return null;
+        ServerPlayer actor = getFishingActor(level, villager);
+        double eyeHeight = actor != null ? actor.getEyeHeight() : 1.62;
+        java.util.Set<Long> pond = townstead$castablePond(level, villager, nearWaterPos);
+        for (BlockPos target : townstead$castTargets(level, villager, nearWaterPos, pond)) {
+            CastPlan plan = townstead$aimAt(level, villager, eyeHeight, target, pond);
+            if (plan != null) return plan;
+        }
+        return null;
+    }
+
+    /** Open surface water joined to {@code start} on the same level, within cast range. */
+    private static java.util.Set<Long> townstead$castablePond(ServerLevel level, VillagerEntityMCA villager, BlockPos start) {
+        double maxDistSq = (CAST_TARGET_MAX_DIST + 1.0) * (CAST_TARGET_MAX_DIST + 1.0);
+        java.util.Set<Long> pond = new java.util.HashSet<>();
+        java.util.ArrayDeque<BlockPos> queue = new java.util.ArrayDeque<>();
+        pond.add(start.asLong());
+        queue.add(start);
+        while (!queue.isEmpty() && pond.size() < CAST_POOL_SCAN_CAP) {
+            BlockPos cur = queue.poll();
+            for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+                BlockPos next = cur.relative(dir);
+                if (pond.contains(next.asLong())) continue;
+                if (townstead$horizDistSq(villager, next) > maxDistSq) continue;
+                if (!FishingWaterIndex.isOpenSurfaceWater(level, next)) continue;
+                pond.add(next.asLong());
+                queue.add(next);
+            }
+        }
+        return pond;
+    }
+
+    private static List<BlockPos> townstead$castTargets(ServerLevel level, VillagerEntityMCA villager,
+                                                        BlockPos nearWaterPos, java.util.Set<Long> pond) {
         double minDistSq = CAST_TARGET_MIN_DIST * CAST_TARGET_MIN_DIST;
-        for (BlockPos p : BlockPos.betweenClosed(
-                center.offset(-CAST_TARGET_HORIZ_RADIUS, -CAST_TARGET_VERTICAL_RADIUS, -CAST_TARGET_HORIZ_RADIUS),
-                center.offset(CAST_TARGET_HORIZ_RADIUS, CAST_TARGET_VERTICAL_RADIUS, CAST_TARGET_HORIZ_RADIUS))) {
-            if (!townstead$isValidCastFluid(level, p)) continue;
-            BlockPos above = p.above();
-            BlockState aboveState = level.getBlockState(above);
-            // Need open sky above so the arc isn't blocked by stone/roofs.
-            if (!aboveState.isAir() && !aboveState.getCollisionShape(level, above).isEmpty()) continue;
-            double dxh = (p.getX() + 0.5) - vx;
-            double dzh = (p.getZ() + 0.5) - vz;
-            double horizSq = dxh * dxh + dzh * dzh;
-            if (horizSq < minDistSq || horizSq > maxDistSq) continue;
-            candidates.add(p.immutable());
+        double maxDistSq = CAST_TARGET_MAX_DIST * CAST_TARGET_MAX_DIST;
+        List<BlockPos> far = new java.util.ArrayList<>();
+        List<BlockPos> near = new java.util.ArrayList<>();
+        for (long key : pond) {
+            BlockPos p = BlockPos.of(key);
+            double distSq = townstead$horizDistSq(villager, p);
+            if (distSq > maxDistSq) continue;
+            (distSq >= minDistSq ? far : near).add(p);
         }
-        if (candidates.isEmpty()) return fallbackNearWaterPos;
-        // Weight toward farther spots: sort by distance desc, pick from top half.
-        candidates.sort((a, b) -> {
-            double da = (a.getX() + 0.5 - vx) * (a.getX() + 0.5 - vx) + (a.getZ() + 0.5 - vz) * (a.getZ() + 0.5 - vz);
-            double db = (b.getX() + 0.5 - vx) * (b.getX() + 0.5 - vx) + (b.getZ() + 0.5 - vz) * (b.getZ() + 0.5 - vz);
-            return Double.compare(db, da);
-        });
-        int topHalf = Math.max(1, candidates.size() / 2);
-        return candidates.get(level.random.nextInt(topHalf));
-    }
-
-    private static boolean townstead$isValidCastFluid(ServerLevel level, BlockPos pos) {
-        BlockState state = level.getBlockState(pos);
-        if (!state.getFluidState().isSource()) return false;
-        return state.getFluidState().is(net.minecraft.tags.FluidTags.WATER);
+        java.util.Comparator<BlockPos> fartherFirst = java.util.Comparator.comparingDouble(
+                (BlockPos p) -> townstead$horizDistSq(villager, p)).reversed();
+        // Random pick from the farther half of open water, then closer water as a fallback.
+        far.sort(fartherFirst);
+        List<BlockPos> farHalf = new java.util.ArrayList<>(far.subList(0, Math.max(far.isEmpty() ? 0 : 1, far.size() / 2)));
+        for (int i = farHalf.size() - 1; i > 0; i--) {
+            java.util.Collections.swap(farHalf, i, level.random.nextInt(i + 1));
+        }
+        near.sort(fartherFirst);
+        List<BlockPos> targets = new java.util.ArrayList<>(
+                farHalf.subList(0, Math.min(CAST_FAR_ATTEMPTS, farHalf.size())));
+        targets.addAll(near.subList(0, Math.min(CAST_NEAR_ATTEMPTS, near.size())));
+        if (!targets.contains(nearWaterPos)) targets.add(nearWaterPos);
+        return targets;
     }
 
     /**
-     * Solve for the launch angle (Minecraft pitch convention: positive = down)
-     * that makes a projectile of vanilla cast speed ~0.94 blocks/tick land at
-     * (horizDist, dy) relative to the launcher, under gravity 0.03 blocks/tick².
-     * Returns the LOW-arc solution (direct, fast cast) — high-arc would lob it
-     * way up, which looks wrong for a fishing rod.
-     *
-     * Drag is ignored in the formula; for short 2–10 block casts the resulting
-     * angle lands within ~half a block of the target, which is fine since the
-     * water block is typically part of a larger pond. For unreachable targets
-     * (out of range) we fall back to direct line-of-sight aim.
+     * Sweep launch pitches toward {@code target} and keep the one whose simulated
+     * landing is closest to it. Downward pitches are tried first, so ties go to
+     * the flatter, more direct cast.
      */
-    private static float townstead$ballisticPitch(double horizDist, double dy) {
-        if (horizDist < 0.25) {
-            // Degenerate: villager is basically on top of the target. Aim
-            // straight down so the hook drops into whatever water is below.
-            return 80.0F;
+    private static @Nullable CastPlan townstead$aimAt(ServerLevel level, VillagerEntityMCA villager, double eyeHeight,
+                                                      BlockPos target, java.util.Set<Long> pond) {
+        double dx = (target.getX() + 0.5) - villager.getX();
+        double dz = (target.getZ() + 0.5) - villager.getZ();
+        float yaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+        CastPlan best = null;
+        double bestErr = Double.MAX_VALUE;
+        for (float pitch = CAST_PITCH_DOWN; pitch >= CAST_PITCH_UP; pitch -= CAST_PITCH_STEP) {
+            BlockPos landed = townstead$simulateCast(level, villager, eyeHeight, yaw, pitch);
+            if (landed == null || !pond.contains(landed.asLong())) continue;
+            double ex = landed.getX() - target.getX();
+            double ez = landed.getZ() - target.getZ();
+            double err = ex * ex + ez * ez;
+            if (err < bestErr) {
+                bestErr = err;
+                best = new CastPlan(landed, yaw, pitch);
+                if (err == 0) break;
+            }
         }
-        final double v = 0.94;
-        final double g = 0.03;
-        double k = g * horizDist / (2.0 * v * v);
-        double disc = 1.0 - 4.0 * k * (dy / horizDist + k);
-        if (disc < 0) {
-            return (float) -Math.toDegrees(Math.atan2(dy, horizDist));
+        return best;
+    }
+
+    /**
+     * Fly a bobber the way vanilla FishingHook launches and moves it, and return
+     * the water block it first enters. Null when it strikes a block first (a
+     * wall, the deck, the bank) or never comes down within range.
+     */
+    private static @Nullable BlockPos townstead$simulateCast(ServerLevel level, VillagerEntityMCA villager,
+                                                             double eyeHeight, float yaw, float pitch) {
+        float yawRad = -yaw * ((float) Math.PI / 180F) - (float) Math.PI;
+        float pitchRad = -pitch * ((float) Math.PI / 180F);
+        float f2 = net.minecraft.util.Mth.cos(yawRad);
+        float f3 = net.minecraft.util.Mth.sin(yawRad);
+        float f4 = -net.minecraft.util.Mth.cos(pitchRad);
+        float f5 = net.minecraft.util.Mth.sin(pitchRad);
+        Vec3 eye = new Vec3(villager.getX(), villager.getY() + eyeHeight, villager.getZ());
+        Vec3 pos = new Vec3(villager.getX() - f3 * 0.3, eye.y, villager.getZ() - f2 * 0.3);
+        if (townstead$clip(level, villager, eye, pos, net.minecraft.world.level.ClipContext.Fluid.NONE) != null) {
+            return null;
         }
-        double u = (1.0 - Math.sqrt(disc)) / (2.0 * k);
-        double angleAbove = Math.atan(u);
-        return (float) -Math.toDegrees(angleAbove);
+        Vec3 vel = new Vec3(-f3, net.minecraft.util.Mth.clamp(-(f5 / f4), -5.0F, 5.0F), -f2);
+        vel = vel.scale(0.6 / vel.length() + 0.5);
+        for (int tick = 0; tick < CAST_SIM_MAX_TICKS; tick++) {
+            vel = vel.add(0.0, -HOOK_GRAVITY, 0.0);
+            Vec3 next = pos.add(vel);
+            BlockPos hit = townstead$clip(level, villager, pos, next, net.minecraft.world.level.ClipContext.Fluid.ANY);
+            if (hit != null) {
+                return level.getFluidState(hit).is(net.minecraft.tags.FluidTags.WATER)
+                        && level.getBlockState(hit).getCollisionShape(level, hit).isEmpty()
+                        ? hit.immutable() : null;
+            }
+            pos = next;
+            vel = vel.scale(HOOK_DRAG);
+        }
+        return null;
+    }
+
+    private static @Nullable BlockPos townstead$clip(ServerLevel level, VillagerEntityMCA villager, Vec3 from, Vec3 to,
+                                                     net.minecraft.world.level.ClipContext.Fluid fluid) {
+        net.minecraft.world.phys.BlockHitResult hit = level.clip(new net.minecraft.world.level.ClipContext(
+                from, to, net.minecraft.world.level.ClipContext.Block.COLLIDER, fluid, villager));
+        return hit.getType() == net.minecraft.world.phys.HitResult.Type.MISS ? null : hit.getBlockPos();
+    }
+
+    private static double townstead$horizDistSq(VillagerEntityMCA villager, BlockPos p) {
+        double dx = (p.getX() + 0.5) - villager.getX();
+        double dz = (p.getZ() + 0.5) - villager.getZ();
+        return dx * dx + dz * dz;
+    }
+
+    /** The bobber sits in water, allowing for its bob carrying it just over the surface block. */
+    private static boolean townstead$hookInWater(ServerLevel level, FishingHook hook) {
+        BlockPos at = hook.blockPosition();
+        return level.getFluidState(at).is(net.minecraft.tags.FluidTags.WATER)
+                || level.getFluidState(at.below()).is(net.minecraft.tags.FluidTags.WATER);
+    }
+
+    /**
+     * The bobber came to rest out of the water, or no arc reaches the pond. Recast a few
+     * times; past that, or with {@code giveUp}, drop the stand and look for another.
+     */
+    private void townstead$castMisfire(ServerLevel level, VillagerEntityMCA villager, long gameTime, boolean giveUp) {
+        discardHook(level);
+        if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
+            LOGGER.info("[Fisherman] cast misfire #{} giveUp={} stand={} water={}",
+                    castMisfires + 1, giveUp,
+                    currentWaterSpot == null ? "?" : currentWaterSpot.standPos(),
+                    currentWaterSpot == null ? "?" : currentWaterSpot.waterPos());
+        }
+        if (giveUp || ++castMisfires >= MAX_CAST_MISFIRES || currentWaterSpot == null) {
+            if (currentWaterSpot != null) {
+                targetFailures.recordFailure(currentWaterSpot.standPos(), gameTime, 1, TARGET_BLACKLIST_TICKS);
+            }
+            releaseCurrentWaterSpot(level, villager);
+            castMisfires = 0;
+            nextCastReadyTick = gameTime + CAST_COOLDOWN_TICKS;
+            enterPhase(Phase.IDLE, gameTime);
+            return;
+        }
+        enterPhase(Phase.AIM, gameTime);
     }
 
     /**
@@ -773,17 +927,28 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         if (hook == null || !hook.isAlive() || hook.level() != level) {
             // Hook went away (chunk unload, vanilla cleanup, owner distance). Respawn
             // without resetting biteDeadline — the villager's wait continues.
-            if (currentWaterSpot != null) {
-                spawnHook(level, villager,
-                        townstead$pickCastTarget(level, villager, currentWaterSpot.waterPos()));
+            CastPlan plan = currentWaterSpot == null ? null
+                    : townstead$planCast(level, villager, currentWaterSpot.waterPos());
+            if (plan == null) {
+                townstead$castMisfire(level, villager, gameTime, true);
+                return;
             }
+            spawnHook(level, villager, plan);
             hook = currentHook == null ? null : currentHook.get();
             if (hook == null) {
                 // Couldn't respawn (no FakePlayer, no rod). Don't bail the phase —
-                // just wait; if deadline hits we'll REEL and roll loot anyway.
+                // just wait; the reel finds no bobber in the water and catches nothing.
                 if (gameTime >= biteDeadline) enterPhase(Phase.REEL, gameTime);
                 return;
             }
+        }
+
+        if (townstead$hookInWater(level, hook)) {
+            castMisfires = 0;
+        } else if (hook.onGround() || gameTime - hookSpawnedTick > HOOK_SETTLE_TICKS) {
+            // Landed on the deck, the bank, or snagged on something: no fish there.
+            townstead$castMisfire(level, villager, gameTime, false);
+            return;
         }
 
         Vec3 hookPos = hook.position();
@@ -848,11 +1013,15 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             enterPhase(Phase.FETCH_ROD, gameTime);
             return;
         }
+        // Fish come from the water the bobber sits in, never from the deck or the bank.
+        if (hook == null || !hook.isAlive() || !townstead$hookInWater(level, hook)) {
+            townstead$castMisfire(level, villager, gameTime, false);
+            return;
+        }
 
         ItemStack rodCopy = rod.copy();
 
-        Vec3 origin = hook != null ? hook.position()
-                : new Vec3(villager.getX(), villager.getY(), villager.getZ());
+        Vec3 origin = hook.position();
 
         level.playSound(null, villager.getX(), villager.getY(), villager.getZ(),
                 net.minecraft.sounds.SoundEvents.FISHING_BOBBER_RETRIEVE,
@@ -861,11 +1030,13 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
         List<ItemStack> loot = rollCatch(level, villager, hook, rod, rodCopy, origin);
         townstead$depositFishingLoot(level, villager, loot);
+        awardCatch(villager, loot, gameTime);
 
         if (townstead$dockDoubleCatchTriggers(level)) {
             List<ItemStack> bonus = rollCatch(level, villager, hook, rod, rodCopy, origin);
             townstead$depositFishingLoot(level, villager, bonus);
-            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            awardCatch(villager, bonus, gameTime);
+            if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
                 LOGGER.info("[Fisherman] wharf double-catch (tier {}) yielded {} extra item(s)",
                         currentDock.tier(), bonus.size());
             }
@@ -890,24 +1061,41 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         enterPhase(Phase.IDLE, gameTime);
     }
 
+    /** Every reel that lands something is one catch on the Fisherman career record. */
+    private static void awardCatch(VillagerEntityMCA villager, List<ItemStack> loot, long gameTime) {
+        if (loot == null || loot.isEmpty()) return;
+        com.aetherianartificer.townstead.profession.career.CareerProgression.completeWork(
+                villager, com.aetherianartificer.townstead.profession.career.Careers.FISHERMAN,
+                PlayerFishingEvents.XP_CATCH, gameTime, "townstead:fished", null, null,
+                PlayerFishingEvents.XP_CATCH, null, loot.get(0));
+    }
+
     private void tickReturnToBarrel(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         if (stationAnchor == null) {
             enterPhase(Phase.IDLE, gameTime);
             return;
         }
 
-        BlockPos stand = WorkPathing.nearestStandCandidate(level, villager, stationAnchor, null);
-        BlockPos target = stand != null ? stand : stationAnchor;
+        if (storageTarget == null) {
+            storageTarget = FishermanSupplyManager.findCatchDestination(level, villager, stationAnchor);
+        }
+        if (storageTarget == null) {
+            townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NO_STORAGE);
+            enterPhase(Phase.IDLE, gameTime);
+            return;
+        }
 
-        // Fast path: deposit has a wide radius (STORAGE_DEPOSIT_RADIUS = 16),
-        // so we only need to be "near the barrel" — not precisely on the
-        // nav-chosen stand block. Checking against the ANCHOR (the actual
-        // barrel) with a generous radius rescues the villager from limbo
+        BlockPos stand = WorkPathing.nearestStandCandidate(level, villager, storageTarget, null);
+        BlockPos target = stand != null ? stand : storageTarget;
+
+        // We only need to be beside the chosen container, not precisely on the
+        // nav-chosen stand block. Checking against the storage block with a generous radius
+        // rescues the villager from limbo
         // when they're standing at a not-quite-on-the-stand spot and the
         // pathfinder can't plot a tiny path from there to the stand.
-        double axd = villager.getX() - (stationAnchor.getX() + 0.5);
-        double azd = villager.getZ() - (stationAnchor.getZ() + 0.5);
-        if (axd * axd + azd * azd <= RETURN_TO_BARREL_ARRIVAL_RADIUS_SQ) {
+        double axd = villager.getX() - (storageTarget.getX() + 0.5);
+        double azd = villager.getZ() - (storageTarget.getZ() + 0.5);
+        if (axd * axd + azd * azd <= RETURN_TO_STORAGE_ARRIVAL_RADIUS_SQ) {
             targetProgress.reset();
             townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NONE);
             enterPhase(Phase.DEPOSIT, gameTime);
@@ -916,7 +1104,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
         WorkNavigationResult result = WorkMovement.tickMoveToTarget(
                 villager,
-                WorkTarget.zonePoint(target, stationAnchor, "barrel"),
+                WorkTarget.zonePoint(target, storageTarget, "storage"),
                 WALK_SPEED,
                 CLOSE_ENOUGH,
                 ARRIVAL_DISTANCE_SQ,
@@ -933,14 +1121,14 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             return;
         }
         if (result == WorkNavigationResult.BLOCKED) {
-            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
                 double ddx = villager.getX() - (target.getX() + 0.5);
                 double ddy = villager.getY() - target.getY();
                 double ddz = villager.getZ() - (target.getZ() + 0.5);
                 double dist = Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
-                LOGGER.info("[Fisherman] RETURN_TO_BARREL blocked: villager@({},{},{}) stand={} anchor={} distToTarget={}",
+                LOGGER.info("[Fisherman] RETURN_TO_STORAGE blocked: villager@({},{},{}) stand={} storage={} distToTarget={}",
                         villager.getX(), villager.getY(), villager.getZ(),
-                        stand, stationAnchor, dist);
+                        stand, storageTarget, dist);
             }
             targetProgress.reset();
             townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.UNREACHABLE);
@@ -953,11 +1141,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             enterPhase(Phase.IDLE, gameTime);
             return;
         }
-        boolean moved = FishermanSupplyManager.depositCatches(
-                level, villager, stationAnchor,
-                STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL);
+        boolean moved = storageTarget != null
+                && FishermanSupplyManager.depositCatchesAt(level, villager, storageTarget);
         if (countNonRodItems(villager.getInventory()) == 0) {
             townstead$setBlockedReason(level, villager, HungerData.FishermanBlockedReason.NONE);
+            storageTarget = null;
             enterPhase(Phase.IDLE, gameTime);
             return;
         }
@@ -968,6 +1156,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                 enterPhase(Phase.IDLE, gameTime);
             }
         } else {
+            storageTarget = null;
             enterPhase(Phase.IDLE, gameTime);
         }
     }
@@ -977,6 +1166,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private void enterPhase(Phase next, long gameTime) {
         this.phase = next;
         this.phaseEnteredTick = gameTime;
+        if (next == Phase.IDLE) storageTarget = null;
     }
 
     private void discardHook(ServerLevel level) {
@@ -1060,7 +1250,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     }
 
     private int townstead$waterSearchRadius() {
-        return Math.max(4, TownsteadConfig.FISHERMAN_WATER_SEARCH_RADIUS.get());
+        return Math.max(4, Switchboard.get(TownsteadConfig.FISHERMAN_WATER_SEARCH_RADIUS));
     }
 
     private int townstead$waterFallbackRadius() {
@@ -1140,6 +1330,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     }
 
     private void releaseCurrentWaterSpot(ServerLevel level, VillagerEntityMCA villager) {
+        castMisfires = 0;
         if (currentWaterSpot != null) {
             FishingSpotClaims.release(level, villager.getUUID(), currentWaterSpot.waterPos());
             currentWaterSpot = null;
@@ -1168,6 +1359,11 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             if (level.getBlockState(cachedBarrelAnchor).is(Blocks.BARREL)) return cachedBarrelAnchor;
             cachedBarrelAnchor = null;
         }
+        // "No barrel anywhere" is an answer worth remembering too. This resolver runs from the
+        // brain's start checks every tick, and the scan below reads ~21k block states — the TTL
+        // was being written and never consulted, so a fisherman with no barrel paid that cost
+        // every single tick. That was the villager everyone's frame time was going to.
+        if (gameTime < cachedBarrelUntilTick) return null;
         BlockPos center = villager.blockPosition();
         BlockPos best = null;
         double bestDistSq = Double.MAX_VALUE;
@@ -1282,10 +1478,16 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             ItemStack copy = item.copy();
             ItemStack remainder = inv.addItem(copy);
             if (!remainder.isEmpty() && stationAnchor != null) {
-                NearbyItemSources.insertIntoNearbyStorage(
-                        level, villager, remainder,
-                        STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL,
-                        stationAnchor);
+                FishermanSupplyManager.depositCatches(
+                        level, villager, stationAnchor,
+                        STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL);
+                remainder = inv.addItem(remainder);
+            }
+            if (!remainder.isEmpty()) {
+                net.minecraft.world.entity.item.ItemEntity drop = new net.minecraft.world.entity.item.ItemEntity(
+                        level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder.copy());
+                drop.setPickUpDelay(0);
+                level.addFreshEntity(drop);
             }
         }
     }
@@ -1367,7 +1569,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     }
 
     private void townstead$maybeAnnounceRequest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!TownsteadConfig.ENABLE_FISHERMAN_REQUEST_CHAT.get()) return;
+        if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker
+                .repeatedRequestsEnabled()) return;
         if (blockedReason == HungerData.FishermanBlockedReason.NONE) return;
         if (townstead$suppressStaleRequest(level, villager, gameTime)) return;
         if (gameTime < nextRequestTick) return;
@@ -1388,14 +1591,14 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
             case NO_BARREL, NONE -> null;
         };
         if (state == null) return;
-        String key = FishermanRequestDialogue.pickKey(villager, state, level.random);
-
-        villager.sendChatToAllAround(key);
+        if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
+                villager, PROFESSION, state, gameTime)) return;
         villager.getLongTermMemory().remember("townstead.fisherman_request.any");
         villager.getLongTermMemory().remember("townstead.fisherman_request." + blockedReason.id());
 
-        int interval = Math.max(200, TownsteadConfig.FISHERMAN_REQUEST_INTERVAL_TICKS.get());
-        nextRequestTick = gameTime + interval;
+        nextRequestTick = gameTime
+                + com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker
+                .effectiveInterval(PROFESSION);
     }
 
     private boolean townstead$suppressStaleRequest(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -1416,12 +1619,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     private boolean townstead$rodAvailable(ServerLevel level, VillagerEntityMCA villager) {
         if (FishermanSupplyManager.findRodInInventory(villager.getInventory()) != null) return true;
         if (stationAnchor == null) return false;
-        return NearbyItemSources.findBestNearbySlot(
-                level, villager,
-                STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL,
-                FishermanSupplyManager::isFishingRod,
-                FishermanSupplyManager::scoreRod,
-                stationAnchor) != null;
+        return FishermanSupplyManager.rodAvailableInStorage(
+                level, villager, stationAnchor);
     }
 
     private boolean townstead$waterAvailable(ServerLevel level, VillagerEntityMCA villager) {
@@ -1436,10 +1635,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
 
     private boolean townstead$storageAvailable(ServerLevel level, VillagerEntityMCA villager) {
         if (stationAnchor == null || countNonRodItems(villager.getInventory()) <= 0) return true;
-        FishermanSupplyManager.depositCatches(
-                level, villager, stationAnchor,
-                STORAGE_DEPOSIT_RADIUS, STORAGE_DEPOSIT_VERTICAL);
-        return countNonRodItems(villager.getInventory()) == 0;
+        return FishermanSupplyManager.catchStorageAvailable(level, villager, stationAnchor);
     }
 
     private void townstead$depositCatchAtShiftEnd(ServerLevel level, VillagerEntityMCA villager) {
@@ -1455,7 +1651,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         if (stationAnchor == null) return false;
         double dx = villager.getX() - (stationAnchor.getX() + 0.5);
         double dz = villager.getZ() - (stationAnchor.getZ() + 0.5);
-        return dx * dx + dz * dz <= RETURN_TO_BARREL_ARRIVAL_RADIUS_SQ;
+        return dx * dx + dz * dz <= RETURN_TO_STORAGE_ARRIVAL_RADIUS_SQ;
     }
 
     /**
@@ -1469,19 +1665,18 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     /**
      * One-shot "first time ever" chat on successful cast from inside a dock.
      * Gated by {@link #townstead$dockBonusActive} so shoreline fallbacks don't
-     * consume the milestone, and by the request-chat config + player-proximity
+     * consume the milestone, and by the universal feedback policy + player-proximity
      * check so we don't send translation keys into an empty scene.
      */
     private void townstead$maybeAnnounceFirstDockUse(ServerLevel level, VillagerEntityMCA villager) {
-        if (!TownsteadConfig.ENABLE_FISHERMAN_REQUEST_CHAT.get()) return;
         if (!townstead$dockBonusActive()) return;
         if (villager.getLongTermMemory().hasMemory(MEMORY_FIRST_DOCK_USE)) return;
         if (level.getNearestPlayer(villager, REQUEST_RANGE) == null) return;
-        String key = FishermanRequestDialogue.pickKey(villager, "dock_first_use", level.random);
-        villager.sendChatToAllAround(key);
+        if (!com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.send(
+                villager, PROFESSION, "dock_first_use", level.getGameTime())) return;
         villager.getLongTermMemory().remember(MEMORY_FIRST_DOCK_USE);
         // Small, personal ack effect on the villager — MAJOR/GRAND are reserved
-        // for structural dock milestones and fire from DockScanner instead.
+        // for structural dock milestones and fire from building recognition instead.
         RecognitionEffects.play(level, villager.position().add(0, 1.0, 0),
                 RecognitionEffects.Tier.MINOR);
     }
@@ -1489,13 +1684,13 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     // ── Debug ──
 
     private void debugTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (!TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
+        if (!Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) return;
         if (gameTime < nextDebugTick) return;
         if (!(level.getNearestPlayer(villager, REQUEST_RANGE) instanceof ServerPlayer player)) return;
         String name = villager.getName().getString();
         String id = villager.getUUID().toString();
         if (id.length() > 8) id = id.substring(0, 8);
-        WorkSiteRef site = activeWorkSite(level, villager);
+        WorkSiteView site = activeWorkSite(level, villager);
         WorkTarget target = activeWorkTarget(level, villager);
         WorkNavigationMetrics.Snapshot navSnapshot = WorkNavigationMetrics.snapshot();
         String anchor = stationAnchor == null ? "none" : stationAnchor.getX() + "," + stationAnchor.getY() + "," + stationAnchor.getZ();
@@ -1514,7 +1709,7 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
                     + " water=" + water;
         }
         int invNonRod = countNonRodItems(villager.getInventory());
-        int invThreshold = Math.max(1, TownsteadConfig.FISHERMAN_INVENTORY_FULL_THRESHOLD.get());
+        int invThreshold = Math.max(1, Switchboard.get(TownsteadConfig.FISHERMAN_INVENTORY_FULL_THRESHOLD));
         String invSummary = townstead$summarizeInventory(villager.getInventory());
         String dockInfo;
         if (currentDock == null) {
@@ -1543,8 +1738,10 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
     // ── WorkTaskAdapter ──
 
     @Override
-    public @Nullable WorkSiteRef activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
-        return stationAnchor == null ? null : WorkSiteRef.zone(stationAnchor, townstead$waterSearchRadius(), VERTICAL_RADIUS);
+    public @Nullable WorkSiteView activeWorkSite(ServerLevel level, VillagerEntityMCA villager) {
+        return stationAnchor == null ? null : WorkSiteView.zone(
+                stationAnchor, townstead$waterSearchRadius(), VERTICAL_RADIUS,
+                com.aetherianartificer.townstead.work.site.Worksites.of(level, stationAnchor));
     }
 
     @Override
@@ -1553,7 +1750,8 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         return switch (phase) {
             case GO_TO_WATER -> currentWaterSpot == null ? null
                     : WorkTarget.zonePoint(currentWaterSpot.standPos(), stationAnchor, "water");
-            case RETURN_TO_BARREL -> WorkTarget.zonePoint(stationAnchor, stationAnchor, "barrel");
+            case RETURN_TO_BARREL -> storageTarget == null ? null
+                    : WorkTarget.zonePoint(storageTarget, storageTarget, "storage");
             default -> null;
         };
     }

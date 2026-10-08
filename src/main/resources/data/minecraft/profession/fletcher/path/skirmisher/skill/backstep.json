@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.skirmisher.backstep"
+  },
+  "icon": "minecraft:leather_boots",
+  "description": {
+    "translate": "skill.townstead.fletcher.skirmisher.backstep.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:skirmisher_move",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 160,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:add_velocity",
+      "relative": true,
+      "z": -1.4,
+      "y": 0.3
+    }
+  }
+}

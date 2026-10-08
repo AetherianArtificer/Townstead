@@ -37,7 +37,18 @@ public final class EmotionTagOverrides {
             "mca_dialogue_shy"
     };
 
+    private static final java.util.Set<String> EXTRA_NAMESPACES = new java.util.LinkedHashSet<>();
+
     private EmotionTagOverrides() {}
+
+    /**
+     * Adds a language namespace whose {@code en_us.json} values may carry emotion tags, so a
+     * mod's own dialogue text is styled like MCA's. Loads it immediately if overrides already are.
+     */
+    public static synchronized void registerNamespace(String namespace) {
+        if (namespace == null || namespace.isBlank() || !EXTRA_NAMESPACES.add(namespace)) return;
+        if (loaded) loadNamespace(namespace);
+    }
 
     /** Ensure overrides are loaded. Safe to call multiple times. */
     public static void ensureLoaded() {
@@ -78,6 +89,9 @@ public final class EmotionTagOverrides {
 
     private static void loadAll() {
         for (String namespace : NAMESPACES) {
+            loadNamespace(namespace);
+        }
+        for (String namespace : EXTRA_NAMESPACES) {
             loadNamespace(namespace);
         }
         LOGGER.info("Loaded {} emotion tag overrides", OVERRIDES.size());

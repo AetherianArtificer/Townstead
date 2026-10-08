@@ -1,9 +1,11 @@
 package com.aetherianartificer.townstead.hunger;
 
+import com.aetherianartificer.townstead.storage.StorageRoles;
 import com.aetherianartificer.townstead.storage.StorageSearchContext;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -14,6 +16,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
 //? if neoforge {
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
@@ -22,10 +25,10 @@ import net.neoforged.neoforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandler;
 *///?}
 
-
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
+import javax.annotation.Nullable;
 
 public final class NearbyItemSources {
     private NearbyItemSources() {}
@@ -64,6 +67,16 @@ public final class NearbyItemSources {
                                                         BlockPos center, ToIntFunction<ItemStack> scorer) {
         return NearbyStorageIndex.snapshot(level, center, horizontalRadius, verticalRadius)
                 .findBestDrinkNearbySlot(villager, center, horizontalRadius, verticalRadius, scorer);
+    }
+
+    /** Re-resolve access and contents after travel; never debit a detached or newly restricted container. */
+    public static ItemStack extractOneFor(ServerLevel level, VillagerEntityMCA villager, ContainerSlot expected,
+                                         Predicate<ItemStack> matcher) {
+        if (expected == null || !level.isLoaded(expected.pos())) return ItemStack.EMPTY;
+        NearbyStorageIndex.invalidate(level, expected.pos());
+        ContainerSlot current = NearbyStorageIndex.snapshot(level, expected.pos(), 0, 0)
+                .revalidate(villager, expected, matcher);
+        return current == null ? ItemStack.EMPTY : extractOne(level, current);
     }
 
     public static ItemStack extractOne(ServerLevel level, ContainerSlot slotRef) {
@@ -150,22 +163,41 @@ public final class NearbyItemSources {
     }
 
     public static boolean insertIntoNearbyStorage(ServerLevel level, VillagerEntityMCA villager, ItemStack stack, int horizontalRadius, int verticalRadius) {
-        return insertIntoNearbyStorage(level, villager, stack, horizontalRadius, verticalRadius, villager.blockPosition());
+        return insertIntoNearbyStorage(level, villager, stack, horizontalRadius, verticalRadius,
+                villager.blockPosition(), com.aetherianartificer.townstead.storage.StorageUse.OUTPUT);
     }
 
     public static boolean insertIntoNearbyStorage(ServerLevel level, VillagerEntityMCA villager, ItemStack stack, int horizontalRadius, int verticalRadius, BlockPos center) {
+        return insertIntoNearbyStorage(level, villager, stack, horizontalRadius, verticalRadius, center,
+                com.aetherianartificer.townstead.storage.StorageUse.OUTPUT);
+    }
+
+    public static boolean insertIntoNearbyStorage(ServerLevel level, VillagerEntityMCA villager,
+            ItemStack stack, int horizontalRadius, int verticalRadius, BlockPos center,
+            com.aetherianartificer.townstead.storage.StorageUse use) {
+        return insertIntoNearbyStorage(level, villager, stack, horizontalRadius, verticalRadius,
+                center, use, null);
+    }
+
+    /**
+     * Inserts into nearby storage discovered from chunk block-entity indexes. The former cubic
+     * walk visited every block in a 33x9x33 neighborhood even though only block entities can
+     * accept an item; one empty-container return could consequently monopolize the server thread
+     * for well over a second in a dense modpack.
+     */
+    public static boolean insertIntoNearbyStorage(ServerLevel level, VillagerEntityMCA villager,
+            ItemStack stack, int horizontalRadius, int verticalRadius, BlockPos center,
+            com.aetherianartificer.townstead.storage.StorageUse use,
+            @Nullable Predicate<BlockState> stateFilter) {
         if (stack.isEmpty()) return true;
         StorageSearchContext searchContext = new StorageSearchContext(level);
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-horizontalRadius, -verticalRadius, -horizontalRadius),
-                center.offset(horizontalRadius, verticalRadius, horizontalRadius))) {
+        for (BlockPos pos : nearbyBlockEntities(
+                level, villager, center, horizontalRadius, verticalRadius, use)) {
 
             StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
-            if (observed.protectedStorage()) continue;
+            if (stateFilter != null && !stateFilter.test(observed.state())) continue;
             BlockEntity be = observed.blockEntity();
-            // Exclude processing containers from generic storage insertion.
-            // Production tasks (e.g. butcher smoker workflow) target these explicitly.
-            if (isProcessingContainer(observed.state(), be)) continue;
+            if (!StorageRoles.isStorageCandidate(level, observed.pos(), be, villager, use)) continue;
             if (be instanceof Container container) {
                 int beforeCount = stack.getCount();
                 insertIntoContainer(container, stack);
@@ -197,6 +229,38 @@ public final class NearbyItemSources {
         return stack.isEmpty();
     }
 
+    private static java.util.List<BlockPos> nearbyBlockEntities(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos center,
+            int horizontalRadius, int verticalRadius,
+            com.aetherianartificer.townstead.storage.StorageUse use) {
+        int minX = center.getX() - horizontalRadius;
+        int maxX = center.getX() + horizontalRadius;
+        int minY = center.getY() - verticalRadius;
+        int maxY = center.getY() + verticalRadius;
+        int minZ = center.getZ() - horizontalRadius;
+        int maxZ = center.getZ() + horizontalRadius;
+        java.util.List<BlockPos> positions = new java.util.ArrayList<>();
+        for (int chunkX = SectionPos.blockToSectionCoord(minX);
+             chunkX <= SectionPos.blockToSectionCoord(maxX); chunkX++) {
+            for (int chunkZ = SectionPos.blockToSectionCoord(minZ);
+                 chunkZ <= SectionPos.blockToSectionCoord(maxZ); chunkZ++) {
+                if (!level.hasChunk(chunkX, chunkZ)) continue;
+                LevelChunk chunk = level.getChunk(chunkX, chunkZ);
+                for (BlockPos pos : chunk.getBlockEntitiesPos()) {
+                    if (pos.getX() < minX || pos.getX() > maxX
+                            || pos.getY() < minY || pos.getY() > maxY
+                            || pos.getZ() < minZ || pos.getZ() > maxZ) continue;
+                    positions.add(pos.immutable());
+                }
+            }
+        }
+        positions.sort(java.util.Comparator
+                .comparingInt((BlockPos pos) -> StorageRoles.useRank(level.getBlockState(pos), use))
+                .thenComparingDouble(pos -> villager.distanceToSqr(
+                        pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)));
+        return positions;
+    }
+
     /**
      * Insert {@code stack} into any container located inside the given MCA
      * Building's bounding box, ignoring blocks outside the building even
@@ -209,6 +273,13 @@ public final class NearbyItemSources {
      */
     public static boolean insertIntoBuildingStorage(ServerLevel level, VillagerEntityMCA villager,
             ItemStack stack, net.conczin.mca.server.world.data.Building building) {
+        return insertIntoBuildingStorage(level, villager, stack, building,
+                com.aetherianartificer.townstead.storage.StorageUse.OUTPUT);
+    }
+
+    public static boolean insertIntoBuildingStorage(ServerLevel level, VillagerEntityMCA villager,
+            ItemStack stack, net.conczin.mca.server.world.data.Building building,
+            com.aetherianartificer.townstead.storage.StorageUse use) {
         if (stack.isEmpty()) return true;
         if (building == null) return false;
         BlockPos p0 = building.getPos0();
@@ -220,41 +291,55 @@ public final class NearbyItemSources {
         int maxY = Math.max(p0.getY(), p1.getY());
         int maxZ = Math.max(p0.getZ(), p1.getZ());
         StorageSearchContext searchContext = new StorageSearchContext(level);
+        java.util.List<BlockPos> positions = new java.util.ArrayList<>();
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        for (int y = minY; y <= maxY && !stack.isEmpty(); y++) {
-            for (int x = minX; x <= maxX && !stack.isEmpty(); x++) {
-                for (int z = minZ; z <= maxZ && !stack.isEmpty(); z++) {
+        for (int y = minY; y <= maxY; y++) {
+            for (int x = minX; x <= maxX; x++) {
+                for (int z = minZ; z <= maxZ; z++) {
                     cursor.set(x, y, z);
                     if (!building.containsPos(cursor)) continue;
-                    StorageSearchContext.ObservedBlock observed = searchContext.observe(cursor);
-                    if (observed.protectedStorage()) continue;
-                    BlockEntity be = observed.blockEntity();
-                    if (be == null) continue;
-                    if (isProcessingContainer(observed.state(), be)) continue;
-                    if (be instanceof Container container) {
-                        int beforeCount = stack.getCount();
-                        insertIntoContainer(container, stack);
-                        if (stack.getCount() != beforeCount) {
-                            NearbyStorageIndex.invalidate(level, observed.pos());
-                        }
-                        if (stack.isEmpty()) return true;
-                    }
-                    IItemHandler handler = searchContext.getItemHandler(observed.pos(), null);
-                    if (handler != null) {
-                        for (int i = 0; i < handler.getSlots(); i++) {
-                            int beforeCount = stack.getCount();
-                            // Shrink in place by what was accepted (see insertIntoNearbyStorage);
-                            // reassigning the local would dupe items into handler-only storage.
-                            ItemStack remainder = handler.insertItem(i, stack, false);
-                            int inserted = beforeCount - remainder.getCount();
-                            if (inserted > 0) {
-                                stack.shrink(inserted);
-                                NearbyStorageIndex.invalidate(level, observed.pos());
-                            }
-                            if (stack.isEmpty()) return true;
-                        }
-                    }
+                    positions.add(cursor.immutable());
                 }
+            }
+        }
+        positions.sort(java.util.Comparator
+                .comparingInt((BlockPos pos) -> StorageRoles.useRank(level.getBlockState(pos), use))
+                .thenComparingDouble(pos -> villager.distanceToSqr(
+                        pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)));
+        for (BlockPos pos : positions) {
+            if (stack.isEmpty()) break;
+            StorageSearchContext.ObservedBlock observed = searchContext.observe(pos);
+            BlockEntity be = observed.blockEntity();
+            if (be == null) continue;
+            if (!StorageRoles.isStorageCandidate(level, observed.pos(), be, villager, use)) continue;
+            if (be instanceof Container container) {
+                int beforeCount = stack.getCount();
+                insertIntoContainer(container, stack);
+                if (stack.getCount() != beforeCount) {
+                    NearbyStorageIndex.invalidate(level, observed.pos());
+                    com.aetherianartificer.townstead.storage.WorksiteStorageIndex
+                            .invalidate(level, observed.pos());
+                }
+                if (stack.isEmpty()) return true;
+                continue;
+            }
+            IItemHandler handler = searchContext.getItemHandler(observed.pos(), null);
+            if (handler != null) {
+                for (int i = 0; i < handler.getSlots(); i++) {
+                    int beforeCount = stack.getCount();
+                    // Shrink in place by what was accepted (see insertIntoNearbyStorage);
+                    // reassigning the local would dupe items into handler-only storage.
+                    ItemStack remainder = handler.insertItem(i, stack, false);
+                    int inserted = beforeCount - remainder.getCount();
+                    if (inserted > 0) {
+                        stack.shrink(inserted);
+                        NearbyStorageIndex.invalidate(level, observed.pos());
+                        com.aetherianartificer.townstead.storage.WorksiteStorageIndex
+                                .invalidate(level, observed.pos());
+                }
+                if (stack.isEmpty()) return true;
+                continue;
+            }
             }
         }
         return stack.isEmpty();
@@ -264,46 +349,41 @@ public final class NearbyItemSources {
         return isProcessingContainer(level.getBlockState(pos), be);
     }
 
+    /**
+     * Whether villagers must leave this block alone — a machine rather than a shelf.
+     *
+     * <p>Decided by data first ({@link StorageRoles}), so supporting a new mod is a tag file
+     * and never a code change. The guesses at the bottom are the last word only when nothing
+     * has been stated, and either tag overrules them.</p>
+     */
     public static boolean isProcessingContainer(BlockState state, BlockEntity be) {
+        if (StorageRoles.denied(state)) return true;
+        // Explicit roles are authoritative. Some workstations intentionally expose a narrowly
+        // routed storage surface (for example, a cutting board holding a reusable knife).
+        if (StorageRoles.allowed(state)) return false;
+        // A block a pack already calls a workstation is a machine; making packs say it twice
+        // would just be a second place to forget.
+        if (com.aetherianartificer.townstead.work.station.Workstations.byState(state) != null) {
+            return true;
+        }
+
+        // ── Nothing stated: fall back to guessing, and prefer to skip ──
         if (be instanceof AbstractFurnaceBlockEntity) return true;
         if (state.is(BlockTags.CAMPFIRES)) return true;
         ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         if (id == null) return false;
-        String ns = id.getNamespace();
         String path = id.getPath();
-        if ("farmersdelight".equals(ns)) {
-            return "cooking_pot".equals(path)
-                    || "skillet".equals(path)
-                    || "stove".equals(path)
-                    || "cutting_board".equals(path);
-        }
-        if ("farm_and_charm".equals(ns)) {
-            // The feeding trough is an animal feeder, not villager storage.
-            // Its block entity mirrors the slot-0 item count into a blockstate
-            // SIZE property capped at 4, so any setChanged() while the count
-            // exceeds 4 throws from updateBlockState -> setValue(SIZE, count).
-            // Extracting from it via our path triggers exactly that crash;
-            // keep villagers from reading or depositing into it.
-            return "feeding_trough".equals(path);
-        }
-        if ("butchery".equals(ns)) {
-            // Butchery's MCreator-generated blocks all ship with internal
-            // item slots, regardless of whether the block actually uses
-            // them. Generic deposit scans treat those slots as bottomless
-            // sinks. Treat every block in the namespace as processing
-            // except the freezer, which is the one legitimate storage.
-            return !"freezer".equals(path);
-        }
-        // Exclude blocks that are clearly machines/devices, not storage
-        if (path.contains("machine") || path.contains("vending")
+        // A name that reads like machinery. Crude and deliberately so — it exists to keep
+        // villagers out of an unknown mod's equipment, and any block it catches wrongly is
+        // rescued by putting it in #townstead:storage.
+        return path.contains("machine") || path.contains("vending")
                 || path.contains("terminal") || path.contains("interface")
+                || path.contains("trough") || path.contains("feeder")
+                || path.contains("feeding") || path.contains("pet_bowl")
                 || path.contains("generator") || path.contains("engine")
                 || path.contains("press") || path.contains("crusher")
                 || path.contains("grinder") || path.contains("centrifuge")
-                || path.contains("assembler") || path.contains("processor")) {
-            return true;
-        }
-        return false;
+                || path.contains("assembler") || path.contains("processor");
     }
 
     private static void insertIntoContainer(Container container, ItemStack stack) {

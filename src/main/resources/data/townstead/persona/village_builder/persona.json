@@ -1,0 +1,324 @@
+{
+  "name": "Village Builder",
+  "downed": true,
+  "arrival": "walk_in",
+  "villager": {
+    "profession": "minecraft:mason",
+    "schedule": "townstead:long_days",
+    "personality": [
+      "friendly",
+      "upbeat",
+      "playful"
+    ]
+  },
+  "arrives": [
+    {
+      "text": "Raise 3 buildings in a settlement",
+      "value": {
+        "type": "pheno:standing",
+        "source": "deeds"
+      },
+      "target": 9
+    },
+    {
+      "text": "Earn good standing in a village",
+      "value": {
+        "type": "pheno:standing"
+      },
+      "target": 20
+    }
+  ],
+  "rolls": {
+    "hometown": [
+      {
+        "value": "mine",
+        "vars": {
+          "gift": "minecraft:raw_copper",
+          "line": "overwork"
+        },
+        "outfit": "townstead:skins/clothing/persona/village_builder/mine.png"
+      },
+      {
+        "value": "mill",
+        "vars": {
+          "gift": "minecraft:bread",
+          "line": "hunger"
+        },
+        "outfit": "townstead:skins/clothing/persona/village_builder/mill.png"
+      },
+      {
+        "value": "harbor",
+        "vars": {
+          "gift": "minecraft:cooked_cod",
+          "line": "eviction"
+        },
+        "outfit": "townstead:skins/clothing/persona/village_builder/harbor.png"
+      },
+      {
+        "value": "roads",
+        "vars": {
+          "gift": "minecraft:compass",
+          "line": "idle"
+        },
+        "outfit": "townstead:skins/clothing/persona/village_builder/roads.png"
+      },
+      {
+        "value": "forest",
+        "vars": {
+          "gift": "minecraft:oak_sapling",
+          "line": "demolition"
+        },
+        "outfit": "townstead:skins/clothing/persona/village_builder/forest.png"
+      },
+      {
+        "value": "well",
+        "vars": {
+          "gift": "minecraft:potion[potion=minecraft:water]",
+          "line": "thirst"
+        },
+        "when": {
+          "type": "pheno:value",
+          "value": {
+            "type": "pheno:village_needs",
+            "need": "thirst"
+          },
+          "comparison": "!=",
+          "compare_to": 0
+        },
+        "outfit": "townstead:skins/clothing/persona/village_builder/well.png"
+      }
+    ]
+  },
+  "gifts": [
+    {
+      "items": [
+        "$gift"
+      ],
+      "response": "loves",
+      "knot": "gift_loved",
+      "relationship": {
+        "affection": 5
+      },
+      "first": {
+        "knot": "gift_from_home",
+        "relationship": {
+          "affection": 10
+        }
+      }
+    },
+    {
+      "items": [
+        "minecraft:bricks",
+        "minecraft:stone_bricks",
+        "minecraft:lantern"
+      ],
+      "response": "likes",
+      "knot": "gift_liked"
+    },
+    {
+      "items": [
+        "minecraft:rotten_flesh",
+        "minecraft:poisonous_potato",
+        "minecraft:spider_eye"
+      ],
+      "response": "dislikes",
+      "knot": "gift_disliked"
+    }
+  ],
+  "conditions": {
+    "discovered": {
+      "type": "pheno:village",
+      "player_founded": false
+    },
+    "no_spare_beds": {
+      "type": "pheno:not",
+      "condition": {
+        "type": "pheno:village",
+        "min_free_beds": 1
+      }
+    },
+    "empty_houses": {
+      "type": "pheno:village",
+      "min_free_beds": 2
+    },
+    "hungry": {
+      "type": "pheno:value",
+      "value": {
+        "type": "pheno:village_needs",
+        "need": "hunger"
+      },
+      "comparison": "<",
+      "compare_to": 0
+    },
+    "thirst_on": {
+      "type": "pheno:value",
+      "value": {
+        "type": "pheno:village_needs",
+        "need": "thirst"
+      },
+      "comparison": "!=",
+      "compare_to": 0
+    },
+    "has_farm": {
+      "type": "pheno:village",
+      "has_building": "farm"
+    },
+    "hurt": {
+      "type": "pheno:health",
+      "max": 0.6,
+      "relative": true
+    },
+    "wet": {
+      "type": "pheno:wet"
+    },
+    "night": {
+      "type": "pheno:time_of_day",
+      "min": 13000,
+      "max": 23000
+    }
+  },
+  "goals": {
+    "collapsed": {
+      "text": "{teller} collapsed from overwork",
+      "event": "townstead:villager_collapsed",
+      "where": {
+        "uuid": "teller"
+      }
+    },
+    "own_rest_day": {
+      "text": "Give {teller} a day off in their week",
+      "condition": {
+        "type": "pheno:rest_day"
+      }
+    },
+    "shorter_days": {
+      "text": "Keep {teller}'s longest workday to 10 hours",
+      "condition": {
+        "type": "pheno:value",
+        "value": {
+          "type": "pheno:work_hours"
+        },
+        "comparison": "<=",
+        "compare_to": 10
+      }
+    },
+    "residents": {
+      "text": "People living here",
+      "value": {
+        "type": "pheno:count",
+        "on": {
+          "type": "pheno:village"
+        }
+      },
+      "target": 1
+    },
+    "idle_adults": {
+      "text": "Adults with no work",
+      "value": {
+        "type": "pheno:count",
+        "on": {
+          "type": "pheno:village",
+          "where": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:profession",
+                "profession": [
+                  "minecraft:none",
+                  "minecraft:nitwit"
+                ]
+              },
+              {
+                "type": "pheno:life_stage",
+                "stage": "adult"
+              }
+            ]
+          }
+        }
+      },
+      "target": 1
+    },
+    "upgrade_one": {
+      "text": "Upgrade a building here",
+      "event": "townstead:building_upgraded",
+      "where": {
+        "village": "teller"
+      }
+    },
+    "rest_days": {
+      "text": "Give every worker a rest day in their week",
+      "condition": {
+        "type": "pheno:rest_day",
+        "village": true
+      }
+    },
+    "fed": {
+      "text": "Get the village's hunger to a good level",
+      "condition": {
+        "type": "pheno:value",
+        "value": {
+          "type": "pheno:village_needs",
+          "need": "hunger"
+        },
+        "comparison": ">=",
+        "compare_to": 0.5
+      }
+    },
+    "watered": {
+      "text": "Get the village's thirst to a good level",
+      "condition": {
+        "type": "pheno:value",
+        "value": {
+          "type": "pheno:village_needs",
+          "need": "thirst"
+        },
+        "comparison": ">=",
+        "compare_to": 0.5
+      }
+    },
+    "newcomer": {
+      "text": "Someone new moves in",
+      "event": "townstead:villager_village_changed",
+      "where": {
+        "after": "teller"
+      }
+    },
+    "spare_bed": {
+      "text": "Keep a spare bed after they do",
+      "condition": {
+        "type": "pheno:village",
+        "min_free_beds": 1
+      }
+    },
+    "three_working": {
+      "text": "Have {count} residents working",
+      "value": {
+        "type": "pheno:count",
+        "on": {
+          "type": "pheno:village",
+          "where": {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:profession",
+              "profession": [
+                "minecraft:none",
+                "minecraft:nitwit"
+              ]
+            }
+          }
+        }
+      },
+      "target": 3
+    }
+  },
+  "actions": {
+    "introduce_farmer": {
+      "type": "pheno:introduce_persona",
+      "persona": "townstead:farmer",
+      "delay_days": [
+        1,
+        2
+      ]
+    }
+  }
+}

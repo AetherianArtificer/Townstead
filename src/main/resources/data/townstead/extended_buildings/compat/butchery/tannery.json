@@ -1,7 +1,11 @@
 {
   "schema": "townstead:extended_building/v1",
+  "workers": ["minecraft:leatherworker"],
   "catalog": {
     "node_item": "butchery:skin_rack"
+  },
+  "dialogue": {
+    "topics": ["butchery", "tannery"]
   },
   "spirit": {
     "industrious": 8,

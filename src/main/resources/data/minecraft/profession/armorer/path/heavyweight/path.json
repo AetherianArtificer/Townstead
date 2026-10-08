@@ -1,0 +1,90 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.armorer.path.heavyweight"
+  },
+  "title": {
+    "translate": "career.townstead.armorer.title.heavyweight"
+  },
+  "color": "#5A5A6A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:temper",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:armorer/heavyweight/weight_of_iron"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:armorer/heavyweight/siege_armor"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:armorer/heavyweight/battering_ram"
+              }
+            ]
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:movement",
+                "movement": "moving"
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 8,
+                "condition": {
+                  "type": "pheno:hostile"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:temper",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "heavy_frame",
+      "plate_stance",
+      "shoulder_barge"
+    ],
+    [
+      "iron_hide",
+      "full_plate",
+      "trample"
+    ],
+    [
+      "weight_of_iron",
+      "siege_armor",
+      "battering_ram"
+    ],
+    [
+      "immovable",
+      "anchor",
+      "earthshaker"
+    ],
+    [
+      "juggernaut",
+      "living_fortress",
+      "iron_avalanche"
+    ]
+  ]
+}

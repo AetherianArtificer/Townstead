@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "translate": "career.townstead.beverage_artisan"
+  },
+  "icon": "minecraft:potion",
+  "work_sound": "minecraft:block.brewing_stand.brew",
+  "description": {
+    "translate": "career.townstead.beverage_artisan.description"
+  },
+  "skills": [
+    "taste_test",
+    "hospitality"
+  ],
+  "unlock_model": "experiential"
+}

@@ -39,7 +39,68 @@ public final class PhenoHooks {
                 ModifierCapability.key(target), ModifierCapability.key(target, discriminator));
     }
 
+    /** A mechanic that acts on an item: item-scoped modifiers test {@code subject}. */
+    public static float modifier(LivingEntity e, Modifier target, @Nullable ResourceLocation discriminator,
+                                 float base, @Nullable net.minecraft.world.item.ItemStack subject) {
+        if (e == null || e.level().isClientSide) return base;
+        if (discriminator == null) {
+            return (float) Capabilities.applyToBase(e, subject, base, ModifierCapability.key(target));
+        }
+        return (float) Capabilities.applyToBase(e, subject, base,
+                ModifierCapability.key(target), ModifierCapability.key(target, discriminator));
+    }
+
+    /** Rounds a scaled count up or down at random so fractional scaling holds on average. */
+    private static int roundRandomly(LivingEntity e, float value) {
+        if (value <= 0f) return 0;
+        int whole = (int) value;
+        return whole + (e.getRandom().nextFloat() < value - whole ? 1 : 0);
+    }
+
     // --- semantic hooks (named so shims never touch the enum) ---
+
+    /** Wear an item takes from one use by {@code e}; {@code 0.5} halves it on average. */
+    public static int durabilityLoss(LivingEntity e, net.minecraft.world.item.ItemStack stack, int amount) {
+        if (amount <= 0 || e == null || e.level().isClientSide) return amount;
+        float scaled = modifier(e, Modifier.DURABILITY_LOSS, null, amount, stack);
+        return scaled == amount ? amount : roundRandomly(e, scaled);
+    }
+
+    /** Lure levels for a cast by {@code e} with {@code rod}. */
+    public static int fishingLure(LivingEntity e, net.minecraft.world.item.ItemStack rod, int levels) {
+        return Math.max(0, Math.round(modifier(e, Modifier.FISHING_LURE, null, levels, rod)));
+    }
+
+    /** Luck of the Sea levels for a cast by {@code e} with {@code rod}. */
+    public static int fishingLuck(LivingEntity e, net.minecraft.world.item.ItemStack rod, int levels) {
+        return Math.max(0, Math.round(modifier(e, Modifier.FISHING_LUCK, null, levels, rod)));
+    }
+
+    public static float anvilBreakChance(Player p, net.minecraft.world.item.ItemStack worked, float chance) {
+        return Math.max(0f, Math.min(1f, modifier(p, Modifier.ANVIL_BREAK_CHANCE, null, chance, worked)));
+    }
+
+    public static float anvilMaterialRepair(Player p, net.minecraft.world.item.ItemStack worked, float fraction) {
+        return Math.max(0f, Math.min(1f, modifier(p, Modifier.ANVIL_MATERIAL_REPAIR, null, fraction, worked)));
+    }
+
+    /** How much of the vanilla prior-work increase to keep (1 = all, 0 = none). */
+    public static float anvilPriorWork(Player p, net.minecraft.world.item.ItemStack worked) {
+        return Math.max(0f, modifier(p, Modifier.ANVIL_PRIOR_WORK, null, 1f, worked));
+    }
+
+    /** The map-pixel radius a held map fills in around {@code e} (vanilla 128 / 2^scale). */
+    public static int mapFillRadius(net.minecraft.world.entity.Entity e, int radius) {
+        if (!(e instanceof LivingEntity living)) return radius;
+        return Math.max(1, Math.round(modifier(living, Modifier.MAP_FILL_RADIUS, radius)));
+    }
+
+    /** Whether {@code e} landing on farmland tramples it this time. */
+    public static boolean tramples(LivingEntity e) {
+        if (e == null || e.level().isClientSide) return true;
+        float chance = modifier(e, Modifier.FARMLAND_TRAMPLE, 1f);
+        return chance >= 1f || (chance > 0f && e.getRandom().nextFloat() < chance);
+    }
 
     public static float heal(LivingEntity e, float amount) { return modifier(e, Modifier.HEALING, amount); }
 

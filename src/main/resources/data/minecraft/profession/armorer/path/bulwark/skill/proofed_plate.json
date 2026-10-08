@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.bulwark.proofed_plate"
+  },
+  "icon": "minecraft:iron_chestplate",
+  "description": {
+    "translate": "skill.townstead.armorer.bulwark.proofed_plate.description"
+  },
+  "cost": 1,
+  "requires": [
+    "arrow_catcher"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "durability_loss",
+    "operation": "multiply",
+    "value": 0.5,
+    "item_condition": {
+      "type": "pheno:ingredient",
+      "tag": "minecraft:trimmable_armor"
+    }
+  }
+}

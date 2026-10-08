@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:profession/v2",
+  "mods": {
+    "all": [
+      "legendarysurvivaloverhaul"
+    ],
+    "not": "toughasnails"
+  },
+  "display_name": {
+    "translate": "career.townstead.climatologist"
+  },
+  "description": {
+    "translate": "career.townstead.climatologist.description"
+  },
+  "icon": "legendarysurvivaloverhaul:heater",
+  "skills": [
+    "weathered",
+    "barometer"
+  ],
+  "unlock_model": "experiential"
+}

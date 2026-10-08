@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.bulwark.arrow_catcher"
+  },
+  "icon": "minecraft:arrow",
+  "description": {
+    "translate": "skill.townstead.armorer.bulwark.arrow_catcher.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.6,
+    "damage_tag": "minecraft:is_projectile"
+  }
+}

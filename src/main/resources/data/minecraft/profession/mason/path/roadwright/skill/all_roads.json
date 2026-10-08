@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.roadwright.all_roads"
+  },
+  "icon": "minecraft:powered_rail",
+  "description": {
+    "translate": "skill.townstead.mason.roadwright.all_roads.description"
+  },
+  "cost": 1,
+  "requires": [
+    "highway"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:mortar",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:mortar",
+          "min": 75
+        },
+        {
+          "type": "pheno:block",
+          "y": -1,
+          "block_condition": {
+            "type": "in_tag",
+            "tag": "townstead:roads"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 30,
+      "amplifier": 1
+    }
+  }
+}

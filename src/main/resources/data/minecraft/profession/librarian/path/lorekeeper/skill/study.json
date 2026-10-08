@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.lorekeeper.study"
+  },
+  "icon": "minecraft:lectern",
+  "description": {
+    "translate": "skill.townstead.librarian.lorekeeper.study.description"
+  },
+  "cost": 1,
+  "requires": [
+    "bestiary_arthropods"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:insight",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:movement",
+            "movement": "moving"
+          }
+        },
+        {
+          "type": "pheno:building"
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:insight",
+      "amount": 3
+    }
+  }
+}

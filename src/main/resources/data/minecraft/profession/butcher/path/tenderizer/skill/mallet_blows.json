@@ -1,0 +1,40 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.tenderizer.mallet_blows"
+  },
+  "icon": "minecraft:iron_ingot",
+  "description": {
+    "translate": "skill.townstead.butcher.tenderizer.mallet_blows.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "target": "other",
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "ingredient",
+        "tag": "townstead:butcher_hammers"
+      }
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:add_velocity",
+          "away_from_other": 0.6,
+          "y": 0.3
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:slowness",
+          "duration": 40,
+          "amplifier": 0
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,467 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "anecdote",
+  "groups": [
+    {
+      "subjects": "weather",
+      "variant": "rain",
+      "stance": "-",
+      "form": "story",
+      "lines": {
+        "reminds_me_of_the_flood": {
+          "text": "Reminds me of the flood when I was little.",
+          "stages": ["adult", "senior"],
+          "opens": "story",
+          "thread": "weather.wet"
+        },
+        "last_time_it_rained_like": {
+          "text": "Last time it rained like this, the bridge washed out.",
+          "requires": "here.building_tag:townstead:bridge",
+          "opens": "story",
+          "thread": "weather.wet"
+        }
+      }
+    },
+    {
+      "subjects": "weather",
+      "variant": "rain",
+      "stance": "+",
+      "form": "story",
+      "lines": {
+        "i_jumped_in_every_puddle": {
+          "text": "I jumped in every puddle on the way here!",
+          "stages": "child",
+          "opens": "story",
+          "thread": "weather.play"
+        }
+      }
+    },
+    {
+      "subjects": "weather",
+      "variant": "rain",
+      "stance": "-",
+      "form": "story",
+      "lines": {
+        "i_once_got_caught_in": {
+          "text": "I once got caught in the rain and slept in a cave. Worst night ever.",
+          "sets": { "tone": "funny" },
+          "opens": "story",
+          "thread": "weather.wet"
+        }
+      }
+    },
+    {
+      "subjects": "weather",
+      "variant": "thunder",
+      "stance": "-",
+      "form": "story",
+      "lines": {
+        "lightning_split_the_old_oak": {
+          "text": "Lightning split the old oak when I was young.",
+          "stages": ["adult", "senior"],
+          "opens": "story",
+          "thread": "weather.storm"
+        },
+        "my_dog_hid_under_the": {
+          "text": "My dog hid under the bed all night.",
+          "sets": { "tone": "funny" },
+          "opens": "story",
+          "thread": "weather.animals"
+        },
+        "i_saw_lightning_turn_a": {
+          "text": "I saw lightning turn a pig into something awful once.",
+          "opens": "story",
+          "thread": "weather.animals"
+        }
+      }
+    },
+    {
+      "subjects": "weather",
+      "variant": "clear",
+      "stance": "+",
+      "form": "story",
+      "lines": {
+        "i_used_to_love_days": { "text": "I used to love days like this as a child.", "stages": ["adult", "senior"], "opens": "story" },
+        "i_fell_asleep_in_the": {
+          "text": "I fell asleep in the orchard yesterday.",
+          "requires": "here.building_tag:townstead:orchard",
+          "sets": { "tone": "funny" },
+          "opens": "story",
+          "thread": "weather.play"
+        },
+        "i_spent_all_day_yesterday": { "text": "I spent all day yesterday lying in the grass.", "opens": "story", "thread": "weather.play" }
+      }
+    },
+    {
+      "subjects": "weather",
+      "variant": "snow",
+      "stance": "-",
+      "form": "story",
+      "lines": {
+        "we_had_a_winter_like": {
+          "text": "We had a winter like this when I was young.",
+          "stages": "senior",
+          "opens": "story",
+          "thread": "weather.cold"
+        }
+      }
+    },
+    {
+      "subjects": "weather",
+      "variant": "snow",
+      "stance": "+",
+      "form": "story",
+      "lines": {
+        "i_made_a_snowball_as": {
+          "text": "I made a snowball as big as my head!",
+          "stages": "child",
+          "opens": "story",
+          "thread": "weather.play"
+        }
+      }
+    },
+    {
+      "subjects": "weather",
+      "variant": "snow",
+      "stance": "-",
+      "form": "story",
+      "lines": {
+        "i_slipped_on_the_ice": {
+          "text": "I slipped on the ice this morning. Right in front of everyone.",
+          "sets": { "tone": "funny" },
+          "opens": "story",
+          "thread": "weather.wet"
+        }
+      }
+    },
+    {
+      "subjects": "weather",
+      "form": "general",
+      "lines": {
+        "weather_here_always_changes_the": {
+          "text": "Weather here always changes the moment you go out.",
+          "opens": "general",
+          "thread": "weather.duration"
+        }
+      }
+    },
+    {
+      "subjects": "weather",
+      "variant": "rain",
+      "form": "general",
+      "lines": {
+        "it_always_rains_right_after": {
+          "text": "It always rains right after I clean my boots.",
+          "sets": { "tone": "funny" },
+          "opens": "general",
+          "thread": "weather.wet"
+        }
+      }
+    },
+    {
+      "subjects": "weather",
+      "variant": "clear",
+      "form": "general",
+      "lines": {
+        "nice_weather_never_lasts_around": { "text": "Nice weather never lasts around here.", "opens": "general", "thread": "weather.duration" }
+      }
+    },
+    {
+      "subjects": "mob",
+      "stance": "-",
+      "form": "story",
+      "lines": {
+        "my_cousin_saw_one_like": { "text": "My cousin saw one like that last spring.", "opens": "story" },
+        "one_got_into_our_cellar": { "text": "One got into our cellar once.", "opens": "story" }
+      }
+    },
+    {
+      "subjects": "mob",
+      "stance": "+",
+      "form": "story",
+      "lines": {
+        "i_chased_one_off_with": {
+          "text": "I chased one off with a broom once.",
+          "stages": ["adult", "senior"],
+          "sets": { "tone": "funny" },
+          "opens": "story"
+        }
+      }
+    },
+    {
+      "subjects": "mob",
+      "stance": "-",
+      "form": "story",
+      "lines": {
+        "a_creeper_blew_up_my": {
+          "text": "A creeper blew up my garden once. I cried for a week.",
+          "sets": { "tone": "funny" },
+          "opens": "story"
+        },
+        "one_followed_me_all_the": {
+          "text": "One followed me all the way home once. I had to hide in a haystack.",
+          "sets": { "tone": "funny" },
+          "opens": "story"
+        }
+      }
+    },
+    {
+      "subjects": "mob",
+      "stance": "+",
+      "form": "story",
+      "lines": {
+        "my_grandpa_used_to_fight": { "text": "My grandpa used to fight them off with a shovel.", "opens": "story" }
+      }
+    },
+    {
+      "subjects": "mob",
+      "stance": "-",
+      "form": "general",
+      "lines": {
+        "they_always_come_when_the": { "text": "They always come when the moon is dark.", "opens": "general" },
+        "its_always_worse_in_the": { "text": "It's always worse in the autumn.", "opens": "general" }
+      }
+    },
+    {
+      "subjects": "mob",
+      "form": "general",
+      "lines": {
+        "theyre_drawn_to_light_or": {
+          "text": "They're drawn to light. Or they avoid it. I forget which.",
+          "sets": { "tone": "funny" },
+          "opens": "general"
+        }
+      }
+    },
+    {
+      "subjects": "event",
+      "variant": "argument",
+      "persp": { "who": "they" },
+      "form": "story",
+      "lines": {
+        "the_same_thing_happened_to": { "text": "The same thing happened to my neighbour once.", "opens": "story" }
+      }
+    },
+    {
+      "subjects": "event",
+      "variant": "argument",
+      "persp": { "who": "they" },
+      "form": "general",
+      "lines": {
+        "that_always_happens_around_harvest": { "text": "That always happens around harvest.", "opens": "general" }
+      }
+    },
+    {
+      "subjects": "event",
+      "variant": "argument",
+      "form": "general",
+      "lines": {
+        "people_fight_about_the_silliest": { "text": "People fight about the silliest things.", "opens": "general" }
+      }
+    },
+    {
+      "subjects": "event",
+      "variant": "argument",
+      "form": "story",
+      "lines": {
+        "i_once_argued_with_a": { "text": "I once argued with a cow. The cow won.", "sets": {"tone": "funny"}, "opens": "story" }
+      }
+    },
+    {
+      "subjects": "event",
+      "variant": "marriage",
+      "persp": { "who": "they" },
+      "form": "story",
+      "lines": {
+        "my_sisters_wedding_was_the": { "text": "My sister's wedding was the talk of the village too.", "opens": "story" },
+        "i_cried_at_the_last": {
+          "text": "I cried at the last wedding. Don't tell anyone.",
+          "sets": { "tone": "funny" },
+          "opens": "story"
+        }
+      }
+    },
+    {
+      "subjects": "event",
+      "variant": "mastery",
+      "persp": { "who": "they" },
+      "form": "story",
+      "lines": {
+        "i_remember_when_i_made": {
+          "text": "I remember when I made master. I couldn't sleep for a week.",
+          "stages": ["adult", "senior"],
+          "opens": "story"
+        },
+        "my_father_was_a_master": {
+          "text": "My father was a master too. Took him twenty years.",
+          "stages": ["adult", "senior"],
+          "opens": "story"
+        }
+      }
+    },
+    {
+      "subjects": "event",
+      "variant": "birth",
+      "persp": { "who": "they" },
+      "form": "story",
+      "lines": {
+        "i_remember_when_my_first": {
+          "text": "I remember when my first was born. So tiny.",
+          "stages": ["adult", "senior"],
+          "opens": "story"
+        }
+      }
+    },
+    {
+      "subjects": "event",
+      "variant": "birth",
+      "persp": { "who": "they" },
+      "form": "general",
+      "lines": {
+        "babies_change_everything_believe_me": { "text": "Babies change everything. Believe me.", "stages": ["adult", "senior"], "opens": "general" }
+      }
+    },
+    {
+      "subjects": "event",
+      "variant": "birth",
+      "form": "general",
+      "lines": {
+        "babies_always_come_in_winter": { "text": "Babies always come in winter around here.", "opens": "general" }
+      }
+    },
+    {
+      "subjects": "project",
+      "form": "story",
+      "lines": {
+        "my_father_helped_build_the": { "text": "My father helped build the last one.", "opens": "story" },
+        "i_carried_stone_for_the": { "text": "I carried stone for the old one as a boy.", "stages": "senior", "opens": "story" }
+      }
+    },
+    {
+      "subjects": "project",
+      "form": "general",
+      "lines": {
+        "these_things_always_take_twice": { "text": "These things always take twice as long.", "opens": "general" }
+      }
+    },
+    {
+      "subjects": "project",
+      "form": "story",
+      "lines": {
+        "i_tried_building_a_shed": {
+          "text": "I tried building a shed once. It fell down twice.",
+          "sets": { "tone": "funny" },
+          "opens": "story"
+        }
+      }
+    },
+    {
+      "subjects": "project",
+      "form": "general",
+      "lines": {
+        "every_time_they_build_something": {
+          "text": "Every time they build something, they forget the doors.",
+          "sets": { "tone": "funny" },
+          "opens": "general"
+        }
+      }
+    },
+    {
+      "subjects": "project",
+      "form": "story",
+      "lines": {
+        "i_helped_with_the_foundations": {
+          "text": "I helped with the foundations. My back still hurts.",
+          "stages": ["adult", "senior"],
+          "opens": "story"
+        }
+      }
+    },
+    {
+      "subjects": "quest",
+      "form": "story",
+      "lines": {
+        "i_took_a_job_like": {
+          "text": "I took a job like that once. Never again.",
+          "stages": ["adult", "senior"],
+          "sets": { "tone": "funny" },
+          "opens": "story"
+        },
+        "my_brother_did_one_of": { "text": "My brother did one of those. Came back with a scar.", "opens": "story" }
+      }
+    },
+    {
+      "subjects": "quest",
+      "form": "general",
+      "lines": { "those_jobs_never_pay_what": {"text": "Those jobs never pay what they promise.", "opens": "general"} }
+    },
+    {
+      "subjects": "quest",
+      "form": "story",
+      "lines": {
+        "i_once_got_lost_for": {
+          "text": "I once got lost for three days doing a job like that.",
+          "sets": { "tone": "funny" },
+          "opens": "story"
+        },
+        "the_last_person_who_took": {
+          "text": "The last person who took one of those came back with a chicken. No idea why.",
+          "sets": { "tone": "funny" },
+          "opens": "story"
+        }
+      }
+    },
+    {
+      "subjects": "biome",
+      "stance": "+",
+      "form": "story",
+      "lines": {
+        "i_tried_living_in_the": {
+          "text": "I tried living in the city once. Came right back.",
+          "stages": ["adult", "senior"],
+          "opens": "story",
+          "thread": "biome.elsewhere"
+        }
+      }
+    },
+    {
+      "subjects": "biome",
+      "stance": "0",
+      "form": "story",
+      "lines": {
+        "ive_never_been_further_than": {
+          "text": "I've never been further than the next village.",
+          "opens": "story",
+          "thread": "biome.elsewhere"
+        }
+      }
+    },
+    {
+      "subjects": "biome",
+      "stance": "+",
+      "form": "story",
+      "lines": {
+        "my_grandparents_built_the_first": { "text": "My grandparents built the first house here.", "opens": "story", "thread": "biome.family" }
+      }
+    },
+    {
+      "subjects": "biome",
+      "form": "story",
+      "lines": {
+        "i_got_lost_in_the": {
+          "text": "I got lost in the woods once. Found my way back by following the smell of bread.",
+          "sets": { "tone": "funny" },
+          "opens": "story",
+          "thread": "biome.home"
+        }
+      }
+    },
+    {
+      "subjects": "biome",
+      "form": "general",
+      "lines": {
+        "everyone_who_leaves_ends_up": { "text": "Everyone who leaves ends up coming back.", "opens": "general", "thread": "biome.elsewhere" }
+      }
+    }
+  ]
+}

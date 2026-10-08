@@ -1,0 +1,93 @@
+package com.aetherianartificer.townstead.storage;
+
+import com.aetherianartificer.townstead.profession.def.ProfessionDef;
+import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import net.conczin.mca.entity.VillagerEntityMCA;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+/** A profession's optional ordering of semantic external storage-building roles. */
+public record StoragePreference(List<ResourceLocation> preferredRoles) {
+    public static final StoragePreference NONE = new StoragePreference(List.of());
+    public static final int LOCAL_RANK = 0;
+    public static final int EXTERNAL_BASE_RANK = 1;
+    public static final int FALLBACK_RANK = Integer.MAX_VALUE;
+
+    public StoragePreference {
+        preferredRoles = List.copyOf(preferredRoles);
+    }
+
+    /**
+     * Among external stores, a matching preferred role ranks first, followed by a general store.
+     * Buildings with neither are not part of the external storage route. Local worksite rank is
+     * operation-dependent and supplied by {@link #localRank(StorageUse)}.
+     */
+    public int buildingRank(String buildingType) {
+        Set<ResourceLocation> roles = BuildingStorageRoles.rolesFor(buildingType);
+        for (int i = 0; i < preferredRoles.size(); i++) {
+            if (roles.contains(preferredRoles.get(i))) return EXTERNAL_BASE_RANK + i;
+        }
+        if (roles.contains(BuildingStorageRoles.GENERAL)) {
+            return EXTERNAL_BASE_RANK + preferredRoles.size();
+        }
+        return FALLBACK_RANK;
+    }
+
+    /**
+     * Worksite shelves remain nearest-first for supplies. At delivery time, however, an authored
+     * profession preference is a promise that its named store wins: preferred role, general
+     * village store, then an ordinary container left beside the worksite.
+     */
+    public int localRank(StorageUse use) {
+        if (use != StorageUse.OUTPUT || preferredRoles.isEmpty()) return LOCAL_RANK;
+        return EXTERNAL_BASE_RANK + preferredRoles.size() + 1;
+    }
+
+    public static StoragePreference forVillager(VillagerEntityMCA villager) {
+        if (villager == null) return NONE;
+        ResourceLocation id = BuiltInRegistries.VILLAGER_PROFESSION
+                .getKey(villager.getVillagerData().getProfession());
+        ProfessionDef def = id == null ? null : ProfessionDefs.byId(id);
+        if (def == null) return NONE;
+        var path = com.aetherianartificer.townstead.profession.ProfessionIdentity
+                .path(villager, def.id());
+        if (path != null && !path.storage().preferredRoles().isEmpty()) return path.storage();
+        return def.storage();
+    }
+
+    /** Parses {@code "storage":{"preferred_roles":["townstead:materials"]}}. */
+    public static StoragePreference parse(JsonElement element) {
+        if (element == null || !element.isJsonObject()) {
+            throw new IllegalArgumentException("'storage' must be an object");
+        }
+        JsonObject object = element.getAsJsonObject();
+        if (object.has("buildings") || object.has("preferred")) {
+            throw new IllegalArgumentException(
+                    "Container blocks/building names are not storage preferences; use 'preferred_roles'");
+        }
+        List<ResourceLocation> roles = new ArrayList<>();
+        if (object.has("preferred_roles")) {
+            if (!object.get("preferred_roles").isJsonArray()) {
+                throw new IllegalArgumentException("'storage.preferred_roles' must be an array");
+            }
+            for (JsonElement entry : object.getAsJsonArray("preferred_roles")) {
+                if (!entry.isJsonPrimitive() || !entry.getAsJsonPrimitive().isString()) {
+                    throw new IllegalArgumentException(
+                            "'storage.preferred_roles' entries must be resource ids");
+                }
+                ResourceLocation role = ResourceLocation.tryParse(entry.getAsString());
+                if (role == null) {
+                    throw new IllegalArgumentException("Invalid storage role '" + entry.getAsString() + "'");
+                }
+                if (!roles.contains(role)) roles.add(role);
+            }
+        }
+        return roles.isEmpty() ? NONE : new StoragePreference(roles);
+    }
+}

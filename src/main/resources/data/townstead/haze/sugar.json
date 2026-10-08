@@ -1,0 +1,9 @@
+{
+  "shape": "cloud",
+  "color": "#F6D8E4",
+  "duration": 240,
+  "fog": {
+    "distance": 7.0
+  },
+  "particle": "minecraft:end_rod"
+}

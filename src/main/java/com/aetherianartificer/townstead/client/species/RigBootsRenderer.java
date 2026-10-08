@@ -75,7 +75,7 @@ public final class RigBootsRenderer {
         if (entity.getItemBySlot(EquipmentSlot.FEET).isEmpty()) return;
         java.lang.reflect.Method render = renderPiece();
         if (render == null) return;
-        ModelPart root = RigModels.root(rigBase);
+        ModelPart root = RigModels.bakedRoot(rigBase);
         Holder holder = HOLDERS.computeIfAbsent(rigBase, b -> build());
         RENDERING.set(true);
         try {
@@ -85,14 +85,18 @@ public final class RigBootsRenderer {
                 // The worn leg draws flat (at the pose frame); the other is collapsed so only one boot draws.
                 ModelPart worn = boot.left() ? holder.inner.leftLeg : holder.inner.rightLeg;
                 ModelPart other = boot.left() ? holder.inner.rightLeg : holder.inner.leftLeg;
-                float s = boot.scale();
+                float s = boot.scale() * boot.seat().scale();
                 flatLeg(worn, s);
+                worn.xScale *= boot.seat().scaleAxes()[0];
+                worn.yScale *= boot.seat().scaleAxes()[1];
+                worn.zScale *= boot.seat().scaleAxes()[2];
                 hideLeg(other);
 
                 pose.pushPose();
                 // Walk into the bone's live frame: root then the bone (vanilla leg bones are direct
                 // children of the root, whose own transform is identity). This is the dynamic tip finder.
                 if (root != null) root.translateAndRotate(pose);
+                RigModels.translateToParent(rigBase, boot.bone(), pose);
                 bone.translateAndRotate(pose);
                 // Out to the bone's tip (its cube's far corner), in the bone's own frame.
                 org.joml.Vector3f tip = boneTip(bone);
@@ -141,6 +145,7 @@ public final class RigBootsRenderer {
     public static org.joml.Vector3f boneTip(ModelPart leg) {
         if (leg == null) return new org.joml.Vector3f();
         try {
+            CUBE_PICK.setSeed(0L);
             ModelPart.Cube cube = leg.getRandomCube(CUBE_PICK);
             float x = Math.abs(cube.minX) > Math.abs(cube.maxX) ? cube.minX : cube.maxX;
             float y = Math.abs(cube.minY) > Math.abs(cube.maxY) ? cube.minY : cube.maxY;

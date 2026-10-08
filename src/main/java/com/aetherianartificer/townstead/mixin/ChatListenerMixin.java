@@ -17,7 +17,7 @@ public class ChatListenerMixin {
     //? if neoforge {
     @Inject(method = "handleSystemMessage", at = @At("HEAD"), cancellable = true)
     //?} else {
-    /*@Inject(method = "handleSystemMessage", remap = false, require = 0, at = @At("HEAD"), cancellable = true)
+    /*@Inject(method = "m_240494_", remap = false, require = 0, at = @At("HEAD"), cancellable = true)
     *///?}
     private void townstead$routeVillagerLineToDialogue(Component message, boolean overlay, CallbackInfo ci) {
         if (overlay) return;

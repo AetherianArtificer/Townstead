@@ -38,11 +38,16 @@ public final class SpeciesJsonLoader extends SimpleJsonResourceReloadListener {
                          ProfilerFiller profiler) {
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
         Map<ResourceLocation, Species> parsed = new LinkedHashMap<>();
+        Map<ResourceLocation, Map<ResourceLocation, Boolean>> states = new LinkedHashMap<>();
         Map<ResourceLocation, Personalities> policies = new LinkedHashMap<>();
+        Map<ResourceLocation, com.aetherianartificer.townstead.root.appearance.HairPolicy> hairPolicies = new LinkedHashMap<>();
+        Map<ResourceLocation, com.aetherianartificer.townstead.clothing.BodyClothing> bodyClothing = new LinkedHashMap<>();
+        Map<ResourceLocation, Map<String, com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit>> outfits = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
+                if (!com.aetherianartificer.townstead.data.ModGate.allows(obj)) continue;
                 Component displayName = DataPackLang.parseComponent(obj.get("display_name"), file.toString(), lang);
                 Rig rig = parseRig(obj);
                 Animations animations = parseAnimations(obj);
@@ -55,15 +60,23 @@ public final class SpeciesJsonLoader extends SimpleJsonResourceReloadListener {
                 float admixture = Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(obj, "admixture_chance", 0f)));
                 Genome genome = RootJsonParsing.genes(obj, file.toString(), LOGGER);
                 CharacterEditorLayout characterEditor = parseCharacterEditor(obj, file.toString(), lang);
+                states.put(file, RootStates.parse(obj));
                 parsed.put(file, new Species(file, displayName, rig, animations, breasts, admixture, genome,
                         characterEditor));
                 policies.put(file, PersonalityPolicies.parse(obj));
+                hairPolicies.put(file, com.aetherianartificer.townstead.root.appearance.HairPolicy.parse(obj, lang));
+                bodyClothing.put(file, com.aetherianartificer.townstead.clothing.BodyClothing.parse(obj));
+                outfits.put(file, com.aetherianartificer.townstead.root.outfit.RootOutfits.parse(obj));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse species {}: {}", file, ex.getMessage());
             }
         }
         SpeciesRegistry.replaceAll(parsed);
+        RootStates.replace(RootStates.Kind.SPECIES, states);
         PersonalityPolicyRegistry.setSpecies(policies);
+        com.aetherianartificer.townstead.root.appearance.HairPolicyRegistry.setSpecies(hairPolicies);
+        com.aetherianartificer.townstead.clothing.BodyClothingRegistry.setSpecies(bodyClothing);
+        com.aetherianartificer.townstead.root.outfit.RootOutfits.setSpecies(outfits);
         LOGGER.info("Loaded {} origin species", parsed.size());
     }
 

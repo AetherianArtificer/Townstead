@@ -1,0 +1,19 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "mods": "vampirism",
+  "state": "townstead_state:vampire",
+  "tier": "fledgling",
+  "priority": 20,
+  "condition": {
+    "type": "pheno:not",
+    "condition": {
+      "type": "pheno:entity_type",
+      "entity_type": "minecraft:player"
+    }
+  },
+  "genes": {
+    "grant": [
+      "townstead_roots:vampire_sun_weakness"
+    ]
+  }
+}

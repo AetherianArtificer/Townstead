@@ -1,0 +1,25 @@
+{
+  "schema": "townstead:hangout_venue/v2",
+  "mods": ["brewery"],
+  "buildings": [
+    "compat/brewery/brew_hall_l1",
+    "compat/brewery/brew_hall_l2",
+    "compat/brewery/brew_hall_l3"
+  ],
+  "capacity": 10,
+  "activities": [
+    "townstead:tavern_shared_meal",
+    "townstead:tavern_round",
+    "townstead:tavern_supper",
+    "townstead:tavern_conversation"
+  ],
+  "tags": ["townstead_hangouts:lively", "townstead_hangouts:social", "townstead_hangouts:communal", "townstead_hangouts:rustic", "townstead_hangouts:food", "townstead_hangouts:drink"],
+  "amenities": ["seating", "food", "drink", "conversation"],
+  "staff_roles": {
+    "bartender": {"type":"pheno:profession","profession":"townstead:beverage_artisan","path":"bartender"},
+    "server": {"type":"pheno:or","conditions":[
+      {"type":"pheno:profession","profession":"townstead:beverage_artisan","path":"bartender"},
+      {"type":"pheno:profession","profession":"townstead:cook"}
+    ]}
+  }
+}

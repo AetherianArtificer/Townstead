@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "minecraft:bell"
+  },
+  "spirit": {
+    "commercial": 2,
+    "scholar": 2
+  },
+  "requires": [
+    { "decoration": "townstead:council_table", "count": 1 },
+    { "size": { "min": 60 } }
+  ],
+  "seat": {
+    "tier": 2,
+    "functions": ["townstead:records", "townstead:audience", "townstead:assembly"],
+    "actors": ["polity", "organization"]
+  }
+}

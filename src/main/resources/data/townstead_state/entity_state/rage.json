@@ -1,0 +1,11 @@
+{
+  "schema": "pheno:entity_state/v1",
+  "mods": "werewolves",
+  "id": "townstead_state:rage",
+  "min": 0,
+  "max": 300,
+  "initial": 0,
+  "merge": "max",
+  "persistence": "persistent",
+  "death": "clear"
+}

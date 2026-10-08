@@ -37,12 +37,17 @@ public final class LineageJsonLoader extends SimpleJsonResourceReloadListener {
                          ProfilerFiller profiler) {
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
         Map<ResourceLocation, Lineage> parsed = new LinkedHashMap<>();
+        Map<ResourceLocation, Map<ResourceLocation, Boolean>> states = new LinkedHashMap<>();
         Map<ResourceLocation, Personalities> policies = new LinkedHashMap<>();
+        Map<ResourceLocation, com.aetherianartificer.townstead.root.appearance.HairPolicy> hairPolicies = new LinkedHashMap<>();
+        Map<ResourceLocation, com.aetherianartificer.townstead.clothing.BodyClothing> bodyClothing = new LinkedHashMap<>();
+        Map<ResourceLocation, Map<String, com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit>> outfits = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
             String ctx = file.toString();
             try {
                 JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), ctx);
+                if (!com.aetherianartificer.townstead.data.ModGate.allows(obj)) continue;
                 TownsteadSchema.validate(obj, "townstead:lineage/v1");
                 Component displayName = DataPackLang.parseComponent(obj.get("display_name"), ctx, lang);
                 ResourceLocation ancestry = RootJsonParsing.optionalId(obj, "ancestry", ctx, LOGGER);
@@ -55,14 +60,24 @@ public final class LineageJsonLoader extends SimpleJsonResourceReloadListener {
                 Component backstory = RootJsonParsing.backstory(obj, ctx, lang);
                 Genome genome = RootJsonParsing.genes(obj, ctx, LOGGER);
                 SpawnBias spawnBias = RootJsonParsing.spawnBias(obj, ctx, LOGGER);
-                parsed.put(file, new Lineage(file, displayName, ancestry, demonym, backstory, genome, spawnBias));
+                com.aetherianartificer.townstead.culture.CulturalSpawnBias culturalSpawnBias = com.aetherianartificer.townstead.culture.CulturalSpawnBias.parse(obj);
+                states.put(file, RootStates.parse(obj));
+                parsed.put(file, new Lineage(file, displayName, ancestry, demonym, backstory, genome, spawnBias,
+                        culturalSpawnBias));
                 policies.put(file, PersonalityPolicies.parse(obj));
+                hairPolicies.put(file, com.aetherianartificer.townstead.root.appearance.HairPolicy.parse(obj, lang));
+                bodyClothing.put(file, com.aetherianartificer.townstead.clothing.BodyClothing.parse(obj));
+                outfits.put(file, com.aetherianartificer.townstead.root.outfit.RootOutfits.parse(obj));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse lineage {}: {}", file, ex.getMessage());
             }
         }
         LineageRegistry.replaceAll(parsed);
+        RootStates.replace(RootStates.Kind.LINEAGE, states);
         PersonalityPolicyRegistry.setLineage(policies);
+        com.aetherianartificer.townstead.root.appearance.HairPolicyRegistry.setLineage(hairPolicies);
+        com.aetherianartificer.townstead.clothing.BodyClothingRegistry.setLineage(bodyClothing);
+        com.aetherianartificer.townstead.root.outfit.RootOutfits.setLineage(outfits);
         LOGGER.info("Loaded {} Roots lineages", parsed.size());
     }
 }

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.function.ToDoubleFunction;
 
 /**
  * Chooses a founder's origin at spawn from the loaded origins, weighted by each
@@ -52,22 +53,32 @@ public final class RootSelector {
      */
     public static Selection select(Level level, BlockPos pos, RandomSource random,
                                    Predicate<ResourceLocation> allowed) {
+        return select(level, pos, random, allowed, ignored -> 1.0D);
+    }
+
+    /** Adds a contextual multiplier without turning the candidate set into an allowlist. */
+    public static Selection select(Level level, BlockPos pos, RandomSource random,
+                                   Predicate<ResourceLocation> allowed,
+                                   ToDoubleFunction<ResourceLocation> contextualWeight) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.ROOTS)) return new Selection(null, null);
         // Server-config blocklist applies to every founder roll, on top of the caller's filter.
-        Predicate<ResourceLocation> permitted = id -> !RootBlocklist.isBlocked(id) && allowed.test(id);
+        Predicate<ResourceLocation> permitted = id -> RootRules.villagersSpawn(id) && allowed.test(id);
         Holder<Biome> biome = level.getBiome(pos);
         ResourceLocation biomeId = biome.unwrapKey().map(ResourceKey::location).orElse(null);
         Set<ResourceLocation> tagIds = new HashSet<>();
         biome.tags().forEach(t -> tagIds.add(t.location()));
         ResourceLocation dimId = level.dimension().location();
 
-        ResourceLocation chosen = weightedPick(RootRegistry.all(), biomeId, tagIds, dimId, random, permitted);
+        ResourceLocation chosen = weightedPick(RootRegistry.all(), biomeId, tagIds, dimId, random,
+                permitted, contextualWeight);
         if (chosen == null) return new Selection(null, null);
 
         ResourceLocation speciesId = RootRegistry.effectiveSpecies(chosen);
         Species species = SpeciesRegistry.byId(speciesId);
         float chance = species == null ? 0f : species.admixtureChance();
         if (chance > 0f && random.nextFloat() < chance) {
-            List<Weighted> mix = rollMix(speciesId, biomeId, tagIds, dimId, random, permitted);
+            List<Weighted> mix = rollMix(speciesId, biomeId, tagIds, dimId, random, permitted,
+                    contextualWeight);
             if (mix.size() > 1) return new Selection(null, mix);
         }
         return new Selection(chosen, null);
@@ -76,13 +87,16 @@ public final class RootSelector {
     @Nullable
     private static ResourceLocation weightedPick(List<Root> origins, @Nullable ResourceLocation biomeId,
                                                  Set<ResourceLocation> tagIds, @Nullable ResourceLocation dimId,
-                                                 RandomSource random, Predicate<ResourceLocation> allowed) {
+                                                 RandomSource random, Predicate<ResourceLocation> allowed,
+                                                 ToDoubleFunction<ResourceLocation> contextualWeight) {
         if (origins.isEmpty()) return null;
         float[] weights = new float[origins.size()];
         float total = 0f;
         for (int i = 0; i < origins.size(); i++) {
             if (!allowed.test(origins.get(i).id())) continue;   // filtered out: weight stays 0
-            float w = RootRegistry.effectiveSpawnBias(origins.get(i).id()).weight(biomeId, tagIds, dimId);
+            float w = RootRegistry.effectiveSpawnBias(origins.get(i).id()).weight(biomeId, tagIds, dimId)
+                    * (float) Math.max(0.0D, contextualWeight.applyAsDouble(origins.get(i).id()))
+                    * (float) RootRules.rate(origins.get(i).id());
             weights[i] = Math.max(0f, w);
             total += weights[i];
         }
@@ -105,7 +119,8 @@ public final class RootSelector {
      */
     private static List<Weighted> rollMix(@Nullable ResourceLocation speciesId, @Nullable ResourceLocation biomeId,
                                           Set<ResourceLocation> tagIds, @Nullable ResourceLocation dimId,
-                                          RandomSource random, Predicate<ResourceLocation> allowed) {
+                                          RandomSource random, Predicate<ResourceLocation> allowed,
+                                          ToDoubleFunction<ResourceLocation> contextualWeight) {
         List<Root> pool = new ArrayList<>();
         for (Root o : RootRegistry.all()) {
             if (allowed.test(o.id()) && Objects.equals(RootRegistry.effectiveSpecies(o.id()), speciesId)) pool.add(o);
@@ -118,7 +133,8 @@ public final class RootSelector {
         List<Root> remaining = new ArrayList<>(pool);
         List<ResourceLocation> picked = new ArrayList<>(count);
         for (int n = 0; n < count && !remaining.isEmpty(); n++) {
-            ResourceLocation pick = weightedPick(remaining, biomeId, tagIds, dimId, random, allowed);
+            ResourceLocation pick = weightedPick(remaining, biomeId, tagIds, dimId, random, allowed,
+                    contextualWeight);
             if (pick == null) pick = remaining.get(random.nextInt(remaining.size())).id();
             final ResourceLocation chosen = pick;
             picked.add(chosen);

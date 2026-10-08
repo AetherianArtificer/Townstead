@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "#c:skinning_knives", "required": false },
+    { "id": "#forge:skinning_knives", "required": false }
+  ]
+}

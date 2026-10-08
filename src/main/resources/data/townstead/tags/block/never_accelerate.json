@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:spawner",
+    { "id": "minecraft:trial_spawner", "required": false },
+    { "id": "minecraft:vault", "required": false },
+    "minecraft:beacon",
+    "minecraft:conduit",
+    "minecraft:end_gateway"
+  ]
+}

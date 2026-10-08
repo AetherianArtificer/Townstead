@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "brewery:whiskey_ak", "required": false },
+    { "id": "brewery:whiskey_cristelwalker", "required": false },
+    { "id": "brewery:whiskey_carrasconlabel", "required": false },
+    { "id": "brewery:whiskey_highland_hearth", "required": false },
+    { "id": "brewery:whiskey_jojannik", "required": false },
+    { "id": "brewery:whiskey_lilitusinglemalt", "required": false },
+    { "id": "brewery:whiskey_maggoallan", "required": false }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "farmersdelight:stove", "required": false },
+    { "id": "farmersdelight:cooking_pot", "required": false },
+    { "id": "farmersdelight:skillet", "required": false }
+  ]
+}

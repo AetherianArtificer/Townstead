@@ -18,18 +18,22 @@ import java.util.Set;
  * Immutable after construction; use {@link Builder} to create.
  */
 public final class CellPlan {
-    public static final CellPlan EMPTY = new CellPlan(Map.of(), Map.of());
+    public static final CellPlan EMPTY = new CellPlan(Map.of(), Map.of(), Map.of());
 
     private static final String NBT_KEY = "cellPlanV2";
     private static final String NBT_SOIL = "soil";
     private static final String NBT_SEED = "seed";
+    private static final String NBT_TRELLIS = "trellis";
 
     private final Map<Integer, SoilType> soilPlan;
     private final Map<Integer, String> seedPlan;
+    /** Packed {@link TrellisSpec} per TRELLIS cell. Cells without an entry use the default. */
+    private final Map<Integer, Integer> trellisPlan;
 
-    private CellPlan(Map<Integer, SoilType> soilPlan, Map<Integer, String> seedPlan) {
+    private CellPlan(Map<Integer, SoilType> soilPlan, Map<Integer, String> seedPlan, Map<Integer, Integer> trellisPlan) {
         this.soilPlan = Collections.unmodifiableMap(soilPlan);
         this.seedPlan = Collections.unmodifiableMap(seedPlan);
+        this.trellisPlan = Collections.unmodifiableMap(trellisPlan);
     }
 
     // ── Key packing: high 16 bits = xOffset (signed), low 16 bits = zOffset (signed) ──
@@ -45,6 +49,11 @@ public final class CellPlan {
 
     public Map<Integer, SoilType> soilPlan() { return soilPlan; }
     public Map<Integer, String> seedPlan() { return seedPlan; }
+    public Map<Integer, Integer> trellisPlan() { return trellisPlan; }
+
+    public TrellisSpec trellisAt(int xOffset, int zOffset) {
+        return TrellisSpec.unpack(trellisPlan.getOrDefault(packXZ(xOffset, zOffset), 0));
+    }
     public boolean isEmpty() { return soilPlan.isEmpty() && seedPlan.isEmpty(); }
 
     public SoilType soilAt(int xOffset, int zOffset) {
@@ -69,7 +78,7 @@ public final class CellPlan {
     }
 
     public long signature() {
-        return soilPlan.hashCode() * 31L + seedPlan.hashCode();
+        return (soilPlan.hashCode() * 31L + seedPlan.hashCode()) * 31L + trellisPlan.hashCode();
     }
 
     // ── NBT ──
@@ -90,8 +99,16 @@ public final class CellPlan {
             e.putString("val", val);
             seedList.add(e);
         });
+        ListTag trellisList = new ListTag();
+        plan.trellisPlan.forEach((key, val) -> {
+            CompoundTag e = new CompoundTag();
+            e.putInt("xz", key);
+            e.putInt("val", val);
+            trellisList.add(e);
+        });
         root.put(NBT_SOIL, soilList);
         root.put(NBT_SEED, seedList);
+        root.put(NBT_TRELLIS, trellisList);
         parent.put(NBT_KEY, root);
     }
 
@@ -110,6 +127,11 @@ public final class CellPlan {
             CompoundTag e = seedList.getCompound(i);
             b.rawSeed(e.getInt("xz"), e.getString("val"));
         }
+        ListTag trellisList = root.getList(NBT_TRELLIS, Tag.TAG_COMPOUND);
+        for (int i = 0; i < trellisList.size(); i++) {
+            CompoundTag e = trellisList.getCompound(i);
+            b.rawTrellis(e.getInt("xz"), e.getInt("val"));
+        }
         return b.build();
     }
 
@@ -121,6 +143,8 @@ public final class CellPlan {
         soilPlan.forEach((k, v) -> { buf.writeInt(k); buf.writeByte(v.ordinal()); });
         buf.writeVarInt(seedPlan.size());
         seedPlan.forEach((k, v) -> { buf.writeInt(k); buf.writeUtf(v); });
+        buf.writeVarInt(trellisPlan.size());
+        trellisPlan.forEach((k, v) -> { buf.writeInt(k); buf.writeVarInt(v); });
     }
 
     public static CellPlan read(FriendlyByteBuf buf) {
@@ -136,26 +160,32 @@ public final class CellPlan {
         for (int i = 0; i < seedCount; i++) {
             b.rawSeed(buf.readInt(), buf.readUtf());
         }
+        int trellisCount = buf.readVarInt();
+        for (int i = 0; i < trellisCount; i++) {
+            b.rawTrellis(buf.readInt(), buf.readVarInt());
+        }
         return b.build();
     }
 
     // ── Builder ──
 
     public Builder toBuilder() {
-        return new Builder(new HashMap<>(soilPlan), new HashMap<>(seedPlan));
+        return new Builder(new HashMap<>(soilPlan), new HashMap<>(seedPlan), new HashMap<>(trellisPlan));
     }
 
     public static Builder builder() {
-        return new Builder(new HashMap<>(), new HashMap<>());
+        return new Builder(new HashMap<>(), new HashMap<>(), new HashMap<>());
     }
 
     public static final class Builder {
         private final Map<Integer, SoilType> soilPlan;
         private final Map<Integer, String> seedPlan;
+        private final Map<Integer, Integer> trellisPlan;
 
-        private Builder(Map<Integer, SoilType> s, Map<Integer, String> p) {
+        private Builder(Map<Integer, SoilType> s, Map<Integer, String> p, Map<Integer, Integer> t) {
             this.soilPlan = s;
             this.seedPlan = p;
+            this.trellisPlan = t;
         }
 
         public Builder soil(int xOffset, int zOffset, SoilType type) {
@@ -182,9 +212,13 @@ public final class CellPlan {
         public Builder rawSeed(int packedKey, String v) { seedPlan.put(packedKey, v); return this; }
         public Builder removeSoil(int packedKey) { soilPlan.remove(packedKey); return this; }
         public Builder removeSeed(int packedKey) { seedPlan.remove(packedKey); return this; }
+        public Builder rawTrellis(int packedKey, int packedSpec) { trellisPlan.put(packedKey, packedSpec); return this; }
+        public Builder removeTrellis(int packedKey) { trellisPlan.remove(packedKey); return this; }
 
         public CellPlan build() {
-            return new CellPlan(new HashMap<>(soilPlan), new HashMap<>(seedPlan));
+            // Trellis settings only mean something on a TRELLIS cell.
+            trellisPlan.keySet().removeIf(key -> soilPlan.get(key) != SoilType.TRELLIS);
+            return new CellPlan(new HashMap<>(soilPlan), new HashMap<>(seedPlan), new HashMap<>(trellisPlan));
         }
     }
 }

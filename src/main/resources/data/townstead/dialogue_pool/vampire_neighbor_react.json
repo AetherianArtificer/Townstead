@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:dialogue_pool/v1",
+  "mods": "vampirism",
+  "act": "react",
+  "subjects": "vampire_neighbor",
+  "persp": {
+    "who": "they"
+  },
+  "responds": "news"
+}

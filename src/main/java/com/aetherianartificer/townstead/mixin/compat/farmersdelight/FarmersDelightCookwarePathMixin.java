@@ -1,6 +1,6 @@
 package com.aetherianartificer.townstead.mixin.compat.farmersdelight;
 
-import com.aetherianartificer.townstead.compat.farmersdelight.FarmersDelightPathingHooks;
+import com.aetherianartificer.townstead.work.WorkHazards;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.BlockGetter;
@@ -37,7 +37,7 @@ public abstract class FarmersDelightCookwarePathMixin {
             /*CallbackInfoReturnable<BlockPathTypes> cir
             *///?}
     ) {
-        if (FarmersDelightPathingHooks.isHazardousCookware(level, pos)) {
+        if (WorkHazards.hazardous(level, pos)) {
             //? if >=1.21 {
             cir.setReturnValue(PathType.DAMAGE_FIRE);
             //?} else {

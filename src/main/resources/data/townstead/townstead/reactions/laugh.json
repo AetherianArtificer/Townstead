@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:reaction/v3",
+  "display_name": "reaction.townstead.laugh",
+  "tags": [
+    "social",
+    "laughter"
+  ],
+  "cooldown": "20s",
+  "chance": "100%",
+  "triggers": [],
+  "choices": [
+    {
+      "do": {
+        "type": "pheno:performance",
+        "performance": "townstead:reaction_laugh",
+        "channel": "reaction",
+        "duration_ticks": 48,
+        "priority": 30,
+        "fallback": "stand"
+      }
+    }
+  ]
+}

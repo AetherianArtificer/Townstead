@@ -1,0 +1,10 @@
+{
+  "schema":"townstead:hangout_venue/v2","mods":"beachparty",
+  "buildings":["compat/beachparty/beach_cocktail_bar_l1","compat/beachparty/beach_cocktail_bar_l2","compat/beachparty/beach_cocktail_bar_l3"],
+  "capacity":8,"activities":["townstead:beachparty_cocktail_round","townstead:beachparty_radio_listening","townstead:beachparty_quiet_lounge"],
+  "tags":["townstead_hangouts:outdoors","townstead_hangouts:lively","townstead_hangouts:social","townstead_hangouts:music","townstead_hangouts:drink","townstead_hangouts:coastal","townstead_hangouts:family_friendly"],
+  "amenities":["seating","drink","conversation","radio"],
+  "staff_roles": {
+    "bartender": {"type":"pheno:profession","profession":"townstead:beverage_artisan","path":"bartender"}
+  }
+}

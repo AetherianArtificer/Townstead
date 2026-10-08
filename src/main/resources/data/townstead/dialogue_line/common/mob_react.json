@@ -1,0 +1,30 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "mob_react",
+  "groups": [
+    {
+      "persp": { "who": "they" },
+      "lines": {
+        "thats_frightening": "That's frightening.",
+        "oh_no": "Oh no.",
+        "not_again": "Not again.",
+        "ill_keep_the_shutters_closed": "I'll keep the shutters closed.",
+        "thats_scary": "That's scary.",
+        "i_hate_those_things": "I hate those things.",
+        "we_need_more_guards": "We need more guards.",
+        "yikes": "Yikes.",
+        "im_not_going_out_tonight": "I'm not going out tonight."
+      }
+    },
+    {
+      "persp": { "who": "you" },
+      "lines": {
+        "youre_braver_than_me": "You're braver than me.",
+        "glad_youre_all_right": "Glad you're all right.",
+        "that_was_so_brave": "That was so brave!",
+        "id_have_run_the_other": "I'd have run the other way.",
+        "youre_lucky": "You're lucky!"
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "mods": "butchery",
+  "trigger": "periodic",
+  "priority": 30,
+  "when": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "townstead:worksite",
+        "scope": "village",
+        "buildings": ["*"],
+        "block_condition": {
+          "type": "pheno:and",
+          "conditions": [
+            { "type": "pheno:block", "block": "butchery:skin_rack" },
+            { "type": "pheno:block_state", "property": "blockstate", "value": "0", "inverted": true },
+            { "type": "pheno:block_state", "property": "blockstate", "value": "26", "inverted": true },
+            { "type": "pheno:block_state", "property": "blockstate", "value": "27", "inverted": true },
+            { "type": "pheno:block_state", "property": "blockstate", "value": "30", "inverted": true }
+          ]
+        }
+      },
+      {
+        "type": "pheno:inventory",
+        "item_condition": { "type": "pheno:ingredient", "tag": "c:salt" },
+        "inverted": true
+      }
+    ]
+  },
+  "dialogue": {
+    "translate": "dialogue.chat.leatherworker_request.no_salt"
+  },
+  "variants": 3
+}

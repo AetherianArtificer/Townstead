@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead.shepherd;
 
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.google.common.collect.ImmutableMap;
+import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
 import net.minecraft.core.BlockPos;
@@ -54,7 +56,7 @@ public class ShepherdDepositTask extends Behavior<VillagerEntityMCA> {
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
-        if (villager.getVillagerData().getProfession() != VillagerProfession.SHEPHERD) return false;
+        if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.STORE)) return false;
         if (!ShepherdInventory.hasWool(villager)) return false;
         return findStorage(level, villager) != null;
     }

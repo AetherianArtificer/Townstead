@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:consumable/v1",
+  "mods": ["farm_and_charm"],
+  "fallback": true,
+  "items": [
+    "farm_and_charm:simple_tomato_soup",
+    "farm_and_charm:barley_soup",
+    "farm_and_charm:onion_soup",
+    "farm_and_charm:potato_soup",
+    "farm_and_charm:goulash"
+  ],
+  "effects": {
+    "type": "pheno:hydrate",
+    "immediate": 4,
+    "lasting": 2
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:job/v3",
+  "mods": "vampirism",
+  "task": "townstead_work:hunter_drill",
+  "type": "townstead:drill",
+  "place": { "order_altar": true },
+  "drill": { "session": 1200 },
+  "engage": { "hostile": true, "sight": 8, "chase": 8 },
+  "arms": { "draw": "#townstead:hunter_arms", "style": "auto" },
+  "xp": { "drill": 2 }
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "townstead:mob_replacement/v1",
+  "mods": "vampirism",
+  "replaces": [
+    "vampirism:advanced_hunter"
+  ],
+  "setting": "vampirism.replaceHunterSpawns",
+  "group": "hunter",
+  "outfit": {
+    "head": [
+      "vampirism:hunter_hat_head_0",
+      "vampirism:hunter_hat_head_1",
+      "minecraft:air"
+    ],
+    "chest": [
+      "vampirism:hunter_coat_chest_normal"
+    ],
+    "legs": [
+      "vampirism:hunter_coat_legs_normal"
+    ],
+    "feet": [
+      "vampirism:hunter_coat_feet_normal"
+    ]
+  },
+  "credit_kills": true,
+  "loot": "replaced"
+}

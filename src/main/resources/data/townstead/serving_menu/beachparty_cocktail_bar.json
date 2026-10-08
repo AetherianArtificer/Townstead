@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:serving_menu/v1",
+  "mods": "beachparty",
+  "buildings": [
+    "compat/beachparty/beach_cocktail_bar_l1",
+    "compat/beachparty/beach_cocktail_bar_l2",
+    "compat/beachparty/beach_cocktail_bar_l3"
+  ],
+  "products": [
+    "beachparty:coconut_cocktail",
+    "beachparty:sweetberries_cocktail",
+    "beachparty:cocoa_cocktail",
+    "beachparty:pumpkin_cocktail",
+    "beachparty:honey_cocktail",
+    "beachparty:melon_cocktail"
+  ]
+}

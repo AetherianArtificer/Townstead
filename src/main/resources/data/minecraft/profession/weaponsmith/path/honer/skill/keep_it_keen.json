@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.honer.keep_it_keen"
+  },
+  "icon": "minecraft:grindstone",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.honer.keep_it_keen.description"
+  },
+  "cost": 1,
+  "requires": [
+    "honed_edge"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 1200,
+    "action": {
+      "type": "pheno:equipped_item_action",
+      "slot": "mainhand",
+      "item_action": {
+        "type": "pheno:damage",
+        "amount": -6
+      }
+    }
+  }
+}

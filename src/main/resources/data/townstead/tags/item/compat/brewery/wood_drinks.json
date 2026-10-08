@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "brewery:beer_wheat", "required": false },
+    { "id": "brewery:beer_hops", "required": false },
+    { "id": "brewery:beer_barley", "required": false },
+    { "id": "brewery:beer_oat", "required": false },
+    { "id": "brewery:beer_nettle", "required": false },
+    { "id": "brewery:beer_haley", "required": false }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.outfitter.repair_kit"
+  },
+  "icon": "minecraft:string",
+  "description": {
+    "translate": "skill.townstead.leatherworker.outfitter.repair_kit.description"
+  },
+  "cost": 1,
+  "requires": [
+    "spare_straps"
+  ],
+  "skill_group": "townstead:outfitter_party",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:if_else",
+      "condition": {
+        "type": "pheno:not",
+        "condition": {
+          "type": "pheno:hostile"
+        }
+      },
+      "if_action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:equipped_item_action",
+            "slot": "head",
+            "item_action": {
+              "type": "pheno:damage",
+              "amount": -15
+            }
+          },
+          {
+            "type": "pheno:equipped_item_action",
+            "slot": "chest",
+            "item_action": {
+              "type": "pheno:damage",
+              "amount": -15
+            }
+          },
+          {
+            "type": "pheno:equipped_item_action",
+            "slot": "legs",
+            "item_action": {
+              "type": "pheno:damage",
+              "amount": -15
+            }
+          },
+          {
+            "type": "pheno:equipped_item_action",
+            "slot": "feet",
+            "item_action": {
+              "type": "pheno:damage",
+              "amount": -15
+            }
+          }
+        ]
+      },
+      "on": {
+        "type": "pheno:ray",
+        "distance": 6
+      }
+    }
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "mods": [
+    "pizzadelight",
+    "farmersdelight"
+  ],
+  "name": {
+    "translate": "career.townstead.cook.path.pizzaiolo"
+  },
+  "title": {
+    "translate": "career.townstead.cook.title.pizzaiolo"
+  },
+  "color": "#C8873E",
+  "work": [
+    {
+      "type": "townstead_work:cook",
+      "workstations": [
+        "pizzadelight:basin",
+        "pizzadelight:pizza_station",
+        "pizzadelight:raw_pizza",
+        "pizzadelight:pizza"
+      ],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:chop",
+      "workstations": [
+        "farmersdelight:cutting_board"
+      ],
+      "recipes": [
+        "pizzadelight:raw_pizza"
+      ],
+      "weight": 10
+    }
+  ],
+  "skills": [
+    [
+      "starter_culture",
+      "pizza_craft",
+      "pizza_spin"
+    ],
+    [
+      "kitchen_rhythm",
+      "wood_fired_welcome",
+      "peel_vault"
+    ],
+    [
+      "stone_oven",
+      "oven_mouth",
+      "peel_slam"
+    ],
+    [
+      "blistered_crust",
+      "stone_heat",
+      "peel_sweep"
+    ],
+    [
+      "stone_wisdom",
+      "grand_opening",
+      "into_the_oven"
+    ]
+  ],
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:char",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:cook/pizzaiolo/stone_oven"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:cook/pizzaiolo/oven_mouth"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:cook/pizzaiolo/peel_slam"
+              }
+            ]
+          },
+          {
+            "type": "pheno:block_in_radius",
+            "radius": 3,
+            "block_condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:block",
+                  "block": "pizzadelight:raw_pizza"
+                },
+                {
+                  "type": "pheno:offset",
+                  "y": -1,
+                  "condition": {
+                    "type": "pheno:in_tag",
+                    "tag": "farmersdelight:heat_sources"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:char",
+        "amount": 1
+      }
+    }
+  ]
+}

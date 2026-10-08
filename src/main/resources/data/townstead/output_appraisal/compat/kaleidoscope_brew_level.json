@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:output_appraisal/v1",
+  "mods": "kaleidoscope_tavern",
+  "path": ["BrewLevel"],
+  "tiers": [
+    { "value": 1, "quality": 1, "label": "undrinkable", "order_worthy": false },
+    { "value": 2, "quality": 2, "label": "inferior" },
+    { "value": 3, "quality": 3, "label": "common" },
+    { "value": 4, "quality": 4, "label": "fine" },
+    { "value": 5, "quality": 5, "label": "crafted" },
+    { "value": 6, "quality": 6, "label": "vintage" }
+  ]
+}

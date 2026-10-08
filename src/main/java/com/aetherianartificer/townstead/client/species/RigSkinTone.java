@@ -61,8 +61,8 @@ public final class RigSkinTone {
         if (rootId.isEmpty()) return null;
         RootCatalogEntry origin = RootCatalogClient.origin(rootId);
         if (origin == null) return null;
-        for (RootCatalogEntry.Inherited inherited : origin.inheritedGenes()) {
-            GeneCatalogEntry gene = RootCatalogClient.gene(inherited.geneId());
+        for (String geneId : RootClientStore.appearanceGenes(entity)) {
+            GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
             if (gene == null) continue;
             for (GeneCatalogEntry.Variant variant : gene.variants()) {
                 if (variant.tint() >= 0) return gene;

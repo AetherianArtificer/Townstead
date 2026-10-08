@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Librarian"
+  },
+  "icon": "minecraft:book",
+  "description": {
+    "text": "Bind books and copy the written word to build a history of scholarship mastery."
+  },
+  "skills": [
+    "well_read",
+    "quick_study"
+  ],
+  "unlock_model": "experiential"
+}

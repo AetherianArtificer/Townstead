@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:hangout_venue/v2",
+  "mods": ["vinery"],
+  "buildings": [
+    "compat/vinery/winery_l2",
+    "compat/vinery/winery_l3"
+  ],
+  "capacity": 6,
+  "activities": [
+    "townstead:tavern_round",
+    "townstead:tavern_conversation"
+  ],
+  "tags": ["townstead_hangouts:refined", "townstead_hangouts:quiet", "townstead_hangouts:intimate", "townstead_hangouts:drink"],
+  "amenities": ["seating", "drink", "conversation"],
+  "staff_roles": {
+    "bartender": {"type":"pheno:profession","profession":"townstead:beverage_artisan","path":"bartender"},
+    "server": {"type":"pheno:profession","profession":"townstead:beverage_artisan","path":"bartender"}
+  }
+}

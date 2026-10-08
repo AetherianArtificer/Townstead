@@ -1,0 +1,54 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.marksman.hawkeye"
+  },
+  "icon": "minecraft:ender_eye",
+  "description": {
+    "translate": "skill.townstead.fletcher.marksman.hawkeye.description"
+  },
+  "cost": 1,
+  "requires": [
+    "focus"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "resource_cost": {
+      "resource": "townstead:draw",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:draw",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:night_vision",
+          "duration": 300,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 32,
+          "include_self": false,
+          "target": "hostile",
+          "bientity_condition": {
+            "type": "pheno:relative_rotation",
+            "max_angle": 30
+          },
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:glowing",
+            "duration": 50,
+            "amplifier": 0
+          }
+        }
+      ]
+    }
+  }
+}

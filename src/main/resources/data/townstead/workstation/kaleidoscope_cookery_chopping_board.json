@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": ["kaleidoscope_cookery"],
+  "blocks": ["kaleidoscope_cookery:chopping_board"],
+  "behavior": {
+    "type": "pheno:use_block",
+    "item": "tool",
+    "tool": "#kaleidoscope_cookery:kitchen_knife"
+  }
+}

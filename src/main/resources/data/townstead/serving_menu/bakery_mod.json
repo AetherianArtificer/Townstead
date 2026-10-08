@@ -1,0 +1,34 @@
+{
+  "schema": "townstead:serving_menu/v1",
+  "buildings": [
+    "bakery",
+    "compat/bakery/bread_stand_l1",
+    "compat/bakery/bake_sale_l2",
+    "compat/bakery/bakery_l3"
+  ],
+  "products": [
+    "bakery:crusty_bread",
+    "bakery:bread",
+    "bakery:baguette",
+    "bakery:toast",
+    "bakery:braided_bread",
+    "bakery:bun",
+    "bakery:croissant",
+    "bakery:waffle",
+    "bakery:cornet",
+    "bakery:jam_roll",
+    "bakery:misslilitu_biscuit",
+    "bakery:sandwich",
+    "bakery:vegetable_sandwich",
+    "bakery:grilled_salmon_sandwich",
+    "bakery:grilled_bacon_sandwich",
+    "bakery:bread_with_jam",
+    "bakery:chocolate_truffle",
+    "bakery:strawberry_glazed_cookie",
+    "bakery:sweetberry_glazed_cookie",
+    "bakery:chocolate_glazed_cookie",
+    "bakery:strawberry_cupcake",
+    "bakery:sweetberry_cupcake",
+    "bakery:apple_cupcake"
+  ]
+}

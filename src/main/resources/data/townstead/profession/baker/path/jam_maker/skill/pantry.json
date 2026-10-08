@@ -1,0 +1,78 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.jam_maker.pantry"
+  },
+  "icon": "minecraft:barrel",
+  "description": {
+    "translate": "skill.townstead.baker.jam_maker.pantry.description"
+  },
+  "cost": 1,
+  "requires": [
+    "slow_boil"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 400,
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:village",
+          "within_border": true
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:proof",
+          "min": 50
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 6,
+        "where": {
+          "type": "and",
+          "conditions": [
+            {
+              "type": "block",
+              "block": "minecraft:sweet_berry_bush"
+            },
+            {
+              "type": "or",
+              "conditions": [
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "0"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "1"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "2"
+                }
+              ]
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "do": {
+        "type": "pheno:modify_block_state",
+        "property": "age",
+        "operation": "add",
+        "amount": 1
+      }
+    }
+  }
+}

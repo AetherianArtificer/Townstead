@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "werewolves",
+  "type": "pheno:attribute",
+  "display_name": {
+    "translate": "gene.townstead_roots.werewolf_beast_speed"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.werewolf_beast_speed.desc"
+  },
+  "category": "Movement",
+  "attribute": "minecraft:generic.movement_speed",
+  "amount": 0.05
+}

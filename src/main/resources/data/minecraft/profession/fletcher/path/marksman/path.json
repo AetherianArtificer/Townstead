@@ -1,0 +1,103 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.fletcher.path.marksman"
+  },
+  "title": {
+    "translate": "career.townstead.fletcher.title.marksman"
+  },
+  "color": "#6A8A3A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:draw",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fletcher/marksman/focus"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fletcher/marksman/volley"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fletcher/marksman/called_shot"
+              }
+            ]
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:equipped_item",
+                "slot": "mainhand",
+                "item_condition": {
+                  "type": "or",
+                  "conditions": [
+                    {
+                      "type": "ingredient",
+                      "item": "minecraft:bow"
+                    },
+                    {
+                      "type": "ingredient",
+                      "item": "minecraft:crossbow"
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 16,
+                "condition": {
+                  "type": "pheno:hostile"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:draw",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "spotter",
+      "double_shot",
+      "marking_shot"
+    ],
+    [
+      "steady_breath",
+      "spread",
+      "pinning_shot"
+    ],
+    [
+      "focus",
+      "volley",
+      "called_shot"
+    ],
+    [
+      "hawkeye",
+      "flare_volley",
+      "headshot"
+    ],
+    [
+      "legend",
+      "arrow_storm",
+      "deadeye"
+    ]
+  ]
+}

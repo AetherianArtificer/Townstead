@@ -27,6 +27,7 @@ public class TypewriterText {
     private boolean complete;
     private int blinkTimer;
     private float baseSpeed = 1.0f;
+    private net.minecraft.sounds.SoundEvent typeSound = SoundEvents.WOODEN_BUTTON_CLICK_ON;
     private boolean paused; // paused waiting for page advance
 
     // Pagination
@@ -89,7 +90,7 @@ public class TypewriterText {
         if (revealed > 0 && revealedChars % 3 == 0 && !Config.getInstance().enableOnlineTTS) {
             float pitch = 1.5f + (revealedChars % 7) * 0.05f;
             Minecraft.getInstance().getSoundManager().play(
-                    SimpleSoundInstance.forUI(SoundEvents.WOODEN_BUTTON_CLICK_ON, pitch, 0.15f));
+                    SimpleSoundInstance.forUI(typeSound, pitch, 0.15f));
         }
     }
 
@@ -206,6 +207,10 @@ public class TypewriterText {
 
     public int getTotalChars() {
         return totalChars;
+    }
+
+    public void setSound(net.minecraft.sounds.SoundEvent sound) {
+        this.typeSound = sound;
     }
 
     public void setSpeed(float baseSpeed) {

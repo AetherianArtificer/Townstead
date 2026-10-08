@@ -1,0 +1,58 @@
+{
+  "schema": "pheno:entity_state/v1",
+  "mods": "werewolves",
+  "id": "townstead_state:werewolf",
+  "body": "villager",
+  "min": 0,
+  "max": 14,
+  "initial": 0,
+  "tiers": [
+    {
+      "id": "infected",
+      "min": 0.5
+    },
+    {
+      "id": "werewolf",
+      "min": 1
+    },
+    {
+      "id": "elder",
+      "min": 10
+    }
+  ],
+  "merge": "max",
+  "persistence": "persistent",
+  "death": "keep",
+  "aspect": {
+    "display": true,
+    "level": true,
+    "pickable": true,
+    "faction": "werewolves:werewolf",
+    "pick": 1,
+    "options": [
+      {
+        "id": "coat",
+        "state": "townstead_state:werewolf_coat",
+        "count": 11,
+        "player": "werewolves:coat"
+      },
+      {
+        "id": "eyes",
+        "state": "townstead_state:werewolf_eyes",
+        "count": 9,
+        "player": "werewolves:eyes"
+      },
+      {
+        "id": "glow",
+        "state": "townstead_state:werewolf_glow",
+        "count": 2,
+        "player": "werewolves:glow"
+      }
+    ]
+  },
+  "excludes": [
+    "townstead_state:vampire",
+    "townstead_state:dhampir",
+    "townstead_state:thrall"
+  ]
+}

@@ -1,10 +1,10 @@
 {
   "schema": "townstead:extended_building/v1",
   "catalog": {
-    "node_item": "farmersdelight:cutting_board"
+    "node_item": ["farmersdelight:cutting_board", "farm_and_charm:crafting_bowl", "kaleidoscope_cookery:chopping_board"]
   },
   "spirit": {
     "pastoral": 8,
-    "commercial": 4
+    "industrious": 4
   }
 }

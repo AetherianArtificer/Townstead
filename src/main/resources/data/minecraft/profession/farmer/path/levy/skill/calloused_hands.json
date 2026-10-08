@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.calloused_hands"
+  },
+  "icon": "minecraft:iron_hoe",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.calloused_hands.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 1.5,
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "ingredient",
+        "tag": "minecraft:hoes"
+      }
+    }
+  }
+}

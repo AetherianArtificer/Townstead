@@ -1,0 +1,25 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "vampire_news_lead",
+  "groups": [
+    {
+      "lines": {
+        "did_you_hear_vn": "Did you hear?"
+      }
+    },
+    {
+      "valence": "negative",
+      "lines": {
+        "its_about_the_night": "It's about last night.",
+        "i_didnt_sleep_a_wink": "I didn't sleep a wink."
+      }
+    },
+    {
+      "valence": "positive",
+      "lines": {
+        "finally_some_good_news": "Finally, some good news."
+      }
+    }
+  ]
+}

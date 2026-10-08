@@ -1,7 +1,5 @@
 package com.aetherianartificer.townstead.pheno.value;
 
-import com.aetherianartificer.townstead.Townstead;
-
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -11,6 +9,8 @@ import java.util.Optional;
 /** Registry of {@link ValueType}s keyed by wire string. Clone of {@code ActionTypes}. */
 public final class ValueTypes {
 
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(
+            "townstead/ValueTypes");
     private static final Map<String, ValueType> TYPES = new LinkedHashMap<>();
 
     private ValueTypes() {}
@@ -20,7 +20,7 @@ public final class ValueTypes {
         String key = type.key().toLowerCase(Locale.ROOT);
         ValueType existing = TYPES.put(key, type);
         if (existing != null) {
-            Townstead.LOGGER.warn("Value type '{}' overwritten (was {}, now {})", key,
+            LOGGER.warn("Value type '{}' overwritten (was {}, now {})", key,
                     existing.getClass().getName(), type.getClass().getName());
         }
     }

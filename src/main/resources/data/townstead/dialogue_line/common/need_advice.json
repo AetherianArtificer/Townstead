@@ -1,0 +1,65 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "need_advice",
+  "groups": [
+    {
+      "variant": "hungry",
+      "thread": "need.food",
+      "lines": {
+        "go_and_eat_something": "Go and eat something.",
+        "get_something_to_eat_before": "Get something to eat before you fall over.",
+        "you_should_eat_something_really": "You should eat something, really.",
+        "theyve_got_stew_at_the": { "text": "They've got stew at the tavern.", "requires": "here.building_tag:townstead:tavern" },
+        "the_market_should_have_something": { "text": "The market should have something.", "requires": "here.building_tag:townstead:market" },
+        "try_the_cafe_the_cakes": { "text": "Try the cafe. The cakes are good.", "requires": "here.building_tag:townstead:cafe" },
+        "id_share_but_i_ate": { "text": "I'd share, but I ate it all.", "personalities": "greedy" },
+        "eat_something_youll_feel_better": { "text": "Eat something, you'll feel better. I promise.", "personalities": "friendly" }
+      }
+    },
+    {
+      "variant": "thirsty",
+      "thread": "need.drink",
+      "lines": {
+        "go_get_some_water": "Go get some water.",
+        "drink_something_quick": "Drink something, quick.",
+        "the_wells_right_there": { "text": "The well's right there.", "requires": "here.decoration:townstead:well" },
+        "get_a_drink_at_the": {
+          "text": "Get a drink at the tavern.",
+          "requires": "here.building_tag:townstead:tavern",
+          "stages": ["adult", "senior"]
+        }
+      }
+    },
+    {
+      "variant": "tired",
+      "thread": "need.sleep",
+      "lines": {
+        "get_some_sleep_tonight": "Get some sleep tonight.",
+        "go_to_bed_early": "Go to bed early.",
+        "have_a_nap_youve_earned": "Have a nap. You've earned it.",
+        "take_it_easy_today": "Take it easy today.",
+        "sleep_is_for_the_weak": { "text": "Sleep is for the weak. Kidding. Go to bed.", "personalities": ["playful", "witty"] },
+        "rest_the_work_can_wait": { "text": "Rest. The work can wait.", "personalities": "peaceful" }
+      }
+    },
+    {
+      "variant": "cold",
+      "thread": "need.cold",
+      "lines": {
+        "go_and_warm_up_by": "Go and warm up by a fire.",
+        "put_on_something_warmer": "Put on something warmer.",
+        "get_inside_before_you_freeze": "Get inside before you freeze.",
+        "come_warm_up_by_my": { "text": "Come warm up by my fire later.", "personalities": "friendly" }
+      }
+    },
+    {
+      "variant": "hot",
+      "thread": "need.heat",
+      "lines": {
+        "find_some_shade": "Find some shade.",
+        "get_out_of_the_sun": "Get out of the sun for a while.",
+        "drink_some_water_and_sit": "Drink some water and sit in the shade."
+      }
+    }
+  ]
+}

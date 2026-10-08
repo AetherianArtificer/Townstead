@@ -2,7 +2,8 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.ai.work.ReachableTargetSelector;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+import com.aetherianartificer.townstead.work.ReachableTargetSelector;
 import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import com.aetherianartificer.townstead.fatigue.FatigueData;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
@@ -12,9 +13,6 @@ import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.VillagerBrain;
 import net.conczin.mca.entity.ai.relationship.AgeState;
 import net.minecraft.core.BlockPos;
-//? if >=1.21 {
-import net.minecraft.core.component.DataComponents;
-//?}
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
@@ -24,7 +22,6 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.schedule.Activity;
-import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -75,7 +72,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA caregiver) {
         if (!TownsteadConfig.isVillagerHungerEnabled()) return false;
-        if (!TownsteadConfig.ENABLE_FEEDING_YOUNG.get()) return false;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_FEEDING_YOUNG)) return false;
         if (currentScheduleActivity(caregiver) == Activity.REST) return false;
         if (cooldown > 0) {
             cooldown--;
@@ -101,22 +98,22 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         sourceContainerSlot = null;
         nextFeedTick = 0L;
 
-        if (TownsteadConfig.ENABLE_SELF_INVENTORY_EATING.get() && townstead$hasFood(caregiver)) {
+        if (Switchboard.get(TownsteadConfig.ENABLE_SELF_INVENTORY_EATING) && townstead$hasFood(caregiver)) {
             phase = Phase.FEED;
             BehaviorUtils.setWalkAndLookTargetMemories(caregiver, childTarget, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
 
         phase = Phase.ACQUIRE;
-        if (TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING.get() && townstead$findGroundItem(level, caregiver)) {
+        if (Switchboard.get(TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING) && townstead$findGroundItem(level, caregiver)) {
             BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourceItem, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
-        if (TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() && townstead$findContainerFood(level, caregiver)) {
+        if (Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING) && townstead$findContainerFood(level, caregiver)) {
             BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourcePos, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
-        if (TownsteadConfig.ENABLE_CROP_SOURCING.get() && townstead$findMatureCrop(level, caregiver)) {
+        if (Switchboard.get(TownsteadConfig.ENABLE_CROP_SOURCING) && townstead$findMatureCrop(level, caregiver)) {
             BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourcePos, WALK_SPEED, CLOSE_ENOUGH);
             return;
         }
@@ -248,15 +245,15 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         ItemStack food = townstead$findBestFood(caregiver.getInventory());
         if (food.isEmpty()) {
             phase = Phase.ACQUIRE;
-            if (TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING.get() && townstead$findGroundItem(level, caregiver)) {
+            if (Switchboard.get(TownsteadConfig.ENABLE_GROUND_ITEM_SOURCING) && townstead$findGroundItem(level, caregiver)) {
                 BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourceItem, WALK_SPEED, CLOSE_ENOUGH);
                 return;
             }
-            if (TownsteadConfig.ENABLE_CONTAINER_SOURCING.get() && townstead$findContainerFood(level, caregiver)) {
+            if (Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING) && townstead$findContainerFood(level, caregiver)) {
                 BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourcePos, WALK_SPEED, CLOSE_ENOUGH);
                 return;
             }
-            if (TownsteadConfig.ENABLE_CROP_SOURCING.get() && townstead$findMatureCrop(level, caregiver)) {
+            if (Switchboard.get(TownsteadConfig.ENABLE_CROP_SOURCING) && townstead$findMatureCrop(level, caregiver)) {
                 BehaviorUtils.setWalkAndLookTargetMemories(caregiver, sourcePos, WALK_SPEED, CLOSE_ENOUGH);
                 return;
             }
@@ -264,18 +261,17 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
             return;
         }
 
-        //? if >=1.21 {
-        FoodProperties props = food.get(DataComponents.FOOD);
-        //?} else {
-        /*FoodProperties props = food.getFoodProperties(null);
-        *///?}
-        if (props == null) {
+        if (FoodSafety.nutritionFor(childTarget, food) <= 0) {
             doStop(level, caregiver, gameTime);
             return;
         }
 
         caregiver.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
         TownsteadVillager.Needs childNeeds = TownsteadVillagers.get(childTarget).needs();
+        if (!VillagerConsumptionManager.permitsManagedVillagerConsumption(food)) {
+            doStop(level, caregiver, gameTime);
+            return;
+        }
         VillagerConsumptionManager.applyConsumption(caregiver, childTarget, food, childNeeds);
         food.shrink(1);
 
@@ -313,7 +309,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
 
     private boolean townstead$mayCareFor(VillagerEntityMCA caregiver, VillagerEntityMCA child) {
         if (townstead$isParentOf(caregiver, child)) return true;
-        if (!TownsteadConfig.ENABLE_NON_PARENT_CAREGIVERS.get()) return false;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_NON_PARENT_CAREGIVERS)) return false;
         if (McaPersonalityCompat.isCrabby(caregiver.getVillagerBrain().getPersonality())) return false;
         return !townstead$parentsNearby(child);
     }
@@ -354,24 +350,22 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
         int bestNutrition = 0;
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
-            if (!FoodSafety.isSafeNutritiousFood(stack)) continue;
-            //? if >=1.21 {
-            FoodProperties food = stack.get(DataComponents.FOOD);
-            if (food.nutrition() > bestNutrition) {
-                bestNutrition = food.nutrition();
-            //?} else {
-            /*FoodProperties food = stack.getFoodProperties(null);
-            if (food.getNutrition() > bestNutrition) {
-                bestNutrition = food.getNutrition();
-            *///?}
+            if (!townstead$isFood(stack)) continue;
+            int nutrition = FoodSafety.nutritionFor(childTarget, stack);
+            if (nutrition > bestNutrition) {
+                bestNutrition = nutrition;
                 best = stack;
             }
         }
         return best;
     }
 
+    // The child's diet decides what counts as food, but sapient flesh stays behind the strictest
+    // (eater-less) gate: children are never fed it on a cannibal parent's say-so.
     private boolean townstead$isFood(ItemStack stack) {
-        return FoodSafety.isSafeNutritiousFood(stack);
+        if (FoodSafety.isCannibalFare(stack) && !CannibalismPolicy.mayEat(null, stack)) return false;
+        return FoodSafety.isSafeNutritiousFood(stack, childTarget)
+                && VillagerConsumptionManager.permitsManagedVillagerConsumption(stack);
     }
 
     private boolean townstead$findGroundItem(ServerLevel level, VillagerEntityMCA villager) {
@@ -407,19 +401,8 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     private boolean townstead$findContainerFood(ServerLevel level, VillagerEntityMCA villager) {
         List<ReachableTargetSelector.Candidate<NearbyItemSources.ContainerSlot>> candidates = new ArrayList<>();
         NearbyItemSources.collectMatchingSlots(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
-                FoodSafety::isSafeNutritiousFood,
-                stack -> {
-                    //? if >=1.21 {
-                    FoodProperties food = stack.get(DataComponents.FOOD);
-                    //?} else {
-                    /*FoodProperties food = stack.getFoodProperties(null);
-                    *///?}
-                    //? if >=1.21 {
-                    return food != null ? food.nutrition() : 0;
-                    //?} else {
-                    /*return food != null ? food.getNutrition() : 0;
-                    *///?}
-                },
+                this::townstead$isFood,
+                stack -> FoodSafety.nutritionFor(childTarget, stack),
                 villager.blockPosition(),
                 slot -> {
                     if (!ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, slot)) {

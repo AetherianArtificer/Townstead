@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:conversation_subject/v1",
+  "source": {
+    "type": "townstead:chronicle_account",
+    "max_age_days": 7,
+    "min_fidelity": 0.2,
+    "events": {
+      "townstead:zombie_bite": { "variant": "bitten", "valence": "negative", "roles": {"who": "bitten"}, "while_infected": true },
+      "townstead:turned_zombie": { "variant": "turned", "valence": "negative", "roles": {"who": "turned"} },
+      "townstead:infection_cured": { "variant": "cured", "valence": "positive", "roles": {"who": "cured"} },
+      "townstead:brought_back": { "variant": "cured", "valence": "positive", "roles": {"who": "restored"} }
+    }
+  },
+  "register": "grief",
+  "valence": "from_source",
+  "slots": { "who": {"type": "person", "from": "role.who"} }
+}

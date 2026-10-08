@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.smokehouse.brand"
+  },
+  "icon": "minecraft:blaze_rod",
+  "description": {
+    "translate": "skill.townstead.butcher.smokehouse.brand.description"
+  },
+  "cost": 1,
+  "requires": [
+    "singe"
+  ],
+  "skill_group": "townstead:smokehouse_fire",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:ignite",
+          "seconds": 6
+        },
+        {
+          "type": "pheno:damage",
+          "amount": 3,
+          "source": "other"
+        }
+      ],
+      "on": {
+        "type": "pheno:ray",
+        "distance": 6
+      }
+    }
+  }
+}

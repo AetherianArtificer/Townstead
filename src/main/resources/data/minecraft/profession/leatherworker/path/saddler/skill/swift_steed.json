@@ -1,0 +1,44 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.saddler.swift_steed"
+  },
+  "icon": "minecraft:golden_carrot",
+  "description": {
+    "translate": "skill.townstead.leatherworker.saddler.swift_steed.description"
+  },
+  "cost": 1,
+  "requires": [
+    "long_ride"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:hide",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:riding"
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:hide",
+          "min": 50
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:riding_action",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:speed",
+        "duration": 30,
+        "amplifier": 1
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": { "translate": "skill.townstead.cook.chef.chef_de_cuisine" },
+  "icon": "farmersdelight:netherite_knife",
+  "description": { "translate": "skill.townstead.cook.chef.chef_de_cuisine.description" },
+  "cost": 1,
+  "requires": ["running_the_pass"],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "resource_cost": { "resource": "townstead:flow", "amount": 0 },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:resource", "resource": "townstead:flow", "min": 75 },
+        { "type": "pheno:building", "building_prefix": "compat/farmersdelight/kitchen_l" }
+      ]
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        { "type": "pheno:heal", "amount": 1.0 },
+        { "type": "pheno:change_resource", "resource": "townstead:stamina", "amount": 4 }
+      ]
+    }
+  }
+}

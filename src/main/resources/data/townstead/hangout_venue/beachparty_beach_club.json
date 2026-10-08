@@ -1,0 +1,7 @@
+{
+  "schema":"townstead:hangout_venue/v2","mods":"beachparty",
+  "buildings":["compat/beachparty/beach_club"],"capacity":8,
+  "activities":["townstead:beachparty_quiet_lounge","townstead:beachparty_radio_listening"],
+  "tags":["townstead_hangouts:outdoors","townstead_hangouts:relaxed","townstead_hangouts:quiet","townstead_hangouts:music","townstead_hangouts:coastal"],
+  "amenities":["seating","shade","conversation","radio"]
+}

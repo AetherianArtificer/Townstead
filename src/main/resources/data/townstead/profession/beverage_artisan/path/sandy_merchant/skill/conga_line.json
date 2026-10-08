@@ -1,0 +1,64 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.conga_line"
+  },
+  "icon": "minecraft:lead",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.conga_line.description"
+  },
+  "cost": 1,
+  "requires": [
+    "luau"
+  ],
+  "skill_group": "townstead:sandy_party",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:tan",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 10,
+          "include_self": false,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:speed",
+                "duration": 400,
+                "amplifier": 1
+              },
+              {
+                "type": "pheno:add_velocity",
+                "away_from_other": -0.4,
+                "y": 0.1
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:speed",
+          "duration": 400,
+          "amplifier": 1
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.note_block.bit",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

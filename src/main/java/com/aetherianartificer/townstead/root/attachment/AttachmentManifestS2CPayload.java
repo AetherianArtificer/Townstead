@@ -19,12 +19,14 @@ import java.util.List;
 //? if neoforge {
 public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<AttachmentPointDef> slots,
                                            java.util.Map<String, String> namedTextures,
-                                           java.util.Map<String, String> namedGeo)
+                                           java.util.Map<String, String> namedGeo,
+                                           java.util.Map<String, String> namedAnimations)
         implements CustomPacketPayload {
 //?} else {
 /*public record AttachmentManifestS2CPayload(java.util.List<AttachmentDef> defs, java.util.List<AttachmentPointDef> slots,
                                            java.util.Map<String, String> namedTextures,
-                                           java.util.Map<String, String> namedGeo) {
+                                           java.util.Map<String, String> namedGeo,
+                                           java.util.Map<String, String> namedAnimations) {
 *///?}
 
     //? if neoforge {
@@ -112,6 +114,9 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
                 buf.writeFloat(chain.damping());
                 buf.writeFloat(chain.gravity());
                 buf.writeFloat(chain.maxAngle());
+                buf.writeFloat(chain.minPitch());
+                buf.writeFloat(chain.maxPitch());
+                buf.writeFloat(chain.restPitch());
                 buf.writeFloat(chain.sway());
                 buf.writeFloat(chain.follow());
                 buf.writeFloat(chain.droopAngle());
@@ -151,6 +156,11 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
         }
         buf.writeVarInt(namedGeo.size());
         for (java.util.Map.Entry<String, String> e : namedGeo.entrySet()) {
+            buf.writeUtf(e.getKey());
+            buf.writeUtf(e.getValue());
+        }
+        buf.writeVarInt(namedAnimations.size());
+        for (java.util.Map.Entry<String, String> e : namedAnimations.entrySet()) {
             buf.writeUtf(e.getKey());
             buf.writeUtf(e.getValue());
         }
@@ -237,6 +247,9 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
                 float damping = buf.readFloat();
                 float gravity = buf.readFloat();
                 float maxAngle = buf.readFloat();
+                float minPitch = buf.readFloat();
+                float maxPitch = buf.readFloat();
+                float restPitch = buf.readFloat();
                 float sway = buf.readFloat();
                 float follow = buf.readFloat();
                 float droopAngle = buf.readFloat();
@@ -246,7 +259,8 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
                 int segments = buf.readVarInt();
                 String axis = buf.readUtf();
                 physics.add(new AttachmentDef.PhysicsChain(chainBones, stiffness, damping, gravity,
-                        maxAngle, sway, follow, droopAngle, swaySpeed, snap, response, segments, axis));
+                        maxAngle, minPitch, maxPitch, restPitch, sway, follow, droopAngle, swaySpeed,
+                        snap, response, segments, axis));
             }
             int animCount = buf.readVarInt();
             List<AttachmentDef.AnimationEntry> animations = new ArrayList<>(animCount);
@@ -293,7 +307,13 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
             String key = buf.readUtf();
             namedGeo.put(key, buf.readUtf());
         }
-        return new AttachmentManifestS2CPayload(defs, slots, namedTextures, namedGeo);
+        int animCount = buf.readVarInt();
+        java.util.Map<String, String> namedAnimations = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < animCount; i++) {
+            String key = buf.readUtf();
+            namedAnimations.put(key, buf.readUtf());
+        }
+        return new AttachmentManifestS2CPayload(defs, slots, namedTextures, namedGeo, namedAnimations);
     }
 
     private static void writeVec(FriendlyByteBuf buf, float[] v) {

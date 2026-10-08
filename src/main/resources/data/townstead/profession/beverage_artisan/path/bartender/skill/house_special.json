@@ -1,0 +1,110 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.bartender.house_special"
+  },
+  "icon": "minecraft:dragon_breath",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.bartender.house_special.description"
+  },
+  "cost": 1,
+  "requires": [
+    "round_for_the_regulars"
+  ],
+  "skill_group": "townstead:bartender_regulars",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:tab",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 8,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:choice",
+            "actions": [
+              {
+                "action": {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:speed",
+                  "duration": 600,
+                  "amplifier": 1
+                },
+                "weight": 3
+              },
+              {
+                "action": {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:haste",
+                  "duration": 600,
+                  "amplifier": 1
+                },
+                "weight": 3
+              },
+              {
+                "action": {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:strength",
+                  "duration": 600,
+                  "amplifier": 1
+                },
+                "weight": 2
+              },
+              {
+                "action": {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:resistance",
+                  "duration": 600,
+                  "amplifier": 1
+                },
+                "weight": 2
+              },
+              {
+                "action": {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:jump_boost",
+                  "duration": 600,
+                  "amplifier": 1
+                },
+                "weight": 2
+              },
+              {
+                "action": {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:fire_resistance",
+                  "duration": 600,
+                  "amplifier": 0
+                },
+                "weight": 1
+              },
+              {
+                "action": {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:night_vision",
+                  "duration": 600,
+                  "amplifier": 0
+                },
+                "weight": 1
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.glass.hit",
+          "volume": 1.0,
+          "pitch": 1.6
+        }
+      ]
+    }
+  }
+}

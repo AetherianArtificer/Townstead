@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "translate": "career.townstead.cook"
+  },
+  "icon": "minecraft:cooked_beef",
+  "work_sound": "minecraft:entity.villager.work_butcher",
+  "description": {
+    "translate": "career.townstead.cook.description"
+  },
+  "clothing": [
+    "townstead:cook",
+    "chefsdelight:cook",
+    "minecraft:butcher"
+  ],
+  "skills": [
+    "hot_hands",
+    "service"
+  ],
+  "unlock_model": "experiential",
+  "mods": {
+    "any": [
+      "farmersdelight",
+      "farm_and_charm",
+      "kaleidoscope_cookery",
+      "rusticdelight"
+    ]
+  }
+}

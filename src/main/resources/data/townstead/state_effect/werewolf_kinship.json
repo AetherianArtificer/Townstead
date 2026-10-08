@@ -1,0 +1,12 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "mods": "werewolves",
+  "state": "townstead_state:werewolf",
+  "min_tier": "werewolf",
+  "priority": 20,
+  "genes": {
+    "grant": [
+      "townstead_roots:werewolf_kin"
+    ]
+  }
+}

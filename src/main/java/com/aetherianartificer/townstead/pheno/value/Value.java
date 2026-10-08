@@ -12,4 +12,30 @@ import com.aetherianartificer.townstead.pheno.selector.SelectorContext;
 public interface Value {
 
     double get(SelectorContext ctx);
+
+    /**
+     * True when this number can be computed about a
+     * {@link com.aetherianartificer.townstead.pheno.condition.PhenoSubject}: someone
+     * described by facts, with no world to measure. Most values read live state and
+     * cannot, so the default is false and callers must check, exactly as they do for
+     * {@link com.aetherianartificer.townstead.pheno.condition.Condition}.
+     */
+    default boolean supportsSubject() {
+        return false;
+    }
+
+    /** Wraps a number that can be computed about a subject as well as an entity. */
+    static Value subjectAware(Value value) {
+        return new Value() {
+            @Override
+            public double get(SelectorContext ctx) {
+                return value.get(ctx);
+            }
+
+            @Override
+            public boolean supportsSubject() {
+                return true;
+            }
+        };
+    }
 }

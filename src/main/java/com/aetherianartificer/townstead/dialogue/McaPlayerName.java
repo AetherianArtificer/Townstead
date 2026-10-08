@@ -7,7 +7,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 
 /**
- * Resolves the name a villager addresses a player by. MCA lets players set their own name in the
+ * Resolves the name a villager addresses a player by: a reborn player's current name, else the MCA
+ * family-tree name. MCA lets players set their own name in the
  * family tree, so its dialogue substitutes that ({@code Messenger.getName}) for {@code %1$s}, not the
  * raw account username. Townstead routes every line through its own voice, so it must resolve the same
  * name or villagers revert to calling the player by their Minecraft username.
@@ -21,6 +22,8 @@ public final class McaPlayerName {
 
     public static String of(Player target) {
         if (target == null) return "";
+        String character = com.aetherianartificer.townstead.rebirth.Rebirth.characterName(target);
+        if (character != null && !character.isBlank()) return character;
         if (target instanceof ServerPlayer serverPlayer && serverPlayer.level() instanceof ServerLevel world) {
             return FamilyTree.get(world)
                     .getOrEmpty(serverPlayer.getUUID())

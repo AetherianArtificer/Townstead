@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "translate": "career.townstead.scribe"
+  },
+  "icon": "minecraft:writable_book",
+  "work_sound": "minecraft:entity.villager.work_librarian",
+  "description": {
+    "translate": "career.townstead.scribe.description"
+  },
+  "clothing": [
+    "townstead:scribe",
+    "iceandfire:scribe",
+    "minecraft:librarian"
+  ],
+  "skills": [
+    "steady_hand",
+    "long_ledger"
+  ],
+  "unlock_model": "experiential"
+}

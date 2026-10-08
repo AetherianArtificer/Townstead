@@ -1,0 +1,25 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.hush.quiet_habits"
+  },
+  "icon": "minecraft:bread",
+  "description": {
+    "translate": "skill.townstead.librarian.hush.quiet_habits.description"
+  },
+  "cost": 1,
+  "requires": [
+    "soft_steps"
+  ],
+  "power": {
+    "type": "pheno:prevent_game_event",
+    "events": [
+      "minecraft:step",
+      "minecraft:hit_ground",
+      "minecraft:eat",
+      "minecraft:drink",
+      "minecraft:swim",
+      "minecraft:splash"
+    ]
+  }
+}

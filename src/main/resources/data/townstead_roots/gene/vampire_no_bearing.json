@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "townstead_roots:bearing",
+  "display_name": {
+    "translate": "gene.townstead_roots.vampire_no_bearing"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.vampire_no_bearing.desc"
+  },
+  "category": "Abilities",
+  "bearing": false
+}

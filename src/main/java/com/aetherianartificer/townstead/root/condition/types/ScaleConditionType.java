@@ -41,14 +41,18 @@ public final class ScaleConditionType implements ConditionType {
     }
 
     public static float horizontal(LivingEntity entity) {
-        return entity instanceof VillagerLike villager ? villager.getHorizontalScaleFactor() : 1.0f;
+        //? if >=1.21 {
+        return entity instanceof VillagerLike villager ? villager.getPhysicalHorizontalScaleFactor() : 1.0f;
+        //?} else {
+        /*return entity instanceof VillagerLike villager ? villager.getHorizontalScaleFactor() : 1.0f;
+        *///?}
     }
 
     public static float vertical(LivingEntity entity) {
         if (!(entity instanceof VillagerLike villager)) return 1.0f;
         // 1.20.1 MCA has no separate vertical scale; fall back to the (uniform) horizontal factor.
         //? if >=1.21 {
-        return villager.getVerticalScaleFactor();
+        return villager.getPhysicalVerticalScaleFactor();
         //?} else {
         /*return villager.getHorizontalScaleFactor();
         *///?}

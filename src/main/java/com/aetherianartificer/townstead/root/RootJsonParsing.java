@@ -49,16 +49,7 @@ final class RootJsonParsing {
 
     @Nullable
     static Demonym demonym(JsonObject obj, String context, Map<String, String> langIndex) {
-        if (!obj.has("demonym") || !obj.get("demonym").isJsonObject()) return null;
-        JsonObject d = obj.getAsJsonObject("demonym");
-        Component singular = DataPackLang.parseComponent(d.get("singular"), context + ".demonym.singular", langIndex);
-        Component plural = d.has("plural")
-                ? DataPackLang.parseComponent(d.get("plural"), context + ".demonym.plural", langIndex)
-                : singular;
-        Component adjective = d.has("adjective")
-                ? DataPackLang.parseComponent(d.get("adjective"), context + ".demonym.adjective", langIndex)
-                : null;
-        return new Demonym(singular, plural, adjective);
+        return Demonym.parse(obj, context, langIndex);
     }
 
     @Nullable

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "greet_q_back",
+  "lines": {
+    "and_you": { "text": "And you?", "asks": "townstead:how" },
+    "you": { "text": "You?", "asks": "townstead:how" },
+    "how_about_you": { "text": "How about you?", "asks": "townstead:how" },
+    "and_how_are_you": { "text": "And how are you?", "asks": "townstead:how" },
+    "what_about_you": { "text": "What about you?", "asks": "townstead:how" },
+    "you_doing_okay": { "text": "You doing okay?", "asks": "townstead:how" },
+    "hows_your_day_been": { "text": "How's your day been?", "asks": "townstead:how" },
+    "and_yourself": { "text": "And yourself?", "asks": "townstead:how", "stages": ["adult", "senior"] }
+  }
+}

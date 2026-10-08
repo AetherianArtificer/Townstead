@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:relationship_scenario/v1",
+  "id": "townstead:estranged_spouse",
+  "people": ["ada", "bram"],
+  "changes": [
+    { "operation": "years_together", "from": "ada", "toward": "bram", "quality": "townstead:affection", "amount": 70, "day": 0, "half_life_days": 0 },
+    { "operation": "years_together", "from": "bram", "toward": "ada", "quality": "townstead:affection", "amount": 45, "day": 0, "half_life_days": 0 },
+    { "operation": "broken_promise", "from": "ada", "toward": "bram", "quality": "townstead:trust", "amount": -65, "day": 100, "half_life_days": 0 },
+    { "operation": "broken_promise", "from": "ada", "toward": "bram", "quality": "townstead:resentment", "amount": 80, "day": 100, "half_life_days": 60 },
+    { "operation": "partial_apology", "from": "ada", "toward": "bram", "quality": "townstead:resentment", "amount": -20, "day": 120, "half_life_days": 30 },
+    { "operation": "partial_apology", "from": "ada", "toward": "bram", "quality": "townstead:trust", "amount": 5, "day": 120, "half_life_days": 180 },
+    { "operation": "partial_apology", "from": "ada", "toward": "bram", "quality": "townstead:trust", "amount": 5, "day": 120, "half_life_days": 180, "expect_applied": false }
+  ],
+  "checks": [
+    { "from": "ada", "toward": "bram", "quality": "townstead:affection", "day": 365, "min": 65 },
+    { "from": "ada", "toward": "bram", "quality": "townstead:trust", "day": 120, "max": -55 },
+    { "from": "ada", "toward": "bram", "quality": "townstead:resentment", "day": 120, "min": 40 }
+  ]
+}

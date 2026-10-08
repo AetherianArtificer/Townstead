@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.hush.vanishing_act"
+  },
+  "icon": "minecraft:paper",
+  "description": {
+    "translate": "skill.townstead.librarian.hush.vanishing_act.description"
+  },
+  "cost": 1,
+  "requires": [
+    "whisper_step"
+  ],
+  "skill_group": "townstead:hush_fade",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:insight",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:flour",
+          "blocks": {
+            "radius": 3,
+            "around": "above",
+            "where": {
+              "type": "air"
+            }
+          }
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:invisibility",
+          "duration": 400,
+          "amplifier": 0
+        }
+      ]
+    }
+  }
+}

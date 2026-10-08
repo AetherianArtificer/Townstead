@@ -1,6 +1,11 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.compat.starcatcher.StarcatcherCompat;
+import com.aetherianartificer.townstead.profession.ProfessionSites;
+import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
+import com.aetherianartificer.townstead.storage.PhysicalStorageDelivery;
+import com.aetherianartificer.townstead.storage.StorageUse;
+import com.aetherianartificer.townstead.storage.WorksiteStorageIndex;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -10,6 +15,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 
 import javax.annotation.Nullable;
+import java.util.Set;
 
 /**
  * Utility helpers for the Fisherman work task: rod lookup (inventory + nearby storage),
@@ -60,15 +66,40 @@ public final class FishermanSupplyManager {
     public static boolean pullRodFromStorage(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor,
                                              int horizontalRadius, int verticalRadius) {
         if (level == null || villager == null || anchor == null) return false;
-        return NearbyItemSources.pullSingleToInventory(
-                level,
-                villager,
-                horizontalRadius,
-                verticalRadius,
-                FishermanSupplyManager::isFishingRod,
-                FishermanSupplyManager::scoreRod,
-                anchor
-        );
+        NearbyItemSources.ContainerSlot slot = findRodInStorage(level, villager, anchor);
+        if (slot == null) return false;
+        ItemStack extracted = NearbyItemSources.extractOne(level, slot);
+        if (extracted.isEmpty()) return false;
+        ItemStack remainder = villager.getInventory().addItem(extracted);
+        if (!remainder.isEmpty()) {
+            // A rod is one item, so this only occurs with a truly full inventory. Return it to the
+            // same source instead of dropping or duplicating it.
+            NearbyItemSources.insertIntoNearbyStorage(
+                    level, villager, remainder, 0, 0, slot.pos(), StorageUse.TOOL);
+            if (!remainder.isEmpty()) {
+                net.minecraft.world.entity.item.ItemEntity drop = new net.minecraft.world.entity.item.ItemEntity(
+                        level, villager.getX(), villager.getY() + 0.25, villager.getZ(), remainder.copy());
+                drop.setPickUpDelay(0);
+                level.addFreshEntity(drop);
+            }
+            return false;
+        }
+        WorksiteStorageIndex.invalidate(level, slot.pos());
+        return true;
+    }
+
+    public static boolean rodAvailableInStorage(ServerLevel level, VillagerEntityMCA villager,
+                                                BlockPos anchor) {
+        return level != null && villager != null && anchor != null
+                && findRodInStorage(level, villager, anchor) != null;
+    }
+
+    private static @Nullable NearbyItemSources.ContainerSlot findRodInStorage(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        Set<Long> bounds = worksiteBounds(level, villager, anchor);
+        return WorksiteStorageIndex.snapshot(level, villager, bounds)
+                .findBestSlot(villager, FishermanSupplyManager::isFishingRod,
+                        FishermanSupplyManager::scoreRod, StorageUse.TOOL);
     }
 
     /**
@@ -108,29 +139,35 @@ public final class FishermanSupplyManager {
     public static boolean depositCatches(ServerLevel level, VillagerEntityMCA villager, BlockPos barrelAnchor,
                                          int horizontalRadius, int verticalRadius) {
         if (level == null || villager == null || barrelAnchor == null) return false;
-        SimpleContainer inv = villager.getInventory();
-        boolean movedAny = false;
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack stack = inv.getItem(i);
-            if (stack.isEmpty()) continue;
-            if (isFishingRod(stack)) continue;
+        BlockPos destination = findCatchDestination(level, villager, barrelAnchor);
+        return destination != null && depositCatchesAt(level, villager, destination);
+    }
 
-            int before = stack.getCount();
-            ItemStack working = stack;
-            NearbyItemSources.insertIntoNearbyStorage(level, villager, working, 0, 0, barrelAnchor);
-            if (!working.isEmpty()) {
-                NearbyItemSources.insertIntoNearbyStorage(level, villager, working, horizontalRadius, verticalRadius, barrelAnchor);
-            }
-            if (working.getCount() != before) {
-                movedAny = true;
-                if (working.isEmpty()) {
-                    inv.setItem(i, ItemStack.EMPTY);
-                } else {
-                    inv.setItem(i, working);
-                }
-            }
-        }
-        if (movedAny) inv.setChanged();
-        return movedAny;
+    public static @Nullable BlockPos findCatchDestination(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos barrelAnchor) {
+        if (level == null || villager == null || barrelAnchor == null) return null;
+        Set<Long> bounds = worksiteBounds(level, villager, barrelAnchor);
+        java.util.function.Predicate<ItemStack> catches = stack -> !stack.isEmpty() && !isFishingRod(stack);
+        return PhysicalStorageDelivery.findDestination(
+                level, villager, bounds, catches, Set.of(), StorageUse.OUTPUT);
+    }
+
+    public static boolean catchStorageAvailable(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos barrelAnchor) {
+        return findCatchDestination(level, villager, barrelAnchor) != null;
+    }
+
+    public static boolean depositCatchesAt(
+            ServerLevel level, VillagerEntityMCA villager, BlockPos destination) {
+        if (level == null || villager == null || destination == null) return false;
+        java.util.function.Predicate<ItemStack> catches = stack -> !stack.isEmpty() && !isFishingRod(stack);
+        return PhysicalStorageDelivery.depositMatchingAt(
+                level, villager, destination, catches, StorageUse.OUTPUT) > 0;
+    }
+
+    static Set<Long> worksiteBounds(ServerLevel level, VillagerEntityMCA villager, BlockPos anchor) {
+        Set<Long> assigned = ProfessionSites.extentOf(
+                level, villager, ProfessionSites.defForTask(WorkTaskTypes.FISH));
+        return assigned.isEmpty() ? Set.of(anchor.asLong()) : assigned;
     }
 }

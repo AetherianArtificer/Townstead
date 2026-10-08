@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:mob_replacement/v1",
+  "mods": "werewolves",
+  "replaces": [
+    "werewolves:human_werewolf"
+  ],
+  "setting": "vampirism.replaceWerewolfSpawns",
+  "states": {
+    "townstead_state:werewolf": [
+      2,
+      6
+    ]
+  },
+  "behavior": "townstead:wild_werewolf",
+  "group": "wild_werewolf",
+  "credit_kills": true,
+  "loot": "replaced"
+}

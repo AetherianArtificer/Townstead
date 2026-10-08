@@ -2,7 +2,8 @@ package com.aetherianartificer.townstead.thirst;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
-import com.aetherianartificer.townstead.ai.work.ReachableTargetSelector;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+import com.aetherianartificer.townstead.work.ReachableTargetSelector;
 import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import com.aetherianartificer.townstead.compat.thirst.ThirstCompatBridge;
 import com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver;
@@ -249,6 +250,10 @@ public class HydrateYoungTask extends Behavior<VillagerEntityMCA> {
 
         caregiver.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
         TownsteadVillager.Needs childNeeds = TownsteadVillagers.get(childTarget).needs();
+        if (!VillagerConsumptionManager.permitsManagedVillagerConsumption(drink)) {
+            doStop(level, caregiver, gameTime);
+            return;
+        }
         VillagerConsumptionManager.applyConsumption(caregiver, childTarget, drink, childNeeds);
         ItemStack remainder = bridge.onDrinkConsumed(drink);
         if (remainder.isEmpty()) {
@@ -291,7 +296,7 @@ public class HydrateYoungTask extends Behavior<VillagerEntityMCA> {
 
     private boolean mayCareFor(VillagerEntityMCA caregiver, VillagerEntityMCA child) {
         if (isParentOf(caregiver, child)) return true;
-        if (!TownsteadConfig.ENABLE_NON_PARENT_CAREGIVERS.get()) return false;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_NON_PARENT_CAREGIVERS)) return false;
         if (McaPersonalityCompat.isCrabby(caregiver.getVillagerBrain().getPersonality())) return false;
         return !parentsNearby(child);
     }
@@ -342,7 +347,8 @@ public class HydrateYoungTask extends Behavior<VillagerEntityMCA> {
     }
 
     private int thirstScore(ItemStack stack, ThirstCompatBridge bridge) {
-        if (stack.isEmpty() || !bridge.itemRestoresThirst(stack)) return 0;
+        if (stack.isEmpty() || !bridge.itemRestoresThirst(stack)
+                || !VillagerConsumptionManager.permitsManagedVillagerConsumption(stack)) return 0;
         int quenched = Math.max(0, bridge.quenched(stack));
         int hydration = Math.max(0, bridge.hydration(stack));
         int purity = bridge.isPurityWaterContainer(stack) ? Math.max(0, bridge.purity(stack)) : 0;

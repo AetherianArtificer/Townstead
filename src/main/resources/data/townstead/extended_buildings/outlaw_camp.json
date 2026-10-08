@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "minecraft:campfire"
+  },
+  "spirit": {
+    "clandestine": 4,
+    "martial": 4
+  },
+  "enclosure": "none"
+}

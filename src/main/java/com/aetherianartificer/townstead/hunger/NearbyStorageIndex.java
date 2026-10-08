@@ -2,6 +2,9 @@ package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.storage.StorageSearchContext;
+import com.aetherianartificer.townstead.storage.StorageRoleDef;
+import com.aetherianartificer.townstead.storage.StorageRoles;
+import com.aetherianartificer.townstead.storage.StorageUse;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
@@ -100,6 +103,22 @@ public final class NearbyStorageIndex {
     }
 
     record Snapshot(List<Entry> entries, long expiresAt) {
+        @Nullable NearbyItemSources.ContainerSlot revalidate(VillagerEntityMCA villager,
+                NearbyItemSources.ContainerSlot expected, Predicate<ItemStack> matcher) {
+            for (Entry entry : entries) {
+                if (!entry.pos().equals(expected.pos()) || roleRank(entry.roles(), StorageUse.INGREDIENT) == Integer.MAX_VALUE
+                        || !com.aetherianartificer.townstead.storage.RoomOwnershipAccess
+                        .mayAccess((ServerLevel) villager.level(), villager, entry.pos())) continue;
+                for (SlotView slot : entry.allSlots()) {
+                    if (slot.slot() == expected.slot() && slot.itemHandler() == expected.isItemHandler()
+                            && java.util.Objects.equals(slot.side(), expected.side()) && matcher.test(slot.stack()))
+                        return new NearbyItemSources.ContainerSlot(slot.pos(), slot.container(), slot.itemHandler(),
+                                slot.slot(), expected.score(), expected.distanceSqr(), slot.side());
+                }
+            }
+            return null;
+        }
+
         boolean validAt(long gameTime) {
             return gameTime <= expiresAt;
         }
@@ -111,8 +130,13 @@ public final class NearbyStorageIndex {
                                                                      Predicate<ItemStack> matcher,
                                                                      ToIntFunction<ItemStack> scorer) {
             NearbyItemSources.ContainerSlot best = null;
+            int bestRoleRank = Integer.MAX_VALUE;
             for (Entry entry : entries) {
                 if (!withinSearch(center, horizontalRadius, verticalRadius, entry.pos())) continue;
+                int roleRank = roleRank(entry.roles(), StorageUse.INGREDIENT);
+                if (roleRank == Integer.MAX_VALUE || roleRank > bestRoleRank) continue;
+                if (!com.aetherianartificer.townstead.storage.RoomOwnershipAccess
+                        .mayAccess((ServerLevel) villager.level(), villager, entry.pos())) continue;
                 for (SlotView slot : entry.allSlots()) {
                     if (!matcher.test(slot.stack())) continue;
                     int score = scorer.applyAsInt(slot.stack());
@@ -121,7 +145,8 @@ public final class NearbyStorageIndex {
                             slot.pos().getY() + 0.5,
                             slot.pos().getZ() + 0.5
                     );
-                    if (isBetter(best, dist, score)) {
+                    if (roleRank < bestRoleRank || isBetter(best, dist, score)) {
+                        bestRoleRank = roleRank;
                         best = new NearbyItemSources.ContainerSlot(
                                 slot.pos(),
                                 slot.container(),
@@ -146,8 +171,11 @@ public final class NearbyStorageIndex {
                                            Consumer<NearbyItemSources.ContainerSlot> consumer) {
             for (Entry entry : entries) {
                 if (!withinSearch(center, horizontalRadius, verticalRadius, entry.pos())) continue;
+                if (roleRank(entry.roles(), StorageUse.INGREDIENT) == Integer.MAX_VALUE) continue;
+                if (!com.aetherianartificer.townstead.storage.RoomOwnershipAccess
+                        .mayAccess((ServerLevel) villager.level(), villager, entry.pos())) continue;
                 NearbyItemSources.ContainerSlot bestInContainer = null;
-                for (SlotView slot : entry.containerSlots()) {
+                for (SlotView slot : entry.allSlots()) {
                     if (!matcher.test(slot.stack())) continue;
                     int score = scorer.applyAsInt(slot.stack());
                     double dist = villager.distanceToSqr(
@@ -159,11 +187,11 @@ public final class NearbyStorageIndex {
                         bestInContainer = new NearbyItemSources.ContainerSlot(
                                 slot.pos(),
                                 slot.container(),
-                                false,
+                                slot.itemHandler(),
                                 slot.slot(),
                                 score,
                                 dist,
-                                null
+                                slot.side()
                         );
                     }
                 }
@@ -180,6 +208,9 @@ public final class NearbyStorageIndex {
                                            Consumer<NearbyItemSources.ContainerSlot> consumer) {
             for (Entry entry : entries) {
                 if (!withinSearch(center, horizontalRadius, verticalRadius, entry.pos())) continue;
+                if (roleRank(entry.roles(), StorageUse.INGREDIENT) == Integer.MAX_VALUE) continue;
+                if (!com.aetherianartificer.townstead.storage.RoomOwnershipAccess
+                        .mayAccess((ServerLevel) villager.level(), villager, entry.pos())) continue;
                 FoodSlotView bestFoodSlot = entry.bestFoodSlot();
                 if (bestFoodSlot == null) continue;
                 double dist = villager.distanceToSqr(
@@ -205,8 +236,13 @@ public final class NearbyStorageIndex {
                                                                           int verticalRadius,
                                                                           ToIntFunction<ItemStack> scorer) {
             NearbyItemSources.ContainerSlot best = null;
+            int bestRoleRank = Integer.MAX_VALUE;
             for (Entry entry : entries) {
                 if (!withinSearch(center, horizontalRadius, verticalRadius, entry.pos())) continue;
+                int roleRank = roleRank(entry.roles(), StorageUse.INGREDIENT);
+                if (roleRank == Integer.MAX_VALUE || roleRank > bestRoleRank) continue;
+                if (!com.aetherianartificer.townstead.storage.RoomOwnershipAccess
+                        .mayAccess((ServerLevel) villager.level(), villager, entry.pos())) continue;
                 for (SlotView slot : entry.allSlots()) {
                     int score = scorer.applyAsInt(slot.stack());
                     if (score <= 0) continue;
@@ -215,7 +251,8 @@ public final class NearbyStorageIndex {
                             slot.pos().getY() + 0.5,
                             slot.pos().getZ() + 0.5
                     );
-                    if (isBetter(best, dist, score)) {
+                    if (roleRank < bestRoleRank || isBetter(best, dist, score)) {
+                        bestRoleRank = roleRank;
                         best = new NearbyItemSources.ContainerSlot(
                                 slot.pos(),
                                 slot.container(),
@@ -233,7 +270,7 @@ public final class NearbyStorageIndex {
     }
 
     private record Entry(BlockPos pos, List<SlotView> containerSlots, List<SlotView> allSlots,
-                         @Nullable FoodSlotView bestFoodSlot) {}
+                         @Nullable FoodSlotView bestFoodSlot, Set<StorageRoleDef.Role> roles) {}
 
     private record SlotView(BlockPos pos, @Nullable Container container, boolean itemHandler, int slot,
                             @Nullable Direction side, ItemStack stack) {}
@@ -302,7 +339,8 @@ public final class NearbyStorageIndex {
             }
         }
 
-        searchContext.forEachUniqueItemHandler(immutablePos, (side, handler) -> {
+        if (com.aetherianartificer.townstead.storage.StorageInventoryPolicy
+                .useItemHandlerView(blockEntity)) searchContext.forEachUniqueItemHandler(immutablePos, (side, handler) -> {
             for (int i = 0; i < handler.getSlots(); i++) {
                 ItemStack stack;
                 try {
@@ -330,8 +368,14 @@ public final class NearbyStorageIndex {
                 immutablePos,
                 List.copyOf(containerSlots),
                 List.copyOf(allSlots),
-                bestFoodSlot(immutablePos, containerSlots)
+                bestFoodSlot(immutablePos, containerSlots),
+                StorageRoles.semanticRoles(state)
         );
+    }
+
+    private static int roleRank(Set<StorageRoleDef.Role> roles, StorageUse use) {
+        return StorageRoles.useRank(roles == null || roles.isEmpty()
+                ? Set.of(StorageRoleDef.Role.STORAGE) : roles, use);
     }
 
     private static boolean isBetter(@Nullable NearbyItemSources.ContainerSlot currentBest, double candidateDist, int candidateScore) {

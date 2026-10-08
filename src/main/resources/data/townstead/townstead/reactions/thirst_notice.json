@@ -1,0 +1,1 @@
+{"schema":"townstead:reaction/v3","display_name":"reaction.townstead.thirst_notice","tags":["need","thirst"],"cooldown":"120s","chance":"35%","triggers":[{"type":"context_enter","tags":["thirsty"]}],"do":{"type":"pheno:expression","cue":"townstead_expressions:thirst"}}

@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.bulwark.stand_firm"
+  },
+  "icon": "minecraft:iron_boots",
+  "description": {
+    "translate": "skill.townstead.armorer.bulwark.stand_firm.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:bulwark_hold",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:resistance",
+      "duration": 160,
+      "amplifier": 1
+    }
+  }
+}

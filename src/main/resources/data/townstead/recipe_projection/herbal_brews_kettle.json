@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:recipe_projection/v1",
+  "mods": "herbalbrews",
+  "recipe_types": ["herbalbrews:kettle_brewing"],
+  "domain": "beverage.kettle",
+  "fields": {
+    "inputs": { "path": "getIngredients", "operation": "list", "required": true },
+    "fluid_amount": { "path": "getRequiredWater", "operation": "integer", "required": true },
+    "environment": { "path": "getRequiredHeat", "operation": "integer", "required": true },
+    "time": { "path": "getRequiredDuration", "operation": "integer", "required": true },
+    "output": { "path": "getResultItem", "operation": "item_stack_id", "required": true },
+    "readiness": { "default": true, "operation": "boolean" }
+  }
+}

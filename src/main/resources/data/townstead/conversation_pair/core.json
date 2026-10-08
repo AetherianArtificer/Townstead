@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:conversation_pair/v1",
+  "pairs": {
+    "complaint": { "uptake": "optional", "chance": 0.85 },
+    "general": { "uptake": "optional", "chance": 0.5 },
+    "invitation": { "uptake": "required" },
+    "joke": { "uptake": "required" },
+    "musing": { "uptake": "optional", "chance": 0.7 },
+    "news": { "uptake": "required" },
+    "opinion": { "uptake": "optional", "chance": 0 },
+    "story": { "uptake": "required" }
+  }
+}

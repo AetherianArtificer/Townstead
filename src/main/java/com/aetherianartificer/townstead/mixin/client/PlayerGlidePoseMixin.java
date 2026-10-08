@@ -16,7 +16,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * full run cycle plays mid-air. Legs straight, arms swept slightly back; the wear
  * layers (sleeves/pants) re-copy afterwards because vanilla copies them before TAIL.
  */
-@Mixin(PlayerEntityExtendedModel.class)
+// Apply this base pose before the default-priority animation bridge's TAIL hook,
+// so the selected EMF provider can replace it rather than being overwritten by it.
+@Mixin(value = PlayerEntityExtendedModel.class, priority = 1100)
 public abstract class PlayerGlidePoseMixin<T extends LivingEntity> {
 
     //? if neoforge {

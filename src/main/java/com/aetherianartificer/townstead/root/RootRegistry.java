@@ -106,6 +106,30 @@ public final class RootRegistry {
     }
 
     /**
+     * The cultures a root's founders lean toward, composed most-general first: ancestry, then
+     * lineage, then the root itself, so a lineage may lean differently from its ancestry and a root
+     * may override both. Empty when nothing declares a lean, which leaves a founder open to any
+     * culture at all.
+     */
+    public static com.aetherianartificer.townstead.culture.CulturalSpawnBias effectiveCulturalSpawnBias(
+            @Nullable ResourceLocation id) {
+        Root origin = resolveOrDefault(id);
+        if (origin == null) return com.aetherianartificer.townstead.culture.CulturalSpawnBias.EMPTY;
+        com.aetherianartificer.townstead.culture.CulturalSpawnBias bias =
+                com.aetherianartificer.townstead.culture.CulturalSpawnBias.EMPTY;
+        Lineage lineage = origin.lineage() != null ? LineageRegistry.byId(origin.lineage()) : null;
+        if (lineage != null) {
+            Ancestry ancestry = AncestryRegistry.byId(lineage.ancestry());
+            if (ancestry != null) bias = bias.mergedWith(ancestry.culturalSpawnBias());
+            bias = bias.mergedWith(lineage.culturalSpawnBias());
+        } else if (origin.ancestry() != null) {
+            Ancestry ancestry = AncestryRegistry.byId(origin.ancestry());
+            if (ancestry != null) bias = bias.mergedWith(ancestry.culturalSpawnBias());
+        }
+        return bias.mergedWith(origin.culturalSpawnBias());
+    }
+
+    /**
      * The species an assignment profile selects: its own {@code species}, else its
      * ancestry's, else its lineage ancestry's species.
      * {@code null} if none resolves. Used to gate mixing within a species.

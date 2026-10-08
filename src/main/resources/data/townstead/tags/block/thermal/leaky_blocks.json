@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "#minecraft:fences",
+    "#minecraft:fence_gates",
+    "#minecraft:leaves",
+    "#minecraft:walls",
+    "minecraft:iron_bars",
+    "minecraft:chain",
+    "minecraft:scaffolding"
+  ]
+}

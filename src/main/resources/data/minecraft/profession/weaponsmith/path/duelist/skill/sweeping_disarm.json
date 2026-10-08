@@ -1,0 +1,56 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.duelist.sweeping_disarm"
+  },
+  "icon": "minecraft:iron_sword",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.duelist.sweeping_disarm.description"
+  },
+  "cost": 1,
+  "requires": [
+    "guard"
+  ],
+  "skill_group": "townstead:duelist_disarm",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:edge",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 5,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:disarm"
+          }
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:entity.player.attack.sweep",
+              "volume": 1.0,
+              "pitch": 0.9
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:sweep_attack",
+              "count": 6,
+              "spread": 1.2
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

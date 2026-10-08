@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:workstation/v1",
+  "type": "craft_surface",
+  "work_task": "townstead_work:craft",
+  "blocks": ["minecraft:smithing_table"],
+  "recipe_type": "minecraft:smithing",
+  "cook_time": 60
+}

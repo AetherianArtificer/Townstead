@@ -57,20 +57,34 @@ public final class GeneGrantCommand {
     }
 
     private static int apply(CommandSourceStack source, Entity entity, String geneId, boolean grant) {
-        if (!(entity instanceof VillagerEntityMCA villager)) {
-            source.sendFailure(Component.literal("Target must be a villager."));
+        if (!(entity instanceof VillagerEntityMCA) && !(entity instanceof net.minecraft.server.level.ServerPlayer)) {
+            source.sendFailure(Component.translatable("command.townstead.gene_grant.invalid_target"));
             return 0;
         }
         ResourceLocation gid = DataPackLang.parseId(geneId);
         Gene gene = gid == null ? null : GeneRegistry.byId(gid);
         if (gene == null) {
-            source.sendFailure(Component.literal("No gene '" + geneId + "' is registered."));
+            source.sendFailure(Component.translatable("command.townstead.gene_grant.unknown_gene", geneId));
             return 0;
         }
+        if (entity instanceof net.minecraft.server.level.ServerPlayer player) {
+            var genotype = com.aetherianartificer.townstead.root.PlayerRoot.getOrSeedGenotype(player, player.getRandom());
+            Allele allele = grant ? Heredity.grantAllele(gene, player.getRandom()) : Allele.WILD;
+            genotype.set(Heredity.locusOf(gene), allele, allele);
+            com.aetherianartificer.townstead.root.PlayerRoot.setGenotype(player, genotype);
+            com.aetherianartificer.townstead.root.GeneExpressionSync.tick(player);
+            Component variant = grant && allele.variantId() != null
+                    ? Component.translatable("command.townstead.gene_grant.variant", allele.variantId())
+                    : Component.empty();
+            source.sendSuccess(() -> Component.translatable(grant
+                            ? "command.townstead.gene_grant.granted" : "command.townstead.gene_grant.revoked",
+                    gene.id().toString(), variant, player.getDisplayName()), false);
+            return 1;
+        }
+        VillagerEntityMCA villager = (VillagerEntityMCA)entity;
         TownsteadVillager state = TownsteadVillagers.get(villager);
         if (!state.life().hasGenotype()) {
-            source.sendFailure(Component.literal(
-                    "That villager has no genotype yet (assign a root first, or wait for the stamper)."));
+            source.sendFailure(Component.translatable("command.townstead.gene_grant.no_genotype"));
             return 0;
         }
         ResourceLocation locus = Heredity.locusOf(gene);
@@ -79,10 +93,12 @@ public final class GeneGrantCommand {
         Heredity.recomputeExpressed(state.life());
         TownsteadVillagers.flush(villager);
         broadcastExpressed(villager);
-        String rolled = grant && allele.variantId() != null ? " (" + allele.variantId() + ")" : "";
-        source.sendSuccess(() -> Component.literal((grant ? "Granted " : "Revoked ") + gene.id()
-                + rolled + (grant ? " to " : " from ") + villager.getName().getString()
-                + " (homozygous; inherits like a natural roll)"), false);
+        Component variant = grant && allele.variantId() != null
+                ? Component.translatable("command.townstead.gene_grant.variant", allele.variantId())
+                : Component.empty();
+        source.sendSuccess(() -> Component.translatable(grant
+                        ? "command.townstead.gene_grant.granted" : "command.townstead.gene_grant.revoked",
+                gene.id().toString(), variant, villager.getDisplayName()), false);
         return 1;
     }
 

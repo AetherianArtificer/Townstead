@@ -1,0 +1,14 @@
+{
+  "type": "pheno:resource",
+  "mods": "vampirism",
+  "min": 0,
+  "max": 1,
+  "start": 0,
+  "regen": 0,
+  "regen_interval": 20,
+  "color": "#6B2E3A",
+  "persist_on_death": false,
+  "display": {
+    "visibility": "never"
+  }
+}

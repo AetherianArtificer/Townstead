@@ -34,7 +34,17 @@ import java.util.List;
  *      loot table. So when a villager reels in while holding a Starcatcher
  *      rod we replicate the relevant slice of {@code FishingBobEntity.reel()}:
  *      pick a fish via {@code calculateChance} on each registered FishProperties
- *      and produce an itemstack via {@code FishProperties.makeItemStack}.
+ *      and produce its itemstack.
+ *
+ * Starcatcher's API has moved between versions, and every shape below is resolved:
+ *   - v2 (2.3 on 1.20.1, 2.4 on 1.21.1): everything on {@code registry.FishProperties},
+ *     {@code makeItemStack(rod, fp, int size, int weight, float, boolean, Player, boolean)},
+ *     treasure through {@code fp.loadTreasure(player)}.
+ *   - v3 (3.x on 1.20.1 and 1.21.1): {@code fish.FishProperties} plus static {@code fish.FishApi};
+ *     {@code makeItemStack(rod, fp, float, boolean, Player, boolean)}, and on newer v3 builds a
+ *     leading {@code FishingBobEntity} that villagers do not have. Then the catch is built the
+ *     way Starcatcher starts it, {@code fp.catchInfo().fish().toStack()}. v3 treasure is a separate
+ *     minigame reward, so villagers skip it.
  *      Minigame, tournaments, tackle attachments, bait consumption, and
  *      golden/perfect catch rolls are intentionally skipped.
  *
@@ -82,13 +92,25 @@ public final class StarcatcherCompat {
     private static Method getFishesMethod;       // (Level) -> List<FishProperties>
     private static Method getNonFishesMethod;    // (Level) -> List<FishProperties>
     private static Method calculateChanceMethod; // (Entity, Level, ItemStack, Context) -> int
-    private static Method makeItemStackMethod;   // static (ItemStack rod, FishProperties, int, int, float, boolean, Player, boolean) -> ItemStack
-    private static Method loadTreasureMethod;    // (ServerPlayer) -> FishProperties
+    private static Method makeItemStackMethod;   // static makeItemStack in one of its shapes, or null to build the stack directly
+    private static Method loadTreasureMethod;    // v2 only: (ServerPlayer) -> FishProperties
     private static Method sizeWeightMethod;      // () -> SizeAndWeight
     private static Field sizeAverageField;
     private static Field weightAverageField;
     // Context enum constant reflecting AbstractFishRestriction.Context.FISHING.
     private static Object contextFishing;
+
+    @Nullable
+    private static Class<?> firstClass(ClassLoader cl, String... names) {
+        for (String name : names) {
+            try {
+                return Class.forName(name, true, cl);
+            } catch (ClassNotFoundException ignored) {
+                // try the next shape
+            }
+        }
+        return null;
+    }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static Object lookupEnumConstant(Class<?> enumCls, String name) {
@@ -100,15 +122,19 @@ public final class StarcatcherCompat {
         apiResolved = true;
         try {
             ClassLoader cl = StarcatcherCompat.class.getClassLoader();
-            fishPropertiesClass = Class.forName(
-                    "com.wdiscute.starcatcher.registry.FishProperties", true, cl);
+            fishPropertiesClass = firstClass(cl,
+                    "com.wdiscute.starcatcher.fish.FishProperties",       // v3
+                    "com.wdiscute.starcatcher.registry.FishProperties");  // v2
+            // v3 keeps the lookups on a static FishApi; v2 has them on FishProperties itself.
+            Class<?> apiClass = firstClass(cl, "com.wdiscute.starcatcher.fish.FishApi");
+            if (apiClass == null) apiClass = fishPropertiesClass;
+            if (fishPropertiesClass == null) throw new ClassNotFoundException("Starcatcher FishProperties");
             Class<?> levelCls = Class.forName("net.minecraft.world.level.Level");
             Class<?> entityCls = Class.forName("net.minecraft.world.entity.Entity");
             Class<?> stackCls = Class.forName("net.minecraft.world.item.ItemStack");
-            Class<?> playerCls = Class.forName("net.minecraft.world.entity.player.Player");
             Class<?> serverPlayerCls = Class.forName("net.minecraft.server.level.ServerPlayer");
             Class<?> restrictionCls = Class.forName(
-                    "com.wdiscute.starcatcher.registry.fishrestrictions.AbstractFishRestriction");
+                    "com.wdiscute.starcatcher.registry.fishrestrictions.AbstractFishRestriction", true, cl);
             Class<?> contextCls = null;
             for (Class<?> inner : restrictionCls.getDeclaredClasses()) {
                 if ("Context".equals(inner.getSimpleName())) {
@@ -119,14 +145,22 @@ public final class StarcatcherCompat {
             if (contextCls == null) throw new NoSuchMethodException("Context enum not found");
             contextFishing = lookupEnumConstant(contextCls, "FISHING");
 
-            getFishesMethod = fishPropertiesClass.getMethod("getFishes", levelCls);
-            getNonFishesMethod = fishPropertiesClass.getMethod("getNonFishes", levelCls);
+            getFishesMethod = apiClass.getMethod("getFishes", levelCls);
+            getNonFishesMethod = apiClass.getMethod("getNonFishes", levelCls);
             calculateChanceMethod = fishPropertiesClass.getMethod(
                     "calculateChance", entityCls, levelCls, stackCls, contextCls);
-            makeItemStackMethod = fishPropertiesClass.getMethod(
-                    "makeItemStack", stackCls, fishPropertiesClass,
-                    int.class, int.class, float.class, boolean.class, playerCls, boolean.class);
-            loadTreasureMethod = fishPropertiesClass.getMethod("loadTreasure", serverPlayerCls);
+            makeItemStackMethod = null;
+            for (Method m : apiClass.getMethods()) {
+                if (!m.getName().equals("makeItemStack") || !java.lang.reflect.Modifier.isStatic(m.getModifiers())) continue;
+                if (java.util.Arrays.stream(m.getParameterTypes()).anyMatch(t -> t.getSimpleName().equals("FishingBobEntity"))) continue;
+                makeItemStackMethod = m;
+                break;
+            }
+            try {
+                loadTreasureMethod = fishPropertiesClass.getMethod("loadTreasure", serverPlayerCls);
+            } catch (NoSuchMethodException e) {
+                loadTreasureMethod = null;
+            }
             sizeWeightMethod = fishPropertiesClass.getMethod("sizeWeight");
 
             Class<?> sizeWeightCls = sizeWeightMethod.getReturnType();
@@ -164,6 +198,37 @@ public final class StarcatcherCompat {
      *                  and loadTreasure (both need a Player; loadTreasure needs
      *                  ServerPlayer specifically)
      */
+    /**
+     * Fills makeItemStack's parameters by type, so each version's shape gets its arguments: the rod,
+     * the fish, v2's size and weight ints, the percentile (the median, as villagers skip the
+     * minigame), golden and perfect-catch flags (false), and the player.
+     */
+    private static Object[] makeItemStackArgs(Method method, ItemStack rod, Object fish, int size, int weight,
+                                              ServerPlayer player) {
+        Class<?>[] types = method.getParameterTypes();
+        Object[] args = new Object[types.length];
+        int ints = 0;
+        for (int i = 0; i < types.length; i++) {
+            Class<?> t = types[i];
+            if (t == ItemStack.class) args[i] = rod;
+            else if (t.isInstance(fish)) args[i] = fish;
+            else if (t == int.class) args[i] = ints++ == 0 ? size : weight;
+            else if (t == float.class) args[i] = 50.0F;
+            else if (t == boolean.class) args[i] = false;
+            else if (t.isInstance(player)) args[i] = player;
+            else args[i] = null;
+        }
+        return args;
+    }
+
+    /** The fish item itself, as Starcatcher builds it before any modifiers: catchInfo().fish().toStack(). */
+    private static ItemStack baseCatch(Object fish) throws ReflectiveOperationException {
+        Object catchInfo = fish.getClass().getMethod("catchInfo").invoke(fish);
+        Object maybeStack = catchInfo.getClass().getMethod("fish").invoke(catchInfo);
+        Object stack = maybeStack.getClass().getMethod("toStack").invoke(maybeStack);
+        return stack instanceof ItemStack item ? item.copy() : ItemStack.EMPTY;
+    }
+
     public static List<ItemStack> rollStarcatcherCatch(ServerLevel level,
                                                        ItemStack rod,
                                                        @Nullable FishingHook hook,
@@ -219,12 +284,14 @@ public final class StarcatcherCompat {
                 if (chosen == null) chosen = candidates.get(candidates.size() - 1);
             }
 
-            // Load treasure data so the chosen fp carries its full catch info.
-            try {
-                chosen = loadTreasureMethod.invoke(chosen, fakePlayer);
-            } catch (Throwable t) {
-                // loadTreasure can fail if data maps aren't reachable for this fp;
-                // fall through with the un-loaded fp — makeItemStack still works.
+            // v2: load treasure data so the chosen fp carries its full catch info.
+            if (loadTreasureMethod != null) {
+                try {
+                    chosen = loadTreasureMethod.invoke(chosen, fakePlayer);
+                } catch (Throwable t) {
+                    // loadTreasure can fail if data maps aren't reachable for this fp;
+                    // fall through with the un-loaded fp — makeItemStack still works.
+                }
             }
 
             // Use the fp's average size/weight; villagers don't play the minigame,
@@ -235,8 +302,10 @@ public final class StarcatcherCompat {
             int size = Math.max(1, Math.round(sizeAvg));
             int weight = Math.max(1, Math.round(weightAvg));
 
-            ItemStack catchStack = (ItemStack) makeItemStackMethod.invoke(
-                    null, rod, chosen, size, weight, 50.0F, false, fakePlayer, false);
+            ItemStack catchStack = makeItemStackMethod != null
+                    ? (ItemStack) makeItemStackMethod.invoke(null,
+                            makeItemStackArgs(makeItemStackMethod, rod, chosen, size, weight, fakePlayer))
+                    : baseCatch(chosen);
             if (catchStack == null || catchStack.isEmpty()) return Collections.emptyList();
             return List.of(catchStack);
         } catch (Throwable t) {

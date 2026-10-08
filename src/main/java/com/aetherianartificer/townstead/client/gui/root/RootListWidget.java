@@ -84,7 +84,7 @@ public class RootListWidget extends ObjectSelectionList<RootListWidget.Row> {
         // display name below. With a single species (no headers) this is just a flat A→Z origin list.
         Map<String, List<RootCatalogEntry>> bySpecies = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         for (RootCatalogEntry e : RootCatalogClient.origins()) {
-            if (e.blocked()) continue;   // server-config blocklisted: not selectable
+            if (!e.listedFor(targetEntityId == com.aetherianartificer.townstead.root.RootSetC2SPayload.SELF)) continue;
             if (!filter.isEmpty()
                     && !e.name().toLowerCase(Locale.ROOT).contains(filter)
                     && !e.demonymPlural().toLowerCase(Locale.ROOT).contains(filter)) {

@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.heavyweight.full_plate"
+  },
+  "icon": "minecraft:diamond_chestplate",
+  "description": {
+    "translate": "skill.townstead.armorer.heavyweight.full_plate.description"
+  },
+  "cost": 1,
+  "requires": [
+    "plate_stance"
+  ],
+  "skill_group": "townstead:heavy_plate",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 300,
+          "amplifier": 2
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:slowness",
+          "duration": 300,
+          "amplifier": 1
+        }
+      ]
+    }
+  }
+}

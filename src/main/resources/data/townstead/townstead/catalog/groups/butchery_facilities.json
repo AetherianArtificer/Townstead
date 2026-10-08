@@ -1,6 +1,6 @@
 {
   "schema": "townstead:catalog_group/v1",
-  "label": "Butchery Facilities",
+  "label": "townstead.catalog.group.butchery_facilities",
   "match_prefix": "compat/butchery/",
   "layout": "grid",
   "priority": 9

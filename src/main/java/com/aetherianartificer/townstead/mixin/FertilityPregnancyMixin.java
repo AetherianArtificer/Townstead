@@ -48,7 +48,8 @@ public abstract class FertilityPregnancyMixin {
     @Inject(method = "procreate", at = @At("HEAD"), cancellable = true)
     private void townstead$gateProcreate(Entity spouse, CallbackInfo ci) {
         LivingEntity other = spouse instanceof LivingEntity living ? living : null;
-        if (!Fertility.isFertile(mother) || (other != null && !Fertility.isFertile(other))) {
+        if (!Fertility.isFertile(mother) || (other != null && !Fertility.isFertile(other))
+                || !Fertility.canBear(mother) || (other != null && !Fertility.canBear(other))) {
             ci.cancel();
             return;
         }

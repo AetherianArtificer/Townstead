@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.field_hand"
+  },
+  "icon": "minecraft:wooden_hoe",
+  "description": {
+    "translate": "skill.townstead.farmer.field_hand.description"
+  },
+  "tier": 2,
+  "cost": 1,
+  "requires": [
+    "sun_on_your_back"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "always",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 25
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:speed",
+          "duration": 300,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:haste",
+          "duration": 300,
+          "amplifier": 0
+        }
+      ]
+    }
+  }
+}

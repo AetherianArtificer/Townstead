@@ -42,6 +42,7 @@ public final class RigArmorSync {
         // rig's back; then skip the humanoid bridge so that pose stands. Otherwise leave the host alone.
         if (RigModels.isGeneric(rigBase)) {
             com.aetherianartificer.townstead.root.rig.RigDefinition def = RigModels.definition(rigBase);
+            if (def != null) RigWearables.prepare(entity, def, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
             return def != null && RigWearables.anchor(host, def, netHeadYaw, headPitch);
         }
         HumanoidModel<LivingEntity> rig = RigModels.model(rigBase);

@@ -1,0 +1,22 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "poi": [
+    { "type": "townstead:job_block", "block": "minecraft:stonecutter" },
+    { "type": "townstead:building", "type_prefix": "mason" }
+  ],
+  "storage": { "preferred_roles": ["townstead:materials"] },
+  "tasks": [
+    {
+      "type": "townstead_work:craft",
+      "workstations": ["minecraft:stonecutter"],
+      "recipes": ["block"],
+      "weight": 10
+    },
+    {
+      "type": "townstead_work:smelt",
+      "workstations": ["#townstead:furnace_stations"],
+      "recipes": ["block", "minecraft:brick", "minecraft:nether_brick", "minecraft:quartz"],
+      "weight": 8
+    }
+  ]
+}

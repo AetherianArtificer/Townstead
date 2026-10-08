@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:founding_profile/v1",
+  "name": {
+    "translate": "founding_profile.townstead.player_faction"
+  },
+  "weight": 0,
+  "faction": {
+    "kind": "townstead:player_faction",
+    "seats": [
+      {
+        "offices": [
+          "townstead:faction_leader"
+        ],
+        "count": 1
+      }
+    ]
+  }
+}

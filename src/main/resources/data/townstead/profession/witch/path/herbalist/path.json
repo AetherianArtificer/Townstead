@@ -1,0 +1,91 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.witch.path.herbalist"
+  },
+  "title": {
+    "translate": "career.townstead.witch.title.herbalist"
+  },
+  "color": "#5A8A3A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:hex",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:witch/herbalist/gather_herbs"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:witch/herbalist/cure_all"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:witch/herbalist/nightshade"
+              }
+            ]
+          },
+          {
+            "type": "pheno:block_in_radius",
+            "radius": 5,
+            "block_condition": {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:in_tag",
+                  "tag": "minecraft:flowers"
+                },
+                {
+                  "type": "pheno:in_tag",
+                  "tag": "minecraft:leaves"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:hex",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "poultice",
+      "tonic",
+      "nettle_sting"
+    ],
+    [
+      "antidote",
+      "salve",
+      "toxic_cloud"
+    ],
+    [
+      "gather_herbs",
+      "cure_all",
+      "nightshade"
+    ],
+    [
+      "herbal_aura",
+      "elixir",
+      "miasma"
+    ],
+    [
+      "wise_woman",
+      "panacea",
+      "plague_garden"
+    ]
+  ]
+}

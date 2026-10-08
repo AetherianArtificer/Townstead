@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:relationship_descriptor/v1",
+  "display": { "translate": "relationship_descriptor.townstead.trusted_friend" },
+  "priority": 50,
+  "tags": ["friend", "trusted"],
+  "when": {
+    "type": "pheno:and",
+    "conditions": [
+      { "type": "pheno:value", "value": { "type": "pheno:relationship", "quality": "townstead:affection" }, "comparison": ">=", "compare_to": 12 },
+      { "type": "pheno:value", "value": { "type": "pheno:relationship", "quality": "townstead:trust" }, "comparison": ">=", "compare_to": 10 }
+    ]
+  }
+}

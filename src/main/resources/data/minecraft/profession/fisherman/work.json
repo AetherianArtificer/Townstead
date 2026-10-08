@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "poi": [
+    { "type": "townstead:job_block", "block": "minecraft:barrel" }
+  ],
+  "tasks": [
+    {
+      "type": "townstead_work:fish",
+      "weight": 10,
+      "order": {
+        "name": "Fish",
+        "icon": "minecraft:fishing_rod"
+      }
+    }
+  ]
+}

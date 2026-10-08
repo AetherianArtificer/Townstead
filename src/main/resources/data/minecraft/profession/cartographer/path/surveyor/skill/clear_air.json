@@ -1,0 +1,32 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.surveyor.clear_air"
+  },
+  "icon": "minecraft:phantom_membrane",
+  "description": {
+    "translate": "skill.townstead.cartographer.surveyor.clear_air.description"
+  },
+  "cost": 1,
+  "requires": [
+    "head_for_heights"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:block",
+      "y": 0,
+      "block_condition": {
+        "type": "height",
+        "min": 100
+      }
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 30,
+      "amplifier": 0
+    }
+  }
+}

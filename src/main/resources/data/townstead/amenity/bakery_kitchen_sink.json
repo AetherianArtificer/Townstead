@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:amenity/v1",
+  "mods": ["bakery"],
+  "blocks": ["bakery:kitchen_sink"],
+  "anchor": {
+    "type": "pheno:block_state",
+    "property": "half",
+    "value": "lower"
+  },
+  "requires": {
+    "type": "pheno:block_state",
+    "property": "filled",
+    "value": "true"
+  },
+  "prepare": {
+    "type": "pheno:use_block",
+    "item": "empty"
+  },
+  "behavior": {
+    "type": "pheno:modify_block_state",
+    "property": "filled",
+    "value": "false"
+  },
+  "effect": {
+    "type": "pheno:hydrate",
+    "immediate": 6,
+    "lasting": 8
+  }
+}

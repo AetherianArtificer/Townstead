@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:recipe_projection/v1",
+  "mods": "vinery",
+  "recipe_types": ["vinery:wine_fermentation"],
+  "domain": "winemaking.fermentation",
+  "fields": {
+    "inputs": { "path": "getIngredients", "operation": "list", "required": true },
+    "input_fluid": { "aliases": ["getJuiceData.type", "juiceData.type"], "operation": "resource_id" },
+    "fluid_amount": { "aliases": ["getJuiceData.amount", "juiceData.amount"], "operation": "integer", "default": 0 },
+    "container": { "aliases": ["isWineBottleRequired", "wineBottleRequired"], "operation": "boolean", "default": true },
+    "output": { "aliases": ["getResultItem", "result"], "operation": "item_stack_id", "required": true },
+    "time": { "default": 1200, "operation": "integer" },
+    "readiness": { "default": true, "operation": "boolean" }
+  }
+}

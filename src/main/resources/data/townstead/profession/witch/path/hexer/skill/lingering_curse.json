@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.hexer.lingering_curse"
+  },
+  "icon": "minecraft:fermented_spider_eye",
+  "description": {
+    "translate": "skill.townstead.witch.hexer.lingering_curse.description"
+  },
+  "cost": 1,
+  "requires": [
+    "evil_eye"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 60,
+    "action": {
+      "type": "pheno:for_each",
+      "in": "townstead:hexed",
+      "where": {
+        "type": "pheno:distance",
+        "max": 16
+      },
+      "do": {
+        "type": "pheno:target_action",
+        "action": {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:slowness",
+          "duration": 60,
+          "amplifier": 0
+        }
+      }
+    }
+  }
+}

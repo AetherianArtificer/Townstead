@@ -1,7 +1,5 @@
 package com.aetherianartificer.townstead.pheno.action.item;
 
-import com.aetherianartificer.townstead.Townstead;
-
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -14,6 +12,8 @@ import java.util.Optional;
  */
 public final class ItemActionTypes {
 
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(
+            "townstead/ItemActionTypes");
     private static final Map<String, ItemActionType> TYPES = new LinkedHashMap<>();
 
     private ItemActionTypes() {}
@@ -23,7 +23,7 @@ public final class ItemActionTypes {
         String key = type.key().toLowerCase(Locale.ROOT);
         ItemActionType existing = TYPES.put(key, type);
         if (existing != null) {
-            Townstead.LOGGER.warn("Item action type '{}' overwritten (was {}, now {})", key,
+            LOGGER.warn("Item action type '{}' overwritten (was {}, now {})", key,
                     existing.getClass().getName(), type.getClass().getName());
         }
     }

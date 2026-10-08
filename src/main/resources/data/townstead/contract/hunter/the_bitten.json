@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:contract/v1",
+  "mods": "vampirism",
+  "giver": {
+    "pool": "townstead:hunter_lodge"
+  },
+  "title": {
+    "translate": "contract.townstead.hunter.the_bitten.title"
+  },
+  "about": {
+    "translate": "contract.townstead.hunter.the_bitten.about"
+  },
+  "weight": 4,
+  "offer_group": "mercy",
+  "difficulty": "medium",
+  "time_limit_days": 3,
+  "when": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "pheno:faction_bond",
+        "kind": "townstead:oath"
+      },
+      {
+        "type": "pheno:entity_in_radius",
+        "radius": 64,
+        "condition": {
+          "type": "pheno:status_effect",
+          "effect": "vampirism:sanguinare"
+        }
+      }
+    ]
+  },
+  "objectives": [
+    {
+      "type": "townstead:cure_vampirism",
+      "count": 1,
+      "text": {
+        "translate": "contract.townstead.hunter.the_bitten.goal"
+      }
+    }
+  ],
+  "rewards": [
+    {
+      "type": "townstead:currency"
+    }
+  ]
+}

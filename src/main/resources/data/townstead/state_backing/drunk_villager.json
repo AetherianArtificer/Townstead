@@ -1,0 +1,15 @@
+{
+  "schema": "pheno:state_backing/v1",
+  "state": "townstead_state:drunk",
+  "applies_to": {
+    "type": "pheno:or",
+    "conditions": [
+      { "type": "pheno:entity_type", "entity_type": "mca:male_villager" },
+      { "type": "pheno:entity_type", "entity_type": "mca:female_villager" }
+    ]
+  },
+  "source": { "type": "pheno:owned" },
+  "read_priority": 10,
+  "write_priority": 100,
+  "writable": true
+}

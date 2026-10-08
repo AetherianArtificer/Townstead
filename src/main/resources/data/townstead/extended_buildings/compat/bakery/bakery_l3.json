@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "workers": [
+    "townstead:baker"
+  ],
+  "catalog": {
+    "node_item": "bakery:baker_station"
+  },
+  "spirit": {
+    "commercial": 9,
+    "pastoral": 8,
+    "industrious": 5,
+    "tourism": 4
+  }
+}

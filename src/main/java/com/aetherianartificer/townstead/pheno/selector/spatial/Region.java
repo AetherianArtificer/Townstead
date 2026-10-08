@@ -55,7 +55,13 @@ public final class Region {
                     && point.y >= c.getY() - ey && point.y <= c.getY() + ey + 1
                     && point.z >= c.getZ() - ez && point.z <= c.getZ() + ez + 1;
         }
-        return Vec3.atCenterOf(c).distanceToSqr(point) <= sphereSq;
+        // Spell this out rather than calling Vec3.atCenterOf(Vec3i). The standalone unit-test
+        // Minecraft stubs model BlockPos without its production Vec3i superclass, so the latter
+        // produces unverifiable bytecode even though it is valid in-game.
+        double dx = c.getX() + 0.5d - point.x;
+        double dy = c.getY() + 0.5d - point.y;
+        double dz = c.getZ() + 0.5d - point.z;
+        return dx * dx + dy * dy + dz * dz <= sphereSq;
     }
 
     public List<BlockPos> positions(SelectorContext ctx, int limit) {

@@ -1,0 +1,6 @@
+{
+  "schema": "townstead:relationship_quality/v1",
+  "display": { "translate": "relationship_quality.townstead.affection" },
+  "range": { "min": -100, "max": 100, "neutral": 0 },
+  "decay": { "default_half_life_days": 120, "prune_below": 0.05 }
+}

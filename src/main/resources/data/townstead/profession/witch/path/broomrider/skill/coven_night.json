@@ -1,0 +1,65 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.broomrider.coven_night"
+  },
+  "icon": "minecraft:cauldron",
+  "description": {
+    "translate": "skill.townstead.witch.broomrider.coven_night.description"
+  },
+  "cost": 1,
+  "requires": [
+    "witching_hour"
+  ],
+  "skill_group": "townstead:broom_night",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:hex",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 16,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:night_vision",
+                "duration": 600,
+                "amplifier": 0
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:speed",
+                "duration": 600,
+                "amplifier": 1
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:invisibility",
+                "duration": 600,
+                "amplifier": 0
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.witch.celebrate",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

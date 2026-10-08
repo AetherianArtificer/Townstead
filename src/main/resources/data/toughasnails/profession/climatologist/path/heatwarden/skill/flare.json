@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.heatwarden.flare"
+  },
+  "icon": "minecraft:flint_and_steel",
+  "description": {
+    "translate": "skill.townstead.climatologist.heatwarden.flare.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:heat_fire",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 240,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 4,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:ignite",
+            "seconds": 3
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.fire.ambient",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:reaction/v3",
+  "tags": ["social", "memory"],
+  "cooldown": "60s",
+  "triggers": [{"type": "chronicle_learned", "template": "townstead:blossoming_friendship", "min_fidelity": 0.7}],
+  "when": {
+    "type": "pheno:value",
+    "value": {"type": "pheno:memory", "key": "townstead:blossoming_friendship", "metric": "valence"},
+    "comparison": ">",
+    "compare_to": 0
+  },
+  "choices": [{"allow_movement": true, "do": {"type": "pheno:expression", "cue": "townstead_expressions:approval"}}]
+}

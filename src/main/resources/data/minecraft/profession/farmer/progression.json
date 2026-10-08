@@ -1,0 +1,5 @@
+{
+  "schema": "townstead:profession_progression/v1",
+  "daily_cap": 240,
+  "ranks": [0, 120, 320, 700, 1300]
+}

@@ -1,0 +1,10 @@
+{
+  "schema": "pheno:entity_state/v1",
+  "id": "townstead_state:readied",
+  "min": 0,
+  "max": 1,
+  "initial": 0,
+  "merge": "max",
+  "persistence": "session",
+  "death": "clear"
+}

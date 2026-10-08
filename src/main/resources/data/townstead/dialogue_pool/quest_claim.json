@@ -1,0 +1,6 @@
+{
+  "schema": "townstead:dialogue_pool/v1",
+  "subjects": "quest",
+  "requires": "here.building_tag:townstead:quest_board",
+  "opens": "news"
+}

@@ -1,0 +1,5 @@
+{
+  "schema": "townstead:dialogue_voice/v1",
+  "default_flavor": 0,
+  "children": "simple"
+}

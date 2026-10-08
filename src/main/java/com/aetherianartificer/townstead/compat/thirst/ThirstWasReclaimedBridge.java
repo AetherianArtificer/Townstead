@@ -72,6 +72,8 @@ public final class ThirstWasReclaimedBridge implements ThirstCompatBridge {
     private Method getCapabilityMethod;
     private Method lazyOptionalOrElseMethod;
     private Method thirstDataGetThirstMethod;
+    private Method thirstDataDrinkMethod;
+    private Method thirstDataUpdateMethod;
 
     private ThirstWasReclaimedBridge() {}
 
@@ -155,6 +157,11 @@ public final class ThirstWasReclaimedBridge implements ThirstCompatBridge {
 
     @Override
     public float exhaustionBiomeModifier(Level level, BlockPos pos) {
+        return exhaustionBiomeModifier(level, pos, ThermalHydrationContext.NONE);
+    }
+
+    @Override
+    public float exhaustionBiomeModifier(Level level, BlockPos pos, ThermalHydrationContext thermal) {
         if (level == null || pos == null) return 1.0f;
         initIfNeeded();
         if (!active) return 1.0f;
@@ -175,15 +182,11 @@ public final class ThirstWasReclaimedBridge implements ThirstCompatBridge {
             temp /= 2.0f;
         }
 
-        float depletion = readConfigFloat("THIRST_DEPLETION_MODIFIER", FALLBACK_THIRST_DEPLETION_MODIFIER);
-        float modifier = depletion * (temp / Math.max(0.001f, humidity));
-        if (modifier < 1.0f) {
-            float offset = (1.0f - modifier) * MODIFIER_HARSHNESS;
-            modifier = 1.0f - offset;
-        }
+        // Cold Sweat replaces the biome temperature branch; it is not another multiplier.
+        if (thermal.coldSweat()) temp = thermal.signedBodyStress() / 100f;
 
-        if (!Float.isFinite(modifier)) return 1.0f;
-        return Math.max(0.0f, modifier);
+        float depletion = readConfigFloat("THIRST_DEPLETION_MODIFIER", FALLBACK_THIRST_DEPLETION_MODIFIER);
+        return ThermalHydrationContext.thirstModifier(temp, humidity, depletion, MODIFIER_HARSHNESS);
     }
 
     @Override
@@ -259,14 +262,42 @@ public final class ThirstWasReclaimedBridge implements ThirstCompatBridge {
         }
 
         if (thirstDataGetThirstMethod == null) return Double.NaN;
-        Object thirstData = attachmentThirstData(player);
-        if (thirstData == null) thirstData = capabilityThirstData(player);
+        Object thirstData = thirstData(player);
         if (thirstData == null) return Double.NaN;
         try {
             Object value = thirstDataGetThirstMethod.invoke(thirstData);
             if (value instanceof Number n) return n.doubleValue();
         } catch (Exception ignored) {}
         return Double.NaN;
+    }
+
+    /**
+     * TWR's own {@code drink} takes the same two halves this bridge does and owns the rules
+     * around them: clamping both to the twenty-point bar, holding quenched at or below thirst,
+     * and honouring the config that turns an overfull drink into quenched. {@code
+     * updateThirstData} then writes the persistent-data mirror the read prefers and sends the
+     * sync packet, so neither is this bridge's business to reproduce.
+     */
+    @Override
+    public boolean restorePlayerThirst(Player player, int immediate, int lasting) {
+        if (player == null || player.level().isClientSide) return false;
+        if (immediate <= 0 && lasting <= 0) return false;
+        initIfNeeded();
+        if (!active || thirstDataDrinkMethod == null) return false;
+        Object thirstData = thirstData(player);
+        if (thirstData == null) return false;
+        try {
+            thirstDataDrinkMethod.invoke(thirstData, immediate, lasting);
+            if (thirstDataUpdateMethod != null) thirstDataUpdateMethod.invoke(thirstData, player);
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private Object thirstData(Player player) {
+        Object thirstData = attachmentThirstData(player);
+        return thirstData != null ? thirstData : capabilityThirstData(player);
     }
 
     // 1.21.1 NeoForge builds without the persistent-data mirror.
@@ -346,6 +377,14 @@ public final class ThirstWasReclaimedBridge implements ThirstCompatBridge {
                         .getMethod("getThirst");
             } catch (Exception ignored) {
                 thirstDataGetThirstMethod = null;
+            }
+            try {
+                Class<?> iThirst = Class.forName("cn.mlus.thirst.foundation.common.capability.IThirst");
+                thirstDataDrinkMethod = iThirst.getMethod("drink", int.class, int.class);
+                thirstDataUpdateMethod = iThirst.getMethod("updateThirstData", Player.class);
+            } catch (Exception ignored) {
+                thirstDataDrinkMethod = null;
+                thirstDataUpdateMethod = null;
             }
             try {
                 // 1.21.1 NeoForge branch

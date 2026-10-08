@@ -1,0 +1,72 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.sweep_the_rows"
+  },
+  "icon": "minecraft:iron_hoe",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.sweep_the_rows.description"
+  },
+  "cost": 1,
+  "requires": [
+    "reap"
+  ],
+  "skill_group": "townstead:levy_scythe",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 260,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 5,
+          "include_self": false,
+          "target": "hostile",
+          "bientity_condition": {
+            "type": "pheno:relative_rotation",
+            "max_angle": 60
+          },
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:damage",
+                "amount": 4,
+                "source": "other"
+              },
+              {
+                "type": "pheno:add_velocity",
+                "away_from_other": 0.8,
+                "y": 0.3
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:entity.player.attack.sweep",
+              "volume": 1.0,
+              "pitch": 0.9
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:sweep_attack",
+              "count": 6,
+              "spread": 1.2
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

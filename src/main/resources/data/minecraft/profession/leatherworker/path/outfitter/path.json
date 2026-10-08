@@ -1,0 +1,90 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.leatherworker.path.outfitter"
+  },
+  "title": {
+    "translate": "career.townstead.leatherworker.title.outfitter"
+  },
+  "color": "#7A5A3A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:hide",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:leatherworker/outfitter/on_the_road"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:leatherworker/outfitter/bedroll"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:leatherworker/outfitter/share_supplies"
+              }
+            ]
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:movement",
+                "movement": "moving"
+              },
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:village",
+                  "within_border": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:hide",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "satchel",
+      "pack_light",
+      "spare_straps"
+    ],
+    [
+      "pack_mule",
+      "climbing_rope",
+      "repair_kit"
+    ],
+    [
+      "on_the_road",
+      "bedroll",
+      "share_supplies"
+    ],
+    [
+      "well_supplied",
+      "canteen",
+      "outfit_the_party"
+    ],
+    [
+      "waterproof_pack",
+      "expedition_kit",
+      "grand_outfitter"
+    ]
+  ]
+}

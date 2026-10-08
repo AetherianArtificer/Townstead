@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.harpooner.man_overboard"
+  },
+  "icon": "minecraft:oak_boat",
+  "description": {
+    "translate": "skill.townstead.fisherman.harpooner.man_overboard.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tether"
+  ],
+  "skill_group": "townstead:harpooner_line",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 2,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 12,
+      "include_self": false,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:add_velocity",
+            "away_from_other": -1.2,
+            "y": 0.25
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:resistance",
+            "duration": 200,
+            "amplifier": 0
+          }
+        ]
+      }
+    }
+  }
+}

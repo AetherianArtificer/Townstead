@@ -1,0 +1,13 @@
+{
+  "color": "ffc49a42",
+  "visible": true,
+  "priority": 3,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 200,
+  "noBeds": true,
+  "blocks": {
+    "#townstead:granary/storage": 3,
+    "#townstead:granary/stock": 4
+  }
+}

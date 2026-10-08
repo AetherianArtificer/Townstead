@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.frostkeeper.frost_armor"
+  },
+  "icon": "minecraft:ice",
+  "description": {
+    "translate": "skill.townstead.climatologist.frostkeeper.frost_armor.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:frost_ice",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 300,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:absorption",
+          "duration": 300,
+          "amplifier": 0
+        }
+      ]
+    }
+  }
+}

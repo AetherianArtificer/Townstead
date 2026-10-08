@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.stormcaller.storm_sense"
+  },
+  "icon": "minecraft:lightning_rod",
+  "description": {
+    "translate": "skill.townstead.climatologist.stormcaller.storm_sense.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:environment",
+      "weather": [
+        "rain",
+        "thunder"
+      ]
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 30,
+      "amplifier": 0
+    }
+  }
+}

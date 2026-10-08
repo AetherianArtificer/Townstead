@@ -64,12 +64,16 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
         // own setupAnim; the humanoid path below (arm poses, crouch, held items, fitted armor) does not
         // apply to them.
         if (RigModels.isGeneric(rigBase)) {
-            renderGeneric(pose, buffers, light, entity, limbSwing, limbSwingAmount, partialTick,
-                    ageInTicks, netHeadYaw, headPitch, rigBase);
+            try {
+                renderGeneric(pose, buffers, light, entity, limbSwing, limbSwingAmount, partialTick,
+                        ageInTicks, netHeadYaw, headPitch, rigBase);
+            } finally {
+                RigModels.endRender(rigBase);
+            }
             return;
         }
         HumanoidModel<LivingEntity> model = RigModels.model(rigBase);
-        ResourceLocation texture = RigModels.texture(rigBase);
+        ResourceLocation texture = RigModels.texture(rigBase, entity);
         if (model == null || texture == null) return;
 
         Animations anim = RigModels.animations(entity);
@@ -112,6 +116,9 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
                 ((tone >> 16) & 0xFF) / 255f, ((tone >> 8) & 0xFF) / 255f, (tone & 0xFF) / 255f,
                 ((tone >>> 24) & 0xFF) / 255f);
         *///?}
+
+        RigSkins.render(entity, model, pose, buffers, light, fade);
+        if (fade >= 1f) RigModels.renderOverlays(rigBase, entity, model, pose, buffers, light);
 
         // Face, armor, and held items have no alpha channel to fade through, so they keep
         // the hard cut at the flag flip (fade start) — matching vanilla-armor pop timing —
@@ -255,7 +262,8 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
                 // Positions are NOT reset by setupAnim, so composing from the captured baked base (rather than
                 // adding each frame) keeps a factor-0 bone at base and avoids the model marching off over time.
                 String bkey = rigBase + ":" + pb.bone();
-                float[] base = POSE_BASE.get(bkey);
+                float[] base = RigModels.definition(rigBase).modelType() == RigDefinition.ModelType.GEOMETRY
+                        ? new float[]{part.x, part.y, part.z} : POSE_BASE.get(bkey);
                 if (base == null) {
                     base = new float[]{part.x, part.y, part.z};
                     POSE_BASE.put(bkey, base);
@@ -272,8 +280,8 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
     private void renderGeneric(PoseStack pose, MultiBufferSource buffers, int light, T entity,
                                float limbSwing, float limbSwingAmount, float partialTick, float ageInTicks,
                                float netHeadYaw, float headPitch, String rigBase) {
-        EntityModel<LivingEntity> model = RigModels.genericModel(rigBase);
-        ResourceLocation texture = RigModels.texture(rigBase);
+        EntityModel<LivingEntity> model = RigModels.genericModel(rigBase, entity);
+        ResourceLocation texture = RigModels.texture(rigBase, entity);
         if (model == null || texture == null) return;
         model.attackTime = entity.getAttackAnim(partialTick);
         model.young = babyProportions(entity);
@@ -299,7 +307,15 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
             limbSwingAmount = Math.min(1f, surfaceSpeed * 6f);
             limbSwing = ageInTicks * 0.6f;
         }
-        model.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+        RigModels.setupAnim(model, entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+        // Bone lookups during this draw resolve against the root actually drawn (an outfit variant).
+        if (model instanceof net.minecraft.client.model.HierarchicalModel<?> hierarchical) {
+            RigModels.beginRender(rigBase, hierarchical.root());
+        }
+        RigDefinition rigDef = RigModels.definition(rigBase);
+        RigClips.apply(entity, rigDef, RigModels.bakedRoot(rigBase), ageInTicks);
+        RigClips.applyGrips(entity, rigDef, RigModels.bakedRoot(rigBase), partialTick);
+        applyGeometryLook(rigBase, rigDef, netHeadYaw, headPitch);
         float[] bodyOffset = applyRigPose(rigBase, entity, ageInTicks);
         // Emotes on a non-humanoid body: the humanoid bridge can't drive this model, so apply the rig's
         // emote remap directly onto its bones, on top of the gait pose just set. genericModel() above has
@@ -331,6 +347,8 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
                 ((tone >> 16) & 0xFF) / 255f, ((tone >> 8) & 0xFF) / 255f, (tone & 0xFF) / 255f,
                 ((tone >>> 24) & 0xFF) / 255f);
         *///?}
+        RigSkins.render(entity, model, pose, buffers, light, fade);
+        if (fade >= 1f) RigModels.renderOverlays(rigBase, entity, model, pose, buffers, light);
         // Face, boots, and held items keep the hard cut at the flag flip (see the humanoid path).
         if (fade >= 1f) {
             // Generic (non-humanoid) models don't apply the vanilla humanoid baby head transform, so the
@@ -338,13 +356,33 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
             SpeciesFace.render(entity, rigBase, pose, buffers, light, partialTick, false);
             // Worn boots laid across the rig's named bones (e.g. one per leg of a multi-legged rig), fitted
             // with full vanilla armor fidelity. The bones are now posed by the setupAnim above, so they track.
-            RigBootsRenderer.render(entity, rigBase, RigModels.definition(rigBase), pose, buffers, light);
+            if (RigGeometryArmor.enabled(rigBase)) {
+                RigGeometryArmor.render(entity, rigBase, pose, buffers, light, limbSwing, limbSwingAmount,
+                        partialTick, ageInTicks, netHeadYaw, headPitch);
+            } else {
+                RigBootsRenderer.render(entity, rigBase, RigModels.definition(rigBase), pose, buffers, light);
+            }
             // Held items, anchored to the bone the species names for each hand (e.g. a front leg), inside the
             // same scaled pose. The vanilla item layer is suppressed for alternate rigs by HeldItemSuppressMixin.
             renderHeld(entity, rigBase, entity.getMainHandItem(), pose, buffers, light, scale, false);
             renderHeld(entity, rigBase, entity.getOffhandItem(), pose, buffers, light, scale, true);
         }
         pose.popPose();
+    }
+
+    /**
+     * Turn a custom geometry's head with the entity's look. A geometry has no setupAnim to do it, so a rig
+     * that maps a {@code head} bone gets the look added on top of its clips. One without a head bone, or
+     * whose head is its body bone (a body that is all head), doesn't turn.
+     */
+    private static void applyGeometryLook(String rigBase, RigDefinition def, float netHeadYaw, float headPitch) {
+        if (def == null || def.modelType() != RigDefinition.ModelType.GEOMETRY) return;
+        String headBone = def.bones().get("head");
+        if (headBone == null || headBone.isEmpty() || headBone.equals(def.boneFor("body"))) return;
+        ModelPart head = RigModels.bakedBone(rigBase, headBone);
+        if (head == null) return;
+        head.xRot += headPitch * ((float) Math.PI / 180f);
+        head.yRot += netHeadYaw * ((float) Math.PI / 180f);
     }
 
     /**
@@ -439,6 +477,7 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
         if (bone == null) return;
         boolean left = grip.bone().contains("left");
         pose.pushPose();
+        RigModels.translateToParent(rigBase, grip.bone(), pose);
         bone.translateAndRotate(pose);
         if (generic) {
             // The grip bone is a leg, not an arm: carry out to its tip (the claw end) in the bone's

@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "mods": "beachparty",
+  "enclosure": "optional",
+  "catalog": {"node_item": "beachparty:beach_parasol"},
+  "spirit": {
+    "tourism": 9,
+    "nautical": 7,
+    "natural": 4
+  }
+}

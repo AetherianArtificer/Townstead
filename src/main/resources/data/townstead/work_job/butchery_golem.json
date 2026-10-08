@@ -1,0 +1,461 @@
+{
+  "schema": "townstead:job/v3",
+  "mods": [
+    "butchery"
+  ],
+  "task": "townstead_work:dismantle",
+  "type": "townstead:block_interaction",
+  "target": {
+    "blocks": [
+      "butchery:iron_golem",
+      "butchery:repaired_iron_golem"
+    ],
+    "interactions": [
+      {
+        "item": "#townstead:butcher_hacksaws",
+        "condition": {
+          "type": "pheno:value",
+          "value": {
+            "type": "pheno:block_data",
+            "key": "golemSaw",
+            "default": 0
+          },
+          "comparison": "==",
+          "compare_to": 0
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "butchery:hacksaw",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "butchery:sparks",
+            "count": 40,
+            "spread": 0.3,
+            "speed": 0.8,
+            "offset_y": 0.5
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "golemSaw",
+            "value": 1
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 2
+      },
+      {
+        "item": "#townstead:butcher_hacksaws",
+        "condition": {
+          "type": "pheno:value",
+          "value": {
+            "type": "pheno:block_data",
+            "key": "golemSaw",
+            "default": 0
+          },
+          "comparison": "==",
+          "compare_to": 1
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "butchery:hacksaw",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "butchery:sparks",
+            "count": 40,
+            "spread": 0.3,
+            "speed": 0.8,
+            "offset_y": 0.5
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "golemSaw",
+            "value": 2
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 2
+      },
+      {
+        "item": "#townstead:butcher_hacksaws",
+        "condition": {
+          "type": "pheno:value",
+          "value": {
+            "type": "pheno:block_data",
+            "key": "golemSaw",
+            "default": 0
+          },
+          "comparison": "==",
+          "compare_to": 2
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "butchery:hacksaw",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "butchery:sparks",
+            "count": 40,
+            "spread": 0.3,
+            "speed": 0.8,
+            "offset_y": 0.5
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "golemSaw",
+            "value": 3
+          },
+          {
+            "type": "pheno:modify_block_state",
+            "property": "blockstate",
+            "value": "1"
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": "butchery:blocks/iron_golem_head_drop"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 2
+      },
+      {
+        "item": "#townstead:butcher_hacksaws",
+        "condition": {
+          "type": "pheno:value",
+          "value": {
+            "type": "pheno:block_data",
+            "key": "golemSaw",
+            "default": 0
+          },
+          "comparison": "==",
+          "compare_to": 3
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "butchery:hacksaw",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "butchery:sparks",
+            "count": 40,
+            "spread": 0.3,
+            "speed": 0.8,
+            "offset_y": 0.5
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "golemSaw",
+            "value": 4
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 2
+      },
+      {
+        "item": "#townstead:butcher_hacksaws",
+        "condition": {
+          "type": "pheno:value",
+          "value": {
+            "type": "pheno:block_data",
+            "key": "golemSaw",
+            "default": 0
+          },
+          "comparison": "==",
+          "compare_to": 4
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "butchery:hacksaw",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "butchery:sparks",
+            "count": 40,
+            "spread": 0.3,
+            "speed": 0.8,
+            "offset_y": 0.5
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "golemSaw",
+            "value": 5
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 2
+      },
+      {
+        "item": "#townstead:butcher_hacksaws",
+        "condition": {
+          "type": "pheno:value",
+          "value": {
+            "type": "pheno:block_data",
+            "key": "golemSaw",
+            "default": 0
+          },
+          "comparison": "==",
+          "compare_to": 5
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "butchery:hacksaw",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "butchery:sparks",
+            "count": 40,
+            "spread": 0.3,
+            "speed": 0.8,
+            "offset_y": 0.5
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "golemSaw",
+            "value": 6
+          },
+          {
+            "type": "pheno:modify_block_state",
+            "property": "blockstate",
+            "value": "2"
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": "butchery:blocks/iron_golem_arm_drop"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 2
+      },
+      {
+        "item": "#townstead:butcher_hacksaws",
+        "condition": {
+          "type": "pheno:value",
+          "value": {
+            "type": "pheno:block_data",
+            "key": "golemSaw",
+            "default": 0
+          },
+          "comparison": "==",
+          "compare_to": 6
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "butchery:hacksaw",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "butchery:sparks",
+            "count": 40,
+            "spread": 0.3,
+            "speed": 0.8,
+            "offset_y": 0.5
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "golemSaw",
+            "value": 7
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 2
+      },
+      {
+        "item": "#townstead:butcher_hacksaws",
+        "condition": {
+          "type": "pheno:value",
+          "value": {
+            "type": "pheno:block_data",
+            "key": "golemSaw",
+            "default": 0
+          },
+          "comparison": "==",
+          "compare_to": 7
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "butchery:hacksaw",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "butchery:sparks",
+            "count": 40,
+            "spread": 0.3,
+            "speed": 0.8,
+            "offset_y": 0.5
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "golemSaw",
+            "value": 8
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 2
+      },
+      {
+        "item": "#townstead:butcher_hacksaws",
+        "condition": {
+          "type": "pheno:value",
+          "value": {
+            "type": "pheno:block_data",
+            "key": "golemSaw",
+            "default": 0
+          },
+          "comparison": "==",
+          "compare_to": 8
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "butchery:hacksaw",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "butchery:sparks",
+            "count": 40,
+            "spread": 0.3,
+            "speed": 0.8,
+            "offset_y": 0.5
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "golemSaw",
+            "value": 9
+          },
+          {
+            "type": "pheno:modify_block_state",
+            "property": "blockstate",
+            "value": "3"
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": "butchery:blocks/iron_golem_body_drop"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 2
+      },
+      {
+        "item": "#townstead:butcher_hacksaws",
+        "condition": {
+          "type": "pheno:value",
+          "value": {
+            "type": "pheno:block_data",
+            "key": "golemSaw",
+            "default": 0
+          },
+          "comparison": "==",
+          "compare_to": 9
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "butchery:hacksaw",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "butchery:sparks",
+            "count": 40,
+            "spread": 0.3,
+            "speed": 0.8,
+            "offset_y": 0.5
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "golemSaw",
+            "value": 10
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": "butchery:blocks/iron_golem_legs_drop"
+          },
+          {
+            "type": "pheno:set_block",
+            "block": "minecraft:air"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 2
+      }
+    ]
+  }
+}

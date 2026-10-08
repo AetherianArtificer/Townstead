@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.weaver.spiders_step"
+  },
+  "icon": "minecraft:cobweb",
+  "description": {
+    "translate": "skill.townstead.tailor.weaver.spiders_step.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:stuck_immunity",
+    "blocks": [
+      "minecraft:cobweb"
+    ]
+  }
+}

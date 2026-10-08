@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "taboo.feeding",
+  "weight": 10,
+  "rarity": "rare",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "taboo",
+    "key": "townstead:fed_on_person"
+  },
+  "reach": "witnesses",
+  "news_value": 7.0,
+  "roles": [
+    {
+      "id": "vampire",
+      "kind": "villager",
+      "when": {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:fed_on_person",
+        "at_least": 1,
+        "at_most": 1
+      }
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.first_feeding"
+    },
+    "params": [
+      "vampire"
+    ]
+  },
+  "impact": {
+    "vampire": {
+      "memory": {
+        "valence": -0.4,
+        "strength": 3.0
+      }
+    }
+  }
+}

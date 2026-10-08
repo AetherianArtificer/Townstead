@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.marksman.pinning_shot"
+  },
+  "icon": "minecraft:tripwire_hook",
+  "description": {
+    "translate": "skill.townstead.fletcher.marksman.pinning_shot.description"
+  },
+  "cost": 1,
+  "requires": [
+    "marking_shot"
+  ],
+  "skill_group": "townstead:marksman_aimed",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:slowness",
+          "duration": 100,
+          "amplifier": 3,
+          "on": {
+            "type": "pheno:ray",
+            "distance": 24
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.arrow.shoot",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

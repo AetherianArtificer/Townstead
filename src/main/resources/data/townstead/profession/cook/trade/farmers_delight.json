@@ -1,0 +1,86 @@
+{
+  "schema": "townstead:profession_trade/v1",
+  "mods": "farmersdelight",
+  "replace": true,
+  "1": [
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 2,
+      "result": "farmersdelight:fried_egg",
+      "result_count": 2,
+      "max_uses": 16,
+      "villager_xp": 1
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 3,
+      "result": "farmersdelight:cabbage_rolls",
+      "max_uses": 12,
+      "villager_xp": 1
+    }
+  ],
+  "2": [
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 5,
+      "result": "farmersdelight:beef_stew",
+      "max_uses": 12,
+      "villager_xp": 5
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 5,
+      "result": "farmersdelight:chicken_soup",
+      "max_uses": 12,
+      "villager_xp": 5
+    }
+  ],
+  "3": [
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 6,
+      "result": "farmersdelight:fried_rice",
+      "max_uses": 10,
+      "villager_xp": 10
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 6,
+      "result": "farmersdelight:pumpkin_soup",
+      "max_uses": 10,
+      "villager_xp": 10
+    }
+  ],
+  "4": [
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 8,
+      "result": "farmersdelight:pasta_with_meatballs",
+      "max_uses": 8,
+      "villager_xp": 15
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 8,
+      "result": "farmersdelight:pasta_with_mutton_chop",
+      "max_uses": 8,
+      "villager_xp": 15
+    }
+  ],
+  "5": [
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 12,
+      "result": "farmersdelight:stuffed_pumpkin",
+      "max_uses": 6,
+      "villager_xp": 30
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 12,
+      "result": "farmersdelight:honey_glazed_ham",
+      "max_uses": 6,
+      "villager_xp": 30
+    }
+  ]
+}

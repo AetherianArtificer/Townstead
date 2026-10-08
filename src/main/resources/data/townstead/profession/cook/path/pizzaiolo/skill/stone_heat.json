@@ -1,0 +1,54 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.pizzaiolo.stone_heat"
+  },
+  "icon": "minecraft:magma_block",
+  "description": {
+    "translate": "skill.townstead.cook.pizzaiolo.stone_heat.description"
+  },
+  "cost": 1,
+  "requires": [
+    "oven_mouth"
+  ],
+  "skill_group": "townstead:pizzaiolo_service",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 700,
+    "ai_trigger": "when_hurt",
+    "resource_cost": {
+      "resource": "townstead:char",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:fire_resistance",
+          "duration": 600,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 3.0,
+          "bientity_condition": {
+            "type": "pheno:hostile"
+          },
+          "action": {
+            "type": "pheno:ignite",
+            "seconds": 4
+          }
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:lava",
+          "count": 20,
+          "spread": 1.5,
+          "speed": 0.05
+        }
+      ]
+    },
+    "slot": 1
+  }
+}

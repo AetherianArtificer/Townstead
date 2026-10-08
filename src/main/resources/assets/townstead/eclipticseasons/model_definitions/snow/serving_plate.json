@@ -1,0 +1,9 @@
+{
+  "require": "eclipticseasons",
+  "replace": false,
+  "variants": {
+    "": {
+      "model": "townstead:block/snow/cap_1923b91d0782"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "bakery:strawberry_jam",
+      "required": false
+    },
+    {
+      "id": "bakery:sweetberry_jam",
+      "required": false
+    },
+    {
+      "id": "bakery:glowberry_jam",
+      "required": false
+    },
+    {
+      "id": "bakery:apple_jam",
+      "required": false
+    }
+  ]
+}

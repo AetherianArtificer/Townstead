@@ -28,7 +28,10 @@ public final class HolderActionItemActionType implements ItemActionType {
         Action inner = Actions.parse(json.get("action"));
         if (inner == null) return null;
         return ctx -> {
-            if (ctx.holder() != null) inner.run(new ActionContext(ctx.holder()));
+            if (ctx.holder() == null) return;
+            ActionContext parent = ctx.actionContext();
+            inner.run(parent == null ? new ActionContext(ctx.holder())
+                    : parent.retarget(ctx.holder(), parent.other()));
         };
     }
 }

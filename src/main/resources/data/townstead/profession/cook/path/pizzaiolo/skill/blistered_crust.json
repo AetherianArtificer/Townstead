@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.pizzaiolo.blistered_crust"
+  },
+  "icon": "minecraft:fire_charge",
+  "description": {
+    "translate": "skill.townstead.cook.pizzaiolo.blistered_crust.description"
+  },
+  "cost": 1,
+  "requires": [
+    "stone_oven"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_hurt",
+    "target": "other",
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:char",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:ignite",
+      "seconds": 4
+    }
+  }
+}

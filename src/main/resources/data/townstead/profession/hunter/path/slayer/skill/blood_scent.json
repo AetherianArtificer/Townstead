@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.slayer.blood_scent"
+  },
+  "icon": "minecraft:redstone",
+  "description": {
+    "translate": "skill.townstead.hunter.slayer.blood_scent.description"
+  },
+  "cost": 1,
+  "requires": [
+    "second_wind"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_kill",
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:vigil",
+      "amount": 15
+    }
+  }
+}

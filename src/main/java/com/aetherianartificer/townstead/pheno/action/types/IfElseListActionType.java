@@ -46,7 +46,7 @@ public final class IfElseListActionType implements ActionType {
         if (branches.isEmpty() && fallback == null) return null;
         Action fallbackAction = fallback;
         return ctx -> {
-            ConditionContext cctx = new ConditionContext(ctx.entity());
+            ConditionContext cctx = ConditionContext.of(ctx);
             for (Branch branch : branches) {
                 if (branch.condition().test(cctx)) {
                     branch.action().run(ctx);

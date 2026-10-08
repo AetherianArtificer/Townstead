@@ -246,7 +246,7 @@ public class FieldPostBlockEntity extends BlockEntity implements MenuProvider {
     @Override
     public void setRemoved() {
         super.setRemoved();
-        if (level != null) FieldPostIndex.remove(level, worldPosition);
+        if (level != null && !level.isClientSide()) FieldPostIndex.remove(level, worldPosition);
     }
 
     @Override

@@ -1,0 +1,75 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.barista.espresso_shot"
+  },
+  "icon": "minecraft:sugar",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.barista.espresso_shot.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:barista_shot",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 200,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:buzz",
+      "amount": 0
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else_list",
+          "actions": [
+            {
+              "condition": {
+                "type": "pheno:resource",
+                "resource": "townstead:buzz",
+                "min": 67
+              },
+              "action": {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:speed",
+                "duration": 200,
+                "amplifier": 2
+              }
+            },
+            {
+              "condition": {
+                "type": "pheno:resource",
+                "resource": "townstead:buzz",
+                "min": 34
+              },
+              "action": {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:speed",
+                "duration": 200,
+                "amplifier": 1
+              }
+            }
+          ],
+          "fallback_action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:speed",
+            "duration": 200,
+            "amplifier": 0
+          }
+        },
+        {
+          "type": "pheno:change_resource",
+          "resource": "townstead:buzz",
+          "amount": 20
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.bottle.fill",
+          "volume": 0.8,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

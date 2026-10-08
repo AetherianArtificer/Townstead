@@ -1,0 +1,15 @@
+{
+  "color": "ff8a5a9a",
+  "visible": true,
+  "priority": 6,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 200,
+  "blocks": {
+    "minecraft:jukebox": 1,
+    "#minecraft:candles": 6,
+    "#minecraft:banners": 2,
+    "#minecraft:wool_carpets": 10
+  },
+  "margin": 3
+}

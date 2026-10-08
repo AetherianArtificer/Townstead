@@ -25,6 +25,13 @@ public abstract class BackpackLayerWearableMixin {
     private void townstead$anchorBackpack(PoseStack pose, MultiBufferSource buffers, int light, Player player,
                                           float limbSwing, float limbSwingAmount, float partialTick,
                                           float ageInTicks, float netHeadYaw, float headPitch, CallbackInfo ci) {
-        RigWearables.applyItem(player, "backpack");
+        RigWearables.applyItem(player, "backpacked:backpack");
+    }
+
+    @Inject(method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/world/entity/player/Player;FFFFFF)V", at = @At("RETURN"), remap = false, require = 0)
+    private void townstead$anchorBackpackRestore(PoseStack pose, MultiBufferSource buffers, int light, Player player,
+                                          float limbSwing, float limbSwingAmount, float partialTick,
+                                          float ageInTicks, float netHeadYaw, float headPitch, CallbackInfo ci) {
+        RigWearables.applyItem(player, "");
     }
 }

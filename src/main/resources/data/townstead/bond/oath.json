@@ -1,0 +1,25 @@
+{
+  "schema": "townstead:bond/v2",
+  "mods": "vampirism",
+  "display": {
+    "translate": "bond.townstead.oath"
+  },
+  "roles": {
+    "order": {
+      "party": "faction",
+      "gives": [
+        "townstead:protection",
+        "townstead:view_member_information"
+      ]
+    },
+    "hunter": {
+      "party": "person",
+      "gives": [
+        "townstead:allegiance",
+        "townstead:service"
+      ],
+      "visibility": "members"
+    }
+  },
+  "breaking": "grievance"
+}

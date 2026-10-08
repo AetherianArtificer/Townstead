@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.herder.drive"
+  },
+  "icon": "minecraft:stick",
+  "description": {
+    "translate": "skill.townstead.shepherd.herder.drive.description"
+  },
+  "cost": 1,
+  "requires": [
+    "round_up"
+  ],
+  "skill_group": "townstead:herder_drive",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 200,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 10,
+      "include_self": false,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:entity_type",
+          "tag": "townstead:livestock"
+        },
+        "if_action": {
+          "type": "pheno:add_velocity",
+          "away_from_other": 1.0,
+          "y": 0.2
+        }
+      }
+    }
+  }
+}

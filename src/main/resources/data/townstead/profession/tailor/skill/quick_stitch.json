@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.quick_stitch"
+  },
+  "icon": "minecraft:string",
+  "description": {
+    "translate": "skill.townstead.tailor.quick_stitch.description"
+  },
+  "tier": 2,
+  "cost": 1,
+  "requires": [
+    "layered"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 25
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "chest",
+          "item_action": {
+            "type": "pheno:damage",
+            "amount": -15
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "legs",
+          "item_action": {
+            "type": "pheno:damage",
+            "amount": -15
+          }
+        }
+      ]
+    }
+  }
+}

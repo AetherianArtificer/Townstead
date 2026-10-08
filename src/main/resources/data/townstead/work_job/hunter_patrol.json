@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:job/v3",
+  "mods": "vampirism",
+  "task": "townstead_work:hunter_patrol",
+  "type": "townstead:patrol",
+  "route": { "inset": 4, "linger": 80 },
+  "engage": { "hostile": true, "sight": 16, "chase": 24 },
+  "arms": { "draw": "#townstead:hunter_arms", "style": "auto" },
+  "xp": { "post": 1, "kill": 8 }
+}

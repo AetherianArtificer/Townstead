@@ -1,5 +1,11 @@
 {
   "schema": "townstead:extended_building/v1",
+  "workers": [
+    "townstead:baker"
+  ],
+  "catalog": {
+    "node_item": "minecraft:bread"
+  },
   "spirit": {
     "pastoral": 5,
     "commercial": 2

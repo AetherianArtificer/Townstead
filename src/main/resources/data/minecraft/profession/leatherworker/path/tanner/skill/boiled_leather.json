@@ -1,0 +1,40 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.tanner.boiled_leather"
+  },
+  "icon": "minecraft:leather_leggings",
+  "description": {
+    "translate": "skill.townstead.leatherworker.tanner.boiled_leather.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tough_work"
+  ],
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.75,
+    "damage_condition": {
+      "type": "pheno:constant",
+      "value": true
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "chest",
+          "item_condition": {
+            "type": "ingredient",
+            "item": "minecraft:leather_chestplate"
+          }
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:hide",
+          "min": 50
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.sapper.firecracker"
+  },
+  "icon": "minecraft:firework_star",
+  "description": {
+    "translate": "skill.townstead.toolsmith.sapper.firecracker.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:sapper_charge",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:delay",
+          "ticks": 0,
+          "action": {
+            "type": "pheno:explode",
+            "power": 1.0,
+            "fire": false,
+            "destroy": false
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 16
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.tnt.primed",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

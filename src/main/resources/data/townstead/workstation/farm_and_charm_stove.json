@@ -1,0 +1,5 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": ["farm_and_charm"],
+  "blocks": ["farm_and_charm:stove"]
+}

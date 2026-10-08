@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "mods": "butchery",
+  "trigger": "periodic",
+  "priority": 80,
+  "when": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "townstead:worksite",
+        "scope": "profession",
+        "buildings": ["compat/butchery/butcher_shop_l*"]
+      },
+      {
+        "type": "pheno:inventory",
+        "item_condition": {
+          "type": "pheno:ingredient",
+          "tag": "townstead:butcher_cleavers"
+        },
+        "inverted": true
+      }
+    ]
+  },
+  "dialogue": {
+    "translate": "dialogue.chat.butcher_request.no_cleaver"
+  },
+  "variants": 3
+}

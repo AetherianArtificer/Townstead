@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "minecraft:golden_helmet"
+  },
+  "spirit": {
+    "martial": 6
+  },
+  "requires": [
+    { "decoration": "townstead:throne", "count": 1 },
+    { "size": { "min": 120 } },
+    { "height": { "min": 8 } }
+  ],
+  "seat": {
+    "tier": 3,
+    "functions": ["townstead:records", "townstead:audience", "townstead:homage"],
+    "actors": ["polity"],
+    "affinity": { "townstead:monarchy": 2 }
+  }
+}

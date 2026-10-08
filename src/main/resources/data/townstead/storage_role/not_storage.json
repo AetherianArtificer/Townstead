@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:storage_role/v1",
+  "role": "not_storage",
+  "blocks": [
+    "#townstead:not_storage"
+  ]
+}

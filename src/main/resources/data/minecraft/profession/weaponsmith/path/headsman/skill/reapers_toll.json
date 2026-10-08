@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.headsman.reapers_toll"
+  },
+  "icon": "minecraft:wither_skeleton_skull",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.headsman.reapers_toll.description"
+  },
+  "cost": 1,
+  "requires": [
+    "executioner"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_kill",
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:edge",
+      "amount": 20
+    }
+  }
+}

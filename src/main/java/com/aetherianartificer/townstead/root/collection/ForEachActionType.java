@@ -54,7 +54,7 @@ public final class ForEachActionType implements ActionType {
                 LivingEntity member = CollectionValues.resolveMember(holder, element);
                 if (member == null) continue;
                 if (where != null && !where.test(holder, member)) continue;
-                inner.run(new ActionContext(holder, member));
+                inner.run(ctx.retarget(holder, member));
                 if (limit > 0 && ++done >= limit) break;
             }
         };

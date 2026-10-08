@@ -1,0 +1,56 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.curse_breaker.silence"
+  },
+  "icon": "minecraft:book",
+  "description": {
+    "translate": "skill.townstead.librarian.curse_breaker.silence.description"
+  },
+  "cost": 1,
+  "requires": [
+    "nullify"
+  ],
+  "skill_group": "townstead:curse_counter",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 360,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 8,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:clear_effect"
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:weakness",
+                "duration": 160,
+                "amplifier": 0
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.villager.no",
+          "volume": 0.6,
+          "pitch": 1.6
+        }
+      ]
+    }
+  }
+}

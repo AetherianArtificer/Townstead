@@ -1,0 +1,25 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "infection_console",
+  "groups": [
+    {
+      "lines": {
+        "oh_no_does_it_hurt": "Oh no. Does it hurt?",
+        "you_need_a_golden_apple": "You need a golden apple. Now.",
+        "well_find_you_a_cure": "We'll find you a cure. I promise.",
+        "oh_no_not_you": "Oh no. Not you.",
+        "ill_look_for_a_golden": "I'll look for a golden apple.",
+        "um_maybe_dont_stand_so": { "text": "Um. Maybe don't stand so close.", "personalities": ["anxious", "shy"] },
+        "keep_that_away_from_me": { "text": "Keep that away from me.", "personalities": ["crabby", "grumpy"] },
+        "im_not_leaving_your_side": { "text": "I'm not leaving your side.", "personalities": ["friendly", "sensitive"] }
+      }
+    },
+    {
+      "variant": "bitten",
+      "lines": {
+        "its_not_nothing_get_help": "It's not nothing. Get help.",
+        "dont_wait_on_this_it": "Don't wait on this. It gets worse."
+      }
+    }
+  ]
+}

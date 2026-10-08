@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:behavior_profile/v1",
+  "mods": "werewolves",
+  "behaviors": [
+    {
+      "type": "pheno:hunt",
+      "radius": 20
+    }
+  ]
+}

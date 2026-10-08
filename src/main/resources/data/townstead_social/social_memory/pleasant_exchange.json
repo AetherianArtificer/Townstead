@@ -1,0 +1,1 @@
+{"schema":"townstead:social_memory/v1","display":{"translate":"social_memory.townstead_social.pleasant_exchange"},"experience":{"default_strength":1,"default_valence":0.35},"forgetting":{"half_life_days":30,"forget_below":0.05,"retention_priority":5}}

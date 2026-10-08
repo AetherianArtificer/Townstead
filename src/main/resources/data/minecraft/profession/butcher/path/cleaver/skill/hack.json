@@ -1,0 +1,85 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.cleaver.hack"
+  },
+  "icon": "minecraft:iron_axe",
+  "description": {
+    "translate": "skill.townstead.butcher.cleaver.hack.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:cleaver_blade",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 240,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 3,
+          "include_self": false,
+          "target": "hostile",
+          "bientity_condition": {
+            "type": "pheno:relative_rotation",
+            "max_angle": 60
+          },
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:damage",
+                "amount": 4,
+                "source": "other"
+              },
+              {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:delay",
+                    "ticks": 20,
+                    "action": {
+                      "type": "pheno:damage",
+                      "amount": 1,
+                      "source": "other"
+                    }
+                  },
+                  {
+                    "type": "pheno:delay",
+                    "ticks": 40,
+                    "action": {
+                      "type": "pheno:damage",
+                      "amount": 1,
+                      "source": "other"
+                    }
+                  },
+                  {
+                    "type": "pheno:delay",
+                    "ticks": 60,
+                    "action": {
+                      "type": "pheno:damage",
+                      "amount": 1,
+                      "source": "other"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.player.attack.strong",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

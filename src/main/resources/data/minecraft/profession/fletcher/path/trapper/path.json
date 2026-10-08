@@ -1,0 +1,90 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.fletcher.path.trapper"
+  },
+  "title": {
+    "translate": "career.townstead.fletcher.title.trapper"
+  },
+  "color": "#7A6A3A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:draw",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fletcher/trapper/catch"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fletcher/trapper/snare_ring"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fletcher/trapper/ambush"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 8,
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:hostile"
+                },
+                {
+                  "type": "pheno:status_effect",
+                  "effect": "minecraft:slowness"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:draw",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "light_feet",
+      "snare",
+      "scent_mask"
+    ],
+    [
+      "game_trails",
+      "snare_line",
+      "pitfall"
+    ],
+    [
+      "catch",
+      "snare_ring",
+      "ambush"
+    ],
+    [
+      "stalker",
+      "trapfield",
+      "flush_out"
+    ],
+    [
+      "apex_trapper",
+      "grand_trap",
+      "hunters_moon"
+    ]
+  ]
+}

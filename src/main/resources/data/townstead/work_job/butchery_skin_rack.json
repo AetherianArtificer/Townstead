@@ -1,0 +1,93 @@
+{
+  "schema": "townstead:job/v3",
+  "mods": ["butchery"],
+  "task": "townstead_work:tan",
+  "type": "townstead:block_interaction",
+  "target": {
+    "buildings": ["*"],
+    "block": "butchery:skin_rack",
+    "interactions": [
+      {
+        "condition": {
+          "type": "pheno:block_state",
+          "property": "blockstate",
+          "value": "30"
+        },
+        "action": {
+          "type": "pheno:use_block",
+          "item": "empty"
+        },
+        "output": "minecraft:leather",
+        "xp": 1
+      },
+      {
+        "item": "#butchery:skins",
+        "condition": {
+          "type": "pheno:block_state",
+          "property": "blockstate",
+          "value": "0"
+        },
+        "action": {
+          "type": "pheno:use_block",
+          "item": "item"
+        },
+        "xp": 1
+      },
+      {
+        "item": "#c:salt",
+        "condition": {
+          "type": "pheno:and",
+          "conditions": [
+            { "type": "pheno:block_state", "property": "blockstate", "value": "0", "inverted": true },
+            { "type": "pheno:block_state", "property": "blockstate", "value": "26", "inverted": true },
+            { "type": "pheno:block_state", "property": "blockstate", "value": "27", "inverted": true },
+            { "type": "pheno:block_state", "property": "blockstate", "value": "30", "inverted": true }
+          ]
+        },
+        "action": {
+          "type": "pheno:use_block",
+          "item": "item"
+        },
+        "xp": 1
+      },
+      {
+        "item": "butchery:sponge",
+        "item_condition": {
+          "type": "pheno:data",
+          "key": "spongeWetness",
+          "min": 1,
+          "default": 0
+        },
+        "condition": {
+          "type": "pheno:block_state",
+          "property": "blockstate",
+          "value": "26"
+        },
+        "action": {
+          "type": "pheno:use_block",
+          "item": "item"
+        },
+        "xp": 1
+      },
+      {
+        "item": "butchery:rag",
+        "item_condition": {
+          "type": "pheno:data",
+          "key": "ragWetness",
+          "min": 1,
+          "default": 0
+        },
+        "condition": {
+          "type": "pheno:block_state",
+          "property": "blockstate",
+          "value": "26"
+        },
+        "action": {
+          "type": "pheno:use_block",
+          "item": "item"
+        },
+        "xp": 1
+      }
+    ]
+  }
+}

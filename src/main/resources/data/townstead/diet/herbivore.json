@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:diet/v1",
+  "foods": [
+    {
+      "items": ["*"],
+      "exclude": [
+        "#townstead:orders/raw_meats",
+        "#townstead:orders/cooked_meats",
+        "#townstead:orders/raw_fish",
+        "#townstead:orders/cooked_fish",
+        "#townstead:cannibal_meats"
+      ],
+      "nutrition": "native"
+    }
+  ]
+}

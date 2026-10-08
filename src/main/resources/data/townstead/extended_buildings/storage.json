@@ -1,0 +1,4 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "storage_roles": ["townstead:general"]
+}

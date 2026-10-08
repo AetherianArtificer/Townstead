@@ -46,7 +46,7 @@ public final class EmoteCommand {
     private static int playSelf(CommandSourceStack source, String idString) {
         ServerPlayer sp = source.getPlayer();
         if (sp == null) {
-            source.sendFailure(Component.literal("This command must be run by a player."));
+            source.sendFailure(Component.translatable("command.townstead.emote.player_required"));
             return 0;
         }
         ResourceLocation id = parseId(source, idString);
@@ -54,7 +54,7 @@ public final class EmoteCommand {
         AiEmoteScheduler.playEmote(sp, id);
         com.aetherianartificer.townstead.reaction.trigger.event.GestureBroadcaster.broadcast(
                 sp.serverLevel(), sp, id.getPath());
-        source.sendSuccess(() -> Component.literal("Playing emote " + id + " on yourself."), false);
+        source.sendSuccess(() -> Component.translatable("command.townstead.emote.playing.self", id), false);
         return 1;
     }
 
@@ -62,7 +62,7 @@ public final class EmoteCommand {
         ResourceLocation id = parseId(source, idString);
         if (id == null) return 0;
         if (!(target instanceof Player) && !(target instanceof VillagerEntityMCA)) {
-            source.sendFailure(Component.literal("Target must be a player or MCA villager."));
+            source.sendFailure(Component.translatable("command.townstead.emote.invalid_target"));
             return 0;
         }
         AiEmoteScheduler.playEmote((LivingEntity) target, id);
@@ -70,30 +70,30 @@ public final class EmoteCommand {
             com.aetherianartificer.townstead.reaction.trigger.event.GestureBroadcaster.broadcast(
                     level, target, id.getPath());
         }
-        source.sendSuccess(() ->
-                Component.literal("Playing emote " + id + " on " + target.getName().getString() + "."), false);
+        source.sendSuccess(() -> Component.translatable(
+                "command.townstead.emote.playing.target", id, target.getDisplayName()), false);
         return 1;
     }
 
     private static int stopSelf(CommandSourceStack source) {
         ServerPlayer sp = source.getPlayer();
         if (sp == null) {
-            source.sendFailure(Component.literal("This command must be run by a player."));
+            source.sendFailure(Component.translatable("command.townstead.emote.player_required"));
             return 0;
         }
         AiEmoteScheduler.stopEmote(sp);
-        source.sendSuccess(() -> Component.literal("Stopped your active emote."), false);
+        source.sendSuccess(() -> Component.translatable("command.townstead.emote.stopped.self"), false);
         return 1;
     }
 
     private static int stopOnTarget(CommandSourceStack source, Entity target) {
         if (!(target instanceof Player) && !(target instanceof VillagerEntityMCA)) {
-            source.sendFailure(Component.literal("Target must be a player or MCA villager."));
+            source.sendFailure(Component.translatable("command.townstead.emote.invalid_target"));
             return 0;
         }
         AiEmoteScheduler.stopEmote((LivingEntity) target);
-        source.sendSuccess(() ->
-                Component.literal("Stopped emote on " + target.getName().getString() + "."), false);
+        source.sendSuccess(() -> Component.translatable(
+                "command.townstead.emote.stopped.target", target.getDisplayName()), false);
         return 1;
     }
 
@@ -105,7 +105,7 @@ public final class EmoteCommand {
             /*return new ResourceLocation(raw);
             *///?}
         } catch (Exception e) {
-            source.sendFailure(Component.literal("Invalid emote id: " + raw));
+            source.sendFailure(Component.translatable("command.townstead.emote.invalid_id", raw));
             Townstead.LOGGER.debug("Invalid emote id from command: {}", raw);
             return null;
         }

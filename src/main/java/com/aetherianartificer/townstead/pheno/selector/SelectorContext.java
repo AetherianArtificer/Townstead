@@ -8,6 +8,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
+import java.util.Map;
+import java.util.function.Predicate;
+
 /**
  * The frame a selector resolves against. {@code self} is the current focus (an entity, or null in
  * a pure block context), {@code other} the contextual counterpart, {@code origin} the fixed
@@ -22,22 +26,72 @@ public final class SelectorContext {
     private final LivingEntity origin;
     private final Level level;
     private final Vec3 pos;
+    private final @Nullable com.aetherianartificer.townstead.pheno.condition.PhenoSubject subject;
+    private final @Nullable java.util.UUID otherId;
+    private final Map<String, List<BlockPos>> blockRoles;
+    private final @Nullable Predicate<BlockPos> defaultBlockMembership;
+    private final @Nullable Integer villageId;
+    private final @Nullable com.aetherianartificer.townstead.pheno.reservation.ReservationScope reservations;
 
     public SelectorContext(@Nullable LivingEntity self, @Nullable LivingEntity other,
                            @Nullable LivingEntity origin, Level level, Vec3 pos) {
+        this(self, other, origin, level, pos, Map.of(), null, null, null);
+    }
+
+    private SelectorContext(@Nullable LivingEntity self, @Nullable LivingEntity other,
+                            @Nullable LivingEntity origin, Level level, Vec3 pos,
+                            Map<String, List<BlockPos>> blockRoles,
+                            @Nullable Predicate<BlockPos> defaultBlockMembership,
+                            @Nullable Integer villageId,
+                            @Nullable com.aetherianartificer.townstead.pheno.reservation.ReservationScope reservations) {
         this.self = self;
         this.other = other;
         this.origin = origin;
         this.level = level;
         this.pos = pos;
+        this.blockRoles = blockRoles;
+        this.defaultBlockMembership = defaultBlockMembership;
+        this.villageId = villageId;
+        this.reservations = reservations;
+        this.subject = null;
+        this.otherId = other == null ? null : other.getUUID();
+    }
+
+    /**
+     * A frame with no world in it: someone described by facts rather than
+     * standing somewhere. Spatial sources have nothing to anchor on here, so only
+     * values and selectors that declare they can work from a subject may use it
+     * (the same discipline conditions follow).
+     */
+    private SelectorContext(com.aetherianartificer.townstead.pheno.condition.PhenoSubject subject, @Nullable java.util.UUID otherId) {
+        this.self = null;
+        this.other = null;
+        this.origin = null;
+        this.level = null;
+        this.pos = Vec3.ZERO;
+        this.blockRoles = Map.of();
+        this.defaultBlockMembership = null;
+        this.villageId = null;
+        this.reservations = null;
+        this.subject = subject;
+        this.otherId = otherId;
+    }
+
+    /** Non-null exactly when this frame describes someone not in the world. */
+    public @Nullable com.aetherianartificer.townstead.pheno.condition.PhenoSubject subject() {
+        return subject;
     }
 
     public static SelectorContext of(ActionContext ctx) {
-        return new SelectorContext(ctx.entity(), ctx.other(), ctx.origin(), ctx.level(), ctx.entity().position());
+        Vec3 anchor = ctx.focusBlock() != null
+                ? Vec3.atCenterOf(ctx.focusBlock()) : ctx.entity().position();
+        return new SelectorContext(ctx.entity(), ctx.other(), ctx.origin(), ctx.level(),
+                anchor, Map.of(), null, null, ctx.reservations());
     }
 
     public static SelectorContext of(ConditionContext ctx) {
-        return new SelectorContext(ctx.entity(), null, ctx.entity(), ctx.level(), ctx.entity().position());
+        if (ctx.subject() != null) return new SelectorContext(ctx.subject(), ctx.otherId());
+        return new SelectorContext(ctx.entity(), ctx.other(), ctx.origin(), ctx.level(), ctx.entity() == null ? Vec3.ZERO : ctx.entity().position());
     }
 
     /** A block-rooted frame (block actions): the focus is a position, the entity (if any) is the cause. */
@@ -48,6 +102,7 @@ public final class SelectorContext {
     @Nullable public LivingEntity self() { return self; }
 
     @Nullable public LivingEntity other() { return other; }
+    @Nullable public java.util.UUID otherId() { return otherId; }
 
     @Nullable public LivingEntity origin() { return origin; }
 
@@ -56,4 +111,45 @@ public final class SelectorContext {
     public Vec3 pos() { return pos; }
 
     public BlockPos focusBlock() { return BlockPos.containing(pos); }
+
+    /** Names a previously resolved block selection for expressions such as count(of=structure). */
+    public SelectorContext withBlockRole(String role, List<BlockPos> positions) {
+        java.util.LinkedHashMap<String, List<BlockPos>> roles = new java.util.LinkedHashMap<>(blockRoles);
+        roles.put(role, List.copyOf(positions));
+        return new SelectorContext(self, other, origin, level, pos, Map.copyOf(roles),
+                defaultBlockMembership, villageId, reservations);
+    }
+
+    public List<BlockPos> blockRole(String role) {
+        return blockRoles.getOrDefault(role, List.of());
+    }
+
+    /** Supplies domain membership when a generic selector omits an explicit condition. */
+    public SelectorContext withDefaultBlockMembership(Predicate<BlockPos> membership) {
+        return new SelectorContext(self, other, origin, level, pos, blockRoles, membership,
+                villageId, reservations);
+    }
+
+    public @Nullable Predicate<BlockPos> defaultBlockMembership() {
+        return defaultBlockMembership;
+    }
+
+    /**
+     * Supplies the exact village owned by the surrounding host (for example a worksite).  Generic
+     * Pheno entry points may omit it, in which case village-aware selectors resolve the village
+     * from the focus position.
+     */
+    public SelectorContext withVillage(int id) {
+        return new SelectorContext(self, other, origin, level, pos, blockRoles,
+                defaultBlockMembership, id, reservations);
+    }
+
+    public @Nullable Integer villageId() {
+        return villageId;
+    }
+
+    /** The execution-owned reservation frame, when selection happens inside an action. */
+    public @Nullable com.aetherianartificer.townstead.pheno.reservation.ReservationScope reservations() {
+        return reservations;
+    }
 }

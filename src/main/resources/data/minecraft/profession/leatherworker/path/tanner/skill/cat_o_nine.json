@@ -1,0 +1,74 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.tanner.cat_o_nine"
+  },
+  "icon": "minecraft:lead",
+  "description": {
+    "translate": "skill.townstead.leatherworker.tanner.cat_o_nine.description"
+  },
+  "cost": 1,
+  "requires": [
+    "flay"
+  ],
+  "skill_group": "townstead:tanner_whip",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:hide",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 8,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:delay",
+                "ticks": 0,
+                "action": {
+                  "type": "pheno:damage",
+                  "amount": 4,
+                  "source": "other"
+                }
+              },
+              {
+                "type": "pheno:delay",
+                "ticks": 6,
+                "action": {
+                  "type": "pheno:damage",
+                  "amount": 4,
+                  "source": "other"
+                }
+              },
+              {
+                "type": "pheno:delay",
+                "ticks": 12,
+                "action": {
+                  "type": "pheno:damage",
+                  "amount": 4,
+                  "source": "other"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.player.attack.knockback",
+          "volume": 1.0,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

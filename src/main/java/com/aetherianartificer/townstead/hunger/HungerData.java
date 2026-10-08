@@ -57,7 +57,6 @@ public final class HungerData {
     private static final String KEY_EATING_MODE = "eatingMode";
     private static final String KEY_MOOD_DRIFT = "moodDrift";
     private static final String KEY_FARM_BLOCKED_REASON = "farmBlockedReason";
-    private static final String KEY_BUTCHER_BLOCKED_REASON = "butcherBlockedReason";
     private static final String KEY_FISHERMAN_BLOCKED_REASON = "fishermanBlockedReason";
 
     // --- NBT keys for editor sync (piggybacked on MCA's VillagerEditorSyncRequest) ---
@@ -125,15 +124,6 @@ public final class HungerData {
 
     public static void setFarmBlockedReason(CompoundTag tag, FarmBlockedReason reason) {
         tag.putString(KEY_FARM_BLOCKED_REASON, reason.id);
-    }
-
-    public static ButcherBlockedReason getButcherBlockedReason(CompoundTag tag) {
-        String id = tag.getString(KEY_BUTCHER_BLOCKED_REASON);
-        return ButcherBlockedReason.fromId(id);
-    }
-
-    public static void setButcherBlockedReason(CompoundTag tag, ButcherBlockedReason reason) {
-        tag.putString(KEY_BUTCHER_BLOCKED_REASON, reason.id);
     }
 
     public static FishermanBlockedReason getFishermanBlockedReason(CompoundTag tag) {
@@ -268,7 +258,8 @@ public final class HungerData {
         UNREACHABLE("unreachable", "townstead.farm.blocked.unreachable"),
         NO_VALID_TARGET("no_valid_target", "townstead.farm.blocked.no_valid_target"),
         OUT_OF_SCOPE("out_of_scope", "townstead.farm.blocked.out_of_scope"),
-        UNSUPPORTED_CROP("unsupported_crop", "townstead.farm.blocked.unsupported_crop");
+        UNSUPPORTED_CROP("unsupported_crop", "townstead.farm.blocked.unsupported_crop"),
+        NO_SUPPORT("no_support", "townstead.farm.blocked.no_support");
 
         private final String id;
         private final String translationKey;
@@ -288,41 +279,6 @@ public final class HungerData {
 
         public static FarmBlockedReason fromId(String id) {
             for (FarmBlockedReason reason : values()) {
-                if (reason.id.equals(id)) return reason;
-            }
-            return NONE;
-        }
-    }
-
-    public enum ButcherBlockedReason {
-        NONE("none", "townstead.butcher.blocked.none"),
-        NO_SMOKER("no_smoker", "townstead.butcher.blocked.no_smoker"),
-        NO_INPUT("no_input", "townstead.butcher.blocked.no_input"),
-        UNSUPPORTED_RECIPE("unsupported_recipe", "townstead.butcher.blocked.unsupported_recipe"),
-        NO_FUEL("no_fuel", "townstead.butcher.blocked.no_fuel"),
-        OUTPUT_BLOCKED("output_blocked", "townstead.butcher.blocked.output_blocked"),
-        UNREACHABLE("unreachable", "townstead.butcher.blocked.unreachable"),
-        OUT_OF_SCOPE("out_of_scope", "townstead.butcher.blocked.out_of_scope"),
-        NO_VALID_TARGET("no_valid_target", "townstead.butcher.blocked.no_valid_target");
-
-        private final String id;
-        private final String translationKey;
-
-        ButcherBlockedReason(String id, String translationKey) {
-            this.id = id;
-            this.translationKey = translationKey;
-        }
-
-        public String id() {
-            return id;
-        }
-
-        public String translationKey() {
-            return translationKey;
-        }
-
-        public static ButcherBlockedReason fromId(String id) {
-            for (ButcherBlockedReason reason : values()) {
                 if (reason.id.equals(id)) return reason;
             }
             return NONE;

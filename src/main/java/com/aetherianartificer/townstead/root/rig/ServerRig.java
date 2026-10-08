@@ -32,6 +32,8 @@ public final class ServerRig {
     /** The rig id for this entity (life-stage override / species rig), or null. */
     public static String rigIdFor(LivingEntity entity) {
         if (entity instanceof VillagerEntityMCA villager) {
+            String form = com.aetherianartificer.townstead.pheno.state.StateForms.rig(villager);
+            if (form != null) return form;
             LifeStage stage = LifeStageProgression.currentStage(villager);
             if (stage != null && stage.rig() != null && !stage.rig().isEmpty()) return stage.rig();
             return speciesRig(TownsteadVillagers.get(villager).life().rootId());
@@ -40,6 +42,21 @@ public final class ServerRig {
             return speciesRig(PlayerRoot.getRootId(player));
         }
         return null;
+    }
+
+    /** Whether this entity wears MCA's own villager body rather than a custom rig. */
+    public static boolean hasVillagerBody(LivingEntity entity) {
+        return isVillagerBody(rigIdFor(entity));
+    }
+
+    /** Whether people of this Root wear MCA's own villager body rather than a custom rig. */
+    public static boolean hasVillagerBody(ResourceLocation rootId) {
+        return isVillagerBody(rootId == null ? null : speciesRig(rootId.toString()));
+    }
+
+    // Species that keep MCA's body name it as mca:villager rather than leaving it empty.
+    private static boolean isVillagerBody(String rig) {
+        return rig == null || rig.isEmpty() || rig.equals(com.aetherianartificer.townstead.root.Rig.VILLAGER.base());
     }
 
     private static String speciesRig(String rootIdRaw) {

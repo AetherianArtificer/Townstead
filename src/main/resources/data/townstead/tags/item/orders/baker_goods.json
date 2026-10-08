@@ -1,0 +1,23 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:bread",
+    "minecraft:cake",
+    "minecraft:cookie",
+    "minecraft:pumpkin_pie",
+
+    { "id": "#c:bread", "required": false },
+    { "id": "#c:breads", "required": false },
+    { "id": "#c:foods/bread", "required": false },
+    { "id": "#c:foods/breads", "required": false },
+    { "id": "#c:cakes", "required": false },
+    { "id": "#c:cookies", "required": false },
+    { "id": "#c:pies", "required": false },
+    { "id": "#c:pastries", "required": false },
+    { "id": "#forge:bread", "required": false },
+    { "id": "#farmersdelight:pies", "required": false },
+
+    { "id": "#townstead:compat/baker_goods/farm_and_charm", "required": false },
+    { "id": "#townstead:compat/baker_goods/bakery", "required": false }
+  ]
+}

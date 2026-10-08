@@ -1,0 +1,25 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.lorekeeper.bestiary_arthropods"
+  },
+  "icon": "minecraft:spider_eye",
+  "description": {
+    "translate": "skill.townstead.librarian.lorekeeper.bestiary_arthropods.description"
+  },
+  "cost": 1,
+  "requires": [
+    "bestiary_undead"
+  ],
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 1.25,
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:entity_group",
+        "group": "arthropod"
+      }
+    }
+  }
+}

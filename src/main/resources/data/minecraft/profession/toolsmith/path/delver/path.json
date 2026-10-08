@@ -1,0 +1,110 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.toolsmith.path.delver"
+  },
+  "title": {
+    "translate": "career.townstead.toolsmith.title.delver"
+  },
+  "color": "#6A5A4A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:knack",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:toolsmith/delver/deep_work"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:toolsmith/delver/shaft"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:toolsmith/delver/cave_in"
+              }
+            ]
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:and",
+                "conditions": [
+                  {
+                    "type": "pheno:not",
+                    "condition": {
+                      "type": "pheno:block",
+                      "y": 0,
+                      "block_condition": {
+                        "type": "exposed_to_sky"
+                      }
+                    }
+                  },
+                  {
+                    "type": "pheno:block",
+                    "y": 0,
+                    "block_condition": {
+                      "type": "height",
+                      "max": 60
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "pheno:equipped_item",
+                "slot": "mainhand",
+                "item_condition": {
+                  "type": "ingredient",
+                  "tag": "minecraft:pickaxes"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:knack",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "stone_breaker",
+      "chip_away",
+      "hard_hat"
+    ],
+    [
+      "tunnel_eyes",
+      "bore",
+      "lamp_oil"
+    ],
+    [
+      "deep_work",
+      "shaft",
+      "cave_in"
+    ],
+    [
+      "rock_splitter",
+      "gallery",
+      "second_shift"
+    ],
+    [
+      "mountain_mover",
+      "great_excavation",
+      "deep_crew"
+    ]
+  ]
+}

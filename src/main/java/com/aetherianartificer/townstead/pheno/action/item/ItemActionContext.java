@@ -13,14 +13,21 @@ public final class ItemActionContext {
 
     private final ItemStack stack;
     private final LivingEntity holder;
+    private final @Nullable com.aetherianartificer.townstead.pheno.action.ActionContext actionContext;
 
     public ItemActionContext(ItemStack stack) {
         this(stack, null);
     }
 
     public ItemActionContext(ItemStack stack, @Nullable LivingEntity holder) {
+        this(stack, holder, null);
+    }
+
+    public ItemActionContext(ItemStack stack, @Nullable LivingEntity holder,
+                             @Nullable com.aetherianartificer.townstead.pheno.action.ActionContext actionContext) {
         this.stack = stack;
         this.holder = holder;
+        this.actionContext = actionContext;
     }
 
     public ItemStack stack() {
@@ -30,5 +37,9 @@ public final class ItemActionContext {
     @Nullable
     public LivingEntity holder() {
         return holder;
+    }
+
+    public @Nullable com.aetherianartificer.townstead.pheno.action.ActionContext actionContext() {
+        return actionContext;
     }
 }

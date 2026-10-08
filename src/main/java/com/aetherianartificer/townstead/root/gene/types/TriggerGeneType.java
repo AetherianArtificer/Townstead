@@ -25,20 +25,40 @@ import java.util.Locale;
  * <p>JSON: {@code { "type":"pheno:trigger", "trigger":"when_hurt",
  * "target":"other", "action":{ "type":"pheno:ignite", "seconds":3 },
  * "condition":{ "type":"pheno:on_fire" } }} (thorns-style retaliation).</p>
+ *
+ * <p>{@code when_work} fires when the bearer completes a piece of Career work. It accepts
+ * {@code verbs} (one or a list of work verbs such as {@code townstead:harvested}) and an
+ * {@code item_condition} tested against the work's output. Block actions anchor at the worked
+ * block when the work has one.</p>
  */
 public final class TriggerGeneType implements GeneType {
 
     public static final String KEY = "pheno:trigger";
 
     public enum Trigger { WHEN_HURT, WHEN_ATTACK, WHEN_KILL, WHEN_DEATH, WHEN_LAND, WHEN_WAKE_UP,
-        WHEN_JUMP, WHEN_STRUCK_BY_LIGHTNING, WHEN_EQUIP, WHEN_ITEM_USE, PRESS }
+        WHEN_JUMP, WHEN_STRUCK_BY_LIGHTNING, WHEN_EQUIP, WHEN_ITEM_USE, WHEN_ENTER_DIMENSION, PRESS,
+        WHEN_WORK }
 
     public enum Target { SELF, OTHER }
 
     public record Instance(Trigger trigger, Target target, Action action, @Nullable Condition condition,
                            @Nullable com.aetherianartificer.townstead.pheno.condition.damage.DamageCondition damageCondition,
-                           @Nullable String key)
+                           @Nullable String key,
+                           @Nullable com.aetherianartificer.townstead.pheno.condition.item.ItemCondition itemCondition,
+                           java.util.List<String> verbs)
             implements GeneInstance {
+        public Instance(Trigger trigger, Target target, Action action, @Nullable Condition condition,
+                        @Nullable com.aetherianartificer.townstead.pheno.condition.damage.DamageCondition damageCondition,
+                        @Nullable String key,
+                        @Nullable com.aetherianartificer.townstead.pheno.condition.item.ItemCondition itemCondition) {
+            this(trigger, target, action, condition, damageCondition, key, itemCondition, java.util.List.of());
+        }
+
+        /** {@code when_work} only: empty accepts every work verb. */
+        public boolean acceptsVerb(String verb) {
+            return verbs.isEmpty() || verbs.contains(verb);
+        }
+
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
     }
@@ -64,7 +84,22 @@ public final class TriggerGeneType implements GeneType {
                         : null;
         // The keybind name is only meaningful for the press trigger.
         String key = trigger == Trigger.PRESS ? GsonHelper.getAsString(json, "key", "jump") : null;
-        return new Instance(trigger, target, action, condition, damageCondition, key);
+        var itemCondition = json.has("item_condition")
+                ? com.aetherianartificer.townstead.pheno.condition.item.ItemConditions.parse(json.get("item_condition"))
+                : null;
+        if (json.has("item_condition") && (itemCondition == null
+                || (trigger != Trigger.WHEN_ITEM_USE && trigger != Trigger.WHEN_WORK))) return null;
+        java.util.List<String> verbs = new java.util.ArrayList<>();
+        if (trigger == Trigger.WHEN_WORK && json.has("verbs")) {
+            var raw = json.get("verbs");
+            if (raw.isJsonArray()) {
+                for (var element : raw.getAsJsonArray()) verbs.add(element.getAsString());
+            } else {
+                verbs.add(raw.getAsString());
+            }
+        }
+        return new Instance(trigger, target, action, condition, damageCondition, key, itemCondition,
+                java.util.List.copyOf(verbs));
     }
 
     @Nullable
@@ -81,7 +116,9 @@ public final class TriggerGeneType implements GeneType {
                     Trigger.WHEN_STRUCK_BY_LIGHTNING;
             case "when_equip", "on_equip", "equip" -> Trigger.WHEN_EQUIP;
             case "when_item_use", "on_item_use", "item_use", "action_on_item_use" -> Trigger.WHEN_ITEM_USE;
+            case "when_enter_dimension", "on_enter_dimension" -> Trigger.WHEN_ENTER_DIMENSION;
             case "press", "key", "key_press" -> Trigger.PRESS;
+            case "when_work", "on_work", "work" -> Trigger.WHEN_WORK;
             default -> null;
         };
     }

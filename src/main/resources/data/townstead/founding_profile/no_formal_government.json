@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:founding_profile/v1",
+  "name": { "translate": "founding_profile.townstead.no_formal_government" },
+  "weight": 0,
+  "spawn_bias": { "default": 1 },
+  "population": {
+    "strategy": "townstead:cultural_affinity",
+    "outsider_baseline": 0.1,
+    "adjustments": []
+  }
+}

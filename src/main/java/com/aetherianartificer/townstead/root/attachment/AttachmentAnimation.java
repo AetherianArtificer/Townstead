@@ -51,10 +51,16 @@ public final class AttachmentAnimation {
     public static final class Channel {
         final float[] times;      // ticks, ascending
         final float[][] values;
+        final String[] easing;
 
         Channel(float[] times, float[][] values) {
+            this(times, values, new String[times.length]);
+        }
+
+        Channel(float[] times, float[][] values, String[] easing) {
             this.times = times;
             this.values = values;
+            this.easing = easing;
         }
 
         /** The interpolated value at {@code timeTicks} (clamped to the first/last keyframe). */
@@ -65,10 +71,25 @@ public final class AttachmentAnimation {
             int i = 1;
             while (times[i] < timeTicks) i++;
             float alpha = (timeTicks - times[i - 1]) / (times[i] - times[i - 1]);
+            alpha = ease(easing[i], alpha);
             for (int a = 0; a < 3; a++) {
                 out[a] = values[i - 1][a] + (values[i][a] - values[i - 1][a]) * alpha;
             }
             return out;
+        }
+
+        private static float ease(String name, float t) {
+            if (name == null) return t;
+            return switch (name) {
+                case "easeInSine" -> 1f - (float) Math.cos(t * Math.PI / 2);
+                case "easeOutSine" -> (float) Math.sin(t * Math.PI / 2);
+                case "easeInOutSine" -> (1f - (float) Math.cos(t * Math.PI)) / 2f;
+                case "easeInCubic" -> t * t * t;
+                case "easeOutCubic" -> 1f - (float) Math.pow(1f - t, 3);
+                case "easeInOutCubic" -> t < .5f ? 4f * t * t * t : 1f - (float) Math.pow(-2f * t + 2f, 3) / 2f;
+                case "easeInOutQuad" -> t < .5f ? 2f * t * t : 1f - (float) Math.pow(-2f * t + 2f, 2) / 2f;
+                default -> t;
+            };
         }
 
         private static float[] copy(float[] from, float[] out) {
@@ -135,6 +156,10 @@ public final class AttachmentAnimation {
         if (element == null) return null;
         if (element.isJsonObject()) {
             JsonObject frames = element.getAsJsonObject();
+            if (frames.has("vector") || frames.has("pre") || frames.has("post")) {
+                return new Channel(new float[]{0f}, new float[][]{vec(element, defaultComponent, where, warnings)});
+            }
+            Map<Float, String> easings = new LinkedHashMap<>();
             List<float[]> entries = new ArrayList<>(frames.size());   // (time, x, y, z)
             for (var frame : frames.entrySet()) {
                 float time;
@@ -145,16 +170,21 @@ public final class AttachmentAnimation {
                 }
                 float[] value = vec(frame.getValue(), defaultComponent, where, warnings);
                 entries.add(new float[]{time, value[0], value[1], value[2]});
+                if (frame.getValue().isJsonObject() && frame.getValue().getAsJsonObject().has("easing")) {
+                    easings.put(time, frame.getValue().getAsJsonObject().get("easing").getAsString());
+                }
             }
             if (entries.isEmpty()) return null;
             entries.sort((a, b) -> Float.compare(a[0], b[0]));
             float[] times = new float[entries.size()];
             float[][] values = new float[entries.size()][];
+            String[] easing = new String[entries.size()];
             for (int i = 0; i < entries.size(); i++) {
                 times[i] = entries.get(i)[0];
+                easing[i] = easings.get(times[i]);
                 values[i] = new float[]{entries.get(i)[1], entries.get(i)[2], entries.get(i)[3]};
             }
-            return new Channel(times, values);
+            return new Channel(times, values, easing);
         }
         // A flat value is a single keyframe held for the whole clip.
         float[] value = vec(element, defaultComponent, where, warnings);
@@ -167,7 +197,8 @@ public final class AttachmentAnimation {
         float[] out = {defaultComponent, defaultComponent, defaultComponent};
         if (element.isJsonObject()) {
             JsonObject object = element.getAsJsonObject();
-            JsonElement inner = object.has("post") ? object.get("post") : object.get("pre");
+            JsonElement inner = object.has("vector") ? object.get("vector")
+                    : object.has("post") ? object.get("post") : object.get("pre");
             return inner == null ? out : vec(inner, defaultComponent, where, warnings);
         }
         if (element.isJsonArray()) {

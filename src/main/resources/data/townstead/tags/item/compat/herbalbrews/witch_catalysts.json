@@ -1,0 +1,6 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "herbalbrews:herbal_infusion", "required": false }
+  ]
+}

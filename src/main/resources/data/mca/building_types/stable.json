@@ -1,0 +1,15 @@
+{
+  "color": "ff9a6a32",
+  "visible": true,
+  "priority": 8,
+  "icon": false,
+  "iconU": 253,
+  "iconV": 212,
+  "margin": 8,
+  "mergeRange": 24,
+  "blocks": {
+    "minecraft:hay_block": 5,
+    "#minecraft:fences": 17,
+    "minecraft:water": 3
+  }
+}

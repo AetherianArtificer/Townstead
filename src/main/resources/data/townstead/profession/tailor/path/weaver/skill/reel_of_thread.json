@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.weaver.reel_of_thread"
+  },
+  "icon": "minecraft:lead",
+  "description": {
+    "translate": "skill.townstead.tailor.weaver.reel_of_thread.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:weaver_bind",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 240,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:add_velocity",
+      "away_from_other": -1.0,
+      "y": 0.25,
+      "on": {
+        "type": "pheno:ray",
+        "distance": 10
+      }
+    }
+  }
+}

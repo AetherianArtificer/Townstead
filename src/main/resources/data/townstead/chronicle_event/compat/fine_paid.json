@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "crime.fine",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": false,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "crime",
+    "key": "mcacrime:fine_paid"
+  },
+  "reach": "village",
+  "news_value": 2.0,
+  "roles": [
+    {
+      "id": "payer",
+      "kind": "player"
+    }
+  ],
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.compat.fine_paid"
+    },
+    "params": [
+      "payer",
+      "amount"
+    ]
+  }
+}

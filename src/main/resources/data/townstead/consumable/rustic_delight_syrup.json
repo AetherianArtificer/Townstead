@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:consumable/v1",
+  "mods": ["rusticdelight"],
+  "items": ["rusticdelight:syrup"],
+  "effects": {
+    "type": "pheno:hydrate",
+    "immediate": 2,
+    "lasting": 3
+  }
+}

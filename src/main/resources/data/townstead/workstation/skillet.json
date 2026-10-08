@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": ["farmersdelight"],
+  "blocks": ["farmersdelight:skillet"],
+  "capacity": { "positions": 1, "per_position": "stack" },
+  "behavior": { "type": "pheno:use_block", "item": "ingredient" },
+  "requires": {
+    "type": "pheno:block_chain",
+    "direction": "down",
+    "through": { "type": "pheno:in_tag", "tag": "farmersdelight:heat_conductors" },
+    "max": 1,
+    "end": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:in_tag", "tag": "farmersdelight:heat_sources" },
+        { "type": "pheno:block_state", "property": "lit", "value": "true", "if_missing": "pass" }
+      ]
+    }
+  }
+}

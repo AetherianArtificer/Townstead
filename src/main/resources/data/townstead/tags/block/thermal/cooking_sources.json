@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "#townstead:thermal/compat_lit_heat_sources",
+    "#townstead:bakery/ovens",
+    "minecraft:smoker",
+    "minecraft:blast_furnace",
+    { "id": "brewery:brew_oven", "required": false }
+  ]
+}
