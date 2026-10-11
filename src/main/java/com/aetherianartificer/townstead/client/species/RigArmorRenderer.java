@@ -68,11 +68,25 @@ public final class RigArmorRenderer {
                               float netHeadYaw, float headPitch) {
         HumanoidArmorLayer<LivingEntity, HumanoidModel<LivingEntity>, HumanoidModel<LivingEntity>> layer =
                 LAYERS.computeIfAbsent(rigBase, b -> buildLayer(b, rig, texture));
+        // Slots the body wears but doesn't show (a ghost's legs and feet): the gear stays on, it is only
+        // held out of this draw, and put straight back.
+        com.aetherianartificer.townstead.root.rig.RigDefinition def = RigModels.definition(rigBase);
+        java.util.Map<EquipmentSlot, net.minecraft.world.item.ItemStack> held = null;
+        if (def != null && !def.hiddenSlots().isEmpty()) {
+            for (EquipmentSlot slot : def.hiddenSlots()) {
+                net.minecraft.world.item.ItemStack worn = entity.getItemBySlot(slot);
+                if (worn.isEmpty()) continue;
+                if (held == null) held = new java.util.EnumMap<>(EquipmentSlot.class);
+                held.put(slot, worn);
+                entity.setItemSlot(slot, net.minecraft.world.item.ItemStack.EMPTY);
+            }
+        }
         RENDERING.set(true);
         try {
             layer.render(pose, buffers, light, entity, limbSwing, limbSwingAmount, partialTick, ageInTicks, netHeadYaw, headPitch);
         } finally {
             RENDERING.set(false);
+            if (held != null) held.forEach(entity::setItemSlot);
         }
     }
 

@@ -169,6 +169,7 @@
     "client.LivingEntityRendererEmoteMixin",
     "client.LivingEntityRendererSleepMixin",
     "client.LivingEntityRendererCrawlMixin",
+    "client.LivingEntityRendererRootFrameMixin",
     "client.PlayerEntityExtendedModelAnimationMixin",
     "client.VillagerEntityBaseModelMcaAnimationMixin",
     "client.VillagerHeadProportionMixin",

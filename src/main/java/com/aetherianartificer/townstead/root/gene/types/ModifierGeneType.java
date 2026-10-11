@@ -73,7 +73,11 @@ public final class ModifierGeneType implements GeneType {
         /** Chance that landing on farmland tramples it (vanilla 1 when trampling applies). */
         FARMLAND_TRAMPLE("farmland_trample"),
         /** How far around its holder a map fills in (vanilla 128 blocks at every scale). */
-        MAP_FILL_RADIUS("map_fill_radius");
+        MAP_FILL_RADIUS("map_fill_radius"),
+        /** Knockback strength the bearer receives; above 1 throws them further. */
+        KNOCKBACK_TAKEN("knockback_taken"),
+        /** Knockback strength the bearer's hits deal. */
+        KNOCKBACK_DEALT("knockback_dealt");
 
         private final String key;
 

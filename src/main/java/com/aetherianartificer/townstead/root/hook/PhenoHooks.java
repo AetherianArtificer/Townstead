@@ -102,6 +102,21 @@ public final class PhenoHooks {
         return chance >= 1f || (chance > 0f && e.getRandom().nextFloat() < chance);
     }
 
+    /**
+     * Knockback {@code victim} receives: their {@code knockback_taken}, then the
+     * {@code knockback_dealt} of whoever hurt them this tick. Unlike knockback resistance, either
+     * can raise it above vanilla.
+     */
+    public static float knockback(LivingEntity victim, float strength) {
+        if (victim == null || victim.level().isClientSide) return strength;
+        float scaled = modifier(victim, Modifier.KNOCKBACK_TAKEN, strength);
+        LivingEntity attacker = victim.getLastHurtByMob();
+        if (attacker != null && victim.getLastHurtByMobTimestamp() == victim.tickCount) {
+            scaled = modifier(attacker, Modifier.KNOCKBACK_DEALT, scaled);
+        }
+        return Math.max(0f, scaled);
+    }
+
     public static float heal(LivingEntity e, float amount) { return modifier(e, Modifier.HEALING, amount); }
 
     public static float damageDealt(LivingEntity e, float amount) { return modifier(e, Modifier.DAMAGE_DEALT, amount); }

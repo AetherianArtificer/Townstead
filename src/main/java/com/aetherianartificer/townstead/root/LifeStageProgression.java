@@ -639,4 +639,19 @@ public final class LifeStageProgression {
             case ADULT, UNASSIGNED -> CanonicalStage.ADULT;
         };
     }
+
+    /**
+     * The stage a player of {@code rootId} lives as: the root's adult-presenting stage, else its last.
+     * Players don't age through a cycle; they're always the grown form. Null without a cycle.
+     */
+    public static com.aetherianartificer.townstead.root.@org.jetbrains.annotations.Nullable LifeStage playerStage(String rootId) {
+        if (rootId == null || rootId.isEmpty()) return null;
+        var cycle = com.aetherianartificer.townstead.root.RootRegistry.effectiveLifeCycle(
+                net.minecraft.resources.ResourceLocation.tryParse(rootId));
+        if (cycle == null || cycle.isEmpty()) return null;
+        for (var stage : cycle.stages()) {
+            if (stage.presentsAs() == com.aetherianartificer.townstead.root.CanonicalStage.ADULT) return stage;
+        }
+        return cycle.stageAt(cycle.size() - 1);
+    }
 }

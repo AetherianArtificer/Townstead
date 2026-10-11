@@ -329,6 +329,16 @@ public record GeneCatalogEntry(
         return isOverlay() ? Math.max(0f, Math.min(1f, min)) : 1f;
     }
 
+    /** True when this gene scales the whole body (the factor rides in {@code min}). */
+    public boolean isBodyScale() {
+        return displayKind == GeneDisplay.Kind.BODY_SCALE.ordinal();
+    }
+
+    /** For BODY_SCALE genes, the size factor; 1 otherwise. */
+    public float bodyScale() {
+        return isBodyScale() && Float.isFinite(min) && min > 0f ? min : 1f;
+    }
+
     /** True when this gene sets a conditional body render opacity (alpha rides in {@code min}). */
     public boolean isOpacity() {
         return displayKind == GeneDisplay.Kind.OPACITY.ordinal();

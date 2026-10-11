@@ -146,7 +146,7 @@ public final class DataPackLang {
 
     /**
      * Parse a text value accepting a literal string, {@code { "text": … }}, or
-     * {@code { "translate": … }}. A translate key resolved in {@code langIndex}
+     * {@code { "translate": …, "with": [ … ] }}, whose arguments are parsed the same way. A translate key resolved in {@code langIndex}
      * gets that English string as its fallback. Returns a literal of
      * {@code context} for null/unrecognized input.
      */
@@ -167,6 +167,24 @@ public final class DataPackLang {
                         resolved = langIndex.get(remapped);
                     }
                 }
+                if (obj.has("with") && obj.get("with").isJsonArray()) {
+                    // Arguments are components in their own right (e.g. a qualifier and a name).
+                    com.google.gson.JsonArray with = obj.getAsJsonArray("with");
+                    Object[] args = new Object[with.size()];
+                    String[] plain = new String[with.size()];
+                    for (int i = 0; i < with.size(); i++) {
+                        args[i] = parseComponent(with.get(i), context + ".with[" + i + "]", langIndex);
+                        plain[i] = plainText(with.get(i), langIndex);
+                    }
+                    if (resolved == null) return Component.translatable(key, args);
+                    String fallback;
+                    try {
+                        fallback = String.format(Locale.ROOT, resolved, (Object[]) plain);
+                    } catch (java.util.IllegalFormatException ex) {
+                        fallback = resolved;
+                    }
+                    return Component.translatableWithFallback(key, fallback, args);
+                }
                 return resolved != null
                         ? Component.translatableWithFallback(key, resolved)
                         : Component.translatable(key);
@@ -174,5 +192,26 @@ public final class DataPackLang {
             if (obj.has("text")) return Component.literal(obj.get("text").getAsString());
         }
         return Component.literal(context);
+    }
+
+    /** English text of a component JSON from the lang index alone, without the client language. */
+    private static String plainText(JsonElement el, Map<String, String> langIndex) {
+        if (el == null || el.isJsonNull()) return "";
+        if (el.isJsonPrimitive()) return el.getAsString();
+        if (!el.isJsonObject()) return "";
+        JsonObject obj = el.getAsJsonObject();
+        if (obj.has("text")) return obj.get("text").getAsString();
+        if (!obj.has("translate")) return "";
+        String key = obj.get("translate").getAsString();
+        String template = langIndex.getOrDefault(key, key);
+        if (!obj.has("with") || !obj.get("with").isJsonArray()) return template;
+        com.google.gson.JsonArray with = obj.getAsJsonArray("with");
+        Object[] args = new Object[with.size()];
+        for (int i = 0; i < with.size(); i++) args[i] = plainText(with.get(i), langIndex);
+        try {
+            return String.format(Locale.ROOT, template, args);
+        } catch (java.util.IllegalFormatException ex) {
+            return template;
+        }
     }
 }

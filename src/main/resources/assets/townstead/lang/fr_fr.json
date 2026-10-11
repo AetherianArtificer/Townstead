@@ -3473,6 +3473,7 @@
   "townstead.heritage.tooltip.dominant": "Dominant",
   "townstead.heritage.tooltip.recessive": "Récessif",
   "townstead.heritage.tooltip.carrier_wild": "Présente %s, mais une seule copie — certains enfants pourraient ne pas en hériter.",
+  "townstead.heritage.tooltip.carrier_hidden": "Porte %s sans le montrer — ses enfants peuvent encore en hériter.",
   "townstead.heritage.tooltip.carrier": "Présente %s, mais porte un %s caché qui peut se transmettre aux enfants.",
   "townstead.chronicle.title": "Chronique du village",
   "townstead.chronicle.title.of": "Chronique : %s",

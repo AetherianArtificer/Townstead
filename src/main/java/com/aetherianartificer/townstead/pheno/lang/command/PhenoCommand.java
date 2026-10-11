@@ -160,6 +160,7 @@ public final class PhenoCommand {
                                 .suggests(SUGGEST_GENES)
                                 .executes(c -> expand(c.getSource(), StringArgumentType.getString(c, "gene")))))
                 .then(Commands.literal("dump").executes(c -> dump(c.getSource())))
+                .then(Commands.literal("patches").executes(c -> patches(c.getSource())))
                 .then(Commands.literal("parity")
                         .then(Commands.argument("target", EntityArgument.entity())
                                 .executes(c -> parity(c.getSource(), EntityArgument.getEntity(c, "target")))))
@@ -351,6 +352,28 @@ public final class PhenoCommand {
                     .withStyle(ChatFormatting.YELLOW), false);
         }
         return 0;
+    }
+
+    /** Every data patch, what it targets, and what it actually changed in the latest reload. */
+    private static int patches(CommandSourceStack source) {
+        var targets = com.aetherianartificer.townstead.data.DataPatches.targets();
+        var provenance = com.aetherianartificer.townstead.data.DataPatches.provenance();
+        source.sendSuccess(() -> Component.translatable("command.pheno.patches.heading", targets.size(),
+                com.aetherianartificer.townstead.data.DataNamespaces.all().size())
+                .withStyle(ChatFormatting.GOLD), false);
+        for (var patch : targets.entrySet()) {
+            for (var kind : patch.getValue().entrySet()) {
+                for (ResourceLocation target : kind.getValue()) {
+                    List<ResourceLocation> applied = provenance.getOrDefault(kind.getKey() + " " + target, List.of());
+                    boolean hit = applied.contains(patch.getKey());
+                    source.sendSuccess(() -> Component.translatable(hit
+                                    ? "command.pheno.patches.applied" : "command.pheno.patches.missing",
+                            patch.getKey().toString(), kind.getKey(), target.toString())
+                            .withStyle(hit ? ChatFormatting.AQUA : ChatFormatting.GRAY), false);
+                }
+            }
+        }
+        return targets.size();
     }
 
     private static int dump(CommandSourceStack source) {

@@ -59,11 +59,13 @@ public final class GeneDamageHandler {
                 for (AttackModifierGeneType.Instance gene : dealt) {
                     if (gene.condition() != null && !gene.condition().test(attackerCtx)) continue;
                     if (gene.bientityCondition() != null && !gene.bientityCondition().test(attacker, victim)) continue;
+                    if (gene.damageCondition() != null && !gene.damageCondition().test(source, amount)) continue;
                     result *= gene.modifier();
                 }
             }
         }
-        return Math.max(0f, result);
+        // Wards spare what is left after every multiplier, so they protect a fixed amount of health.
+        return com.aetherianartificer.townstead.pheno.combat.Wards.absorb(victim, source, Math.max(0f, result));
     }
 
     private static boolean matches(DamageSource source, DamageModifierGeneType.Instance gene) {

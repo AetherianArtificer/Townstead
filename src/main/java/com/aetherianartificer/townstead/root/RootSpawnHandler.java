@@ -106,6 +106,7 @@ public final class RootSpawnHandler {
         if (selection.isMixed()) {
             List<RootSelector.Weighted> mix = selection.mix();
             Heredity.seedMixedFounder(state.life(), mix, villager.getRandom());
+            com.aetherianartificer.townstead.root.appearance.IrisColors.seed(villager);
             ResourceLocation mixedRoot = ResourceLocation.tryParse(state.life().rootId());
             assignPersonality(villager, state, mixedRoot == null ? RootRegistry.DEFAULT_ID : mixedRoot);
             RootGenes.apply(villager, blendBodyMetrics(mix), villager.getRandom());
@@ -137,6 +138,7 @@ public final class RootSpawnHandler {
                 villager.getRandom());
         rollTraitGenes(villager, state, rootId);
         Heredity.seedFounder(state.life(), rootId, villager.getRandom());
+        com.aetherianartificer.townstead.root.appearance.IrisColors.seed(villager);
         com.aetherianartificer.townstead.root.appearance.HairColors.roll(villager,
                 com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(
                         rootId, state.life().heritage()), villager.getRandom());

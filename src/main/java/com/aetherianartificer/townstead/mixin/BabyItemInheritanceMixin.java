@@ -37,6 +37,7 @@ public abstract class BabyItemInheritanceMixin {
         if (!(result instanceof VillagerEntityMCA child) || child.level().isClientSide) return;
         List<Entity> parents = child.getRelationships().getParents().toList();
         Heredity.inheritFromEntities(TownsteadVillagers.get(child).life(), parents, child.getRandom());
+        com.aetherianartificer.townstead.root.appearance.IrisColors.seed(child);
         // MCA hands the parents over unordered; its family tree knows which one is the mother.
         var family = child.getRelationships().getFamilyEntry();
         net.minecraft.world.entity.LivingEntity mother = null, father = null;

@@ -246,7 +246,8 @@ public class HeritageScreen extends Screen {
 
         int nameMaxW = rightEdge - 4 - nameX;
         String label = nameMaxW > 8 ? GeneVisuals.truncate(font, row.label(), nameMaxW) : row.label();
-        g.drawString(font, label, nameX, textY, hovered ? 0xFFFFFFFF : 0xFFE6E6E6, false);
+        boolean hidden = com.aetherianartificer.townstead.root.HeritageView.HIDDEN.equals(row.carries());
+        g.drawString(font, label, nameX, textY, hidden ? 0xFF8A8A8A : hovered ? 0xFFFFFFFF : 0xFFE6E6E6, false);
     }
 
     /** Full stat-block tooltip for a gene row (same shape as the Roots genes menu). */
@@ -271,7 +272,9 @@ public class HeritageScreen extends Screen {
         // Only mention zygosity when the two copies diverge (a carried recessive).
         // A homozygous gene is simply "what it is" — already shown by the row.
         String shown = row.variant().isEmpty() ? name : row.variant();
-        if ("~".equals(row.carries())) {
+        if (com.aetherianartificer.townstead.root.HeritageView.HIDDEN.equals(row.carries())) {
+            lines.add(Component.translatable("townstead.heritage.tooltip.carrier_hidden", shown).withStyle(ChatFormatting.GRAY));
+        } else if ("~".equals(row.carries())) {
             lines.add(Component.translatable("townstead.heritage.tooltip.carrier_wild", shown).withStyle(ChatFormatting.GRAY));
         } else if (!row.carries().isEmpty()) {
             lines.add(Component.translatable("townstead.heritage.tooltip.carrier", shown, row.carries()).withStyle(ChatFormatting.GRAY));

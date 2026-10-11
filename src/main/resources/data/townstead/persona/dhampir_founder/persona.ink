@@ -73,6 +73,7 @@ INCLUDE lib/trips.ink
 
 // Stand-ins for the game's helpers, for Inky
 INCLUDE lib/fallbacks.ink
+INCLUDE lib/inky_jump.ink
 
 
 

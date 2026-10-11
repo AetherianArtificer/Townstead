@@ -36,7 +36,9 @@ public final class SpeciesJsonLoader extends SimpleJsonResourceReloadListener {
     @Override
     protected void apply(Map<ResourceLocation, JsonElement> entries, ResourceManager resourceManager,
                          ProfilerFiller profiler) {
+        entries = com.aetherianartificer.townstead.data.DataDocuments.resolve("species", entries, resourceManager);
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
+        com.aetherianartificer.townstead.data.NameCollisions.qualify("species", entries, resourceManager, lang);
         Map<ResourceLocation, Species> parsed = new LinkedHashMap<>();
         Map<ResourceLocation, Map<ResourceLocation, Boolean>> states = new LinkedHashMap<>();
         Map<ResourceLocation, Personalities> policies = new LinkedHashMap<>();

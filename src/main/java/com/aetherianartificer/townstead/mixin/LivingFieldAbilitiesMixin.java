@@ -21,6 +21,10 @@ public abstract class LivingFieldAbilitiesMixin {
         if (!entity.level().isClientSide) {
             Leaps.tick(entity);
             ItemRetrievals.tick(entity);
+            com.aetherianartificer.townstead.pheno.combat.Dashes.tick(entity);
+            com.aetherianartificer.townstead.pheno.combat.Casts.tick(entity);
+            com.aetherianartificer.townstead.pheno.combat.Wards.tick(entity);
+            com.aetherianartificer.townstead.pheno.combat.Minions.tick(entity);
         }
     }
 

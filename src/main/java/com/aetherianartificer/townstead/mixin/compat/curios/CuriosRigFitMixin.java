@@ -25,6 +25,8 @@ public abstract class CuriosRigFitMixin {
     private void townstead$fitRegisteredCurio(ICurioRenderer renderer, ItemStack stack, SlotContext slot,
             PoseStack pose, RenderLayerParent<?, ?> parent, MultiBufferSource buffers, int light,
             float swing, float amount, float partial, float age, float yaw, float pitch, Operation<Void> original) {
+        // a curio on a part the body wears but doesn't show (a ghost's feet) stays on, undrawn
+        if (com.aetherianartificer.townstead.root.rig.RigEquipment.hidesCurio(slot.entity(), slot.identifier())) return;
         Runnable restore = parent.getModel() instanceof HumanoidModel<?> host
                 ? RigWearables.fitCurio(host, slot.entity(), slot.identifier(), BuiltInRegistries.ITEM.getKey(stack.getItem()).toString())
                 : () -> {};

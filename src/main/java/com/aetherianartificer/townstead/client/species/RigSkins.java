@@ -32,11 +32,48 @@ public final class RigSkins {
         if (texture == null) return;
         int alpha = Math.round(Math.max(0f, Math.min(1f, fade)) * 255f);
         VertexConsumer buffer = buffers.getBuffer(RenderType.entityTranslucent(texture));
+        // A rig may limit which parts a worn skin covers (a legless ghost, thin arms whose UVs don't
+        // match a villager skin's): hide the rest for this pass, then put them back.
+        java.util.List<net.minecraft.client.model.geom.ModelPart> hidden = hideUnskinned(entity, model);
+        try {
+            draw(model, pose, buffer, light, alpha);
+        } finally {
+            for (net.minecraft.client.model.geom.ModelPart part : hidden) part.visible = true;
+        }
+    }
+
+    private static void draw(EntityModel<LivingEntity> model, PoseStack pose, VertexConsumer buffer, int light, int alpha) {
         //? if neoforge {
         model.renderToBuffer(pose, buffer, light, OverlayTexture.NO_OVERLAY, (alpha << 24) | 0xFFFFFF);
         //?} else {
         /*model.renderToBuffer(pose, buffer, light, OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, alpha / 255f);
         *///?}
+    }
+
+    /**
+     * Hides the humanoid parts the entity's rig doesn't let a worn skin cover ({@code skin_parts}),
+     * returning the parts it hid so the caller can show them again. Nothing is hidden when the rig
+     * names no parts or isn't a humanoid model.
+     */
+    private static java.util.List<net.minecraft.client.model.geom.ModelPart> hideUnskinned(LivingEntity entity,
+                                                                                        EntityModel<LivingEntity> model) {
+        java.util.List<net.minecraft.client.model.geom.ModelPart> hidden = new java.util.ArrayList<>();
+        com.aetherianartificer.townstead.root.rig.RigDefinition def = RootCatalogClient.rig(RigModels.rigBaseFor(entity));
+        if (def == null || def.skinParts().isEmpty()
+                || !(model instanceof net.minecraft.client.model.HumanoidModel<?> humanoid)) return hidden;
+        java.util.Map<String, net.minecraft.client.model.geom.ModelPart> parts = java.util.Map.of(
+                "head", humanoid.head, "headwear", humanoid.hat, "body", humanoid.body,
+                "right_arm", humanoid.rightArm, "left_arm", humanoid.leftArm,
+                "right_leg", humanoid.rightLeg, "left_leg", humanoid.leftLeg);
+        for (var entry : parts.entrySet()) {
+            boolean allowed = def.skinParts().contains(entry.getKey())
+                    || ("headwear".equals(entry.getKey()) && def.skinParts().contains("head"));
+            if (!allowed && entry.getValue().visible) {
+                entry.getValue().visible = false;
+                hidden.add(entry.getValue());
+            }
+        }
+        return hidden;
     }
 
     /** The fitted skin texture this entity wears on its species body, or null. */
@@ -51,6 +88,20 @@ public final class RigSkins {
         VillagerLike<?> villager = CommonVillagerModel.getVillager(entity);
         if (villager == null) return null;
         String clothes = villager.getClothes();
-        return look.fits(clothes) ? RigAssets.texture(clothes) : null;
+        if (!look.fits(clothes)) return null;
+        // the body may draw each outfit as its own counterpart (a zombie's tattered version)
+        com.aetherianartificer.townstead.root.rig.RigDefinition def = RigModels.definition(origin.rigBase());
+        if (def != null && !def.skinRemap().isEmpty()) {
+            String drawn = clothes;
+            for (var swap : def.skinRemap().entrySet()) drawn = drawn.replace(swap.getKey(), swap.getValue());
+            if (!drawn.equals(clothes)) {
+                ResourceLocation swapped = RigAssets.texture(drawn);
+                if (swapped != null && net.minecraft.client.Minecraft.getInstance().getResourceManager()
+                        .getResource(swapped).isPresent()) {
+                    return swapped;
+                }
+            }
+        }
+        return RigAssets.texture(clothes);
     }
 }

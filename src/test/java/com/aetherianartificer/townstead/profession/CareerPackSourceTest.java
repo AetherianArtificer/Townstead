@@ -47,6 +47,23 @@ class CareerPackSourceTest {
         assertTrue(CareerPackSource.isCareerPack(zip));
     }
 
+    @Test
+    void onlyPacksWithAssetsReachTheResourcePackList(@TempDir Path root) throws Exception {
+        Path dataOnly = root.resolve("runic-roots");
+        Files.createDirectories(dataOnly.resolve("data/runic_roots/root"));
+        Path withAssets = root.resolve("careers");
+        Files.createDirectories(withAssets.resolve("assets/my_pack/lang"));
+        assertFalse(CareerPackSource.hasAssets(dataOnly));
+        assertTrue(CareerPackSource.hasAssets(withAssets));
+
+        Path zip = root.resolve("zipped.zip");
+        try (ZipOutputStream output = new ZipOutputStream(Files.newOutputStream(zip))) {
+            put(output, "pack.mcmeta", "{}");
+            put(output, "assets/my_pack/lang/en_us.json", "{}");
+        }
+        assertTrue(CareerPackSource.hasAssets(zip));
+    }
+
     private static void put(ZipOutputStream output, String path, String contents) throws Exception {
         output.putNextEntry(new ZipEntry(path));
         output.write(contents.getBytes(StandardCharsets.UTF_8));

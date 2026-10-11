@@ -39,14 +39,34 @@ public final class ServerRig {
             return speciesRig(TownsteadVillagers.get(villager).life().rootId());
         }
         if (entity instanceof Player player) {
+            // a form a state puts on (a werewolf's beast) is the body while it lasts, for players too
+            String form = com.aetherianartificer.townstead.pheno.state.StateForms.rig(player);
+            if (form != null) return form;
             return speciesRig(PlayerRoot.getRootId(player));
         }
         return null;
     }
 
-    /** Whether this entity wears MCA's own villager body rather than a custom rig. */
+    /**
+     * Whether this entity's own body is MCA's villager body rather than a custom rig: its life stage's
+     * rig, else its species'. A form a state puts on for a while (a werewolf's beast form) is not its
+     * body, so wearing one doesn't make the state that set it ineligible (which would undo the form).
+     */
     public static boolean hasVillagerBody(LivingEntity entity) {
-        return isVillagerBody(rigIdFor(entity));
+        return isVillagerBody(bodyRigIdFor(entity));
+    }
+
+    /** The rig of the entity's own body, ignoring any state form it wears for now. */
+    private static String bodyRigIdFor(LivingEntity entity) {
+        if (entity instanceof VillagerEntityMCA villager) {
+            LifeStage stage = LifeStageProgression.currentStage(villager);
+            if (stage != null && stage.rig() != null && !stage.rig().isEmpty()) return stage.rig();
+            return speciesRig(TownsteadVillagers.get(villager).life().rootId());
+        }
+        if (entity instanceof Player player) {
+            return speciesRig(PlayerRoot.getRootId(player));
+        }
+        return null;
     }
 
     /** Whether people of this Root wear MCA's own villager body rather than a custom rig. */

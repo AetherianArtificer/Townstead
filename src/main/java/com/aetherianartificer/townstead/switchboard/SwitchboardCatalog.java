@@ -100,7 +100,10 @@ public final class SwitchboardCatalog {
 
     private static JsonObject name(Component component) {
         JsonObject out = new JsonObject();
-        if (component.getContents() instanceof TranslatableContents tc) out.addProperty("key", tc.getKey());
+        // A key that needs arguments (a qualified name) cannot be re-translated alone; send text only.
+        if (component.getContents() instanceof TranslatableContents tc && tc.getArgs().length == 0) {
+            out.addProperty("key", tc.getKey());
+        }
         out.addProperty("text", component.getString());
         return out;
     }

@@ -1126,6 +1126,7 @@
   "townstead.heritage.tooltip.dominant": "Dominant",
   "townstead.heritage.tooltip.recessive": "Rezessiv",
   "townstead.heritage.tooltip.carrier_wild": "Zeigt %s, aber nur eine Kopie — manche Kinder erben es möglicherweise nicht.",
+  "townstead.heritage.tooltip.carrier_hidden": "Trägt %s, ohne es zu zeigen — Kinder können es dennoch erben.",
   "townstead.heritage.tooltip.carrier": "Zeigt %s, trägt aber ein verstecktes %s, das an Kinder weitergegeben werden kann.",
   "block.townstead.room_ownership_tag": "Raumbesitzschild",
   "townstead.room_ownership.title": "Raumbesitz",

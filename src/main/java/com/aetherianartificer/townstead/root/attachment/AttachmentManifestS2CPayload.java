@@ -110,19 +110,19 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
             for (AttachmentDef.PhysicsChain chain : def.physics()) {
                 buf.writeVarInt(chain.bones().size());
                 for (String chainBone : chain.bones()) buf.writeUtf(chainBone);
-                buf.writeFloat(chain.stiffness());
-                buf.writeFloat(chain.damping());
-                buf.writeFloat(chain.gravity());
-                buf.writeFloat(chain.maxAngle());
-                buf.writeFloat(chain.minPitch());
-                buf.writeFloat(chain.maxPitch());
+                buf.writeUtf(chain.preset());
+                for (AttachmentDef.Knob knob : new AttachmentDef.Knob[]{chain.frequency(), chain.dampingRatio(),
+                        chain.gravity(), chain.inertia(), chain.drag(), chain.limit()}) {
+                    buf.writeFloat(knob.root());
+                    buf.writeFloat(knob.tip());
+                }
+                buf.writeUtf(chain.hinge());
+                buf.writeVarInt(chain.collide().size());
+                for (String collider : chain.collide()) buf.writeUtf(collider);
                 buf.writeFloat(chain.restPitch());
                 buf.writeFloat(chain.sway());
-                buf.writeFloat(chain.follow());
-                buf.writeFloat(chain.droopAngle());
                 buf.writeFloat(chain.swaySpeed());
-                buf.writeFloat(chain.snap());
-                for (int r = 0; r < 4; r++) buf.writeFloat(chain.response()[r]);
+                buf.writeBoolean(chain.scaleWithSize());
                 buf.writeVarInt(chain.segments());
                 buf.writeUtf(chain.axis());
             }
@@ -243,24 +243,22 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
                 int chainBoneCount = buf.readVarInt();
                 List<String> chainBones = new ArrayList<>(chainBoneCount);
                 for (int b = 0; b < chainBoneCount; b++) chainBones.add(buf.readUtf());
-                float stiffness = buf.readFloat();
-                float damping = buf.readFloat();
-                float gravity = buf.readFloat();
-                float maxAngle = buf.readFloat();
-                float minPitch = buf.readFloat();
-                float maxPitch = buf.readFloat();
+                String preset = buf.readUtf();
+                AttachmentDef.Knob[] knobs = new AttachmentDef.Knob[6];
+                for (int k = 0; k < knobs.length; k++) knobs[k] = new AttachmentDef.Knob(buf.readFloat(), buf.readFloat());
+                String hinge = buf.readUtf();
+                int colliderCount = buf.readVarInt();
+                List<String> collide = new ArrayList<>(colliderCount);
+                for (int k = 0; k < colliderCount; k++) collide.add(buf.readUtf());
                 float restPitch = buf.readFloat();
                 float sway = buf.readFloat();
-                float follow = buf.readFloat();
-                float droopAngle = buf.readFloat();
                 float swaySpeed = buf.readFloat();
-                float snap = buf.readFloat();
-                float[] response = {buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat()};
+                boolean scaleWithSize = buf.readBoolean();
                 int segments = buf.readVarInt();
                 String axis = buf.readUtf();
-                physics.add(new AttachmentDef.PhysicsChain(chainBones, stiffness, damping, gravity,
-                        maxAngle, minPitch, maxPitch, restPitch, sway, follow, droopAngle, swaySpeed,
-                        snap, response, segments, axis));
+                physics.add(new AttachmentDef.PhysicsChain(chainBones, preset, knobs[0], knobs[1], knobs[2],
+                        knobs[3], knobs[4], knobs[5], hinge, collide, restPitch, sway, swaySpeed, scaleWithSize,
+                        segments, axis, List.of()));
             }
             int animCount = buf.readVarInt();
             List<AttachmentDef.AnimationEntry> animations = new ArrayList<>(animCount);

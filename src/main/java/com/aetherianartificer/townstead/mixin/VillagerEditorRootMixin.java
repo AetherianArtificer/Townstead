@@ -85,6 +85,14 @@ public abstract class VillagerEditorRootMixin extends Screen {
     @Shadow(remap = false) protected abstract String[] getPages();
 
     @Unique private boolean townstead$previewDirty;
+    /** The outfit the editor opened with (fitted to the body when it needed one), restored on revert. */
+    @Unique private String townstead$clothesSnapshot;
+    /**
+     * After Apply, the server rolls the real individual (ear style, skin variant...), which needn't be
+     * the typical member the browse preview showed. Until the target's gene sync arrives (its
+     * carried-variant map is replaced), this holds the map seen at Apply; then the preview re-mirrors.
+     */
+    @Unique private java.util.Map<String, String> townstead$awaitingSyncFrom;
     @Unique private float[] townstead$geneSnapshot;
     @Unique private String townstead$baseRootId = "";
     @Unique private boolean townstead$primed;
@@ -189,6 +197,7 @@ public abstract class VillagerEditorRootMixin extends Screen {
                                                   CallbackInfo ci) {
         com.aetherianartificer.townstead.root.appearance.HairColors.clamp(
                 villager, RootClientStore.hairSettings(villager));
+        townstead$followAppliedRoll();
         int x = this.width / 2 - 175;
         int y = this.height / 2;
         PreviewParticles.render(context, villager, townstead$previewSubject(), x, y - 75, x + 175, y + 75);
@@ -307,6 +316,10 @@ public abstract class VillagerEditorRootMixin extends Screen {
                     : townstead$resolveVillagerEntityId(villagerUUID);
             townstead$sendRootSet(townstead$target, "");      // also makes the picker row highlight
             townstead$baseRootId = RootClientStore.get(townstead$target);
+            // already on a body with its own outfits but wearing one that doesn't fit it (a player who
+            // became a zombie in old clothes): dress the preview, and Done saves it
+            townstead$fitClothes(townstead$baseRootId);
+            townstead$clothesSnapshot = villager.getClothes();
             townstead$geneSnapshot = RootGenes.snapshot(villager);   // baseline for revert
             townstead$primed = true;
         }
@@ -405,17 +418,11 @@ public abstract class VillagerEditorRootMixin extends Screen {
         if (!"origins".equals(page)) return;
 
         RootPicker.Widgets ws = RootPicker.build(
-                Minecraft.getInstance(),
+                Minecraft.getInstance(), this, villager,
                 this.width / 2, this.height / 2 - 80, 175, 185, townstead$target,
                 rootId -> townstead$applyRoot(townstead$target, rootId),
                 entry -> townstead$previewRoot(townstead$target, entry));
-        addRenderableWidget(ws.tabRoot());
-        addRenderableWidget(ws.tabGenes());
-        addRenderableWidget(ws.search());
-        addRenderableWidget(ws.list());
-        addRenderableWidget(ws.description());
-        addRenderableWidget(ws.master());
-        addRenderableWidget(ws.apply());
+        for (net.minecraft.client.gui.components.AbstractWidget widget : ws.all()) addRenderableWidget(widget);
     }
 
     // Keep MCA's "Character" top tab highlighted while we're on one of our own gene subpages
@@ -703,19 +710,72 @@ public abstract class VillagerEditorRootMixin extends Screen {
         com.aetherianartificer.townstead.root.appearance.HairColors.roll(villager,
                 RootClientStore.hairSettings(villager), villager.getRandom());
         RootClientStore.set(villager.getId(), entry.id());   // so the skin-tint layer paints the preview
+        townstead$previewIris(entry);
+        townstead$fitClothes(entry.id());
         // Browsing previews the root's typical kit: drop the mirrored real expressed set so
         // the attachment layer falls back to this origin's grant list (restored on revert).
         RootClientStore.clearExpressed(villager.getId());
         townstead$previewDirty = true;
     }
 
+    /**
+     * Dress the preview in an outfit made for {@code rootId}'s body when that body only wears its own
+     * (a zombie's tattered clothes) and the current one isn't among them: the rig draws nothing else,
+     * so it would preview, and then save, bare. MCA's Done carries the outfit to the target.
+     */
+    @Unique
+    private void townstead$fitClothes(String rootId) {
+        com.aetherianartificer.townstead.root.RootLook look = com.aetherianartificer.townstead.client.root.RootCatalogClient.look(rootId);
+        if (look == null || look.skins().isEmpty() || look.fits(villager.getClothes())) return;
+        com.aetherianartificer.townstead.clothing.policy.RigSkinPicker.pick(look::fits,
+                villager.getGenetics().getGender(), "minecraft:none", villager.getUUID().getMostSignificantBits())
+                .ifPresent(villager::setClothes);
+    }
+
+    /** Colour the preview's eyes from the browsed root's editable iris palette, as founding would. */
+    @Unique
+    private void townstead$previewIris(RootCatalogEntry entry) {
+        for (RootCatalogEntry.Inherited inherited : entry.inheritedGenes()) {
+            GeneCatalogEntry gene = com.aetherianartificer.townstead.client.root.RootCatalogClient.gene(inherited.geneId());
+            if (gene == null || !"iris_seed".equals(gene.faceSlot()) || gene.variants().isEmpty()) continue;
+            int total = 0;
+            for (var v : gene.variants()) total += Math.max(1, v.weight());
+            int roll = villager.getRandom().nextInt(Math.max(1, total));
+            for (var v : gene.variants()) {
+                roll -= Math.max(1, v.weight());
+                if (roll >= 0) continue;
+                int right = v.palette().isEmpty() ? -1 : v.palette().get(0);
+                com.aetherianartificer.townstead.root.appearance.IrisColors.apply(villager, v.tint(), right);
+                return;
+            }
+        }
+    }
+
+    /** Once the applied root's sync lands, show the individual the server actually rolled. */
+    @Unique
+    private void townstead$followAppliedRoll() {
+        if (townstead$awaitingSyncFrom == null) return;
+        net.minecraft.world.entity.LivingEntity subject = townstead$previewSubject();
+        if (subject == null) {
+            townstead$awaitingSyncFrom = null;
+            return;
+        }
+        if (RootClientStore.carriedVariants(subject.getId()) == townstead$awaitingSyncFrom) return;
+        townstead$awaitingSyncFrom = null;
+        townstead$seedCarriedVariants();
+        townstead$mirrorRealState();
+    }
+
     /** Commit the previewed genes (exactly) + the origin id to the real villager. */
     @Unique
     private void townstead$applyRoot(int target, String rootId) {
         townstead$previewDirty = false;            // keep the preview; the revert hooks must not undo it
+        townstead$clothesSnapshot = villager.getClothes();   // the applied outfit is the new baseline too
         townstead$baseRootId = rootId;         // the applied origin is the new baseline, so page changes
                                                    // (which reset the dummy to baseline) and the Body picker
                                                    // both reflect it, not the origin the editor opened with
+        net.minecraft.world.entity.LivingEntity subject = townstead$previewSubject();
+        townstead$awaitingSyncFrom = subject == null ? null : RootClientStore.carriedVariants(subject.getId());
         townstead$sendRootSet(target, rootId); // sets Life.rootId on the real villager
         // Commit the dummy's previewed MCA floats directly (WYSIWYG), NOT via MCA's
         // syncVillagerData: the editor's full save also rewrites the target's family-tree
@@ -728,6 +788,7 @@ public abstract class VillagerEditorRootMixin extends Screen {
     private void townstead$revertPreview() {
         if (!townstead$previewDirty) return;
         RootGenes.restore(villager, townstead$geneSnapshot);
+        if (townstead$clothesSnapshot != null) villager.setClothes(townstead$clothesSnapshot);
         RootClientStore.set(villager.getId(), townstead$baseRootId);   // back to the real origin's tint
         townstead$mirrorRealState();   // back to the real individual's expressed genes
         townstead$previewDirty = false;
@@ -1798,13 +1859,6 @@ public abstract class VillagerEditorRootMixin extends Screen {
 
     // Drop this editor's throwaway dummy from the tint cache when the screen goes away,
     // so its origin tint can't bleed onto a real entity sharing its client-side id.
-    @Override
-    public void removed() {
-        super.removed();
-        RootClientStore.remove(villager.getId());
-        PreviewParticles.clear();
-        com.aetherianartificer.townstead.client.gui.character.EditorPreviewFocus.clear();
-    }
 
     // The editor's preview dummies are created and never ticked, so they keep spawn-default
     // air state (onGround false). Since MCA models became EMF-interceptable, animation packs

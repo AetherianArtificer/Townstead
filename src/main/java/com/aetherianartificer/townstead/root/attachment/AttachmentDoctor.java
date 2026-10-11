@@ -200,7 +200,7 @@ public final class AttachmentDoctor {
         return null;
     }
 
-    /** Physics sanity: chain bones must exist; 0..1 parameters warned; segments constraints. */
+    /** Physics sanity: chain bones must exist; knobs in range; legacy notes; segments constraints. */
     private static void checkPhysics(AttachmentDef def, Set<String> knownBones, List<String> out) {
         for (AttachmentDef.PhysicsChain chain : def.physics()) {
             if (knownBones != null) {
@@ -211,21 +211,13 @@ public final class AttachmentDoctor {
                     }
                 }
             }
-            if (chain.stiffness() < 0f || chain.stiffness() > 1f) {
-                out.add(def.id() + ": physics stiffness " + chain.stiffness() + " outside 0..1");
-            }
-            if (chain.damping() < 0f || chain.damping() > 1f) {
-                out.add(def.id() + ": physics damping " + chain.damping() + " outside 0..1");
-            }
-            if (chain.gravity() < 0f || chain.gravity() > 1f) {
-                out.add(def.id() + ": physics gravity " + chain.gravity() + " outside 0..1");
-            }
-            if (chain.follow() < 0f || chain.follow() > 1f) {
-                out.add(def.id() + ": physics follow " + chain.follow() + " outside 0..1");
-            }
-            if (chain.snap() < 0f || chain.snap() > 4f) {
-                out.add(def.id() + ": physics snap " + chain.snap() + " outside 0..4");
-            }
+            for (String note : chain.notes()) out.add(def.id() + ": physics " + note);
+            range(def, "frequency", chain.frequency(), 0.1f, 10f, out);
+            range(def, "damping_ratio", chain.dampingRatio(), 0.02f, 3f, out);
+            range(def, "gravity", chain.gravity(), 0f, 2f, out);
+            range(def, "inertia", chain.inertia(), 0f, 1f, out);
+            range(def, "drag", chain.drag(), 0f, 20f, out);
+            range(def, "limit", chain.limit(), 0f, 180f, out);
             if (chain.segments() != 0) {
                 if (chain.segments() < 2 || chain.segments() > 8) {
                     out.add(def.id() + ": physics segments " + chain.segments() + " outside 2..8");
@@ -238,6 +230,16 @@ public final class AttachmentDoctor {
                 if (!axis.equals("auto") && !axis.equals("x") && !axis.equals("y") && !axis.equals("z")) {
                     out.add(def.id() + ": physics axis '" + chain.axis() + "' is not auto/x/y/z");
                 }
+            }
+        }
+    }
+
+    private static void range(AttachmentDef def, String name, AttachmentDef.Knob knob, float min, float max,
+                              List<String> out) {
+        for (float value : new float[]{knob.root(), knob.tip()}) {
+            if (value < min || value > max) {
+                out.add(def.id() + ": physics " + name + " " + value + " outside " + min + ".." + max);
+                return;
             }
         }
     }

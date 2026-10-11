@@ -24,7 +24,8 @@ public final class SpawnParticlesBlockActionType implements BlockActionType {
         double offsetZ = GsonHelper.getAsDouble(json, "offset_z", 0);
         if (id == null) return null;
         return context -> {
-            if (!(BuiltInRegistries.PARTICLE_TYPE.get(id) instanceof ParticleOptions particle)) return;
+            ParticleOptions particle = com.aetherianartificer.townstead.pheno.particle.DataParticles.options(id);
+            if (particle == null) return;
             context.level().sendParticles(particle,
                     context.pos().getX() + 0.5 + offsetX,
                     context.pos().getY() + 0.5 + offsetY,

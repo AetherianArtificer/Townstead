@@ -174,7 +174,7 @@ public final class SkinPicker {
         return 0.0;
     }
 
-    static boolean fits(List<ClothingEntry> fitted, String skin) {
+    public static boolean fits(List<ClothingEntry> fitted, String skin) {
         for (ClothingEntry entry : fitted) {
             if (entry.matchesSkin(skin)) return true;
         }
@@ -195,7 +195,7 @@ public final class SkinPicker {
         return fits(BodyClothingResolver.fitted(rootId, life.hasHeritage() ? life.heritage() : null), skin);
     }
 
-    static boolean onMcaRig(@Nullable ResourceLocation rootId) {
+    public static boolean onMcaRig(@Nullable ResourceLocation rootId) {
         ResourceLocation speciesId = RootRegistry.effectiveSpecies(rootId);
         Species species = speciesId == null ? null : SpeciesRegistry.byId(speciesId);
         return species == null || species.rig() == null || Rig.VILLAGER.base().equals(species.rig().base());

@@ -30,6 +30,20 @@ public final class HairColors {
         }
     }
 
+    /**
+     * {@link #roll} onto a player's saved MCA data (its {@code GeneEumelanin}/{@code GenePheomelanin}
+     * and {@code HairColor} keys), for a player re-founded as a new root.
+     */
+    public static void rollInto(net.minecraft.nbt.CompoundTag entityData, HairSettings settings, RandomSource random) {
+        if (entityData == null || settings == null) return;
+        if (!settings.colorRanges().isEmpty()) {
+            HairColorRange range = weightedRange(settings.colorRanges(), random);
+            entityData.putFloat("GeneEumelanin", range.sampleDarkness(random));
+            entityData.putFloat("GenePheomelanin", range.sampleRedness(random));
+        }
+        if (hasFantasy(settings)) entityData.putInt("HairColor", rollFantasy(settings, random));
+    }
+
     public static void clamp(VillagerEntityMCA villager, HairSettings settings) {
         if (villager == null || settings == null) return;
         if (!settings.colorRanges().isEmpty()) {

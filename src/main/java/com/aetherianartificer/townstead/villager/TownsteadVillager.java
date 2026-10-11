@@ -1291,6 +1291,12 @@ public final class TownsteadVillager {
             return geneId != null && carriedVariants.containsKey(geneId);
         }
 
+        /** Forget every carried variant: a fresh founder roll starts from none. */
+        public void clearCarriedVariants() {
+            carriedVariants.clear();
+            markDirty();
+        }
+
         /** Stamp (or clear, when {@code variantId} is null/empty) the carried variant for a gene. */
         public void setCarriedVariant(String geneId, String variantId) {
             if (geneId == null || geneId.isEmpty()) return;

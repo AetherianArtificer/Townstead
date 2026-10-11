@@ -25,13 +25,21 @@ import java.util.Set;
 //? if neoforge {
 public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCatalogEntry> genes,
                                        List<TraitCatalogEntry> traits, List<RigDefinition> rigs,
-                                       List<String> entityGroups, List<RootLook> looks)
+                                       List<String> entityGroups, List<RootLook> looks,
+                                       List<RootBrowseEntry> browse)
         implements CustomPacketPayload {
 //?} else {
 /*public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCatalogEntry> genes,
                                        List<TraitCatalogEntry> traits, List<RigDefinition> rigs,
-                                       List<String> entityGroups, List<RootLook> looks) {
+                                       List<String> entityGroups, List<RootLook> looks,
+                                       List<RootBrowseEntry> browse) {
 *///?}
+
+    public RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCatalogEntry> genes,
+                                  List<TraitCatalogEntry> traits, List<RigDefinition> rigs,
+                                  List<String> entityGroups, List<RootLook> looks) {
+        this(entries, genes, traits, rigs, entityGroups, looks, List.of());
+    }
 
     //? if neoforge {
     public static final Type<RootCatalogSyncPayload> TYPE =
@@ -145,6 +153,8 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         for (String group : entityGroups) buf.writeUtf(group);
         buf.writeVarInt(looks.size());
         for (RootLook look : looks) writeLook(buf, look);
+        buf.writeVarInt(browse.size());
+        for (RootBrowseEntry entry : browse) entry.write(buf);
     }
 
     public static RootCatalogSyncPayload read(FriendlyByteBuf buf) {
@@ -269,7 +279,10 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         int lookCount = buf.readVarInt();
         List<RootLook> looks = new ArrayList<>(lookCount);
         for (int i = 0; i < lookCount; i++) looks.add(readLook(buf));
-        return new RootCatalogSyncPayload(entries, genes, traits, rigs, entityGroups, looks);
+        int browseCount = buf.readVarInt();
+        List<RootBrowseEntry> browse = new ArrayList<>(browseCount);
+        for (int i = 0; i < browseCount; i++) browse.add(RootBrowseEntry.read(buf));
+        return new RootCatalogSyncPayload(entries, genes, traits, rigs, entityGroups, looks, browse);
     }
 
     private static void writeLook(FriendlyByteBuf buf, RootLook look) {
@@ -491,6 +504,13 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         }
         buf.writeVarInt(r.disabledSlots().size());
         for (net.minecraft.world.entity.EquipmentSlot slot : r.disabledSlots()) buf.writeByte(slot.ordinal());
+        buf.writeVarInt(r.hiddenSlots().size());
+        for (net.minecraft.world.entity.EquipmentSlot slot : r.hiddenSlots()) buf.writeByte(slot.ordinal());
+        buf.writeVarInt(r.skinRemap().size());
+        r.skinRemap().forEach((from, to) -> {
+            buf.writeUtf(from);
+            buf.writeUtf(to);
+        });
         buf.writeUtf(r.cameraBone() == null ? "" : r.cameraBone());
         writeEmote(buf, r.emote());
         buf.writeBoolean(r.animation() != null);
@@ -512,6 +532,16 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
             buf.writeUtf(overlay.texture());
             buf.writeBoolean(overlay.glow());
             buf.writeUtf(overlay.glowVariant());
+        }
+        buf.writeVarInt(r.skinParts().size());
+        for (String part : r.skinParts()) buf.writeUtf(part);
+        buf.writeVarInt(r.colliders().size());
+        for (RigDefinition.Collider collider : r.colliders()) {
+            buf.writeUtf(collider.name());
+            buf.writeUtf(collider.bone());
+            for (int k = 0; k < 3; k++) buf.writeFloat(collider.from()[k]);
+            for (int k = 0; k < 3; k++) buf.writeFloat(collider.to()[k]);
+            buf.writeFloat(collider.radius());
         }
     }
 
@@ -687,6 +717,16 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         for (int i = 0; i < disabledCount; i++) {
             disabledSlots.add(net.minecraft.world.entity.EquipmentSlot.values()[buf.readByte()]);
         }
+        int hiddenCount = buf.readVarInt();
+        java.util.Set<net.minecraft.world.entity.EquipmentSlot> hiddenSlots = hiddenCount == 0
+                ? java.util.Set.of()
+                : java.util.EnumSet.noneOf(net.minecraft.world.entity.EquipmentSlot.class);
+        for (int i = 0; i < hiddenCount; i++) {
+            hiddenSlots.add(net.minecraft.world.entity.EquipmentSlot.values()[buf.readByte()]);
+        }
+        int remapCount = buf.readVarInt();
+        java.util.Map<String, String> skinRemap = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < remapCount; i++) skinRemap.put(buf.readUtf(), buf.readUtf());
         String cameraBone = buf.readUtf();
         RigDefinition.EmoteMap emote = readEmote(buf);
         RigDefinition.Animation animation = null;
@@ -705,7 +745,19 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         int overlayCount = Math.min(buf.readVarInt(), 16);
         List<RigDefinition.Overlay> overlays = new ArrayList<>(overlayCount);
         for (int i = 0; i < overlayCount; i++) overlays.add(new RigDefinition.Overlay(buf.readUtf(), buf.readBoolean(), buf.readUtf()));
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, java.util.Set.copyOf(disabledSlots), cameraBone, emote, animation, modelClass, cameraOffset, List.copyOf(overlays));
+        int skinPartCount = buf.readVarInt();
+        List<String> skinParts = new ArrayList<>(skinPartCount);
+        for (int i = 0; i < skinPartCount; i++) skinParts.add(buf.readUtf());
+        int colliderCount = Math.min(buf.readVarInt(), 64);
+        List<RigDefinition.Collider> colliders = new ArrayList<>(colliderCount);
+        for (int i = 0; i < colliderCount; i++) {
+            String name = buf.readUtf();
+            String bone = buf.readUtf();
+            float[] from = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+            float[] to = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+            colliders.add(new RigDefinition.Collider(name, bone, from, to, buf.readFloat()));
+        }
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, java.util.Set.copyOf(disabledSlots), cameraBone, emote, animation, modelClass, cameraOffset, List.copyOf(overlays), List.copyOf(skinParts), java.util.Set.copyOf(hiddenSlots), List.copyOf(colliders), java.util.Map.copyOf(skinRemap));
     }
 
     private static void writeNullableUtf(FriendlyByteBuf buf, String value) {

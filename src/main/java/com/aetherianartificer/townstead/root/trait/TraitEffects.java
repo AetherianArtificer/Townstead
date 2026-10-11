@@ -28,6 +28,11 @@ public final class TraitEffects {
         IMMORTAL_TRAIT_IDS = Set.copyOf(immortal);
     }
 
+    /** Whether a trait id confers immortality. */
+    public static boolean confersImmortality(String traitId) {
+        return traitId != null && IMMORTAL_TRAIT_IDS.contains(traitId);
+    }
+
     /** True if the villager carries any trait conferring {@code life.immortal}. */
     public static boolean isImmortal(VillagerEntityMCA villager) {
         if (villager == null || IMMORTAL_TRAIT_IDS.isEmpty()) return false;

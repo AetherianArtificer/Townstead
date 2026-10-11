@@ -31,6 +31,7 @@ public final class FoundingProfileJsonLoader extends SimpleJsonResourceReloadLis
     @Override
     protected void apply(Map<ResourceLocation, JsonElement> entries, ResourceManager resources,
                          ProfilerFiller profiler) {
+        entries = com.aetherianartificer.townstead.data.DataDocuments.resolve("founding_profile", entries, resources);
         Map<String, String> lang = DataPackLang.loadLangIndex(resources);
         Map<ResourceLocation, FoundingProfileDefinition> loaded = new LinkedHashMap<>();
         Map<ResourceLocation, ResourceLocation> legacyIds = new LinkedHashMap<>();

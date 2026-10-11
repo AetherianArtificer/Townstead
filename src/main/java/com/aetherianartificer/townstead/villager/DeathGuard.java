@@ -15,7 +15,7 @@ public final class DeathGuard {
     /** True when the entity survives; whatever saved them has already been applied. */
     public static boolean survives(LivingEntity entity, DamageSource source) {
         return com.aetherianartificer.townstead.root.Immortality.survivesDeath(entity, source)
-                || com.aetherianartificer.townstead.root.prevent.Prevents.tryPreventDeath(entity)
+                || com.aetherianartificer.townstead.root.prevent.Prevents.tryPreventDeath(entity, source)
                 || com.aetherianartificer.townstead.downed.DownedService.onDeath(entity, source);
     }
 }

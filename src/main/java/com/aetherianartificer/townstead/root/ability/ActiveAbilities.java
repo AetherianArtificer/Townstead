@@ -294,6 +294,18 @@ public final class ActiveAbilities {
             }
         }
         if (toggleChanged) AbilityToggles.syncEntity(villager);
+        // ai triggers: a villager's own way into a power players drive another way (a keypress)
+        ConditionContext aiContext = null;
+        for (com.aetherianartificer.townstead.root.gene.types.TriggerGeneType.Instance trigger
+                : Powers.componentsOf(villager, com.aetherianartificer.townstead.root.gene.types.TriggerGeneType.Instance.class)) {
+            if (trigger.trigger() != com.aetherianartificer.townstead.root.gene.types.TriggerGeneType.Trigger.AI) continue;
+            if (!shouldAiUse(villager, trigger.aiTrigger())) continue;
+            if (trigger.condition() != null) {
+                if (aiContext == null) aiContext = new ConditionContext(villager);
+                if (!trigger.condition().test(aiContext)) continue;
+            }
+            trigger.action().run(new ActionContext(villager));
+        }
         for (Resolved resolved : actives) {
             if (resolved.instance().aiTrigger() == AiTrigger.NEVER) continue;
             if (!shouldAiUse(villager, resolved.instance().aiTrigger())) continue;
@@ -332,6 +344,7 @@ public final class ActiveAbilities {
                 && ResourceValues.get(entity, instance.costResource()) < instance.costAmount()) {
             return false;
         }
+        if (instance.windup() != null) return beginWindup(entity, resolved, now);
         ActionContext actionContext = new ActionContext(entity);
         instance.action().run(actionContext);
         // Failed effects (currently safe teleports with no valid destination) are not activations:
@@ -340,6 +353,45 @@ public final class ActiveAbilities {
         if (instance.costResource() != null) {
             ResourceValues.change(entity, instance.costResource(), -instance.costAmount());
         }
+        setCooldown(entity, resolved.geneId(), now + instance.cooldownTicks());
+        return true;
+    }
+
+    /**
+     * Start winding up. The cooldown starts now so the key cannot queue a second cast; the action
+     * runs and the resource is charged when the wind-up completes. An interrupted wind-up, or one
+     * whose action fails or can no longer be paid for, gives the cooldown back.
+     */
+    private static boolean beginWindup(LivingEntity entity, Resolved resolved, long now) {
+        ActiveAbilityGeneType.Instance instance = resolved.instance();
+        boolean started = com.aetherianartificer.townstead.pheno.combat.Casts.begin(entity, instance.windup(),
+                new com.aetherianartificer.townstead.pheno.combat.Casts.Listener() {
+                    @Override
+                    public void complete(LivingEntity caster) {
+                        if (instance.costResource() != null
+                                && ResourceValues.get(caster, instance.costResource()) < instance.costAmount()) {
+                            setCooldown(caster, resolved.geneId(), 0);
+                            return;
+                        }
+                        ActionContext actionContext = new ActionContext(caster);
+                        instance.action().run(actionContext);
+                        if (!actionContext.succeeded()) {
+                            setCooldown(caster, resolved.geneId(), 0);
+                            return;
+                        }
+                        if (instance.costResource() != null) {
+                            ResourceValues.change(caster, instance.costResource(), -instance.costAmount());
+                        }
+                    }
+
+                    @Override
+                    public void interrupted(LivingEntity caster) {
+                        setCooldown(caster, resolved.geneId(), 0);
+                        // The wheel showed the cooldown starting; show it given back.
+                        if (caster instanceof ServerPlayer player) syncView(player);
+                    }
+                });
+        if (!started) return false;
         setCooldown(entity, resolved.geneId(), now + instance.cooldownTicks());
         return true;
     }

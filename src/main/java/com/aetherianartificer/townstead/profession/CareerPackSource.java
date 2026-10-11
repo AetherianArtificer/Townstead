@@ -92,6 +92,9 @@ public final class CareerPackSource {
             DirectoryValidator validator = new DirectoryValidator(path -> true);
             FolderRepositorySource.discoverPacks(directory, validator, (path, resources) -> {
                 if (requireTownsteadContent && !isTownsteadPack(path)) return;
+                // A pack with no assets/ has nothing for the client (Townstead syncs data-pack
+                // textures, models and translations itself), so it stays off the resource-pack list.
+                if (type == PackType.CLIENT_RESOURCES && !hasAssets(path)) return;
                 String id = packId(path, type, source);
                 PackLocationInfo info = new PackLocationInfo(
                         id,
@@ -108,6 +111,9 @@ public final class CareerPackSource {
             //?} else {
             /*FolderRepositorySource.discoverPacks(directory, false, (path, resources) -> {
                 if (requireTownsteadContent && !isTownsteadPack(path)) return;
+                // A pack with no assets/ has nothing for the client (Townstead syncs data-pack
+                // textures, models and translations itself), so it stays off the resource-pack list.
+                if (type == PackType.CLIENT_RESOURCES && !hasAssets(path)) return;
                 Pack pack = Pack.readMetaAndCreate(
                         packId(path, type, source),
                         Component.translatable(packNameKey(path), displayName(path)),
@@ -164,6 +170,17 @@ public final class CareerPackSource {
             }
         } catch (IOException error) {
             Townstead.LOGGER.warn("Could not list Townstead Career packs in {}", directory, error);
+        }
+    }
+
+    /** Whether a directory or ZIP pack carries client assets at its root. */
+    static boolean hasAssets(Path pack) {
+        if (Files.isDirectory(pack)) return Files.isDirectory(pack.resolve("assets"));
+        if (!isZip(pack)) return false;
+        try (FileSystem zip = FileSystems.newFileSystem(pack)) {
+            return Files.isDirectory(zip.getRootDirectories().iterator().next().resolve("assets"));
+        } catch (Exception error) {
+            return true;   // unreadable here; let the normal pack loader report it
         }
     }
 

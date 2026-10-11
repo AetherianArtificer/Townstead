@@ -43,7 +43,13 @@ public final class DescendantsBridge {
     private static final Map<UUID, Before> BEFORE = new ConcurrentHashMap<>();
 
     /** The player's name, where the old life ended, and the Root of the villager about to be taken over. */
-    private record Before(String name, @Nullable GlobalPos journalAt, @Nullable String targetRoot) {}
+    private record Before(String name, @Nullable GlobalPos journalAt, @Nullable String targetRoot,
+                          @Nullable com.aetherianartificer.townstead.root.gene.Genotype targetGenes,
+                          @Nullable com.aetherianartificer.townstead.root.Heritage targetHeritage) {
+        Before(String name, @Nullable GlobalPos journalAt, @Nullable String targetRoot) {
+            this(name, journalAt, targetRoot, null, null);
+        }
+    }
 
     public static boolean installed() {
         return ModCompat.isLoaded(MOD_ID);
@@ -157,7 +163,16 @@ public final class DescendantsBridge {
     }
 
     public static void beforeChosenSwap(LivingEntity target, ServerPlayer player) {
-        BEFORE.put(player.getUUID(), new Before(Rebirth.nameOf(player), null, RootAssignment.currentRoot(target)));
+        // the descendant's own genes and blood come along with its body (a half-elf child stays half-elf)
+        com.aetherianartificer.townstead.root.gene.Genotype genes = null;
+        com.aetherianartificer.townstead.root.Heritage heritage = null;
+        if (target instanceof net.conczin.mca.entity.VillagerEntityMCA villager) {
+            var life = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).life();
+            if (life.hasGenotype()) genes = life.genotype().copy();
+            if (life.hasHeritage()) heritage = life.heritage();
+        }
+        BEFORE.put(player.getUUID(), new Before(Rebirth.nameOf(player), null, RootAssignment.currentRoot(target),
+                genes, heritage));
     }
 
     /** The player is now the descendant: their Root and name come along. */
@@ -165,7 +180,7 @@ public final class DescendantsBridge {
         Before before = BEFORE.remove(player.getUUID());
         if (before != null && before.targetRoot() != null) {
             ResourceLocation root = RootServerLogic.resolveKnown(before.targetRoot());
-            if (root != null) RootAssignment.adoptPlayerRoot(player, root);
+            if (root != null) RootAssignment.adoptPlayerRoot(player, root, before.targetGenes(), before.targetHeritage());
         }
         reconcileName(player);
     }

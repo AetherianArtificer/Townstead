@@ -1146,6 +1146,7 @@
   "townstead.heritage.tooltip.dominant": "显性",
   "townstead.heritage.tooltip.recessive": "隐性",
   "townstead.heritage.tooltip.carrier_wild": "显示 %s，但只有一份拷贝——某些子嗣可能不会继承。",
+  "townstead.heritage.tooltip.carrier_hidden": "携带%s但未显现——子女仍可能继承。",
   "townstead.heritage.tooltip.carrier": "显示 %s，但携带隐藏的 %s，可以传给子嗣。",
   "block.townstead.room_ownership_tag": "房间所有权牌",
   "townstead.room_ownership.title": "房间所有权",

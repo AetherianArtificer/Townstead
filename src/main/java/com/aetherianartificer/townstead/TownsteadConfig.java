@@ -125,6 +125,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue RESOURCE_HUD_FADE_TICKS;
     public static final ModConfigSpec.BooleanValue RESOURCE_HUD_SHOW_VALUES;
     public static final ModConfigSpec.BooleanValue REDUCE_MOTION;
+    public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.client.attachment.PhysicsQuality> ATTACHMENT_PHYSICS;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
     public static final ModConfigSpec.BooleanValue SPIRIT_COLORBLIND_PATTERNS;
@@ -247,6 +248,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.IntValue RESOURCE_HUD_FADE_TICKS;
     public static final ForgeConfigSpec.BooleanValue RESOURCE_HUD_SHOW_VALUES;
     public static final ForgeConfigSpec.BooleanValue REDUCE_MOTION;
+    public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.client.attachment.PhysicsQuality> ATTACHMENT_PHYSICS;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
     public static final ForgeConfigSpec.BooleanValue SPIRIT_COLORBLIND_PATTERNS;
@@ -924,6 +926,13 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.resource_hud.showValues")
                 .comment("Draw the current and maximum values beside resource meters.")
                 .define("showValues", true);
+        clientBuilder.pop();
+
+        clientBuilder.translation("townstead.configuration.attachments").push("attachments");
+        ATTACHMENT_PHYSICS = clientBuilder
+                .translation("townstead.configuration.attachments.physics")
+                .comment("Secondary motion on tails, ears, hair and other attachments: FULL, LOW (nearby bearers only, no wind) or OFF. Reduce Motion caps this at LOW.")
+                .defineEnum("physics", com.aetherianartificer.townstead.client.attachment.PhysicsQuality.FULL);
         clientBuilder.pop();
 
         clientBuilder.translation("townstead.configuration.accessibility").push("accessibility");

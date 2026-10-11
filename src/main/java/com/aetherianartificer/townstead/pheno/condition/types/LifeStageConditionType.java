@@ -102,6 +102,12 @@ public final class LifeStageConditionType implements ConditionType {
             // alcohol capability from MCA's coarser baby/adult state.
             return false;
         }
+        if (entity instanceof net.minecraft.world.entity.player.Player player) {
+            // a player lives as their root's grown stage, with that stage's own tags
+            LifeStage stage = com.aetherianartificer.townstead.root.LifeStageProgression.playerStage(
+                    com.aetherianartificer.townstead.root.PlayerRoot.getRootId(player));
+            if (stage != null) return stage.tags().contains(tag);
+        }
         return entity != null && LifeStage.defaultTags(CanonicalStage.ADULT).contains(tag);
     }
 }

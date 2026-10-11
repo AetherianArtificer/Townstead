@@ -34,8 +34,19 @@ public record Gene(
         Dominance dominance,
         @Nullable ResourceLocation locus,
         int weight,
-        List<GeneVariant> variants
+        List<GeneVariant> variants,
+        /**
+         * True for a power that costs its bearer something ({@code "drawback": true}): a weakness the
+         * picker shows in red beside the root's strengths.
+         */
+        boolean drawback
 ) {
+    public Gene(ResourceLocation id, Component displayName, @Nullable Component description,
+                @Nullable ResourceLocation icon, String category, Dominance dominance,
+                @Nullable ResourceLocation locus, int weight, List<GeneVariant> variants) {
+        this(id, displayName, description, icon, category, dominance, locus, weight, variants, false);
+    }
+
     public Gene {
         if (variants == null || variants.isEmpty()) {
             throw new IllegalArgumentException("gene " + id + " has no variants");

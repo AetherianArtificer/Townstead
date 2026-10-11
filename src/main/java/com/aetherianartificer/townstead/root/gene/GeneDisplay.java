@@ -19,7 +19,7 @@ package com.aetherianartificer.townstead.root.gene;
  */
 public record GeneDisplay(Kind kind, float min, float max, String targetId, float amount) {
 
-    public enum Kind { RANGE, BOOLEAN, INFLUENCE, COLOR, ATTACHMENT, VARIANTS, PROPORTIONS, HIDE_FEATURE, ABILITY, OVERLAY, PARTICLE, SUPPRESS_NEED, STUCK_IMMUNITY, BUOYANCY, SKIN_OVERLAY, OPACITY, INNATE_TOOL, BLOCK_BREAK_SPEED, ANIMATIONS, NEED_ICON }
+    public enum Kind { RANGE, BOOLEAN, INFLUENCE, COLOR, ATTACHMENT, VARIANTS, PROPORTIONS, HIDE_FEATURE, ABILITY, OVERLAY, PARTICLE, SUPPRESS_NEED, STUCK_IMMUNITY, BUOYANCY, SKIN_OVERLAY, OPACITY, INNATE_TOOL, BLOCK_BREAK_SPEED, ANIMATIONS, NEED_ICON, BODY_SCALE }
 
     public static final GeneDisplay PRESENCE = new GeneDisplay(Kind.BOOLEAN, 0f, 1f, "", 0f);
 
@@ -246,6 +246,11 @@ public record GeneDisplay(Kind kind, float min, float max, String targetId, floa
      * fade can hold a translucent floor (imperfect invisibility, a standing ghost); a
      * presence chip in the picker.
      */
+    /** A body scale gene: the uniform size factor rides in {@code min}, synced for 1.20.1 sizing and rendering. */
+    public static GeneDisplay bodyScale(float scale) {
+        return new GeneDisplay(Kind.BODY_SCALE, scale, 1f, "", 0f);
+    }
+
     public static GeneDisplay opacity(float alpha) {
         return new GeneDisplay(Kind.OPACITY, clamp01(alpha), 1f, "", 0f);
     }

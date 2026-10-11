@@ -40,6 +40,7 @@ public final class CollectionJsonLoader extends SimpleJsonResourceReloadListener
     @Override
     protected void apply(Map<ResourceLocation, JsonElement> entries, ResourceManager resourceManager,
                          ProfilerFiller profiler) {
+        entries = com.aetherianartificer.townstead.data.DataDocuments.resolve("collection", entries, resourceManager);
         Map<ResourceLocation, CollectionGeneType.Instance> parsed = new LinkedHashMap<>();
         List<Diagnostic> diagnostics = new ArrayList<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {

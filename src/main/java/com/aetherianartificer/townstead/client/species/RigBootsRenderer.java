@@ -73,6 +73,7 @@ public final class RigBootsRenderer {
         List<RigDefinition.Boot> boots = def == null ? List.of() : def.boots();
         if (boots.isEmpty()) return;
         if (entity.getItemBySlot(EquipmentSlot.FEET).isEmpty()) return;
+        if (def != null && def.hiddenSlots().contains(EquipmentSlot.FEET)) return;   // worn, not shown
         java.lang.reflect.Method render = renderPiece();
         if (render == null) return;
         ModelPart root = RigModels.bakedRoot(rigBase);

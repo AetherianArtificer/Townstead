@@ -46,8 +46,16 @@ public final class HeritageView {
             if (pair == null) continue;
             Allele a = pair[0];
             Allele b = pair[1];
-            Allele expressed = Heredity.express(a, b);
-            if (expressed.isWild()) continue; // gene absent on both copies — nothing to show
+            Allele expressed = Heredity.express(a, b, genotype.seed(), locus);
+            if (expressed.isWild()) {
+                // A lone copy that doesn't show (its penetrance) is still carried, and can pass on.
+                Allele lone = a.isWild() ? b : a;
+                Gene carried = geneOf(lone);
+                if (carried == null) continue; // gene absent on both copies — nothing to show
+                rows.add(new HeritageSyncPayload.GeneRow(carried.id().toString(), carried.displayName().getString(),
+                        carried.category(), carried.hasVariants() ? displayAllele(lone) : "", HIDDEN));
+                continue;
+            }
             Gene gene = geneOf(expressed);
             String label = gene != null ? gene.displayName().getString() : locus.getPath();
             String category = gene != null ? gene.category() : "general";
@@ -72,6 +80,9 @@ public final class HeritageView {
         return new HeritageSyncPayload(villager.getUUID(), race.displayName().getString(),
                 originNameC.getString(), ancestry, rows);
     }
+
+    /** The {@code carries} mark of a single copy carried without showing. */
+    public static final String HIDDEN = "?";
 
     private static Gene geneOf(Allele allele) {
         return allele.isWild() ? null : GeneRegistry.byId(allele.geneId());

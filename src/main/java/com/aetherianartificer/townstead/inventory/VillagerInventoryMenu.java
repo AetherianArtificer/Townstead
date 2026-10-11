@@ -255,7 +255,8 @@ public class VillagerInventoryMenu extends AbstractContainerMenu {
         @Override public int getMaxStackSize(ItemStack stack) { return 1; }
 
         @Override public boolean mayPlace(ItemStack stack) {
-            return wearer != null && !stack.isEmpty() && stack.canEquip(equipmentSlot, wearer);
+            return wearer != null && !stack.isEmpty() && stack.canEquip(equipmentSlot, wearer)
+                    && com.aetherianartificer.townstead.root.rig.RigEquipment.allows(wearer, equipmentSlot);
         }
 
         @Override public boolean mayPickup(Player player) {

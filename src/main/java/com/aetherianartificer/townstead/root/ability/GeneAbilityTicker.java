@@ -386,9 +386,8 @@ public final class GeneAbilityTicker {
         if (particles.isEmpty() || !(entity.level() instanceof ServerLevel level)) return;
         for (ParticleGeneType.Instance particle : particles) {
             if (particle.condition() != null && !particle.condition().test(ctx)) continue;
-            if (!(BuiltInRegistries.PARTICLE_TYPE.get(particle.particle()) instanceof SimpleParticleType options)) {
-                continue;
-            }
+            net.minecraft.core.particles.ParticleOptions options = com.aetherianartificer.townstead.pheno.particle.DataParticles.options(particle.particle());
+            if (options == null) continue;
             // Send per-viewer with the force flag: the broadcast overload hardcodes
             // longDistance=false, which the client's Minimal/Decreased particle setting
             // culls. A racial trait particle should show regardless of that setting.

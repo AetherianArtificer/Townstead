@@ -74,10 +74,9 @@ EXTERNAL contract_turn_in(pool)
 ~ quest_open = false
 ~ interrupted = false
 
-// Story progress, by the file that declares it. Every line is at its starting value, so this
-// changes nothing until you edit one. To try a later scene, set what the earlier scenes would
-// have set, and change "-> greet" at the bottom to that scene's knot if you want to jump straight
-// in. The checkpoints in persona.json list the values for each scene.
+// Story progress, by the file that declares it. Every line is at its starting value. The menu
+// at the bottom (lib/inky_jump.ink, made from the checkpoints in persona.json) sets what the
+// earlier scenes would have set and jumps to the scene you pick.
 
 // persona.ink
 ~ met = 0
@@ -275,4 +274,4 @@ EXTERNAL contract_turn_in(pool)
 ~ done_w2 = false
 ~ w1_day = -1
 
--> greet
+-> inky_jump

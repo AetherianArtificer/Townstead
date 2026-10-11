@@ -281,6 +281,7 @@ public final class RootClientStore {
     public static void remove(int entityId) {
         BY_ENTITY.remove(entityId);
         EXPRESSED.remove(entityId);
+        VARIANTS.remove(entityId);
         TOGGLES.remove(entityId);
         HAIR.remove(entityId);
         HAIR_COLORS.remove(entityId);

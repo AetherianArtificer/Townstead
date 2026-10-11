@@ -247,6 +247,44 @@ tasks.register<Jar>("apiJar") {
     dependsOn(tasks.named("classes"))
 }
 // Opt-in headless sizing tests. Test entities/resources never enter the distributable jar.
+// Data pack check: -PpackCheck="<pack dir>;<pack dir>" -PpackCheckNamespaces=ns1,ns2 loads each pack's data/
+// as a test mod and fails when a document of a checked namespace does not register. Report in
+// .cache/pack-check/pack-check-report.txt. Run with: gradlew :1.21.1-neoforge:runPackCheck
+if (providers.gradleProperty("packCheck").isPresent) {
+    val packDirs = providers.gradleProperty("packCheck").get().split(";").filter { it.isNotBlank() }
+    val packCheck by sourceSets.creating {
+        java.setSrcDirs(listOf(rootProject.file("src/packCheck/java")))
+        resources.setSrcDirs(listOf(rootProject.file("src/packCheck/resources")))
+        packDirs.forEach { dir -> resources.srcDir(file(dir)).exclude("pack.mcmeta", "*.md", "*.zip", "*.png.mcmeta") }
+        compileClasspath += sourceSets.main.get().compileClasspath + sourceSets.main.get().output
+        runtimeClasspath += sourceSets.main.get().runtimeClasspath
+    }
+    neoForge {
+        mods {
+            register("townstead_pack_check") { sourceSet(packCheck) }
+        }
+        runs {
+            register("packCheck") {
+                type = "gameTestServer"
+                sourceSet = packCheck
+                gameDirectory = rootProject.file(".cache/pack-check")
+                systemProperty("neoforge.enabledGameTestNamespaces", "townstead_pack_check")
+                systemProperty("townstead.packCheck.namespaces",
+                        providers.gradleProperty("packCheckNamespaces").getOrElse(""))
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink:${property("blade_ink_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink-compiler:${property("blade_ink_version")}")
+                )
+            }
+        }
+    }
+}
+
 if (providers.gradleProperty("bodySizeGameTests").isPresent) {
     val bodySizeGameTest by sourceSets.creating {
         java.setSrcDirs(listOf(rootProject.file("src/bodySizeGameTest/java")))

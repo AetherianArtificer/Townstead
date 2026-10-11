@@ -178,6 +178,14 @@ public final class TownsteadNetwork {
                 (p, buf) -> com.aetherianartificer.townstead.replace.WildNameS2CPayload.write(buf, p),
                 com.aetherianartificer.townstead.replace.WildNameS2CPayload::read,
                 com.aetherianartificer.townstead.replace.WildNameS2CPayload::accept);
+        registerS2C(com.aetherianartificer.townstead.pheno.screen.ScreenEffectS2CPayload.class,
+                (p, buf) -> com.aetherianartificer.townstead.pheno.screen.ScreenEffectS2CPayload.write(buf, p),
+                com.aetherianartificer.townstead.pheno.screen.ScreenEffectS2CPayload::read,
+                com.aetherianartificer.townstead.pheno.screen.ScreenEffectS2CPayload::accept);
+        registerS2C(com.aetherianartificer.townstead.pheno.particle.DataParticlesS2CPayload.class,
+                (p, buf) -> com.aetherianartificer.townstead.pheno.particle.DataParticlesS2CPayload.write(buf, p),
+                com.aetherianartificer.townstead.pheno.particle.DataParticlesS2CPayload::read,
+                com.aetherianartificer.townstead.pheno.particle.DataParticlesS2CPayload::accept);
         registerS2C(com.aetherianartificer.townstead.replace.WildCostumeS2CPayload.class,
                 (p, buf) -> com.aetherianartificer.townstead.replace.WildCostumeS2CPayload.write(buf, p),
                 com.aetherianartificer.townstead.replace.WildCostumeS2CPayload::read,
@@ -444,6 +452,10 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.root.CommitRootGenesC2SPayload::write,
                 com.aetherianartificer.townstead.root.CommitRootGenesC2SPayload::read,
                 TownsteadNetwork::handleCommitRootGenes);
+        registerC2S(com.aetherianartificer.townstead.root.RootCountsC2SPayload.class,
+                com.aetherianartificer.townstead.root.RootCountsC2SPayload::write,
+                com.aetherianartificer.townstead.root.RootCountsC2SPayload::read,
+                (payload, sp) -> com.aetherianartificer.townstead.root.RootCountsC2SPayload.handle(sp, payload));
         registerC2S(com.aetherianartificer.townstead.aspect.AspectC2SPayload.class,
                 com.aetherianartificer.townstead.aspect.AspectC2SPayload::write,
                 com.aetherianartificer.townstead.aspect.AspectC2SPayload::read,
@@ -464,6 +476,10 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.persona.PersonaMenuS2CPayload::write,
                 com.aetherianartificer.townstead.persona.PersonaMenuS2CPayload::read,
                 payload -> com.aetherianartificer.townstead.client.persona.PersonaMenuClient.accept(payload.entityId(), payload.persona()));
+        registerS2C(com.aetherianartificer.townstead.root.RootCountsS2CPayload.class,
+                com.aetherianartificer.townstead.root.RootCountsS2CPayload::write,
+                com.aetherianartificer.townstead.root.RootCountsS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.root.RootWorldCounts.accept(payload.counts()));
         registerS2C(com.aetherianartificer.townstead.aspect.AspectS2CPayload.class,
                 com.aetherianartificer.townstead.aspect.AspectS2CPayload::write,
                 com.aetherianartificer.townstead.aspect.AspectS2CPayload::read,

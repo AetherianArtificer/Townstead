@@ -1,0 +1,11 @@
+{
+  "frequency": {
+    "root": 2.0,
+    "tip": 1.6
+  },
+  "damping_ratio": 0.7,
+  "gravity": 0.5,
+  "inertia": 0.6,
+  "drag": 1.5,
+  "limit": 30
+}

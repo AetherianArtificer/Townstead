@@ -598,6 +598,12 @@ public abstract class VillagerEditorMixin extends Screen {
         LifeClientStore.clearOnChange();
         LifeStageScale.clearPreviewOverride(villager.getId());
         com.aetherianartificer.townstead.client.species.RigModels.clearPreviewStage(villager.getId());
+        // The preview dummy's Root state (origin, mirrored genes, carried variants) must not outlive
+        // the editor: a later entity reusing its client id would read it. This is the one removed()
+        // override (VillagerEditorRootMixin's would be skipped as a conflicting overwrite).
+        com.aetherianartificer.townstead.client.root.RootClientStore.remove(villager.getId());
+        com.aetherianartificer.townstead.client.root.PreviewParticles.clear();
+        com.aetherianartificer.townstead.client.gui.character.EditorPreviewFocus.clear();
         SeniorHairDesat.clearPreviewProgress(villager.getId());
         townstead$hungerDisplay = null;
         townstead$thirstDisplay = null;

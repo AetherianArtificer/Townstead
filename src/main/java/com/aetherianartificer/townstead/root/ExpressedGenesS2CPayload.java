@@ -127,7 +127,7 @@ public record ExpressedGenesS2CPayload(int entityId, List<String> genes, boolean
             rootId = ResourceLocation.tryParse(life.rootId());
         } else if (entity instanceof Player player) {
             rootId = ResourceLocation.tryParse(PlayerRoot.getRootId(player));
-            heritage = RootRegistry.seedHeritage(rootId == null ? RootRegistry.DEFAULT_ID : rootId);
+            heritage = PlayerRoot.getHeritage(player);
         }
         List<String> genes = new ArrayList<>();
         for (Allele allele : com.aetherianartificer.townstead.root.gene.GeneExpression.activeAlleles(entity)) {

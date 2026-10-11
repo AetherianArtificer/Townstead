@@ -56,12 +56,15 @@ public final class Heredity {
     public static void seedFounder(TownsteadVillager.Life life, ResourceLocation rootId, RandomSource random) {
         life.setGenotype(seedGenotype(rootId, random));
         life.setHeritage(RootRegistry.seedHeritage(rootId));
+        // A fresh founder: nothing remembered from a previous root's variants (a dwarf's skin pick).
+        life.clearCarriedVariants();
         recomputeExpressed(life);
     }
 
     /** A fresh diploid genotype rolled from an origin's grant list (two alleles per diploid gene). */
     public static Genotype seedGenotype(ResourceLocation rootId, RandomSource random) {
         Genotype genotype = new Genotype();
+        genotype.setSeed(random.nextLong());
         for (InheritedGene ref : RootRegistry.effectiveInheritedGenes(rootId)) {
             Gene gene = GeneRegistry.byId(ref.geneId());
             if (gene == null || !isDiploid(gene)) continue;
@@ -91,24 +94,27 @@ public final class Heredity {
         java.util.List<Genotype> genotypes = new java.util.ArrayList<>(mix.size());
         float[] fractions = new float[mix.size()];
         java.util.Map<ResourceLocation, Float> heritage = new java.util.LinkedHashMap<>();
+        java.util.Map<ResourceLocation, Float> lineages = new java.util.LinkedHashMap<>();
         for (int i = 0; i < mix.size(); i++) {
             RootSelector.Weighted w = mix.get(i);
             fractions[i] = w.fraction();
             genotypes.add(seedGenotype(w.rootId(), random));
-            RootRegistry.seedHeritage(w.rootId()).fractions()
-                    .forEach((ancestry, share) -> heritage.merge(ancestry, share * w.fraction(), Float::sum));
+            Heritage seed = RootRegistry.seedHeritage(w.rootId());
+            seed.fractions().forEach((ancestry, share) -> heritage.merge(ancestry, share * w.fraction(), Float::sum));
+            seed.lineages().forEach((lineage, share) -> lineages.merge(lineage, share * w.fraction(), Float::sum));
         }
 
         Set<ResourceLocation> loci = new LinkedHashSet<>();
         for (Genotype g : genotypes) loci.addAll(g.loci());
         Genotype childGenes = new Genotype();
+        childGenes.setSeed(random.nextLong());
         for (ResourceLocation locus : loci) {
             childGenes.set(locus, drawAdmixed(genotypes, fractions, locus, random),
                     drawAdmixed(genotypes, fractions, locus, random));
         }
 
         life.setGenotype(childGenes);
-        life.setHeritage(new Heritage(heritage));
+        life.setHeritage(new Heritage(heritage, lineages));
         life.setRoot(dominantRoot(mix));
         recomputeExpressed(life);
     }
@@ -121,7 +127,30 @@ public final class Heredity {
      */
     public static void migrateFounder(TownsteadVillager.Life life, ResourceLocation rootId, RandomSource random) {
         Genotype genotype = life.genotype();
+        fillMissing(genotype, rootId, random,
+                geneId -> life.hasCarriedVariant(geneId) ? life.carriedVariant(geneId) : null);
+        life.setGenotype(genotype);
+        if (!life.hasHeritage()) {
+            life.setHeritage(RootRegistry.seedHeritage(rootId));
+        } else {
+            // Saves from before lineage shares: a purebred takes its root's lineage.
+            Heritage healed = life.heritage().withLineagesFrom(RootRegistry.seedHeritage(rootId));
+            if (healed != life.heritage()) life.setHeritage(healed);
+        }
+        recomputeExpressed(life);
+    }
+
+    /**
+     * Give a genotype every diploid gene its root grants that it does not carry yet, rolled as a
+     * founder would roll it, without touching what it already carries. A root that gains a gene
+     * after its bearers were born (new horns in a pack update) then reaches them on their next load.
+     * {@code legacyVariant} maps a gene id to a pre-genotype expressed variant to keep, or null.
+     * Returns whether any locus was added.
+     */
+    public static boolean fillMissing(Genotype genotype, ResourceLocation rootId, RandomSource random,
+                                      java.util.function.Function<String, String> legacyVariant) {
         canonicalizeLoci(genotype);
+        boolean added = false;
         for (InheritedGene ref : RootRegistry.effectiveInheritedGenes(rootId)) {
             Gene gene = GeneRegistry.byId(ref.geneId());
             if (gene == null || !isDiploid(gene)) continue;
@@ -130,16 +159,16 @@ public final class Heredity {
                 healSizedPayloads(genotype, locus, gene, random);
                 continue;
             }
-            if (gene.hasVariants() && life.hasCarriedVariant(gene.id().toString())) {
-                Allele legacy = Allele.of(gene.id(), life.carriedVariant(gene.id().toString()));
-                genotype.set(locus, legacy, legacy);
+            String legacy = gene.hasVariants() && legacyVariant != null ? legacyVariant.apply(gene.id().toString()) : null;
+            if (legacy != null) {
+                Allele allele = Allele.of(gene.id(), legacy);
+                genotype.set(locus, allele, allele);
             } else {
                 genotype.set(locus, rollAllele(gene, ref, random), rollAllele(gene, ref, random));
             }
+            added = true;
         }
-        life.setGenotype(genotype);
-        if (!life.hasHeritage()) life.setHeritage(RootRegistry.seedHeritage(rootId));
-        recomputeExpressed(life);
+        return added;
     }
 
     /**
@@ -245,6 +274,7 @@ public final class Heredity {
         loci.addAll(father.genotype().loci());
 
         Genotype childGenes = new Genotype();
+        childGenes.setSeed(random.nextLong());   // siblings settle equal-strength traits differently
         for (ResourceLocation locus : loci) {
             childGenes.set(locus, draw(mother.genotype(), locus, random), draw(father.genotype(), locus, random));
         }
@@ -293,7 +323,7 @@ public final class Heredity {
         for (ResourceLocation locus : genotype.loci()) {
             Allele[] pair = genotype.at(locus);
             if (pair == null) continue;
-            Allele expressed = express(pair[0], pair[1]);
+            Allele expressed = express(pair[0], pair[1], genotype.seed(), locus);
             if (!expressed.isWild()) out.add(expressed);
         }
         return out;
@@ -322,7 +352,8 @@ public final class Heredity {
         Genotype genotype = life.genotype();
         Heritage heritage = life.hasHeritage() ? life.heritage() : null;
         List<String> encodings = new java.util.ArrayList<>();
-        for (Allele raw : expressedAlleles(genotype)) {
+        List<Allele> expressed = withGranted(expressedAlleles(genotype), heritageAlleles(heritage));
+        for (Allele raw : expressed) {
             Allele allele = scaleByHeritage(raw, heritage);
             encodings.add(allele.encode());
             if (allele.variantId() == null) continue;
@@ -332,6 +363,53 @@ public final class Heredity {
             }
         }
         life.setExpressedAlleles(encodings);
+    }
+
+    /**
+     * The genes a heritage grants in its own right: those its best-matching profile lists (a Steam
+     * Drake's breath), expressed on top of what was inherited. They are not carried, so they are
+     * never passed on; a child expresses them only by being of that heritage too. A variant gene
+     * expresses its heaviest variant.
+     */
+    public static List<Allele> heritageAlleles(@org.jetbrains.annotations.Nullable Heritage heritage) {
+        HeritageProfile profile = HeritageRegistry.bestMatch(heritage);
+        if (profile == null || profile.genes().isEmpty()) return List.of();
+        List<Allele> out = new java.util.ArrayList<>(profile.genes().size());
+        for (ResourceLocation id : profile.genes()) {
+            Gene gene = GeneRegistry.byId(id);
+            if (gene == null) continue;
+            String variant = null;
+            if (gene.hasVariants()) {
+                GeneVariant heaviest = null;
+                for (GeneVariant v : gene.variants()) {
+                    if (heaviest == null || v.weight() > heaviest.weight()) heaviest = v;
+                }
+                variant = heaviest == null ? null : heaviest.id();
+            }
+            out.add(Allele.of(gene.id(), variant));
+        }
+        return out;
+    }
+
+    /**
+     * Inherited alleles with a heritage's granted ones laid over them: a granted gene takes its
+     * locus from whatever was inherited there (a Half-Cat profile's ears replace the inherited
+     * ears rather than adding a second pair), and a granted gene with a private locus just adds.
+     */
+    public static List<Allele> withGranted(List<Allele> inherited, List<Allele> granted) {
+        if (granted.isEmpty()) return inherited;
+        Set<ResourceLocation> taken = new java.util.HashSet<>();
+        for (Allele allele : granted) {
+            Gene gene = GeneRegistry.byId(allele.geneId());
+            if (gene != null) taken.add(locusOf(gene));
+        }
+        List<Allele> out = new java.util.ArrayList<>(inherited.size() + granted.size());
+        for (Allele allele : inherited) {
+            Gene gene = GeneRegistry.byId(allele.geneId());
+            if (gene == null || !taken.contains(locusOf(gene))) out.add(allele);
+        }
+        out.addAll(granted);
+        return out;
     }
 
     // --- internals -------------------------------------------------------------
@@ -549,7 +627,7 @@ public final class Heredity {
             String key = out.containsKey(channel.name()) ? channel.name()
                     : (out.size() == 1 && out.containsKey("") ? "" : null);
             if (key == null) continue;
-            float fraction = heritage == null ? 1f : heritage.fractionOf(channel.heritageAncestry());
+            float fraction = channel.heritageFraction(heritage);
             out.put(key, out.get(key) * channel.heritageFactor(fraction));
             scaled = true;
         }
@@ -579,7 +657,7 @@ public final class Heredity {
             String key = out.containsKey(channel.name()) ? channel.name()
                     : (out.size() == 1 && out.containsKey("") ? "" : null);
             if (key == null) continue;
-            float fraction = heritage == null ? 1f : heritage.fractionOf(channel.heritageAncestry());
+            float fraction = channel.heritageFraction(heritage);
             float factor = channel.heritageFactor(fraction);
             if (factor <= 0f || factor == 1f) continue;
             out.put(key, Math.max(channel.min(), Math.min(channel.max(), out.get(key) / factor)));
@@ -604,21 +682,43 @@ public final class Heredity {
     }
 
     /**
-     * The expressed allele at a locus. A wild allele always loses; between two real
+     * The expressed allele at a locus. A wild allele always loses (though a lone copy may stay
+     * hidden: see {@link com.aetherianartificer.townstead.root.gene.GenePenetrance}); between two real
      * alleles, a dominant gene beats a recessive one. On a tie, two variants of the
      * same gene resolve to the heavier-weighted (common-dominant) variant, and two
      * different genes at one locus resolve to the heavier gene; remaining ties break
      * deterministically by id so expression is stable.
      */
     public static Allele express(Allele a, Allele b) {
+        return express(a, b, 0L, null);
+    }
+
+    /**
+     * As {@link #express(Allele, Allele)}, but a tie that would fall to id order is settled by the
+     * carrier's {@link Genotype#seed() expression seed} at this locus instead: stable for one
+     * individual, different between siblings, so two Fire x Ice drakes needn't share every trait.
+     * Seed 0 (a genotype from before expression seeds) keeps the id order, so nobody loaded from an
+     * older save changes how they look.
+     */
+    public static Allele express(Allele a, Allele b, long seed, @org.jetbrains.annotations.Nullable ResourceLocation locus) {
         if (a.isWild() && b.isWild()) return Allele.WILD;
-        if (a.isWild()) return b;
-        if (b.isWild()) return a;
+        // A lone copy shows by its gene's penetrance (always, unless the gene declares one).
+        if (a.isWild()) return com.aetherianartificer.townstead.root.gene.GenePenetrance.shows(b, seed, locus) ? b : Allele.WILD;
+        if (b.isWild()) return com.aetherianartificer.townstead.root.gene.GenePenetrance.shows(a, seed, locus) ? a : Allele.WILD;
 
         Gene ga = GeneRegistry.byId(a.geneId());
         Gene gb = GeneRegistry.byId(b.geneId());
         if (ga == null) return b;
         if (gb == null) return a;
+
+        if (!a.geneId().equals(b.geneId())) {
+            // Two different genes each hold a single copy: one that doesn't assert itself (its
+            // penetrance) yields to one that does. When neither does, ordinary resolution decides,
+            // so a cat x dog child still grows one of its parents' muzzles.
+            boolean aShows = com.aetherianartificer.townstead.root.gene.GenePenetrance.shows(a, seed, locus);
+            boolean bShows = com.aetherianartificer.townstead.root.gene.GenePenetrance.shows(b, seed, locus);
+            if (aShows != bShows) return aShows ? a : b;
+        }
 
         boolean aDominant = ga.dominance() == com.aetherianartificer.townstead.root.gene.Dominance.DOMINANT;
         boolean bDominant = gb.dominance() == com.aetherianartificer.townstead.root.gene.Dominance.DOMINANT;
@@ -645,10 +745,27 @@ public final class Heredity {
             if (wa != wb) return wa > wb ? a : b;
             String va = a.variantId() == null ? "" : a.variantId();
             String vb = b.variantId() == null ? "" : b.variantId();
-            return va.compareTo(vb) <= 0 ? a : b;
+            if (va.equals(vb)) return a;
+            return tieBreak(va, vb, seed, locus) ? a : b;
         }
         if (ga.weight() != gb.weight()) return ga.weight() > gb.weight() ? a : b;
-        return a.geneId().compareTo(b.geneId()) <= 0 ? a : b;
+        return tieBreak(a.geneId().toString(), b.geneId().toString(), seed, locus) ? a : b;
+    }
+
+    /** Whether the allele keyed {@code ka} wins a tie against {@code kb}: id order, or seeded per individual. */
+    private static boolean tieBreak(String ka, String kb, long seed, @org.jetbrains.annotations.Nullable ResourceLocation locus) {
+        boolean aFirst = ka.compareTo(kb) <= 0;
+        if (seed == 0L) return aFirst;
+        // Order-independent: hash the pair sorted, so (a, b) and (b, a) pick the same allele.
+        String lo = aFirst ? ka : kb;
+        String hi = aFirst ? kb : ka;
+        long h = seed ^ (locus == null ? 0L : locus.toString().hashCode() * 0x9E3779B97F4A7C15L)
+                ^ ((long) lo.hashCode() << 32 | (hi.hashCode() & 0xFFFFFFFFL));
+        h = (h ^ (h >>> 33)) * 0xFF51AFD7ED558CCDL;
+        h = (h ^ (h >>> 33)) * 0xC4CEB9FE1A85EC53L;
+        h ^= h >>> 33;
+        boolean loWins = (h & 1L) == 0L;
+        return aFirst == loWins;
     }
 
     private static int variantWeight(Gene gene, String variantId) {

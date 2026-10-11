@@ -99,7 +99,8 @@ public final class RootGenes {
     public static void writeToPlayerData(net.minecraft.nbt.CompoundTag entityData, float[] snapshot) {
         if (entityData == null || snapshot == null || snapshot.length != ORDERED.length) return;
         for (int i = 0; i < ORDERED.length; i++) {
-            entityData.putFloat(ORDERED[i].key(), snapshot[i]);
+            entityData.putFloat(playerDataKey(ORDERED[i]), snapshot[i]);
+            entityData.remove(ORDERED[i].key());     // the bare key an older build wrote, which MCA never read
         }
     }
 
@@ -107,10 +108,20 @@ public final class RootGenes {
     public static float[] readFromPlayerData(net.minecraft.nbt.CompoundTag entityData) {
         float[] out = new float[ORDERED.length];
         for (int i = 0; i < ORDERED.length; i++) {
-            String key = ORDERED[i].key();
+            String key = playerDataKey(ORDERED[i]);
+            if (entityData != null && !entityData.contains(key)) key = ORDERED[i].key();
             out[i] = entityData != null && entityData.contains(key) ? entityData.getFloat(key) : 0.5f;
         }
         return out;
+    }
+
+    /**
+     * The key MCA saves a float gene under in a villager or player's data: its data parameter's
+     * name, {@code "Gene" + key()} on every supported MCA ({@code GeneSize}, {@code GeneWidth}...).
+     * Writing the bare {@code key()} left a player's model scaled by the old values.
+     */
+    private static String playerDataKey(Genetics.GeneType type) {
+        return "Gene" + type.key();
     }
 
     /** {@link #apply} onto a {@link #snapshot}-ordered array instead of a live villager. */

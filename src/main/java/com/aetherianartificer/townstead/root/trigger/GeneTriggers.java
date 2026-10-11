@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.root.trigger;
 
+import com.aetherianartificer.townstead.pheno.event.PhenoEvent;
 import com.aetherianartificer.townstead.pheno.power.Powers;
 import com.aetherianartificer.townstead.pheno.action.ActionContext;
 import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
@@ -31,8 +32,19 @@ public final class GeneTriggers {
         fire(entity, Trigger.WHEN_ENTER_DIMENSION, null, null, 0f);
     }
 
+    /** The latest damage each entity took, so a saved death can report its killing blow. */
+    private static final java.util.Map<LivingEntity, Float> LAST_DAMAGE = new java.util.WeakHashMap<>();
+
+    /** The most recent damage {@code entity} took this session, or 0. */
+    public static float lastDamage(LivingEntity entity) {
+        Float amount = LAST_DAMAGE.get(entity);
+        return amount == null ? 0f : amount;
+    }
+
     public static void onDamage(LivingEntity victim, DamageSource source, float amount) {
         if (victim.level().isClientSide) return;
+        LAST_DAMAGE.put(victim, amount);
+        com.aetherianartificer.townstead.pheno.combat.Casts.onHurt(victim);
         LivingEntity attacker = source.getEntity() instanceof LivingEntity le ? le : null;
         fire(victim, Trigger.WHEN_HURT, attacker, source, amount);
         if (attacker != null && attacker != victim) fire(attacker, Trigger.WHEN_ATTACK, victim, source, amount);
@@ -122,6 +134,40 @@ public final class GeneTriggers {
         }
     }
 
+    /**
+     * The bearer took a crafted item. {@code result} is the stack being handed over, so a trigger's
+     * {@code item_action} changes what the bearer receives.
+     */
+    public static void onCraft(LivingEntity crafter, net.minecraft.world.item.ItemStack result) {
+        if (crafter.level().isClientSide || result.isEmpty()) return;
+        List<TriggerGeneType.Instance> triggers = Powers.componentsOf(crafter, TriggerGeneType.Instance.class);
+        if (triggers.isEmpty()) return;
+        ConditionContext ctx = null;
+        for (TriggerGeneType.Instance t : triggers) {
+            if (t.trigger() != Trigger.WHEN_CRAFT) continue;
+            if (t.itemCondition() != null && !t.itemCondition().test(crafter.level(), result)) continue;
+            if (t.condition() != null) {
+                if (ctx == null) ctx = new ConditionContext(crafter);
+                if (!t.condition().test(ctx)) continue;
+            }
+            ActionContext actionContext = new ActionContext(crafter);
+            PhenoEvent.during(new PhenoEvent.Frame(0f, null, result), () -> {
+                if (t.itemAction() != null) {
+                    t.itemAction().run(new com.aetherianartificer.townstead.pheno.action.item.ItemActionContext(
+                            result, crafter, actionContext));
+                }
+                t.action().run(actionContext);
+            });
+        }
+    }
+
+    /** A {@code prevent} death gene saved the bearer from {@code source}'s killing blow of {@code amount}. */
+    public static void onDeathPrevented(LivingEntity bearer, @Nullable DamageSource source, float amount) {
+        if (bearer.level().isClientSide) return;
+        LivingEntity killer = source != null && source.getEntity() instanceof LivingEntity le ? le : null;
+        fire(bearer, Trigger.WHEN_DEATH_PREVENTED, killer, source, amount);
+    }
+
     /** Fired by the key-press packet handler: run the entity's press triggers bound to {@code key}. */
     public static void firePress(LivingEntity entity, String key) {
         if (entity.level().isClientSide) return;
@@ -159,8 +205,10 @@ public final class GeneTriggers {
                 if (ctx == null) ctx = new ConditionContext(bearer);
                 if (!t.condition().test(ctx)) continue;
             }
+            if (t.bientityCondition() != null && (other == null || !t.bientityCondition().test(bearer, other))) continue;
             LivingEntity counterpart = primary == bearer ? other : bearer;
-            t.action().run(new ActionContext(primary, counterpart));
+            PhenoEvent.during(new PhenoEvent.Frame(amount, source, usedItem),
+                    () -> t.action().run(new ActionContext(primary, counterpart)));
         }
     }
 }

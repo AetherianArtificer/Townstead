@@ -1,31 +1,42 @@
 package com.aetherianartificer.townstead.client.gui.root;
 
+import com.aetherianartificer.townstead.client.gui.quest.QuestIconButton;
+import com.aetherianartificer.townstead.client.gui.quest.QuestIcons;
 import com.aetherianartificer.townstead.client.root.RootCatalogClient;
+import com.aetherianartificer.townstead.client.root.RootClientStore;
 import com.aetherianartificer.townstead.root.RootCatalogEntry;
+import com.aetherianartificer.townstead.root.RootRegistry;
+import com.aetherianartificer.townstead.root.RootSetC2SPayload;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.LivingEntity;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Builds and wires the Roots tab's vertical-stack UI. Two native {@link Button}
- * tabs flip the column in place between two views that share the same regions;
- * the current view's tab is left {@code active=false} so it reads as the pressed,
- * greyed-out tab (matching MCA's own page-tab row):
+ * Builds and wires the Roots tab. Two native {@link Button} tabs flip the column in place; the
+ * current view's tab is left {@code active=false} so it reads as pressed, like MCA's own page tabs:
  * <ul>
- *   <li><b>Root</b> — search box, grouped master list, description box.</li>
- *   <li><b>Genes</b> — the inherited-gene chips ({@link RootTraitsWidget}),
- *       full height; hovering a chip shows its full stat-block tooltip.</li>
+ *   <li><b>Root</b>: a summary of the root on show (art, name, backstory, facts, powers), with
+ *       <b>Browse roots...</b> to open {@link RootBrowseScreen} and <b>Random</b> to try another.</li>
+ *   <li><b>Genes</b>: the inherited-gene chips ({@link RootTraitsWidget}), full height; hovering a
+ *       chip shows its full stat-block tooltip.</li>
  * </ul>
- * A single Apply row sits below both. No modal, so there is only ever one screen
- * and one background. The host adds the returned widgets via
- * {@code addRenderableWidget}; {@code onApply} sends the set packet.
+ * Apply sits below both and commits the root on show. With a single root to pick there is nothing
+ * to choose, so the tab is only the summary.
  */
 public final class RootPicker {
 
     private RootPicker() {}
+
+    /** A root picked in the browser, previewed when the editor rebuilds the tab on return. */
+    private static @Nullable String pending;
 
     /**
      * Returns the page list with {@code "origins"} inserted right after {@code "general"}
@@ -50,94 +61,107 @@ public final class RootPicker {
         return out;
     }
 
-    public record Widgets(Button tabRoot, Button tabGenes, EditBox search, RootListWidget list,
-                          RootDescriptionWidget description, RootTraitsWidget master, Button apply) {}
+    /** The tab's widgets, for the host to add with {@code addRenderableWidget}. */
+    public record Widgets(List<AbstractWidget> all) {}
 
-    public static Widgets build(Minecraft mc, int x, int y, int w, int h, int target,
+    public static Widgets build(Minecraft mc, Screen parent, @Nullable LivingEntity model,
+                                int x, int y, int w, int h, int target,
                                 Consumer<String> onApply, Consumer<RootCatalogEntry> onPreview) {
-        final int gap = 2, tabH = 20, searchH = 18, applyH = 20;
+        final int gap = 2, tabH = 20, buttonH = 20;
+        boolean self = target == RootSetC2SPayload.SELF;
+
+        List<RootCatalogEntry> listed = new ArrayList<>();
+        for (RootCatalogEntry e : RootCatalogClient.origins()) {
+            if (e.listedFor(self)) listed.add(e);
+        }
+        String currentId = currentRootId(target);
+        RootCatalogEntry current = RootCatalogClient.origin(currentId);
+        // A blocked current root is still shown; there is a choice whenever another root is on offer.
+        boolean choice = listed.size() > 1 || (listed.size() == 1 && !listed.get(0).id().equals(currentId));
 
         int contentTop = y + tabH + gap;
-        int applyTop = y + h - applyH;
-        int contentBottom = applyTop - gap;   // content stops a gap above Apply
-
-        // Root view: search / list / description.
-        int listTop = contentTop + searchH + gap;
-        int oUsable = contentBottom - listTop;
-        int listH = Math.max(40, (int) (oUsable * 0.42));
-        int descTop = listTop + listH + gap;
-        int descH = contentBottom - descTop;
-
+        int applyTop = y + h - buttonH;
+        int browseTop = applyTop - gap - buttonH;
+        int summaryBottom = choice ? browseTop - gap : y + h;
         int halfW = (w - gap) / 2;
 
-        // EditBox draws its border 1px outside its bounds, so inset it by 1px and shrink
-        // by 2px to make its outer edge sit flush with the panels below (which fill [x, x+w]).
-        EditBox search = new EditBox(mc.font, x + 1, contentTop + 1, w - 2, searchH - 2,
-                Component.translatable("townstead.origin.search"));
-        search.setHint(Component.translatable("townstead.origin.search"));
+        RootSummaryWidget summary = new RootSummaryWidget(x, contentTop, w, summaryBottom - contentTop);
+        RootTraitsWidget master = new RootTraitsWidget(x, contentTop, w, (choice ? applyTop - gap : y + h) - contentTop);
 
-        RootListWidget list = new RootListWidget(mc, x, w, listH, listTop, target);
-        RootDescriptionWidget description = new RootDescriptionWidget(x, descTop, w, descH);
-        // Genes view: the chips fill the whole content region (no detail pane).
-        RootTraitsWidget master = new RootTraitsWidget(x, contentTop, w, contentBottom - contentTop);
-
+        final RootCatalogEntry[] shown = { current };
         Button apply = Button.builder(Component.translatable("townstead.origin.apply"), b -> {
-            RootCatalogEntry sel = list.selectedRoot();
-            if (sel != null) onApply.accept(sel.id());
-        }).pos(x, applyTop).size(w, applyH).build();
-        apply.active = false;
+            if (shown[0] != null) onApply.accept(shown[0].id());
+        }).pos(x, applyTop).size(w, buttonH).build();
+        int randomW = Math.max(44, w / 3);
+        Button browse = new QuestIconButton(x, browseTop, w - randomW - gap, buttonH,
+                Component.translatable("townstead.root.browse.open"),
+                b -> mc.setScreen(new RootBrowseScreen(parent, self, model, currentId, shown[0], onPreview,
+                        picked -> pending = picked.id())),
+                QuestIcons.Icon.DETAILS);
+        final Runnable[] select = new Runnable[1];
+        Button random = Button.builder(Component.translatable("townstead.root.random"), b -> {
+            if (listed.size() < 2) return;
+            RootCatalogEntry pick;
+            do {
+                pick = listed.get(mc.level != null ? mc.level.random.nextInt(listed.size())
+                        : (int) (Math.random() * listed.size()));
+            } while (pick == shown[0]);
+            shown[0] = pick;
+            select[0].run();
+            onPreview.accept(pick);
+        }).pos(x + w - randomW, browseTop).size(randomW, buttonH).build();
 
-        final RootCatalogEntry[] selectedRef = { null };
-        final boolean[] previewReady = { false };   // suppress preview during the initial auto-select
         final Runnable[] mode = new Runnable[2];
-
         Button tabRoot = Button.builder(Component.translatable("townstead.origin.tab_origin"),
                 b -> mode[0].run()).pos(x, y).size(halfW, tabH).build();
         Button tabGenes = Button.builder(Component.translatable("townstead.origin.tab_genes"),
                 b -> mode[1].run()).pos(x + halfW + gap, y).size(w - halfW - gap, tabH).build();
 
+        select[0] = () -> {
+            summary.setRoot(shown[0]);
+            if (master.visible && shown[0] != null) master.setRoot(shown[0]);
+            apply.active = shown[0] != null && !shown[0].id().equals(currentId);
+            tabGenes.active = shown[0] != null && !master.visible;
+        };
         mode[0] = () -> {   // Root view
-            search.visible = true;
-            list.setShown(true);
-            description.visible = true;
+            summary.visible = true;
+            browse.visible = choice;
+            random.visible = choice && listed.size() > 1;
             master.visible = false;
-            tabRoot.active = false;                       // current tab reads as pressed
-            tabGenes.active = selectedRef[0] != null;
+            tabRoot.active = false;
+            tabGenes.active = shown[0] != null;
         };
         mode[1] = () -> {   // Genes view
-            search.visible = false;
-            search.setFocused(false);
-            list.setShown(false);
-            description.visible = false;
+            summary.visible = false;
+            browse.visible = false;
+            random.visible = false;
             master.visible = true;
-            if (selectedRef[0] != null) master.setRoot(selectedRef[0]);
+            if (shown[0] != null) master.setRoot(shown[0]);
             tabRoot.active = true;
-            tabGenes.active = false;                         // current tab reads as pressed
+            tabGenes.active = false;
         };
+        apply.visible = choice;
 
-        list.setOnSelect(entry -> {
-            description.setRoot(entry);
-            apply.active = entry != null;
-            selectedRef[0] = entry;
-            tabGenes.active = entry != null && !master.visible;
-            if (previewReady[0] && entry != null) onPreview.accept(entry);
-        });
-        search.setResponder(list::setFilter);
+        mode[0].run();
+        select[0].run();
 
-        mode[0].run();   // start on the Root view
-
-        list.rebuild();
-        String current = list.currentRootId();
-        for (RootCatalogEntry e : RootCatalogClient.origins()) {
-            // A blocked current root has no row to select; the target keeps it until a new pick applies.
-            if (e.id().equals(current) && e.listedFor(target == com.aetherianartificer.townstead.root.RootSetC2SPayload.SELF)) {
-                list.choose(e);
+        String picked = pending;
+        pending = null;
+        if (picked != null && !picked.equals(currentId)) {
+            for (RootCatalogEntry e : listed) {
+                if (!e.id().equals(picked)) continue;
+                shown[0] = e;
+                select[0].run();
+                onPreview.accept(e);
                 break;
             }
         }
-        list.scrollToSelected();   // open scrolled to the target's current origin
-        previewReady[0] = true;   // user selections from here on drive the live preview
 
-        return new Widgets(tabRoot, tabGenes, search, list, description, master, apply);
+        return new Widgets(List.of(tabRoot, tabGenes, summary, master, browse, random, apply));
+    }
+
+    static String currentRootId(int target) {
+        String id = RootClientStore.get(target);
+        return id.isEmpty() ? RootRegistry.DEFAULT_ID.toString() : id;
     }
 }

@@ -70,6 +70,10 @@ public final class TownsteadClient {
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPost);
             NeoForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbView::onComputeCameraAngles);
+            NeoForge.EVENT_BUS.addListener(
+                    com.aetherianartificer.townstead.client.screen.ScreenEffectRender::onComputeCameraAngles);
+            NeoForge.EVENT_BUS.addListener(
+                    com.aetherianartificer.townstead.client.screen.ScreenEffectRender::onComputeFov);
             NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onRenderFog);
             NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onFogColor);
             NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardLink::onScreenInit);
@@ -102,8 +106,17 @@ public final class TownsteadClient {
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPre);
             MinecraftForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPost);
+            // 1.20.1 has no scale attribute; scale-gene bodies are scaled while rendering.
+            MinecraftForge.EVENT_BUS.addListener(
+                    com.aetherianartificer.townstead.client.species.BodyScaleRender::onRenderLivingPre);
+            MinecraftForge.EVENT_BUS.addListener(
+                    com.aetherianartificer.townstead.client.species.BodyScaleRender::onRenderLivingPost);
             MinecraftForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbView::onComputeCameraAngles);
+            MinecraftForge.EVENT_BUS.addListener(
+                    com.aetherianartificer.townstead.client.screen.ScreenEffectRender::onComputeCameraAngles);
+            MinecraftForge.EVENT_BUS.addListener(
+                    com.aetherianartificer.townstead.client.screen.ScreenEffectRender::onComputeFov);
             MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onRenderFog);
             MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onFogColor);
             MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.gui.rebirth.RebirthDeathButton::onScreenInit);
@@ -195,6 +208,7 @@ public final class TownsteadClient {
     /*private static void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
     *///?}
         com.aetherianartificer.townstead.pheno.cosmetic.CosmeticClientBridge.clear();
+        com.aetherianartificer.townstead.pheno.screen.ScreenEffect.Client.clear();
         com.aetherianartificer.townstead.replace.WildNameS2CPayload.clear();
         com.aetherianartificer.townstead.client.render.WildCostumeRender.clear();
         clearClientStore("com.aetherianartificer.townstead.hunger.HungerClientStore");
@@ -288,6 +302,7 @@ public final class TownsteadClient {
         tryWarmSpiritIndex();
         com.aetherianartificer.townstead.client.species.ClimbState.tick();
         com.aetherianartificer.townstead.client.species.InvisFade.tick();
+        com.aetherianartificer.townstead.pheno.screen.ScreenEffect.Client.tick();
         com.aetherianartificer.townstead.client.expression.ExpressionCueClientStore.tick();
         com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge.ensureRegistered();
         com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardScreen.tickPending();
@@ -301,6 +316,7 @@ public final class TownsteadClient {
         tryWarmSpiritIndex();
         com.aetherianartificer.townstead.client.species.ClimbState.tick();
         com.aetherianartificer.townstead.client.species.InvisFade.tick();
+        com.aetherianartificer.townstead.pheno.screen.ScreenEffect.Client.tick();
         com.aetherianartificer.townstead.client.expression.ExpressionCueClientStore.tick();
         com.aetherianartificer.townstead.client.animation.emote.loader.EmotecraftEventBridge.ensureRegistered();
         com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardScreen.tickPending();

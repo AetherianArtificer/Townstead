@@ -51,12 +51,16 @@ public final class PhenoSchemas {
         // --- Gene types (their behavior tree starts here) ---
         NodeSchemas.register(NodeSchema.of("pheno:trigger", NodeDomain.GENE)
                 .doc("Runs an action when a life-cycle event fires (attack, hurt, kill, land, ...).")
-                .field(required("trigger", PhenoType.STRING).doc("Event: when_attack, when_hurt, when_kill, when_work, ..."))
+                .field(required("trigger", PhenoType.STRING).doc("Event: when_attack, when_hurt, when_kill, when_work, press, ai, ..."))
                 .field(of("verbs", PhenoType.ANY).doc("when_work only: work verb or list of verbs (e.g. townstead:harvested); omitted accepts all."))
                 .field(of("item_condition", PhenoType.OBJECT).doc("when_item_use: the used item. when_work: the work's output."))
+                .field(of("key", PhenoType.STRING).doc("press only: the key (jump, sneak, ...)."))
+                .field(of("ai_trigger", PhenoType.STRING).doc("ai only: when villagers' AI fires it (when_flying, when_threatened, when_hurt, when_hurt_nearby, always)."))
                 .field(of("target", PhenoType.STRING).doc("self or other (the counterpart entity)."))
-                .field(required("action", PhenoType.ACTION))
+                .field(of("action", PhenoType.ACTION).doc("Required except for when_craft, which may only change the item."))
+                .field(of("item_action", PhenoType.ITEM_ACTION).doc("when_craft only: changes the crafted item."))
                 .field(of("condition", PhenoType.CONDITION))
+                .field(of("bientity_condition", PhenoType.BIENTITY_CONDITION).doc("Tests (bearer, counterpart)."))
                 .primaryChild("action").build());
 
         NodeSchemas.register(NodeSchema.of("pheno:thermal_tolerance", NodeDomain.GENE)
@@ -316,6 +320,10 @@ public final class PhenoSchemas {
                 .field(of("min_remaining", PhenoType.DURATION))
                 .field(of("max_remaining", PhenoType.DURATION)).build());
 
+        NodeSchemas.register(NodeSchema.of("pheno:keypress", NodeDomain.ACTION)
+                .doc("Presses a key for the entity: runs its press triggers bound to key, as the "
+                        + "player's own keypress does. Lets an ai trigger use a key-driven power.")
+                .field(required("key", PhenoType.STRING)).build());
         NodeSchemas.register(NodeSchema.of("pheno:jump", NodeDomain.ACTION)
                 .doc("Makes the entity jump (the vanilla impulse, respecting Jump Boost), scaled by "
                         + "strength; clears fall distance so a mid-air jump banks no fall damage.")
@@ -368,7 +376,7 @@ public final class PhenoSchemas {
         NodeSchemas.register(NodeSchema.of("pheno:at", NodeDomain.ACTION)
                 .doc("Runs a block action at blocks chosen from an entity context (a ray's block hit, a "
                         + "place, a region): the bridge from an entity action to a block action.")
-                .field(required("blocks", PhenoType.OBJECT).doc("A block selector (e.g. { type: pheno:ray, stop_on: block })."))
+                .field(required("blocks", PhenoType.ANY).doc("A block selector (e.g. { type: pheno:ray, stop_on: block }) or a shortcut such as \"here\"."))
                 .field(required("do", PhenoType.BLOCK_ACTION)).primaryChild("do").build());
 
         NodeSchemas.register(NodeSchema.of("pheno:haze", NodeDomain.ACTION)

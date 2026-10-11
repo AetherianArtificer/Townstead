@@ -44,7 +44,9 @@ public final class IconArt {
     public static boolean draw(GuiGraphics g, String icon, float x, float y, float scale) {
         if (icon == null || icon.isEmpty()) return false;
         if (isTexture(icon)) {
-            ResourceLocation tex = ResourceLocation.tryParse(icon);
+            // Data-pack textures arrive through the attachment sync; resource-pack ones resolve as-is.
+            ResourceLocation synced = com.aetherianartificer.townstead.client.attachment.AttachmentClient.namedTexture(icon);
+            ResourceLocation tex = synced != null ? synced : ResourceLocation.tryParse(icon);
             if (tex == null) return false;
             int size = Math.max(1, Math.round(16 * scale));
             g.blit(tex, Math.round(x), Math.round(y), size, size, 0f, 0f, 1, 1, 1, 1);

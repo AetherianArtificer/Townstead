@@ -47,4 +47,39 @@ class ModGateTest {
         assertNull(eval("[\"farmersdelight\", 3]"));
         assertNull(eval("{\"any\": \"farmersdelight\"}"), "any requires an array");
     }
+
+    private static final Predicate<String> NAMESPACES = Set.of("townstead_classic")::contains;
+
+    private static Boolean evalWithData(String json) {
+        return ModGate.evaluate(JsonParser.parseString(json), LOADED, NAMESPACES);
+    }
+
+    @Test
+    void namespaceAndModClauses() {
+        assertEquals(Boolean.TRUE, evalWithData("{\"namespace\": \"townstead_classic\"}"));
+        assertEquals(Boolean.FALSE, evalWithData("{\"namespace\": \"runic_roots\"}"));
+        assertEquals(Boolean.FALSE, evalWithData("{\"namespace\": [\"townstead_classic\", \"runic_roots\"]}"));
+        assertEquals(Boolean.TRUE, evalWithData("{\"mod\": \"farmersdelight\", \"namespace\": \"townstead_classic\"}"));
+        assertEquals(Boolean.FALSE, evalWithData("{\"not\": {\"namespace\": \"townstead_classic\"}}"));
+        assertEquals(Boolean.TRUE, evalWithData(
+                "{\"any\": [{\"namespace\": \"runic_roots\"}, \"rusticdelight\"]}"));
+        assertNull(evalWithData("{\"namespace\": 3}"));
+        assertNull(evalWithData("{\"namespace\": [\"a\", 3]}"));
+    }
+
+    @Test
+    void documentGatesCombineModsAndRequires() {
+        DataNamespaces.setForTesting(Set.of("townstead_classic"));
+        try {
+            assertEquals(Boolean.TRUE, ModGate.evaluateDocument(JsonParser.parseString("{}").getAsJsonObject()));
+            assertEquals(Boolean.TRUE, ModGate.evaluateDocument(JsonParser.parseString(
+                    "{\"requires\": {\"namespace\": \"townstead_classic\"}}").getAsJsonObject()));
+            assertEquals(Boolean.FALSE, ModGate.evaluateDocument(JsonParser.parseString(
+                    "{\"requires\": {\"namespace\": \"runic_roots\"}}").getAsJsonObject()));
+            assertNull(ModGate.evaluateDocument(JsonParser.parseString(
+                    "{\"requires\": {\"sometimes\": 1}}").getAsJsonObject()));
+        } finally {
+            DataNamespaces.setForTesting(Set.of());
+        }
+    }
 }

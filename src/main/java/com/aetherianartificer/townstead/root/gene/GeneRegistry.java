@@ -24,6 +24,12 @@ public final class GeneRegistry {
      * while its canonical Minecraft resource id is {@code namespace:elf/night_vision}.
      */
     private static volatile Map<ResourceLocation, ResourceLocation> ORGANIZATIONAL_ALIASES = Map.of();
+    /**
+     * Basenames several nested genes share within one namespace (every race folder holding a
+     * {@code horns.json}): no alias, and only worth a warning when something actually looks one up.
+     */
+    private static volatile Set<ResourceLocation> AMBIGUOUS_ALIASES = Set.of();
+    private static final Set<ResourceLocation> WARNED_AMBIGUOUS = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private static volatile Map<ResourceLocation, List<ResourceLocation>> COMPANIONS = Map.of();
     private static volatile long revision;
     private static volatile Set<ResourceLocation> COMPANION_IDS = Set.of();
@@ -39,9 +45,10 @@ public final class GeneRegistry {
         COMPANION_IDS = Set.copyOf(flat);
         AliasIndex aliases = buildAliases(ENTRIES.keySet(), COMPANION_IDS);
         ORGANIZATIONAL_ALIASES = aliases.aliases();
-        for (ResourceLocation id : aliases.ambiguous()) {
-            LOGGER.warn("Nested gene short id '{}' is ambiguous; use its folder-qualified id", id);
-        }
+        // Organising genes into per-race folders with the same file names is normal, so a shared
+        // basename is only reported when a reference actually uses it (see canonicalId).
+        AMBIGUOUS_ALIASES = aliases.ambiguous();
+        WARNED_AMBIGUOUS.clear();
         revision++;
         com.aetherianartificer.townstead.pheno.power.Powers.dataReloaded();
     }
@@ -63,9 +70,21 @@ public final class GeneRegistry {
         ResourceLocation alias = ORGANIZATIONAL_ALIASES.get(id);
         if (alias != null) return alias;
         ResourceLocation legacy = com.aetherianartificer.townstead.root.LegacyNamespace.remap(id);
-        if (legacy == null) return null;
-        if (ENTRIES.containsKey(legacy)) return legacy;
-        return ORGANIZATIONAL_ALIASES.get(legacy);
+        if (legacy != null) {
+            if (ENTRIES.containsKey(legacy)) return legacy;
+            ResourceLocation legacyAlias = ORGANIZATIONAL_ALIASES.get(legacy);
+            if (legacyAlias != null) return legacyAlias;
+        }
+        warnIfAmbiguous(id);
+        if (legacy != null) warnIfAmbiguous(legacy);
+        return null;
+    }
+
+    /** A reference used a basename several nested genes share; say so once per reload. */
+    private static void warnIfAmbiguous(ResourceLocation id) {
+        if (AMBIGUOUS_ALIASES.contains(id) && WARNED_AMBIGUOUS.add(id)) {
+            LOGGER.warn("Gene id '{}' is ambiguous: several nested genes share that name; use the folder-qualified id", id);
+        }
     }
 
     /** The companion resource genes a gene declares inline, granted alongside it when expressed. */

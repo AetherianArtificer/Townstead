@@ -97,7 +97,7 @@ public final class GeneExpression {
                 }
             }
         }
-        List<Allele> inherited = AspectOverlay.apply(entity, Heredity.expressedAlleles(genotype));
+        List<Allele> inherited = AspectOverlay.apply(entity, withHeritageGenes(entity, Heredity.expressedAlleles(genotype)));
         if (evaluating.get()) return inherited;
         evaluating.set(true);
         List<Allele> active;
@@ -113,6 +113,25 @@ public final class GeneExpression {
             }
         }
         return active;
+    }
+
+    /** A villager's inherited alleles with whatever its named heritage grants laid over them. */
+    private static List<Allele> withHeritageGenes(LivingEntity entity, List<Allele> inherited) {
+        com.aetherianartificer.townstead.root.Heritage heritage = heritageOf(entity);
+        if (heritage == null) return inherited;
+        return Heredity.withGranted(inherited, Heredity.heritageAlleles(heritage));
+    }
+
+    /** The heritage an entity carries (a villager's own, a player's adopted or root one), or null. */
+    public static com.aetherianartificer.townstead.root.@org.jetbrains.annotations.Nullable Heritage heritageOf(LivingEntity entity) {
+        if (entity instanceof net.conczin.mca.entity.VillagerEntityMCA villager) {
+            var life = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).life();
+            return life.hasHeritage() ? life.heritage() : null;
+        }
+        if (entity instanceof net.minecraft.world.entity.player.Player player) {
+            return com.aetherianartificer.townstead.root.PlayerRoot.getHeritage(player);
+        }
+        return null;
     }
 
     /** Forget a cached expression, after something it depends on changed. */

@@ -47,11 +47,13 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
     @Override
     protected void apply(Map<ResourceLocation, JsonElement> entries, ResourceManager resourceManager,
                          ProfilerFiller profiler) {
+        entries = com.aetherianartificer.townstead.data.DataDocuments.resolve("gene", entries, resourceManager);
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
         Map<ResourceLocation, Gene> parsed = new LinkedHashMap<>();
         Map<ResourceLocation, List<ResourceLocation>> companions = new LinkedHashMap<>();
         Diagnostics diagnostics = new Diagnostics();
         Map<ResourceLocation, com.aetherianartificer.townstead.pheno.condition.Condition> expressionRules = new LinkedHashMap<>();
+        Map<ResourceLocation, Float> penetrance = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
             try {
@@ -94,14 +96,18 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                 }
                 com.aetherianartificer.townstead.pheno.condition.Condition expression = GeneExpression.parse(obj, type.get());
                 parsed.put(file, new Gene(file, displayName, description, icon, category,
-                        dominance, locus, weight, variants));
+                        dominance, locus, weight, variants, GsonHelper.getAsBoolean(obj, "drawback", false)));
                 expressionRules.put(file, expression);
+                if (obj.has("penetrance")) {
+                    penetrance.put(file, Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(obj, "penetrance", 1f))));
+                }
                 registerCompanions(file, companionConfigs, lang, parsed, companions, expressionRules);
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse gene {}: {}", file, ex.getMessage());
             }
         }
         GeneExpression.replaceAll(expressionRules);
+        GenePenetrance.replaceAll(penetrance);
         GeneRegistry.replaceAll(parsed, companions);
         PhenoDiagnostics.replace("gene", diagnostics.all());
         for (Diagnostic d : diagnostics.all()) {

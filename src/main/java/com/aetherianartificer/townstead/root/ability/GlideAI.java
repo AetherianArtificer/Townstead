@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 /**
- * Flight AI for winged villagers (bearers of a toggle-mode {@code elytra_flight}
+ * Flight AI for winged villagers (bearers of a toggle- or passive-mode {@code elytra_flight}
  * gene). Two ways into the air:
  *
  * <ul>
@@ -304,7 +304,7 @@ public final class GlideAI {
     public static String diagnose(VillagerEntityMCA villager) {
         StringBuilder out = new StringBuilder(villager.getName().getString());
         ResourceLocation gene = glideGene(villager);
-        if (gene == null) return out.append(": no toggle-mode elytra_flight gene — never flies").toString();
+        if (gene == null) return out.append(": no elytra_flight gene — never flies").toString();
         boolean lift = hasLiftAbility(villager);
         out.append(": flight gene ").append(gene.getPath())
                 .append(lift ? " + lift ability" : ", NO lift ability (edge glides only)");
@@ -368,11 +368,16 @@ public final class GlideAI {
         return out.toString();
     }
 
-    /** Whether the bearer has an active ability the AI may pump mid-flight for lift. */
+    /** Whether the bearer has an active ability or ai trigger the AI may pump mid-flight for lift. */
     private static boolean hasLiftAbility(VillagerEntityMCA villager) {
         for (Power gene : Powers.active(villager)) {
             if (gene.component() instanceof ActiveAbilityGeneType.Instance active
                     && active.aiTrigger() == ActiveAbilityGeneType.AiTrigger.WHEN_FLYING) {
+                return true;
+            }
+            if (gene.component() instanceof com.aetherianartificer.townstead.root.gene.types.TriggerGeneType.Instance trigger
+                    && trigger.trigger() == com.aetherianartificer.townstead.root.gene.types.TriggerGeneType.Trigger.AI
+                    && trigger.aiTrigger() == ActiveAbilityGeneType.AiTrigger.WHEN_FLYING) {
                 return true;
             }
         }
@@ -380,9 +385,10 @@ public final class GlideAI {
     }
 
     private static void deploy(VillagerEntityMCA villager) {
-        ResourceLocation gene = glideGene(villager);
-        if (gene == null) return;
-        if (!AbilityToggles.isOn(villager, gene)) {
+        Power power = glidePower(villager);
+        if (power == null) return;
+        ResourceLocation gene = power.id();
+        if (isToggle(power) && !AbilityToggles.isOn(villager, gene)) {
             AbilityToggles.set(villager, gene, true);
             AbilityToggles.syncEntity(villager);
         }
@@ -433,8 +439,10 @@ public final class GlideAI {
     /** Vanilla clears the fall-flight flag on touchdown; this folds the wings after it. */
     private static void foldIfDeployed(VillagerEntityMCA villager) {
         if (!AbilityToggles.hasAny(villager)) return;
-        ResourceLocation gene = glideGene(villager);
-        if (gene == null || !AbilityToggles.isOn(villager, gene)) return;
+        Power power = glidePower(villager);
+        if (power == null || !isToggle(power)) return;     // passive wings have nothing to fold away
+        ResourceLocation gene = power.id();
+        if (!AbilityToggles.isOn(villager, gene)) return;
         AbilityToggles.set(villager, gene, false);
         AbilityToggles.syncEntity(villager);
     }
@@ -516,15 +524,29 @@ public final class GlideAI {
                 ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, villager)).getType() == HitResult.Type.MISS;
     }
 
-    /** The bearer's toggle-mode elytra-flight gene, or null. Only called at deploy/fold/launch moments. */
+    /** The bearer's elytra-flight gene, or null. Only called at deploy/fold/launch moments. */
     private static ResourceLocation glideGene(VillagerEntityMCA villager) {
+        Power power = glidePower(villager);
+        return power == null ? null : power.id();
+    }
+
+    /**
+     * The bearer's elytra-flight power: a toggle-mode one (deployed by switching it on, as a player
+     * would), or a passive one (wings always ready, deployed just by taking off).
+     */
+    private static Power glidePower(VillagerEntityMCA villager) {
         for (Power gene : Powers.active(villager)) {
             if (gene.component() instanceof AbilityGeneType.Instance ability
                     && ability.ability() == Ability.ELYTRA_FLIGHT
-                    && ability.mode() == AbilityGeneType.Mode.TOGGLE) {
-                return gene.id();
+                    && (ability.mode() == AbilityGeneType.Mode.TOGGLE || ability.mode() == AbilityGeneType.Mode.PASSIVE)) {
+                return gene;
             }
         }
         return null;
+    }
+
+    private static boolean isToggle(Power power) {
+        return power.component() instanceof AbilityGeneType.Instance ability
+                && ability.mode() == AbilityGeneType.Mode.TOGGLE;
     }
 }

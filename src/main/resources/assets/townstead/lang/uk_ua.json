@@ -1126,6 +1126,7 @@
   "townstead.heritage.tooltip.dominant": "Домінантний",
   "townstead.heritage.tooltip.recessive": "Рецесивний",
   "townstead.heritage.tooltip.carrier_wild": "Проявляє %s, але лише одна копія — деякі діти можуть не успадкувати це.",
+  "townstead.heritage.tooltip.carrier_hidden": "Несе %s, але не проявляє — діти все ще можуть це успадкувати.",
   "townstead.heritage.tooltip.carrier": "Проявляє %s, але несе прихований %s, що може передатися дітям.",
   "block.townstead.room_ownership_tag": "Табличка власників",
   "townstead.room_ownership.title": "Власники кімнати",
