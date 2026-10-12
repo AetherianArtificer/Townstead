@@ -277,6 +277,26 @@ public final class RootClientStore {
         return set != null && set.contains(geneId);
     }
 
+    /** Give {@code toId} everything {@code fromId} has (the editor's second model wearing the first's Root). */
+    public static void copy(int fromId, int toId) {
+        if (fromId == toId) return;
+        copyEntry(BY_ENTITY, fromId, toId);
+        copyEntry(EXPRESSED, fromId, toId);
+        copyEntry(VARIANTS, fromId, toId);
+        copyEntry(TOGGLES, fromId, toId);
+        copyEntry(HAIR, fromId, toId);
+        copyEntry(HAIR_COLORS, fromId, toId);
+        copyEntry(HAIR_PALETTES, fromId, toId);
+        copyEntry(HAIR_GRADIENTS, fromId, toId);
+    }
+
+    // Shares the value: the copy only ever reads it, and follows the source's in-place edits.
+    private static <V> void copyEntry(Map<Integer, V> map, int fromId, int toId) {
+        V value = map.get(fromId);
+        if (value == null) map.remove(toId);
+        else map.put(toId, value);
+    }
+
     /** Drop a single entry; used to evict an editor's throwaway dummy when its screen closes. */
     public static void remove(int entityId) {
         BY_ENTITY.remove(entityId);

@@ -98,6 +98,11 @@ public final class PhenoSchemas {
                 .field(of("default", PhenoType.STRING)
                         .doc("Toggle-mode initial state: on or off (default off). Reload restores it."))
                 .field(of("slot", PhenoType.INT))
+                .field(of("style", PhenoType.STRING)
+                        .doc("Flight abilities only. elytra_flight: glide, flap, soar or hover. hover: hover or drift. "
+                                + "Omitted: flap with a when_flying lift ability, else glide; drift for hover."))
+                .field(of("cruise_height", PhenoType.FLOAT)
+                        .doc("Flight abilities only. Blocks above the terrain while travelling; the float height for drift."))
                 .field(of("condition", PhenoType.CONDITION)).build());
 
         NodeSchemas.register(NodeSchema.of("pheno:attribute", NodeDomain.GENE)

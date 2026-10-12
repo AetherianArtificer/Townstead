@@ -81,6 +81,7 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
         Map<ResourceLocation, GivenNames> inlineGiven = new LinkedHashMap<>();
         Map<ResourceLocation, FamilyNames> inlineFamily = new LinkedHashMap<>();
         Map<ResourceLocation, ResourceLocation> legacyIds = new LinkedHashMap<>();
+        Map<ResourceLocation, ResourceLocation> villages = new LinkedHashMap<>();
 
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
@@ -139,6 +140,10 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
                         Demonym.parse(root, file.toString(), lang), parent(root, file), spirit(root, file),
                         forms(root, file)));
                 for (ResourceLocation legacyId : aliases) legacyIds.put(legacyId, file);
+                for (ResourceLocation structure : villages(root)) {
+                    ResourceLocation previous = villages.putIfAbsent(structure, file);
+                    if (previous != null) LOGGER.warn("Village {} is claimed by both {} and {}", structure, previous, file);
+                }
             } catch (Exception exception) {
                 LOGGER.warn("Could not load culture {}", file, exception);
             }
@@ -156,7 +161,20 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
         }
         Map<ResourceLocation, Culture> resolved = inherit(loaded);
         Cultures.replace(resolved, legacyIds);
+        CultureVillages.replaceCultures(villages);
         LOGGER.info("Loaded {} culture(s)", resolved.size());
+    }
+
+    /** {@code "villages": ["ns:village/town"]}: the village structures that found as this culture. */
+    public static List<ResourceLocation> villages(JsonObject root) {
+        if (!root.has("villages")) return List.of();
+        List<ResourceLocation> out = new ArrayList<>();
+        for (JsonElement element : GsonHelper.getAsJsonArray(root, "villages")) {
+            ResourceLocation structure = DataPackLang.parseId(GsonHelper.convertToString(element, "villages[]"));
+            if (structure == null) throw new IllegalArgumentException("Every village must be a structure id");
+            out.add(structure);
+        }
+        return out;
     }
 
     private static @Nullable ResourceLocation parent(JsonObject root, ResourceLocation file) {

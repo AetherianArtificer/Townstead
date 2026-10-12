@@ -193,6 +193,64 @@ public abstract class VillagerEditorRootMixin extends Screen {
         return out;
     }
 
+    // TEMP hair-colour trace: logs the editor model's hair whenever it differs from the last log.
+    @Unique private String townstead$dbgLast = "";
+
+    @Unique
+    private void townstead$dbgHair(String where) {
+        if (villager == null) return;
+        var s = RootClientStore.hairSettings(villager);
+        String now = String.format("dye=%08X eu=%.3f ph=%.3f settings[hair=%s ranges=%d colors=%d gradients=%d]",
+                villager.getHairDye(), villager.getGenetics().getGene(Genetics.EUMELANIN),
+                villager.getGenetics().getGene(Genetics.PHEOMELANIN), s.enabled(), s.colorRanges().size(),
+                s.colors().size(), s.gradients().size());
+        if (now.equals(townstead$dbgLast)) return;
+        townstead$dbgLast = now;
+        org.slf4j.LoggerFactory.getLogger("townstead-hairtrace").info("[{}] page={} primed={} dirty={} {}",
+                where, page, townstead$primed, townstead$previewDirty, now);
+    }
+
+    @Inject(method = "setVillagerData", remap = false, require = 0, at = @At("HEAD"))
+    private void townstead$dbgDataIn(net.minecraft.nbt.CompoundTag data, CallbackInfo ci) {
+        StringBuilder keys = new StringBuilder();
+        for (String key : data.getAllKeys()) {
+            String k = key.toLowerCase(java.util.Locale.ROOT);
+            if (k.contains("hair") || k.contains("melanin")) keys.append(key).append('=').append(data.get(key)).append(' ');
+        }
+        townstead$dbgHair("data-in-before");
+        org.slf4j.LoggerFactory.getLogger("townstead-hairtrace").info("[data-in] {}", keys);
+    }
+
+    @Inject(method = "setVillagerData", remap = false, require = 0, at = @At("TAIL"))
+    private void townstead$dbgDataOut(net.minecraft.nbt.CompoundTag data, CallbackInfo ci) {
+        townstead$dbgHair("data-in-after");
+    }
+
+    @Inject(method = "syncVillagerData", remap = false, at = @At("TAIL"))
+    private void townstead$dbgSync(CallbackInfo ci) {
+        townstead$dbgLast = "";
+        townstead$dbgHair("done-sync");
+    }
+
+    // MCA's selection grids (clothes, hair, skin) and its skin library draw a second model loaded
+    // from the first's data each frame; it gets the first's Root too, so they show the real body.
+    // The preset compare panel loads a preset's data instead, so it is left alone.
+    //? if neoforge {
+    @Inject(method = "render", remap = false, at = @At("HEAD"))
+    //?} else {
+    /*@Inject(method = "m_88315_", remap = false, at = @At("HEAD"))
+    *///?}
+    private void townstead$shareRootWithGrid(GuiGraphics context, int mouseX, int mouseY, float delta,
+                                             CallbackInfo ci) {
+        townstead$dbgHair("render-head");
+        if (!townstead$primed) return;
+        VillagerEntityMCA grid = ((com.aetherianartificer.townstead.mixin.accessor.VillagerEditorScreenAccessor) (Object) this)
+                .townstead$getVillagerVisualization();
+        if (grid == null) return;
+        if ("presets".equals(page)) RootClientStore.remove(grid.getId());
+        else RootClientStore.copy(villager.getId(), grid.getId());
+    }
+
     // Draw the previewed origin's ambient particles around the model (the real emitter is
     // server-side and never runs in this GUI). Matches MCA's entity render box:
     // x = width/2 - DATA_WIDTH(175), y = height/2, half-height 75.
@@ -205,7 +263,9 @@ public abstract class VillagerEditorRootMixin extends Screen {
                                                   CallbackInfo ci) {
         com.aetherianartificer.townstead.root.appearance.HairColors.clamp(
                 villager, RootClientStore.hairSettings(villager));
+        townstead$dbgHair("render-clamp");
         townstead$followAppliedRoll();
+        townstead$dbgHair("render-follow");
         int x = this.width / 2 - 175;
         int y = this.height / 2;
         PreviewParticles.render(context, villager, townstead$previewSubject(), x, y - 75, x + 175, y + 75);
@@ -291,6 +351,7 @@ public abstract class VillagerEditorRootMixin extends Screen {
         if (townstead$session != null && !"origins".equals(page)) townstead$session.drop();
         var settings = RootClientStore.hairSettings(villager);
         com.aetherianartificer.townstead.root.appearance.HairColors.clamp(villager, settings);
+        townstead$dbgHair("setPage-head->" + page);
         // MCA flips into its HSV dye-slider mode at load whenever the character carries a hair
         // dye. Under a policy the dye is ours to manage (a palette always has one, a genetic range
         // never does), so those sliders would only fight the clamp; force the genetic layout,
@@ -365,6 +426,7 @@ public abstract class VillagerEditorRootMixin extends Screen {
             townstead$seedCarriedVariants();
             townstead$mirrorRealState();
         }
+        townstead$dbgHair("setPage-tail");
 
         // Data-pack-driven Character layout: when the species declares one (or the character
         // carries editable Townstead genes, which synthesizes the default layout — native groups +

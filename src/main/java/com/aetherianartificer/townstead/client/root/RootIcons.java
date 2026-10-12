@@ -34,7 +34,7 @@ public final class RootIcons {
     private static final int SIZE = 256;        // rendered, then trimmed to the head and scaled down
     private static final int ICON = 64;
     static float yaw = 35f;                     // the view: turned to show one side, tilted to show the top
-    static float pitch = 25f;
+    static float pitch = -18f;                 // negative looks down onto the head (the model is flipped on z)
 
     private RootIcons() {}
 

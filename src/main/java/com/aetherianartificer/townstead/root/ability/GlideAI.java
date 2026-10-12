@@ -1,19 +1,28 @@
 package com.aetherianartificer.townstead.root.ability;
 
 import com.aetherianartificer.townstead.root.gene.types.AbilityGeneType;
-import com.aetherianartificer.townstead.root.gene.types.ActiveAbilityGeneType;
 import com.aetherianartificer.townstead.pheno.power.Power;
-import com.aetherianartificer.townstead.pheno.power.Powers;
+import com.aetherianartificer.townstead.root.locomotion.FlightProfile;
+import com.aetherianartificer.townstead.root.locomotion.FlightStyle;
+import com.aetherianartificer.townstead.root.locomotion.Locomotion;
+import com.aetherianartificer.townstead.root.locomotion.MovementMode;
+import com.aetherianartificer.townstead.root.locomotion.Pilot;
+import com.aetherianartificer.townstead.root.locomotion.TripCost;
+import com.aetherianartificer.townstead.root.locomotion.fly.ElytraPilot;
+import com.aetherianartificer.townstead.root.locomotion.fly.HoverPilot;
+import com.aetherianartificer.townstead.root.locomotion.fly.PlanThrottle;
+import com.aetherianartificer.townstead.root.locomotion.plan.AirRoute;
+import com.aetherianartificer.townstead.root.locomotion.plan.AirRoutePlanner;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.conczin.mca.entity.ai.relationship.AgeState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
-import net.minecraft.world.entity.ai.memory.WalkTarget;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -21,62 +30,53 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 /**
- * Flight AI for winged villagers (bearers of a toggle- or passive-mode {@code elytra_flight}
- * gene). Two ways into the air:
+ * When winged villagers take to the air. The flying itself belongs to a pilot
+ * ({@link ElytraPilot} for glide, flap and soar; {@link HoverPilot} for hover); this
+ * class decides when to launch and catches falls. Drift bearers never come through here:
+ * {@code DriftPilot} floats them all the time.
  *
  * <ul>
- * <li><b>Fall recovery</b>: any fall past a few blocks deploys the wings.</li>
- * <li><b>Island hop</b>: when the travel target sits inside the glide cone (far
- * enough out, low enough down, straight line clear), jump off and glide there
- * deliberately. No aerial A*: a glide cannot climb, so the whole air path is one
- * chord — feasibility is a cone test plus a single raycast, and the launch only
- * fires once terrain stops blocking that ray, i.e. at the brink. Landing short is
- * self-healing: fold, walk, scan again.</li>
+ * <li><b>Fall recovery</b>: any fall past a few blocks deploys the wings (or starts a
+ * hover) and plans a landing.</li>
+ * <li><b>Trips</b>: flying wins when it is clearly quicker than walking, stamina
+ * included ({@link TripCost}), or when walking can't reach at all; a bearer stranded on
+ * a perch flies down rather than walking off the edge. Only a planned route launches.</li>
+ * <li><b>Joy and panic flights</b>: idle fliers with lift sometimes fly for fun; a
+ * threatened one flies away from the threat.</li>
  * </ul>
  *
- * <p>Mid-air they steer toward the target, dive to build airspeed then flatten to
- * cruise (with a lift assist trimming the sink — villagers are born fliers), and
- * flare onto the landing spot when close. Wings fold on touchdown.</p>
- *
- * <p>Per-tick cost for wingless villagers is one {@code isFallFlying} check plus,
- * at 1 Hz, a couple of cheap geometry gates that fail before any gene scan.</p>
+ * <p>Babies, toddlers and children stay grounded (a caught fall still opens the wings);
+ * teens fly shorter trips. Per-tick cost for wingless villagers is one pilot check plus,
+ * at 1 Hz, a couple of cheap geometry gates that fail before any gene scan. Planning is throttled per server
+ * tick, and a failed plan is not retried for the same trip from the same spot for a while.</p>
  */
 public final class GlideAI {
 
     private GlideAI() {}
 
     private static final float DEPLOY_FALL_DISTANCE = 2.5f;
-    private static final float GLIDE_PITCH = 18f;
-    private static final float CRUISE_PITCH = 6f;
-    private static final float FLARE_DISTANCE = 12f;
-    // Conservative vs the assisted glide ratio so launches never overpromise.
-    private static final double GLIDE_RATIO = 3.0;
     private static final double MIN_DROP = 3.0;
-    private static final double MIN_HORIZONTAL = 8.0;
-    // Powered launches (bearer has a when_flying lift ability): worth the stamina
-    // only for real trips, and the pump budget caps range and climb.
-    private static final double POWERED_MIN_HORIZONTAL = 20.0;
-    private static final double POWERED_MAX_HORIZONTAL = 48.0;
-    private static final double POWERED_MAX_CLIMB = 6.0;
+    /** Shorter errands stay walks (chatting with a neighbor, a short wander). */
+    private static final double MIN_TRIP = 8.0;
+    /** Cut off from the target on foot (a perch, a moat): any hop this long is worth wings. */
+    private static final double STRANDED_MIN_TRIP = 3.0;
+    private static final double MAX_TRIP = 64.0;
+    private static final double TEEN_MAX_TRIP = 32.0;
+    private static final double MAX_CLIMB = 12.0;
+    /** A route landing this close to where the bearer stands is no trip (the best spot is the perch it is on). */
+    private static final double SAME_SPOT_SQR = 4.0;
     private static final int LAUNCH_SCAN_INTERVAL = 20;
     // Idle winged villagers with a lift ability sometimes fly for the joy of it:
     // one roll per scan second, so an average wait of about half a minute.
     private static final int JOY_FLIGHT_CHANCE = 30;
+    private static final long FAILED_PLAN_COOLDOWN = 200;
+    private static final double FAILED_PLAN_MOVE_SQR = 4.0;
 
-    /** A deliberate launch: hop this tick, deploy on the first airborne tick. */
-    private static final class Launch {
-        final BlockPos target;
-        final long deployBy;
-        boolean deployed;
-
-        Launch(BlockPos target, long deployBy) {
-            this.target = target;
-            this.deployBy = deployBy;
-        }
-    }
+    /** A plan that failed: not retried for this target from about here until the cooldown runs out. */
+    private record FailedPlan(BlockPos target, BlockPos from, long until, String reason) {}
 
     /** Server thread only; weak keys drop entries with the entity. */
-    private static final Map<VillagerEntityMCA, Launch> LAUNCHES = new WeakHashMap<>();
+    private static final Map<VillagerEntityMCA, FailedPlan> FAILED = new WeakHashMap<>();
 
     /**
      * Highest Y seen since leaving the ground. Vanilla {@code fallDistance} is
@@ -86,26 +86,32 @@ public final class GlideAI {
      */
     private static final Map<VillagerEntityMCA, Double> FALL_PEAK = new WeakHashMap<>();
 
+    private static final ElytraPilot.Wings WINGS = new ElytraPilot.Wings() {
+        @Override
+        public boolean deploy(Mob mob) {
+            return mob instanceof VillagerEntityMCA villager && deployWings(villager);
+        }
+
+        @Override
+        public void fold(Mob mob) {
+            if (mob instanceof VillagerEntityMCA villager) foldIfDeployed(villager);
+        }
+    };
+
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
-        if (villager.isFallFlying()) {
-            steer(villager);
+        if (Locomotion.pilot(villager) != null) {
+            FALL_PEAK.remove(villager);
             return;
         }
-        Launch launch = LAUNCHES.get(villager);
-        if (launch != null && !launch.deployed) {
-            if (villager.level().getGameTime() > launch.deployBy) {
-                LAUNCHES.remove(villager);
-            } else if (!villager.onGround()) {
-                deploy(villager);
-                launch.deployed = true;
-                return;
-            }
+        if (villager.isFallFlying()) {
+            // Flying with no pilot (a reload mid-flight): pick it up as a caught fall.
+            recover(villager);
+            return;
         }
         if (villager.onGround() || villager.isInWater() || villager.isPassenger()) {
             FALL_PEAK.remove(villager);
             foldIfDeployed(villager);
-            if (launch != null && launch.deployed) LAUNCHES.remove(villager);
             if (villager.onGround() && !villager.isInWater() && !villager.isPassenger()) {
                 maybeLaunch(villager);
             }
@@ -117,83 +123,102 @@ public final class GlideAI {
         // wings never deploy for exactly the bearers who have them.
         double peak = FALL_PEAK.merge(villager, villager.getY(), Math::max);
         if (peak - villager.getY() > DEPLOY_FALL_DISTANCE && villager.getDeltaMovement().y < -0.05) {
-            deploy(villager);
+            recover(villager);
         }
     }
 
-    /**
-     * Whether extra lift would help right now: gliding toward a target the remaining
-     * glide cone can no longer reach (falling short, or the target sits above). False
-     * during the landing flare and on target-less recovery glides, so a lift ability
-     * (ai_trigger {@code when_flying}) never shoves a villager off its landing spot.
-     */
+    /** Whether a {@code when_flying} lift ability should fire: the pilot is below its route or the route climbs ahead. */
     public static boolean wantsLift(VillagerEntityMCA villager) {
-        if (!villager.isFallFlying()) return false;
+        Pilot pilot = Locomotion.pilot(villager);
+        return pilot != null && pilot.wantsLift(villager);
+    }
+
+    /** Caught falling: wings out (or hover on) and land somewhere planned, else glide on and keep looking. */
+    private static void recover(VillagerEntityMCA villager) {
+        FlightProfile profile = flier(villager);
+        if (profile == null) return;
         BlockPos target = travelTarget(villager);
-        if (target == null) {
-            Launch launch = LAUNCHES.get(villager);
-            if (launch == null) return false;
-            target = launch.target;
+        if (target == null) target = landingAhead(villager);
+        AirRoute route = null;
+        if (target != null && PlanThrottle.tryAcquire(villager.level())) {
+            route = AirRoutePlanner.plan(villager, profile, target).route();
         }
-        double dx = target.getX() + 0.5 - villager.getX();
-        double dz = target.getZ() + 0.5 - villager.getZ();
-        double horiz = Math.sqrt(dx * dx + dz * dz);
-        if (horiz < FLARE_DISTANCE) return false;
-        return villager.getY() - target.getY() < horiz / GLIDE_RATIO;
+        if (profile.style().physics() == FlightStyle.Physics.NO_GRAVITY) {
+            Locomotion.start(villager, MovementMode.AIR, new HoverPilot(villager, profile, route, target), target);
+        } else {
+            Locomotion.start(villager, MovementMode.AIR,
+                    new ElytraPilot(villager, profile, route, target, WINGS, false), target);
+        }
+        FALL_PEAK.remove(villager);
     }
 
     /**
-     * Take to the air when it beats walking. Three kinds of launch:
+     * Take to the air when it beats walking:
      *
      * <ul>
-     * <li><b>Glide</b>: the travel target sits inside the glide cone — hop off the
-     * edge and coast there on wings alone.</li>
-     * <li><b>Powered</b>: the target is far but level (or a little up) and the bearer
-     * carries a {@code when_flying} lift ability — take off from flat ground and let
-     * the pumps carry the climb.</li>
-     * <li><b>Joy flight</b>: no destination at all; idle winged fliers with a lift
-     * ability occasionally pick a clear spot on the skyline and just go.</li>
+     * <li><b>Trip</b>: the travel target is far enough out and a flight there is clearly
+     * quicker than the walk (or the walk can't reach). A pure glider needs the target
+     * inside its glide cone and waits for the brink.</li>
+     * <li><b>Joy flight</b>: no destination at all; idle fliers that can climb occasionally
+     * pick a clear spot on the skyline and just go.</li>
      * </ul>
      *
-     * <p>Cheap gates run first; gene scans last. The chord raycast doubles as the
-     * "wait for the brink / for open air" test.</p>
+     * <p>Cheap gates run first; gene scans and the planner last.</p>
      */
     private static void maybeLaunch(VillagerEntityMCA villager) {
         if (villager.tickCount % LAUNCH_SCAN_INTERVAL != 0) return;
-        if (villager.isBaby() || villager.isSleeping() || LAUNCHES.containsKey(villager)) return;
+        if (!oldEnough(villager) || villager.isSleeping()) return;
         // Panic preempts everything: the panic brain sets short flee targets that
-        // would fail the launch envelope below, yet the air is the one escape a
+        // would fail the trip gates below, yet the air is the one escape a
         // ground threat can't follow.
         if (maybePanicLaunch(villager)) return;
         BlockPos target = travelTarget(villager);
-        // A doorstep errand (chatting with a neighbor, a short wander) shouldn't
-        // suppress wanderlust — fall through to the joy roll instead of bailing.
-        if (target != null && horizontalTo(villager, target) >= MIN_HORIZONTAL) {
-            double drop = villager.getY() - target.getY();
-            double dx = target.getX() + 0.5 - villager.getX();
-            double dz = target.getZ() + 0.5 - villager.getZ();
-            double horiz = Math.sqrt(dx * dx + dz * dz);
-            boolean glidable = drop >= MIN_DROP && horiz <= drop * GLIDE_RATIO;
-            // The powered minimum exists so short walkable errands stay walks; when
-            // the ground path can't reach the target at all (a gap, a moat), a short
-            // flight is the whole point of having wings — any launchable distance goes.
-            double poweredMin = groundCanReach(villager) ? POWERED_MIN_HORIZONTAL : MIN_HORIZONTAL;
-            if (!glidable && (horiz < poweredMin || horiz > POWERED_MAX_HORIZONTAL
-                    || drop < -POWERED_MAX_CLIMB)) {
+        if (target != null) {
+            boolean stranded = !TripCost.walkCanReach(villager);
+            double horiz = horizontalTo(villager, target);
+            // A doorstep errand shouldn't suppress wanderlust: fall through to the joy roll.
+            if (horiz >= (stranded ? STRANDED_MIN_TRIP : MIN_TRIP)) {
+                maybeTrip(villager, target, horiz);
                 return;
             }
-            if (!clearLine(villager, target)) return;
-            if (glideGene(villager) == null) return;
-            if (!glidable && !hasLiftAbility(villager)) return;
-            launch(villager, target, !glidable);
-            return;
         }
-        // Idle: sometimes fly for the joy of it (lift ability required — a joy glide
+        // Idle: sometimes fly for the joy of it (lift required — a joy glide
         // without the means to climb back is just a stranding).
         if (villager.getRandom().nextInt(JOY_FLIGHT_CHANCE) != 0) return;
-        if (glideGene(villager) == null || !hasLiftAbility(villager)) return;
+        FlightProfile profile = flier(villager);
+        if (profile == null || !canClimb(villager, profile)) return;
         BlockPos joyTarget = pickJoyTarget(villager);
-        if (joyTarget != null) launch(villager, joyTarget, true);
+        if (joyTarget != null) launch(villager, profile, joyTarget, true, Double.POSITIVE_INFINITY);
+    }
+
+    private static void maybeTrip(VillagerEntityMCA villager, BlockPos target, double horiz) {
+        double drop = villager.getY() - target.getY();
+        if (horiz > maxTrip(villager) || drop < -MAX_CLIMB) return;
+        double walkTicks = TripCost.walkTicks(villager, target);
+        FlightProfile profile = flier(villager);
+        if (profile == null) return;
+        boolean climbs = canClimb(villager, profile);
+        if (!climbs) {
+            boolean glidable = drop >= MIN_DROP && horiz <= drop * profile.style().glideRatio();
+            if (!glidable || !clearLine(villager, target)) return;
+        }
+        if (!TripCost.flightWins(TripCost.estimateFlyTicks(profile.style(), horiz, drop), walkTicks)) return;
+        launch(villager, profile, target, climbs, walkTicks);
+    }
+
+    /** Teens and adults fly trips; younger villagers stay on the ground. */
+    private static boolean oldEnough(VillagerEntityMCA villager) {
+        AgeState age = AgeState.byCurrentAge(villager.getAge());
+        return age == AgeState.TEEN || age == AgeState.ADULT;
+    }
+
+    private static double maxTrip(VillagerEntityMCA villager) {
+        return AgeState.byCurrentAge(villager.getAge()) == AgeState.TEEN ? TEEN_MAX_TRIP : MAX_TRIP;
+    }
+
+    /** Lift means climbing: a {@code when_flying} ability on wings, or a gravity-free style. */
+    private static boolean canClimb(VillagerEntityMCA villager, FlightProfile profile) {
+        return profile.style().physics() == FlightStyle.Physics.NO_GRAVITY || FlightProfile.hasLiftAbility(villager);
     }
 
     private static double horizontalTo(VillagerEntityMCA villager, BlockPos target) {
@@ -202,18 +227,44 @@ public final class GlideAI {
         return Math.sqrt(dx * dx + dz * dz);
     }
 
-    /** Whether ground navigation currently has a complete path to its target. */
-    private static boolean groundCanReach(VillagerEntityMCA villager) {
-        Path path = villager.getNavigation().getPath();
-        return path != null && path.canReach();
-    }
-
-    /** Face the destination, hop (higher when the climb is on wingbeats), record the launch. */
-    private static void launch(VillagerEntityMCA villager, BlockPos target, boolean powered) {
-        double dx = target.getX() + 0.5 - villager.getX();
-        double dz = target.getZ() + 0.5 - villager.getZ();
+    /**
+     * Plan the trip; only a planned route launches, and only when it still beats the walk
+     * once priced in full. A failure is remembered for this trip from about here.
+     */
+    private static boolean launch(VillagerEntityMCA villager, FlightProfile profile, BlockPos target, boolean powered,
+                                  double walkTicks) {
+        long now = villager.level().getGameTime();
+        FailedPlan failed = FAILED.get(villager);
+        if (failed != null && now < failed.until() && failed.target().equals(target)
+                && failed.from().distSqr(villager.blockPosition()) < FAILED_PLAN_MOVE_SQR) {
+            return false;
+        }
+        if (!PlanThrottle.tryAcquire(villager.level())) return false;
+        AirRoutePlanner.Result result = AirRoutePlanner.plan(villager, profile, target);
+        String failure = result.failure();
+        AirRoute route = result.route();
+        if (route != null && route.landing().distSqr(villager.blockPosition()) <= SAME_SPOT_SQR) {
+            failure = "best landing is where it stands";
+            route = null;
+        } else if (route != null && !TripCost.flightWins(TripCost.flyTicks(route), walkTicks)) {
+            failure = String.format("walking is quicker (%.0f vs %.0f ticks)", walkTicks, TripCost.flyTicks(route));
+            route = null;
+        }
+        if (route == null) {
+            FAILED.put(villager, new FailedPlan(target.immutable(), villager.blockPosition(),
+                    now + FAILED_PLAN_COOLDOWN, failure));
+            return false;
+        }
+        FAILED.remove(villager);
+        if (profile.style().physics() == FlightStyle.Physics.NO_GRAVITY) {
+            Locomotion.start(villager, MovementMode.AIR, new HoverPilot(villager, profile, route, target), target);
+            return true;
+        }
+        Vec3 first = route.waypoints().size() > 1 ? route.waypoints().get(1) : route.end();
+        double dx = first.x - villager.getX();
+        double dz = first.z - villager.getZ();
         double horiz = Math.sqrt(dx * dx + dz * dz);
-        if (horiz < 1.0e-3) return;
+        if (horiz < 1.0e-3) return false;
         float yaw = (float) Math.toDegrees(Math.atan2(dz, dx)) - 90f;
         villager.setYRot(yaw);
         villager.yBodyRot = yaw;
@@ -221,8 +272,8 @@ public final class GlideAI {
         double up = powered ? 0.9 : 0.5;
         villager.setDeltaMovement(villager.getDeltaMovement().add(dx / horiz * 0.3, up, dz / horiz * 0.3));
         villager.hasImpulse = true;
-        villager.getNavigation().stop();
-        LAUNCHES.put(villager, new Launch(target, villager.level().getGameTime() + 10));
+        Locomotion.start(villager, MovementMode.AIR, new ElytraPilot(villager, profile, route, target, WINGS, true), target);
+        return true;
     }
 
     /**
@@ -250,17 +301,15 @@ public final class GlideAI {
     private static boolean maybePanicLaunch(VillagerEntityMCA villager) {
         LivingEntity threat = threat(villager);
         if (threat == null) return false;
-        if (glideGene(villager) == null || !hasLiftAbility(villager)) return false;
+        FlightProfile profile = flier(villager);
+        if (profile == null || !canClimb(villager, profile)) return false;
         double away = Math.atan2(villager.getZ() - threat.getZ(), villager.getX() - threat.getX());
         var random = villager.getRandom();
         for (int i = 0; i < 12; i++) {
             double angle = away + (random.nextDouble() - 0.5) * (Math.PI * 2.0 / 3.0);
             double dist = 16.0 + random.nextDouble() * 24.0;
             BlockPos pos = sampleLanding(villager, angle, dist);
-            if (pos != null) {
-                launch(villager, pos, true);
-                return true;
-            }
+            if (pos != null) return launch(villager, profile, pos, true, Double.POSITIVE_INFINITY);
         }
         return false;
     }
@@ -277,23 +326,34 @@ public final class GlideAI {
         return null;
     }
 
-    /** One landing-spot sample: heightmap surface at the offset, or null if it fails a filter. */
+    /**
+     * One destination sample for a joy or panic flight: the terrain surface at the
+     * offset, or null if it fails a cheap filter. The planner picks the actual
+     * landing spot near it.
+     */
     private static BlockPos sampleLanding(VillagerEntityMCA villager, double angle, double dist) {
-        // 24-block drop cap: launches must not strand a villager below its home range.
-        return sampleLanding(villager, angle, dist, 24.0);
-    }
-
-    private static BlockPos sampleLanding(VillagerEntityMCA villager, double angle, double dist, double maxDrop) {
         int x = Mth.floor(villager.getX() + Math.cos(angle) * dist);
         int z = Mth.floor(villager.getZ() + Math.sin(angle) * dist);
+        if (!villager.level().hasChunk(x >> 4, z >> 4)) return null;
         int y = villager.level().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
         BlockPos pos = new BlockPos(x, y, z);
         // The heightmap counts fluid surfaces; a flight ending in a splash isn't a landing.
         if (!villager.level().getFluidState(pos.below()).isEmpty()) return null;
         double drop = villager.getY() - pos.getY();
-        if (drop < -POWERED_MAX_CLIMB || drop > maxDrop) return null;
+        // 24-block drop cap: flights must not strand a villager below its home range.
+        if (drop < -MAX_CLIMB || drop > 24.0) return null;
         if (!clearLine(villager, pos)) return null;
         return pos;
+    }
+
+    /** Somewhere ahead and below to come down when a fall has no destination. */
+    private static BlockPos landingAhead(VillagerEntityMCA villager) {
+        Vec3 look = villager.getLookAngle();
+        double ahead = Math.atan2(look.z, look.x);
+        int x = Mth.floor(villager.getX() + Math.cos(ahead) * 12.0);
+        int z = Mth.floor(villager.getZ() + Math.sin(ahead) * 12.0);
+        if (!villager.level().hasChunk(x >> 4, z >> 4)) return null;
+        return new BlockPos(x, villager.level().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z);
     }
 
     /**
@@ -303,48 +363,59 @@ public final class GlideAI {
      */
     public static String diagnose(VillagerEntityMCA villager) {
         StringBuilder out = new StringBuilder(villager.getName().getString());
-        ResourceLocation gene = glideGene(villager);
-        if (gene == null) return out.append(": no elytra_flight gene — never flies").toString();
-        boolean lift = hasLiftAbility(villager);
-        out.append(": flight gene ").append(gene.getPath())
-                .append(lift ? " + lift ability" : ", NO lift ability (edge glides only)");
-        if (villager.isFallFlying()) return out.append(" — FLYING now").toString();
-        if (villager.isBaby()) return out.append(" — baby, launches off").toString();
+        FlightProfile profile = FlightProfile.of(villager);
+        if (profile == null) return out.append(": no flight gene, never flies").toString();
+        boolean lift = FlightProfile.hasLiftAbility(villager);
+        out.append(": flight gene ").append(profile.power().id().getPath()).append(", ").append(profile.describe());
+        if (profile.style() != FlightStyle.DRIFT) {
+            out.append(lift ? " + lift ability" : canClimb(villager, profile) ? "" : ", NO lift ability (edge glides only)");
+        }
+        Pilot pilot = Locomotion.pilot(villager);
+        if (pilot != null) return out.append("\n  ").append(Locomotion.describe(villager)).toString();
+        if (profile.style() == FlightStyle.DRIFT) return out.append("\n  drift starts within a second").toString();
+        boolean climbs = canClimb(villager, profile);
+        if (!oldEnough(villager)) return out.append(" — too young for trips").toString();
         if (villager.isSleeping()) return out.append(" — sleeping").toString();
         if (villager.isInWater()) return out.append(" — in water").toString();
-        if (LAUNCHES.containsKey(villager)) out.append(" — launch pending");
+        FailedPlan failed = FAILED.get(villager);
+        if (failed != null && villager.level().getGameTime() < failed.until()) {
+            out.append("\n  last plan to ").append(failed.target().toShortString())
+                    .append(" failed: ").append(failed.reason());
+        }
         LivingEntity threat = threat(villager);
         if (threat != null) {
             out.append(" — THREATENED by ").append(threat.getName().getString())
-                    .append(lift ? " (escape launch when a clear spot exists)" : " (flees on foot, no lift)");
+                    .append(climbs ? " (escape flight when a clear spot exists)" : " (flees on foot, no lift)");
         }
         BlockPos target = travelTarget(villager);
-        if (target != null && horizontalTo(villager, target) >= MIN_HORIZONTAL) {
+        boolean stranded = !TripCost.walkCanReach(villager);
+        if (target != null && horizontalTo(villager, target) >= (stranded ? STRANDED_MIN_TRIP : MIN_TRIP)) {
             double drop = villager.getY() - target.getY();
             double horiz = horizontalTo(villager, target);
-            out.append(String.format("\n  travel target %s: %.0f out, %.0f %s — ",
+            out.append(String.format("\n  travel target %s: %.0f out, %.0f %s, ",
                     target.toShortString(), horiz, Math.abs(drop), drop >= 0 ? "down" : "UP"));
-            boolean glidable = drop >= MIN_DROP && horiz <= drop * GLIDE_RATIO;
-            boolean canWalk = groundCanReach(villager);
-            out.append(canWalk ? "(walkable) " : "(NO ground path) ");
-            if (glidable) {
-                out.append(clearLine(villager, target) ? "glide launch READY" : "in glide cone, line blocked (not at the brink)");
-            } else if (!lift) {
-                out.append("outside glide cone, no lift — walks");
-            } else if (horiz < (canWalk ? POWERED_MIN_HORIZONTAL : MIN_HORIZONTAL)) {
-                out.append("too close for a powered takeoff (needs " + (int) POWERED_MIN_HORIZONTAL + "+ when walkable)");
-            } else if (horiz > POWERED_MAX_HORIZONTAL) {
-                out.append("beyond powered range (" + (int) POWERED_MAX_HORIZONTAL + ")");
-            } else if (drop < -POWERED_MAX_CLIMB) {
-                out.append("too far up (max climb " + (int) POWERED_MAX_CLIMB + ")");
+            double walkTicks = TripCost.walkTicks(villager, target);
+            double flyTicks = TripCost.estimateFlyTicks(profile.style(), horiz, drop);
+            out.append(Double.isInfinite(walkTicks) ? "NO ground path, " : String.format("walk ~%.0ft, ", walkTicks))
+                    .append(String.format("fly ~%.0ft: ", flyTicks));
+            if (horiz > maxTrip(villager)) {
+                out.append("beyond flight range (" + (int) maxTrip(villager) + ")");
+            } else if (drop < -MAX_CLIMB) {
+                out.append("too far up (max climb " + (int) MAX_CLIMB + ")");
+            } else if (!climbs && !(drop >= MIN_DROP && horiz <= drop * profile.style().glideRatio())) {
+                out.append("outside glide cone, no lift: walks");
+            } else if (!climbs && !clearLine(villager, target)) {
+                out.append("in glide cone, line blocked (not at the brink)");
+            } else if (!TripCost.flightWins(flyTicks, walkTicks)) {
+                out.append("walking is quicker");
             } else {
-                out.append(clearLine(villager, target) ? "powered takeoff READY" : "line blocked");
+                out.append("will plan a flight");
             }
             return out.toString();
         }
         out.append("\n  idle");
         if (target != null) out.append(" (doorstep errand)");
-        if (!lift) return out.append(" — no lift ability, no joy flights").toString();
+        if (!climbs) return out.append(" — no lift, no joy flights").toString();
         int ok = 0;
         int waterRejects = 0;
         int heightRejects = 0;
@@ -355,11 +426,12 @@ public final class GlideAI {
             double dist = 8.0 + random.nextDouble() * 32.0;
             int x = Mth.floor(villager.getX() + Math.cos(angle) * dist);
             int z = Mth.floor(villager.getZ() + Math.sin(angle) * dist);
+            if (!villager.level().hasChunk(x >> 4, z >> 4)) continue;
             int y = villager.level().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
             BlockPos pos = new BlockPos(x, y, z);
             double drop = villager.getY() - pos.getY();
             if (!villager.level().getFluidState(pos.below()).isEmpty()) waterRejects++;
-            else if (drop < -POWERED_MAX_CLIMB || drop > 24.0) heightRejects++;
+            else if (drop < -MAX_CLIMB || drop > 24.0) heightRejects++;
             else if (!clearLine(villager, pos)) lineRejects++;
             else ok++;
         }
@@ -368,72 +440,17 @@ public final class GlideAI {
         return out.toString();
     }
 
-    /** Whether the bearer has an active ability or ai trigger the AI may pump mid-flight for lift. */
-    private static boolean hasLiftAbility(VillagerEntityMCA villager) {
-        for (Power gene : Powers.active(villager)) {
-            if (gene.component() instanceof ActiveAbilityGeneType.Instance active
-                    && active.aiTrigger() == ActiveAbilityGeneType.AiTrigger.WHEN_FLYING) {
-                return true;
-            }
-            if (gene.component() instanceof com.aetherianartificer.townstead.root.gene.types.TriggerGeneType.Instance trigger
-                    && trigger.trigger() == com.aetherianartificer.townstead.root.gene.types.TriggerGeneType.Trigger.AI
-                    && trigger.aiTrigger() == ActiveAbilityGeneType.AiTrigger.WHEN_FLYING) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static void deploy(VillagerEntityMCA villager) {
+    /** Wings out: switch a toggle gene on (as a player would), set the glide flag. False for a wingless bearer. */
+    private static boolean deployWings(VillagerEntityMCA villager) {
         Power power = glidePower(villager);
-        if (power == null) return;
+        if (power == null) return false;
         ResourceLocation gene = power.id();
         if (isToggle(power) && !AbilityToggles.isOn(villager, gene)) {
             AbilityToggles.set(villager, gene, true);
             AbilityToggles.syncEntity(villager);
         }
         ((FallFlightBridge) villager).townstead$setFallFlying(true);
-        // A real launch toward the destination: featherfall leaves almost no airspeed,
-        // and a glide without airspeed is a decorated descent. Aim the push at the
-        // travel target when there is one so the takeoff already points somewhere.
-        BlockPos target = travelTarget(villager);
-        if (target == null) {
-            Launch launch = LAUNCHES.get(villager);
-            if (launch != null) target = launch.target;
-        }
-        if (target == null) {
-            // A glider with no destination cruises on the lift assist until the world
-            // runs out (a fall-deploy has no launch record). Pick an emergency landing
-            // roughly ahead — any drop is fine, flying somewhere beats flying forever.
-            var look = villager.getLookAngle();
-            double ahead = Math.atan2(look.z, look.x);
-            var random = villager.getRandom();
-            for (int i = 0; i < 8 && target == null; i++) {
-                double angle = ahead + (random.nextDouble() - 0.5) * (Math.PI * 2.0 / 3.0);
-                target = sampleLanding(villager, angle, 10.0 + random.nextDouble() * 24.0, 256.0);
-            }
-            if (target != null) {
-                Launch launch = new Launch(target, villager.level().getGameTime());
-                launch.deployed = true;
-                LAUNCHES.put(villager, launch);
-            }
-        }
-        double dx;
-        double dz;
-        if (target != null) {
-            dx = target.getX() + 0.5 - villager.getX();
-            dz = target.getZ() + 0.5 - villager.getZ();
-        } else {
-            var look = villager.getLookAngle();
-            dx = look.x;
-            dz = look.z;
-        }
-        double length = Math.sqrt(dx * dx + dz * dz);
-        if (length > 1.0e-3) {
-            villager.setDeltaMovement(villager.getDeltaMovement()
-                    .add(dx / length * 0.6, 0.1, dz / length * 0.6));
-            villager.hasImpulse = true;
-        }
+        return true;
     }
 
     /** Vanilla clears the fall-flight flag on touchdown; this folds the wings after it. */
@@ -447,74 +464,14 @@ public final class GlideAI {
         AbilityToggles.syncEntity(villager);
     }
 
-    /**
-     * Elytra physics steers by the look angle: aim at the travel target, dive while
-     * slow to build airspeed, then flatten out and cruise with a lift assist trimming
-     * the sink. Near the landing spot the assist yields to a flare — the nose points
-     * at the spot itself so they touch down on it instead of sailing past.
-     */
-    private static void steer(VillagerEntityMCA villager) {
-        BlockPos target = travelTarget(villager);
-        if (target == null) {
-            Launch launch = LAUNCHES.get(villager);
-            if (launch != null) target = launch.target;
-        }
-        float yaw = villager.getYRot();
-        double horiz = Double.MAX_VALUE;
-        if (target != null) {
-            double dx = target.getX() + 0.5 - villager.getX();
-            double dz = target.getZ() + 0.5 - villager.getZ();
-            horiz = Math.sqrt(dx * dx + dz * dz);
-            if (horiz > 1.0) {
-                yaw = (float) Math.toDegrees(Math.atan2(dz, dx)) - 90f;
-            }
-        }
-        villager.setYRot(yaw);
-        villager.yBodyRot = yaw;
-        villager.setYHeadRot(yaw);
-        var motion = villager.getDeltaMovement();
-        if (target == null) {
-            // No destination: hold a descent and no lift assist, so the flight ends
-            // nearby instead of cruising off the map.
-            villager.setXRot(GLIDE_PITCH);
-            return;
-        }
-        if (horiz < FLARE_DISTANCE) {
-            double drop = villager.getY() - (target.getY() + 1.0);
-            villager.setXRot(Mth.clamp((float) Math.toDegrees(Math.atan2(drop, horiz)), -10f, 40f));
-            // Air brake: arriving fast means overshooting, and every overshoot flips
-            // the steering around for another pass — the back-and-forth thrash.
-            double speed = Math.sqrt(motion.x * motion.x + motion.z * motion.z);
-            if (speed > 0.35) {
-                villager.setDeltaMovement(motion.x * 0.85, motion.y, motion.z * 0.85);
-            }
-            // Over the spot with little height left: commit — cut flight and let
-            // featherfall set them down. Elytra physics may leave one block of fall
-            // distance banked, and the staggered passive ticker may not restore Slow
-            // Falling before touchdown; clear that bank here so the short handoff
-            // cannot become one point of fall damage. Peak reset keeps the short drop
-            // from re-triggering a deploy mid-touchdown.
-            if (horiz < 2.5 && drop < DEPLOY_FALL_DISTANCE) {
-                ((FallFlightBridge) villager).townstead$setFallFlying(false);
-                villager.resetFallDistance();
-                FALL_PEAK.put(villager, villager.getY());
-            }
-            return;
-        }
-        double airspeed = Math.sqrt(motion.x * motion.x + motion.z * motion.z);
-        villager.setXRot(airspeed < 0.5 ? GLIDE_PITCH : CRUISE_PITCH);
-        if (motion.y < -0.06) {
-            villager.setDeltaMovement(motion.x, motion.y * 0.7, motion.z);
-        }
+    /** The bearer's flight profile if it flies trips (drift floats instead), else null. */
+    private static FlightProfile flier(VillagerEntityMCA villager) {
+        FlightProfile profile = FlightProfile.of(villager);
+        return profile == null || profile.style() == FlightStyle.DRIFT ? null : profile;
     }
 
-    /** Where the villager is trying to go: live path target, else the brain's walk target. */
     private static BlockPos travelTarget(VillagerEntityMCA villager) {
-        Path path = villager.getNavigation().getPath();
-        if (path != null) return path.getTarget();
-        if (!villager.getBrain().hasMemoryValue(MemoryModuleType.WALK_TARGET)) return null;
-        WalkTarget walk = villager.getBrain().getMemory(MemoryModuleType.WALK_TARGET).orElse(null);
-        return walk == null ? null : walk.getTarget().currentBlockPosition();
+        return Locomotion.destination(villager);
     }
 
     /** One raycast along the glide chord; blocked terrain also means "not at the brink yet". */
@@ -524,18 +481,12 @@ public final class GlideAI {
                 ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, villager)).getType() == HitResult.Type.MISS;
     }
 
-    /** The bearer's elytra-flight gene, or null. Only called at deploy/fold/launch moments. */
-    private static ResourceLocation glideGene(VillagerEntityMCA villager) {
-        Power power = glidePower(villager);
-        return power == null ? null : power.id();
-    }
-
     /**
      * The bearer's elytra-flight power: a toggle-mode one (deployed by switching it on, as a player
      * would), or a passive one (wings always ready, deployed just by taking off).
      */
     private static Power glidePower(VillagerEntityMCA villager) {
-        for (Power gene : Powers.active(villager)) {
+        for (Power gene : com.aetherianartificer.townstead.pheno.power.Powers.active(villager)) {
             if (gene.component() instanceof AbilityGeneType.Instance ability
                     && ability.ability() == Ability.ELYTRA_FLIGHT
                     && (ability.mode() == AbilityGeneType.Mode.TOGGLE || ability.mode() == AbilityGeneType.Mode.PASSIVE)) {

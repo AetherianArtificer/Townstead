@@ -4,11 +4,14 @@ import com.aetherianartificer.townstead.profession.ProfessionSites;
 import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
 import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import com.aetherianartificer.townstead.storage.PhysicalStorageDelivery;
+import com.aetherianartificer.townstead.storage.StoragePreference;
+import com.aetherianartificer.townstead.storage.StorageUse;
 import com.aetherianartificer.townstead.work.WorkTaskDeclarations;
 import com.google.common.collect.ImmutableMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
@@ -26,8 +29,8 @@ import java.util.function.Predicate;
 
 /**
  * Carries wool a worker holds to storage, for professions that declare the {@code store} task.
- * Where it goes follows the profession's preferred storage roles (a Wool Shed declares
- * {@code townstead:textiles}), then ordinary storage beside the worksite.
+ * Wool goes to a {@code townstead:textiles} store such as a Wool Shed first, then follows the
+ * profession's own preferred roles, then ordinary storage beside the worksite.
  */
 public class ShepherdDepositTask extends Behavior<VillagerEntityMCA> {
     private static final int MAX_DURATION = 600;
@@ -35,6 +38,7 @@ public class ShepherdDepositTask extends Behavior<VillagerEntityMCA> {
     private static final float WALK_SPEED = 0.55f;
     private static final int PATH_TIMEOUT_TICKS = 200;
     private static final Predicate<ItemStack> WOOL = stack -> stack.is(ItemTags.WOOL);
+    private static final ResourceLocation TEXTILES = ResourceLocation.tryParse("townstead:textiles");
 
     @Nullable private BlockPos targetStorage;
     private Set<Long> worksite = Set.of();
@@ -53,14 +57,14 @@ public class ShepherdDepositTask extends Behavior<VillagerEntityMCA> {
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (!WorkTaskDeclarations.permitsTask(villager, WorkTaskTypes.STORE)) return false;
         if (!ShepherdInventory.hasWool(villager)) return false;
-        return PhysicalStorageDelivery.findDestination(level, villager, extent(level, villager), WOOL, Set.of()) != null;
+        return destination(level, villager, extent(level, villager), Set.of()) != null;
     }
 
     @Override
     protected void start(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         rejected.clear();
         worksite = extent(level, villager);
-        targetStorage = PhysicalStorageDelivery.findDestination(level, villager, worksite, WOOL, rejected);
+        targetStorage = destination(level, villager, worksite, rejected);
         startedTick = gameTime;
         lastPathTick = gameTime;
         if (targetStorage != null) setWalkTarget(villager, targetStorage);
@@ -88,7 +92,7 @@ public class ShepherdDepositTask extends Behavior<VillagerEntityMCA> {
             rejected.add(targetStorage.asLong());
         }
         villager.swing(InteractionHand.MAIN_HAND, true);
-        targetStorage = PhysicalStorageDelivery.findDestination(level, villager, worksite, WOOL, rejected);
+        targetStorage = destination(level, villager, worksite, rejected);
         lastPathTick = gameTime;
     }
 
@@ -98,6 +102,12 @@ public class ShepherdDepositTask extends Behavior<VillagerEntityMCA> {
         worksite = Set.of();
         rejected.clear();
         villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+    }
+
+    private static @Nullable BlockPos destination(ServerLevel level, VillagerEntityMCA villager,
+                                                  Set<Long> worksite, Set<Long> excluded) {
+        return PhysicalStorageDelivery.findDestination(level, villager, worksite, WOOL, excluded,
+                StorageUse.OUTPUT, StoragePreference.forVillager(villager).preferring(TEXTILES));
     }
 
     private static Set<Long> extent(ServerLevel level, VillagerEntityMCA villager) {

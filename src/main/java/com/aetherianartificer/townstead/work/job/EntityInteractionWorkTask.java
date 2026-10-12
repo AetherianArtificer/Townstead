@@ -250,7 +250,7 @@ public final class EntityInteractionWorkTask extends Behavior<VillagerEntityMCA>
             for (WorkJobDef job : WorkJobs.forTask(task.type())) {
                 WorkJobDef.EntityTarget definition = job.entityTarget();
                 if (definition == null) continue;
-                if (respectOrders && (!WorksiteOrders.mayStart(level, villager, task.type())
+                if (respectOrders && (!WorksiteOrders.mayStartFromWorkplace(level, villager, task.type())
                         || WorkActivities.hasHigherPriorityWork(level, villager, task.type()))) continue;
                 if (assigned == null) assigned = assignedExtent(level, villager);
                 List<WorkJobDef.EntityInteraction> usable = new ArrayList<>();

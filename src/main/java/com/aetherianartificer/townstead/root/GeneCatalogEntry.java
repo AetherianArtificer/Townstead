@@ -306,7 +306,16 @@ public record GeneCatalogEntry(
 
     /** For ABILITY genes, the granted ability key (e.g. {@code night_vision}); empty otherwise. */
     public String abilityKey() {
-        return isAbility() && targetId != null ? targetId : "";
+        if (!isAbility() || targetId == null) return "";
+        int split = targetId.indexOf(';');
+        return split < 0 ? targetId : targetId.substring(0, split);
+    }
+
+    /** For flight ABILITY genes, the authored {@code style} (rides after a {@code ;} in {@code targetId}); empty when inferred. */
+    public String abilityStyle() {
+        if (!isAbility() || targetId == null) return "";
+        int split = targetId.indexOf(';');
+        return split < 0 ? "" : targetId.substring(split + 1);
     }
 
     /** For ABILITY genes, whether it is toggle-mode (rides in {@code amount}); false = always-on passive. */

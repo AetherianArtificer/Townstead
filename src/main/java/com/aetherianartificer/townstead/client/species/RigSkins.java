@@ -32,6 +32,7 @@ public final class RigSkins {
         if (texture == null) return;
         int alpha = Math.round(Math.max(0f, Math.min(1f, fade)) * 255f);
         VertexConsumer buffer = buffers.getBuffer(RenderType.entityTranslucent(texture));
+        if (model instanceof net.minecraft.client.model.HumanoidModel<?> humanoid) buffer = SkinUv.fit(humanoid, buffer);
         // A rig may limit which parts a worn skin covers (a legless ghost, thin arms whose UVs don't
         // match a villager skin's): hide the rest for this pass, then put them back.
         java.util.List<net.minecraft.client.model.geom.ModelPart> hidden = hideUnskinned(entity, model);

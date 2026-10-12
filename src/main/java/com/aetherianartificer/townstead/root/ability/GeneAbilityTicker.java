@@ -469,6 +469,13 @@ public final class GeneAbilityTicker {
                 if (!entity.isSprinting()) entity.setSprinting(true);
             }
             case HOVER -> {
+                if (com.aetherianartificer.townstead.root.locomotion.DriftPhysics.isDrifter(entity)) {
+                    // Drift floats over the ground instead of holding altitude: the drift
+                    // pilot (villagers) or the controlling client (players) moves the body.
+                    if (entity instanceof Player && entity.isNoGravity()) entity.setNoGravity(false);
+                    entity.fallDistance = 0f;
+                    return;
+                }
                 entity.setNoGravity(true);
                 Vec3 m = entity.getDeltaMovement();
                 if (m.y < 0) entity.setDeltaMovement(m.x, 0, m.z);

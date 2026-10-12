@@ -25,6 +25,7 @@ public final class GeneDamageHandler {
     /** The amount after applying every matching damage-modifier gene (0 = fully blocked). */
     public static float modify(LivingEntity victim, DamageSource source, float amount) {
         if (victim.level().isClientSide) return amount;
+        if (com.aetherianartificer.townstead.root.locomotion.Locomotion.shieldsFrom(victim, source)) return 0f;
         float result = amount;
         List<DamageModifierGeneType.Instance> genes =
                 ExpressedGenes.instancesOf(victim, DamageModifierGeneType.Instance.class);

@@ -37,4 +37,16 @@ public final class ClientAbilities {
         }
         return false;
     }
+
+    /** Whether an active {@code hover} gene floats in the drift style (authored, or the default for hover). */
+    public static boolean drifts(LivingEntity entity) {
+        for (String geneId : RootClientStore.behaviorGenes(entity.getId())) {
+            GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
+            if (gene == null || !gene.isAbility() || !gene.abilityKey().equals(Ability.HOVER.key())) continue;
+            if (gene.abilityToggle() && !RootClientStore.isToggled(entity.getId(), geneId)) continue;
+            String style = gene.abilityStyle();
+            return style.isEmpty() || style.equals("drift");
+        }
+        return false;
+    }
 }

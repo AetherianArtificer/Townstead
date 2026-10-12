@@ -1,7 +1,9 @@
 package com.aetherianartificer.townstead.work.job;
 
+import com.aetherianartificer.townstead.TestBootstrap;
 import com.google.gson.JsonParser;
 import net.minecraft.resources.ResourceLocation;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStreamReader;
@@ -11,6 +13,12 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class WorkJobDefTest {
+
+    @BeforeAll
+    static void bootstrap() {
+        TestBootstrap.ensure();
+    }
+
     @Test
     void lsoFuelReserveIsIndependentOfThermostatDemandAndUsesTheCorrectDepot() throws Exception {
         registerProcedurePrimitives();
