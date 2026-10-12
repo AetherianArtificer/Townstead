@@ -17,16 +17,25 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.UUID;
 
-/** Reflection-safe bridge to Beachparty's own chair entity and occupancy ledger. */
+/**
+ * Reflection-safe bridge to Beachparty's chair entity and occupancy ledger. Beachparty 2.x seats
+ * through its own util; 1.1.5 (Forge 1.20.1) seats through Let's Do API's ChairUtil, which has the
+ * same three calls.
+ */
 public final class BeachpartyChairAdapter implements HangoutEmbodiment.PostureAdapter {
     public static final ResourceLocation ID = ResourceLocation.tryParse("beachparty:native_chair");
-    private static final ResourceLocation CHAIR = ResourceLocation.tryParse("beachparty:chair");
     private static final Map<ResourceLocation, Double> HEIGHTS = Map.of(
             id("beachparty:beach_chair"), 0.30D,
             id("beachparty:hooded_beach_chair"), 0.45D,
             id("beachparty:palm_chair"), 0.55D,
-            id("beachparty:palm_bar_stool"), 0.60D);
-    private static final String UTIL = "net.satisfy.beachparty.core.util.BeachpartyUtil";
+            id("beachparty:palm_bar_stool"), 0.60D,
+            id("beachparty:lounge_chair"), -0.10D,
+            id("beachparty:tiki_chair"), 0.10D,
+            id("beachparty:chair"), 0.10D);
+    private record SeatApi(String util, ResourceLocation chair) {}
+    private static final SeatApi[] APIS = {
+            new SeatApi("net.satisfy.beachparty.core.util.BeachpartyUtil", id("beachparty:chair")),
+            new SeatApi("de.cristelknight.doapi.common.util.ChairUtil", id("doapi:chair"))};
 
     @Override public ResourceLocation id() { return ID; }
 
@@ -38,19 +47,22 @@ public final class BeachpartyChairAdapter implements HangoutEmbodiment.PostureAd
         ResourceLocation block = BuiltInRegistries.BLOCK.getKey(level.getBlockState(base).getBlock());
         Double height = HEIGHTS.get(block);
         if (height == null) return null;
-        if (occupied(level, base)) return HangoutEmbodiment.BLOCKED;
-        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getOptional(CHAIR).orElse(null);
+        SeatApi api = seatApi();
+        // Neither seat API is installed: the vanilla posture still seats the villager.
+        if (api == null) return null;
+        if (occupied(api, level, base)) return HangoutEmbodiment.BLOCKED;
+        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getOptional(api.chair()).orElse(null);
         if (type == null) return HangoutEmbodiment.BLOCKED;
         Entity chair = type.create(level);
         if (chair == null) return HangoutEmbodiment.BLOCKED;
         chair.moveTo(position.x, position.y, position.z, 0F, 0F);
         HangoutEmbodiment.markVisitAnchor(chair, visitId);
-        if (!addNativeClaim(level, base, chair, villager.blockPosition())) {
+        if (!addNativeClaim(api, level, base, chair, villager.blockPosition())) {
             chair.discard();
             return HangoutEmbodiment.BLOCKED;
         }
         if (!level.addFreshEntity(chair) || !villager.startRiding(chair, true)) {
-            removeNativeClaim(level, base);
+            removeNativeClaim(api, level, base);
             chair.discard();
             return HangoutEmbodiment.BLOCKED;
         }
@@ -58,7 +70,7 @@ public final class BeachpartyChairAdapter implements HangoutEmbodiment.PostureAd
         return (closeLevel, closeVillager) -> {
             if (closeVillager.isPassenger() && closeVillager.getVehicle() != null
                     && chairId.equals(closeVillager.getVehicle().getUUID())) closeVillager.stopRiding();
-            removeNativeClaim(closeLevel, base);
+            removeNativeClaim(api, closeLevel, base);
             Entity loaded = closeLevel.getEntity(chairId);
             if (loaded != null) loaded.discard();
         };
@@ -75,22 +87,35 @@ public final class BeachpartyChairAdapter implements HangoutEmbodiment.PostureAd
         return "upper".equals(String.valueOf(value)) ? pos.below() : pos;
     }
 
-    private static boolean occupied(ServerLevel level, BlockPos base) {
-        Object value = invoke("isOccupied", level, base);
+    /** The first seat API whose util class and chair entity are both installed. */
+    private static @Nullable SeatApi seatApi() {
+        for (SeatApi api : APIS) {
+            if (!BuiltInRegistries.ENTITY_TYPE.containsKey(api.chair())) continue;
+            try {
+                Class.forName(api.util(), false, BeachpartyChairAdapter.class.getClassLoader());
+                return api;
+            } catch (ClassNotFoundException | LinkageError ignored) {
+            }
+        }
+        return null;
+    }
+
+    private static boolean occupied(SeatApi api, ServerLevel level, BlockPos base) {
+        Object value = invoke(api, "isOccupied", level, base);
         return Boolean.TRUE.equals(value);
     }
 
-    private static boolean addNativeClaim(ServerLevel level, BlockPos base, Entity chair, BlockPos previous) {
-        return Boolean.TRUE.equals(invoke("addChairEntity", level, base, chair, previous));
+    private static boolean addNativeClaim(SeatApi api, ServerLevel level, BlockPos base, Entity chair, BlockPos previous) {
+        return Boolean.TRUE.equals(invoke(api, "addChairEntity", level, base, chair, previous));
     }
 
-    private static void removeNativeClaim(ServerLevel level, BlockPos base) {
-        invoke("removeChairEntity", level, base);
+    private static void removeNativeClaim(SeatApi api, ServerLevel level, BlockPos base) {
+        invoke(api, "removeChairEntity", level, base);
     }
 
-    private static @Nullable Object invoke(String name, Object... args) {
+    private static @Nullable Object invoke(SeatApi api, String name, Object... args) {
         try {
-            Class<?> util = Class.forName(UTIL, false, BeachpartyChairAdapter.class.getClassLoader());
+            Class<?> util = Class.forName(api.util(), false, BeachpartyChairAdapter.class.getClassLoader());
             for (Method method : util.getMethods()) {
                 if (!method.getName().equals(name) || method.getParameterCount() != args.length) continue;
                 return method.invoke(null, args);

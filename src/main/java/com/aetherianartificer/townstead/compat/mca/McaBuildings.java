@@ -140,9 +140,16 @@ public final class McaBuildings {
         }
         BlockPos min = building.getPos0();
         BlockPos max = building.getPos1();
-        return pos.getX() >= min.getX() && pos.getX() <= max.getX()
+        boolean inBox = pos.getX() >= min.getX() && pos.getX() <= max.getX()
                 && pos.getY() >= min.getY() - 1 && pos.getY() <= max.getY() + 2
                 && pos.getZ() >= min.getZ() && pos.getZ() <= max.getZ();
+        if (!inBox || !com.aetherianartificer.townstead.recognition.SiteRequirements.isEnclosed(building.getType())) {
+            return inBox;
+        }
+        // A pen's box takes in the ground inside an L; its walked ground does not.
+        var columns = com.aetherianartificer.townstead.recognition.EnclosureFootprints.columns(level, village, building);
+        return columns == null || columns.contains(
+                com.aetherianartificer.townstead.recognition.SiteGeometry.column(pos.getX(), pos.getZ()));
     }
 
     /**

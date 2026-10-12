@@ -3,16 +3,24 @@ package com.aetherianartificer.townstead.recognition;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongList;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -38,8 +46,8 @@ import java.util.Set;
  *   <li>{@code surface_over} — a connected walkable surface with the named block (id or
  *       {@code #tag}) in the column beneath it. Names no material, so any deck counts, and
  *       natural ground never does because it rests on the bed of the liquid rather than above it.</li>
- *   <li>{@code enclosed} — ground that a ring of fences, walls or building closes off. The fill
- *       is at one level and fails if it escapes, so an open field is never an enclosure.</li>
+ *   <li>{@code enclosed} — ground a grazing animal cannot walk out of (see {@link WalkEnclosure}).
+ *       An open field is never an enclosure, and a pen on a hillside is one.</li>
  * </ul>
  */
 public final class SiteRequirements {
@@ -49,18 +57,94 @@ public final class SiteRequirements {
     private static final int DEFAULT_MAX_INTERIOR = 4096;
     private static final int SEED_REACH = 2;
     private static final int MAX_CELLS = 8192;
+    /** A mob's step height: anything this low is walked onto without a jump. */
+    private static final double STEP_HEIGHT = 0.6;
     private static final TagKey<Block> NATURAL_SURFACES = TagKey.create(
             Registries.BLOCK, ResourceLocation.tryParse("townstead:natural_surfaces"));
+    private static final TagKey<Block> TERRAIN = TagKey.create(
+            Registries.BLOCK, ResourceLocation.tryParse("townstead:terrain"));
 
     public enum Verdict { SATISFIED, UNSATISFIED, UNKNOWN }
 
-    public record Evaluation(Verdict verdict, Set<BlockPos> cells) {
-        static final Evaluation NONE_REQUIRED = new Evaluation(Verdict.SATISFIED, Set.of());
+    public enum Reason { OPEN, TOO_LARGE, TOO_SMALL }
+
+    /** Why a site is not one, where to look, and the limit it broke, if any. */
+    public record Problem(Reason reason, BlockPos at, int limit) {}
+
+    public record Evaluation(Verdict verdict, Set<BlockPos> cells, @Nullable Problem problem) {
+        static final Evaluation NONE_REQUIRED = new Evaluation(Verdict.SATISFIED, Set.of(), null);
+    }
+
+    /**
+     * One pass over the world, shared by every evaluation in it: each block is classified once,
+     * and ground already walked out of is never walked again from another seed.
+     */
+    public static final class Scan implements WalkEnclosure.World {
+        final ServerLevel level;
+        private final Long2ByteOpenHashMap kinds = new Long2ByteOpenHashMap();
+        private final LongOpenHashSet outside = new LongOpenHashSet();
+        private final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        @Nullable private WalkEnclosure.Bounds bounds;
+        @Nullable private Problem problem;
+        @Nullable private BlockPos found;
+
+        public Scan(ServerLevel level) {
+            this.level = level;
+            kinds.defaultReturnValue((byte) -1);
+        }
+
+        /** Walks in this scan leave a known site the moment they cross its box. */
+        public Scan bounded(@Nullable WalkEnclosure.Bounds bounds) {
+            this.bounds = bounds;
+            return this;
+        }
+
+        public ServerLevel level() {
+            return level;
+        }
+
+        /** A cell inside the enclosure the last evaluation found, if it found one. */
+        public @Nullable BlockPos found() {
+            return found;
+        }
+
+        @Override
+        public int kind(int x, int y, int z) {
+            long key = SiteGeometry.pack(x, y, z);
+            byte cached = kinds.get(key);
+            if (cached >= 0) return cached;
+            int kind = classify(x, y, z);
+            kinds.put(key, (byte) kind);
+            return kind;
+        }
+
+        private int classify(int x, int y, int z) {
+            cursor.set(x, y, z);
+            if (!level.isLoaded(cursor)) return WalkEnclosure.UNLOADED;
+            BlockState state = level.getBlockState(cursor);
+            // A gate left open still walls a paddock in, so the ring is read from tags.
+            if (state.is(BlockTags.FENCES) || state.is(BlockTags.FENCE_GATES)
+                    || state.is(BlockTags.WALLS) || state.is(BlockTags.DOORS)) {
+                return WalkEnclosure.BARRIER;
+            }
+            FluidState fluid = state.getFluidState();
+            if (fluid.is(FluidTags.LAVA)) return WalkEnclosure.BARRIER;
+            VoxelShape shape = state.getCollisionShape(level, cursor);
+            if (shape.isEmpty()) return fluid.is(FluidTags.WATER) ? WalkEnclosure.WATER : WalkEnclosure.OPEN;
+            double top = shape.max(Direction.Axis.Y);
+            if (top > 1.0) return WalkEnclosure.BARRIER;
+            if (top <= STEP_HEIGHT) return WalkEnclosure.LOW;
+            return state.is(TERRAIN) ? WalkEnclosure.GROUND : WalkEnclosure.SOLID;
+        }
+
+        private void note(Problem found) {
+            if (problem == null) problem = found;
+        }
     }
 
     public sealed interface Requirement permits SurfaceOver, Enclosed {
         /** Cells of this site; empty when the requirement is not met, null when not knowable. */
-        @Nullable Set<BlockPos> cells(ServerLevel level, Collection<BlockPos> seeds, int radius);
+        @Nullable Set<BlockPos> cells(Scan scan, Collection<BlockPos> seeds, int radius);
     }
 
     /** A walkable surface standing over something: a deck over water, a pier over lava. */
@@ -78,7 +162,8 @@ public final class SiteRequirements {
         }
 
         @Override
-        public Set<BlockPos> cells(ServerLevel level, Collection<BlockPos> seeds, int radius) {
+        public Set<BlockPos> cells(Scan scan, Collection<BlockPos> seeds, int radius) {
+            ServerLevel level = scan.level;
             BlockPos origin = seeds.iterator().next();
             Set<Long> cells = SiteGeometry.surface(packed(seeds),
                     (x, y, z) -> isSurfaceOver(level, new BlockPos(x, y, z), this),
@@ -87,37 +172,40 @@ public final class SiteRequirements {
         }
     }
 
-    /** Ground closed off by a ring: a paddock, a yard, a compound. */
+    /** Ground a grazing animal cannot walk out of: a paddock, a yard, a compound. */
     public record Enclosed(int minInterior, int maxInterior) implements Requirement {
         private static final int MAX_ROOTS = 24;
 
         @Override
-        public @Nullable Set<BlockPos> cells(ServerLevel level, Collection<BlockPos> seeds, int radius) {
-            SiteGeometry.CellTest loaded = (x, y, z) -> level.isLoaded(new BlockPos(x, y, z));
-            SiteGeometry.CellTest open = (x, y, z) -> isOpen(level, new BlockPos(x, y, z));
+        public @Nullable Set<BlockPos> cells(Scan scan, Collection<BlockPos> seeds, int radius) {
+            LongArrayList seedCells = new LongArrayList();
+            for (BlockPos seed : seeds) seedCells.add(seed.asLong());
+            LongList roots = WalkEnclosure.roots(scan, seedCells);
             boolean unknown = false;
             int tried = 0;
-            for (long root : SiteGeometry.enclosureRoots(packed(seeds), loaded, open)) {
+            for (int i = 0; i < roots.size(); i++) {
+                long root = roots.getLong(i);
+                if (scan.outside.contains(root)) continue;
                 if (++tried > MAX_ROOTS) break;
-                SiteGeometry.Region region = SiteGeometry.enclosure(
-                        root, loaded, open, radius, Math.min(maxInterior, MAX_CELLS));
-                if (region.status() == SiteGeometry.Status.UNLOADED) unknown = true;
-                else if (region.status() == SiteGeometry.Status.FOUND
-                        && region.interior() >= minInterior) {
-                    return unpacked(region.cells());
+                WalkEnclosure.Region region = WalkEnclosure.enclose(scan, root, radius, maxInterior, scan.bounds);
+                switch (region.status()) {
+                    case UNLOADED -> unknown = true;
+                    case FOUND -> {
+                        if (region.interior().size() >= minInterior) {
+                            scan.found = BlockPos.of(root);
+                            return unpacked(region.cells());
+                        }
+                        scan.note(new Problem(Reason.TOO_SMALL, BlockPos.of(root), minInterior));
+                    }
+                    case TOO_LARGE -> scan.note(new Problem(Reason.TOO_LARGE, BlockPos.of(root), maxInterior));
+                    case ESCAPED -> {
+                        // Out of a known site's box is not necessarily out in the world.
+                        if (scan.bounds == null) scan.outside.addAll(region.interior());
+                        scan.note(new Problem(Reason.OPEN, BlockPos.of(region.gap()), 0));
+                    }
                 }
             }
             return unknown ? null : Set.of();
-        }
-
-        /** A gate left open still walls a paddock in, so the ring is read from tags, not collision. */
-        private static boolean isOpen(ServerLevel level, BlockPos pos) {
-            BlockState state = level.getBlockState(pos);
-            if (state.is(BlockTags.FENCES) || state.is(BlockTags.FENCE_GATES)
-                    || state.is(BlockTags.WALLS) || state.is(BlockTags.DOORS)) {
-                return false;
-            }
-            return state.getCollisionShape(level, pos).isEmpty();
         }
     }
 
@@ -153,6 +241,22 @@ public final class SiteRequirements {
         return buildingType == null ? List.of() : BY_TYPE.getOrDefault(buildingType, List.of());
     }
 
+    /** Whether the type is bounded by an enclosure, which is what makes it a pen. */
+    public static boolean isEnclosed(String buildingType) {
+        for (Requirement requirement : of(buildingType)) {
+            if (requirement instanceof Enclosed) return true;
+        }
+        return false;
+    }
+
+    /** The interior limit of the type's enclosure, or 0 when it has none. */
+    public static int maxInterior(String buildingType) {
+        for (Requirement requirement : of(buildingType)) {
+            if (requirement instanceof Enclosed enclosed) return enclosed.maxInterior();
+        }
+        return 0;
+    }
+
     public static List<Requirement> parse(JsonArray array) {
         List<Requirement> out = new ArrayList<>();
         for (JsonElement element : array) {
@@ -186,22 +290,31 @@ public final class SiteRequirements {
      */
     public static Evaluation evaluate(ServerLevel level, String buildingType,
                                       Collection<BlockPos> seeds, BlockPos center, int radius) {
+        return level == null ? new Evaluation(Verdict.UNSATISFIED, Set.of(), null)
+                : evaluate(new Scan(level), buildingType, seeds, center, radius);
+    }
+
+    /** As above, sharing block reads and known outside ground with the rest of the scan. */
+    public static Evaluation evaluate(Scan scan, String buildingType,
+                                      Collection<BlockPos> seeds, BlockPos center, int radius) {
         List<Requirement> requirements = of(buildingType);
         if (requirements.isEmpty()) return Evaluation.NONE_REQUIRED;
-        if (level == null || center == null || seeds == null || seeds.isEmpty()) {
-            return new Evaluation(Verdict.UNSATISFIED, Set.of());
+        if (scan == null || center == null || seeds == null || seeds.isEmpty()) {
+            return new Evaluation(Verdict.UNSATISFIED, Set.of(), null);
         }
         for (BlockPos seed : seeds) {
-            if (!level.isLoaded(seed)) return new Evaluation(Verdict.UNKNOWN, Set.of());
+            if (!scan.level.isLoaded(seed)) return new Evaluation(Verdict.UNKNOWN, Set.of(), null);
         }
+        scan.problem = null;
+        scan.found = null;
         Set<BlockPos> all = new HashSet<>();
         for (Requirement requirement : requirements) {
-            Set<BlockPos> cells = requirement.cells(level, seeds, radius);
-            if (cells == null) return new Evaluation(Verdict.UNKNOWN, Set.of());
-            if (cells.isEmpty()) return new Evaluation(Verdict.UNSATISFIED, Set.of());
+            Set<BlockPos> cells = requirement.cells(scan, seeds, radius);
+            if (cells == null) return new Evaluation(Verdict.UNKNOWN, Set.of(), null);
+            if (cells.isEmpty()) return new Evaluation(Verdict.UNSATISFIED, Set.of(), scan.problem);
             all.addAll(cells);
         }
-        return new Evaluation(Verdict.SATISFIED, all);
+        return new Evaluation(Verdict.SATISFIED, all, null);
     }
 
     /** A solid block a villager could stand on, with the required block in the column beneath. */
@@ -215,11 +328,5 @@ public final class SiteRequirements {
             if (requirement.matches(level.getBlockState(pos.below(dy)))) return true;
         }
         return false;
-    }
-
-    private static long horizontalDistSqr(BlockPos a, BlockPos b) {
-        long dx = a.getX() - b.getX();
-        long dz = a.getZ() - b.getZ();
-        return dx * dx + dz * dz;
     }
 }

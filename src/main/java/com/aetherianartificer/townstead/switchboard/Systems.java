@@ -75,7 +75,8 @@ public final class Systems {
                 TownsteadConfig.ENABLE_FEEDING_YOUNG, TownsteadConfig.ENABLE_HYDRATING_YOUNG,
                 TownsteadConfig.ENABLE_NON_PARENT_CAREGIVERS, TownsteadConfig.ENABLE_WORK_SUPPLY_AUTOMATION,
                 TownsteadConfig.ENABLE_HARVEST_OUTPUT_STORAGE, TownsteadConfig.ENABLE_FARM_ASSIST,
-                TownsteadConfig.ENABLE_MCA_BUILDING_DISCOVERY, TownsteadConfig.ENABLE_TOWNSTEAD_COOK,
+                TownsteadConfig.ENABLE_MCA_BUILDING_DISCOVERY, TownsteadConfig.ENABLE_ENCLOSURE_RECOGNITION,
+                TownsteadConfig.ENABLE_TOWNSTEAD_COOK,
                 TownsteadConfig.ENABLE_STABLE_NAMING_REGISTERS, TownsteadConfig.ENABLE_CHORUS_FRUIT_TELEPORT,
                 TownsteadConfig.ENABLE_EMPTY_CONTAINER_DROPOFF);
         for (Supplier<Boolean> value : off) {

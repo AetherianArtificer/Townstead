@@ -1216,6 +1216,10 @@
       "key": "father_court",
       "radius": 32
     },
+    "court_mansion": {
+      "type": "pheno:structure",
+      "structure": "minecraft:woodland_mansion"
+    },
     "at_shepherd": {
       "type": "pheno:near_marker",
       "key": "shepherd_grave",

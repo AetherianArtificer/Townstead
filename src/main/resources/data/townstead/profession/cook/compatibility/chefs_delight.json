@@ -2,9 +2,11 @@
   "schema": "townstead:profession_compatibility/v1",
   "mods": "chefsdelight",
   "aliases": [
-    "chefsdelight:cook"
+    "chefsdelight:cook",
+    "chefsdelight:delightcook"
   ],
   "path_aliases": {
-    "chefsdelight:chef": "chef"
+    "chefsdelight:chef": "chef",
+    "chefsdelight:delightchef": "chef"
   }
 }

@@ -28,6 +28,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.aetherianartificer.townstead.compat.mca.McaResidency;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -121,7 +122,7 @@ public final class PersonaService {
         if (keepsJob && villager.getVillagerXp() < 1) villager.setVillagerXp(1);
         if (!level.addFreshEntity(villager)) return null;
         if (persona.root() != null) RootAssignment.assign(villager, persona.root());
-        villager.getResidency().seekHome();
+        McaResidency.joinVillage(villager);
         if (persona.schedule() != null) schedule(level.getServer(), villager, persona.schedule());
         dress(villager, outfit(persona, player));
         if (!persona.personalities().isEmpty()) personality(villager, persona);

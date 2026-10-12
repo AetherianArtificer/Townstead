@@ -134,6 +134,64 @@ public final class RootServerLogic {
             Heredity.seedFounder(state.life(), id, villager.getRandom());
             com.aetherianartificer.townstead.root.appearance.IrisColors.seed(villager);   // the new people's eye colour, editable from there
         }
+        afterReseed(villager, state, id, changed, oldGenes);
+        return changed;
+    }
+
+    /**
+     * Roll a founder of {@code mix} onto a player or villager, the mixed counterpart of a root set.
+     * Always a fresh roll, even when the largest share is the root it already has. Returns the value
+     * to sync, or null when the mix or target is refused.
+     */
+    @Nullable
+    public static Result applyMix(ServerPlayer sp, int entityId, RootMix mix) {
+        List<RootSelector.Weighted> shares = mix.resolve();
+        if (shares == null || entityId == RootSetC2SPayload.NONE) return null;
+
+        if (entityId == RootSetC2SPayload.SELF) {
+            for (RootSelector.Weighted share : shares) {
+                if (!mayChooseOwn(sp, share.rootId())) return null;
+            }
+            String before = orDefault(PlayerRoot.getRootId(sp));
+            Heredity.MixedSeed seed = Heredity.seedMixed(shares, sp.getRandom());
+            adoptPlayerBody(sp, seed.rootId(), seed.genotype(), seed.heritage());
+            com.aetherianartificer.townstead.root.appearance.PlayerFounding.refresh(sp, seed.rootId());
+            if (!before.equals(seed.rootId().toString())) {
+                com.aetherianartificer.townstead.api.impl.v1.ApiEvents.rootChanged(sp, before, seed.rootId().toString());
+            }
+            return new Result(RootSetC2SPayload.SELF, seed.rootId().toString());
+        }
+
+        if (!(sp.serverLevel().getEntity(entityId) instanceof VillagerEntityMCA villager)) return null;
+        TownsteadVillager state = TownsteadVillagers.get(villager);
+        String before = orDefault(state.life().rootId());
+        List<Power> oldGenes = new ArrayList<>(Powers.active(villager));
+        Heredity.seedMixedFounder(state.life(), shares, villager.getRandom());
+        com.aetherianartificer.townstead.root.appearance.IrisColors.seed(villager);
+        ResourceLocation id = ResourceLocation.tryParse(state.life().rootId());
+        boolean changed = !before.equals(state.life().rootId());
+        afterReseed(villager, state, id, true, oldGenes);
+        if (changed) com.aetherianartificer.townstead.api.impl.v1.ApiEvents.rootChanged(villager, before, state.life().rootId());
+        return new Result(villager.getId(), state.life().rootId());
+    }
+
+    /** What a mix is called: {@code [name, backstory]}, or null when the mix is refused. */
+    @Nullable
+    public static String[] describeMix(RootMix mix) {
+        List<RootSelector.Weighted> shares = mix.resolve();
+        if (shares == null) return null;
+        Heritage heritage = Heredity.mixedHeritage(shares);
+        Root largest = RootRegistry.byId(ResourceLocation.tryParse(mix.largest()));
+        net.minecraft.network.chat.Component fallback = largest != null ? largest.displayName()
+                : net.minecraft.network.chat.Component.literal(mix.largest());
+        HeritageProfile profile = HeritageRegistry.bestMatch(heritage);
+        String backstory = profile != null && profile.backstory() != null ? profile.backstory().getString() : "";
+        return new String[] { HeritageRegistry.resolve(heritage, fallback).displayName().getString(), backstory };
+    }
+
+    /** Everything a villager's new founding needs once its genes and heritage are rolled. */
+    private static void afterReseed(VillagerEntityMCA villager, TownsteadVillager state, ResourceLocation id,
+                                    boolean changed, List<Power> oldGenes) {
         com.aetherianartificer.townstead.root.appearance.HairColors.clamp(villager,
                 com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(id,
                         state.life().hasHeritage() ? state.life().heritage() : null));
@@ -150,7 +208,6 @@ public final class RootServerLogic {
         // world saves/exits — which lost the origin (and so the skin tint) on reload.
         TownsteadVillagers.flush(villager);
         if (changed) resetPassives(villager, oldGenes);
-        return changed;
     }
 
     /**

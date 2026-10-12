@@ -17,6 +17,12 @@ VAR done_epilogue = false
 = humanity
 I said all nine this morning. At the altar, out loud, nobody there to hear it.
 -> recite ->
+{father_fate == "ended":
+    I wonder if anybody lights his candle now. I hope somebody does. I'm not going to.
+- else:
+    He gave his word. I believe him. That's the annoying part.
+}
+He said I've got her chin. I checked, after, in a bucket of water like an idiot. I suppose I have.
 I still like it. The hunt. I'm not going to stand here and tell you I don't.
 I just don't need it to feel good any more, to do it. Do no harm that you can help. I finally know what the "can" is for.
 + [Welcome home.]

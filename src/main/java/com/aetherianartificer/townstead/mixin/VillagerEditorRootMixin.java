@@ -421,7 +421,9 @@ public abstract class VillagerEditorRootMixin extends Screen {
                 Minecraft.getInstance(), this, villager,
                 this.width / 2, this.height / 2 - 80, 175, 185, townstead$target,
                 rootId -> townstead$applyRoot(townstead$target, rootId),
-                entry -> townstead$previewRoot(townstead$target, entry));
+                entry -> townstead$previewRoot(townstead$target, entry),
+                mix -> townstead$applyMix(townstead$target, mix),
+                mix -> townstead$previewMix(mix));
         for (net.minecraft.client.gui.components.AbstractWidget widget : ws.all()) addRenderableWidget(widget);
     }
 
@@ -698,6 +700,50 @@ public abstract class VillagerEditorRootMixin extends Screen {
         for (RootCatalogEntry.GeneRangeView r : entry.geneRanges()) {
             ranges.put(r.key(), new GeneRange(r.min(), r.max()));
         }
+        townstead$previewLook(entry, ranges);
+    }
+
+    /**
+     * A representative member of a mix: MCA's floats rolled within bands blended across its roots by
+     * share (a root that leaves a float free counts as the whole range, so partial ancestry widens the
+     * band, as mixed founding does), wearing the largest share's look. The server rolls the real
+     * individual on Apply.
+     */
+    @Unique
+    private void townstead$previewMix(com.aetherianartificer.townstead.root.RootMix mix) {
+        RootCatalogEntry lead = com.aetherianartificer.townstead.client.root.RootCatalogClient.origin(mix.largest());
+        if (lead == null) return;
+        Map<String, float[]> bands = new LinkedHashMap<>();
+        List<com.aetherianartificer.townstead.root.RootMix.Member> members = mix.members();
+        for (com.aetherianartificer.townstead.root.RootMix.Member m : members) {
+            RootCatalogEntry root = com.aetherianartificer.townstead.client.root.RootCatalogClient.origin(m.rootId());
+            if (root == null) continue;
+            for (RootCatalogEntry.GeneRangeView r : root.geneRanges()) bands.putIfAbsent(r.key(), new float[2]);
+        }
+        for (com.aetherianartificer.townstead.root.RootMix.Member m : members) {
+            RootCatalogEntry root = com.aetherianartificer.townstead.client.root.RootCatalogClient.origin(m.rootId());
+            float share = m.quarters() / (float) com.aetherianartificer.townstead.root.RootMix.WHOLE;
+            for (Map.Entry<String, float[]> band : bands.entrySet()) {
+                float min = 0f, max = 1f;
+                if (root != null) {
+                    for (RootCatalogEntry.GeneRangeView r : root.geneRanges()) {
+                        if (!r.key().equals(band.getKey())) continue;
+                        min = r.min();
+                        max = r.max();
+                    }
+                }
+                band.getValue()[0] += share * min;
+                band.getValue()[1] += share * max;
+            }
+        }
+        Map<String, GeneRange> ranges = new LinkedHashMap<>();
+        bands.forEach((key, band) -> ranges.put(key, new GeneRange(band[0], band[1])));
+        townstead$previewLook(lead, ranges);
+    }
+
+    /** Rolls a fresh member wearing {@code entry}'s look, its floats held to {@code ranges}. */
+    @Unique
+    private void townstead$previewLook(RootCatalogEntry entry, Map<String, GeneRange> ranges) {
         // Match spawn: roll a fresh random villager first (MCA's own genome roll covers the
         // floats this origin doesn't constrain — base skin melanin/hemoglobin, hair, face,
         // voice), then constrain the genes the origin defines to its ranges. So the preview is
@@ -781,6 +827,18 @@ public abstract class VillagerEditorRootMixin extends Screen {
         // syncVillagerData: the editor's full save also rewrites the target's family-tree
         // entry (gender, typed-in parents) and the player's whole MCA snapshot from stale
         // editor-buffer keys, which erased parent names and broke gendered family dialogue.
+        townstead$sendCommitGenes(target, RootGenes.snapshot(villager));
+    }
+
+    /** Commit the previewed genes (exactly) and roll a founder of the mix on the real target. */
+    @Unique
+    private void townstead$applyMix(int target, com.aetherianartificer.townstead.root.RootMix mix) {
+        townstead$previewDirty = false;
+        townstead$clothesSnapshot = villager.getClothes();
+        townstead$baseRootId = mix.largest();
+        net.minecraft.world.entity.LivingEntity subject = townstead$previewSubject();
+        townstead$awaitingSyncFrom = subject == null ? null : RootClientStore.carriedVariants(subject.getId());
+        com.aetherianartificer.townstead.client.root.RootMixNames.apply(target, mix);
         townstead$sendCommitGenes(target, RootGenes.snapshot(villager));
     }
 

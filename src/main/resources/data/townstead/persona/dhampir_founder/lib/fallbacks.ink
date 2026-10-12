@@ -215,6 +215,8 @@ EXTERNAL contract_turn_in(pool)
 ~ ending = ""
 ~ father_fate = ""
 ~ b_answer = ""
+~ court_wine = ""
+~ court_lean = 0
 
 // act3/04_epilogue.ink
 ~ done_epilogue = false

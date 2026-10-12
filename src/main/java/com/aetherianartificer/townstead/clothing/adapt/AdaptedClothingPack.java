@@ -39,12 +39,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * A built-in client resource pack of clothing textures made at load time from other mods' player
  * skins (see {@link ClothingAdapter}). Nothing of theirs ships in Townstead: each texture is read
  * from the installed mod's jar when first asked for. The list lives in
- * {@code assets/townstead/clothing_adapters.json}; a source whose mod is not installed is skipped.
+ * {@code assets/townstead/clothing_adapters.json}; a source whose mod is not installed, or whose
+ * installed version lacks the texture, is skipped.
  */
 public final class AdaptedClothingPack {
     private static final String CONFIG = "assets/townstead/clothing_adapters.json";
     private static final Map<ResourceLocation, Source> SOURCES = load();
     private static final Map<ResourceLocation, byte[]> MADE = new ConcurrentHashMap<>();
+    private static final Map<ResourceLocation, Boolean> PRESENT = new ConcurrentHashMap<>();
 
     private record Source(String mod, ResourceLocation texture, boolean slim, int hatRows, int handRows) {}
 
@@ -80,14 +82,29 @@ public final class AdaptedClothingPack {
     private static List<ResourceLocation> active() {
         List<ResourceLocation> out = new ArrayList<>();
         SOURCES.forEach((id, source) -> {
-            if (ModCompat.isLoaded(source.mod())) out.add(id);
+            if (available(id, source)) out.add(id);
         });
         return out;
     }
 
+    /** True for an adapted skin this game cannot make, so pickers must not choose it. */
+    public static boolean unavailable(String skin) {
+        ResourceLocation id = ResourceLocation.tryParse(skin);
+        Source source = id == null ? null : SOURCES.get(id);
+        return source != null && !available(id, source);
+    }
+
+    private static boolean available(ResourceLocation id, Source source) {
+        if (!ModCompat.isLoaded(source.mod())) return false;
+        return PRESENT.computeIfAbsent(id, key -> {
+            Path path = sourcePath(source);
+            return path != null && Files.isRegularFile(path);
+        });
+    }
+
     private static @Nullable IoSupplier<InputStream> supplier(ResourceLocation id) {
         Source source = SOURCES.get(id);
-        if (source == null || !ModCompat.isLoaded(source.mod())) return null;
+        if (source == null || !available(id, source)) return null;
         return () -> {
             byte[] bytes = MADE.get(id);
             if (bytes == null) {

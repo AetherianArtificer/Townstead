@@ -76,6 +76,35 @@ public final class RigSkins {
         return hidden;
     }
 
+    /**
+     * Each step of {@link #texture} for one entity, for {@code /townstead-roots-client}: where an
+     * outfit stops being drawn on a rig body.
+     */
+    public static String describe(LivingEntity entity) {
+        StringBuilder out = new StringBuilder("outfit: ");
+        String rootId = RootClientStore.resolve(entity);
+        RootLook look = RootCatalogClient.look(rootId);
+        out.append("root=").append(rootId).append(" look=")
+                .append(look == null ? "none" : look.skins().toString());
+        RootCatalogEntry origin = RootCatalogClient.origin(rootId);
+        out.append(" rigBase[root]=").append(origin == null ? "no origin" : origin.rigBase())
+                .append(" rigBase[entity]=").append(RigModels.rigBaseFor(entity))
+                .append(" alternate=").append(RigModels.isAlternate(RigModels.rigBaseFor(entity)))
+                .append(" generic=").append(RigModels.isGeneric(RigModels.rigBaseFor(entity)));
+        VillagerLike<?> villager = CommonVillagerModel.getVillager(entity);
+        String clothes = villager == null ? null : villager.getClothes();
+        out.append(" villagerLike=").append(villager == null ? "none" : villager.getClass().getSimpleName())
+                .append(" clothes=").append(clothes)
+                .append(" fits=").append(look != null && look.fits(clothes));
+        ResourceLocation tex = texture(entity);
+        out.append(" texture=").append(tex);
+        if (tex != null) {
+            out.append(" exists=").append(net.minecraft.client.Minecraft.getInstance().getResourceManager()
+                    .getResource(tex).isPresent());
+        }
+        return out.toString();
+    }
+
     /** The fitted skin texture this entity wears on its species body, or null. */
     @Nullable
     static ResourceLocation texture(LivingEntity entity) {

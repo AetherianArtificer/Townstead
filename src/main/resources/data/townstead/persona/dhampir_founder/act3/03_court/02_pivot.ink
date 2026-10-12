@@ -45,9 +45,9 @@ There's a wolf asleep by my fire. I didn't want that either.
 * [Do it.]
     -> court_ending_b
 
-// What the founder did with the earlier knocks at the door.
+// What the founder did with the earlier knocks at the door, and the player's part in the court.
 === function echoes() ===
-~ temp e = 0
+~ temp e = court_lean
 {check("midwife_forgiven"):
     ~ e = e - 1
 }

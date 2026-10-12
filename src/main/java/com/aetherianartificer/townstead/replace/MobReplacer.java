@@ -26,6 +26,7 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import org.jetbrains.annotations.Nullable;
+import com.aetherianartificer.townstead.compat.mca.McaResidency;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -196,7 +197,7 @@ public final class MobReplacer {
         villager.getPersistentData().remove(WILD);
         villager.getPersistentData().remove(REPLACED);
         villager.refreshBrain(level);
-        villager.getResidency().seekHome();
+        McaResidency.joinVillage(villager);
         com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.survival(villager,
                 com.aetherianartificer.townstead.chronicle.emit.ChronicleTapKeys.WILD_SETTLED, Map.of());
     }

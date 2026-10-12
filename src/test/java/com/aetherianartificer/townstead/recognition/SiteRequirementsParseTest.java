@@ -1,6 +1,8 @@
 package com.aetherianartificer.townstead.recognition;
 
+import com.aetherianartificer.townstead.TestBootstrap;
 import com.google.gson.JsonParser;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -10,6 +12,12 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class SiteRequirementsParseTest {
+    @BeforeAll
+    static void bootstrap() {
+        // Tag keys go through Registries, which 1.20.1 refuses before a bootstrap.
+        TestBootstrap.ensure();
+    }
+
     private static List<SiteRequirements.Requirement> parse(String json) {
         return SiteRequirements.parse(JsonParser.parseString(json).getAsJsonArray());
     }

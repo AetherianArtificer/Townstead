@@ -55,20 +55,6 @@ public final class WorkActivities {
                 (level, villager) -> com.aetherianartificer.townstead.work.WorkTaskDeclarations
                         .permitsTask(villager,
                                 com.aetherianartificer.townstead.profession.def.WorkTaskTypes.FISH));
-
-        // Shearing has a precise, read-only availability question already owned by the Pen task.
-        // Storage is deliberately absent: carrying wool to its shed is mandatory pipeline work,
-        // not something an Order Sheet may pause and strand in a villager's pockets.
-        register(com.aetherianartificer.townstead.profession.def.WorkTaskTypes.SHEAR,
-                (level, villager) -> com.aetherianartificer.townstead.work.WorkTaskDeclarations
-                        .permitsTask(villager,
-                                com.aetherianartificer.townstead.profession.def.WorkTaskTypes.SHEAR)
-                        && com.aetherianartificer.townstead.shepherd.ShepherdToolDamage
-                                .hasShears(villager)
-                        && com.aetherianartificer.townstead.shepherd.ShepherdInventory
-                                .hasRoomForWool(villager)
-                        && com.aetherianartificer.townstead.shepherd.ShepherdPenScanner
-                                .pickShearable(level, villager) != null);
     }
 
     /**
@@ -195,6 +181,9 @@ public final class WorkActivities {
                         .hasWork(level, villager, id)) return true;
                 if (job.type().equals(com.aetherianartificer.townstead.work.job.WorkJobDef.BLOCK_INTERACTION)
                         && com.aetherianartificer.townstead.work.job.BlockInteractionWorkTask
+                        .hasWork(level, villager, id)) return true;
+                if (job.type().equals(com.aetherianartificer.townstead.work.job.WorkJobDef.ENTITY_INTERACTION)
+                        && com.aetherianartificer.townstead.work.job.EntityInteractionWorkTask
                         .hasWork(level, villager, id)) return true;
             }
             return false;

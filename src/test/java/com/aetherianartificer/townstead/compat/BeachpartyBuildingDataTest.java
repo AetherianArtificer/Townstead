@@ -50,7 +50,7 @@ class BeachpartyBuildingDataTest {
                 "Beach Party's own profession is its own Beverage Artisan path, not a plain Bartender");
         var tasks = provider.getAsJsonObject("contributes")
                 .getAsJsonObject("path").getAsJsonArray("work");
-        assertEquals(2, tasks.size());
+        assertEquals(3, tasks.size());
 
         JsonObject palmBar = tasks.get(0).getAsJsonObject();
         assertEquals("townstead_work:brew", palmBar.get("type").getAsString());
@@ -64,11 +64,38 @@ class BeachpartyBuildingDataTest {
                 "beachparty:honey_cocktail",
                 "beachparty:melon_cocktail"), strings(palmBar, "recipes"));
 
-        JsonObject miniFridge = tasks.get(1).getAsJsonObject();
+        // Beachparty 1.1.5 (Forge 1.20.1) mixes at the tiki bar, which also makes milkshakes
+        JsonObject tikiBar = tasks.get(1).getAsJsonObject();
+        assertEquals("townstead_work:brew", tikiBar.get("type").getAsString());
+        assertEquals("path", tikiBar.get("access").getAsString());
+        assertEquals(List.of("beachparty:tiki_bar"), strings(tikiBar, "workstations"));
+        assertEquals(List.of(
+                "beachparty:coconut_cocktail",
+                "beachparty:sweetberries_cocktail",
+                "beachparty:cocoa_cocktail",
+                "beachparty:pumpkin_cocktail",
+                "beachparty:honey_cocktail",
+                "beachparty:melon_cocktail",
+                "beachparty:chocolate_milkshake",
+                "beachparty:coconut_milkshake",
+                "beachparty:sweetberry_milkshake",
+                "beachparty:refreshing_drink"), strings(tikiBar, "recipes"));
+
+        // 2.x freezes ice; 1.1.5 makes ice creams and popsicles in the same fridge
+        JsonObject miniFridge = tasks.get(2).getAsJsonObject();
         assertEquals("townstead_work:brew", miniFridge.get("type").getAsString());
         assertEquals("path", miniFridge.get("access").getAsString());
         assertEquals(List.of("beachparty:mini_fridge"), strings(miniFridge, "workstations"));
-        assertEquals(List.of("minecraft:ice"), strings(miniFridge, "recipes"));
+        assertEquals(List.of(
+                "minecraft:ice",
+                "beachparty:chocolate_icecream",
+                "beachparty:coconut_icecream",
+                "beachparty:sweetberry_icecream",
+                "beachparty:icecream_chocolate",
+                "beachparty:icecream_coconut",
+                "beachparty:icecream_sweetberries",
+                "beachparty:icecream_melon",
+                "beachparty:icecream_cactus"), strings(miniFridge, "recipes"));
     }
 
     @Test

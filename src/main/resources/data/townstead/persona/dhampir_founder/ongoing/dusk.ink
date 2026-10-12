@@ -14,7 +14,11 @@
 - ending == "B":
     {~You again. Sit, if you like. I don't bite. Not you, anyway.|The lodge is quiet tonight. I like it quiet. I like a lot of things quiet now.}
 - ending == "A" and RANDOM(1, 3) == 1:
-    {~I said all nine again this morning. I'm getting faster. I'm trying not to.|It's a good night. I'm not going out. I don't have to, and I'm finding out what that's like.}
+    {father_fate == "ended":
+        {~I said all nine again this morning. I'm getting faster. I'm trying not to.|It's a good night. I'm not going out. I don't have to, and I'm finding out what that's like.|I keep waiting for it to feel like something. It doesn't. It feels like a door I don't have to check any more.|I made you do it. I'd have done it badly. Or not at all, which is worse, or better. I go back and forth.}
+    - else:
+        {~I said all nine again this morning. I'm getting faster. I'm trying not to.|It's a good night. I'm not going out. I don't have to, and I'm finding out what that's like.|He'll sit with his candle this year, same as every year. I used to think that was the worst thing about him. Now I don't know what the worst thing is.|If anything of his comes near here, I'll know it. I'd know him anywhere now. I couldn't have said that before.}
+    }
 - mood != "":
     {mood}
 - check("hurt"):

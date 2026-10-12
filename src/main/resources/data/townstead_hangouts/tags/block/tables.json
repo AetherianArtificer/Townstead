@@ -4,6 +4,7 @@
     {"id":"#c:tables","required":false},
     {"id":"#forge:tables","required":false},
     {"id":"beachparty:palm_table","required":false},
+    {"id":"beachparty:table","required":false},
     {"id":"brewery:table","required":false},
     {"id":"candlelight:table","required":false},
     {"id":"kaleidoscope_tavern:table","required":false}

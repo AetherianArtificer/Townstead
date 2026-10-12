@@ -186,6 +186,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         /*if (net.minecraftforge.fml.loading.FMLEnvironment.dist == null || net.minecraftforge.fml.loading.FMLEnvironment.dist.isClient()) RequirementNameResolver.invalidate();
         *///?}
         com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.invalidateSignatures();
+        com.aetherianartificer.townstead.recognition.EnclosureWatcher.invalidateShapes();
         DATA_THEME = THEME;
         CLIENT_THEME_RESOURCE_MANAGER = null;
 
@@ -733,6 +734,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         /*if (net.minecraftforge.fml.loading.FMLEnvironment.dist == null || net.minecraftforge.fml.loading.FMLEnvironment.dist.isClient()) RequirementNameResolver.invalidate();
         *///?}
         com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.invalidateSignatures();
+        com.aetherianartificer.townstead.recognition.EnclosureWatcher.invalidateShapes();
     }
 
     public static Theme theme() {

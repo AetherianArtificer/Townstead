@@ -6,6 +6,7 @@ import com.aetherianartificer.townstead.clothing.ClothingEntry;
 import com.aetherianartificer.townstead.clothing.ClothingSet;
 import com.aetherianartificer.townstead.clothing.ClothingThermal;
 import com.aetherianartificer.townstead.clothing.VillageSpirits;
+import com.aetherianartificer.townstead.clothing.adapt.AdaptedClothingPack;
 import com.aetherianartificer.townstead.culture.Culture;
 import com.aetherianartificer.townstead.culture.CultureAssignment;
 import com.aetherianartificer.townstead.culture.CultureClothing;
@@ -130,6 +131,7 @@ public final class SkinPicker {
             String skin = e.getKey();
             Clothing clothing = e.getValue();
             if (skin == null || clothing == null) continue;
+            if (AdaptedClothingPack.unavailable(skin)) continue;
             // Rig skins are excluded from MCA's own random picks (they don't fit its body); a body they
             // fit may still wear them.
             if (clothing.exclude && !(bodyOnly && fits(fitted, skin))) continue;

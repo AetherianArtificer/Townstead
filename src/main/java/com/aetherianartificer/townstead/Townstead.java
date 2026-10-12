@@ -597,6 +597,7 @@ public class Townstead {
             com.aetherianartificer.townstead.rebirth.Rebirth.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
+            com.aetherianartificer.townstead.recognition.EnclosureWatcher.tick(e.getServer());
             townstead$profile("server.village_startup_seed", () ->
                     com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer()));
             townstead$profile("server.village_spirit_query", () ->
@@ -1248,6 +1249,7 @@ public class Townstead {
             com.aetherianartificer.townstead.rebirth.Rebirth.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.tick(e.getServer());
                 com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
+                com.aetherianartificer.townstead.recognition.EnclosureWatcher.tick(e.getServer());
                 townstead$profile("server.village_startup_seed", () ->
                         com.aetherianartificer.townstead.village.VillageStartupSeedScheduler.tick(e.getServer()));
                 townstead$profile("server.village_spirit_query", () ->
@@ -2271,6 +2273,8 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.condition.types.MovementConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.InteractionConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.ShearableConditionType());
         com.aetherianartificer.townstead.pheno.condition.types.NumericConditionType[] numerics = {
                 new com.aetherianartificer.townstead.pheno.condition.types.NumericConditionType(
                         "pheno:air_supply", ctx -> ctx.entity().getAirSupply()),
@@ -2856,6 +2860,8 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.action.types.MountActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.TameActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.UseItemOnActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.SetInLoveActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
@@ -3761,6 +3767,12 @@ public class Townstead {
                 FishermanHookLinkPayload.STREAM_CODEC,
                 this::handleFishermanHookLink
         );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.recognition.EnclosureGapS2CPayload.TYPE,
+                com.aetherianartificer.townstead.recognition.EnclosureGapS2CPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.client.building.EnclosureGapRenderer.show(payload.pos()))
+        );
         registrar.playToServer(
                 HungerSetPayload.TYPE,
                 HungerSetPayload.STREAM_CODEC,
@@ -4030,6 +4042,17 @@ public class Townstead {
                 com.aetherianartificer.townstead.root.RootSetC2SPayload.TYPE,
                 com.aetherianartificer.townstead.root.RootSetC2SPayload.STREAM_CODEC,
                 this::handleRootSet
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.root.RootMixC2SPayload.TYPE,
+                com.aetherianartificer.townstead.root.RootMixC2SPayload.STREAM_CODEC,
+                this::handleRootMix
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.root.RootMixS2CPayload.TYPE,
+                com.aetherianartificer.townstead.root.RootMixS2CPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.client.root.RootMixNames.accept(payload))
         );
         registrar.playToServer(
                 com.aetherianartificer.townstead.inventory.VillagerCurioRenderC2SPayload.TYPE,
@@ -4326,44 +4349,66 @@ public class Townstead {
             com.aetherianartificer.townstead.root.RootServerLogic.Result result =
                     com.aetherianartificer.townstead.root.RootServerLogic.applyOrRequest(
                             sp, payload.entityId(), payload.rootId());
-            if (result == null) return;
-            com.aetherianartificer.townstead.root.RootSyncS2CPayload sync =
-                    new com.aetherianartificer.townstead.root.RootSyncS2CPayload(result.targetId(), result.rootId());
-            PacketDistributor.sendToPlayer(sp, sync);
-            if (result.targetId() != com.aetherianartificer.townstead.root.RootSetC2SPayload.SELF) {
-                Entity tracked = sp.serverLevel().getEntity(result.targetId());
-                if (tracked != null) {
-                    PacketDistributor.sendToPlayersTrackingEntity(tracked, sync);
-                    if (tracked instanceof net.minecraft.world.entity.LivingEntity living) {
-                        com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload genes =
-                                com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload.forEntity(tracked.getId(), living);
-                        PacketDistributor.sendToPlayer(sp, genes);
-                        PacketDistributor.sendToPlayersTrackingEntity(tracked, genes);
-                    }
-                    // The root change re-rolls the villager's personality (and life-stage-derived
-                    // fields); push a fresh life sync so the inspector/editor reflect it immediately
-                    // instead of waiting for the next periodic broadcast.
-                    if (tracked instanceof VillagerEntityMCA villager) {
-                        com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload lifeSync = townstead$lifeSync(villager, sp);
-                        if (lifeSync != null) {
-                            PacketDistributor.sendToPlayer(sp, lifeSync);
-                            PacketDistributor.sendToPlayersTrackingEntity(villager, lifeSync);
-                        }
+            if (result != null) syncRootResult(sp, result);
+        });
+    }
+
+    private void handleRootMix(
+            com.aetherianartificer.townstead.root.RootMixC2SPayload payload,
+            IPayloadContext context
+    ) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer sp)) return;
+            if (payload.apply()) {
+                com.aetherianartificer.townstead.root.RootServerLogic.Result result =
+                        com.aetherianartificer.townstead.root.RootServerLogic.applyMix(sp, payload.entityId(), payload.mix());
+                if (result != null) syncRootResult(sp, result);
+                return;
+            }
+            String[] named = com.aetherianartificer.townstead.root.RootServerLogic.describeMix(payload.mix());
+            PacketDistributor.sendToPlayer(sp, new com.aetherianartificer.townstead.root.RootMixS2CPayload(
+                    payload.requestId(), named == null ? "" : named[0], named == null ? "" : named[1]));
+        });
+    }
+
+    /** Tells the setter and everyone tracking the target about a root change, with its new genes and life. */
+    private void syncRootResult(ServerPlayer sp, com.aetherianartificer.townstead.root.RootServerLogic.Result result) {
+        com.aetherianartificer.townstead.root.RootSyncS2CPayload sync =
+                new com.aetherianartificer.townstead.root.RootSyncS2CPayload(result.targetId(), result.rootId());
+        PacketDistributor.sendToPlayer(sp, sync);
+        if (result.targetId() != com.aetherianartificer.townstead.root.RootSetC2SPayload.SELF) {
+            Entity tracked = sp.serverLevel().getEntity(result.targetId());
+            if (tracked != null) {
+                PacketDistributor.sendToPlayersTrackingEntity(tracked, sync);
+                if (tracked instanceof net.minecraft.world.entity.LivingEntity living) {
+                    com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload genes =
+                            com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload.forEntity(tracked.getId(), living);
+                    PacketDistributor.sendToPlayer(sp, genes);
+                    PacketDistributor.sendToPlayersTrackingEntity(tracked, genes);
+                }
+                // The root change re-rolls the villager's personality (and life-stage-derived
+                // fields); push a fresh life sync so the inspector/editor reflect it immediately
+                // instead of waiting for the next periodic broadcast.
+                if (tracked instanceof VillagerEntityMCA villager) {
+                    com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload lifeSync = townstead$lifeSync(villager, sp);
+                    if (lifeSync != null) {
+                        PacketDistributor.sendToPlayer(sp, lifeSync);
+                        PacketDistributor.sendToPlayersTrackingEntity(villager, lifeSync);
                     }
                 }
-            } else {
-                // Self-origin change: also re-key by the player's network id so their own
-                // model (sent to themselves) and bystanders' views (tracking sync) re-tint.
-                com.aetherianartificer.townstead.root.RootSyncS2CPayload entitySync =
-                        new com.aetherianartificer.townstead.root.RootSyncS2CPayload(sp.getId(), result.rootId());
-                PacketDistributor.sendToPlayer(sp, entitySync);
-                PacketDistributor.sendToPlayersTrackingEntity(sp, entitySync);
-                com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload selfGenes =
-                        com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload.forEntity(sp.getId(), sp);
-                PacketDistributor.sendToPlayer(sp, selfGenes);
-                PacketDistributor.sendToPlayersTrackingEntity(sp, selfGenes);
             }
-        });
+        } else {
+            // Self-origin change: also re-key by the player's network id so their own
+            // model (sent to themselves) and bystanders' views (tracking sync) re-tint.
+            com.aetherianartificer.townstead.root.RootSyncS2CPayload entitySync =
+                    new com.aetherianartificer.townstead.root.RootSyncS2CPayload(sp.getId(), result.rootId());
+            PacketDistributor.sendToPlayer(sp, entitySync);
+            PacketDistributor.sendToPlayersTrackingEntity(sp, entitySync);
+            com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload selfGenes =
+                    com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload.forEntity(sp.getId(), sp);
+            PacketDistributor.sendToPlayer(sp, selfGenes);
+            PacketDistributor.sendToPlayersTrackingEntity(sp, selfGenes);
+        }
     }
 
     private void handleSetGeneVariant(

@@ -65,6 +65,8 @@ public final class TownsteadClient {
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onRenderLivingPre);
             NeoForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             NeoForge.EVENT_BUS.addListener(
+                    com.aetherianartificer.townstead.client.building.EnclosureGapRenderer::onRenderLevel);
+            NeoForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPre);
             NeoForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPost);
@@ -102,6 +104,8 @@ public final class TownsteadClient {
             MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.render.WildCostumeRender::onEntityLeave);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onRenderLivingPre);
             MinecraftForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
+            MinecraftForge.EVENT_BUS.addListener(
+                    com.aetherianartificer.townstead.client.building.EnclosureGapRenderer::onRenderLevel);
             MinecraftForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPre);
             MinecraftForge.EVENT_BUS.addListener(

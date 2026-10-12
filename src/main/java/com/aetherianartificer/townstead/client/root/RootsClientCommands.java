@@ -52,6 +52,7 @@ public final class RootsClientCommands {
         out.append("\nvariants=").append(new java.util.TreeMap<>(RootClientStore.carriedVariants(living.getId())));
         out.append("\nproportions=").append(proportions(RootClientStore.resolve(living)));
         out.append("\nbodyScale=").append(com.aetherianartificer.townstead.root.rig.BodyScale.of(living));
+        out.append("\n").append(com.aetherianartificer.townstead.client.species.RigSkins.describe(living));
         if (living instanceof net.conczin.mca.entity.VillagerEntityMCA villager) {
             out.append("\nmcaWidth=").append(villager.getGenetics().getGene(net.conczin.mca.entity.ai.Genetics.WIDTH))
                     .append(" mcaSize=").append(villager.getGenetics().getGene(net.conczin.mca.entity.ai.Genetics.SIZE));

@@ -144,6 +144,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue DEBUG_LOGGING;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> API_DENIED_WRITE_SOURCES;
     public static final ModConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
+    public static final ModConfigSpec.BooleanValue ENABLE_ENCLOSURE_RECOGNITION;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ROOTS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
@@ -267,6 +268,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue DEBUG_LOGGING;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> API_DENIED_WRITE_SOURCES;
     public static final ForgeConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_ENCLOSURE_RECOGNITION;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ROOTS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
@@ -640,6 +642,11 @@ public final class TownsteadConfig {
                 .comment("Ask MCA to rescan a room after Townstead building-signature blocks change.",
                          "This fixes automatic discovery for modded appliances that are not vanilla POIs.")
                 .define("enableDiscoveryBridge", true);
+        ENABLE_ENCLOSURE_RECOGNITION = b
+                .translation("townstead.configuration.mca_buildings.enableEnclosureRecognition")
+                .comment("Add a pen to the village when its fence is closed, and track when it opens.",
+                         "Villages with MCA's Auto Scan turned off are left alone.")
+                .define("enableEnclosureRecognition", true);
         b.pop();
 
         // ── Chef's Delight ──

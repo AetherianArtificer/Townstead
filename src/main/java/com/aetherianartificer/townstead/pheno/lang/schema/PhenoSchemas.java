@@ -207,6 +207,12 @@ public final class PhenoSchemas {
         NodeSchemas.register(NodeSchema.of("pheno:target_action", NodeDomain.ACTION)
                 .doc("Runs the inner action on the other entity (target).")
                 .field(required("action", PhenoType.ACTION)).primaryChild("action").build());
+        NodeSchemas.register(NodeSchema.of("pheno:use_item_on", NodeDomain.ACTION)
+                .doc("The actor uses an item from its inventory on the target as a player would "
+                        + "(shears on a sheep, a bucket on a cow). Results go back to the actor; fails "
+                        + "when nothing happened.")
+                .field(of("item", PhenoType.TAG_OR_ID).doc("Item id or #tag; empty hand when absent."))
+                .field(of("secondary_use", PhenoType.BOOL).doc("Use while sneaking.")).build());
         NodeSchemas.register(NodeSchema.of("pheno:invert", NodeDomain.ACTION)
                 .doc("Swaps actor and target for the inner action.")
                 .field(required("action", PhenoType.ACTION)).primaryChild("action").build());
@@ -580,6 +586,10 @@ public final class PhenoSchemas {
         NodeSchemas.register(NodeSchema.of("pheno:interaction", NodeDomain.CONDITION)
                 .doc("Social and UI-driven interaction state.")
                 .field(of("interaction", PhenoType.STRING)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:shearable", NodeDomain.CONDITION)
+                .doc("The entity can be sheared now: a grown sheep, a mooshroom, a snow golem, or a "
+                        + "modded mob that declares itself shearable.").build());
 
         NodeSchemas.register(NodeSchema.of("pheno:step_height", NodeDomain.GENE)
                 .doc("Raises how high the entity steps up by amount (Apugli step_height's upper_height), "

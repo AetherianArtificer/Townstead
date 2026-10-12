@@ -29,6 +29,7 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import com.aetherianartificer.townstead.compat.mca.McaResidency;
 
 import java.util.List;
 import java.util.Set;
@@ -86,7 +87,7 @@ public final class DebugVillageSpawner {
         // pre-existing villagers are deliberately preserved.
         for (Villager generated : level.getEntitiesOfClass(Villager.class, area)) {
             if (existingResidents.contains(generated.getUUID())) continue;
-            if (generated instanceof VillagerEntityMCA mca) mca.getResidency().leaveHome();
+            if (generated instanceof VillagerEntityMCA mca) McaResidency.leaveVillage(mca);
             generated.discard();
         }
 
@@ -146,7 +147,7 @@ public final class DebugVillageSpawner {
         int removed = 0;
         for (VillagerEntityMCA resident : level.getEntitiesOfClass(VillagerEntityMCA.class, area)) {
             if (!residentIds.contains(resident.getUUID())) continue;
-            resident.getResidency().leaveHome();
+            McaResidency.leaveVillage(resident);
             resident.discard();
             removed++;
         }
@@ -241,7 +242,7 @@ public final class DebugVillageSpawner {
             for (VillagerEntityMCA resident : level.getEntitiesOfClass(VillagerEntityMCA.class,
                     new AABB(center).inflate(VILLAGE_RADIUS, 64.0D, VILLAGE_RADIUS))) {
                 if (!residentIds.contains(resident.getUUID())) continue;
-                resident.getResidency().leaveHome();
+                McaResidency.leaveVillage(resident);
                 resident.discard();
                 removed++;
             }
@@ -298,7 +299,7 @@ public final class DebugVillageSpawner {
             // Culture must exist before MCA chooses the given name during finalizeSpawn. Residency
             // is not reliable until the entity joins the level, so do not make naming depend on it.
             Naming.prepareFounder(villager, profile.culture());
-            villager.getResidency().seekHome();
+            McaResidency.joinVillage(villager);
             //? if >=1.21 {
             villager.finalizeSpawn(level, level.getCurrentDifficultyAt(position),
                     MobSpawnType.COMMAND, null);
@@ -307,7 +308,7 @@ public final class DebugVillageSpawner {
                     MobSpawnType.COMMAND, null, null);
             *///?}
             if (level.addFreshEntity(villager)) {
-                villager.getResidency().seekHome();
+                McaResidency.joinVillage(villager);
                 spawned++;
             }
         }

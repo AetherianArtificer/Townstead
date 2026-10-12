@@ -8,7 +8,7 @@
     "brewincompatdelight:pina_colada",
     "brewincompatdelight:whiskey_sour",
     "brewincompatdelight:lemon_lime",
-    "brewincompatdelight:cranberry_juice"
+    "brewincompatdelight:tonic_water"
   ],
   "transaction": {
     "mode": "observe_native",

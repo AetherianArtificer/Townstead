@@ -139,7 +139,7 @@ public abstract class VillagerHungerMixin extends Villager {
                                         com.aetherianartificer.townstead.work.producer.ProducerRole.GENERAL,
                                         () -> true)))),
                         Pair.of(80, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.job.EntityDeliveryWorkTask())),
-                        Pair.of(82, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.SHEPHERDING, new com.aetherianartificer.townstead.shepherd.ShepherdWorkTask())),
+                        Pair.of(82, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.job.EntityInteractionWorkTask())),
                         Pair.of(83, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.SHEPHERDING, new com.aetherianartificer.townstead.shepherd.ShepherdDepositTask())),
                         Pair.of(73, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.job.BlockInteractionWorkTask())),
                         Pair.of(84, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.StationWorkTask())),

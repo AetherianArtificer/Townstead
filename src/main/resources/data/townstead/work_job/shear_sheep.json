@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:job/v3",
+  "task": "townstead_work:shear",
+  "type": "townstead:entity_interaction",
+  "target": {
+    "buildings": ["pen", "stable"],
+    "entities": ["#townstead:wool_bearing"],
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:alive" },
+        { "type": "pheno:baby", "inverted": true },
+        { "type": "pheno:shearable" },
+        {
+          "type": "pheno:config",
+          "scope": "server",
+          "file": "townstead-server.toml",
+          "path": ["systems", "shepherding"],
+          "equals": true,
+          "default": true
+        }
+      ]
+    },
+    "interactions": [
+      {
+        "item": "#townstead:shears",
+        "outputs": ["#minecraft:wool"],
+        "activity": "townstead:tended",
+        "xp": 1
+      }
+    ]
+  }
+}

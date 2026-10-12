@@ -35,24 +35,20 @@ class BespokeProfessionOrderContractTest {
     }
 
     @Test
-    void shepherdOffersShearingButNeverMakesStorageOptional() {
+    void shepherdOffersShearingAndCarriesWoolAsPartOfTheJob() {
         List<WorkTaskDef> tasks = tasks("shepherd");
         WorkTaskDef shear = tasks.stream()
                 .filter(task -> task.type().equals(WorkTaskTypes.SHEAR))
-                .findFirst().orElseThrow();
-        WorkTaskDef store = tasks.stream()
-                .filter(task -> task.type().equals(WorkTaskTypes.STORE))
                 .findFirst().orElseThrow();
 
         assertNotNull(shear.order());
         assertEquals("Shear sheep", shear.order().name());
         assertEquals(id("minecraft:shears"), shear.order().icon());
-        assertNull(store.order(),
-                "depositing carried wool is mandatory pipeline work, not a pausable activity");
+        // The shearing Job delivers its own wool, so there is no separate storage task an Order
+        // Sheet could pause and strand wool in a villager's pockets.
+        assertTrue(tasks.stream().noneMatch(task -> task.type().equals(WorkTaskTypes.STORE)));
 
         WorkActivities.bootstrap();
-        assertTrue(WorkActivities.isKnown(WorkTaskTypes.SHEAR),
-                "the activity catalogue must have an executable Pen/shearing probe");
         assertFalse(WorkActivities.isKnown(WorkTaskTypes.STORE),
                 "mandatory storage must not leak into the activity catalogue");
     }

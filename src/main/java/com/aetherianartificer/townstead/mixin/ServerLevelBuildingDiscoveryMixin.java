@@ -11,7 +11,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Captures player, piston, explosion, and mod-driven block replacements through one shared path. */
+/**
+ * Captures player, piston, explosion, and mod-driven block replacements through one shared path,
+ * for MCA room discovery and for enclosures closing and opening.
+ */
 @Mixin(Level.class)
 public abstract class ServerLevelBuildingDiscoveryMixin {
     @Inject(
@@ -27,6 +30,7 @@ public abstract class ServerLevelBuildingDiscoveryMixin {
             CallbackInfoReturnable<Boolean> cir) {
         if (!((Object) this instanceof ServerLevel level) || pos == null || newState == null) return;
         BlockState oldState = level.getBlockState(pos);
+        com.aetherianartificer.townstead.recognition.EnclosureWatcher.onBlockChanged(level, pos, oldState, newState);
         // Most same-block state changes cannot alter classification. Stateful stacks are the
         // exception: Bakery jars keep several physical bottles in one tile via a `stack` property.
         if (oldState.getBlock() == newState.getBlock()

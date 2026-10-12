@@ -91,17 +91,24 @@ public final class Heredity {
             return;
         }
 
+        MixedSeed seed = seedMixed(mix, random);
+        life.setGenotype(seed.genotype());
+        life.setHeritage(seed.heritage());
+        life.setRoot(seed.rootId().toString());
+        life.clearCarriedVariants();
+        recomputeExpressed(life);
+    }
+
+    /** A rolled mixed founder: its genes, its blended heritage, and the largest share's root. */
+    public record MixedSeed(Genotype genotype, Heritage heritage, ResourceLocation rootId) {}
+
+    /** The genes and heritage of a founder admixed from {@code mix} (2+ shares), for any holder. */
+    public static MixedSeed seedMixed(List<RootSelector.Weighted> mix, RandomSource random) {
         java.util.List<Genotype> genotypes = new java.util.ArrayList<>(mix.size());
         float[] fractions = new float[mix.size()];
-        java.util.Map<ResourceLocation, Float> heritage = new java.util.LinkedHashMap<>();
-        java.util.Map<ResourceLocation, Float> lineages = new java.util.LinkedHashMap<>();
         for (int i = 0; i < mix.size(); i++) {
-            RootSelector.Weighted w = mix.get(i);
-            fractions[i] = w.fraction();
-            genotypes.add(seedGenotype(w.rootId(), random));
-            Heritage seed = RootRegistry.seedHeritage(w.rootId());
-            seed.fractions().forEach((ancestry, share) -> heritage.merge(ancestry, share * w.fraction(), Float::sum));
-            seed.lineages().forEach((lineage, share) -> lineages.merge(lineage, share * w.fraction(), Float::sum));
+            fractions[i] = mix.get(i).fraction();
+            genotypes.add(seedGenotype(mix.get(i).rootId(), random));
         }
 
         Set<ResourceLocation> loci = new LinkedHashSet<>();
@@ -112,11 +119,19 @@ public final class Heredity {
             childGenes.set(locus, drawAdmixed(genotypes, fractions, locus, random),
                     drawAdmixed(genotypes, fractions, locus, random));
         }
+        return new MixedSeed(childGenes, mixedHeritage(mix), ResourceLocation.tryParse(dominantRoot(mix)));
+    }
 
-        life.setGenotype(childGenes);
-        life.setHeritage(new Heritage(heritage, lineages));
-        life.setRoot(dominantRoot(mix));
-        recomputeExpressed(life);
+    /** The fraction-weighted sum of each share's seed heritage. */
+    public static Heritage mixedHeritage(List<RootSelector.Weighted> mix) {
+        java.util.Map<ResourceLocation, Float> heritage = new java.util.LinkedHashMap<>();
+        java.util.Map<ResourceLocation, Float> lineages = new java.util.LinkedHashMap<>();
+        for (RootSelector.Weighted w : mix) {
+            Heritage seed = RootRegistry.seedHeritage(w.rootId());
+            seed.fractions().forEach((ancestry, share) -> heritage.merge(ancestry, share * w.fraction(), Float::sum));
+            seed.lineages().forEach((lineage, share) -> lineages.merge(lineage, share * w.fraction(), Float::sum));
+        }
+        return new Heritage(heritage, lineages);
     }
 
     /**
