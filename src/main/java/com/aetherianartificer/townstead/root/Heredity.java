@@ -367,7 +367,8 @@ public final class Heredity {
         Genotype genotype = life.genotype();
         Heritage heritage = life.hasHeritage() ? life.heritage() : null;
         List<String> encodings = new java.util.ArrayList<>();
-        List<Allele> expressed = withGranted(expressedAlleles(genotype), heritageAlleles(heritage));
+        List<Allele> expressed = withGranted(expressedAlleles(genotype),
+                heritageAlleles(heritage, genotype == null ? 0L : genotype.seed()));
         for (Allele raw : expressed) {
             Allele allele = scaleByHeritage(raw, heritage);
             encodings.add(allele.encode());
@@ -387,6 +388,15 @@ public final class Heredity {
      * expresses its heaviest variant.
      */
     public static List<Allele> heritageAlleles(@org.jetbrains.annotations.Nullable Heritage heritage) {
+        return heritageAlleles(heritage, 0L);
+    }
+
+    /**
+     * As {@link #heritageAlleles(Heritage)}, a variant gene picking by the bearer's expression
+     * {@code seed} (weighted, stable for one individual, different between siblings), so every
+     * Half-Cat needn't wear the same ears. Seed 0 keeps the heaviest variant.
+     */
+    public static List<Allele> heritageAlleles(@org.jetbrains.annotations.Nullable Heritage heritage, long seed) {
         HeritageProfile profile = HeritageRegistry.bestMatch(heritage);
         if (profile == null || profile.genes().isEmpty()) return List.of();
         List<Allele> out = new java.util.ArrayList<>(profile.genes().size());
@@ -395,15 +405,35 @@ public final class Heredity {
             if (gene == null) continue;
             String variant = null;
             if (gene.hasVariants()) {
-                GeneVariant heaviest = null;
-                for (GeneVariant v : gene.variants()) {
-                    if (heaviest == null || v.weight() > heaviest.weight()) heaviest = v;
-                }
-                variant = heaviest == null ? null : heaviest.id();
+                GeneVariant pick = seed == 0L ? heaviest(gene) : seeded(gene, seed);
+                variant = pick == null ? null : pick.id();
             }
             out.add(Allele.of(gene.id(), variant));
         }
         return out;
+    }
+
+    private static @Nullable GeneVariant heaviest(Gene gene) {
+        GeneVariant heaviest = null;
+        for (GeneVariant v : gene.variants()) {
+            if (heaviest == null || v.weight() > heaviest.weight()) heaviest = v;
+        }
+        return heaviest;
+    }
+
+    private static GeneVariant seeded(Gene gene, long seed) {
+        long h = seed ^ (gene.id().toString().hashCode() * 0x9E3779B97F4A7C15L);
+        h = (h ^ (h >>> 33)) * 0xFF51AFD7ED558CCDL;
+        h = (h ^ (h >>> 33)) * 0xC4CEB9FE1A85EC53L;
+        h ^= h >>> 33;
+        int total = 0;
+        for (GeneVariant v : gene.variants()) total += Math.max(1, v.weight());
+        int roll = (int) Math.floorMod(h, (long) Math.max(1, total));
+        for (GeneVariant v : gene.variants()) {
+            roll -= Math.max(1, v.weight());
+            if (roll < 0) return v;
+        }
+        return gene.variants().get(0);
     }
 
     /**

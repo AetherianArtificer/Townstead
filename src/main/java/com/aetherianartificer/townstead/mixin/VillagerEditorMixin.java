@@ -587,6 +587,8 @@ public abstract class VillagerEditorMixin extends Screen {
     @Override
     public void removed() {
         super.removed();
+        // Opening the root browser takes the editor off screen, but the browser draws its model.
+        if (com.aetherianartificer.townstead.client.gui.root.RootBrowseScreen.isOver((Screen) (Object) this)) return;
         townstead$cleanupOnClose();
     }
 

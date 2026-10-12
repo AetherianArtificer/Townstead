@@ -11,7 +11,6 @@ import com.aetherianartificer.townstead.client.gui.root.RootBrowseModel.Shortcut
 import com.aetherianartificer.townstead.client.gui.root.RootBrowseModel.Value;
 import com.aetherianartificer.townstead.client.gui.root.RootBrowseModel.View;
 import com.aetherianartificer.townstead.client.root.RootCatalogClient;
-import com.aetherianartificer.townstead.client.root.RootMixNames;
 import com.aetherianartificer.townstead.client.root.RootWorldCounts;
 import com.aetherianartificer.townstead.root.GeneCatalogEntry;
 import com.aetherianartificer.townstead.root.RootBrowseEntry;
@@ -40,7 +39,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 
 /**
  * Every root at once, opened from the Root tab's "Browse roots..." button. Filters on the left
@@ -55,8 +53,10 @@ import java.util.function.Consumer;
  *
  * <p>It wears the MCA editor's greys and borrows the Quest Ledger's icons, tab strip and spacing
  * (a {@value #GUTTER}px gutter, {@value #PAD}px panel padding). Every header control starts or ends
- * on the edge of the panel below it. Choosing returns to the editor with the root or mix previewed,
- * not applied; Back returns with whatever was previewed before.</p>
+ * on the edge of the panel below it. It opens on what the editor shows. Each click shows a founding the
+ * server rolled ({@link RootEditSession}), or the target itself when the click picks what it already
+ * is; Choose returns to the editor with that same founding on show, not applied, and Back with
+ * whatever was on show before.</p>
  */
 public final class RootBrowseScreen extends Screen {
 
@@ -106,16 +106,14 @@ public final class RootBrowseScreen extends Screen {
     private static final List<String> TRAITS = List.of("winged", "small", "large", "aquatic", "lays_eggs",
             "nocturnal", "darkvision", "ageless", "sterile");
 
-    /** What the browser hands back to the editor. */
-    public record Callbacks(Consumer<RootCatalogEntry> preview, Consumer<RootMix> previewMix,
-                            Consumer<RootCatalogEntry> choose, Consumer<RootMix> chooseMix) {}
-
     private final Screen parent;
     private final @Nullable LivingEntity model;
-    private final Callbacks callbacks;
-    private final String currentId;
-    private final @Nullable RootCatalogEntry initial;
-    private final @Nullable RootMix initialMix;
+    private final RootEditSession session;
+    /** What was on show when the browser opened, for Back. */
+    private final RootEditSession.@Nullable Founding atOpen;
+    /** The editor the open browser sits over, which keeps its model's state meanwhile. */
+    private static @Nullable Screen over;
+    private boolean returning;
     private final Map<String, RootCatalogEntry> entries = new LinkedHashMap<>();
     private final Map<String, Item> items = new HashMap<>();
     private final RootBrowseModel browser;
@@ -231,24 +229,25 @@ public final class RootBrowseScreen extends Screen {
         public void renderString(GuiGraphics g, Font font, int color) {
             int total = 9 + 4 + font.width(getMessage());
             int left = getX() + Math.max(2, (getWidth() - total) / 2);
-            int y = getY() + (getHeight() - 9) / 2;
-            g.fill(left, y, left + 9, y + 9, 0xFF1A1A1A);
-            g.fill(left + 1, y + 1, left + 8, y + 8, active ? 0xFFECECEC : 0xFF8A8A8A);
-            for (int i = 2; i <= 6; i += 2) g.fill(left + i, y + i, left + i + 1, y + i + 1, 0xFF1A1A1A);
+            drawDie(g, left, getY() + (getHeight() - 9) / 2, active ? 0xFFECECEC : 0xFF8A8A8A);
             g.drawString(font, getMessage(), left + 13, getY() + (getHeight() - 8) / 2, color);
         }
     }
 
-    public RootBrowseScreen(Screen parent, boolean self, @Nullable LivingEntity model, String currentId,
-                            @Nullable RootCatalogEntry initial, @Nullable RootMix initialMix, Callbacks callbacks) {
+    /** A 9px die showing three. */
+    private static void drawDie(GuiGraphics g, int x, int y, int face) {
+        g.fill(x, y, x + 9, y + 9, 0xFF1A1A1A);
+        g.fill(x + 1, y + 1, x + 8, y + 8, face);
+        for (int i = 2; i <= 6; i += 2) g.fill(x + i, y + i, x + i + 1, y + i + 1, 0xFF1A1A1A);
+    }
+
+    public RootBrowseScreen(Screen parent, boolean self, @Nullable LivingEntity model, RootEditSession session) {
         super(Component.translatable("townstead.root.browse.title"));
         this.parent = parent;
         this.model = model;
-        this.currentId = currentId;
-        this.initial = initial;
-        this.initialMix = initialMix;
-        this.selected = initial;
-        this.callbacks = callbacks;
+        this.session = session;
+        this.atOpen = session.shown();
+        over = parent;
         List<Item> list = new ArrayList<>();
         Set<String> packs = new LinkedHashSet<>();
         Map<String, Integer> perSpecies = new HashMap<>();
@@ -266,6 +265,10 @@ public final class RootBrowseScreen extends Screen {
         Map<String, String> traitLabels = new LinkedHashMap<>();
         for (String trait : TRAITS) traitLabels.put(trait, Component.translatable("townstead.root.trait." + trait).getString());
         this.browser = new RootBrowseModel(list, traitLabels);
+        // Open on what the editor shows: a mix in Mix mode with its tray, a root picked in Pick.
+        RootEditSession.Choice shown = session.shownChoice();
+        RootMix initialMix = shown != null ? shown.mix() : null;
+        this.selected = shown != null ? entries.get(shown.rootId()) : null;
         if (initialMix != null && mixable) {
             mixing = true;
             for (RootMix.Member m : initialMix.members()) {
@@ -356,45 +359,58 @@ public final class RootBrowseScreen extends Screen {
         pin = addRenderableWidget(new QuestIconButton(leftX, buttonsY, half, 20,
                 Component.translatable("townstead.root.browse.pin"), b -> togglePin(), QuestIcons.Icon.PINNED));
         roll = addRenderableWidget(new RollButton(leftX, buttonsY, half, 20,
-                Component.translatable("townstead.root.browse.roll"), b -> previewMix()));
+                Component.translatable("townstead.root.browse.roll"), b -> {
+                    RootEditSession.Choice choice = trayChoice();
+                    if (choice != null) session.roll(choice);
+                }));
         choose = addRenderableWidget(new QuestIconButton(leftX + half + PAD, buttonsY, inner - half - PAD, 20,
                 Component.translatable("townstead.root.browse.choose"), b -> chooseSelected(), QuestIcons.Icon.DONE));
         updateButtons();
         refresh();
         RootWorldCounts.request(() -> Minecraft.getInstance().execute(this::refresh));
-        RootMixNames.listen(() -> {});
     }
 
     @Override
     public void removed() {
         RootWorldCounts.stopListening();
-        RootMixNames.listen(null);
+        over = null;
+        // Closed some other way than back to the editor: the editor is gone too, so it cleans up now.
+        if (!returning) parent.removed();
         super.removed();
+    }
+
+    /**
+     * Whether a browser opened over {@code editor}. Opening one takes the editor off screen, but the
+     * browser shows the editor's model, so the editor must keep that model's state until it is back.
+     */
+    public static boolean isOver(Screen editor) {
+        return over == editor;
+    }
+
+    private void backToEditor() {
+        if (minecraft == null) return;
+        returning = true;
+        minecraft.setScreen(parent);
     }
 
     @Override
     public void onClose() {
         if (minecraft == null) return;
-        if (initialMix != null) callbacks.chooseMix().accept(initialMix);
-        else if (initial != null) callbacks.choose().accept(initial);
-        minecraft.setScreen(parent);
+        session.restore(atOpen);
+        backToEditor();
     }
 
+    /** Back to the editor with what is on show, still to be applied there. */
     private void chooseSelected() {
         if (minecraft == null) return;
         if (mixing) {
             if (tray.isEmpty()) return;
             for (Slot slot : tray) RootBrowsePrefs.viewed(slot.id);
-            RootMix mix = mix();
-            if (mix != null) callbacks.chooseMix().accept(mix);
-            else callbacks.choose().accept(entries.get(tray.get(0).id));
-            minecraft.setScreen(parent);
-            return;
+        } else {
+            if (selected == null) return;
+            RootBrowsePrefs.viewed(selected.id());
         }
-        if (selected == null) return;
-        RootBrowsePrefs.viewed(selected.id());
-        callbacks.choose().accept(selected);
-        minecraft.setScreen(parent);
+        backToEditor();
     }
 
     private void togglePin() {
@@ -417,7 +433,7 @@ public final class RootBrowseScreen extends Screen {
         }
         selected = entry;
         detailScroll.offset = 0;
-        callbacks.preview().accept(entry);
+        session.want(RootEditSession.Choice.root(entry.id()));
         updateButtons();
     }
 
@@ -433,7 +449,7 @@ public final class RootBrowseScreen extends Screen {
             previewMix();
         } else {
             if (!tray.isEmpty()) selected = entries.get(largest().id);
-            if (selected != null) callbacks.preview().accept(selected);
+            if (selected != null) session.want(RootEditSession.Choice.root(selected.id()));
         }
         updateButtons();
     }
@@ -443,7 +459,7 @@ public final class RootBrowseScreen extends Screen {
         pin.visible = !mixing;
         roll.visible = mixing;
         pin.active = selected != null;
-        roll.active = !tray.isEmpty();
+        roll.active = !tray.isEmpty() && !session.rolling();
         choose.active = mixing ? !tray.isEmpty() : selected != null;
         pin.setMessage(Component.translatable(selected != null && RootBrowsePrefs.isPinned(selected.id())
                 ? "townstead.root.browse.unpin" : "townstead.root.browse.pin"));
@@ -565,12 +581,33 @@ public final class RootBrowseScreen extends Screen {
         return new RootMix(members);
     }
 
-    /** Rolls the tray onto the model: a fresh member of the mix, or the one root when it stands alone. */
-    private void previewMix() {
-        if (tray.isEmpty()) return;
+    /** The tray as a choice: the mix, the one root when it stands alone, or null when empty. */
+    private RootEditSession.@Nullable Choice trayChoice() {
+        if (tray.isEmpty()) return null;
         RootMix mix = mix();
-        if (mix != null) callbacks.previewMix().accept(mix);
-        else callbacks.preview().accept(entries.get(tray.get(0).id));
+        return mix != null ? RootEditSession.Choice.of(mix) : RootEditSession.Choice.root(tray.get(0).id);
+    }
+
+    /** Shows the tray on the model; an empty tray shows the target as it is. */
+    private void previewMix() {
+        RootEditSession.Choice choice = trayChoice();
+        if (choice != null) session.want(choice);
+        else session.showCurrent();
+    }
+
+    /** {@code [name, backstory]} of a mix, from the founding or the target when either is it; else null. */
+    private String @Nullable [] mixNamed(RootMix mix) {
+        RootEditSession.Founding founding = session.shown();
+        if (founding != null && mix.equals(founding.choice().mix())) return new String[] { founding.name(), founding.backstory() };
+        RootEditSession.Identity identity = session.identity();
+        if (identity != null && mix.equals(identity.choice().mix())) return new String[] { identity.name(), identity.backstory() };
+        return null;
+    }
+
+    /** The target's own root, when it is one root rather than a mix. */
+    private String currentId() {
+        RootEditSession.Identity identity = session.identity();
+        return identity != null && identity.choice().mix() == null ? identity.choice().rootId() : "";
     }
 
     // ---- rendering ----
@@ -579,6 +616,7 @@ public final class RootBrowseScreen extends Screen {
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         hits.clear();
         hover.clear();
+        updateButtons();
         //? if >=1.21 {
         renderBackground(g, mouseX, mouseY, partialTick);
         //?} else {
@@ -868,7 +906,7 @@ public final class RootBrowseScreen extends Screen {
         boolean off = mixing && member < 0 && !joinable(item);
         boolean isSelected = !mixing && selected != null && selected.id().equals(item.id());
         boolean hovered = !off && within(mouseX, mouseY, x, y, w, TILE, clipTop, clipBottom);
-        boolean current = !mixing && item.id().equals(currentId);
+        boolean current = !mixing && item.id().equals(currentId());
         int edge = member >= 0 ? tray.get(member).color : isSelected ? TILE_SELECTED_EDGE : off ? TILE_OFF_EDGE : TILE_EDGE;
         int fill = member >= 0 ? TILE_MEMBER : current ? TILE_CURRENT : isSelected ? TILE_SELECTED
                 : off ? TILE_OFF : hovered ? TILE_HOVER : TILE_FILL;
@@ -918,6 +956,11 @@ public final class RootBrowseScreen extends Screen {
     private void drawWell(GuiGraphics g, int x, int y, int w, int h, int mouseX, int mouseY) {
         g.fill(x, y, x + w, y + h, RootDetails.WELL);
         if (model != null) drawModel(g, x, y, x + w, y + h, mouseX, mouseY);
+        if (session.rollingLong()) {
+            // A roll that takes a moment says so; a quick one just lands.
+            drawDie(g, x + w - 13, y + 4, 0xFFECECEC);
+            g.drawString(font, Component.translatable("townstead.root.rolling"), x + 4, y + 5, MUTED, false);
+        }
     }
 
     private void drawPreview(GuiGraphics g, int mouseX, int mouseY) {
@@ -968,7 +1011,7 @@ public final class RootBrowseScreen extends Screen {
 
         // Header: what the mix is called, where it comes from.
         RootMix mix = mix();
-        RootMixNames.Named named = mix != null ? RootMixNames.get(mix) : null;
+        String[] named = mix != null ? mixNamed(mix) : null;
         if (tray.isEmpty()) {
             Component hint = Component.translatable("townstead.root.browse.mix_empty");
             g.drawString(font, hint, x + (w - font.width(hint)) / 2, y + 6, MUTED, false);
@@ -981,7 +1024,7 @@ public final class RootBrowseScreen extends Screen {
                 RootBrowseEntry art = RootCatalogClient.browse(tray.get(i).id);
                 if (art != null && !art.icon().isEmpty()) IconArt.draw(g, art.icon(), x + i * 4, y + i * 8, 0.75f);
             }
-            String name = named != null && !named.name().isEmpty() ? named.name() : lead != null ? lead.name() : "";
+            String name = named != null && !named[0].isEmpty() ? named[0] : lead != null ? lead.name() : "";
             g.drawString(font, RootDetails.trim(font, name, w - 20), x + 20, y, 0xFFFFFFFF, false);
             if (lead != null) {
                 g.drawString(font, RootDetails.trim(font, RootDetails.crumb(lead, RootCatalogClient.browse(lead.id())), w - 20),
@@ -1007,8 +1050,8 @@ public final class RootBrowseScreen extends Screen {
         int clipTop = y;
         g.enableScissor(previewX + 1, clipTop, previewX + previewW - 1, clipBottom);
         int cy = y - (int) detailScroll.offset;
-        if (named != null && !named.backstory().isEmpty()) {
-            for (FormattedCharSequence line : font.split(Component.literal(named.backstory()), w)) {
+        if (named != null && !named[1].isEmpty()) {
+            for (FormattedCharSequence line : font.split(Component.literal(named[1]), w)) {
                 g.drawString(font, line, x, cy, TEXT, false);
                 cy += 10;
             }

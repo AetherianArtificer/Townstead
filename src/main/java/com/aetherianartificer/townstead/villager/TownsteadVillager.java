@@ -1008,6 +1008,8 @@ public final class TownsteadVillager {
         // blends its parents.
         private com.aetherianartificer.townstead.root.Heritage heritage =
                 com.aetherianartificer.townstead.root.Heritage.EMPTY;
+        // The browser mix this heritage was founded from; any new heritage drops it.
+        private com.aetherianartificer.townstead.root.RootMix rootMix;
 
         public long birthWorldDay() {
             return birthWorldDay;
@@ -1343,6 +1345,18 @@ public final class TownsteadVillager {
 
         public void setHeritage(com.aetherianartificer.townstead.root.Heritage value) {
             heritage = value == null ? com.aetherianartificer.townstead.root.Heritage.EMPTY : value;
+            rootMix = null;
+            markDirty();
+        }
+
+        /** The mix this villager was founded from in the root browser, or null. */
+        @org.jetbrains.annotations.Nullable
+        public com.aetherianartificer.townstead.root.RootMix rootMix() {
+            return rootMix;
+        }
+
+        public void setRootMix(@org.jetbrains.annotations.Nullable com.aetherianartificer.townstead.root.RootMix value) {
+            rootMix = value;
             markDirty();
         }
 
@@ -1400,6 +1414,7 @@ public final class TownsteadVillager {
             }
             if (!genotype.isEmpty()) tag.put("genotype", genotype.toTag());
             if (!heritage.isEmpty()) tag.put("heritage", heritage.toTag());
+            if (rootMix != null) tag.put("rootMix", rootMix.toTag());
             return tag;
         }
 
@@ -1449,6 +1464,7 @@ public final class TownsteadVillager {
             heritage = tag.contains("heritage")
                     ? com.aetherianartificer.townstead.root.Heritage.fromTag(tag.getCompound("heritage"))
                     : com.aetherianartificer.townstead.root.Heritage.EMPTY;
+            rootMix = com.aetherianartificer.townstead.root.RootMix.fromTag(tag.getList("rootMix", Tag.TAG_COMPOUND));
             markDirty();
         }
     }

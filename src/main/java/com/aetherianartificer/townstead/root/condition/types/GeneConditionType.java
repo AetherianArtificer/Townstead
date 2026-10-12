@@ -63,7 +63,8 @@ public final class GeneConditionType implements ConditionType {
     private static boolean matchesServer(LivingEntity entity, Set<ResourceLocation> genes, @Nullable ResourceLocation locus) {
         List<Allele> shown = Heredity.expressedAlleles(ExpressedGenes.genotypeOf(entity));
         var heritage = com.aetherianartificer.townstead.root.gene.GeneExpression.heritageOf(entity);
-        if (heritage != null) shown = Heredity.withGranted(shown, Heredity.heritageAlleles(heritage));
+        if (heritage != null) shown = Heredity.withGranted(shown,
+                Heredity.heritageAlleles(heritage, ExpressedGenes.genotypeOf(entity).seed()));
         for (Allele allele : AspectOverlay.apply(entity, shown)) {
             if (matches(allele.geneId(), genes, locus)) return true;
         }

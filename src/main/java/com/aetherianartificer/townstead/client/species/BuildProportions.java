@@ -85,6 +85,11 @@ public final class BuildProportions {
         // Hidden features (prevent_feature_render): zero the listed groups after proportions.
         com.aetherianartificer.townstead.client.root.HideFeatures.hide(
                 model, com.aetherianartificer.townstead.client.root.HideFeatures.hiddenGroups(entity));
+        // a root icon is the head alone
+        if (com.aetherianartificer.townstead.client.root.IconRender.headOnly()) {
+            com.aetherianartificer.townstead.client.root.HideFeatures.hide(model,
+                    com.aetherianartificer.townstead.client.root.IconRender.BELOW_THE_NECK);
+        }
     }
 
     /** Every part back to MCA's own scale (a body drawn without a build, on a reused model). */

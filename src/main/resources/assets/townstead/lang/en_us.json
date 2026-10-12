@@ -25,6 +25,8 @@
   "townstead.origin.apply": "Apply",
   "townstead.root.random": "Random",
   "townstead.root.roll": "Roll again",
+  "townstead.root.rolling": "Rolling...",
+  "townstead.root.loading": "Loading...",
   "townstead.root.browse.open": "Browse roots...",
   "townstead.root.browse.title": "Choose a Root",
   "townstead.root.browse.of": "%s of %s",

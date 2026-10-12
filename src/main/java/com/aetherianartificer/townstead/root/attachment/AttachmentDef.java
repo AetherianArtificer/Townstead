@@ -92,9 +92,11 @@ public record AttachmentDef(
     /**
      * {@code tintSource} values: the flat tint, or a colour resolved from the bearer.
      * {@code TINT_GENE} reads the {@code tint_r}/{@code tint_g}/{@code tint_b} channels
-     * rolled on the granting gene's allele (a heritable individual colour).
+     * rolled on the granting gene's allele (a heritable individual colour). {@code TINT_COAT} is the
+     * bearer's coat (its expressed skin-tone gene) when it has one, else its hair: a cat's ears match
+     * its fur, a half-cat's with a human skin match its hair.
      */
-    public static final int TINT_FLAT = 0, TINT_SKIN = 1, TINT_HAIR = 2, TINT_EYES = 3, TINT_GENE = 4;
+    public static final int TINT_FLAT = 0, TINT_SKIN = 1, TINT_HAIR = 2, TINT_EYES = 3, TINT_GENE = 4, TINT_COAT = 5;
 
     /** The named pose states the client can resolve without extra sync. */
     public static final java.util.List<String> POSE_STATES = java.util.List.of(

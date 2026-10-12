@@ -310,6 +310,10 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                     entity.getId(), RigSkinTone.forEntity(entity) & 0xFFFFFF);
             case AttachmentDef.TINT_HAIR ->
                     com.aetherianartificer.townstead.client.species.RigHairColor.get(entity.getId(), def.tint());
+            case AttachmentDef.TINT_COAT -> hasCoat(entity)
+                    ? com.aetherianartificer.townstead.client.species.RigSkinColor.get(
+                            entity.getId(), RigSkinTone.forEntity(entity) & 0xFFFFFF)
+                    : com.aetherianartificer.townstead.client.species.RigHairColor.get(entity.getId(), def.tint());
             case AttachmentDef.TINT_EYES -> {
                 int eye = com.aetherianartificer.townstead.client.species.RigEyeColor.forEntity(entity);
                 yield eye >= 0 ? eye : def.tint();
@@ -323,6 +327,15 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
             }
             default -> def.tint();
         };
+    }
+
+    /** Whether the bearer shows a coat: an expressed skin-tone gene (fur, scales) over its skin. */
+    private static boolean hasCoat(LivingEntity entity) {
+        for (String geneId : RootClientStore.appearanceGenes(entity)) {
+            GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
+            if (gene != null && gene.isSkinTone()) return true;
+        }
+        return false;
     }
 
     private static int component(float value) {

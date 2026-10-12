@@ -874,6 +874,7 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) -> {
             ClientCapsStore.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.ActiveAbilities.clear(e.getEntity().getUUID());
+            com.aetherianartificer.townstead.root.RootFoundings.forget(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.ResourceValues.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.AbilityToggles.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.temperature.PlayerThermalOffsets.clear(e.getEntity());
@@ -982,6 +983,8 @@ public class Townstead {
                         com.aetherianartificer.townstead.commands.GlideDiagnosticCommand.register(e.getDispatcher()));
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                 com.aetherianartificer.townstead.commands.BodySizeDiagnosticCommand.register(e.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                com.aetherianartificer.townstead.commands.RootIconsCommand.register(e.getDispatcher()));
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.root.port.OriginsPortCommand.register(
@@ -1524,6 +1527,7 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) -> {
             ClientCapsStore.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.ActiveAbilities.clear(e.getEntity().getUUID());
+            com.aetherianartificer.townstead.root.RootFoundings.forget(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.ResourceValues.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.AbilityToggles.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.temperature.PlayerThermalOffsets.clear(e.getEntity());
@@ -1632,6 +1636,8 @@ public class Townstead {
                         com.aetherianartificer.townstead.commands.GlideDiagnosticCommand.register(e.getDispatcher()));
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.RegisterCommandsEvent e) ->
                 com.aetherianartificer.townstead.commands.BodySizeDiagnosticCommand.register(e.getDispatcher()));
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.RegisterCommandsEvent e) ->
+                com.aetherianartificer.townstead.commands.RootIconsCommand.register(e.getDispatcher()));
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.root.port.OriginsPortCommand.register(
@@ -4044,15 +4050,15 @@ public class Townstead {
                 this::handleRootSet
         );
         registrar.playToServer(
-                com.aetherianartificer.townstead.root.RootMixC2SPayload.TYPE,
-                com.aetherianartificer.townstead.root.RootMixC2SPayload.STREAM_CODEC,
-                this::handleRootMix
+                com.aetherianartificer.townstead.root.RootFoundingC2SPayload.TYPE,
+                com.aetherianartificer.townstead.root.RootFoundingC2SPayload.STREAM_CODEC,
+                this::handleRootFounding
         );
         registrar.playToClient(
-                com.aetherianartificer.townstead.root.RootMixS2CPayload.TYPE,
-                com.aetherianartificer.townstead.root.RootMixS2CPayload.STREAM_CODEC,
+                com.aetherianartificer.townstead.root.RootFoundingS2CPayload.TYPE,
+                com.aetherianartificer.townstead.root.RootFoundingS2CPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
-                        com.aetherianartificer.townstead.client.root.RootMixNames.accept(payload))
+                        com.aetherianartificer.townstead.client.root.RootFoundingClient.accept(payload))
         );
         registrar.playToServer(
                 com.aetherianartificer.townstead.inventory.VillagerCurioRenderC2SPayload.TYPE,
@@ -4159,6 +4165,12 @@ public class Townstead {
                 com.aetherianartificer.townstead.root.RootSyncS2CPayload.TYPE,
                 com.aetherianartificer.townstead.root.RootSyncS2CPayload.STREAM_CODEC,
                 this::handleRootSync
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.root.RootIconsS2CPayload.TYPE,
+                com.aetherianartificer.townstead.root.RootIconsS2CPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.client.root.RootIcons.render(payload.id(), payload.rolls()))
         );
         registrar.playToClient(
                 com.aetherianartificer.townstead.root.ExpressedGenesS2CPayload.TYPE,
@@ -4353,21 +4365,16 @@ public class Townstead {
         });
     }
 
-    private void handleRootMix(
-            com.aetherianartificer.townstead.root.RootMixC2SPayload payload,
+    private void handleRootFounding(
+            com.aetherianartificer.townstead.root.RootFoundingC2SPayload payload,
             IPayloadContext context
     ) {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer sp)) return;
-            if (payload.apply()) {
-                com.aetherianartificer.townstead.root.RootServerLogic.Result result =
-                        com.aetherianartificer.townstead.root.RootServerLogic.applyMix(sp, payload.entityId(), payload.mix());
-                if (result != null) syncRootResult(sp, result);
-                return;
-            }
-            String[] named = com.aetherianartificer.townstead.root.RootServerLogic.describeMix(payload.mix());
-            PacketDistributor.sendToPlayer(sp, new com.aetherianartificer.townstead.root.RootMixS2CPayload(
-                    payload.requestId(), named == null ? "" : named[0], named == null ? "" : named[1]));
+            com.aetherianartificer.townstead.root.RootFoundings.Answer answer =
+                    com.aetherianartificer.townstead.root.RootFoundings.handle(sp, payload);
+            if (answer.result() != null) syncRootResult(sp, answer.result());
+            PacketDistributor.sendToPlayer(sp, answer.reply());
         });
     }
 

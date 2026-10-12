@@ -25,6 +25,8 @@ public final class PlayerRoot {
     private static final String GRANTED_KEY = "grantedStarting";
     /** A player's carried heritage, when it isn't simply their root's (one who took over a descendant). */
     private static final String HERITAGE_KEY = "heritage";
+    /** The browser mix the player was founded from; any new root or heritage drops it. */
+    private static final String MIX_KEY = "rootMix";
 
     private PlayerRoot() {}
 
@@ -61,10 +63,11 @@ public final class PlayerRoot {
     public static void setRootId(Player player, String id) {
         String value = id == null ? "" : id;
         CompoundTag tag = data(player);
-        boolean changed = !value.equals(tag.getString(ROOT_KEY));
+        boolean changed = !value.equals(tag.getString(ROOT_KEY)) || tag.contains(MIX_KEY);
         tag.putString(ROOT_KEY, value);
         if (changed) {
             tag.remove(HERITAGE_KEY);          // a fresh founder of the new root: its own pure heritage
+            tag.remove(MIX_KEY);
             ResourceLocation rootId = ResourceLocation.tryParse(value);
             if (rootId != null) {
                 tag.put(GENOTYPE_KEY, Heredity.seedGenotype(rootId, player.getRandom()).toTag());
@@ -88,8 +91,21 @@ public final class PlayerRoot {
         tag.put(GENOTYPE_KEY, genotype.toTag());
         if (heritage != null && !heritage.isEmpty()) tag.put(HERITAGE_KEY, heritage.toTag());
         else tag.remove(HERITAGE_KEY);
+        tag.remove(MIX_KEY);
         store(player, tag);
         if (player.getAttributes() != null) player.refreshDimensions();
+    }
+
+    /** The mix the player was founded from in the root browser, or null. */
+    @org.jetbrains.annotations.Nullable
+    public static RootMix getMix(Player player) {
+        return RootMix.fromTag(data(player).getList(MIX_KEY, net.minecraft.nbt.Tag.TAG_COMPOUND));
+    }
+
+    public static void setMix(Player player, RootMix mix) {
+        CompoundTag tag = data(player);
+        tag.put(MIX_KEY, mix.toTag());
+        store(player, tag);
     }
 
     /** The heritage the player carries: an adopted one, else their root's own. */

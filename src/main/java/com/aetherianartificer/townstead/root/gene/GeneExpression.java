@@ -115,11 +115,30 @@ public final class GeneExpression {
         return active;
     }
 
+    /**
+     * What {@code entity} would express if it carried {@code genotype} and {@code heritage} instead of
+     * its own: a founding rolled for it but not yet given, shown exactly as it will look.
+     */
+    public static List<Allele> activeAlleles(LivingEntity entity, Genotype genotype,
+                                             com.aetherianartificer.townstead.root.@org.jetbrains.annotations.Nullable Heritage heritage) {
+        List<Allele> inherited = Heredity.expressedAlleles(genotype);
+        if (heritage != null) inherited = Heredity.withGranted(inherited, Heredity.heritageAlleles(heritage, genotype.seed()));
+        inherited = AspectOverlay.apply(entity, inherited);
+        if (evaluating.get()) return inherited;
+        evaluating.set(true);
+        try {
+            return activeAlleles(inherited, new ConditionContext(entity));
+        } finally {
+            evaluating.remove();
+        }
+    }
+
     /** A villager's inherited alleles with whatever its named heritage grants laid over them. */
     private static List<Allele> withHeritageGenes(LivingEntity entity, List<Allele> inherited) {
         com.aetherianartificer.townstead.root.Heritage heritage = heritageOf(entity);
         if (heritage == null) return inherited;
-        return Heredity.withGranted(inherited, Heredity.heritageAlleles(heritage));
+        return Heredity.withGranted(inherited,
+                Heredity.heritageAlleles(heritage, ExpressedGenes.genotypeOf(entity).seed()));
     }
 
     /** The heritage an entity carries (a villager's own, a player's adopted or root one), or null. */

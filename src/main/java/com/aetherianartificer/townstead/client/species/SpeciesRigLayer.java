@@ -78,6 +78,11 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
 
         Animations anim = RigModels.animations(entity);
         poseRig(model, entity, anim, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, partialTick);
+        // a root icon is the head alone (poseRig sets the parts afresh each frame)
+        if (com.aetherianartificer.townstead.client.root.IconRender.headOnly()) {
+            com.aetherianartificer.townstead.client.root.HideFeatures.hide(model,
+                    com.aetherianartificer.townstead.client.root.IconRender.BELOW_THE_NECK);
+        }
         // The cutout render type ignores vertex alpha, so a fading body swaps to translucent.
         VertexConsumer buffer = buffers.getBuffer(fade < 1f
                 ? net.minecraft.client.renderer.RenderType.entityTranslucent(texture)

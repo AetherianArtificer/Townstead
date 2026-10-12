@@ -129,8 +129,13 @@ public record ExpressedGenesS2CPayload(int entityId, List<String> genes, boolean
             rootId = ResourceLocation.tryParse(PlayerRoot.getRootId(player));
             heritage = PlayerRoot.getHeritage(player);
         }
+        return of(entityId, com.aetherianartificer.townstead.root.gene.GeneExpression.activeAlleles(entity), heritage, rootId);
+    }
+
+    /** As {@link #forEntity}, for alleles already expressed under {@code heritage} and {@code rootId}. */
+    public static ExpressedGenesS2CPayload of(int entityId, List<Allele> expressed, Heritage heritage, ResourceLocation rootId) {
         List<String> genes = new ArrayList<>();
-        for (Allele allele : com.aetherianartificer.townstead.root.gene.GeneExpression.activeAlleles(entity)) {
+        for (Allele allele : expressed) {
             genes.add(Heredity.scaleByHeritage(allele, heritage).encode());
         }
         var hair = com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(rootId, heritage);

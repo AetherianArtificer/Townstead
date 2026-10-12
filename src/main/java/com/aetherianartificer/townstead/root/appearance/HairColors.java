@@ -44,6 +44,21 @@ public final class HairColors {
         if (hasFantasy(settings)) entityData.putInt("HairColor", rollFantasy(settings, random));
     }
 
+    /**
+     * {@link #roll} onto a {@link RootGenes#snapshot}-ordered array; returns the hair dye to wear,
+     * {@code currentDye} when the policy says nothing about dye.
+     */
+    public static int rollSnapshot(float[] snapshot, HairSettings settings, RandomSource random, int currentDye) {
+        if (settings == null) return currentDye;
+        if (!settings.colorRanges().isEmpty()) {
+            HairColorRange range = weightedRange(settings.colorRanges(), random);
+            RootGenes.writeSnapshot(snapshot, Genetics.EUMELANIN, range.sampleDarkness(random));
+            RootGenes.writeSnapshot(snapshot, Genetics.PHEOMELANIN, range.sampleRedness(random));
+        }
+        if (hasFantasy(settings)) return rollFantasy(settings, random);
+        return settings.colorRanges().isEmpty() ? currentDye : 0xFF000000;
+    }
+
     public static void clamp(VillagerEntityMCA villager, HairSettings settings) {
         if (villager == null || settings == null) return;
         if (!settings.colorRanges().isEmpty()) {

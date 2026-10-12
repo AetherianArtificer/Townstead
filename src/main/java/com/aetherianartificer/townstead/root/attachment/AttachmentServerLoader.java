@@ -211,6 +211,7 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
         int tintSource = switch (tintRaw) {
             case "skin" -> AttachmentDef.TINT_SKIN;
             case "hair" -> AttachmentDef.TINT_HAIR;
+            case "coat" -> AttachmentDef.TINT_COAT;
             case "eyes" -> AttachmentDef.TINT_EYES;
             case "gene" -> AttachmentDef.TINT_GENE;
             default -> AttachmentDef.TINT_FLAT;

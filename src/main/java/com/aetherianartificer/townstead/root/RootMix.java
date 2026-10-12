@@ -1,7 +1,10 @@
 package com.aetherianartificer.townstead.root;
 
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -18,6 +21,7 @@ public record RootMix(List<Member> members) {
     public static final int MAX = 4;
     /** Shares step in quarters. */
     public static final int WHOLE = 4;
+    public static final RootMix NONE = new RootMix(List.of());
 
     public record Member(String rootId, int quarters) {}
 
@@ -76,6 +80,28 @@ public record RootMix(List<Member> members) {
             buf.writeUtf(m.rootId());
             buf.writeVarInt(m.quarters());
         }
+    }
+
+    public ListTag toTag() {
+        ListTag list = new ListTag();
+        for (Member m : members) {
+            CompoundTag tag = new CompoundTag();
+            tag.putString("root", m.rootId());
+            tag.putInt("quarters", m.quarters());
+            list.add(tag);
+        }
+        return list;
+    }
+
+    /** The stored mix, or null when there is none. */
+    public static @Nullable RootMix fromTag(ListTag list) {
+        List<Member> members = new ArrayList<>(list.size());
+        for (int i = 0; i < list.size(); i++) {
+            CompoundTag tag = list.getCompound(i);
+            members.add(new Member(tag.getString("root"), tag.getInt("quarters")));
+        }
+        RootMix mix = new RootMix(members);
+        return mix.wellFormed() ? mix : null;
     }
 
     public static RootMix read(FriendlyByteBuf buf) {

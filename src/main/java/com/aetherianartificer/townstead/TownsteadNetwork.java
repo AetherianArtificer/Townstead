@@ -444,14 +444,14 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.root.RootSetC2SPayload::write,
                 com.aetherianartificer.townstead.root.RootSetC2SPayload::read,
                 TownsteadNetwork::handleRootSet);
-        registerC2S(com.aetherianartificer.townstead.root.RootMixC2SPayload.class,
-                com.aetherianartificer.townstead.root.RootMixC2SPayload::write,
-                com.aetherianartificer.townstead.root.RootMixC2SPayload::read,
-                TownsteadNetwork::handleRootMix);
-        registerS2C(com.aetherianartificer.townstead.root.RootMixS2CPayload.class,
-                com.aetherianartificer.townstead.root.RootMixS2CPayload::write,
-                com.aetherianartificer.townstead.root.RootMixS2CPayload::read,
-                com.aetherianartificer.townstead.client.root.RootMixNames::accept);
+        registerC2S(com.aetherianartificer.townstead.root.RootFoundingC2SPayload.class,
+                com.aetherianartificer.townstead.root.RootFoundingC2SPayload::write,
+                com.aetherianartificer.townstead.root.RootFoundingC2SPayload::read,
+                TownsteadNetwork::handleRootFounding);
+        registerS2C(com.aetherianartificer.townstead.root.RootFoundingS2CPayload.class,
+                com.aetherianartificer.townstead.root.RootFoundingS2CPayload::write,
+                com.aetherianartificer.townstead.root.RootFoundingS2CPayload::read,
+                com.aetherianartificer.townstead.client.root.RootFoundingClient::accept);
         registerC2S(com.aetherianartificer.townstead.inventory.VillagerCurioRenderC2SPayload.class,
                 com.aetherianartificer.townstead.inventory.VillagerCurioRenderC2SPayload::write,
                 com.aetherianartificer.townstead.inventory.VillagerCurioRenderC2SPayload::read,
@@ -647,17 +647,12 @@ public final class TownsteadNetwork {
         if (result != null) syncRootResult(sp, result);
     }
 
-    private static void handleRootMix(
-            com.aetherianartificer.townstead.root.RootMixC2SPayload payload, ServerPlayer sp) {
-        if (payload.apply()) {
-            com.aetherianartificer.townstead.root.RootServerLogic.Result result =
-                    com.aetherianartificer.townstead.root.RootServerLogic.applyMix(sp, payload.entityId(), payload.mix());
-            if (result != null) syncRootResult(sp, result);
-            return;
-        }
-        String[] named = com.aetherianartificer.townstead.root.RootServerLogic.describeMix(payload.mix());
-        sendToPlayer(sp, new com.aetherianartificer.townstead.root.RootMixS2CPayload(
-                payload.requestId(), named == null ? "" : named[0], named == null ? "" : named[1]));
+    private static void handleRootFounding(
+            com.aetherianartificer.townstead.root.RootFoundingC2SPayload payload, ServerPlayer sp) {
+        com.aetherianartificer.townstead.root.RootFoundings.Answer answer =
+                com.aetherianartificer.townstead.root.RootFoundings.handle(sp, payload);
+        if (answer.result() != null) syncRootResult(sp, answer.result());
+        sendToPlayer(sp, answer.reply());
     }
 
     // Tells the setter and everyone tracking the target about a root change, with its new genes and life.

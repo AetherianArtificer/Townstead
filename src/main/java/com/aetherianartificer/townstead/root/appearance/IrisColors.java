@@ -35,7 +35,12 @@ public final class IrisColors {
 
     /** The bearer's expressed editable iris colours ({tint, right or -1}), or null without one. */
     public static int @org.jetbrains.annotations.Nullable [] editable(net.minecraft.world.entity.LivingEntity bearer) {
-        for (Allele allele : GeneExpression.activeAlleles(bearer)) {
+        return editable(GeneExpression.activeAlleles(bearer));
+    }
+
+    /** As {@link #editable(net.minecraft.world.entity.LivingEntity)}, from alleles already expressed. */
+    public static int @org.jetbrains.annotations.Nullable [] editable(java.util.List<Allele> expressed) {
+        for (Allele allele : expressed) {
             Gene gene = GeneRegistry.byId(allele.geneId());
             if (gene == null) continue;
             if (instanceOf(gene, allele) instanceof IrisGeneType.Instance iris && iris.editable()) {
@@ -64,6 +69,12 @@ public final class IrisColors {
         } else {
             villager.setEyeDye(dye(tint));
         }
+    }
+
+    /** As {@link #seedInto} writes a player's eyes, onto a preview of that player: no trait is added. */
+    public static void applyAsPlayer(VillagerEntityMCA villager, int tint, int right) {
+        villager.setEyeDye(dye(right >= 0 && right != tint ? right : tint));
+        villager.setEyeLeftDye(dye(tint));
     }
 
     /** MCA's eye dye is opaque ARGB, with -1 meaning "use the genetic colour". */

@@ -2,7 +2,6 @@ package com.aetherianartificer.townstead.client.gui.root;
 
 import com.aetherianartificer.townstead.client.gui.common.IconArt;
 import com.aetherianartificer.townstead.client.root.RootCatalogClient;
-import com.aetherianartificer.townstead.client.root.RootMixNames;
 import com.aetherianartificer.townstead.root.RootBrowseEntry;
 import com.aetherianartificer.townstead.root.RootCatalogEntry;
 import com.aetherianartificer.townstead.root.RootMix;
@@ -25,6 +24,9 @@ public class RootSummaryWidget extends ScrollPane {
 
     @Nullable private RootCatalogEntry root;
     @Nullable private RootMix mix;
+    private String mixName = "";
+    private String mixBackstory = "";
+    @Nullable private Component status;
     private final RootDetails.Hover hover = new RootDetails.Hover();
 
     public RootSummaryWidget(int x, int y, int width, int height) {
@@ -37,16 +39,28 @@ public class RootSummaryWidget extends ScrollPane {
         resetScroll();
     }
 
-    public void setMix(RootMix mix) {
+    /** A mix, with what the server called it (empty while unknown) and its heritage's backstory. */
+    public void setMix(RootMix mix, String name, String backstory) {
         this.mix = mix;
+        this.mixName = name;
+        this.mixBackstory = backstory;
         this.root = null;
         resetScroll();
+    }
+
+    /** A line in place of everything else ("Loading..."), or null to show the root or mix. */
+    public void setStatus(@Nullable Component status) {
+        this.status = status;
     }
 
     @Override
     protected int renderContent(GuiGraphics g, int left, int top, int innerW,
                                 int innerTop, int innerBottom, int mouseX, int mouseY) {
         hover.clear();
+        if (status != null) {
+            g.drawString(Minecraft.getInstance().font, status, left, top, 0xFF9A9A9A, false);
+            return 10;
+        }
         if (mix != null) return renderMix(g, mix, left, top, innerW);
         if (root == null) return 0;
         RootBrowseEntry browse = RootCatalogClient.browse(root.id());
@@ -61,12 +75,11 @@ public class RootSummaryWidget extends ScrollPane {
     private int renderMix(GuiGraphics g, RootMix mix, int left, int top, int w) {
         Font font = Minecraft.getInstance().font;
         RootCatalogEntry lead = RootCatalogClient.origin(mix.largest());
-        RootMixNames.Named named = RootMixNames.get(mix);
         for (int i = Math.min(2, mix.members().size()) - 1; i >= 0; i--) {
             RootBrowseEntry art = RootCatalogClient.browse(mix.members().get(i).rootId());
             if (art != null && !art.icon().isEmpty()) IconArt.draw(g, art.icon(), left + i * 4, top + i * 8, 0.75f);
         }
-        String name = named != null && !named.name().isEmpty() ? named.name() : lead != null ? lead.name() : "";
+        String name = !mixName.isEmpty() ? mixName : lead != null ? lead.name() : "";
         g.drawString(font, RootDetails.trim(font, name, w - 20), left + 20, top, 0xFFFFFFFF, false);
         if (lead != null) {
             g.drawString(font, RootDetails.trim(font, RootDetails.crumb(lead, RootCatalogClient.browse(lead.id())), w - 20),
@@ -83,9 +96,9 @@ public class RootSummaryWidget extends ScrollPane {
             g.drawString(font, line, left, y, 0xFF9A9A9A, false);
             y += 10;
         }
-        if (named != null && !named.backstory().isEmpty()) {
+        if (!mixBackstory.isEmpty()) {
             y += 3;
-            for (FormattedCharSequence line : font.split(Component.literal(named.backstory()), w)) {
+            for (FormattedCharSequence line : font.split(Component.literal(mixBackstory), w)) {
                 g.drawString(font, line, left, y, 0xFFD8D8D8, false);
                 y += 10;
             }

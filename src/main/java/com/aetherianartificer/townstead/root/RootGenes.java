@@ -124,6 +124,59 @@ public final class RootGenes {
         return "Gene" + type.key();
     }
 
+    /**
+     * A fresh {@link #snapshot}-ordered roll, as MCA's {@code Genetics.randomize} rolls a new villager
+     * standing at {@code pos}: size and width centred, skin pigments from the biome's warmth and the
+     * height above sea level (or, for an immigrant, from anywhere), everything else uniform.
+     */
+    public static float[] rollFresh(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos,
+                                    RandomSource random) {
+        float[] out = new float[ORDERED.length];
+        for (int i = 0; i < ORDERED.length; i++) out[i] = random.nextFloat();
+        writeSnapshot(out, Genetics.SIZE, centered(random));
+        writeSnapshot(out, Genetics.WIDTH, centered(random));
+        float temp = level.getBiome(pos).value().getBaseTemperature();
+        if (random.nextFloat() < net.conczin.mca.Config.getInstance().geneticImmigrantChance) {
+            temp = random.nextFloat() * 2 - 0.5F;
+        }
+        int seaLevel = level instanceof net.minecraft.server.level.ServerLevel server
+                ? server.getChunkSource().getGenerator().getSeaLevel() : level.getSeaLevel();
+        float height = (pos.getY() - seaLevel) / 128f;
+        writeSnapshot(out, Genetics.MELANIN, net.minecraft.util.Mth.clamp(warmth(random, temp) - height * 0.2f, 0, 1));
+        writeSnapshot(out, Genetics.HEMOGLOBIN, net.minecraft.util.Mth.clamp(warmth(random, temp) * 0.5f + height * 0.5f, 0, 1));
+        return out;
+    }
+
+    private static float centered(RandomSource random) {
+        return Math.min(1, Math.max(0, (random.nextFloat() - 0.5F) * (random.nextFloat() - 0.5F) + 0.5F));
+    }
+
+    private static float warmth(RandomSource random, float temp) {
+        return (random.nextFloat() - 0.5F) * 0.35F + temp * 0.4F + 0.1F;
+    }
+
+    /**
+     * The body ranges of a mix: each float's band blended across its roots by share, a root that
+     * leaves a float free counting as the whole range, so partial ancestry widens the band.
+     */
+    public static Map<String, GeneRange> blendRanges(List<Map<String, GeneRange>> perRoot, List<Float> shares) {
+        Map<String, float[]> bands = new LinkedHashMap<>();
+        for (Map<String, GeneRange> ranges : perRoot) {
+            for (String key : ranges.keySet()) bands.putIfAbsent(key, new float[2]);
+        }
+        for (int i = 0; i < perRoot.size(); i++) {
+            float share = shares.get(i);
+            for (Map.Entry<String, float[]> band : bands.entrySet()) {
+                GeneRange r = perRoot.get(i).get(band.getKey());
+                band.getValue()[0] += share * (r != null ? r.min() : 0f);
+                band.getValue()[1] += share * (r != null ? r.max() : 1f);
+            }
+        }
+        Map<String, GeneRange> out = new LinkedHashMap<>();
+        bands.forEach((key, band) -> out.put(key, new GeneRange(band[0], band[1])));
+        return out;
+    }
+
     /** {@link #apply} onto a {@link #snapshot}-ordered array instead of a live villager. */
     public static void apply(float[] snapshot, Map<String, GeneRange> targetRanges, RandomSource random) {
         if (snapshot == null || targetRanges == null) return;

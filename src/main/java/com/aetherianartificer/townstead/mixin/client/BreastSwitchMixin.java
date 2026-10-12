@@ -28,7 +28,7 @@ public abstract class BreastSwitchMixin<T extends LivingEntity & VillagerLike<T>
     *///?}
     private void townstead$breastSwitch(T entity, float limbAngle, float limbDistance, float animationProgress,
                                         float headYaw, float headPitch, CallbackInfo ci) {
-        if (!RigModels.breasts(entity)) {
+        if (!RigModels.breasts(entity) || com.aetherianartificer.townstead.client.root.IconRender.headOnly()) {
             ((CommonVillagerModel<?>) (Object) this).getBreastPart().visible = false;
         }
     }

@@ -46,6 +46,10 @@ public final class SkinToneGeneType implements GeneType {
     @Override
     public String key() { return KEY; }
 
+    /** A tone can be gated (a half-cat's fur coat needs more cat blood): its condition decides. */
+    @Override
+    public boolean conditionControlsExpression() { return true; }
+
     @Override
     public GeneInstance parse(JsonObject json) {
         String raw = json.has("tint")
