@@ -1,1 +1,13 @@
-{"replace":false,"values":["beachparty:palm_bar_mixing",{"id":"beachparty:tiki_bar_mixing","required":false}]}
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "beachparty:palm_bar_mixing",
+      "required": false
+    },
+    {
+      "id": "beachparty:tiki_bar_mixing",
+      "required": false
+    }
+  ]
+}

@@ -1,4 +1,9 @@
 {
   "replace": false,
-  "values": ["butchery:pestleandmortarrecipetype"]
+  "values": [
+    {
+      "id": "butchery:pestleandmortarrecipetype",
+      "required": false
+    }
+  ]
 }

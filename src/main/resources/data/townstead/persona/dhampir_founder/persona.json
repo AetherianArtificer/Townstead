@@ -846,10 +846,10 @@
           "stage": "adult"
         },
         {
-          "type": "pheno:personality",
-          "personality": [
+          "type": "pheno:trait",
+          "trait": [
             "athletic",
-            "confident"
+            "tough"
           ]
         },
         {

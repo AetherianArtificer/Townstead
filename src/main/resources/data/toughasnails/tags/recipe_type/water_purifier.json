@@ -1,5 +1,8 @@
 {
   "values": [
-    "toughasnails:water_purifying"
+    {
+      "id": "toughasnails:water_purifying",
+      "required": false
+    }
   ]
 }

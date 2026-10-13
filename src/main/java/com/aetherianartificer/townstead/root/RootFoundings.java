@@ -1,7 +1,5 @@
 package com.aetherianartificer.townstead.root;
 
-import com.aetherianartificer.townstead.clothing.BodyClothingResolver;
-import com.aetherianartificer.townstead.clothing.policy.RigSkinPicker;
 import com.aetherianartificer.townstead.clothing.policy.SkinPicker;
 import com.aetherianartificer.townstead.pheno.power.Power;
 import com.aetherianartificer.townstead.pheno.power.Powers;
@@ -228,22 +226,23 @@ public final class RootFoundings {
         return data.contains("HairColor") ? data.getInt("HairColor") : 0xFF000000;
     }
 
-    /** An outfit made for the body when it only wears its own and the current one doesn't fit; else empty. */
+    /** An outfit the new body can wear when it can't wear the current one (see SkinPicker.refit); else empty. */
     private static String fittedClothes(ServerPlayer sp, LivingEntity target, ResourceLocation rootId, Heritage heritage) {
-        var fitted = BodyClothingResolver.fitted(rootId, heritage);
-        if (fitted.isEmpty() || SkinPicker.onMcaRig(rootId)) return "";
         String current;
         Gender gender;
+        String profession = "minecraft:none";
         if (target instanceof VillagerEntityMCA villager) {
             current = villager.getClothes();
             gender = villager.getGenetics().getGender();
+            ResourceLocation professionId = net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION
+                    .getKey(villager.getVillagerData().getProfession());
+            if (professionId != null) profession = professionId.toString();
         } else {
             CompoundTag data = playerData(sp);
             current = data.getString("Clothes");
             gender = Gender.byId(data.getInt("Gender"));
         }
-        if (SkinPicker.fits(fitted, current)) return "";
-        return RigSkinPicker.pick(skin -> SkinPicker.fits(fitted, skin), gender, "minecraft:none",
+        return SkinPicker.refit(rootId, heritage, current, gender, profession,
                 target.getUUID().getMostSignificantBits()).orElse("");
     }
 

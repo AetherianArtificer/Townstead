@@ -63,6 +63,8 @@ public final class RigWearables {
         var anchor = head ? def.head() : def.back();
         if (anchor == null) return () -> {};
         var adjust = anchor.items().get(item);
+        // a namespaced item falls back to its bare key, as the back layers do (backpacked:backpack -> backpack)
+        if (adjust == null && !limbs && item.contains(":")) adjust = anchor.items().get(item.substring(item.indexOf(':') + 1));
         if (adjust == null) adjust = anchor.items().get("renderer:" + slot);
         if (adjust == null) return () -> {};
         // Limb entries are relative to each named rig bone; torso entries use the worn anchor.
@@ -73,10 +75,83 @@ public final class RigWearables {
                 : slot.equals("hands") ? new ModelPart[]{host.rightArm,host.leftArm}
                 : new ModelPart[]{head ? host.head : host.body};
         var restores = new java.util.ArrayList<Runnable>();
+        // A limb entry is authored for the right limb; the left wears its mirror image.
         for (int i = 0; i < parts.length; i++)
             restores.add(fitPart(parts[i], RigModels.boneModelPose(rig, def.boneFor(channels[i])),
-                    limbs ? adjust : anchor.base().plus(adjust)));
+                    limbs ? (i == 1 ? adjust.mirrored() : adjust) : anchor.base().plus(adjust)));
         return () -> { for (var restore : restores) restore.run(); };
+    }
+
+    /**
+     * Draw a Curios hands/feet item where the rig wears boots, as {@link RigBootsRenderer} seats them: a
+     * feet item once per {@code boots} entry, a hands item once on each arm bone with the seat of that
+     * side's first boot. An entry for the item (or {@code renderer:<slot>}) adds to that seat. Each draw
+     * has one host limb laid flat in the seat and the other hidden. False, with nothing drawn, when the
+     * rig declares no boots; then {@link #fitCurio} places it.
+     */
+    public static boolean drawCurioOnSeats(HumanoidModel<?> host, LivingEntity entity, String slot, String item,
+                                           com.mojang.blaze3d.vertex.PoseStack pose, Runnable draw) {
+        boolean feet = slot.equals("feet");
+        if (!feet && !slot.equals("hands")) return false;
+        String rig = RigModels.rigBaseFor(entity);
+        if (!RigModels.isGeneric(rig)) return false;
+        var def = RigModels.definition(rig);
+        if (def == null || def.boots().isEmpty()) return false;
+        // An entry for the item (or renderer:<slot>) nudges it from the boot seat, authored for the right side.
+        RigDefinition.Adjust delta = null;
+        if (def.back() != null) {
+            delta = def.back().items().get(item);
+            if (delta == null) delta = def.back().items().get("renderer:" + slot);
+        }
+        java.util.List<RigDefinition.Boot> seats = new java.util.ArrayList<>();
+        if (feet) {
+            seats.addAll(def.boots());
+        } else {
+            for (boolean left : new boolean[]{false, true}) {
+                String bone = def.boneFor(left ? "left_arm" : "right_arm");
+                RigDefinition.Boot like = null;
+                for (RigDefinition.Boot boot : def.boots()) if (boot.left() == left) { like = boot; break; }
+                if (like != null) seats.add(new RigDefinition.Boot(bone, left, like.scale(), like.seat()));
+            }
+        }
+        if (delta != null) {
+            for (int i = 0; i < seats.size(); i++) {
+                RigDefinition.Boot b = seats.get(i);
+                seats.set(i, new RigDefinition.Boot(b.bone(), b.left(), b.scale(),
+                        b.seat().plus(b.left() ? delta.mirrored() : delta)));
+            }
+        }
+        // A humanoid leg ends 12px below its pivot, an arm 10px.
+        float drop = feet ? RigBootsRenderer.FOOT_DROP : 10f;
+        float scale = RigModels.scaleFor(entity);
+        for (RigDefinition.Boot seat : seats) {
+            ModelPart worn = feet ? (seat.left() ? host.leftLeg : host.rightLeg) : (seat.left() ? host.leftArm : host.rightArm);
+            ModelPart other = feet ? (seat.left() ? host.rightLeg : host.leftLeg) : (seat.left() ? host.rightArm : host.leftArm);
+            var restoreWorn = fitPart(worn, null, RigDefinition.Adjust.ZERO);
+            var restoreOther = fitPart(other, null, RigDefinition.Adjust.ZERO);
+            pose.pushPose();
+            try {
+                // the rig body's own scaled frame, as SpeciesRigLayer draws it
+                if (scale != 1f) {
+                    pose.translate(0f, 1.501f, 0f);
+                    pose.scale(scale, scale, scale);
+                    pose.translate(0f, -1.501f, 0f);
+                }
+                if (!RigBootsRenderer.enterSeat(rig, seat, pose, drop)) continue;
+                float s = seat.scale() * seat.seat().scale();
+                RigBootsRenderer.flatLeg(worn, s);
+                worn.xScale *= seat.seat().scaleAxes()[0];
+                worn.yScale *= seat.seat().scaleAxes()[1];
+                worn.zScale *= seat.seat().scaleAxes()[2];
+                RigBootsRenderer.hideLeg(other);
+                draw.run();
+            } finally {
+                pose.popPose();
+                restoreWorn.run();
+                restoreOther.run();
+            }
+        }
+        return true;
     }
 
     static Runnable fitPart(ModelPart part, float[] bonePose, RigDefinition.Adjust adjust) {

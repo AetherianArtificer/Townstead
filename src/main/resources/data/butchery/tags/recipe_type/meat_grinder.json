@@ -1,4 +1,9 @@
 {
   "replace": false,
-  "values": ["butchery:meatgrinderjei"]
+  "values": [
+    {
+      "id": "butchery:meatgrinderjei",
+      "required": false
+    }
+  ]
 }

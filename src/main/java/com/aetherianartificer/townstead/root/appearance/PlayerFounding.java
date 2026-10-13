@@ -1,7 +1,5 @@
 package com.aetherianartificer.townstead.root.appearance;
 
-import com.aetherianartificer.townstead.clothing.BodyClothingResolver;
-import com.aetherianartificer.townstead.clothing.policy.RigSkinPicker;
 import com.aetherianartificer.townstead.clothing.policy.SkinPicker;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -34,14 +32,11 @@ public final class PlayerFounding {
         int[] iris = IrisColors.editable(player);
         if (iris != null) IrisColors.seedInto(entityData, iris[0], iris[1]);
 
-        var fitted = BodyClothingResolver.fitted(rootId, com.aetherianartificer.townstead.root.PlayerRoot.getHeritage(player));
-        String clothes = entityData.getString("Clothes");
-        if (!fitted.isEmpty() && !SkinPicker.onMcaRig(rootId) && !SkinPicker.fits(fitted, clothes)) {
-            net.conczin.mca.entity.ai.relationship.Gender gender =
-                    net.conczin.mca.entity.ai.relationship.Gender.byId(entityData.getInt("Gender"));
-            RigSkinPicker.pick(skin -> SkinPicker.fits(fitted, skin), gender, "minecraft:none",
-                    player.getUUID().getMostSignificantBits()).ifPresent(skin -> entityData.putString("Clothes", skin));
-        }
+        // an outfit the new body can't wear (a Ribbit's, on a human) gives way to one it can
+        SkinPicker.refit(rootId, com.aetherianartificer.townstead.root.PlayerRoot.getHeritage(player),
+                entityData.getString("Clothes"),
+                net.conczin.mca.entity.ai.relationship.Gender.byId(entityData.getInt("Gender")), "minecraft:none",
+                player.getUUID().getMostSignificantBits()).ifPresent(skin -> entityData.putString("Clothes", skin));
 
         // getEntityData is a copy on the 1.21.1 line; store the edit or only the broadcast sees it.
         data.setEntityData(entityData);

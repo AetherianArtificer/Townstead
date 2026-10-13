@@ -153,6 +153,15 @@ public final class RootServerLogic {
         }
         // Reseeding may have changed the fertility gene; keep MCA's infertile trait in step.
         Fertility.syncMcaInfertileTrait(villager);
+        // an outfit the new body can't wear (a Ribbit's, on a human) gives way to one it can
+        if (changed) {
+            ResourceLocation professionId = net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION
+                    .getKey(villager.getVillagerData().getProfession());
+            com.aetherianartificer.townstead.clothing.policy.SkinPicker.refit(id,
+                    state.life().hasHeritage() ? state.life().heritage() : null, villager.getClothes(),
+                    villager.getGenetics().getGender(), professionId == null ? "minecraft:none" : professionId.toString(),
+                    villager.getUUID().getMostSignificantBits()).ifPresent(villager::setClothes);
+        }
         // Flush now: the origin lives in a data attachment that only persists when
         // the snapshot is written, and the periodic flush may not run before the
         // world saves/exits — which lost the origin (and so the skin tint) on reload.

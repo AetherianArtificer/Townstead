@@ -269,6 +269,12 @@ public record RigDefinition(
                     new float[]{offset[0] + d.offset[0], offset[1] + d.offset[1], offset[2] + d.offset[2]},
                     new float[]{rotation[0] + d.rotation[0], rotation[1] + d.rotation[1], rotation[2] + d.rotation[2]}, scale * d.scale, new float[]{scaleAxes[0]*d.scaleAxes[0], scaleAxes[1]*d.scaleAxes[1], scaleAxes[2]*d.scaleAxes[2]});
         }
+
+        /** This adjust reflected across the body's midline, for the left of a pair authored on the right. */
+        public Adjust mirrored() {
+            return new Adjust(new float[]{-offset[0], offset[1], offset[2]},
+                    new float[]{rotation[0], -rotation[1], -rotation[2]}, scale, scaleAxes);
+        }
     }
 
     /**

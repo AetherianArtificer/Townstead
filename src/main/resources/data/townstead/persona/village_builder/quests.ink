@@ -155,7 +155,7 @@ Have you got a minute? There's something I keep thinking about.
 }
 + [Any advice?]
     A bed only counts inside a house. A small house with two beds does more than you'd think.
-    Newcomers come on their own when there's room. You don't have to go looking for them.
+    When there's room, couples here start families. Or you can bring someone over from another village and give them a bed.
 + [Working on it.]
     I know. I'll keep counting beds.
 + [See you later.]

@@ -60,7 +60,8 @@ public final class VillageConditionType implements ConditionType {
             if (expectedName != null && !expectedName.equalsIgnoreCase(village.getName())) return false;
             int buildingCount = com.aetherianartificer.townstead.compat.mca.McaBuildings.allById(village).size();
             if (buildingCount < minBuildings || buildingCount > maxBuildings) return false;
-            int population = village.getResidents(serverLevel).size();
+            // The full roll, not just loaded residents: someone in an unloaded chunk still has a bed.
+            int population = village.getPopulation();
             if (population < minPopulation || population > maxPopulation) return false;
             if (minFreeBeds != Integer.MIN_VALUE && village.getMaxPopulation() - population < minFreeBeds) return false;
             if (!hasBuilding.isEmpty() && com.aetherianartificer.townstead.compat.mca.McaBuildings.allById(village).values().stream()

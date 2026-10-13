@@ -22,10 +22,14 @@ import java.util.UUID;
  * Tests a posted event against a goal's {@code where}: each named field of the event record must
  * match. A value can be text or a number, {@code "teller"} or {@code "player"} (the person, or
  * their village for a village field), a list meaning any of, or {@code {"min": .., "max": ..}}.
- * An optional Pheno {@code condition} is also tested on the entity in field {@code entity}.
+ * A range can also name another field: {@code {"above": "tierBefore"}} or {@code {"below": ..}}.
+ * On an event with a person but no village field, {@code village} is that person's village: their
+ * home, else where they stand. An optional Pheno {@code condition} is also tested on the entity in
+ * field {@code entity}.
  */
 final class EventMatcher {
-    private record FieldTest(Method accessor, JsonElement wanted) {}
+    /** {@code villageOf}: the accessor reads a person and the test is on their village. */
+    private record FieldTest(Method accessor, JsonElement wanted, boolean villageOf) {}
 
     private final List<FieldTest> tests;
     private final @Nullable Method entity;
@@ -46,8 +50,21 @@ final class EventMatcher {
         if (where != null) {
             for (Map.Entry<String, JsonElement> entry : where.entrySet()) {
                 Method accessor = fields.get(entry.getKey());
+                boolean villageOf = false;
+                if (accessor == null && entry.getKey().equals("village")) {
+                    accessor = personField(event);
+                    villageOf = accessor != null;
+                }
                 if (accessor == null) throw new IllegalArgumentException(unknown(entry.getKey(), event, fields));
-                tests.add(new FieldTest(accessor, entry.getValue()));
+                if (entry.getValue().isJsonObject()) {
+                    for (String bound : List.of("above", "below")) {
+                        JsonElement other = entry.getValue().getAsJsonObject().get(bound);
+                        if (other != null && !fields.containsKey(other.getAsString())) {
+                            throw new IllegalArgumentException(unknown(other.getAsString(), event, fields));
+                        }
+                    }
+                }
+                tests.add(new FieldTest(accessor, entry.getValue(), villageOf));
             }
         }
         Method entity = null;
@@ -59,9 +76,26 @@ final class EventMatcher {
         return new EventMatcher(List.copyOf(tests), entity, condition);
     }
 
+    /** The event's first person field, such as {@code worker}, or null when it has none. */
+    private static @Nullable Method personField(Class<?> event) {
+        for (RecordComponent component : event.getRecordComponents()) {
+            if (LivingEntity.class.isAssignableFrom(component.getType())) return component.getAccessor();
+        }
+        return null;
+    }
+
+    private static @Nullable VillageId villageOf(@Nullable Object person) {
+        if (!(person instanceof LivingEntity living) || !(living.level() instanceof net.minecraft.server.level.ServerLevel level)) return null;
+        int id = com.aetherianartificer.townstead.chronicle.emit.ChronicleEmitter.resolveVillageId(living);
+        return id == com.aetherianartificer.townstead.chronicle.model.ChronicleEvent.VILLAGE_NONE
+                ? null : new VillageId(level.dimension().location(), id);
+    }
+
     boolean matches(Object event, GoalContext ctx) {
         for (FieldTest test : tests) {
-            if (!matches(read(test.accessor(), event), test.wanted(), ctx)) return false;
+            Object actual = read(test.accessor(), event);
+            if (test.villageOf()) actual = villageOf(unwrap(actual));
+            if (!matches(actual, test.wanted(), ctx, event)) return false;
         }
         if (condition != null && entity != null) {
             Object value = unwrap(read(entity, event));
@@ -71,17 +105,21 @@ final class EventMatcher {
         return true;
     }
 
-    private static boolean matches(@Nullable Object actual, JsonElement wanted, GoalContext ctx) {
+    private static boolean matches(@Nullable Object actual, JsonElement wanted, GoalContext ctx, Object event) {
         actual = unwrap(actual);
         if (actual == null) return false;
         if (wanted.isJsonArray()) {
-            for (JsonElement option : wanted.getAsJsonArray()) if (matches(actual, option, ctx)) return true;
+            for (JsonElement option : wanted.getAsJsonArray()) if (matches(actual, option, ctx, event)) return true;
             return false;
         }
         if (wanted.isJsonObject()) {
             if (!(actual instanceof Number number)) return false;
             JsonObject range = wanted.getAsJsonObject();
             double n = number.doubleValue();
+            Double above = range.has("above") ? numberField(event, range.get("above").getAsString()) : null;
+            Double below = range.has("below") ? numberField(event, range.get("below").getAsString()) : null;
+            if (range.has("above") && (above == null || n <= above)) return false;
+            if (range.has("below") && (below == null || n >= below)) return false;
             return (!range.has("min") || n >= range.get("min").getAsDouble())
                     && (!range.has("max") || n <= range.get("max").getAsDouble());
         }
@@ -102,6 +140,14 @@ final class EventMatcher {
         if (actual instanceof Enum<?> e) return e.name().equalsIgnoreCase(text);
         if (actual instanceof Entity e) return e.getUUID().toString().equalsIgnoreCase(text);
         return actual.toString().equalsIgnoreCase(text);
+    }
+
+    private static @Nullable Double numberField(Object event, String field) {
+        for (RecordComponent component : event.getClass().getRecordComponents()) {
+            if (!component.getName().equals(field)) continue;
+            return unwrap(read(component.getAccessor(), event)) instanceof Number number ? number.doubleValue() : null;
+        }
+        return null;
     }
 
     private static @Nullable Object read(Method accessor, Object event) {

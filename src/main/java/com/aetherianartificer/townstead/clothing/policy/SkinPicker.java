@@ -189,6 +189,45 @@ public final class SkinPicker {
         return weight;
     }
 
+    /**
+     * Which skins a root's body can wear. A body with its own fitted skins wears only those. MCA's
+     * villager body wears any skin in the catalog except one fitted to another kind of body (a
+     * Ribbit's outfit). Any other body draws no MCA skin, so every skin passes. Build it once, then
+     * test each skin.
+     */
+    public static Predicate<String> wearable(@Nullable ResourceLocation rootId, @Nullable Heritage heritage) {
+        List<ClothingEntry> fitted = BodyClothingResolver.fitted(rootId, heritage);
+        if (!onMcaRig(rootId)) return skin -> fitted.isEmpty() || (skin != null && fits(fitted, skin));
+        ClothingList list = ClothingList.getInstance();
+        if (list == null || list.clothing == null) return skin -> true;
+        List<ClothingEntry> otherBodies = new ArrayList<>();
+        for (com.aetherianartificer.townstead.root.Root root : RootRegistry.all()) {
+            if (!onMcaRig(root.id())) otherBodies.addAll(BodyClothingResolver.fitted(root.id(), null));
+        }
+        return skin -> skin != null && !skin.isEmpty() && list.clothing.containsKey(skin)
+                && !AdaptedClothingPack.unavailable(skin)
+                && (fits(fitted, skin) || !fits(otherBodies, skin));
+    }
+
+    /**
+     * After a root change: a fresh profession-first skin when the body can't wear {@code current},
+     * else empty (keep it). On MCA's body the roll skips {@code exclude} skins, as MCA's own picks do,
+     * so a human never rolls into an outfit kept for someone. Empty too when nothing fits.
+     */
+    public static Optional<String> refit(@Nullable ResourceLocation rootId, @Nullable Heritage heritage,
+                                         @Nullable String current, Gender gender, String profession, long seed) {
+        Predicate<String> wear = wearable(rootId, heritage);
+        if (wear.test(current)) return Optional.empty();
+        boolean bodyOnly = !onMcaRig(rootId);
+        ClothingList list = ClothingList.getInstance();
+        return RigSkinPicker.pick(skin -> {
+            if (!wear.test(skin)) return false;
+            if (bodyOnly || list == null || list.clothing == null) return true;
+            Clothing clothing = list.clothing.get(skin);
+            return clothing != null && !clothing.exclude;
+        }, gender, profession, seed);
+    }
+
     /** Whether the skin fits the villager's body: any skin on MCA's villager, else only a fitted one. */
     public static boolean fitsBody(VillagerEntityMCA villager, String skin) {
         var life = TownsteadVillagers.get(villager).life();
