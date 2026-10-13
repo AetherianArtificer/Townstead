@@ -67,13 +67,5 @@
       "workstations": ["caupona:stew_pot", "caupona:lead_stew_pot"],
       "weight": 10
     }
-  ],
-  "path_worksites": {
-    "pizzaiolo": [
-      "pizzadelight:basin",
-      "pizzadelight:pizza_station",
-      "pizzadelight:raw_pizza",
-      "pizzadelight:pizza"
-    ]
-  }
+  ]
 }

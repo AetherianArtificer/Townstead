@@ -11,6 +11,12 @@
     "translate": "career.townstead.cook.title.pizzaiolo"
   },
   "color": "#C8873E",
+  "worksites": [
+    "pizzadelight:basin",
+    "pizzadelight:pizza_station",
+    "pizzadelight:raw_pizza",
+    "pizzadelight:pizza"
+  ],
   "work": [
     {
       "type": "townstead_work:cook",
