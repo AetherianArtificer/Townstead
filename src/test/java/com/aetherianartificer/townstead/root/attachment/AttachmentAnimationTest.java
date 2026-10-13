@@ -23,7 +23,7 @@ class AttachmentAnimationTest {
           "position":{"0":{"pre":[1,2,3],"post":[4,5,6]},"1":[8,9,10]},"scale":1.5}}}}}
           """).getAsJsonObject(), null).get("pose");
         var arm = clip.bones.get("arm");
-        assertArrayEquals(new float[]{10,20,30}, arm.rotation().sample(5,new float[3]));
+        assertArrayEquals(new float[]{10,-20,-30}, arm.rotation().sample(5,new float[3]), "rotation reads as GeckoLib reads it: Y and Z negated");
         assertArrayEquals(new float[]{6,7,8}, arm.position().sample(10,new float[3]));
         assertArrayEquals(new float[]{1.5f,1.5f,1.5f}, arm.scale().sample(5,new float[3]));
     }

@@ -101,7 +101,7 @@ public record AttachmentDef(
     /** The named pose states the client can resolve without extra sync. */
     public static final java.util.List<String> POSE_STATES = java.util.List.of(
             "sleeping", "sitting", "sprinting", "sneaking", "swimming", "gliding",
-            "moving", "hurt", "attacking", "panicking", "working",
+            "parachuting", "moving", "hurt", "attacking", "panicking", "working",
             "wearing_helmet", "wearing_chestplate", "wearing_leggings", "wearing_boots");
 
     /** The armor-slot names {@code hidesUnder} (and the {@code wearing_*} poses) accept. */

@@ -32,8 +32,53 @@ public final class WerewolfVillagers {
     private static final Map<UUID, Float> LAST_HEALTH = new HashMap<>();
     private static final Map<UUID, Long> UNTIL = new HashMap<>();
     private static final Map<UUID, Long> FORM_SINCE = new HashMap<>();
+    /** Forms a command holds: the tick keeps them as they are until released. */
+    private static final Map<UUID, Double> HELD = new HashMap<>();
 
     private WerewolfVillagers() {}
+
+    /** Holds a werewolf villager in {@code form} (0 human, 1 four legged, 2 upright) until {@link #release}. */
+    public static void hold(VillagerEntityMCA villager, double form) {
+        HELD.put(villager.getUUID(), form);
+        setForm(villager, form);
+    }
+
+    /** Hands the villager's form back to night, moon and rage. */
+    public static void release(VillagerEntityMCA villager) {
+        HELD.remove(villager.getUUID());
+    }
+
+    /**
+     * Turns a werewolf villager now, as rage would: the change lasts the transform time, and ends
+     * at sunrise like any other. Form 0 turns them back.
+     */
+    public static void turn(VillagerEntityMCA villager, double form) {
+        UUID id = villager.getUUID();
+        long now = villager.level().getGameTime();
+        if (form > 0) UNTIL.put(id, now + transformSeconds() * 20L);
+        else UNTIL.remove(id);
+        FORM_SINCE.put(id, now);
+        setForm(villager, form);
+    }
+
+    /** The held form, or null when the villager's form follows the night. */
+    public static Double held(VillagerEntityMCA villager) {
+        return HELD.get(villager.getUUID());
+    }
+
+    /** Ticks until a timed change ends; -1 for none, {@link Long#MAX_VALUE} for a full-moon change. */
+    public static long remaining(VillagerEntityMCA villager) {
+        Long until = UNTIL.get(villager.getUUID());
+        if (until == null) return -1;
+        return until == WHOLE_NIGHT ? WHOLE_NIGHT : Math.max(0, until - villager.level().getGameTime());
+    }
+
+    /** The game time of the next full-moon nightfall. */
+    public static long nextFullMoonNight(Level level) {
+        long now = level.getDayTime();
+        long target = now - Math.floorMod(now, 192000L) + 13000;
+        return target <= now ? target + 192000 : target;
+    }
 
     public static void tick(VillagerEntityMCA villager) {
         if ((villager.tickCount + villager.getId()) % 20 != 0 || !(villager.level() instanceof ServerLevel level)) return;
@@ -45,10 +90,16 @@ public final class WerewolfVillagers {
             if (form > 0) setForm(villager, 0);
             LAST_HEALTH.remove(id);
             UNTIL.remove(id);
+            HELD.remove(id);
             return;
         }
 
         settleLooks(villager);
+        Double held = HELD.get(id);
+        if (held != null) {
+            if (form != held) setForm(villager, held);
+            return;
+        }
         float health = villager.getHealth();
         Float before = LAST_HEALTH.put(id, health);
         double rage = EntityStates.resolve(villager, RAGE).amount();

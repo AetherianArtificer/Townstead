@@ -24,8 +24,9 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>On approach it brakes on a constant tau-dot schedule (Lee et al. 1993, pigeons
  * landing): speed falls with the square root of the distance left, so closing speed and
- * distance reach zero together. Over the spot it folds and drops the last block or so.
- * With no route (a fall caught mid-air) it holds a gentle glide ahead, dodges what the
+ * distance reach zero together. For the last few blocks it flares: out of the glide pose,
+ * upright with wings still out, it sets down on the spot under direct control on the same
+ * schedule, the way a bird stalls onto a perch rather than skidding in. With no route (a fall caught mid-air) it holds a gentle glide ahead, dodges what the
  * simulation shows, and keeps trying to plan a landing.</p>
  */
 public final class ElytraPilot implements Pilot {
@@ -37,7 +38,7 @@ public final class ElytraPilot implements Pilot {
         void fold(Mob mob);
     }
 
-    private enum Phase { TAKEOFF, FLY, DROP }
+    private enum Phase { TAKEOFF, FLY, FLARE, DROP }
 
     static final int HORIZON = 12;
     private static final int DECIDE_EVERY = 2;
@@ -48,8 +49,12 @@ public final class ElytraPilot implements Pilot {
     private static final double APPROACH = 12.0;
     private static final double MIN_APPROACH_SPEED = 0.12;
     private static final double STALL_SPEED = 0.2;
-    private static final double TOUCHDOWN_RADIUS = 1.2;
-    private static final double TOUCHDOWN_HEIGHT = 1.6;
+    /** Route left when the flare begins. */
+    private static final double FLARE_RANGE = 6.0;
+    private static final double FLARE_MIN_SPEED = 0.15;
+    private static final double FLARE_MAX_SPEED = 0.45;
+    private static final double FLARE_SETTLE = 0.3;
+    private static final int FLARE_TICKS = 160;
     private static final double LAUNCH_PUSH = 0.6;
     private static final int HOPELESS_LIMIT = 3;
     private static final float[] PITCHES = {-30f, -12f, 0f, 10f, 22f, 40f};
@@ -69,6 +74,9 @@ public final class ElytraPilot implements Pilot {
     private double approachSpeed = Double.NaN;
     private float pitch;
     private float yaw;
+    private boolean flareOwnsGravity;
+    private double flareFrom;
+    private double flareSpeed;
 
     /**
      * @param takeoff true when the bearer is still on the ground (it was just given a hop);
@@ -95,12 +103,14 @@ public final class ElytraPilot implements Pilot {
         return switch (phase) {
             case TAKEOFF -> tickTakeoff(mob);
             case FLY -> tickFly(mob);
+            case FLARE -> tickFlare(mob);
             case DROP -> tickDrop(mob);
         };
     }
 
     @Override
     public void stop(Mob mob) {
+        releaseGravity(mob);
         mob.resetFallDistance();
         wings.fold(mob);
     }
@@ -146,7 +156,10 @@ public final class ElytraPilot implements Pilot {
         Vec3 pos = mob.position();
         if (follower != null) follower.update(pos);
         if (age % REPLAN_EVERY == 0) maybeReplan(mob);
-        if (follower != null && touchdown(mob, pos)) return true;
+        if (follower != null && follower.remaining() <= FLARE_RANGE) {
+            beginFlare(mob, pos);
+            return true;
+        }
         if (follower == null && mob.getY() - groundBelow(mob) < 2.0) {
             enter(Phase.DROP);
             return true;
@@ -162,6 +175,56 @@ public final class ElytraPilot implements Pilot {
         mob.yBodyRot = yaw;
         mob.setYHeadRot(yaw);
         return true;
+    }
+
+    /**
+     * Out of the glide and upright, gravity held off: steer straight for the spot, slowing
+     * with the square root of the distance left, and settle onto it. Anything in the way
+     * ends the flare in a short drop instead.
+     */
+    private void beginFlare(Mob mob, Vec3 pos) {
+        ((com.aetherianartificer.townstead.root.ability.FallFlightBridge) mob).townstead$setFallFlying(false);
+        flareOwnsGravity = !mob.isNoGravity();
+        mob.setNoGravity(true);
+        flareFrom = Math.max(1.0, pos.distanceTo(follower.end()));
+        flareSpeed = Mth.clamp(mob.getDeltaMovement().length(), FLARE_MIN_SPEED, FLARE_MAX_SPEED);
+        enter(Phase.FLARE);
+    }
+
+    private boolean tickFlare(Mob mob) {
+        if (mob.onGround() || mob.isInWater()) return false;
+        Vec3 pos = mob.position();
+        Vec3 to = follower.end().subtract(pos);
+        double d = to.length();
+        if (d < FLARE_SETTLE) {
+            mob.setDeltaMovement(mob.getDeltaMovement().scale(0.2));
+            return false;
+        }
+        double speed = Math.max(0.05, flareSpeed * Math.sqrt(d / flareFrom));
+        Vec3 desired = to.scale(Math.min(speed, d * 0.5) / d);
+        if (!space.bodyFree(pos.add(desired.scale(2.0)), 0.0) || phaseTicks > FLARE_TICKS) {
+            releaseGravity(mob);
+            enter(Phase.DROP);
+            return true;
+        }
+        Vec3 v = mob.getDeltaMovement();
+        mob.setDeltaMovement(v.add(desired.subtract(v).scale(0.5)));
+        mob.hasImpulse = true;
+        if (to.x * to.x + to.z * to.z > 0.04) {
+            yaw = (float) Math.toDegrees(Math.atan2(to.z, to.x)) - 90f;
+            mob.setYRot(yaw);
+            mob.yBodyRot = yaw;
+            mob.setYHeadRot(yaw);
+        }
+        pitch = 0f;
+        mob.setXRot(0f);
+        return true;
+    }
+
+    private void releaseGravity(Mob mob) {
+        if (!flareOwnsGravity) return;
+        flareOwnsGravity = false;
+        mob.setNoGravity(false);
     }
 
     /** Folded: fall the last bit, drifting onto the spot. Harmless while the pilot still has the body. */
@@ -181,21 +244,6 @@ public final class ElytraPilot implements Pilot {
         }
         mob.setDeltaMovement(vx, v.y, vz);
         return phaseTicks < 200;
-    }
-
-    /** Over the spot and low: fold and drop. Past the end of the route: same, wherever that is. */
-    private boolean touchdown(Mob mob, Vec3 pos) {
-        Vec3 end = follower.end();
-        double dx = end.x - pos.x, dz = end.z - pos.z;
-        double horizontal = Math.sqrt(dx * dx + dz * dz);
-        double height = pos.y - end.y;
-        if ((horizontal < TOUCHDOWN_RADIUS && height < TOUCHDOWN_HEIGHT) || follower.remaining() < 0.5) {
-            Vec3 v = mob.getDeltaMovement();
-            mob.setDeltaMovement(v.x * 0.3, Math.min(v.y, 0), v.z * 0.3);
-            enter(Phase.DROP);
-            return true;
-        }
-        return false;
     }
 
     /** Constant tau-dot approach: speed falls with the square root of the distance left. NaN outside the approach. */

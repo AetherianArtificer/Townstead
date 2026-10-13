@@ -59,6 +59,18 @@ public final class CultureVillages {
         return profilesByStructure.getOrDefault(structure, List.of());
     }
 
+    /** A village structure for a profile: one it claims itself first, then one its culture claims. */
+    public static @Nullable ResourceLocation structureFor(@Nullable FoundingProfileDefinition profile) {
+        if (profile == null) return null;
+        for (Map.Entry<ResourceLocation, List<ResourceLocation>> entry : profilesByStructure.entrySet()) {
+            if (entry.getValue().contains(profile.id())) return entry.getKey();
+        }
+        for (Map.Entry<ResourceLocation, ResourceLocation> entry : cultureByStructure.entrySet()) {
+            if (Cultures.within(profile.culture(), entry.getValue())) return entry.getKey();
+        }
+        return null;
+    }
+
     /** The cultural village structure whose bounds hold {@code pos}, if any. */
     public static @Nullable ResourceLocation structureAt(ServerLevel level, BlockPos pos) {
         Set<ResourceLocation> structures = new LinkedHashSet<>(profilesByStructure.keySet());

@@ -37,16 +37,21 @@ public final class ClientAbilityLoadout {
     public static void accept(AbilityLoadoutS2CPayload payload) {
         last = payload;
         BY_SLOT.clear();
+        java.util.Set<String> offered = new java.util.HashSet<>();
+        for (AbilityLoadoutS2CPayload.Option option : payload.available()) offered.add(option.id());
         for (AbilityLoadoutS2CPayload.Entry entry : payload.entries()) {
             // A slot holding a KEYBIND comes back named only by its id: the server stores those
             // without resolving them, because only a client knows what bindings exist. Naming it
             // once here means nothing downstream has to know the difference.
+            String key = com.aetherianartificer.townstead.client.input.KeybindAssignables.keyOf(entry.id());
+            // A faction move's key, left from when they had the faction, is no longer theirs to press.
+            if (!key.isEmpty() && !com.aetherianartificer.townstead.client.input.KeybindAssignables.stillUsable(key, offered)) continue;
             BY_SLOT.put(entry.slot(),
                     com.aetherianartificer.townstead.client.input.KeybindAssignables.resolve(entry));
         }
         java.util.List<AbilityLoadoutS2CPayload.Option> merged =
                 new java.util.ArrayList<>(payload.available());
-        merged.addAll(com.aetherianartificer.townstead.client.input.KeybindAssignables.options());
+        merged.addAll(com.aetherianartificer.townstead.client.input.KeybindAssignables.options(offered));
         available = java.util.List.copyOf(merged);
     }
 

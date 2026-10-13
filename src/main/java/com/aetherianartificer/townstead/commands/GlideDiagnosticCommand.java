@@ -3,8 +3,11 @@ package com.aetherianartificer.townstead.commands;
 import com.aetherianartificer.townstead.root.ability.GlideAI;
 import com.aetherianartificer.townstead.root.locomotion.FlightProfile;
 import com.aetherianartificer.townstead.root.locomotion.Locomotion;
+import com.aetherianartificer.townstead.root.locomotion.SwimProfile;
 import com.aetherianartificer.townstead.root.locomotion.plan.AirRoute;
 import com.aetherianartificer.townstead.root.locomotion.plan.AirRoutePlanner;
+import com.aetherianartificer.townstead.root.locomotion.plan.SwimRoute;
+import com.aetherianartificer.townstead.root.locomotion.plan.SwimRoutePlanner;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -31,7 +34,8 @@ import java.util.List;
  *
  * <p>{@code /townstead debug flightplan} plans a flight for the nearest flier to the
  * block the player looks at (else to the flier's own destination) and draws the route:
- * end-rod sparks along the legs, green sparks on the landing spot.</p>
+ * end-rod sparks along the legs, green sparks on the landing spot. {@code swimplan} does
+ * the same for the nearest swimmer, through water.</p>
  */
 public final class GlideDiagnosticCommand {
 
@@ -43,7 +47,8 @@ public final class GlideDiagnosticCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("townstead").then(Commands.literal("debug")
                 .then(Commands.literal("glide").executes(c -> dump(c.getSource())))
-                .then(Commands.literal("flightplan").executes(c -> flightPlan(c.getSource())))));
+                .then(Commands.literal("flightplan").executes(c -> flightPlan(c.getSource())))
+                .then(Commands.literal("swimplan").executes(c -> swimPlan(c.getSource())))));
     }
 
     private static int dump(CommandSourceStack source) throws CommandSyntaxException {
@@ -106,15 +111,61 @@ public final class GlideDiagnosticCommand {
                     route.waypoints().size(), route.length(), route.lift(),
                     Double.isInfinite(route.liftBudget()) ? "unlimited" : String.format("%.0f", route.liftBudget()),
                     route.landing().toShortString(), route.perch() ? " (perch: flies down after)" : ""));
-            draw((ServerLevel) player.level(), player, route);
+            draw((ServerLevel) player.level(), player, route.waypoints(), Vec3.atBottomCenterOf(route.landing()));
         }
         String text = out.toString();
         source.sendSuccess(() -> Component.literal(text), false);
         return route == null ? 0 : 1;
     }
 
-    private static void draw(ServerLevel level, ServerPlayer player, AirRoute route) {
-        List<Vec3> points = route.waypoints();
+    private static int swimPlan(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        VillagerEntityMCA swimmer = null;
+        SwimProfile profile = null;
+        List<VillagerEntityMCA> villagers = player.level().getEntitiesOfClass(
+                VillagerEntityMCA.class, player.getBoundingBox().inflate(RANGE));
+        villagers.sort(Comparator.comparingDouble(v -> v.distanceToSqr(player)));
+        for (VillagerEntityMCA villager : villagers) {
+            profile = SwimProfile.of(villager);
+            if (profile != null) {
+                swimmer = villager;
+                break;
+            }
+        }
+        if (swimmer == null) {
+            source.sendFailure(Component.literal("No swimmer within " + (int) RANGE + " blocks."));
+            return 0;
+        }
+        BlockPos destination = null;
+        HitResult hit = player.pick(96.0, 1.0f, false);
+        if (hit instanceof BlockHitResult block && hit.getType() == HitResult.Type.BLOCK) {
+            destination = block.getBlockPos().relative(block.getDirection());
+        }
+        if (destination == null) destination = Locomotion.destination(swimmer);
+        if (destination == null) {
+            source.sendFailure(Component.literal("Look at a block, or wait until the swimmer has somewhere to go."));
+            return 0;
+        }
+        SwimRoutePlanner.Result result = SwimRoutePlanner.plan(swimmer, profile, destination);
+        StringBuilder out = new StringBuilder(swimmer.getName().getString()).append(": ")
+                .append(com.aetherianartificer.townstead.root.locomotion.SwimAI.describe(swimmer))
+                .append("\n  plan to ").append(destination.toShortString())
+                .append(String.format(" (%d cells, %.1f ms)", result.expansions(), result.micros() / 1000.0));
+        SwimRoute route = result.route();
+        if (route == null) {
+            out.append("\n  NO ROUTE: ").append(result.failure());
+        } else {
+            out.append(String.format("\n  %d waypoints, %.0f blocks, longest breath hold %dt of %dt air%s",
+                    route.waypoints().size(), route.length(), route.longestHold(), swimmer.getAirSupply(),
+                    route.toShore() ? ", ends at the shore" : ""));
+            draw((ServerLevel) player.level(), player, route.waypoints(), route.end());
+        }
+        String text = out.toString();
+        source.sendSuccess(() -> Component.literal(text), false);
+        return route == null ? 0 : 1;
+    }
+
+    private static void draw(ServerLevel level, ServerPlayer player, List<Vec3> points, Vec3 end) {
         for (int i = 1; i < points.size(); i++) {
             Vec3 a = points.get(i - 1).add(0, 0.5, 0);
             Vec3 b = points.get(i).add(0, 0.5, 0);
@@ -125,7 +176,7 @@ public final class GlideDiagnosticCommand {
             }
             spark(level, player, ParticleTypes.FLAME, a, 3);
         }
-        spark(level, player, ParticleTypes.HAPPY_VILLAGER, Vec3.atBottomCenterOf(route.landing()).add(0, 0.3, 0), 12);
+        spark(level, player, ParticleTypes.HAPPY_VILLAGER, end.add(0, 0.3, 0), 12);
     }
 
     private static void spark(ServerLevel level, ServerPlayer player, ParticleOptions type, Vec3 at, int count) {

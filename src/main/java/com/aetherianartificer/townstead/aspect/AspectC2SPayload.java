@@ -12,7 +12,7 @@ import net.minecraft.resources.ResourceLocation;
  * Client to server, from the editor's Aspects page: with {@code pick} false, asks what
  * {@code entityId} can be and is; with {@code pick} true, makes them {@code aspect} (empty for
  * none); with an {@code option}, sets that look of their aspect to {@code value}. The server
- * answers with an {@link AspectS2CPayload} either way.
+ * answers each one with an {@link AspectS2CPayload}, so a page can count its replies.
  */
 //? if neoforge {
 public record AspectC2SPayload(int entityId, String aspect, boolean pick, String option, int value) implements CustomPacketPayload {
@@ -50,24 +50,33 @@ public record AspectC2SPayload(int entityId, String aspect, boolean pick, String
     /** Answers on the server thread: picks when asked, then sends what they can be and are. */
     public static void handle(net.minecraft.server.level.ServerPlayer sp, AspectC2SPayload payload) {
         net.minecraft.world.entity.LivingEntity target = AspectPicks.target(sp, payload.entityId());
-        if (target == null) return;
+        if (target == null) {
+            // Still answered, so the page stops waiting.
+            send(sp, new AspectS2CPayload(payload.entityId(), java.util.List.of(), "", "townstead.aspect.locked.gone", false));
+            return;
+        }
         if (!payload.option().isEmpty()) {
             AspectPicks.setOption(sp, target, payload.option(), payload.value());
         } else if (payload.pick()) {
             AspectPicks.pick(sp, target, payload.aspect().isEmpty() ? null : ResourceLocation.tryParse(payload.aspect()));
         }
-        java.util.List<String> options = new java.util.ArrayList<>();
-        for (var definition : AspectPicks.pickable()) options.add(definition.id().toString());
-        ResourceLocation current = AspectPicks.current(target);
-        java.util.List<AspectS2CPayload.Look> looks = new java.util.ArrayList<>();
-        var definition = AspectPicks.currentDefinition(target);
-        if (definition != null) {
+        java.util.List<AspectS2CPayload.Choice> options = new java.util.ArrayList<>();
+        for (var definition : AspectPicks.pickable()) {
+            // Only aspects this body and Root can carry are offered.
+            if (!com.aetherianartificer.townstead.pheno.state.EntityStates.supports(target, definition.id())) continue;
+            java.util.List<AspectS2CPayload.Look> looks = new java.util.ArrayList<>();
             for (var option : definition.aspect().options()) {
                 looks.add(new AspectS2CPayload.Look(option.id(), option.count(), AspectPicks.optionValue(target, option)));
             }
+            options.add(new AspectS2CPayload.Choice(definition.id().toString(), java.util.List.copyOf(looks)));
         }
+        ResourceLocation current = AspectPicks.current(target);
         AspectS2CPayload reply = new AspectS2CPayload(payload.entityId(), options,
-                current == null ? "" : current.toString(), AspectPicks.mayPick(sp, target), looks, AspectPicks.mayStyle(sp, target));
+                current == null ? "" : current.toString(), AspectPicks.lockReason(sp, target), AspectPicks.mayStyle(sp, target));
+        send(sp, reply);
+    }
+
+    private static void send(net.minecraft.server.level.ServerPlayer sp, AspectS2CPayload reply) {
         //? if neoforge {
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(sp, reply);
         //?} else {

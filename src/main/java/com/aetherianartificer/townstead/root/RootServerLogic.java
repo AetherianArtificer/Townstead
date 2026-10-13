@@ -190,6 +190,8 @@ public final class RootServerLogic {
                     com.aetherianartificer.townstead.root.appearance.HairColors.clampDye(
                             hairColor, hairSettings));
             RootGenes.writeToPlayerData(entityData, clamped);
+            // getEntityData is a copy on the 1.21.1 line; store the edit or only the broadcast sees it.
+            data.setEntityData(entityData);
             data.setEntityDataSet(true);
             data.setDirty();
             // MCA renders players-as-villagers from this snapshot on every client; mirror its

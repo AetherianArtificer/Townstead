@@ -42,7 +42,7 @@ public final class RigEyeColor {
         if (variant == null) {
             // The same stable pre-sync fallback the face overlay uses, so they agree.
             variant = colorGene.variants().get(
-                    Math.floorMod(entity.getUUID().hashCode(), colorGene.variants().size()));
+                    Math.floorMod(RootClientStore.variantSeed(entity), colorGene.variants().size()));
         }
         return variant.tint() >= 0 ? variant.tint() : -1;
     }

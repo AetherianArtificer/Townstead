@@ -17,7 +17,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  * A ghost's way of moving: always floating a little above the surface, bobbing, never
  * walking and never falling. Drops, gaps and water don't matter; it rises and sinks with
- * whatever is below and climbs anything in its way.
+ * whatever is below, rises onto steps and settles low through doorways.
  *
  * <p>Normally MCA keeps navigating (planning paths, opening doors, every task that steers
  * the navigation directly) and this pilot only moves the body toward where the move
@@ -90,7 +90,8 @@ public final class DriftPilot implements Pilot {
                 vz = dz / d * speed;
             }
         }
-        double vy = vertical(mob, pos, target);
+        double routeFloor = ownRoute != null && target != null ? target.y : Double.NaN;
+        double vy = DriftPhysics.vertical(mob, new Vec3(vx, 0, vz), profile.cruiseHeight(), age, true, routeFloor);
         mob.setDeltaMovement(vx, vy, vz);
         mob.hasImpulse = true;
         HoverPilot.face(mob, new Vec3(vx, 0, vz));
@@ -118,22 +119,6 @@ public final class DriftPilot implements Pilot {
     public String describe() {
         return "drift " + (ownRoute == null ? "with MCA's path"
                 : String.format("own route, %.0f of %.0f blocks", ownRoute.progress(), ownRoute.length()));
-    }
-
-    /**
-     * Hold float height over whatever is below: the surface, or a fluid's top. On its own
-     * route the route's cell sets the height, so gaps are crossed level. Rising for the
-     * next step up, or after bumping into something, comes before moving on.
-     */
-    private double vertical(Mob mob, Vec3 pos, @Nullable Vec3 target) {
-        double floor;
-        if (ownRoute != null && target != null) {
-            floor = target.y;
-        } else {
-            floor = DriftPhysics.surfaceBelow(mob.level(), pos);
-            if (!Double.isNaN(floor) && target != null && target.y > floor) floor = target.y;
-        }
-        return DriftPhysics.vertical(pos.y, floor, profile.cruiseHeight(), age, mob.horizontalCollision);
     }
 
     /** Take over navigation with a drift route when walking can't reach; hand it back when it can. */

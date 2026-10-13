@@ -37,5 +37,8 @@ public abstract class LivingEntityPhasingMixin {
         if (self.level().isClientSide && self instanceof net.minecraft.world.entity.player.Player) {
             com.aetherianartificer.townstead.client.root.ClientDrift.afterTravel(self);
         }
+        // Fish-style players swim freely under water; villagers swim through their pilot.
+        com.aetherianartificer.townstead.root.locomotion.SwimPhysics.afterTravel(self);
+        com.aetherianartificer.townstead.root.locomotion.ParachutePhysics.afterTravel(self);
     }
 }

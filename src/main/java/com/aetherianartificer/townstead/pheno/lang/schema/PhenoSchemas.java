@@ -99,8 +99,10 @@ public final class PhenoSchemas {
                         .doc("Toggle-mode initial state: on or off (default off). Reload restores it."))
                 .field(of("slot", PhenoType.INT))
                 .field(of("style", PhenoType.STRING)
-                        .doc("Flight abilities only. elytra_flight: glide, flap, soar or hover. hover: hover or drift. "
-                                + "Omitted: flap with a when_flying lift ability, else glide; drift for hover."))
+                        .doc("Movement abilities only. elytra_flight: glide, flap, soar or hover. hover: hover or drift. "
+                                + "swimming, water_breathing: paddle, dive or fish. slow_fall: float or parachute. Omitted: flap with a when_flying "
+                                + "lift ability, else glide; drift for hover; dive for water_breathing, paddle for "
+                                + "swimming alone; float for slow_fall."))
                 .field(of("cruise_height", PhenoType.FLOAT)
                         .doc("Flight abilities only. Blocks above the terrain while travelling; the float height for drift."))
                 .field(of("condition", PhenoType.CONDITION)).build());
@@ -513,6 +515,9 @@ public final class PhenoSchemas {
                 "thermal_trend", "Server villager predicted direction: -1 cooling, 0 steady, 1 warming.").entrySet())
             NodeSchemas.register(NodeSchema.of("pheno:" + query.getKey(), NodeDomain.CONDITION)
                     .doc(query.getValue()).field(of("min", PhenoType.FLOAT)).field(of("max", PhenoType.FLOAT)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:wearing_skin", NodeDomain.CONDITION)
+                .doc("The entity (villager or player) wears an MCA clothing skin: an id, a pattern ending in *, or a list.")
+                .field(required("skin", PhenoType.STRING)).build());
         NodeSchemas.register(NodeSchema.of("pheno:wet", NodeDomain.CONDITION)
                 .doc("True in water/rain, and while a villager remains wet during drying.").build());
         NodeSchemas.register(NodeSchema.of("pheno:body_temperature", NodeDomain.CONDITION)

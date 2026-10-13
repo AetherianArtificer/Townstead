@@ -320,6 +320,7 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
         RigDefinition rigDef = RigModels.definition(rigBase);
         RigClips.apply(entity, rigDef, RigModels.bakedRoot(rigBase), ageInTicks);
         RigClips.applyGrips(entity, rigDef, RigModels.bakedRoot(rigBase), partialTick);
+        RigOutfitState.applyScales(entity, RigModels.bakedRoot(rigBase), partialTick);
         applyGeometryLook(rigBase, rigDef, netHeadYaw, headPitch);
         float[] bodyOffset = applyRigPose(rigBase, entity, ageInTicks);
         // Emotes on a non-humanoid body: the humanoid bridge can't drive this model, so apply the rig's

@@ -5,11 +5,13 @@ import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -19,15 +21,22 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * a cell {@code (x, y, z)} means the body standing at {@code (x + 0.5, y, z + 0.5)}.
  *
  * <p>Never loads a chunk: anything in an unloaded chunk counts as blocked. Wooden doors
- * and fence gates count as open (the mover opens them on the way through); fluids,
- * fire and other hurting blocks count as blocked.</p>
+ * and fence gates count as open (the mover opens them on the way through); fire and
+ * other hurting blocks count as blocked.</p>
+ *
+ * <p>The {@link Medium} sets what the body moves through. In {@link Medium#AIR} any
+ * fluid blocks. In {@link Medium#WATER} only water cells count (the feet in water), the
+ * body may be wholly submerged, and lava still blocks.</p>
  */
 public final class AirSpace {
+
+    public enum Medium { AIR, WATER }
 
     private static final double SEGMENT_STEP = 0.4;
     private static final int UNLOADED = Integer.MAX_VALUE;
 
     private final Level level;
+    private final Medium medium;
     private final double halfWidth;
     private final double height;
     private final int minY;
@@ -36,7 +45,12 @@ public final class AirSpace {
     private final Long2IntOpenHashMap tops = new Long2IntOpenHashMap();
 
     public AirSpace(Level level, double width, double height) {
+        this(level, width, height, Medium.AIR);
+    }
+
+    public AirSpace(Level level, double width, double height, Medium medium) {
         this.level = level;
+        this.medium = medium;
         this.halfWidth = width / 2.0;
         this.height = height;
         this.minY = level.getMinBuildHeight();
@@ -62,7 +76,7 @@ public final class AirSpace {
         long key = BlockPos.asLong(x, y, z);
         byte cached = cells.get(key);
         if (cached != 0) return cached > 0;
-        boolean free = boxFree(new AABB(x + 0.5 - halfWidth, y, z + 0.5 - halfWidth,
+        boolean free = inMedium(x, y, z) && boxFree(new AABB(x + 0.5 - halfWidth, y, z + 0.5 - halfWidth,
                 x + 0.5 + halfWidth, y + height, z + 0.5 + halfWidth));
         cells.put(key, free ? (byte) 1 : (byte) -1);
         return free;
@@ -79,6 +93,7 @@ public final class AirSpace {
             double y = Mth.lerp(t, a.y, b.y);
             double z = Mth.lerp(t, a.z, b.z);
             if (y < minY || y > maxY) return false;
+            if (!inMedium(Mth.floor(x), Mth.floor(y), Mth.floor(z))) return false;
             if (!boxFree(new AABB(x - hw, y - margin * 0.5, z - hw, x + hw, y + height + margin * 0.5, z + hw))) {
                 return false;
             }
@@ -90,6 +105,7 @@ public final class AirSpace {
     public boolean bodyFree(Vec3 feet, double margin) {
         if (feet.y < minY || feet.y > maxY) return false;
         double hw = halfWidth + margin;
+        if (!inMedium(Mth.floor(feet.x), Mth.floor(feet.y), Mth.floor(feet.z))) return false;
         return boxFree(new AABB(feet.x - hw, feet.y, feet.z - hw, feet.x + hw, feet.y + height, feet.z + hw));
     }
 
@@ -158,6 +174,21 @@ public final class AirSpace {
         return max;
     }
 
+    /** Whether this cell holds water. */
+    public boolean isWater(int x, int y, int z) {
+        BlockPos pos = new BlockPos(x, y, z);
+        return level.hasChunkAt(pos) && level.getFluidState(pos).is(FluidTags.WATER);
+    }
+
+    /** Water cells stacked above the body's head before air, capped at {@code max}: how deep the body is. */
+    public int depth(int x, int y, int z, int max) {
+        int head = y + Mth.ceil(height) - 1;
+        for (int d = 0; d < max; d++) {
+            if (!isWater(x, head + 1 + d, z)) return isWater(x, head, z) ? d + 1 : 0;
+        }
+        return max;
+    }
+
     public boolean isLeaves(int x, int y, int z) {
         BlockPos pos = new BlockPos(x, y, z);
         return level.hasChunkAt(pos) && level.getBlockState(pos).is(BlockTags.LEAVES);
@@ -179,7 +210,9 @@ public final class AirSpace {
                     if (!level.hasChunkAt(pos)) return false;
                     BlockState state = level.getBlockState(pos);
                     if (by >= y0) {
-                        if (!level.getFluidState(pos).isEmpty() || hurts(state)) return false;
+                        FluidState fluid = level.getFluidState(pos);
+                        if (!fluid.isEmpty() && (medium == Medium.AIR || !fluid.is(FluidTags.WATER))) return false;
+                        if (hurts(state)) return false;
                     }
                     if (state.isAir() || passesThrough(state)) continue;
                     VoxelShape shape = state.getCollisionShape(level, pos);
@@ -191,6 +224,11 @@ public final class AirSpace {
             }
         }
         return true;
+    }
+
+    /** In water, a cell counts only with the feet in water; in air, anywhere. */
+    private boolean inMedium(int x, int y, int z) {
+        return medium == Medium.AIR || isWater(x, y, z);
     }
 
     private static boolean passesThrough(BlockState state) {

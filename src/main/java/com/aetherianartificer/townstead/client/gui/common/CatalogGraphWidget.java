@@ -89,7 +89,7 @@ public final class CatalogGraphWidget extends AbstractWidget {
                 var display = displays.get(entry.id());
                 if (display != null) display.drawIcon(g, x + 5, y + 5);
                 if (entry.hangout()) CatalogBadgeRenderer.hangout(g, x + 19, y - 5);
-                if (entry.pinned()) CatalogBadgeRenderer.pin(g, x - 9, y - 7);
+                if (entry.pinned()) CatalogBadgeRenderer.tracked(g, x - 9, y - 7);
                 if (entry.tier() > 0) {
                     String tier = CatalogGraphLayout.roman(entry.tier());
                     g.drawCenteredString(font, tier, x + 13, y - 12, 0xD6DFC9);

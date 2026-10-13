@@ -22,6 +22,7 @@ public final class QuestProviders {
         return new QuestLedgerService(List.of(
                 new McaQuestsProvider(),
                 new com.aetherianartificer.townstead.client.gui.quest.adapter.StoryQuestProvider(),
+                new com.aetherianartificer.townstead.client.gui.quest.adapter.VampirismTaskProvider(),
                 new BountifulProvider(),
                 new FtbQuestsProvider(),
                 new VanillaAdvancementProvider()), LOCAL_TRACKER);
@@ -31,6 +32,7 @@ public final class QuestProviders {
     public static QuestLedgerService createLocallyTracked() {
         return new QuestLedgerService(List.of(
                 new com.aetherianartificer.townstead.client.gui.quest.adapter.StoryQuestProvider(),
+                new com.aetherianartificer.townstead.client.gui.quest.adapter.VampirismTaskProvider(),
                 new BountifulProvider(),
                 new VanillaAdvancementProvider()), LOCAL_TRACKER);
     }

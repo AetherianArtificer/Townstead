@@ -2,8 +2,8 @@ package com.aetherianartificer.townstead.client.attachment;
 
 import com.aetherianartificer.townstead.client.animation.AnimationTargetMap;
 import com.aetherianartificer.townstead.client.devlink.BenchGizmos;
+import com.aetherianartificer.townstead.client.species.RigModels;
 import com.aetherianartificer.townstead.root.rig.RigDefinition;
-import com.aetherianartificer.townstead.root.rig.RigHitboxes;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.model.geom.ModelPart;
@@ -18,8 +18,8 @@ import java.util.List;
 
 /**
  * The bearer's physics colliders for one render, placed on the live pose in the same
- * entity frame the physics sim uses (origin at the feet, world axes). A body with no
- * rig file uses the humanoid defaults.
+ * entity frame the physics sim uses (origin at the feet, world axes). A body on the
+ * humanoid render path that declares none uses the humanoid defaults.
  */
 public final class AttachmentColliders {
 
@@ -53,11 +53,18 @@ public final class AttachmentColliders {
         }
     }
 
+    /** The rig's own colliders, or the humanoid set for a humanoid-shaped body that declares none. */
+    static List<RigDefinition.Collider> definitions(String rigBase) {
+        RigDefinition rig = RigModels.isAlternate(rigBase) ? RigModels.definition(rigBase) : null;
+        if (rig == null) return RigDefinition.HUMANOID_COLLIDERS;
+        if (rig.colliders() != null) return rig.colliders();
+        return RigModels.isGeneric(rigBase) ? List.of() : RigDefinition.HUMANOID_COLLIDERS;
+    }
+
     public static List<Capsule> gather(LivingEntity entity, PoseStack pose, AnimationTargetMap<?> bones) {
         Matrix4f root = EntityRootFrames.rootFor(entity);
         if (root == null) return List.of();
-        RigDefinition rig = RigHitboxes.definition(entity);
-        List<RigDefinition.Collider> defs = rig == null ? RigDefinition.HUMANOID_COLLIDERS : rig.colliders();
+        List<RigDefinition.Collider> defs = definitions(RigModels.rigBaseFor(entity));
         if (defs.isEmpty()) return List.of();
         Matrix4f toEntity = new Matrix4f(root).invert();
         List<Capsule> out = new ArrayList<>(defs.size());

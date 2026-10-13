@@ -62,6 +62,8 @@ public final class TownsteadClient {
             NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGHEST,
                     com.aetherianartificer.townstead.client.render.WildCostumeRender::onRenderLivingPre);
             NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.render.WildCostumeRender::onEntityLeave);
+            NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGHEST, (net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingIn e) ->
+                    com.aetherianartificer.townstead.compat.werewolves.WerewolvesMcaNotice.silence());
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onRenderLivingPre);
             NeoForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             NeoForge.EVENT_BUS.addListener(
@@ -102,6 +104,8 @@ public final class TownsteadClient {
             MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.HIGHEST,
                     com.aetherianartificer.townstead.client.render.WildCostumeRender::onRenderLivingPre);
             MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.render.WildCostumeRender::onEntityLeave);
+            MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.HIGHEST, (net.minecraftforge.client.event.ClientPlayerNetworkEvent.LoggingIn e) ->
+                    com.aetherianartificer.townstead.compat.werewolves.WerewolvesMcaNotice.silence());
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onRenderLivingPre);
             MinecraftForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             MinecraftForge.EVENT_BUS.addListener(

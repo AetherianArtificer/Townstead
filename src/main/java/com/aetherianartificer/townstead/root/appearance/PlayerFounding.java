@@ -43,6 +43,8 @@ public final class PlayerFounding {
                     player.getUUID().getMostSignificantBits()).ifPresent(skin -> entityData.putString("Clothes", skin));
         }
 
+        // getEntityData is a copy on the 1.21.1 line; store the edit or only the broadcast sees it.
+        data.setEntityData(entityData);
         data.setEntityDataSet(true);
         data.setDirty();
         // MCA renders players-as-villagers from this record on every client; mirror its own broadcast.

@@ -64,6 +64,6 @@ public final class IrisTint {
         for (GeneCatalogEntry.Variant v : gene.variants()) {
             for (int i = 0; i < Math.max(1, v.weight()); i++) pool.add(v);
         }
-        return pool.get(Math.floorMod(entity.getUUID().hashCode(), pool.size()));
+        return pool.get(Math.floorMod(RootClientStore.variantSeed(entity), pool.size()));
     }
 }

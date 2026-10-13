@@ -3,6 +3,8 @@ package com.aetherianartificer.townstead.root.gene.types;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.root.ability.Ability;
 import com.aetherianartificer.townstead.root.locomotion.FlightStyle;
+import com.aetherianartificer.townstead.root.locomotion.FallStyle;
+import com.aetherianartificer.townstead.root.locomotion.SwimStyle;
 import com.aetherianartificer.townstead.pheno.condition.Condition;
 import com.aetherianartificer.townstead.pheno.condition.Conditions;
 import com.aetherianartificer.townstead.root.gene.GeneDisplay;
@@ -27,8 +29,9 @@ import java.util.Locale;
  *
  * <p>Flight abilities ({@code elytra_flight}, {@code hover}) also take a {@code style}
  * ({@link FlightStyle}: glide, flap, soar, hover on wings; hover or drift on {@code hover})
- * and a {@code cruise_height} in blocks above the terrain. Both are optional; the AI
- * infers the style when it is absent.</p>
+ * and a {@code cruise_height} in blocks above the terrain. Water abilities
+ * ({@code swimming}, {@code water_breathing}) take a {@code style} too ({@link SwimStyle}:
+ * paddle, dive or fish). All optional; the AI infers the style when it is absent.</p>
  *
  * <p>JSON: {@code { "type":"pheno:ability", "ability":"night_vision",
  * "mode":"toggle", "default":"on" }}</p>
@@ -40,14 +43,22 @@ public final class AbilityGeneType implements GeneType {
 
     public enum Mode { PASSIVE, TOGGLE }
 
-    /** @param cruiseHeight NaN when the gene leaves it to the style */
+    /**
+     * @param style        flight style, on flight abilities
+     * @param swimStyle    swim style, on water abilities
+     * @param fallStyle    fall style, on {@code slow_fall}
+     * @param cruiseHeight NaN when the gene leaves it to the style
+     */
     public record Instance(Ability ability, @Nullable Condition condition, Mode mode, int slot,
-                           boolean defaultOn, @Nullable FlightStyle style, float cruiseHeight)
+                           boolean defaultOn, @Nullable FlightStyle style, float cruiseHeight,
+                           @Nullable SwimStyle swimStyle, @Nullable FallStyle fallStyle)
             implements GeneInstance {
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() {
             // The style rides along so the client can predict a drifting player's float.
-            String key = style == null ? ability.key() : ability.key() + ";" + style.key();
+            String styleKey = style != null ? style.key() : swimStyle != null ? swimStyle.key()
+                    : fallStyle != null ? fallStyle.key() : null;
+            String key = styleKey == null ? ability.key() : ability.key() + ";" + styleKey;
             return GeneDisplay.ability(key, mode.ordinal(), slot);
         }
     }
@@ -68,17 +79,25 @@ public final class AbilityGeneType implements GeneType {
         String rawDefault = GsonHelper.getAsString(json, "default", "off");
         boolean defaultOn = "on".equalsIgnoreCase(rawDefault) || "true".equalsIgnoreCase(rawDefault);
         FlightStyle style = null;
+        SwimStyle swimStyle = null;
+        FallStyle fallStyle = null;
         if (json.has("style")) {
             String rawStyle = GsonHelper.getAsString(json, "style", "");
-            style = FlightStyle.byKey(rawStyle);
-            if (style == null || !style.allowedOn(ability)) {
+            if (SwimStyle.appliesTo(ability)) {
+                swimStyle = SwimStyle.byKey(rawStyle);
+            } else if (FallStyle.appliesTo(ability)) {
+                fallStyle = FallStyle.byKey(rawStyle);
+            } else {
+                style = FlightStyle.byKey(rawStyle);
+                if (style != null && !style.allowedOn(ability)) style = null;
+            }
+            if (style == null && swimStyle == null && fallStyle == null) {
                 LOGGER.warn("Style '{}' does not apply to ability '{}'; the style will be inferred", rawStyle, ability.key());
-                style = null;
             }
         }
         float cruiseHeight = json.has("cruise_height")
                 ? Math.max(0.25f, Math.min(64f, GsonHelper.getAsFloat(json, "cruise_height", 0f)))
                 : Float.NaN;
-        return new Instance(ability, condition, mode, slot, defaultOn, style, cruiseHeight);
+        return new Instance(ability, condition, mode, slot, defaultOn, style, cruiseHeight, swimStyle, fallStyle);
     }
 }

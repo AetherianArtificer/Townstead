@@ -225,7 +225,7 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
                         && o.get("glow").getAsBoolean();
                 String glowVariant = o.has("glow") && o.get("glow").isJsonPrimitive() && o.getAsJsonPrimitive("glow").isString()
                         ? o.get("glow").getAsString() : "";
-                overlays.add(new RigDefinition.Overlay(tex, glow, glowVariant));
+                overlays.add(new RigDefinition.Overlay(tex, glow, glowVariant, GsonHelper.getAsString(o, "tint", "")));
             }
         }
         // "skin_parts": the bone channels a worn MCA skin may draw on (absent = all).
@@ -241,10 +241,10 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
     /**
      * {@code "colliders": [ { "name": "tail_guard", "bone": "body", "from": [0,2,2], "to": [0,10,2],
      * "radius": 3 } ]}: capsules attachment physics rests against. {@code name} defaults to the bone;
-     * {@code to} defaults to {@code from} (a sphere).
+     * {@code to} defaults to {@code from} (a sphere). Null when the rig declares none.
      */
     private static java.util.List<RigDefinition.Collider> parseColliders(JsonObject obj) {
-        if (!obj.has("colliders") || !obj.get("colliders").isJsonArray()) return java.util.List.of();
+        if (!obj.has("colliders") || !obj.get("colliders").isJsonArray()) return null;
         java.util.List<RigDefinition.Collider> out = new java.util.ArrayList<>();
         for (JsonElement e : obj.getAsJsonArray("colliders")) {
             if (!e.isJsonObject()) continue;

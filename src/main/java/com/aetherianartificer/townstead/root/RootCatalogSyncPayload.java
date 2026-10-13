@@ -291,6 +291,7 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         for (com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit outfit : look.outfits()) {
             buf.writeUtf(outfit.id());
             buf.writeUtf(outfit.whenJson());
+            buf.writeVarInt(outfit.transition());
             buf.writeVarInt(outfit.pieces().size());
             for (com.aetherianartificer.townstead.root.outfit.RootOutfits.Piece piece : outfit.pieces()) {
                 buf.writeUtf(piece.model());
@@ -309,6 +310,7 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         for (int i = 0; i < outfitCount; i++) {
             String id = buf.readUtf();
             String when = buf.readUtf();
+            int transition = buf.readVarInt();
             int pieceCount = buf.readVarInt();
             List<com.aetherianartificer.townstead.root.outfit.RootOutfits.Piece> pieces = new ArrayList<>(pieceCount);
             for (int j = 0; j < pieceCount; j++) {
@@ -318,7 +320,7 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
                 for (int k = 0; k < boneCount; k++) bones.add(buf.readUtf());
                 pieces.add(new com.aetherianartificer.townstead.root.outfit.RootOutfits.Piece(model, List.copyOf(bones)));
             }
-            outfits.add(new com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit(id, when, List.copyOf(pieces)));
+            outfits.add(new com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit(id, when, List.copyOf(pieces), transition));
         }
         int skinCount = buf.readVarInt();
         List<String> skins = new ArrayList<>(skinCount);
@@ -532,11 +534,13 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
             buf.writeUtf(overlay.texture());
             buf.writeBoolean(overlay.glow());
             buf.writeUtf(overlay.glowVariant());
+            buf.writeUtf(overlay.tint());
         }
         buf.writeVarInt(r.skinParts().size());
         for (String part : r.skinParts()) buf.writeUtf(part);
-        buf.writeVarInt(r.colliders().size());
-        for (RigDefinition.Collider collider : r.colliders()) {
+        buf.writeBoolean(r.colliders() != null);
+        if (r.colliders() != null) buf.writeVarInt(r.colliders().size());
+        for (RigDefinition.Collider collider : r.colliders() == null ? List.<RigDefinition.Collider>of() : r.colliders()) {
             buf.writeUtf(collider.name());
             buf.writeUtf(collider.bone());
             for (int k = 0; k < 3; k++) buf.writeFloat(collider.from()[k]);
@@ -744,11 +748,12 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         float cameraOffset = buf.readFloat();
         int overlayCount = Math.min(buf.readVarInt(), 16);
         List<RigDefinition.Overlay> overlays = new ArrayList<>(overlayCount);
-        for (int i = 0; i < overlayCount; i++) overlays.add(new RigDefinition.Overlay(buf.readUtf(), buf.readBoolean(), buf.readUtf()));
+        for (int i = 0; i < overlayCount; i++) overlays.add(new RigDefinition.Overlay(buf.readUtf(), buf.readBoolean(), buf.readUtf(), buf.readUtf()));
         int skinPartCount = buf.readVarInt();
         List<String> skinParts = new ArrayList<>(skinPartCount);
         for (int i = 0; i < skinPartCount; i++) skinParts.add(buf.readUtf());
-        int colliderCount = Math.min(buf.readVarInt(), 64);
+        boolean declared = buf.readBoolean();
+        int colliderCount = declared ? Math.min(buf.readVarInt(), 64) : 0;
         List<RigDefinition.Collider> colliders = new ArrayList<>(colliderCount);
         for (int i = 0; i < colliderCount; i++) {
             String name = buf.readUtf();
@@ -757,7 +762,7 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
             float[] to = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
             colliders.add(new RigDefinition.Collider(name, bone, from, to, buf.readFloat()));
         }
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, java.util.Set.copyOf(disabledSlots), cameraBone, emote, animation, modelClass, cameraOffset, List.copyOf(overlays), List.copyOf(skinParts), java.util.Set.copyOf(hiddenSlots), List.copyOf(colliders), java.util.Map.copyOf(skinRemap));
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, java.util.Set.copyOf(disabledSlots), cameraBone, emote, animation, modelClass, cameraOffset, List.copyOf(overlays), List.copyOf(skinParts), java.util.Set.copyOf(hiddenSlots), declared ? List.copyOf(colliders) : null, java.util.Map.copyOf(skinRemap));
     }
 
     private static void writeNullableUtf(FriendlyByteBuf buf, String value) {

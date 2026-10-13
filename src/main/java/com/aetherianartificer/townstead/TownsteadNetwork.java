@@ -86,7 +86,7 @@ import java.util.function.Function;
 public final class TownsteadNetwork {
     private TownsteadNetwork() {}
 
-    private static final String PROTOCOL_VERSION = "18";
+    private static final String PROTOCOL_VERSION = "20";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(Townstead.MOD_ID, "main"),
             () -> PROTOCOL_VERSION,
@@ -496,6 +496,14 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.aspect.AspectS2CPayload::write,
                 com.aetherianartificer.townstead.aspect.AspectS2CPayload::read,
                 payload -> com.aetherianartificer.townstead.client.gui.aspect.AspectPage.accept(payload));
+        registerS2C(com.aetherianartificer.townstead.compat.vampirism.VampirismTasksS2CPayload.class,
+                com.aetherianartificer.townstead.compat.vampirism.VampirismTasksS2CPayload::write,
+                com.aetherianartificer.townstead.compat.vampirism.VampirismTasksS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.gui.quest.adapter.VampirismTaskProvider.accept(payload));
+        registerC2S(com.aetherianartificer.townstead.compat.vampirism.VampirismTaskMenuC2SPayload.class,
+                com.aetherianartificer.townstead.compat.vampirism.VampirismTaskMenuC2SPayload::write,
+                com.aetherianartificer.townstead.compat.vampirism.VampirismTaskMenuC2SPayload::read,
+                (payload, sp) -> com.aetherianartificer.townstead.compat.vampirism.VampirismTaskMenuC2SPayload.handle(sp, payload));
         registerC2S(com.aetherianartificer.townstead.root.SetPersonalityC2SPayload.class,
                 com.aetherianartificer.townstead.root.SetPersonalityC2SPayload::write,
                 com.aetherianartificer.townstead.root.SetPersonalityC2SPayload::read,

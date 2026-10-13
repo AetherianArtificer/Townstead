@@ -444,8 +444,11 @@ public final class GeneAbilityTicker {
             case SLOW_FALL -> {
                 // Stands down during a glide: Slow Falling clamps the dive speed elytra
                 // physics steers with, turning the glide into an unsteerable drift.
-                if (entity.isFallFlying()) removeHidden(entity, MobEffects.SLOW_FALLING);
-                else if (!entity.onGround() && entity.getDeltaMovement().y < 0) {
+                // A parachute keeps hops normal and slows only a real drop (ParachutePhysics).
+                if (entity.isFallFlying() || com.aetherianartificer.townstead.root.locomotion.ParachutePhysics
+                        .isParachutist(entity)) {
+                    removeHidden(entity, MobEffects.SLOW_FALLING);
+                } else if (!entity.onGround() && entity.getDeltaMovement().y < 0) {
                     entity.addEffect(hidden(MobEffects.SLOW_FALLING));
                 }
             }

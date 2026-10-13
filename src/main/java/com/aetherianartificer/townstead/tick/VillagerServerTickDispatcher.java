@@ -105,6 +105,7 @@ public final class VillagerServerTickDispatcher {
                 com.aetherianartificer.townstead.root.locomotion.Locomotion.tick(v);
             }),
             new Step("villager.glide", null, (v, t) -> com.aetherianartificer.townstead.root.ability.GlideAI.tick(v)),
+            new Step("villager.swim", null, (v, t) -> com.aetherianartificer.townstead.root.locomotion.SwimAI.tick(v)),
             new Step("villager.gene_resource", null, (v, t) ->
                     com.aetherianartificer.townstead.root.ability.ResourceValues.tick(v)),
             new Step("villager.gene_collection", null, (v, t) ->

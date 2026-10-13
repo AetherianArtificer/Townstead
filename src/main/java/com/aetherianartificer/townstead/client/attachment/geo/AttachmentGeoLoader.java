@@ -22,8 +22,8 @@ import java.util.Map;
  * positions and normals — static rotation costs nothing at render time).
  *
  * <p>Coordinate transform is the standard Bedrock→Java change: Y negated (with
- * cube corners offset by their height), bone rotations carry the {@code (x,-y,-z)}
- * sign flip. A per-face UV entry that omits a face skips that face's quad, matching
+ * cube corners offset by their height); rotations pass through as {@code (x,y,z)},
+ * as GeckoLib and Blockbench read a Bedrock file. A per-face UV entry that omits a face skips that face's quad, matching
  * Blockbench's transparent-face export. Returns {@code null} on a malformed file.</p>
  */
 public final class AttachmentGeoLoader {
@@ -101,8 +101,8 @@ public final class AttachmentGeoLoader {
                 -(bone.pivot()[1] - parentPivot[1]),
                 bone.pivot()[2] - parentPivot[2],
                 (float) Math.toRadians(bone.rotation()[0]),
-                (float) Math.toRadians(-bone.rotation()[1]),
-                (float) Math.toRadians(-bone.rotation()[2]),
+                (float) Math.toRadians(bone.rotation()[1]),
+                (float) Math.toRadians(bone.rotation()[2]),
                 cubes, new ArrayList<>());
     }
 
@@ -208,7 +208,7 @@ public final class AttachmentGeoLoader {
             float py = -(pivot[1] - bone.pivot()[1]);
             float pz = pivot[2] - bone.pivot()[2];
             Quaternionf q = new Quaternionf().rotationZYX(
-                    (float) Math.toRadians(-rot[2]), (float) Math.toRadians(-rot[1]),
+                    (float) Math.toRadians(rot[2]), (float) Math.toRadians(rot[1]),
                     (float) Math.toRadians(rot[0]));
             List<AttachmentGeo.Polygon> rotated = new ArrayList<>(polygons.size());
             Vector3f work = new Vector3f();

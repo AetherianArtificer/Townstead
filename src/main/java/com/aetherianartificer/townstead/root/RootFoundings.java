@@ -255,6 +255,8 @@ public final class RootFoundings {
         entityData.putInt("HairColor", look.hairDye());
         if (look.iris()) IrisColors.seedInto(entityData, look.irisTint(), look.irisRight());
         if (!look.clothes().isEmpty()) entityData.putString("Clothes", look.clothes());
+        // getEntityData is a copy on the 1.21.1 line; store the edit or only the broadcast sees it.
+        data.setEntityData(entityData);
         data.setEntityDataSet(true);
         data.setDirty();
         for (ServerPlayer p : sp.serverLevel().players()) {

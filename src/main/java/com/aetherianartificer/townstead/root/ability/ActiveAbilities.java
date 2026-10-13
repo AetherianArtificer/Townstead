@@ -456,22 +456,32 @@ public final class ActiveAbilities {
                 }
                 continue;
             }
-            boolean toggle = isToggle(player, id);
+            // An owner that keeps its own timers (a mod's lasting actions) answers for them itself.
+            com.aetherianartificer.townstead.assign.AssignableProvider.Live live =
+                    com.aetherianartificer.townstead.assign.Assignables.live(player, id);
+            boolean toggle = live != null ? live.lasting() : isToggle(player, id);
             entries.add(new AbilityLoadoutS2CPayload.Entry(slot.getKey(), id.toString(),
                     assignable.name().getString(), assignable.icon(), toggle,
-                    toggle && AbilityToggles.isOn(player, id),
-                    assignable.cooldownTicks(), readyAt(player, id),
+                    live != null ? live.on() : toggle && AbilityToggles.isOn(player, id),
+                    live != null ? live.cooldownTicks() : assignable.cooldownTicks(),
+                    live != null ? live.readyAt() : readyAt(player, id),
                     assignable.costAmount(), assignable.costLabel(),
                     assignable.kind().ordinal(), assignable.clientValue(),
                     assignable.source().getString(), assignable.costColor(),
-                    costHave(player, assignable)));
+                    costHave(player, assignable),
+                    live == null || live.usable(),
+                    live != null ? live.activeUntil() : 0L,
+                    live != null ? live.activeTicks() : 0));
         }
 
         List<AbilityLoadoutS2CPayload.Option> available = new ArrayList<>();
         for (com.aetherianartificer.townstead.assign.Assignable assignable : catalogue.values()) {
+            com.aetherianartificer.townstead.assign.AssignableProvider.Live live =
+                    com.aetherianartificer.townstead.assign.Assignables.live(player, assignable.id());
             available.add(new AbilityLoadoutS2CPayload.Option(assignable.id().toString(),
                     assignable.name().getString(), assignable.icon(),
-                    assignable.source().getString(), isToggle(player, assignable.id()),
+                    assignable.source().getString(),
+                    live != null ? live.lasting() : isToggle(player, assignable.id()),
                     assignable.cooldownTicks(), assignable.costAmount(), assignable.costLabel(),
                     assignable.kind().ordinal(), assignable.costColor(),
                     costHave(player, assignable)));

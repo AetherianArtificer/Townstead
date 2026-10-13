@@ -106,9 +106,9 @@ public record RigDefinition(
         // there to draw it on. Empty = everything worn shows.
         Set<EquipmentSlot> hiddenSlots,
         // Capsules on the body's bones that attachment physics chains rest against instead of
-        // swinging through (a tail against the legs). Empty = none; a body with no rig file uses
-        // HUMANOID_COLLIDERS.
-        List<Collider> colliders,
+        // swinging through (a tail against the legs). Null = not declared: a body on the humanoid
+        // render path then uses HUMANOID_COLLIDERS, any other body none. Empty = none.
+        @Nullable List<Collider> colliders,
         // Path swaps applied to a worn MCA skin when this body draws it ({"/normal/": "/zombie/"}): MCA's
         // outfit list holds only ordinary clothes, and its zombies draw each one's zombie counterpart.
         // A swap whose texture doesn't exist draws the original. Empty = drawn as worn.
@@ -127,7 +127,7 @@ public record RigDefinition(
                 cameraHeightOffset, overlays, skinParts, hiddenSlots, colliders, Map.of());
     }
 
-    /** A rig without physics colliders. */
+    /** A rig that declares no physics colliders. */
     public RigDefinition(String id, ModelType modelType, String modelRef, String modelLayer, String texture,
                          Map<String, String> bones, ArmorType armorType, String armorInner, String armorOuter,
                          Face face, WornAnchor back, WornAnchor head, List<Boot> boots, Hold hold, boolean hair,
@@ -137,7 +137,7 @@ public record RigDefinition(
                          Set<EquipmentSlot> hiddenSlots) {
         this(id, modelType, modelRef, modelLayer, texture, bones, armorType, armorInner, armorOuter, face, back, head,
                 boots, hold, hair, poses, hitbox, disabledSlots, cameraBone, emote, animation, modelClass,
-                cameraHeightOffset, overlays, skinParts, hiddenSlots, List.of());
+                cameraHeightOffset, overlays, skinParts, hiddenSlots, null);
     }
 
     /**
@@ -171,8 +171,10 @@ public record RigDefinition(
     /**
      * A texture drawn over the rig's body; {@code glow} draws it full-bright, like eyes in the dark.
      * With {@code glowVariant}, the entity's form variant of that name decides instead (0 is off).
+     * {@code tint} names a colour source: empty draws the texture as is; {@code "iris"} draws it only
+     * while the bearer expresses an iris gene, in that colour and glowing when the gene glows.
      */
-    public record Overlay(String texture, boolean glow, String glowVariant) {}
+    public record Overlay(String texture, boolean glow, String glowVariant, String tint) {}
 
     /** A rig whose worn skins may cover every part. */
     public RigDefinition(String id, ModelType modelType, String modelRef, String modelLayer, String texture,

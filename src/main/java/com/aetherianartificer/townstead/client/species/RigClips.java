@@ -64,6 +64,7 @@ public final class RigClips {
             state.lastTick = tick;
             int pick = match(entity, rules);
             if (pick != state.current) {
+                logPick(entity, rules, state.current, pick, ageInTicks);
                 state.previous = state.current;
                 state.previousStart = state.currentStart;
                 state.current = pick;
@@ -119,6 +120,21 @@ public final class RigClips {
         arm.xRot -= (float) Math.toRadians(using ? 45 : 15);
         arm.zRot *= 0.35f;
         arm.xRot -= (float) Math.sin(attack * Math.PI) * 1.1f;
+    }
+
+    private static void logPick(LivingEntity entity, List<RigDefinition.AnimationRule> rules, int from, int to,
+                                float ageInTicks) {
+        if (!com.aetherianartificer.townstead.switchboard.Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_LOGGING)) return;
+        var playback = com.aetherianartificer.townstead.client.animation.emote.EmotePlaybackRegistry.get(entity.getUUID());
+        com.aetherianartificer.townstead.Townstead.LOGGER.info("[RigClips] {} age={} {} -> {} walkSpeed={} onGround={} emote={}",
+                entity.getName().getString(), ageInTicks, describe(rules, from), describe(rules, to),
+                entity.walkAnimation.speed(), entity.onGround(), playback == null ? "none" : playback.emoteId());
+    }
+
+    private static String describe(List<RigDefinition.AnimationRule> rules, int index) {
+        if (index < 0 || index >= rules.size()) return "none";
+        RigDefinition.AnimationRule rule = rules.get(index);
+        return index + ":" + (rule.state().isEmpty() ? "" : rule.state() + "/") + rule.clip();
     }
 
     private static int match(LivingEntity entity, List<RigDefinition.AnimationRule> rules) {

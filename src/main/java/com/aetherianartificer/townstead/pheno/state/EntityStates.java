@@ -54,10 +54,20 @@ public final class EntityStates {
     }
 
     public static boolean eligible(LivingEntity entity, ResourceLocation state) {
+        return supports(entity, state) && !excluded(entity, state);
+    }
+
+    /**
+     * Whether this entity's body and Root can carry the state at all, whatever it holds now. A
+     * {@code "body": "villager"} state takes a custom rig only when its Root chain declares it
+     * ({@code "states": {"<state>": true}}), so a pack opts in the bodies it has fitted.
+     */
+    public static boolean supports(LivingEntity entity, ResourceLocation state) {
         EntityStateDefinition definition = definitions.get(state);
         if (definition != null && definition.villagerBody()
-                && !com.aetherianartificer.townstead.root.rig.ServerRig.hasVillagerBody(entity)) return false;
-        return eligibility.test(entity, state) && !excluded(entity, state);
+                && !com.aetherianartificer.townstead.root.rig.ServerRig.hasVillagerBody(entity)
+                && !com.aetherianartificer.townstead.root.RootStates.optedIn(entity, state)) return false;
+        return eligibility.test(entity, state);
     }
 
     private static final ThreadLocal<java.util.Set<ResourceLocation>> CHECKING = ThreadLocal.withInitial(java.util.HashSet::new);

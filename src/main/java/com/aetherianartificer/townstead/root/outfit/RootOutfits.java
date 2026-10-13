@@ -33,15 +33,20 @@ import java.util.Map;
  * </pre>
  *
  * <p>A piece's bones keep their authored parent, so they must be cut from a model that shares the
- * rig's skeleton. They draw with the rig's texture and ride its clips.</p>
+ * rig's skeleton. They draw with the rig's texture and ride its clips. An optional
+ * {@code transition} (ticks) grows the pieces in from their pivots when the outfit comes on and
+ * shrinks them away when it goes off; without one they appear and vanish at once.</p>
  */
 public final class RootOutfits {
 
     /** Bones cut from one geometry file (grafted with their descendants). */
     public record Piece(String model, List<String> bones) {}
 
-    /** One outfit: worn while {@code whenJson} holds (empty = always). Empty pieces = wears nothing. */
-    public record Outfit(String id, String whenJson, List<Piece> pieces) {}
+    /**
+     * One outfit: worn while {@code whenJson} holds (empty = always). Empty pieces = wears nothing.
+     * {@code transition}: ticks to grow in or shrink away; 0 = at once.
+     */
+    public record Outfit(String id, String whenJson, List<Piece> pieces, int transition) {}
 
     private static volatile Map<ResourceLocation, Map<String, Outfit>> SPECIES = Map.of();
     private static volatile Map<ResourceLocation, Map<String, Outfit>> ANCESTRY = Map.of();
@@ -76,7 +81,8 @@ public final class RootOutfits {
                 }
             }
             String when = outfit.has("when") ? outfit.get("when").toString() : "";
-            out.put(entry.getKey(), new Outfit(entry.getKey(), when, List.copyOf(pieces)));
+            int transition = Math.max(0, GsonHelper.getAsInt(outfit, "transition", 0));
+            out.put(entry.getKey(), new Outfit(entry.getKey(), when, List.copyOf(pieces), transition));
         }
         return out;
     }

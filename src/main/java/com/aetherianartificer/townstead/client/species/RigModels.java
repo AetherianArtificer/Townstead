@@ -65,8 +65,8 @@ public final class RigModels {
     private static final Map<ModelPart, Map<String, String>> PARENTS = new IdentityHashMap<>();
     // Resolved bone paths per baked root: name -> parts from the root's child down to the bone.
     private static final Map<ModelPart, Map<String, ModelPart[]>> BONE_PATHS = new IdentityHashMap<>();
-    // The root being drawn for a rig while its layer renders (an outfit variant), so bone lookups during
-    // that draw land on the parts actually posed and drawn.
+    // The root last posed and drawn for a rig (an outfit variant), so bone lookups during that draw and
+    // the layers after it land on the parts actually posed. The next entity's draw replaces it.
     private static final Map<String, ModelPart> ACTIVE = new HashMap<>();
     // Model classes whose setupAnim threw with a foreign entity; drawn at rest from then on.
     private static final Set<EntityModel<?>> STATIC_ONLY = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
@@ -366,8 +366,11 @@ public final class RigModels {
         if (root != null) ACTIVE.put(rigBase, root);
     }
 
+    /**
+     * The body is drawn, but the root stays active: layers drawn after it (Curios gloves, boots)
+     * still read this entity's posed variant. The next entity's {@link #beginRender} replaces it.
+     */
     public static void endRender(String rigBase) {
-        ACTIVE.remove(rigBase);
     }
 
     /**
@@ -641,13 +644,22 @@ public final class RigModels {
             if (tex == null) continue;
             boolean glow = overlay.glowVariant().isEmpty() ? overlay.glow()
                     : com.aetherianartificer.townstead.client.state.StateFormClient.variant(entity.getId(), overlay.glowVariant()) != 0;
+            int rgb = 0xFFFFFF;
+            if ("iris".equals(overlay.tint())) {
+                // An eye mask: drawn only while an iris gene shows, in its colour (its glow too).
+                IrisTint.Tint iris = IrisTint.of(entity);
+                if (iris == null || !iris.override()) continue;
+                rgb = iris.rgb(true);
+                glow |= iris.glow();
+            }
             com.mojang.blaze3d.vertex.VertexConsumer buffer = buffers.getBuffer(glow
                     ? net.minecraft.client.renderer.RenderType.eyes(tex)
                     : net.minecraft.client.renderer.RenderType.entityCutoutNoCull(tex));
             //? if neoforge {
-            model.renderToBuffer(pose, buffer, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, -1);
+            model.renderToBuffer(pose, buffer, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, 0xFF000000 | rgb);
             //?} else {
-            /*model.renderToBuffer(pose, buffer, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
+            /*model.renderToBuffer(pose, buffer, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,
+                    ((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
             *///?}
         }
     }

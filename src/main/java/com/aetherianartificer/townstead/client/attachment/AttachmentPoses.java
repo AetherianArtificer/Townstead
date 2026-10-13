@@ -151,6 +151,7 @@ public final class AttachmentPoses {
             case "sneaking" -> entity.isCrouching();
             case "swimming" -> entity.isSwimming();
             case "gliding" -> entity.isFallFlying();
+            case "parachuting" -> com.aetherianartificer.townstead.root.locomotion.ParachutePhysics.isOpen(entity);
             case "flying" -> entity instanceof net.minecraft.world.entity.player.Player player && player.getAbilities().flying;
             case "moving" -> entity.walkAnimation.speed() > 0.1f;
             case "hurt" -> entity.hurtTime > 0;

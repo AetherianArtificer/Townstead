@@ -152,6 +152,7 @@ public final class RigWearables {
         RigModels.setupAnim(model, entity, swing, amount, age, yaw, pitch);
         RigClips.apply(entity, def, hierarchy.root(), age);
         RigClips.applyGrips(entity, def, hierarchy.root(), net.minecraft.util.Mth.clamp(age - entity.tickCount, 0f, 1f));
+        RigOutfitState.applyScales(entity, hierarchy.root(), net.minecraft.util.Mth.clamp(age - entity.tickCount, 0f, 1f));
         if (!def.boneFor("head").equals(def.boneFor("body"))) {
             var head = RigModels.bakedBone(def.id(), def.boneFor("head"));
             if (head != null) {

@@ -66,7 +66,7 @@ public final class DebugVillageSpawner {
         refreshPoiData(level, anchor);
         Set<BlockPos> existingHomes = homes(level, anchor).collect(Collectors.toSet());
 
-        ResourceLocation structureId = resolveStructure(level, anchor, requestedStructure);
+        ResourceLocation structureId = resolveStructure(level, anchor, requestedStructure, profile);
         Registry<Structure> registry = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
         Holder.Reference<Structure> structure = registry
                 .getHolder(ResourceKey.create(Registries.STRUCTURE, structureId)).orElse(null);
@@ -346,8 +346,18 @@ public final class DebugVillageSpawner {
         }
     }
 
-    public static ResourceLocation resolveStructure(ServerLevel level, BlockPos pos, String requested) {
-        if (requested != null && !requested.isBlank() && !"auto".equalsIgnoreCase(requested)) {
+    /**
+     * The structure to place: a named one, or for {@code auto} the profile's own village type when
+     * its pack has one, else the native village for the biome. {@code native} skips the profile's own.
+     */
+    public static ResourceLocation resolveStructure(ServerLevel level, BlockPos pos, String requested,
+                                                    FoundingProfileDefinition profile) {
+        boolean auto = requested == null || requested.isBlank() || "auto".equalsIgnoreCase(requested);
+        if (auto) {
+            ResourceLocation own = com.aetherianartificer.townstead.culture.CultureVillages.structureFor(profile);
+            if (own != null) return own;
+        }
+        if (!auto && !"native".equalsIgnoreCase(requested)) {
             return switch (requested.toLowerCase(java.util.Locale.ROOT)) {
                 case "plains" -> PLAINS;
                 case "desert" -> DESERT;

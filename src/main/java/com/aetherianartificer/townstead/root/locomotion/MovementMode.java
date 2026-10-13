@@ -9,10 +9,12 @@ package com.aetherianartificer.townstead.root.locomotion;
  * <li>{@link #DRIFT}: a ghost's permanent float. MCA's navigation keeps planning and
  * opening doors; the pilot moves the body toward where it points. When walking can't
  * reach, the pilot takes over navigation too.</li>
+ * <li>{@link #WATER}: a swim through water; navigation, move control and jumping sit out.</li>
  * </ul>
  */
 public enum MovementMode {
     GROUND,
     AIR,
-    DRIFT
+    DRIFT,
+    WATER
 }

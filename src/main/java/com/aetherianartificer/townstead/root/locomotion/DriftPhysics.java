@@ -9,13 +9,15 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * The float shared by drifting villagers and players: hold a set height over whatever is
- * below (the surface, or a fluid's top), bob a little, rise before a step or after
- * bumping into something, and sink gently where the ground falls away.
+ * below (the surface, or a fluid's top), bob a little, rise onto a step ahead, settle low
+ * enough to pass under a door frame, and sink gently where the ground falls away. A wall
+ * is not a step: the body only rises where it would fit on top.
  */
 public final class DriftPhysics {
 
@@ -27,6 +29,13 @@ public final class DriftPhysics {
     public static final double OPEN_SINK = 0.08;
     private static final int GROUND_SCAN = 8;
     private static final double RESPONSE = 0.3;
+    /** Tallest rise that counts as a step rather than a wall. */
+    private static final double MAX_STEP = 1.1;
+    /** How far past the body's edge to look for a step or a low ceiling. */
+    private static final double LOOK_AHEAD = 0.8;
+    private static final double SQUEEZE_STEP = 0.1;
+    /** Sink speed when a low ceiling ahead squeezes the float, so the body is low before the frame. */
+    private static final double SQUEEZE_SINK = 0.25;
 
     /**
      * Whether this entity drifts: a {@code hover} ability in the drift style (the default
@@ -45,31 +54,75 @@ public final class DriftPhysics {
     }
 
     /**
-     * Vertical speed toward float height. {@code floor}: the height to float over (the
-     * surface below, or higher for a step ahead); NaN when nothing is below within reach,
-     * which sinks gently.
+     * Vertical speed toward float height for a body heading one way. The floor is the
+     * surface below, raised to a step just ahead when that step is at most a block up and
+     * the body fits on it. Under a low ceiling here or just ahead (a doorway) the float
+     * shrinks until the body fits, bob and all. {@code routeFloor}: a set floor (a drift
+     * route crossing a gap level), or NaN to read the ground. Nothing below within reach
+     * sinks gently.
      */
-    public static double vertical(double y, double floor, double floatHeight, int age, boolean bumped) {
+    public static double vertical(LivingEntity entity, Vec3 heading, double floatHeight, int age, boolean fluids,
+                                  double routeFloor) {
+        Level level = entity.level();
+        Vec3 pos = entity.position();
+        boolean onRoute = !Double.isNaN(routeFloor);
+        double floor = onRoute ? routeFloor : surfaceBelow(level, pos, fluids);
         if (Double.isNaN(floor)) return -OPEN_SINK;
-        double base = bumped ? Math.max(floor, y - floatHeight + 1.0) : floor;
-        double wanted = base + floatHeight + Math.sin(age * 0.1) * BOB;
-        return Mth.clamp((wanted - y) * RESPONSE, -MAX_SINK, MAX_RISE);
+        Vec3 ahead = null;
+        double h = Math.sqrt(heading.x * heading.x + heading.z * heading.z);
+        if (h > 1.0E-3) {
+            double reach = entity.getBbWidth() / 2.0 + LOOK_AHEAD;
+            ahead = pos.add(heading.x / h * reach, 0, heading.z / h * reach);
+        }
+        double base = floor;
+        if (ahead != null && !onRoute) {
+            double step = surfaceAt(level, ahead.x, ahead.z, floor + MAX_STEP, fluids);
+            if (!Double.isNaN(step) && step > floor && fits(entity, ahead.x, step, ahead.z)) base = step;
+        }
+        // A wall ahead says nothing about the ceiling; only an opening the body fits into does.
+        boolean aheadOpen = ahead != null && fits(entity, ahead.x, base, ahead.z);
+        double lift = floatHeight;
+        while (lift > 0 && !(fits(entity, pos.x, base + lift, pos.z)
+                && (!aheadOpen || fits(entity, ahead.x, base + lift, ahead.z)))) {
+            lift -= SQUEEZE_STEP;
+        }
+        lift = Math.max(0, lift);
+        double bob = floatHeight > 0 ? Math.sin(age * 0.1) * BOB * (lift / floatHeight) : 0;
+        double wanted = base + lift + bob;
+        double sink = lift < floatHeight ? SQUEEZE_SINK : MAX_SINK;
+        return Mth.clamp((wanted - pos.y) * (lift < floatHeight ? 0.6 : RESPONSE), -sink, MAX_RISE);
+    }
+
+    /** Whether the body fits standing with its feet at this point. */
+    private static boolean fits(LivingEntity entity, double x, double y, double z) {
+        AABB box = entity.getBoundingBox().move(x - entity.getX(), y - entity.getY(), z - entity.getZ()).deflate(1.0E-3);
+        return entity.level().noCollision(entity, box);
     }
 
     /** Top of the first solid or fluid surface below the feet, or NaN within the scan. */
     public static double surfaceBelow(Level level, Vec3 pos) {
+        return surfaceBelow(level, pos, true);
+    }
+
+    /** As {@link #surfaceBelow(Level, Vec3)}; without {@code fluids}, water is passed through to the bed below. */
+    public static double surfaceBelow(Level level, Vec3 pos, boolean fluids) {
+        return surfaceAt(level, pos.x, pos.z, pos.y + 0.5, fluids);
+    }
+
+    /** Top of the highest solid (or fluid) surface in a column at or below {@code limit}, or NaN within the scan. */
+    private static double surfaceAt(Level level, double px, double pz, double limit, boolean fluids) {
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        int x = Mth.floor(pos.x), z = Mth.floor(pos.z);
-        int start = Mth.floor(pos.y + 0.5);
+        int x = Mth.floor(px), z = Mth.floor(pz);
+        int start = Mth.floor(limit);
         for (int y = start; y > start - GROUND_SCAN; y--) {
             cursor.set(x, y, z);
             if (!level.hasChunkAt(cursor)) return Double.NaN;
             FluidState fluid = level.getFluidState(cursor);
-            if (!fluid.isEmpty()) return y + fluid.getHeight(level, cursor);
+            if (fluids && !fluid.isEmpty()) return y + fluid.getHeight(level, cursor);
             VoxelShape shape = level.getBlockState(cursor).getCollisionShape(level, cursor);
             if (!shape.isEmpty()) {
                 double top = y + shape.max(Direction.Axis.Y);
-                if (top <= pos.y + 0.5) return top;
+                if (top <= limit) return top;
             }
         }
         return Double.NaN;

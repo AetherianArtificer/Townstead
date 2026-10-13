@@ -568,6 +568,10 @@ public class Townstead {
         com.aetherianartificer.townstead.assign.Assignables.register(WHEEL_ACTIONS);
         com.aetherianartificer.townstead.assign.Assignables.register(
                 new com.aetherianartificer.townstead.compat.vampirism.VampirismActionAssignables());
+        com.aetherianartificer.townstead.assign.Assignables.register(
+                new com.aetherianartificer.townstead.compat.vampirism.VampirismMinionAssignables());
+        com.aetherianartificer.townstead.assign.Assignables.register(
+                new com.aetherianartificer.townstead.compat.vampirism.VampirismAmmoAssignables());
         NeoForge.EVENT_BUS.addListener(this::addReloadListeners);
         com.aetherianartificer.townstead.story.StoryService.init();
         // Minecraft's own GameEvents as a chronicle source; the tap early-outs unless a
@@ -874,6 +878,8 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) -> {
             ClientCapsStore.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.ActiveAbilities.clear(e.getEntity().getUUID());
+            com.aetherianartificer.townstead.compat.vampirism.VampirismActionAssignables.forget(e.getEntity().getUUID());
+            com.aetherianartificer.townstead.compat.vampirism.VampirismTasks.forget(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.RootFoundings.forget(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.ResourceValues.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.AbilityToggles.clear(e.getEntity().getUUID());
@@ -970,6 +976,9 @@ public class Townstead {
                         com.aetherianartificer.townstead.commands.BenchLinkCommand.register(e.getDispatcher()));
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.CompatCommands.register(e.getDispatcher()));
+        NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.RootCommand.register(e.getDispatcher()));
         NeoForge.EVENT_BUS.addListener(
                 (net.neoforged.neoforge.event.RegisterCommandsEvent e) ->
@@ -1008,6 +1017,8 @@ public class Townstead {
                 com.aetherianartificer.townstead.root.ability.ResourceValues.tick(sp);
                 com.aetherianartificer.townstead.root.collection.CollectionValues.tick(sp);
                 com.aetherianartificer.townstead.pheno.state.EntityStates.tick(sp);
+                com.aetherianartificer.townstead.compat.vampirism.VampirismActionAssignables.watch(sp);
+                com.aetherianartificer.townstead.compat.vampirism.VampirismTasks.watch(sp);
                 com.aetherianartificer.townstead.temperature.ClimateImmunity.tick(sp);
                 com.aetherianartificer.townstead.root.ability.ResourceValues.syncTo(sp);
                 com.aetherianartificer.townstead.root.fx.RootOverlays.syncTo(sp);
@@ -1169,6 +1180,7 @@ public class Townstead {
                         com.aetherianartificer.townstead.client.root.ResourceClientStore.clear();
                         com.aetherianartificer.townstead.client.root.OverlayClientStore.clear();
                 com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.clear();
+                com.aetherianartificer.townstead.client.gui.quest.adapter.VampirismTaskProvider.clear();
                 com.aetherianartificer.townstead.client.input.SyntheticKey.clear();
                         com.aetherianartificer.townstead.client.attachment.AttachmentClient.clear();
                     });
@@ -1224,6 +1236,10 @@ public class Townstead {
         com.aetherianartificer.townstead.assign.Assignables.register(WHEEL_ACTIONS);
         com.aetherianartificer.townstead.assign.Assignables.register(
                 new com.aetherianartificer.townstead.compat.vampirism.VampirismActionAssignables());
+        com.aetherianartificer.townstead.assign.Assignables.register(
+                new com.aetherianartificer.townstead.compat.vampirism.VampirismMinionAssignables());
+        com.aetherianartificer.townstead.assign.Assignables.register(
+                new com.aetherianartificer.townstead.compat.vampirism.VampirismAmmoAssignables());
         MinecraftForge.EVENT_BUS.addListener(this::addReloadListeners);
         com.aetherianartificer.townstead.story.StoryService.init();
         MinecraftForge.EVENT_BUS.addListener(
@@ -1527,6 +1543,8 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) -> {
             ClientCapsStore.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.ActiveAbilities.clear(e.getEntity().getUUID());
+            com.aetherianartificer.townstead.compat.vampirism.VampirismActionAssignables.forget(e.getEntity().getUUID());
+            com.aetherianartificer.townstead.compat.vampirism.VampirismTasks.forget(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.RootFoundings.forget(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.ResourceValues.clear(e.getEntity().getUUID());
             com.aetherianartificer.townstead.root.ability.AbilityToggles.clear(e.getEntity().getUUID());
@@ -1623,6 +1641,9 @@ public class Townstead {
                         com.aetherianartificer.townstead.commands.BenchLinkCommand.register(e.getDispatcher()));
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
+                        com.aetherianartificer.townstead.commands.CompatCommands.register(e.getDispatcher()));
+        MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.RegisterCommandsEvent e) ->
                         com.aetherianartificer.townstead.commands.RootCommand.register(e.getDispatcher()));
         MinecraftForge.EVENT_BUS.addListener(
                 (net.minecraftforge.event.RegisterCommandsEvent e) ->
@@ -1666,6 +1687,7 @@ public class Townstead {
                         com.aetherianartificer.townstead.client.root.ResourceClientStore.clear();
                         com.aetherianartificer.townstead.client.root.OverlayClientStore.clear();
                 com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.clear();
+                com.aetherianartificer.townstead.client.gui.quest.adapter.VampirismTaskProvider.clear();
                 com.aetherianartificer.townstead.client.input.SyntheticKey.clear();
                         com.aetherianartificer.townstead.client.attachment.AttachmentClient.clear();
                     });
@@ -1679,6 +1701,8 @@ public class Townstead {
                 com.aetherianartificer.townstead.root.ability.ResourceValues.tick(sp);
                 com.aetherianartificer.townstead.root.collection.CollectionValues.tick(sp);
                 com.aetherianartificer.townstead.pheno.state.EntityStates.tick(sp);
+                com.aetherianartificer.townstead.compat.vampirism.VampirismActionAssignables.watch(sp);
+                com.aetherianartificer.townstead.compat.vampirism.VampirismTasks.watch(sp);
                 com.aetherianartificer.townstead.temperature.ClimateImmunity.tick(sp);
                 com.aetherianartificer.townstead.root.ability.ResourceValues.syncTo(sp);
                 com.aetherianartificer.townstead.root.fx.RootOverlays.syncTo(sp);
@@ -2478,6 +2502,8 @@ public class Townstead {
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.GenderConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.WearingSkinConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.GamemodeConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.SubmergedInConditionType());
@@ -3074,6 +3100,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.compat.clothing.LsoItemDataSource.Loader());
         event.addListener(new com.aetherianartificer.townstead.clothing.policy.WardrobePolicies.Loader());
         event.addListener(new com.aetherianartificer.townstead.culture.CultureJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.culture.VillageLayouts.Loader());
         event.addListener(new com.aetherianartificer.townstead.spirit.SpiritBaseline.Loader());
         event.addListener(new com.aetherianartificer.townstead.livery.LiveryStyles.Loader());
         event.addListener(new com.aetherianartificer.townstead.compat.mcacapitals.CapitalsSurnameRegisters());
@@ -3526,7 +3553,7 @@ public class Townstead {
 
     //? if neoforge {
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar(MOD_ID).versioned("14");
+        var registrar = event.registrar(MOD_ID).versioned("16");
         registrar.playToServer(
                 com.aetherianartificer.townstead.devlink.BenchLinkActionC2SPayload.TYPE,
                 com.aetherianartificer.townstead.devlink.BenchLinkActionC2SPayload.STREAM_CODEC,
@@ -4130,6 +4157,19 @@ public class Townstead {
                 com.aetherianartificer.townstead.aspect.AspectS2CPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
                         com.aetherianartificer.townstead.client.gui.aspect.AspectPage.accept(payload))
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.compat.vampirism.VampirismTasksS2CPayload.TYPE,
+                com.aetherianartificer.townstead.compat.vampirism.VampirismTasksS2CPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.client.gui.quest.adapter.VampirismTaskProvider.accept(payload))
+        );
+        registrar.playToServer(
+                com.aetherianartificer.townstead.compat.vampirism.VampirismTaskMenuC2SPayload.TYPE,
+                com.aetherianartificer.townstead.compat.vampirism.VampirismTaskMenuC2SPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof ServerPlayer sp) com.aetherianartificer.townstead.compat.vampirism.VampirismTaskMenuC2SPayload.handle(sp, payload);
+                })
         );
         registrar.playToServer(
                 com.aetherianartificer.townstead.root.SetPersonalityC2SPayload.TYPE,

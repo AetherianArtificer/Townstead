@@ -28,7 +28,11 @@ public final class VampirismActionAssignables implements AssignableProvider {
     private static volatile boolean probed;
     private static volatile boolean warned;
     private static Method currentFactionPlayer, actionHandler, unlocked, toggle,
-            registry, cooldown, showInSelect, actionName, factionOf, factionName;
+            registry, cooldown, showInSelect, actionName, factionOf, factionName,
+            percentage, activeById, canUse;
+    private static Class<?> lastingType;
+    /** What each player's actions looked like at the last check, so a change re-sends the wheel. */
+    private static final java.util.Map<java.util.UUID, String> SEEN = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Override
     public void collect(ServerPlayer player, List<Assignable> out) {
@@ -62,7 +66,19 @@ public final class VampirismActionAssignables implements AssignableProvider {
         try {
             for (Object action : (Iterable<?>) unlocked.invoke(handler)) {
                 if (!id.equals(id(action))) continue;
-                toggle.invoke(handler, action, context());
+                // Refused as Vampirism's own wheel refuses it: an action it greys out is not pressed.
+                if (!Boolean.TRUE.equals(activeById.invoke(handler, id))) {
+                    Object allowed = canUse.invoke(action, factionPlayer(player));
+                    if (!"ALLOWED".equals(String.valueOf(allowed))) {
+                        tell(player, String.valueOf(allowed));
+                        return true;
+                    }
+                }
+                Object result = toggle.invoke(handler, action, context());
+                if (!"ALLOWED".equals(String.valueOf(result))) {
+                    tell(player, String.valueOf(result));
+                    return true;
+                }
                 // A leap is the Leap key held with Jump: switch it on as the mod's own handler does,
                 // then jump, so one press from the wheel is the whole move.
                 if (JUMPS.contains(id) && player.onGround()) {
@@ -77,6 +93,109 @@ public final class VampirismActionAssignables implements AssignableProvider {
             // Not ours after all, or Vampirism refused it.
         }
         return false;
+    }
+
+    @Override
+    public @Nullable Live live(ServerPlayer player, ResourceLocation id) {
+        Object handler = handler(player);
+        if (handler == null) return null;
+        try {
+            Object factionPlayer = factionPlayer(player);
+            for (Object action : (Iterable<?>) unlocked.invoke(handler)) {
+                if (!id.equals(id(action))) continue;
+                return live(handler, factionPlayer, action, id, player.level().getGameTime());
+            }
+        } catch (Throwable ignored) {
+            // Vampirism keeps its own timers; with none to read, the wheel tracks nothing for it.
+        }
+        return null;
+    }
+
+    /**
+     * Vampirism's own numbers for an action, as its wheel reads them: the share of its run or its
+     * cooldown left (positive running, negative cooling), and whether it may be used now.
+     */
+    private static Live live(Object handler, Object factionPlayer, Object action, ResourceLocation id, long now)
+            throws ReflectiveOperationException {
+        boolean lasting = lastingType != null && lastingType.isInstance(action);
+        boolean on = lasting && Boolean.TRUE.equals(activeById.invoke(handler, id));
+        float share = ((Number) percentage.invoke(handler, action)).floatValue();
+        int cooldownTicks = Math.max(0, ((Number) cooldown.invoke(action, factionPlayer)).intValue());
+        long activeUntil = 0;
+        int activeTicks = 0;
+        if (on) {
+            int duration = duration(action, factionPlayer);
+            // A form runs until switched off: Vampirism gives it an endless duration.
+            if (duration <= 0 || duration >= 1_000_000) {
+                activeUntil = Long.MAX_VALUE;
+            } else {
+                activeTicks = duration;
+                activeUntil = now + Math.round(Math.max(0f, share) * duration);
+            }
+        }
+        long readyAt = share < 0 && cooldownTicks > 0 ? now + Math.round(-share * cooldownTicks) : 0;
+        boolean usable = "ALLOWED".equals(String.valueOf(canUse.invoke(action, factionPlayer)));
+        return new Live(lasting, on, activeUntil, activeTicks, readyAt, cooldownTicks, usable);
+    }
+
+    /** A lasting action's run for this player, through whichever overload this Vampirism has. */
+    private static int duration(Object action, Object factionPlayer) {
+        for (Method method : action.getClass().getMethods()) {
+            if (!"getDuration".equals(method.getName()) || method.getParameterCount() != 1) continue;
+            if (!method.getParameterTypes()[0].isInstance(factionPlayer)) continue;
+            try {
+                return ((Number) method.invoke(action, factionPlayer)).intValue();
+            } catch (Throwable ignored) {
+                return 0;
+            }
+        }
+        return 0;
+    }
+
+    /** Vampirism's own message for a refusal, as it says it when its key is pressed. */
+    private static void tell(ServerPlayer player, String refusal) {
+        String key = switch (refusal) {
+            case "NOT_UNLOCKED" -> "text.vampirism.action.not_unlocked";
+            case "DISABLED" -> "text.vampirism.action.deactivated_by_serveradmin";
+            case "COOLDOWN" -> "text.vampirism.action.cooldown_not_over";
+            case "PERMISSION_DISALLOWED" -> "text.vampirism.action.permission_disallowed";
+            default -> "text.vampirism.action.disallowed";
+        };
+        player.displayClientMessage(Component.translatable(key), true);
+    }
+
+    /**
+     * Once a second: when a player's actions change on their own (a form ends at sunrise, a cooldown
+     * runs out, a skill unlocks one), the wheel is sent again, so its slots never show old news.
+     */
+    public static void watch(ServerPlayer player) {
+        if (player.tickCount % 20 != 0) return;
+        Object handler = handler(player);
+        if (handler == null) {
+            if (SEEN.remove(player.getUUID()) != null) com.aetherianartificer.townstead.root.ability.ActiveAbilities.syncView(player);
+            return;
+        }
+        StringBuilder state = new StringBuilder();
+        try {
+            Object factionPlayer = factionPlayer(player);
+            for (Object action : (Iterable<?>) unlocked.invoke(handler)) {
+                ResourceLocation id = id(action);
+                if (id == null) continue;
+                float share = ((Number) percentage.invoke(handler, action)).floatValue();
+                state.append(id).append(share > 0 ? "+" : share < 0 ? "-" : "0")
+                        .append("ALLOWED".equals(String.valueOf(canUse.invoke(action, factionPlayer))) ? "u" : "x").append(";");
+            }
+        } catch (Throwable ignored) {
+            return;
+        }
+        String now = state.toString();
+        String before = SEEN.put(player.getUUID(), now);
+        if (before != null && !before.equals(now)) com.aetherianartificer.townstead.root.ability.ActiveAbilities.syncView(player);
+    }
+
+    /** The player left: forget what they had. */
+    public static void forget(java.util.UUID player) {
+        SEEN.remove(player);
     }
 
     private static @Nullable Object factionPlayer(ServerPlayer player) throws ReflectiveOperationException {
@@ -155,6 +274,10 @@ public final class VampirismActionAssignables implements AssignableProvider {
                 showInSelect = action.getMethod("showInSelectAction", net.minecraft.world.entity.player.Player.class);
                 actionName = action.getMethod("getName");
                 registry = manager.getMethod("getRegistry");
+                percentage = actionHandlerType.getMethod("getPercentageForAction", action);
+                activeById = actionHandlerType.getMethod("isActionActive", ResourceLocation.class);
+                canUse = action.getMethod("canUse", factionPlayer);
+                lastingType = Class.forName("de.teamlapen.vampirism.api.entity.player.actions.ILastingAction");
             } catch (Throwable ignored) {
                 toggle = null;
             }
