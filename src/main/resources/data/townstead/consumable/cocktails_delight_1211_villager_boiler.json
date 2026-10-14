@@ -2,6 +2,26 @@
   "schema": "townstead:consumable/v2",
   "mods": ["brewinandchewin", "cocktailsdelight"],
   "items": ["cocktailsdelight:boilermaker"],
+  "requires": {
+    "type": "pheno:or",
+    "conditions": [
+      { "type": "pheno:life_stage", "stage": "adult" },
+      {
+        "type": "pheno:and",
+        "conditions": [
+          { "type": "pheno:life_stage", "stage": "teen" },
+          {
+            "type": "pheno:config",
+            "scope": "server",
+            "file": "townstead-server.toml",
+            "path": ["needs", "teensMayDrinkAlcohol"],
+            "equals": true,
+            "default": false
+          }
+        ]
+      }
+    ]
+  },
   "effects": {
     "type": "pheno:add_state",
     "state": "townstead_state:drunk",

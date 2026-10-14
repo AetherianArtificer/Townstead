@@ -29,7 +29,7 @@ public final class ThermalSupplyTask extends Behavior<VillagerEntityMCA> {
                 MemoryModuleType.LOOK_TARGET, MemoryStatus.REGISTERED), 1200);
     }
     public static float score(VillagerEntityMCA villager, ItemStack stack) {
-        if (stack.isEmpty() || !VillagerConsumptionManager.permitsManagedVillagerConsumption(stack)) return 0;
+        if (stack.isEmpty() || !VillagerConsumptionManager.permitsManagedVillagerConsumption(villager, stack)) return 0;
         if (stack.getUseAnimation() == UseAnim.EAT && !FoodSafety.isSafeToEat(stack, villager)) return 0;
         if (stack.getUseAnimation() != UseAnim.EAT && stack.getUseAnimation() != UseAnim.DRINK) return 0;
         // Reject mixed potions that happen to include warmth alongside a harmful effect.

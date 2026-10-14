@@ -40,7 +40,11 @@ public final class VampirismStateProviders {
         StateProviders.register(id("hunter_level"), entity -> level(entity, HUNTER, false));
         StateProviders.register(id("vampire_lord_level"), entity -> level(entity, VAMPIRE, true));
         StateProviders.register(id("hunter_lord_level"), entity -> level(entity, HUNTER, true));
+        StateProviders.register(id("sun_damage"), StateProviders.positional(VampirismStateProviders::sunDamageAt));
+        StateProviders.register(id("garlic"), StateProviders.positional(VampirismStateProviders::garlicAt));
         if (ModCompat.isLoaded(WEREWOLVES_MOD_ID)) {
+            StateProviders.register(ResourceLocation.tryParse(WEREWOLVES_MOD_ID + ":wolfsbane"),
+                    StateProviders.positional(VampirismStateProviders::wolfsbaneAt));
             StateProviders.register(ResourceLocation.tryParse(WEREWOLVES_MOD_ID + ":werewolf_level"), entity -> level(entity, WEREWOLF, false));
             StateProviders.register(ResourceLocation.tryParse(WEREWOLVES_MOD_ID + ":werewolf_lord_level"), entity -> level(entity, WEREWOLF, true));
             StateProviders.register(ResourceLocation.tryParse(WEREWOLVES_MOD_ID + ":beast_form"), VampirismStateProviders::beastForm);
@@ -98,6 +102,104 @@ public final class VampirismStateProviders {
                 ageProbed = true;
             }
             return ageLookup != null;
+        }
+    }
+
+    private static volatile boolean hazardsProbed;
+    private static Method isDay, canBlockSeeSun, garlicAt;
+    private static Object sunRegistry;
+    private static Method hasSunDamage;
+    private static Method fogFor;
+    private static boolean fogLazy;
+    private static Method fogInside;
+    private static Method wolfsbaneFor, wolfsbaneAt;
+
+    /** Resolves the Vampirism and Werewolves place checks once; any missing piece is left null. */
+    private static synchronized void probeHazards() {
+        if (hazardsProbed) return;
+        hazardsProbed = true;
+        Class<?> accessor = net.minecraft.world.level.LevelAccessor.class;
+        Class<?> pos = net.minecraft.core.BlockPos.class;
+        try {
+            Class<?> helper = Class.forName("de.teamlapen.vampirism.util.Helper");
+            isDay = helper.getMethod("isDay", accessor);
+            canBlockSeeSun = helper.getMethod("canBlockSeeSun", accessor, pos);
+            garlicAt = helper.getMethod("getGarlicStrengthAt", accessor, pos);
+            sunRegistry = Class.forName("de.teamlapen.vampirism.api.VampirismAPI").getMethod("sundamageRegistry").invoke(null);
+            hasSunDamage = sunRegistry.getClass().getMethod("hasSunDamage", accessor, pos);
+        } catch (ReflectiveOperationException | LinkageError ignored) {}
+        // The artificial fog moved from VampirismWorld (a LazyOptional) to LevelFog between versions.
+        try {
+            Class<?> fog = Class.forName("de.teamlapen.vampirism.world.LevelFog");
+            fogFor = fog.getMethod("get", net.minecraft.world.level.Level.class);
+            fogInside = fog.getMethod("isInsideArtificialVampireFogArea", pos);
+        } catch (ReflectiveOperationException | LinkageError absent) {
+            try {
+                Class<?> world = Class.forName("de.teamlapen.vampirism.world.VampirismWorld");
+                fogFor = world.getMethod("getOpt", net.minecraft.world.level.Level.class);
+                fogLazy = true;
+                fogInside = world.getMethod("isInsideArtificialVampireFogArea", pos);
+            } catch (ReflectiveOperationException | LinkageError ignored) {}
+        }
+        try {
+            Class<?> wolfsbane = Class.forName("de.teamlapen.werewolves.world.LevelWolfsbane");
+            wolfsbaneFor = wolfsbane.getMethod("getOpt", net.minecraft.world.level.Level.class);
+            wolfsbaneAt = wolfsbane.getMethod("isEffectedByWolfsbane", pos);
+        } catch (ReflectiveOperationException | LinkageError ignored) {}
+    }
+
+    /**
+     * 1 when Vampirism would burn a vampire standing at {@code pos}, else 0: its own rules, which
+     * know sun-safe biomes such as vampire forests, a vampire village's fog, rain, night and cover
+     * (including how deep water shades).
+     */
+    private static @Nullable Double sunDamageAt(LivingEntity entity, net.minecraft.core.BlockPos pos) {
+        probeHazards();
+        if (isDay == null || canBlockSeeSun == null || hasSunDamage == null) return null;
+        var level = entity.level();
+        try {
+            if (entity instanceof Player player && player.isSpectator()) return 0.0;
+            if (level.isRaining() || !Boolean.TRUE.equals(isDay.invoke(null, level))
+                    || !Boolean.TRUE.equals(hasSunDamage.invoke(sunRegistry, level, pos))) return 0.0;
+            var eyes = pos.above((int) entity.getEyeHeight());
+            if (!Boolean.TRUE.equals(canBlockSeeSun.invoke(null, level, eyes))) return 0.0;
+            return inFog(level, eyes) ? 0.0 : 1.0;
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private static boolean inFog(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos) throws ReflectiveOperationException {
+        if (fogFor == null || fogInside == null) return false;
+        Object fog = fogFor.invoke(null, level);
+        if (fogLazy && fog != null) fog = ((Optional<?>) fog.getClass().getMethod("resolve").invoke(fog)).orElse(null);
+        return fog != null && Boolean.TRUE.equals(fogInside.invoke(fog, pos));
+    }
+
+    /** Garlic strength at {@code pos}, 0 (none) to 3 (strong), from Vampirism's diffusers. */
+    private static @Nullable Double garlicAt(LivingEntity entity, net.minecraft.core.BlockPos pos) {
+        probeHazards();
+        if (garlicAt == null) return null;
+        try {
+            Object strength = garlicAt.invoke(null, entity.level(), pos);
+            return strength instanceof Enum<?> value ? (double) value.ordinal() : null;
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    /** Wolfsbane strength at {@code pos} from Werewolves' diffusers: 0 for none, else amplifier + 1. */
+    private static @Nullable Double wolfsbaneAt(LivingEntity entity, net.minecraft.core.BlockPos pos) {
+        probeHazards();
+        if (wolfsbaneFor == null || wolfsbaneAt == null) return null;
+        try {
+            Object holder = wolfsbaneFor.invoke(null, entity.level());
+            Object levelWolfsbane = holder instanceof Optional<?> optional ? optional.orElse(null) : null;
+            if (levelWolfsbane == null) return 0.0;
+            int amplifier = ((Number) wolfsbaneAt.invoke(levelWolfsbane, pos)).intValue();
+            return amplifier < 0 ? 0.0 : amplifier + 1.0;
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+            return null;
         }
     }
 

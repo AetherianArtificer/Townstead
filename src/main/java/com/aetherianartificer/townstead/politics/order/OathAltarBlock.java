@@ -43,6 +43,22 @@ public class OathAltarBlock extends Block {
         if (order != null) OrderAltars.get(server.getServer()).put(order.id(), net.minecraft.core.GlobalPos.of(server.dimension(), pos));
     }
 
+    /** Using an altar, such as one found in a village, teaches its recipe. */
+    @Override
+    //? if >=1.21 {
+    protected net.minecraft.world.InteractionResult useWithoutItem(BlockState state, net.minecraft.world.level.Level level, BlockPos pos,
+                                                                  Player player, net.minecraft.world.phys.BlockHitResult hit) {
+    //?} else {
+    /*public net.minecraft.world.InteractionResult use(BlockState state, net.minecraft.world.level.Level level, BlockPos pos,
+                                                     Player player, net.minecraft.world.InteractionHand hand,
+                                                     net.minecraft.world.phys.BlockHitResult hit) {
+    *///?}
+        if (player instanceof net.minecraft.server.level.ServerPlayer server) {
+            com.aetherianartificer.townstead.item.LearnedRecipes.teach(server, asItem());
+        }
+        return net.minecraft.world.InteractionResult.PASS;
+    }
+
     @Override
     public void onRemove(BlockState state, net.minecraft.world.level.Level level, BlockPos pos, BlockState newState, boolean moved) {
         if (level instanceof ServerLevel server && !state.is(newState.getBlock())) {

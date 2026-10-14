@@ -4,7 +4,7 @@ import com.aetherianartificer.townstead.pheno.action.Action;
 import com.aetherianartificer.townstead.pheno.action.Actions;
 import com.aetherianartificer.townstead.pheno.condition.Condition;
 import com.aetherianartificer.townstead.pheno.condition.Conditions;
-import com.aetherianartificer.townstead.root.hazard.AvoidStrategy;
+import com.aetherianartificer.townstead.root.hazard.Hazard;
 import com.aetherianartificer.townstead.root.gene.GeneDisplay;
 import com.aetherianartificer.townstead.root.gene.GeneInstance;
 import com.aetherianartificer.townstead.root.gene.GeneType;
@@ -31,7 +31,7 @@ public final class ActionOverTimeGeneType implements GeneType {
     public static final String KEY = "pheno:action_over_time";
 
     public record Instance(Action action, int interval, @Nullable Condition condition,
-                           @Nullable AvoidStrategy avoid,
+                           @Nullable Hazard hazard,
                            @Nullable ResourceLocation costResource, int costAmount)
             implements GeneInstance, com.aetherianartificer.townstead.root.ability.ResourceConsumer {
         @Override public String typeKey() { return KEY; }
@@ -57,11 +57,10 @@ public final class ActionOverTimeGeneType implements GeneType {
                     GsonHelper.getAsString(cost, "resource", ""));
             costAmount = Math.max(0, GsonHelper.getAsInt(cost, "amount", 0));
         }
-        // The "damage source" derived once here and cached on the parsed gene: a harmful periodic
-        // action under a positional condition becomes a spatial hazard the AI flees (GeneAbilityTicker).
-        // "avoid": true declares a benign-looking effect (sun weakness) worth fleeing as well.
-        AvoidStrategy avoid = AvoidStrategy.derive(json.get("action"), json.get("condition"),
-                GsonHelper.getAsBoolean(json, "avoid", false));
-        return new Instance(action, interval, condition, avoid, costResource, costAmount);
+        // Derived once here and cached on the parsed gene: a harmful periodic action under a
+        // condition that depends on place becomes a hazard the AI keeps clear of (GeneAbilityTicker).
+        // "avoid" forces it for a benign-looking effect, tunes it, or (false) turns it off.
+        Hazard hazard = Hazard.derive(json.get("action"), json.get("condition"), condition, json.get("avoid"));
+        return new Instance(action, interval, condition, hazard, costResource, costAmount);
     }
 }

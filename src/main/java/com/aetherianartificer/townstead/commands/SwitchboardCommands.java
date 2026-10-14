@@ -55,7 +55,7 @@ public final class SwitchboardCommands {
     private static int list(CommandSourceStack source) {
         Map<String, JsonElement> overrides = Switchboard.overrides();
         if (overrides.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("Every setting uses the config file."), false);
+            source.sendSuccess(() -> Component.literal("No settings are changed in Switchboard. All settings come from the config file."), false);
             return 1;
         }
         overrides.forEach((key, value) -> {

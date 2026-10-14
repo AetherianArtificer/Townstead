@@ -268,7 +268,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
 
         caregiver.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
         TownsteadVillager.Needs childNeeds = TownsteadVillagers.get(childTarget).needs();
-        if (!VillagerConsumptionManager.permitsManagedVillagerConsumption(food)) {
+        if (!VillagerConsumptionManager.permitsManagedVillagerConsumption(childTarget, food)) {
             doStop(level, caregiver, gameTime);
             return;
         }
@@ -365,7 +365,7 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     private boolean townstead$isFood(ItemStack stack) {
         if (FoodSafety.isCannibalFare(stack) && !CannibalismPolicy.mayEat(null, stack)) return false;
         return FoodSafety.isSafeNutritiousFood(stack, childTarget)
-                && VillagerConsumptionManager.permitsManagedVillagerConsumption(stack);
+                && VillagerConsumptionManager.permitsManagedVillagerConsumption(childTarget, stack);
     }
 
     private boolean townstead$findGroundItem(ServerLevel level, VillagerEntityMCA villager) {

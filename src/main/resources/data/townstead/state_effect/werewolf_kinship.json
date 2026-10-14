@@ -6,7 +6,8 @@
   "priority": 20,
   "genes": {
     "grant": [
-      "townstead_roots:werewolf_kin"
+      "townstead_roots:werewolf_kin",
+      "townstead_roots:werewolf_wolfsbane"
     ]
   }
 }

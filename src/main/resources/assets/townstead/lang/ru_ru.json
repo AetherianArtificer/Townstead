@@ -265,6 +265,8 @@
   "townstead.configuration.needs.pace.tooltip": "Как быстро растут голод, жажда и усталость. 1 — обычно.",
   "townstead.configuration.needs.canKill": "Нужды могут убить",
   "townstead.configuration.needs.canKill.tooltip": "Жители без еды или воды получают урон. Младенцы в безопасности. После включения у жителей есть день, чтобы поесть.",
+  "townstead.configuration.needs.teensMayDrinkAlcohol": "Подростки могут пить алкоголь",
+  "townstead.configuration.needs.teensMayDrinkAlcohol.tooltip": "Подростки могут пить алкоголь. Дети и младше не пьют никогда.",
   "townstead.configuration.section.townstead.server.toml": "Настройки сервера",
   "townstead.configuration.section.townstead.server.toml.title": "Настройки сервера %s",
   "townstead.configuration.section.townstead.client.toml": "Настройки клиента",

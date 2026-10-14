@@ -65,6 +65,11 @@ public final class VillagerConsumptionManager {
                 && policy.mode() == ConsumptionPolicy.Mode.REPLACE_WITH_PHENO;
     }
 
+    /** As above, and {@code consumer} meets the serving's {@code requires} condition. */
+    public static boolean permitsManagedVillagerConsumption(VillagerEntityMCA consumer, ItemStack stack) {
+        return permitsManagedVillagerConsumption(stack) && Consumables.permitsConsumer(consumer, stack);
+    }
+
     /** Begins consuming one unit of {@code stack} if it is edible or restores thirst. */
     public static boolean startConsuming(VillagerEntityMCA villager, ItemStack stack) {
         return startConsuming(villager, stack, null);
@@ -118,7 +123,7 @@ public final class VillagerConsumptionManager {
     private static boolean startConsuming(VillagerEntityMCA villager, ItemStack stack, BlockPos source,
                                           int holdTicks) {
         if (stack.isEmpty() || isConsuming(villager)) return false;
-        if (!permitsManagedVillagerConsumption(stack)) return false;
+        if (!permitsManagedVillagerConsumption(villager, stack)) return false;
         if (!isConsumable(stack) && !isDietFood(villager, stack)
                 && !com.aetherianartificer.townstead.temperature.ThermalConsumables.hasEffects(stack, villager)) return false;
 
@@ -256,6 +261,7 @@ public final class VillagerConsumptionManager {
         ConsumptionPolicy policy = policy(stack);
         if (policy != null && (!policy.permits(ConsumptionPolicy.Consumer.VILLAGER)
                 || policy.mode() != ConsumptionPolicy.Mode.REPLACE_WITH_PHENO)) return false;
+        if (!Consumables.permitsConsumer(recipient, stack)) return false;
         if (returnContainer) returnRemainder(holder, stack, source, policy);
         int beforeThirst = recipientNeeds.thirst();
         int beforeQuenched = recipientNeeds.quenched();

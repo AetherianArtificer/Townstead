@@ -2795,6 +2795,8 @@ public class Townstead {
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
                 new com.aetherianartificer.townstead.pheno.value.types.ArithmeticValueType());
         com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
+                new com.aetherianartificer.townstead.pheno.value.types.ProviderValueType());
+        com.aetherianartificer.townstead.pheno.value.ValueTypes.register(
                 new com.aetherianartificer.townstead.pheno.value.types.EntityStateValueType(
                         "pheno:state_amount",
                         com.aetherianartificer.townstead.pheno.value.types.EntityStateValueType.Projection.AMOUNT));

@@ -63,6 +63,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_HUNGER;
     public static final ModConfigSpec.DoubleValue NEEDS_PACE;
     public static final ModConfigSpec.BooleanValue NEEDS_CAN_KILL;
+    public static final ModConfigSpec.BooleanValue TEENS_MAY_DRINK_ALCOHOL;
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_THIRST;
     public static final ModConfigSpec.BooleanValue THIRST_LETHAL_FALLBACK;
     public static final ModConfigSpec.BooleanValue ENABLE_COOK_WATER_PURIFICATION;
@@ -187,6 +188,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_HUNGER;
     public static final ForgeConfigSpec.DoubleValue NEEDS_PACE;
     public static final ForgeConfigSpec.BooleanValue NEEDS_CAN_KILL;
+    public static final ForgeConfigSpec.BooleanValue TEENS_MAY_DRINK_ALCOHOL;
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_THIRST;
     public static final ForgeConfigSpec.BooleanValue THIRST_LETHAL_FALLBACK;
     public static final ForgeConfigSpec.BooleanValue ENABLE_COOK_WATER_PURIFICATION;
@@ -323,6 +325,10 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.needs.canKill")
                 .comment("Villagers with no food or no water left take damage, like a starving player. Babies are spared.")
                 .define("canKill", false);
+        TEENS_MAY_DRINK_ALCOHOL = b
+                .translation("townstead.configuration.needs.teensMayDrinkAlcohol")
+                .comment("Teens may drink alcohol. Children and younger never do.")
+                .define("teensMayDrinkAlcohol", false);
         b.translation("townstead.configuration.needs.hunger").push("hunger");
         ENABLE_VILLAGER_HUNGER = b
                 .translation("townstead.configuration.needs.hunger.enableVillagerHunger")

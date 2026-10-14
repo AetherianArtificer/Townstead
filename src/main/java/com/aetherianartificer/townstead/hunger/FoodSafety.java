@@ -85,6 +85,7 @@ public final class FoodSafety {
         if (stack == null || stack.isEmpty()) return false;
         if (isCannibalFare(stack) && !CannibalismPolicy.mayEat(eater, stack)) return false;
         if (eater != null) {
+            if (!com.aetherianartificer.townstead.needs.Consumables.permitsConsumer(eater, stack)) return false;
             var nourishment = com.aetherianartificer.townstead.hunger.diet.Diets.nourishment(eater, stack);
             if (nourishment == null) return false;
             if (!nourishment.nativeValues()) return nourishment.nutrition() > 0;

@@ -2,33 +2,33 @@ package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.culture.VillageLayouts;
 import com.aetherianartificer.townstead.mixin.accessor.SinglePoolElementAccessor;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
-import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Redirect;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Skips buildings that already fill their per-village maximum from a village layout. */
+/**
+ * Skips buildings that already fill their per-village maximum from a village layout. Filters the
+ * shuffled list rather than redirecting the call, so another mod reweighting it still applies.
+ */
 @Mixin(targets = "net.minecraft.world.level.levelgen.structure.pools.JigsawPlacement$Placer")
 public abstract class JigsawPlacerVillageLimitsMixin {
     @Shadow @Final private List<? super PoolElementStructurePiece> pieces;
 
-    @Redirect(method = "tryPlacingChildren", at = @At(value = "INVOKE",
+    @ModifyExpressionValue(method = "tryPlacingChildren", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/world/level/levelgen/structure/pools/StructureTemplatePool;getShuffledTemplates(Lnet/minecraft/util/RandomSource;)Ljava/util/List;"))
-    private List<StructurePoolElement> townstead$limitBuildings(StructureTemplatePool pool, RandomSource random) {
-        List<StructurePoolElement> shuffled = pool.getShuffledTemplates(random);
+    private List<StructurePoolElement> townstead$limitBuildings(List<StructurePoolElement> shuffled) {
         if (!VillageLayouts.hasLimits()) return shuffled;
         Map<ResourceLocation, Integer> placed = new HashMap<>();
         for (Object piece : pieces) {

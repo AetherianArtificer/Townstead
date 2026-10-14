@@ -14,6 +14,6 @@ public class ColdSweatRoomPlayerMixin {
     private void townstead$room(LivingEntity entity, @Coerce Object trait, List<?> modifiers, double base,
                                CallbackInfoReturnable<Double> cir) {
         if (trait instanceof Enum<?> value && value.name().equals("WORLD"))
-            cir.setReturnValue(RoomHeatBackend.coldSweatPlayer(entity.level(), entity.blockPosition(), cir.getReturnValueD()));
+            cir.setReturnValue(RoomHeatBackend.coldSweatPlayer(entity.level(), entity.blockPosition(), modifiers, trait, cir.getReturnValueD()));
     }
 }

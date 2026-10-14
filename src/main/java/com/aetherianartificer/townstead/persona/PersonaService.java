@@ -66,15 +66,17 @@ public final class PersonaService {
             Village village = TownRange.at(level, player.blockPosition()).orElse(null);
             if (village == null) continue;
             for (PersonaDefinition persona : Personas.all().values()) {
-                if (persona.arrives().isEmpty()) continue;
                 if (PersonaInstances.get(server).isDismissed(persona.id(), level.dimension().location(), village.getId())) continue;
                 PersonaInstances.Instance travelling = PersonaInstances.get(server).travelling(persona.id());
                 if (travelling != null) {
-                    if (readyToArrive(server, travelling, level, village) && arrives(server, player, persona)) {
+                    // One who only arrives by introduction has no goals to wait for once the road is done.
+                    if (readyToArrive(server, travelling, level, village)
+                            && (persona.arrives().isEmpty() || arrives(server, player, persona))) {
                         arriveTravelling(persona, travelling, player, village);
                     }
                     continue;
                 }
+                if (persona.arrives().isEmpty()) continue;
                 if (PersonaBonds.has(player, persona.id())) continue;
                 if (PersonaInstances.get(server).in(persona.id(), level.dimension().location(), village.getId()) != null) continue;
                 if (takenElsewhere(server, persona)) continue;
@@ -205,11 +207,15 @@ public final class PersonaService {
         com.aetherianartificer.townstead.naming.VillagerNames.publish(villager);
     }
 
-    /** A travelling Persona may arrive here once their road time is over, anywhere but the village they left. */
+    /**
+     * A travelling Persona may arrive here once their road time is over, anywhere but the village they
+     * left. One sent by command may also come back home.
+     */
     private static boolean readyToArrive(MinecraftServer server, PersonaInstances.Instance instance, ServerLevel level, Village village) {
         var journey = com.aetherianartificer.townstead.journey.Journeys.get(server).of(instance.villager());
         if (journey == null) return false;
         if (journey.readyDay() > com.aetherianartificer.townstead.calendar.TownsteadCalendar.worldDay(server)) return false;
+        if (PersonaMoves.COMMAND.equals(journey.data().getString("reason"))) return true;
         return !(level.dimension().location().toString().equals(journey.data().getString("from_dimension"))
                 && journey.data().getInt("from_village") == village.getId());
     }

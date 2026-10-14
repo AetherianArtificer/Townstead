@@ -47,6 +47,10 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     private Method isValid;
     private Method blockTemperature;
     private Method getDummyPlayer;
+    private Class<?> thermalSource;
+    private Method lastInput;
+    private Method lastOutput;
+    private Method applyModifier;
     private final ThermalCache<ServerLevel, BlockPos, Float> ambientCache = new ThermalCache<>(20, 4096);
 
     public void clearCache() { ambientCache.clear(); }
@@ -110,6 +114,32 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
             return (float) (mc * MC_UNIT_TO_CELSIUS);
         } catch (Exception e) { return Float.NaN; }
         finally { if (dummy != null && previous != null) dummy.setPos(previous); }
+    }
+
+    /**
+     * Adds {@code shift} to a player's WORLD result as if it entered before the first hearth or
+     * Warmth/Frigidness modifier, so those blend from the shifted value. Every modifier from there on
+     * is re-run on its stored function, and anything Cold Sweat added after the list is kept.
+     */
+    public double shiftBeforeThermalSources(java.util.List<?> modifiers, Object trait, double result, double shift) {
+        initIfNeeded();
+        if (thermalSource == null || lastInput == null || lastOutput == null || applyModifier == null
+                || modifiers.isEmpty()) return result + shift;
+        try {
+            int first = -1;
+            for (int i = 0; i < modifiers.size(); i++) {
+                if (thermalSource.isInstance(modifiers.get(i))) { first = i; break; }
+            }
+            if (first < 0) return result + shift;
+            double tail = result - ((Number) lastOutput.invoke(modifiers.get(modifiers.size() - 1), trait)).doubleValue();
+            double value = ((Number) lastInput.invoke(modifiers.get(first), trait)).doubleValue() + shift;
+            for (int i = first; i < modifiers.size(); i++) {
+                value = ((Number) applyModifier.invoke(modifiers.get(i), trait, value)).doubleValue();
+            }
+            return Double.isFinite(value + tail) ? value + tail : result + shift;
+        } catch (Exception e) {
+            return result + shift;
+        }
     }
 
     private Float sampleAmbient(ServerLevel level, BlockPos pos) {
@@ -312,6 +342,18 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
         } catch (Exception ignored) {
             addTemperature = null;
             traitCore = null;
+        }
+        try {
+            Class<?> trait = Class.forName("com.momosoftworks.coldsweat.api.util.Temperature$Trait");
+            Class<?> tempModifier = Class.forName(
+                    "com.momosoftworks.coldsweat.api.temperature.modifier.TempModifier");
+            lastInput = tempModifier.getMethod("getLastInput", trait);
+            lastOutput = tempModifier.getMethod("getLastOutput", trait);
+            applyModifier = tempModifier.getMethod("apply", trait, double.class);
+            thermalSource = Class.forName(
+                    "com.momosoftworks.coldsweat.api.temperature.modifier.ThermalSourceTempModifier");
+        } catch (Exception ignored) {
+            thermalSource = null;
         }
         try {
             Class<?> registry = Class.forName("com.momosoftworks.coldsweat.api.registry.BlockTempRegistry");

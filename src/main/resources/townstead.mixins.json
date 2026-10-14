@@ -14,6 +14,7 @@
     "accessor.MobGoalsAccessor",
     "accessor.WalkAnimationStateAccessor",
     "ResultContainerGateMixin",
+    "CraftingLearnedRecipeMixin",
     "VillagerServingHandMixin",
     "VillagerServingRecoveryMixin",
     "LecternBlockEntityCharterMixin",
@@ -28,6 +29,7 @@
     "compat.thirst.TanDrinkConsumptionMixin",
     "BabyItemInheritanceMixin",
     "BuildingMatchingMixin",
+    "BuildingCoffinBedMixin",
     "BuildingStackQuantityMixin",
     "BuildingValidateOpenAirMixin",
     "ConfirmBuildingPolymorphMessageMixin",
@@ -137,6 +139,7 @@
     "compat.temperature.TanRoomQueryMixin"
   ],
   "client": [
+    "client.RecipeBookChangeMixin",
     "compat.thirst.TanDrinkTooltipMixin",
     "compat.stardewhud.StardewHudDateMixin",
     "compat.stardewhud.StardewHudSeasonMixin",

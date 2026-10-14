@@ -271,6 +271,8 @@
   "townstead.configuration.needs.pace.tooltip": "饥饿、口渴和疲劳增长的速度。1 为正常。",
   "townstead.configuration.needs.canKill": "需求可能致死",
   "townstead.configuration.needs.canKill.tooltip": "没有食物或水的村民会受到伤害。婴儿不受影响。开启后，村民有一天时间先吃东西。",
+  "townstead.configuration.needs.teensMayDrinkAlcohol": "青少年可以饮酒",
+  "townstead.configuration.needs.teensMayDrinkAlcohol.tooltip": "青少年可以饮酒。儿童及更小的村民从不饮酒。",
   "townstead.configuration.section.townstead.server.toml": "服务器设置",
   "townstead.configuration.section.townstead.server.toml.title": "%s 服务器设置",
   "townstead.configuration.section.townstead.client.toml": "客户端设置",

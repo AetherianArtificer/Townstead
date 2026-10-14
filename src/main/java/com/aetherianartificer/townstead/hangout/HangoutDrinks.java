@@ -49,7 +49,7 @@ final class HangoutDrinks {
         var building = McaBuildings.byId(village, visit.buildingId());
         if (building == null || !building.isComplete()) return false;
         var slots = new ArrayList<NearbyItemSources.ContainerSlot>();
-        NearbyItemSources.collectMatchingSlots(level, guest, 16, 8, HangoutDrinks::isDrink,
+        NearbyItemSources.collectMatchingSlots(level, guest, 16, 8, stack -> isDrink(guest, stack),
                 stack -> 1, visit.venueAnchor(), slot -> {
                     if (McaBuildings.contains(level, village, building, slot.pos())) slots.add(slot);
                 });
@@ -57,11 +57,11 @@ final class HangoutDrinks {
         for (var slot : slots) {
             if (!slot.isItemHandler() && (slot.container() == null
                     || slot.slot() >= slot.container().getContainerSize()
-                    || !isDrink(slot.container().getItem(slot.slot())))) continue;
+                    || !isDrink(guest, slot.container().getItem(slot.slot())))) continue;
             ItemStack drink = NearbyItemSources.extractOne(level, slot);
             if (drink.isEmpty()) continue;
             // Recheck the live extraction: the cached inventory view can have changed.
-            if (isDrink(drink) && VillagerConsumptionManager.startRecreationalDrink(guest, drink, slot.pos())) {
+            if (isDrink(guest, drink) && VillagerConsumptionManager.startRecreationalDrink(guest, drink, slot.pos())) {
                 if (Switchboard.get(TownsteadConfig.DEBUG_LOGGING)) {
                     com.aetherianartificer.townstead.Townstead.LOGGER.info(
                             "[Hangouts] drink acquired guest={} item={} source={} handler={}",
@@ -78,8 +78,8 @@ final class HangoutDrinks {
         return false;
     }
 
-    private static boolean isDrink(ItemStack stack) {
-        if (stack.isEmpty() || !VillagerConsumptionManager.permitsManagedVillagerConsumption(stack)) return false;
+    private static boolean isDrink(VillagerEntityMCA guest, ItemStack stack) {
+        if (stack.isEmpty() || !VillagerConsumptionManager.permitsManagedVillagerConsumption(guest, stack)) return false;
         // Hydrating foods/ingredients are not beverages (some compat bridges include plants).
         return stack.getUseAnimation() == UseAnim.DRINK;
     }

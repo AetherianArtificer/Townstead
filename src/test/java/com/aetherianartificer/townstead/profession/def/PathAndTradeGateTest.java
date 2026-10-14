@@ -159,14 +159,7 @@ class PathAndTradeGateTest {
                 }
                 previousLane = List.copyOf(currentLane);
             }
-            JsonObject work;
-            try (var workIn = PathAndTradeGateTest.class.getResourceAsStream(
-                    "/data/townstead/profession/cook/work.json")) {
-                assertNotNull(workIn);
-                work = JsonParser.parseReader(new java.io.InputStreamReader(
-                        workIn, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
-            }
-            assertFalse(work.getAsJsonObject("path_worksites").getAsJsonArray(pathId).isEmpty(),
+            assertFalse(path.getAsJsonArray("worksites").isEmpty(),
                     "a Path without worksites cannot steer villagers");
             // Every skill-gated offer in the independent trade sidecar references a real Skill.
             JsonObject trades;

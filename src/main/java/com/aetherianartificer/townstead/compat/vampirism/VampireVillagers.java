@@ -162,6 +162,7 @@ public final class VampireVillagers {
     public static void tick(VillagerEntityMCA villager) {
         if (EntityStates.definition(STATE) != null) VampireChronicles.observeRank(villager);
         if (EntityStates.definition(STATE) != null) VampireGarlic.tick(villager);
+        if (villager.tickCount % 100 == 0) nightShift(villager);
         DhampirAging.tick(villager);
         var data = villager.getPersistentData();
         if (!data.contains(CURE_AT) || villager.level().getGameTime() < data.getLong(CURE_AT)) return;
@@ -175,6 +176,38 @@ public final class VampireVillagers {
         villager.level().levelEvent(null, 1027, villager.blockPosition(), 0);
         com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.survival(villager,
                 com.aetherianartificer.townstead.chronicle.emit.ChronicleTapKeys.VAMPIRE_CURED, Map.of());
+    }
+
+    private static final ResourceLocation NIGHT_SHIFT = ResourceLocation.tryParse("townstead:night_dweller");
+    private static final String GAVE_NIGHT_SHIFT = "townstead:vampire_night_shift";
+
+    /**
+     * A vampire works the night shift, unless someone set their shift by hand; a cured one still on
+     * it goes back to the ordinary day. The shift stays a normal shift a player can change.
+     */
+    private static void nightShift(VillagerEntityMCA villager) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.SHIFTS)
+                || villager.level().getServer() == null) return;
+        var data = villager.getPersistentData();
+        boolean vampire = isVampire(villager);
+        if (vampire == data.getBoolean(GAVE_NIGHT_SHIFT)) return;
+        var schedule = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).schedule();
+        if (vampire) {
+            data.putBoolean(GAVE_NIGHT_SHIFT, true);
+            if (schedule.hasNonDefaultCustomShifts()) return;
+            com.aetherianartificer.townstead.shift.template.ShiftTemplateRegistry.resolve(villager.level().getServer(), NIGHT_SHIFT)
+                    .ifPresent(shift -> {
+                        schedule.setShifts(shift.copyShifts());
+                        schedule.setTemplateId(NIGHT_SHIFT.toString());
+                    });
+        } else {
+            data.remove(GAVE_NIGHT_SHIFT);
+            if (!NIGHT_SHIFT.toString().equals(schedule.templateId())) return;
+            schedule.setShifts(com.aetherianartificer.townstead.shift.ShiftData.getVanillaDefault());
+            schedule.setTemplateId("");
+        }
+        com.aetherianartificer.townstead.villager.TownsteadVillagers.flush(villager);
+        com.aetherianartificer.townstead.shift.ShiftScheduleApplier.apply(villager);
     }
 
     /** Vampirism's vampire faction object, for villagers that are vampires. */

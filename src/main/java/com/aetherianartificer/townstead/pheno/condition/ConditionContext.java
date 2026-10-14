@@ -21,6 +21,8 @@ public final class ConditionContext {
     private final @Nullable LivingEntity other;
     private final @Nullable LivingEntity origin;
     private final @Nullable java.util.UUID otherId;
+    // Set when asking "would this hold if the entity stood there?", as hazard avoidance does.
+    private @Nullable BlockPos probe;
 
     public ConditionContext(LivingEntity entity) {
         this(entity, null, entity);
@@ -77,6 +79,23 @@ public final class ConditionContext {
     }
 
     public @Nullable BlockPos pos() {
+        if (probe != null) return probe;
         return entity == null ? null : entity.blockPosition();
+    }
+
+    /**
+     * The same context, read as if the entity stood at {@code pos}: every condition that asks where
+     * the entity is answers for that block, and conditions about the entity itself are unchanged.
+     */
+    public ConditionContext at(BlockPos pos) {
+        ConditionContext copy = entity != null ? new ConditionContext(entity, other, origin)
+                : new ConditionContext(subject, otherId);
+        copy.probe = pos == null ? null : pos.immutable();
+        return copy;
+    }
+
+    /** True when this context is answering for a position other than the entity's own. */
+    public boolean probing() {
+        return probe != null;
     }
 }

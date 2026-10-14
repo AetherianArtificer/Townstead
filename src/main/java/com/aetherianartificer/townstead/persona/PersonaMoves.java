@@ -32,6 +32,8 @@ public final class PersonaMoves {
     private static final Logger LOGGER = LoggerFactory.getLogger("Townstead/Personas");
     public static final String ORDER_DISSOLVED = "order_dissolved";
     public static final String TOWN_FALLEN = "town_fallen";
+    /** Sent by {@code /townstead persona travel}; may come back to the village they left. */
+    public static final String COMMAND = "command";
     public static final ResourceLocation PURPOSE = ResourceLocation.tryParse("townstead:persona_move");
     private static final int ROAD_DAYS = 2;
     /** A town must stay empty this many days before a Persona gives up on it. */

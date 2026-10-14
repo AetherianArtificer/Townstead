@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.hunger;
 
+import com.aetherianartificer.townstead.needs.Consumables;
 import com.aetherianartificer.townstead.TownsteadConfig;
 import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.work.ReachableTargetSelector;
@@ -235,7 +236,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
         }
         if (drink) {
             ThirstCompatBridge bridge = ThirstBridgeResolver.get();
-            int slot = bestDrinkSlot(villager.getInventory(), bridge);
+            int slot = bestDrinkSlot(villager, bridge);
             if (slot >= 0) {
                 ItemStack stack = villager.getInventory().getItem(slot);
                 if (VillagerConsumptionManager.startConsuming(villager, stack, sessionSource)) {
@@ -285,9 +286,8 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
     // --- Inventory rations ---
 
     private boolean hasRationFor(VillagerEntityMCA villager, TownsteadVillager.Needs needs) {
-        SimpleContainer inv = villager.getInventory();
         if (wantsFood(needs) && !resting(villager) && bestFoodSlot(villager) >= 0) return true;
-        return wantsDrink(needs) && bestDrinkSlot(inv, ThirstBridgeResolver.get()) >= 0;
+        return wantsDrink(needs) && bestDrinkSlot(villager, ThirstBridgeResolver.get()) >= 0;
     }
 
     // Takes the eater, not just the bag: whether sapient flesh counts as food depends on whose
@@ -304,11 +304,12 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
         return best;
     }
 
-    private static int bestDrinkSlot(SimpleContainer inv, ThirstCompatBridge bridge) {
+    private static int bestDrinkSlot(VillagerEntityMCA villager, ThirstCompatBridge bridge) {
         if (bridge == null) return -1;
+        SimpleContainer inv = villager.getInventory();
         int best = -1, bestScore = 0;
         for (int i = 0; i < inv.getContainerSize(); i++) {
-            int score = thirstScore(inv.getItem(i), bridge);
+            int score = thirstScore(villager, inv.getItem(i), bridge);
             if (score > bestScore) { bestScore = score; best = i; }
         }
         return best;
@@ -326,7 +327,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
                 return true;
             }
         }
-        if (wantsDrink(needs) && bestDrinkSlot(villager.getInventory(), ThirstBridgeResolver.get()) < 0) {
+        if (wantsDrink(needs) && bestDrinkSlot(villager, ThirstBridgeResolver.get()) < 0) {
             if (acquireDrink(level, villager) || acquireAmenity(level, villager, Need.DRINK)) {
                 acquiring = Need.DRINK;
                 setAcquireWalkTarget(villager);
@@ -408,7 +409,7 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
         if (TownsteadConfig.isGroundItemThirstSourcingEnabled()) {
             AABB box = villager.getBoundingBox().inflate(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS);
             for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, box, e -> !e.isRemoved())) {
-                int score = thirstScore(item.getItem(), bridge);
+                int score = thirstScore(villager, item.getItem(), bridge);
                 if (score <= 0) continue;
                 if (ConsumableTargetClaims.isClaimedByOtherItem(level, villager.getUUID(), CLAIM_CATEGORY, item)) continue;
                 candidates.add(new ScoredCandidate(TargetType.GROUND_ITEM, score, item, null, null));
@@ -416,8 +417,8 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
         }
         if (TownsteadConfig.isContainerThirstSourcingEnabled()) {
             NearbyItemSources.collectMatchingSlots(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
-                    stack -> thirstScore(stack, bridge) > 0,
-                    stack -> thirstScore(stack, bridge),
+                    stack -> thirstScore(villager, stack, bridge) > 0,
+                    stack -> thirstScore(villager, stack, bridge),
                     villager.blockPosition(),
                     slot -> {
                         if (ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, slot)) return;
@@ -550,8 +551,9 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
         return FoodSafety.nutritionFor(villager, stack);
     }
 
-    private static int thirstScore(ItemStack stack, ThirstCompatBridge bridge) {
+    private static int thirstScore(VillagerEntityMCA villager, ItemStack stack, ThirstCompatBridge bridge) {
         if (stack.isEmpty() || bridge == null || !bridge.itemRestoresThirst(stack)) return 0;
+        if (!Consumables.permitsConsumer(villager, stack)) return 0;
         int quenched = Math.max(0, bridge.quenched(stack));
         int hydration = Math.max(0, bridge.hydration(stack));
         int purity = bridge.isPurityWaterContainer(stack) ? Math.max(0, bridge.purity(stack)) : 0;

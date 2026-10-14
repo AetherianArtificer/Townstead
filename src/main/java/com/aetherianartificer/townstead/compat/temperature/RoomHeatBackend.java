@@ -51,11 +51,18 @@ public final class RoomHeatBackend {
         if (level.isRainingAt(pos)) value += settings.rainOffset();
         return EclipticClimate.reconcile(value, EclipticClimate.ceiling(level, pos));
     }
-    public static double coldSweatPlayer(Level level, BlockPos pos, double original) {
-        OptionalDouble room = room(level, pos);
-        if (room.isEmpty() || !(level instanceof ServerLevel server)) return original;
-        float baseline = sample(1, () -> ColdSweatTemperatureBridge.INSTANCE.uncachedAmbient(server, pos, false));
-        return Float.isFinite(baseline) ? original + (room.getAsDouble() - baseline) / 25.0 : original;
+    /**
+     * Room air replaces Cold Sweat's climate; Cold Sweat keeps its own block heat, and its hearth
+     * blends from the room air rather than from the outdoor climate.
+     */
+    public static double coldSweatPlayer(Level level, BlockPos pos, java.util.List<?> modifiers, Object trait, double original) {
+        if (!(level instanceof ServerLevel server)) return original;
+        OptionalDouble air = RoomHeat.airAt(server, pos);
+        if (air.isEmpty()) return original;
+        float climate = sample(1, () -> ColdSweatTemperatureBridge.INSTANCE.uncachedAmbient(server, pos, true));
+        if (!Float.isFinite(climate)) return original;
+        return ColdSweatTemperatureBridge.INSTANCE.shiftBeforeThermalSources(modifiers, trait, original,
+                (air.getAsDouble() - climate) / 25.0);
     }
     public static int tanOrdinal(double celsius) {
         if (celsius < -2.5) return 0;

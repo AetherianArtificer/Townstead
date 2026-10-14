@@ -376,7 +376,7 @@ public final class ProfessionSites {
         List<VillagerEntityMCA> workers = new ArrayList<>(workers(level, village, def, villager));
         if (workers.stream().noneMatch(worker -> worker.getUUID().equals(villager.getUUID()))) {
             workers.add(villager);
-            workers.sort(Comparator.comparing(worker -> worker.getUUID().toString()));
+            workers.sort(BY_SENIORITY);
         }
         List<String> paths = new ArrayList<>(workers.size());
         List<net.minecraft.resources.ResourceLocation> rawProfessions =
@@ -419,7 +419,7 @@ public final class ProfessionSites {
         }
         if (declares(asking, taskTypes) && workers.stream().noneMatch(worker ->
                 worker.getUUID().equals(asking.getUUID()))) workers.add(asking);
-        workers.sort(Comparator.comparing(worker -> worker.getUUID().toString()));
+        workers.sort(BY_SENIORITY);
         return workers;
     }
 
@@ -622,6 +622,32 @@ public final class ProfessionSites {
             sites.add(new Site(null, standalone.post(), standalone.providerIndex()));
         }
         return List.copyOf(sites);
+    }
+
+    private static final String SEATED_SINCE = "townstead:seated_since";
+
+    /**
+     * Whoever has held a seat longest keeps it, then UUID order, so a newcomer only ever takes a
+     * seat nobody holds. Ordering by UUID alone let a new hire displace a worker, who was then
+     * released and displaced someone else in turn. A villager not seated yet sorts last.
+     */
+    private static final Comparator<VillagerEntityMCA> BY_SENIORITY = Comparator
+            .comparingLong(ProfessionSites::seatedSince)
+            .thenComparing(worker -> worker.getUUID().toString());
+
+    private static long seatedSince(VillagerEntityMCA worker) {
+        if (worker.getVillagerData().getProfession() == net.minecraft.world.entity.npc.VillagerProfession.NONE) {
+            return Long.MAX_VALUE;
+        }
+        // Workers seated before this was recorded count as the most senior.
+        return worker.getPersistentData().getLong(SEATED_SINCE);
+    }
+
+    /** Records a hire or a release, and drops every cached assignment since the staff changed. */
+    public static void seatChanged(VillagerEntityMCA villager, boolean hired) {
+        if (hired) villager.getPersistentData().putLong(SEATED_SINCE, villager.level().getGameTime());
+        else villager.getPersistentData().remove(SEATED_SINCE);
+        ASSIGNMENTS.clear();
     }
 
     /** Forget one unloaded villager without retaining its last assignment. */

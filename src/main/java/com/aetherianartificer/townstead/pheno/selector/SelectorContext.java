@@ -91,7 +91,9 @@ public final class SelectorContext {
 
     public static SelectorContext of(ConditionContext ctx) {
         if (ctx.subject() != null) return new SelectorContext(ctx.subject(), ctx.otherId());
-        return new SelectorContext(ctx.entity(), ctx.other(), ctx.origin(), ctx.level(), ctx.entity() == null ? Vec3.ZERO : ctx.entity().position());
+        Vec3 anchor = ctx.probing() ? Vec3.atBottomCenterOf(ctx.pos())
+                : ctx.entity() == null ? Vec3.ZERO : ctx.entity().position();
+        return new SelectorContext(ctx.entity(), ctx.other(), ctx.origin(), ctx.level(), anchor);
     }
 
     /** A block-rooted frame (block actions): the focus is a position, the entity (if any) is the cause. */
