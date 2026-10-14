@@ -2469,6 +2469,13 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.action.types.AddCountActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.GiveStoryItemActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.DeliverActionType());
+        // An accord letter is delivered to whoever it is handed to; CharterAccords reads its contents.
+        com.aetherianartificer.townstead.pheno.delivery.Deliveries.register((sender, recipient, item) ->
+                item.getItem() instanceof com.aetherianartificer.townstead.item.AccordLetterItem
+                        && sender instanceof net.minecraft.server.level.ServerPlayer envoy
+                        && com.aetherianartificer.townstead.politics.charter.CharterAccords.give(envoy, recipient, item));
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.HasPetConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
@@ -3108,6 +3115,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.compat.clothing.LsoItemDataSource.Loader());
         event.addListener(new com.aetherianartificer.townstead.clothing.policy.WardrobePolicies.Loader());
         event.addListener(new com.aetherianartificer.townstead.culture.CultureJsonLoader());
+        event.addListener(new com.aetherianartificer.townstead.gift.GiftReactions());
         event.addListener(new com.aetherianartificer.townstead.culture.VillageLayouts.Loader());
         event.addListener(new com.aetherianartificer.townstead.spirit.SpiritBaseline.Loader());
         event.addListener(new com.aetherianartificer.townstead.livery.LiveryStyles.Loader());
@@ -3181,6 +3189,13 @@ public class Townstead {
     }
 
     private void registerDialogueConditions() {
+        // Any Pheno condition about the villager receiving the gift (the giver is "other"), so an MCA
+        // gift file can raise or sink satisfaction by state, aspect, Root or anything else Pheno reads.
+        GiftPredicate.register("pheno", (json, name) ->
+                        com.aetherianartificer.townstead.pheno.condition.Conditions.parse(json),
+                condition -> (villager, stack, player) -> condition != null
+                        && condition.test(new com.aetherianartificer.townstead.pheno.condition.ConditionContext(villager, player))
+                        ? 1.0f : 0.0f);
         GiftPredicate.register("hunger", (json, name) ->
                 GsonHelper.convertToString(json, name).toLowerCase(Locale.ROOT),
                 state -> (villager, stack, player) -> {

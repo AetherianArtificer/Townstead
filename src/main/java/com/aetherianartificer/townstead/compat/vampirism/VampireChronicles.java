@@ -28,8 +28,9 @@ public final class VampireChronicles {
     }
 
     /**
-     * Notes the moment a resident vampire's blood carries them to a full vampire. The first look only
-     * records where they stand, so vampires who arrived already turned are not announced.
+     * Notes the moment a resident vampire's blood carries them to a full vampire, and the moment one is
+     * cured. The first look only records where they stand, so vampires who arrived already turned are
+     * not announced.
      */
     public static void observeRank(VillagerEntityMCA villager) {
         if (villager.tickCount % 100 != 0 || MobReplacer.isWild(villager)) return;
@@ -42,6 +43,10 @@ public final class VampireChronicles {
         data.putInt(RANK_SEEN, level);
         if (seen && before < FULL_VAMPIRE && level >= FULL_VAMPIRE) {
             ChronicleTaps.survival(villager, ChronicleTapKeys.BECAME_FULL_VAMPIRE, Map.of());
+        }
+        // However it happened, a vampire who is a vampire no more has been cured.
+        if (seen && before >= 1 && level == 0) {
+            ChronicleTaps.survival(villager, ChronicleTapKeys.VAMPIRE_CURED, Map.of());
         }
     }
 

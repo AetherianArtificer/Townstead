@@ -2,10 +2,6 @@ package com.aetherianartificer.townstead.persona;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
@@ -41,39 +37,7 @@ public record PersonaGift(List<String> items, Response response, int satisfactio
 
     /** Whether the stack is one of these items, with {@code $name} read from {@code vars}. */
     public boolean matches(ItemStack stack, Map<String, Object> vars) {
-        for (String raw : items) {
-            String entry = raw.startsWith("$") ? String.valueOf(vars.getOrDefault(raw.substring(1), "")) : raw;
-            if (entry.isEmpty()) continue;
-            if (entry.startsWith("#")) {
-                ResourceLocation tag = ResourceLocation.tryParse(entry.substring(1));
-                if (tag != null && stack.is(TagKey.create(Registries.ITEM, tag))) return true;
-            } else {
-                String potion = null;
-                int open = entry.indexOf('[');
-                if (open > 0 && entry.endsWith("]")) {
-                    String property = entry.substring(open + 1, entry.length() - 1).trim();
-                    if (property.startsWith("potion=")) potion = property.substring("potion=".length()).trim();
-                    entry = entry.substring(0, open);
-                }
-                ResourceLocation id = ResourceLocation.tryParse(entry);
-                if (id == null || !id.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) continue;
-                if (potion == null || potion.equals(potionOf(stack))) return true;
-            }
-        }
-        return false;
-    }
-
-    /** The potion id in a potion, splash potion, lingering potion or tipped arrow, or null. */
-    static @Nullable String potionOf(ItemStack stack) {
-        //? if >=1.21 {
-        var contents = stack.get(net.minecraft.core.component.DataComponents.POTION_CONTENTS);
-        if (contents == null || contents.potion().isEmpty()) return null;
-        return contents.potion().get().unwrapKey().map(key -> key.location().toString()).orElse(null);
-        //?} else {
-        /*net.minecraft.world.item.alchemy.Potion potion = net.minecraft.world.item.alchemy.PotionUtils.getPotion(stack);
-        ResourceLocation id = BuiltInRegistries.POTION.getKey(potion);
-        return id == null ? null : id.toString();
-        *///?}
+        return com.aetherianartificer.townstead.gift.GiftItems.matches(items, stack, vars);
     }
 
     /** Knots this gift plays, to check against the compiled Ink. */

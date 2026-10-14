@@ -22,8 +22,8 @@ import java.util.function.Predicate;
  * <p>Derived once when the gene parses. Settings come from the gene's {@code "avoid"}: {@code true}
  * forces avoidance for a benign-looking action, or an object tunes it:</p>
  * <pre>
- *   "avoid": { "flee_speed": 1.2, "roam_speed": 0.6, "search_radius": 8,
- *              "edge_distance": 3, "roam": true, "reject_destinations": true }
+ *   "avoid": { "flee_speed": 1.2, "roam_speed": 0.6, "search_radius": 8, "edge_distance": 3,
+ *              "roam": true, "reject_destinations": true, "route_around": true }
  * </pre>
  * <p>{@code "avoid": false} turns avoidance off for a harmful gene.</p>
  */
@@ -43,6 +43,7 @@ public final class Hazard {
     private final int edgeDistance;
     private final boolean roam;
     private final boolean rejectDestinations;
+    private final boolean routeAround;
 
     private Hazard(Condition condition, boolean sunlit, JsonObject settings) {
         this.condition = condition;
@@ -53,6 +54,7 @@ public final class Hazard {
         this.edgeDistance = Math.max(1, Math.min(8, GsonHelper.getAsInt(settings, "edge_distance", 3)));
         this.roam = GsonHelper.getAsBoolean(settings, "roam", true);
         this.rejectDestinations = GsonHelper.getAsBoolean(settings, "reject_destinations", true);
+        this.routeAround = GsonHelper.getAsBoolean(settings, "route_around", true);
     }
 
     /**
@@ -105,6 +107,8 @@ public final class Hazard {
     public int edgeDistance() { return edgeDistance; }
     public boolean roam() { return roam; }
     public boolean rejectDestinations() { return rejectDestinations; }
+    /** Whether routes treat this hazard's blocks as costly, going around them when they can. */
+    public boolean avoidInPaths() { return routeAround; }
 
     private static boolean isHarmful(String actionType) {
         return switch (actionType) {

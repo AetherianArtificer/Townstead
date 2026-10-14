@@ -1,13 +1,8 @@
 package com.aetherianartificer.townstead.persona;
 
-import com.aetherianartificer.townstead.calendar.TownsteadCalendar;
-import com.aetherianartificer.townstead.social.RelationshipService;
-import com.aetherianartificer.townstead.story.StoryService;
-import net.conczin.mca.Config;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Memories;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.HashMap;
@@ -21,8 +16,6 @@ import java.util.Map;
  * instead. Any other item is left to MCA.
  */
 public final class PersonaGifts {
-    private static final byte POSITIVE = 16;
-    private static final byte NEGATIVE = 15;
 
     private PersonaGifts() {}
 
@@ -46,50 +39,20 @@ public final class PersonaGifts {
         }
         if (index < 0) return false;
         PersonaGift gift = gifts.get(index);
-        boolean keeps = gift.response() != PersonaGift.Response.DISLIKES;
-        if (keeps && !villager.getInventory().canAddItem(stack)) return false;
-
         net.minecraft.resources.ResourceLocation itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
         String firstKey = gift.first() != null && gift.first().perItem() ? index + "#" + itemId : String.valueOf(index);
         boolean first = gift.first() != null && !PersonaBonds.gaveFirst(player, persona.id(), firstKey);
-        int satisfaction = gift.satisfaction();
-        if (keeps && !first) {
-            int given = villager.getRelationships().getGiftSaturation().get(stack);
-            Config config = Config.getInstance();
-            satisfaction -= (int) (given * config.giftDesaturationFactor
-                    * Math.pow(Math.max(satisfaction, 0.0), config.giftDesaturationExponent));
-        }
-        satisfaction = (int) (satisfaction * Config.getInstance().giftSatisfactionFactor);
-
-        if (keeps) {
-            villager.getRelationships().getGiftSaturation().add(stack);
-            villager.getInventory().addItem(stack.split(1));
-        }
-        villager.level().broadcastEntityEvent(villager, keeps ? POSITIVE : NEGATIVE);
-        villager.getVillagerBrain().modifyMoodValue((int) (satisfaction * Config.getInstance().giftMoodEffect
-                + Config.getInstance().baseGiftMoodEffect * Mth.sign(satisfaction)));
-        memory.modHearts(satisfaction);
-
-        Map<String, Float> relationship = first ? gift.first().relationship() : gift.relationship();
-        long day = TownsteadCalendar.worldDay(player.server);
-        long time = villager.level().getGameTime();
-        for (Map.Entry<String, Float> change : relationship.entrySet()) {
-            String quality = change.getKey().contains(":") ? change.getKey() : "townstead:" + change.getKey();
-            RelationshipService.apply(player.server, villager.getUUID(), player.getUUID(),
-                    "gift:" + persona.id() + ":" + villager.getUUID() + ":" + player.getUUID() + ":" + time + ":" + quality,
-                    quality, change.getValue(), day, -1, "townstead:gift/" + persona.id());
-        }
+        com.aetherianartificer.townstead.gift.GiftEngine.Response response = switch (gift.response()) {
+            case LOVES -> com.aetherianartificer.townstead.gift.GiftEngine.Response.LOVES;
+            case LIKES -> com.aetherianartificer.townstead.gift.GiftEngine.Response.LIKES;
+            case DISLIKES -> com.aetherianartificer.townstead.gift.GiftEngine.Response.DISLIKES;
+        };
+        var taking = new com.aetherianartificer.townstead.gift.GiftEngine.Taking(response,
+                com.aetherianartificer.townstead.gift.GiftEngine.defaultFate(response), gift.satisfaction(), !first,
+                first ? gift.first().relationship() : gift.relationship(), "townstead:gift/" + persona.id(), null,
+                first && gift.first().knot() != null ? gift.first().knot() : gift.knot(), null, Map.of());
+        if (!com.aetherianartificer.townstead.gift.GiftEngine.apply(player, villager, memory, stack, taking)) return false;
         if (first) PersonaBonds.markFirst(player, persona.id(), firstKey);
-
-        String knot = first && gift.first().knot() != null ? gift.first().knot() : gift.knot();
-        if (knot == null || !StoryService.play(player, villager, knot,
-                Map.of("gift_item", com.aetherianartificer.townstead.story.StoryText.item(itemId)))) {
-            villager.sendChatMessage(player, switch (gift.response()) {
-                case LOVES -> "gift.best";
-                case LIKES -> "gift.good";
-                case DISLIKES -> "gift.fail";
-            });
-        }
         return true;
     }
 }

@@ -1,0 +1,73 @@
+{
+  "schema": "townstead:gift_reaction/v1",
+  "mods": "vampirism",
+  "priority": 100,
+  "items": [
+    "minecraft:golden_apple"
+  ],
+  "condition": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "pheno:state",
+        "state": "townstead_state:vampire",
+        "min": 1
+      },
+      {
+        "type": "pheno:status_effect",
+        "effect": "minecraft:weakness"
+      },
+      {
+        "type": "pheno:state",
+        "state": "townstead_state:vampire_cure",
+        "min": 1,
+        "inverted": true
+      }
+    ]
+  },
+  "response": "neutral",
+  "item": "use",
+  "action": {
+    "type": "pheno:and",
+    "actions": [
+      {
+        "type": "pheno:choice",
+        "actions": [
+          {
+            "action": {
+              "type": "pheno:set_state",
+              "state": "townstead_state:vampire_cure",
+              "amount": 1,
+              "duration": 2400
+            }
+          },
+          {
+            "action": {
+              "type": "pheno:set_state",
+              "state": "townstead_state:vampire_cure",
+              "amount": 1,
+              "duration": 3600
+            }
+          },
+          {
+            "action": {
+              "type": "pheno:set_state",
+              "state": "townstead_state:vampire_cure",
+              "amount": 1,
+              "duration": 4800
+            }
+          }
+        ]
+      },
+      {
+        "type": "pheno:play_sound",
+        "sound": "minecraft:entity.zombie_villager.cure"
+      },
+      {
+        "type": "pheno:add_count",
+        "key": "townstead:cured_vampirism",
+        "on": "other"
+      }
+    ]
+  }
+}

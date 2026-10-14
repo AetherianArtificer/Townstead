@@ -37,6 +37,33 @@ public final class WerewolfVillagers {
 
     private WerewolfVillagers() {}
 
+    private static volatile Object werewolfFaction;
+
+    /**
+     * A villager at werewolf level 1 or above: a werewolf to the Werewolves mod and to Vampirism, so
+     * silver, wolfsbane and the mod's other werewolf rules reach them. Players need no help, since
+     * their werewolf level is the mod's own.
+     */
+    public static boolean isWerewolf(LivingEntity entity) {
+        if (!(entity instanceof VillagerEntityMCA) || entity.level().isClientSide
+                || EntityStates.definition(WEREWOLF) == null) return false;
+        EntityStates.Resolved state = EntityStates.resolve(entity, WEREWOLF);
+        return state.active() && state.amount() >= 1;
+    }
+
+    /** The Werewolves mod's werewolf faction, or null without the mod. */
+    public static Object werewolfFaction() {
+        Object faction = werewolfFaction;
+        if (faction != null) return faction;
+        try {
+            faction = Class.forName("de.teamlapen.werewolves.api.WReference").getField("WEREWOLF_FACTION").get(null);
+            werewolfFaction = faction;
+        } catch (Throwable ignored) {
+            return null;
+        }
+        return faction;
+    }
+
     /** Holds a werewolf villager in {@code form} (0 human, 1 four legged, 2 upright) until {@link #release}. */
     public static void hold(VillagerEntityMCA villager, double form) {
         HELD.put(villager.getUUID(), form);

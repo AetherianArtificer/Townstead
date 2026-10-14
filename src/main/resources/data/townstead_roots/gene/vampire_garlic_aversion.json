@@ -7,10 +7,19 @@
   "category": "Abilities",
   "interval": 20,
   "condition": {
-    "type": "pheno:value",
-    "value": { "type": "pheno:provider", "provider": "vampirism:garlic" },
-    "comparison": ">=",
-    "compare_to": 1
+    "type": "pheno:or",
+    "conditions": [
+      {
+        "type": "pheno:value",
+        "value": { "type": "pheno:provider", "provider": "vampirism:garlic" },
+        "comparison": ">=",
+        "compare_to": 1
+      },
+      {
+        "type": "pheno:block",
+        "block_condition": { "type": "pheno:block", "block": "vampirism:garlic" }
+      }
+    ]
   },
   "action": { "type": "pheno:nothing" },
   "avoid": { "search_radius": 16, "edge_distance": 4 }

@@ -24,7 +24,10 @@ import net.minecraft.resources.ResourceKey;
 public final class VampireVillagers {
     public static final ResourceLocation STATE = ResourceLocation.tryParse("townstead_state:vampire");
     public static final ResourceLocation BLOOD = ResourceLocation.tryParse("townstead_state:vampire_blood");
+    /** Where a cure in progress used to be kept; read once to move it onto {@link #CURE}. */
     private static final String CURE_AT = "townstead:vampire_cure_at";
+    /** A cure in progress: the state's own timer runs it, and its state effect finishes it. */
+    public static final ResourceLocation CURE = ResourceLocation.tryParse("townstead_state:vampire_cure");
     private static final ResourceLocation SANGUINARE = ResourceLocation.tryParse("vampirism:sanguinare");
     // Faction checks run in AI target scans every tick; one answer per villager per tick is enough.
     private static final Map<LivingEntity, Long> VAMPIRE_CACHE = new WeakHashMap<>();
@@ -74,13 +77,15 @@ public final class VampireVillagers {
 
     /**
      * Vampirism's cure for its converted villagers: a golden apple given while weakened starts a
-     * cure that takes two to four minutes. True when the gift was taken as the cure.
+     * cure that takes two to four minutes. Handed to a villager, the apple is a gift reaction
+     * ({@code gift_reaction/vampire_cure}); this is the same cure for a wild vampire turned back.
+     * True when the apple was taken as the cure.
      */
     public static boolean tryStartCure(VillagerEntityMCA villager, net.minecraft.server.level.ServerPlayer player) {
         net.minecraft.world.item.ItemStack stack = player.getMainHandItem();
         if (!stack.is(net.minecraft.world.item.Items.GOLDEN_APPLE) || !isVampire(villager)
                 || !villager.hasEffect(net.minecraft.world.effect.MobEffects.WEAKNESS)
-                || villager.getPersistentData().contains(CURE_AT)) return false;
+                || curing(villager)) return false;
         if (!player.getAbilities().instabuild) stack.shrink(1);
         curedBy(player);
         beginCure(villager);
@@ -113,7 +118,7 @@ public final class VampireVillagers {
     /** A garlic injection given to a vampire villager starts the same cure, and leaves an empty injection. */
     public static boolean tryInjectCure(VillagerEntityMCA villager, net.minecraft.server.level.ServerPlayer player,
                                         net.minecraft.world.item.ItemStack stack) {
-        if (!isGarlicInjection(stack) || villager.getPersistentData().contains(CURE_AT)) return false;
+        if (!isGarlicInjection(stack) || curing(villager)) return false;
         boolean early = !isVampire(villager);
         if (early && !hasSanguinare(villager)) return false;
         if (!player.getAbilities().instabuild) {
@@ -153,29 +158,27 @@ public final class VampireVillagers {
     }
 
     private static void beginCure(VillagerEntityMCA villager) {
-        long at = villager.level().getGameTime() + 2400 + villager.getRandom().nextInt(2400);
-        villager.getPersistentData().putLong(CURE_AT, at);
+        EntityStates.set(villager, CURE, 1, 2400 + villager.getRandom().nextInt(2400), null);
         villager.playSound(net.minecraft.sounds.SoundEvents.ZOMBIE_VILLAGER_CURE, 1f, 1f);
     }
 
-    /** Finishes a pending cure. Cheap for everyone else: one missing tag. */
+    private static boolean curing(VillagerEntityMCA villager) {
+        return EntityStates.definition(CURE) != null && EntityStates.resolve(villager, CURE).active();
+    }
+
+    /** Looks after vampire villagers: rank, garlic, aging, night shift, and an old-style cure in progress. */
     public static void tick(VillagerEntityMCA villager) {
         if (EntityStates.definition(STATE) != null) VampireChronicles.observeRank(villager);
         if (EntityStates.definition(STATE) != null) VampireGarlic.tick(villager);
         if (villager.tickCount % 100 == 0) nightShift(villager);
         DhampirAging.tick(villager);
+        // A cure begun before cures became a state carries on as one, for the time it had left.
         var data = villager.getPersistentData();
-        if (!data.contains(CURE_AT) || villager.level().getGameTime() < data.getLong(CURE_AT)) return;
-        data.remove(CURE_AT);
-        if (!isVampire(villager)) return;
-        EntityStates.clear(villager, STATE, null);
-        EntityStates.clear(villager, BLOOD, null);
-        synchronized (VAMPIRE_CACHE) {
-            VAMPIRE_CACHE.remove(villager);
+        if (data.contains(CURE_AT) && EntityStates.definition(CURE) != null) {
+            long left = Math.max(1, data.getLong(CURE_AT) - villager.level().getGameTime());
+            data.remove(CURE_AT);
+            if (isVampire(villager)) EntityStates.set(villager, CURE, 1, left, null);
         }
-        villager.level().levelEvent(null, 1027, villager.blockPosition(), 0);
-        com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.survival(villager,
-                com.aetherianartificer.townstead.chronicle.emit.ChronicleTapKeys.VAMPIRE_CURED, Map.of());
     }
 
     private static final ResourceLocation NIGHT_SHIFT = ResourceLocation.tryParse("townstead:night_dweller");

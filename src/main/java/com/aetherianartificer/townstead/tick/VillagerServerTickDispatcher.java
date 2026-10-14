@@ -124,7 +124,8 @@ public final class VillagerServerTickDispatcher {
                     com.aetherianartificer.townstead.chronicle.emit.MarriageWatcher.tick(v, t)),
             resident("villager.thrall", null, (v, t) ->
                     com.aetherianartificer.townstead.compat.vampirism.Thralls.tick(v)),
-            resident("villager.werewolf", null, (v, t) ->
+            // Wild werewolves turn too, as the mod's own human werewolves do.
+            new Step("villager.werewolf", null, (v, t) ->
                     com.aetherianartificer.townstead.compat.werewolves.WerewolfVillagers.tick(v)),
             resident("villager.order_profession", Systems.POLITICS, (v, t) ->
                     com.aetherianartificer.townstead.politics.order.Orders.syncProfession(v)),

@@ -64,7 +64,7 @@
   "gene.townstead_roots.vampire_nocturnal": "Night Dweller",
   "gene.townstead_roots.vampire_nocturnal.desc": "Sleeps by day and is awake at night.",
   "gene.townstead_roots.vampire_garlic_aversion": "Garlic Aversion",
-  "gene.townstead_roots.vampire_garlic_aversion.desc": "Keeps away from places where garlic is diffused.",
+  "gene.townstead_roots.vampire_garlic_aversion.desc": "Keeps away from garlic crops and from places where garlic is diffused.",
   "gene.townstead_roots.vampire_kin": "Vampire Kin",
   "gene.townstead_roots.vampire_kin.desc": "Other vampires treat this person as one of their own. Vampire hunters treat them as prey.",
   "gene.townstead_roots.werewolf_kin": "Werewolf Kin",

@@ -69,6 +69,7 @@ public final class GeneAbilityTicker {
         // Clear hazard path-avoidance; the next tick re-applies whatever the new origin's genes imply.
         if (entity instanceof PathfinderMob mob) {
             Hazard.clearProactive(mob);
+            com.aetherianartificer.townstead.root.hazard.HazardPaths.clear(mob);
         }
     }
 
@@ -144,6 +145,7 @@ public final class GeneAbilityTicker {
             hazard.installProactive(mob, ctx);
             if (aot.condition() == null || aot.condition().test(ctx)) inDanger = true;
         }
+        com.aetherianartificer.townstead.root.hazard.HazardPaths.update(mob, hazards, ctx);
         if (!hazards.isEmpty()) steerToSafety(mob, ctx, hazards, inDanger);
     }
 
