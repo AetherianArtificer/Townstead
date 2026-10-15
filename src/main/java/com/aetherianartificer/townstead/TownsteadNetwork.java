@@ -154,6 +154,10 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload::read,
                 TownsteadNetwork::handleConsumableEffectsSync);
+        registerS2C(com.aetherianartificer.townstead.culture.DestinyLabelsSyncPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.culture.DestinyLabelsSyncPayload::read,
+                payload -> com.aetherianartificer.townstead.client.DestinyLabels.set(payload.labels()));
         registerS2C(com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload.class,
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload::read,
@@ -597,9 +601,7 @@ public final class TownsteadNetwork {
     private static void handleHeritageRequest(
             com.aetherianartificer.townstead.root.HeritageRequestC2SPayload payload, ServerPlayer sp) {
         VillagerEntityMCA villager = findVillager(sp.getServer(), payload.villagerUuid());
-        sendToPlayer(sp, villager != null
-                ? com.aetherianartificer.townstead.root.HeritageView.build(villager)
-                : com.aetherianartificer.townstead.root.HeritageSyncPayload.unavailable(payload.villagerUuid()));
+        sendToPlayer(sp, com.aetherianartificer.townstead.root.HeritageView.forRequest(sp, villager, payload.villagerUuid()));
     }
 
     private static void handleHeritageSync(com.aetherianartificer.townstead.root.HeritageSyncPayload payload) {

@@ -141,6 +141,7 @@
   ],
   "client": [
     "client.RecipeBookChangeMixin",
+    "client.DestinyScreenLabelMixin",
     "compat.thirst.TanDrinkTooltipMixin",
     "compat.stardewhud.StardewHudDateMixin",
     "compat.stardewhud.StardewHudSeasonMixin",

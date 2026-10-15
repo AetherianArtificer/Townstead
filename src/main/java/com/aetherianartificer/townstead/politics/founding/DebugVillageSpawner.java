@@ -287,7 +287,7 @@ public final class DebugVillageSpawner {
         return box.minX() != 0 || box.minY() != 0 || box.minZ() != 0 || box.maxX() != 0 || box.maxY() != 0 || box.maxZ() != 0;
     }
 
-    private static int spawnResidents(ServerLevel level, FoundingProfileDefinition profile,
+    static int spawnResidents(ServerLevel level, FoundingProfileDefinition profile,
                                       List<BlockPos> homes, int residentCount) {
         int spawned = 0;
         for (int index = 0; index < residentCount; index++) {
@@ -315,7 +315,7 @@ public final class DebugVillageSpawner {
         return spawned;
     }
 
-    private static java.util.stream.Stream<BlockPos> homes(ServerLevel level, BlockPos anchor) {
+    static java.util.stream.Stream<BlockPos> homes(ServerLevel level, BlockPos anchor) {
         return level.getPoiManager().findAll(
                         holder -> holder.is(PoiTypes.HOME), ignored -> true, anchor, VILLAGE_RADIUS,
                         PoiManager.Occupancy.ANY)
@@ -323,7 +323,7 @@ public final class DebugVillageSpawner {
                 .distinct();
     }
 
-    private static void refreshPoiData(ServerLevel level, BlockPos anchor) {
+    static void refreshPoiData(ServerLevel level, BlockPos anchor) {
         int chunkRadius = Math.floorDiv(VILLAGE_RADIUS, 16) + 1;
         ChunkPos center = new ChunkPos(anchor);
         int minSectionY = SectionPos.blockToSectionCoord(

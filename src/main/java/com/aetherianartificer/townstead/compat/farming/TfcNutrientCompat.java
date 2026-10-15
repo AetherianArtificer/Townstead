@@ -76,6 +76,47 @@ public final class TfcNutrientCompat implements FarmerNutrientCompat {
     }
 
     @Override
+    public double score(ServerLevel level, BlockPos soilPos, ItemStack stack) {
+        if (!wouldHelp(level, soilPos, stack)) return 0;
+        Object farmland = farmland(level, soilPos);
+        Object fertilizer = fertilizer(stack);
+        float bonus = soilBonus(level.getBlockState(soilPos));
+        double score = 0;
+        try {
+            for (Object type : nutrientTypes) {
+                float room = 1f - ((Number) getNutrient.invoke(farmland, type)).floatValue();
+                float dose = ((Number) fertilizerNutrient.invoke(fertilizer, type)).floatValue() * bonus;
+                if (room > 0 && dose > 0) score += Math.min(dose, room) * room;
+            }
+        } catch (Throwable ignored) {
+            return 0;
+        }
+        return score;
+    }
+
+    @Override
+    public boolean feedsLowest(ServerLevel level, BlockPos soilPos, ItemStack stack) {
+        Object farmland = farmland(level, soilPos);
+        Object fertilizer = fertilizer(stack);
+        if (farmland == null || fertilizer == null) return false;
+        try {
+            Object lowest = null;
+            float lowestValue = Float.MAX_VALUE;
+            for (Object type : nutrientTypes) {
+                float value = ((Number) getNutrient.invoke(farmland, type)).floatValue();
+                if (value < lowestValue) {
+                    lowest = type;
+                    lowestValue = value;
+                }
+            }
+            return lowest != null && lowestValue < FEED_BELOW
+                    && ((Number) fertilizerNutrient.invoke(fertilizer, lowest)).floatValue() > 0;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    @Override
     public boolean feed(ServerLevel level, BlockPos soilPos, ItemStack stack) {
         Object farmland = farmland(level, soilPos);
         Object fertilizer = fertilizer(stack);

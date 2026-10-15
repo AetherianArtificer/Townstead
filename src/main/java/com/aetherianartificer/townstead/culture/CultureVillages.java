@@ -30,11 +30,21 @@ import java.util.Set;
 public final class CultureVillages {
     private static volatile Map<ResourceLocation, ResourceLocation> cultureByStructure = Map.of();
     private static volatile Map<ResourceLocation, List<ResourceLocation>> profilesByStructure = Map.of();
+    private static volatile Map<ResourceLocation, String> labelByStructure = Map.of();
 
     private CultureVillages() {}
 
     static void replaceCultures(Map<ResourceLocation, ResourceLocation> byStructure) {
         cultureByStructure = Map.copyOf(byStructure);
+    }
+
+    static void replaceLabels(Map<ResourceLocation, String> byStructure) {
+        labelByStructure = Map.copyOf(byStructure);
+    }
+
+    /** What to call each culture village structure where players choose a place, such as Destiny. */
+    public static Map<ResourceLocation, String> labels() {
+        return labelByStructure;
     }
 
     public static void replaceProfiles(Map<ResourceLocation, List<ResourceLocation>> byStructure) {

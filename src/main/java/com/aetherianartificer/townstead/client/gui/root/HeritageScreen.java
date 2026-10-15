@@ -207,7 +207,7 @@ public class HeritageScreen extends Screen {
         }
     }
 
-    private void drawGeneRow(GuiGraphics g, Font font, HeritageSyncPayload.GeneRow row,
+    static void drawGeneRow(GuiGraphics g, Font font, HeritageSyncPayload.GeneRow row,
                              int left, int top, int innerW, int mouseX, int mouseY) {
         int x1 = left + innerW;
         int y1 = top + ROW_H;
@@ -251,7 +251,7 @@ public class HeritageScreen extends Screen {
     }
 
     /** Full stat-block tooltip for a gene row (same shape as the Roots genes menu). */
-    private List<Component> heritageTooltip(HeritageSyncPayload.GeneRow row) {
+    static List<Component> heritageTooltip(HeritageSyncPayload.GeneRow row) {
         List<Component> lines = new ArrayList<>();
         GeneCatalogEntry def = RootCatalogClient.gene(row.geneId());
         String name = def != null && !def.name().isEmpty() ? def.name() : row.label();

@@ -1102,7 +1102,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             return;
         }
         ItemStack fertilizer = villager.getInventory().getItem(slot);
-        if (townstead$feedsCrop(soilPos)) {
+        if (townstead$feedsCrop(soilPos) && com.aetherianartificer.townstead.farming.CropFertilizers.isFertilizer(fertilizer)) {
             com.aetherianartificer.townstead.farming.FarmerBlockUse.Result used = com.aetherianartificer.townstead.farming.CropFertilizers.use(level, soilPos.above(), fertilizer);
             if (used == null) {
                 townstead$rejectCurrentTarget(soilPos, gameTime);
@@ -1150,11 +1150,13 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         return false;
     }
 
-    private static boolean townstead$hasFertilizer(SimpleContainer inv) {
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            if (townstead$isAnyFertilizer(inv.getItem(i))) return true;
-        }
-        return false;
+    /** Whether something held suits this cell: helps its crop, or feeds its scarcest nutrient. */
+    private boolean townstead$servesWell(SimpleContainer inv, ServerLevel level, BlockPos soilPos) {
+        int slot = townstead$findFertilizerSlot(inv, level, soilPos);
+        if (slot < 0) return false;
+        ItemStack stack = inv.getItem(slot);
+        if (townstead$feedsCrop(soilPos) && com.aetherianartificer.townstead.farming.CropFertilizers.isFertilizer(stack)) return true;
+        return com.aetherianartificer.townstead.compat.farming.FarmerNutrientCompatRegistry.feedsLowest(level, soilPos, stack);
     }
 
     /** A fertilizer in the inventory that would mostly land on this cell, or -1. */
@@ -1165,12 +1167,19 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             for (int i = 0; i < inv.getContainerSize(); i++) {
                 if (com.aetherianartificer.townstead.farming.CropFertilizers.wouldHelp(level, cropPos, crop, inv.getItem(i))) return i;
             }
-            return -1;
+            // Nutrient farmland (TFC) feeds its crop through the soil, so its own fertilizers count here too.
         }
+        // The one that lands most where the soil is scarcest.
+        int best = -1;
+        double bestScore = 0;
         for (int i = 0; i < inv.getContainerSize(); i++) {
-            if (com.aetherianartificer.townstead.compat.farming.FarmerNutrientCompatRegistry.wouldHelp(level, soilPos, inv.getItem(i))) return i;
+            double score = com.aetherianartificer.townstead.compat.farming.FarmerNutrientCompatRegistry.score(level, soilPos, inv.getItem(i));
+            if (score > bestScore) {
+                best = i;
+                bestScore = score;
+            }
         }
-        return -1;
+        return best;
     }
 
     private void townstead$doTill(ServerLevel level, VillagerEntityMCA villager, BlockPos soilPos, long gameTime) {
@@ -1705,9 +1714,20 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
                 townstead$pullFromStorage(level, villager,
                         FarmerCropCompatRegistry::isRope, ItemStack::getCount, StorageUse.INGREDIENT);
             }
-            if (snapshot.fertilizeTargetCount() > 0 && !townstead$hasFertilizer(inv)) {
-                townstead$pullFromStorage(level, villager,
-                        HarvestWorkTask::townstead$isAnyFertilizer, ItemStack::getCount, StorageUse.INGREDIENT);
+            // A cell the held fertilizers serve badly (bone meal on nitrogen-starved soil) sends them for one that suits it.
+            java.util.List<BlockPos> underserved = new java.util.ArrayList<>();
+            for (BlockPos target : snapshot.fertilizeTargets()) {
+                if (!townstead$servesWell(inv, level, target)) underserved.add(target);
+            }
+            if (!underserved.isEmpty()) {
+                townstead$pullFromStorage(level, villager, stack -> {
+                    if (!townstead$isAnyFertilizer(stack)) return false;
+                    SimpleContainer one = new SimpleContainer(stack);
+                    for (BlockPos target : underserved) {
+                        if (townstead$servesWell(one, level, target)) return true;
+                    }
+                    return false;
+                }, ItemStack::getCount, StorageUse.INGREDIENT);
             }
             // Growing a crop giant takes a fertilizer that can; fetch one alongside plain bone meal.
             if (snapshot.fertilizeTargetCount() > 0 && !townstead$has(inv, stack -> stack.is(com.aetherianartificer.townstead.farming.CropFertilizers.GIANT))) {

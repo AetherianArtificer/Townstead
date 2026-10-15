@@ -586,8 +586,14 @@ public class Townstead {
                         e.getVanillaEvent().unwrapKey().map(net.minecraft.resources.ResourceKey::location)
                                 .orElse(null),
                         e.getEventPosition(), e.getCause()));
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.level.ChunkEvent.Load e) -> {
+            if (e.getLevel() instanceof ServerLevel serverLevel) {
+                com.aetherianartificer.townstead.politics.founding.CultureVillageFounding.onChunkLoad(serverLevel, e.getChunk());
+            }
+        });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> {
             com.aetherianartificer.townstead.temperature.RoomHeat.tick(e.getServer());
+            com.aetherianartificer.townstead.politics.founding.CultureVillageFounding.tick(e.getServer());
             com.aetherianartificer.townstead.root.capability.ModifierAuraSource.tick(e.getServer());
             com.aetherianartificer.townstead.politics.charter.CharterMemberships.tick(e.getServer());
             com.aetherianartificer.townstead.compat.vampirism.VampireTotemWatch.tick(e.getServer());
@@ -852,14 +858,14 @@ public class Townstead {
                 PacketDistributor.sendToPlayer(e.getPlayer(), townstead$calendarSync(e.getPlayer()));
                 PacketDistributor.sendToPlayer(e.getPlayer(),
                         com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload.snapshot());
-                PacketDistributor.sendToPlayer(e.getPlayer(), com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload.snapshot()); PacketDistributor.sendToPlayer(e.getPlayer(), com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload.snapshot());
+                PacketDistributor.sendToPlayer(e.getPlayer(), com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload.snapshot()); PacketDistributor.sendToPlayer(e.getPlayer(), com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload.snapshot()); PacketDistributor.sendToPlayer(e.getPlayer(), com.aetherianartificer.townstead.culture.DestinyLabelsSyncPayload.snapshot());
             } else {
                 e.getPlayerList().getPlayers().forEach(sp -> {
                     townstead$sendRootData(sp);
                     PacketDistributor.sendToPlayer(sp, townstead$calendarSync(sp));
                     PacketDistributor.sendToPlayer(sp,
                             com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload.snapshot());
-                    PacketDistributor.sendToPlayer(sp, com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload.snapshot()); PacketDistributor.sendToPlayer(sp, com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload.snapshot());
+                    PacketDistributor.sendToPlayer(sp, com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload.snapshot()); PacketDistributor.sendToPlayer(sp, com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload.snapshot()); PacketDistributor.sendToPlayer(sp, com.aetherianartificer.townstead.culture.DestinyLabelsSyncPayload.snapshot());
                 });
                 com.aetherianartificer.townstead.devlink.BenchLink.onReload();
             }
@@ -1252,9 +1258,15 @@ public class Townstead {
                         net.minecraft.core.registries.BuiltInRegistries.GAME_EVENT
                                 .getKey(e.getVanillaEvent()),
                         e.getEventPosition(), e.getCause()));
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.level.ChunkEvent.Load e) -> {
+            if (e.getLevel() instanceof ServerLevel serverLevel) {
+                com.aetherianartificer.townstead.politics.founding.CultureVillageFounding.onChunkLoad(serverLevel, e.getChunk());
+            }
+        });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.TickEvent.ServerTickEvent e) -> {
             if (e.phase == net.minecraftforge.event.TickEvent.Phase.END) {
                 com.aetherianartificer.townstead.temperature.RoomHeat.tick(e.getServer());
+                com.aetherianartificer.townstead.politics.founding.CultureVillageFounding.tick(e.getServer());
                 com.aetherianartificer.townstead.root.capability.ModifierAuraSource.tick(e.getServer());
             com.aetherianartificer.townstead.politics.charter.CharterMemberships.tick(e.getServer());
             com.aetherianartificer.townstead.compat.vampirism.VampireTotemWatch.tick(e.getServer());
@@ -1517,14 +1529,14 @@ public class Townstead {
                 TownsteadNetwork.sendToPlayer(e.getPlayer(), townstead$calendarSync(e.getPlayer()));
                 TownsteadNetwork.sendToPlayer(e.getPlayer(),
                         com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload.snapshot());
-                TownsteadNetwork.sendToPlayer(e.getPlayer(), com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload.snapshot()); TownsteadNetwork.sendToPlayer(e.getPlayer(), com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload.snapshot());
+                TownsteadNetwork.sendToPlayer(e.getPlayer(), com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload.snapshot()); TownsteadNetwork.sendToPlayer(e.getPlayer(), com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload.snapshot()); TownsteadNetwork.sendToPlayer(e.getPlayer(), com.aetherianartificer.townstead.culture.DestinyLabelsSyncPayload.snapshot());
             } else {
                 e.getPlayerList().getPlayers().forEach(sp -> {
                     townstead$sendRootData(sp);
                     TownsteadNetwork.sendToPlayer(sp, townstead$calendarSync(sp));
                     TownsteadNetwork.sendToPlayer(sp,
                             com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload.snapshot());
-                    TownsteadNetwork.sendToPlayer(sp, com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload.snapshot()); TownsteadNetwork.sendToPlayer(sp, com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload.snapshot());
+                    TownsteadNetwork.sendToPlayer(sp, com.aetherianartificer.townstead.block.haze.HazeKindsSyncPayload.snapshot()); TownsteadNetwork.sendToPlayer(sp, com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload.snapshot()); TownsteadNetwork.sendToPlayer(sp, com.aetherianartificer.townstead.culture.DestinyLabelsSyncPayload.snapshot());
                 });
                 com.aetherianartificer.townstead.devlink.BenchLink.onReload();
             }
@@ -3665,6 +3677,12 @@ public class Townstead {
                 this::handleConsumableEffectsSync
         );
         registrar.playToClient(
+                com.aetherianartificer.townstead.culture.DestinyLabelsSyncPayload.TYPE,
+                com.aetherianartificer.townstead.culture.DestinyLabelsSyncPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.client.DestinyLabels.set(payload.labels()))
+        );
+        registrar.playToClient(
                 com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload.TYPE,
                 com.aetherianartificer.townstead.dialogue.DialogueThemesSyncPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
@@ -4315,9 +4333,8 @@ public class Townstead {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer sp)) return;
             VillagerEntityMCA villager = townstead$findVillager(sp.getServer(), payload.villagerUuid());
-            PacketDistributor.sendToPlayer(sp, villager != null
-                    ? com.aetherianartificer.townstead.root.HeritageView.build(villager)
-                    : com.aetherianartificer.townstead.root.HeritageSyncPayload.unavailable(payload.villagerUuid()));
+            PacketDistributor.sendToPlayer(sp,
+                    com.aetherianartificer.townstead.root.HeritageView.forRequest(sp, villager, payload.villagerUuid()));
         });
     }
 

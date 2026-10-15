@@ -21,6 +21,12 @@ public interface FarmerNutrientCompat {
     /** True when one of this stack would mostly land, rather than spill over a full nutrient. */
     boolean wouldHelp(ServerLevel level, BlockPos soilPos, ItemStack stack);
 
+    /** How much of one of this stack lands, weighted toward the scarcest nutrient; 0 when it would not help. */
+    double score(ServerLevel level, BlockPos soilPos, ItemStack stack);
+
+    /** True when the stack adds to the nutrient that is lowest here. */
+    boolean feedsLowest(ServerLevel level, BlockPos soilPos, ItemStack stack);
+
     /** Applies one item of the stack. The caller shrinks the stack on success. */
     boolean feed(ServerLevel level, BlockPos soilPos, ItemStack stack);
 

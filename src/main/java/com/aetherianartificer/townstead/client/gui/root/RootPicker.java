@@ -25,8 +25,9 @@ import java.util.List;
  *   <li><b>Root</b>: a summary of what is on show (art, name, backstory, facts, powers), with
  *       <b>Browse roots...</b> to open {@link RootBrowseScreen} and <b>Random</b> to try another.
  *       A mix shows as one too, and Random becomes <b>Roll again</b>.</li>
- *   <li><b>Genes</b>: the inherited-gene chips ({@link RootTraitsWidget}), full height; hovering a
- *       chip shows its full stat-block tooltip.</li>
+ *   <li><b>Genes</b>: the target's own genes ({@link HeritageGenesWidget}) while they are shown as
+ *       they are; a single root on preview shows its inherited-gene chips ({@link RootTraitsWidget}).
+ *       A mix on preview has none to show, since its genes are rolled on Apply.</li>
  * </ul>
  * The tab opens on the target as it is; anything else on show is a founding from its
  * {@link RootEditSession}, and Apply, below both, gives the target exactly that one. With a single root
@@ -82,7 +83,10 @@ public final class RootPicker {
         int halfW = (w - gap) / 2;
 
         RootSummaryWidget summary = new RootSummaryWidget(x, contentTop, w, summaryBottom - contentTop);
-        RootTraitsWidget master = new RootTraitsWidget(x, contentTop, w, (choice ? applyTop - gap : y + h) - contentTop);
+        int genesH = (choice ? applyTop - gap : y + h) - contentTop;
+        RootTraitsWidget master = new RootTraitsWidget(x, contentTop, w, genesH);
+        HeritageGenesWidget own = new HeritageGenesWidget(x, contentTop, w, genesH);
+        own.visible = false;
 
         Button apply = Button.builder(Component.translatable("townstead.origin.apply"), b -> session.apply())
                 .pos(x, applyTop).size(w, buttonH).build();
@@ -116,17 +120,28 @@ public final class RootPicker {
         // What is on show: the founding when one is, else the target as it is.
         final RootEditSession.Choice[] last = { null };
         final RootCatalogEntry[] single = { null };
+        final boolean[] genesView = { false };
+        // The target as they are, not a founding on preview: their own genes can show.
+        final boolean[] asIs = { false };
+        Runnable showGenes = () -> {
+            boolean ownGenes = asIs[0];
+            own.visible = genesView[0] && ownGenes;
+            master.visible = genesView[0] && !ownGenes;
+            if (own.visible) own.show(targetUuid(mc, session.target()));
+            if (master.visible) master.setRoot(single[0]);
+        };
         Runnable refresh = () -> {
             RootEditSession.Choice shown = session.shownChoice();
             RootEditSession.Founding founding = session.shown();
             RootEditSession.Identity identity = session.identity();
             single[0] = shown != null && shown.mix() == null ? RootCatalogClient.origin(shown.rootId()) : null;
+            boolean wasAsIs = asIs[0];
+            asIs[0] = shown != null && founding == null;
             if (shown == null) {
                 summary.setStatus(Component.translatable("townstead.root.loading"));
             } else {
                 summary.setStatus(null);
-                if (!shown.same(last[0])) {
-                    // A mix's genes are rolled server-side, so its Genes view would only show one root's.
+                if (!shown.same(last[0]) || wasAsIs != asIs[0]) {
                     if (shown.mix() != null) {
                         String name = founding != null ? founding.name() : identity != null ? identity.name() : "";
                         String backstory = founding != null ? founding.backstory() : identity != null ? identity.backstory() : "";
@@ -134,14 +149,14 @@ public final class RootPicker {
                     } else {
                         summary.setRoot(single[0]);
                     }
-                    if (master.visible && single[0] != null) master.setRoot(single[0]);
+                    showGenes.run();
                 }
             }
             last[0] = shown;
             apply.active = session.canApply();
             random.active = shown != null && !session.rolling();
             browse.active = shown != null;
-            tabGenes.active = single[0] != null && !master.visible;
+            tabGenes.active = (asIs[0] || single[0] != null) && !genesView[0];
             random.setMessage(Component.translatable(shown != null && shown.mix() != null
                     ? "townstead.root.roll" : "townstead.root.random"));
         };
@@ -149,16 +164,17 @@ public final class RootPicker {
             summary.visible = true;
             browse.visible = choice;
             random.visible = choice && listed.size() > 1;
-            master.visible = false;
+            genesView[0] = false;
+            showGenes.run();
             tabRoot.active = false;
-            tabGenes.active = single[0] != null;
+            tabGenes.active = asIs[0] || single[0] != null;
         };
         mode[1] = () -> {   // Genes view
             summary.visible = false;
             browse.visible = false;
             random.visible = false;
-            master.visible = true;
-            if (single[0] != null) master.setRoot(single[0]);
+            genesView[0] = true;
+            showGenes.run();
             tabRoot.active = true;
             tabGenes.active = false;
         };
@@ -170,7 +186,14 @@ public final class RootPicker {
         // The editor rebuilt the tab and reset its model; the founding on show goes back on it as it was.
         session.redisplay();
 
-        return new Widgets(List.of(tabRoot, tabGenes, summary, master, browse, random, apply));
+        return new Widgets(List.of(tabRoot, tabGenes, summary, master, own, browse, random, apply));
+    }
+
+    @Nullable
+    private static java.util.UUID targetUuid(Minecraft mc, int target) {
+        if (target == RootSetC2SPayload.SELF) return mc.player == null ? null : mc.player.getUUID();
+        net.minecraft.world.entity.Entity entity = mc.level == null ? null : mc.level.getEntity(target);
+        return entity == null ? null : entity.getUUID();
     }
 
     static String currentRootId(int target) {

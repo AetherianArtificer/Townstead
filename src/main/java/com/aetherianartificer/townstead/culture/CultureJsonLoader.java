@@ -162,7 +162,34 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
         Map<ResourceLocation, Culture> resolved = inherit(loaded);
         Cultures.replace(resolved, legacyIds);
         CultureVillages.replaceCultures(villages);
+        CultureVillages.replaceLabels(labels(villages, resolved, lang));
         LOGGER.info("Loaded {} culture(s)", resolved.size());
+    }
+
+    /**
+     * A name for each culture village structure: the pack's {@code gui.destiny.<namespace>.<path>}
+     * translation when it has one (path dots for slashes), else the culture's adjective and the
+     * village kind, as in "Highland Town".
+     */
+    static Map<ResourceLocation, String> labels(Map<ResourceLocation, ResourceLocation> villages,
+                                                Map<ResourceLocation, Culture> cultures, Map<String, String> lang) {
+        Map<ResourceLocation, String> out = new LinkedHashMap<>();
+        villages.forEach((structure, cultureId) -> {
+            String key = "gui.destiny." + structure.getNamespace() + "." + structure.getPath().replace('/', '.');
+            String label = lang.get(key);
+            if (label == null) {
+                Culture culture = cultures.get(cultureId);
+                if (culture == null) return;
+                String people = culture.demonym() != null
+                        ? culture.demonym().adjectiveOrSingular().getString() : culture.displayName().getString();
+                String path = structure.getPath();
+                String kind = path.substring(path.lastIndexOf('/') + 1).replace('_', ' ');
+                if (kind.isEmpty()) return;
+                label = people + " " + Character.toUpperCase(kind.charAt(0)) + kind.substring(1);
+            }
+            out.put(structure, label);
+        });
+        return out;
     }
 
     /** {@code "villages": ["ns:village/town"]}: the village structures that found as this culture. */
