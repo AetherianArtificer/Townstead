@@ -110,6 +110,8 @@ public final class AttachmentGeoLoader {
     // y-down, so the vanilla "DOWN" polygon (min-Y vertices) is the visual TOP face and vice versa;
     // Bedrock's per-face "up" therefore lands in the DOWN slot.
     private static final int F_DOWN = 0, F_UP = 1, F_WEST = 2, F_NORTH = 3, F_EAST = 4, F_SOUTH = 5;
+    // Thinner than this along an axis (in pixels, after inflate) is a plane, not a box.
+    private static final float FLAT = 1.0e-3f;
     private static final Vector3f[] NORMALS = {
             new Vector3f(0, -1, 0), new Vector3f(0, 1, 0), new Vector3f(-1, 0, 0),
             new Vector3f(0, 0, -1), new Vector3f(1, 0, 0), new Vector3f(0, 0, 1),
@@ -173,6 +175,17 @@ public final class AttachmentGeoLoader {
             uvRects[F_EAST] = new float[]{u + sz + sx, v + sz, u + sz + sx + sz, v + sz + sy};
             uvRects[F_SOUTH] = new float[]{u + sz + sx + sz, v + sz, u + sz + sx + sz + sx, v + sz + sy};
         }
+
+        // A flat cube (a wing membrane, a fin) is one plane: its two faces lie on each other and the
+        // attachment layers draw without culling, so both would show and z-fight. Keep the front
+        // face of the box layout, which shows from behind too, and drop the zero-area edges.
+        boolean flatX = Math.abs(x2 - x1) < FLAT, flatY = Math.abs(y2 - y1) < FLAT, flatZ = Math.abs(z2 - z1) < FLAT;
+        if (flatX) uvRects[F_EAST] = null;
+        if (flatY) uvRects[F_UP] = null;
+        if (flatZ) uvRects[F_SOUTH] = null;
+        if (flatX || flatZ) uvRects[F_DOWN] = uvRects[F_UP] = null;
+        if (flatX || flatY) uvRects[F_NORTH] = uvRects[F_SOUTH] = null;
+        if (flatY || flatZ) uvRects[F_WEST] = uvRects[F_EAST] = null;
 
         List<AttachmentGeo.Polygon> polygons = new ArrayList<>(6);
         for (int face = 0; face < 6; face++) {

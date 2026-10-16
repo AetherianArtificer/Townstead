@@ -81,6 +81,7 @@ public final class BuildProportions {
         scalePart(model.rightLeg, proportions, "legs", xz0, y0, bulk);
         scalePart(model.leftLeg, proportions, "legs", xz0, y0, bulk);
         scalePart(model.body, proportions, "body", xz0, y0, bulk);
+        attachLimbs(model);
 
         // Hidden features (prevent_feature_render): zero the listed groups after proportions.
         com.aetherianartificer.townstead.client.root.HideFeatures.hide(
@@ -98,6 +99,35 @@ public final class BuildProportions {
                 model.rightLeg, model.leftLeg, model.body}) {
             scalePart(part, null, "", 1f, 1f, 0.5f);
         }
+        attachLimbs(model);
+    }
+
+    // The player mesh MCA draws with: arms pivot 5 px out with their inner face 1 px in from the
+    // pivot, on a torso 4 px either side of centre; legs pivot 1.9 px out, 2 px either side.
+    private static final float ARM_PIVOT = 5.0f;
+    private static final float ARM_INNER = 1.0f;
+    private static final float TORSO_HALF = 4.0f;
+    private static final float LEG_PIVOT = 1.9f;
+    private static final float LEG_HALF = 2.0f;
+
+    /**
+     * Each part scales about its own pivot, so a narrowed torso pulls in from its sides while a
+     * narrowed arm shrinks out toward its shoulder pivot, and the two come apart. Draw the limbs
+     * back in until the arms' inner faces meet the torso and the legs meet each other. Only ever
+     * inward: a stout build that already overlaps keeps its look.
+     */
+    private static void attachLimbs(HumanoidModel<?> model) {
+        // vanilla setupAnim sets the arm pivots (±5, or swung round by an attack) every frame, so
+        // scaling them here never compounds
+        float arm = Math.min(ARM_PIVOT, TORSO_HALF * model.body.xScale + ARM_INNER * model.rightArm.xScale) / ARM_PIVOT;
+        model.rightArm.x *= arm;
+        model.rightArm.z *= arm;
+        arm = Math.min(ARM_PIVOT, TORSO_HALF * model.body.xScale + ARM_INNER * model.leftArm.xScale) / ARM_PIVOT;
+        model.leftArm.x *= arm;
+        model.leftArm.z *= arm;
+        // nothing else moves a leg pivot sideways, so these are set outright (and put back by reset())
+        model.rightLeg.x = -Math.min(LEG_PIVOT, LEG_HALF * model.rightLeg.xScale - (LEG_HALF - LEG_PIVOT));
+        model.leftLeg.x = Math.min(LEG_PIVOT, LEG_HALF * model.leftLeg.xScale - (LEG_HALF - LEG_PIVOT));
     }
 
     /**

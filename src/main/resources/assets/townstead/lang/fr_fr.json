@@ -3550,6 +3550,7 @@
   "townstead.career.screen.switch_hint": "Cliquez pour changer de carrière",
   "townstead.career.screen.insight": "Expertise",
   "townstead.career.screen.points": "Expertise : %s",
+  "townstead.resource.insight": "Savoir",
   "townstead.career.screen.points_label": "Expertise",
   "townstead.career.screen.general": "Général",
   "townstead.career.screen.cost": "Coût : %s d'Expertise",
