@@ -81,6 +81,9 @@ public final class TemperatureSettings {
         appliances.put("legendarysurvivaloverhaul:heater", new ThermalAppliance(3750, 15, 15, false));
         appliances.put("legendarysurvivaloverhaul:cooler", new ThermalAppliance(-3750, -15, -15));
         appliances.put("legendarysurvivaloverhaul:heater_top", new ThermalAppliance(0, 0, 0));
+        appliances.put("cold_sweat:hearth_bottom", new ThermalAppliance(4000, 0, 1, false, true));
+        appliances.put("cold_sweat:boiler", new ThermalAppliance(3000, 0, 1, false));
+        appliances.put("cold_sweat:icebox", new ThermalAppliance(-3000, 0, -1, false));
         appliances.put("minecraft:campfire", new ThermalAppliance(2500, 30, 0));
         appliances.put("minecraft:soul_campfire", new ThermalAppliance(-2000, -8, 0));
         appliances.put("minecraft:furnace", new ThermalAppliance(300, 8, 0));

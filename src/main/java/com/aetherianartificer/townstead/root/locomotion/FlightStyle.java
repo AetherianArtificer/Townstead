@@ -29,7 +29,7 @@ public enum FlightStyle {
     FLAP("flap", Physics.ELYTRA, 8.0, 1.5, 5.0, 0.6, 1.0, 32.0, 6, false, 0.6),
     SOAR("soar", Physics.ELYTRA, 16.0, 3.0, 7.0, 0.35, 0.6, 48.0, 10, true, 0.8),
     HOVER("hover", Physics.NO_GRAVITY, 3.0, 0.5, Double.POSITIVE_INFINITY, 4.0, 4.0, 32.0, 4, false, 0.3),
-    DRIFT("drift", Physics.NO_GRAVITY, 0.75, 0.25, Double.POSITIVE_INFINITY, 4.0, 4.0, Double.POSITIVE_INFINITY, 3, false, 0.18);
+    DRIFT("drift", Physics.NO_GRAVITY, 0.2, 0.25, Double.POSITIVE_INFINITY, 4.0, 4.0, Double.POSITIVE_INFINITY, 3, false, 0.18);
 
     /** Elytra fall-flight steered by look angle, or gravity-free movement driven directly. */
     public enum Physics { ELYTRA, NO_GRAVITY }

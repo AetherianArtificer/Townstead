@@ -1049,6 +1049,11 @@ public class Townstead {
                         level, e.getEntity(), e.getSource(), modified);
             }
         });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.MobEffectEvent.Applicable e) -> {
+            if (com.aetherianartificer.townstead.temperature.HearthAirRule.blocks(e.getEffectInstance().getEffect().value())) {
+                e.setResult(net.neoforged.neoforge.event.entity.living.MobEffectEvent.Applicable.Result.DO_NOT_APPLY);
+            }
+        });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.EntityMountEvent e) -> {
             if (e.isMounting() && !com.aetherianartificer.townstead.pheno.state.StateForms.canRide(e.getEntityMounting())) {
                 e.setCanceled(true);
@@ -1737,6 +1742,11 @@ public class Townstead {
             if (modified > 0f && e.getEntity().level() instanceof net.minecraft.server.level.ServerLevel level) {
                 com.aetherianartificer.townstead.reaction.ReactionDispatcher.onDamage(
                         level, e.getEntity(), e.getSource(), modified);
+            }
+        });
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.MobEffectEvent.Applicable e) -> {
+            if (com.aetherianartificer.townstead.temperature.HearthAirRule.blocks(e.getEffectInstance().getEffect())) {
+                e.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.EntityMountEvent e) -> {

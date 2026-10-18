@@ -35,6 +35,18 @@ class StorySimulationTest {
         assertSceneLeadsTo(FOUNDER, "greet", Set.of(), "found");
     }
 
+    @Test
+    void anOpenJobAloneDoesNotCallThePlayerOver() throws Exception {
+        Sim sim = new Sim(compile(FOUNDER), Set.of());
+        sim.story.getVariablesState().set("met", 2);
+        sim.story.getVariablesState().set("offered", true);
+        sim.story.getVariablesState().set("founded", true);
+        sim.story.getVariablesState().set("altar_started", true);
+        sim.story.getVariablesState().set("quest_open", true);
+        Object line = sim.story.evaluateFunction("calling");
+        assertTrue(line == null || line.toString().isEmpty(), () -> "called out \"" + line + "\" for an open job");
+    }
+
     /**
      * From the start, following the marked choices reaches {@code act} within a few choices; and
      * from every choice the player can reach on the way, the marked way forward is on screen or one

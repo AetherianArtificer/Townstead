@@ -92,8 +92,9 @@ VAR offered = false
 VAR founded = false
 VAR asked_wolf = false
 
-// The menu line for the next scene. next_scene() sets it.
+// The menu line for the next scene, and whether it is only about the open job. next_scene() sets them.
 VAR scene_line = ""
+VAR scene_job = false
 
 -> inky_start
 
@@ -224,16 +225,22 @@ VAR scene_line = ""
 }
 {
 - quest_ready:
-    ~ return scene(-> dusk, "Come and look.")
+    ~ return job_scene("Come and look.")
 - quest_open:
-    ~ return scene(-> dusk, "About that job...")
+    ~ return job_scene("About that job...")
 }
 ~ return scene(-> dusk, "")
 
 // Sets the menu line for the scene that next_scene() picks.
 === function scene(target, line) ===
 ~ scene_line = line
+~ scene_job = false
 ~ return target
+
+=== function job_scene(line) ===
+~ scene_line = line
+~ scene_job = true
+~ return -> dusk
 
 // What the player says to start the next scene.
 === function menu() ===
@@ -247,10 +254,12 @@ VAR scene_line = ""
 ~ return "Got a moment?"
 
 // What they call out to bring the player over when a scene is waiting, or "" for nothing.
-// They do not call during walks and trips, or for everyday talk.
+// They do not call during walks and trips, for everyday talk, or about a job the player has.
 === function calling() ===
 {
 - menu() == "Got a moment?" or interrupted:
+    ~ return ""
+- scene_job:
     ~ return ""
 - walking or watching or grave_walking or court_walking or shepherd_walking:
     ~ return ""

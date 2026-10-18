@@ -26,6 +26,10 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     private static final double MC_UNIT_TO_CELSIUS = 25.0;
     /** Marks the modifier as Townstead's, so a replace only ever displaces our own. */
     private static final String INFLUENCE_MARKER = "townstead_influence";
+    /** Cold Sweat's hearth, boiler and icebox. */
+    private static final net.minecraft.tags.TagKey<net.minecraft.world.level.block.Block> THERMAL_SOURCES =
+            net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.BLOCK,
+                    net.minecraft.resources.ResourceLocation.tryParse("cold_sweat:thermal_source"));
 
     private boolean initialized;
     private boolean active;
@@ -51,6 +55,10 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     private Method lastInput;
     private Method lastOutput;
     private Method applyModifier;
+    private Class<?> hearthEntity;
+    private Method usingHotFuel;
+    private Method usingColdFuel;
+    private java.lang.reflect.Constructor<?> insulationSnapshot;
     private final ThermalCache<ServerLevel, BlockPos, Float> ambientCache = new ThermalCache<>(20, 4096);
 
     public void clearCache() { ambientCache.clear(); }
@@ -161,7 +169,10 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     @Override
     public float blockTemperatureCelsius(Level level, BlockPos pos, BlockState state) {
         initIfNeeded();
-        if (!active || getBlockTemps == null) return Float.NaN;
+        if (!active) return Float.NaN;
+        float running = thermalSource(level, pos, state);
+        if (Float.isFinite(running)) return running;
+        if (getBlockTemps == null) return Float.NaN;
         try {
             Object temps = getBlockTemps.invoke(null, state);
             if (!(temps instanceof java.util.Collection<?> collection) || collection.isEmpty()) return Float.NaN;
@@ -180,13 +191,44 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     @Override
     public boolean blockMayMatter(BlockState state) {
         initIfNeeded();
-        if (!active || getBlockTemps == null) return false;
+        if (!active) return false;
+        if (state.is(THERMAL_SOURCES)) return true;
+        if (getBlockTemps == null) return false;
         try {
             if (!(getBlockTemps.invoke(null, state) instanceof java.util.Collection<?> collection)) return false;
             for (Object effect : collection) if (effect != defaultBlockTemp) return true;
             return false;
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    /**
+     * A hearth, boiler or icebox as a room appliance: 1 while it burns hot fuel, -1 while it uses
+     * cold fuel, 0 when idle. Its own fuel logic decides, so the hearth's heating and cooling sides,
+     * redstone and smart mode all count as Cold Sweat runs them. NaN for anything else.
+     */
+    private float thermalSource(Level level, BlockPos pos, BlockState state) {
+        if (hearthEntity == null || !state.is(THERMAL_SOURCES)) return Float.NaN;
+        try {
+            Object entity = level.getBlockEntity(pos);
+            if (!hearthEntity.isInstance(entity)) return Float.NaN;
+            boolean hot = Boolean.TRUE.equals(usingHotFuel.invoke(entity));
+            boolean cold = Boolean.TRUE.equals(usingColdFuel.invoke(entity));
+            return (hot ? 1f : 0f) - (cold ? 1f : 0f);
+        } catch (Exception e) {
+            return Float.NaN;
+        }
+    }
+
+    /** No hearth insulation at a position: Townstead's room air carries the hearth's heat instead. */
+    public Object noInsulation(Level level) {
+        initIfNeeded();
+        if (insulationSnapshot == null) return null;
+        try {
+            return insulationSnapshot.newInstance(level.getGameTime(), 0, 0);
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -354,6 +396,19 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
                     "com.momosoftworks.coldsweat.api.temperature.modifier.ThermalSourceTempModifier");
         } catch (Exception ignored) {
             thermalSource = null;
+        }
+        try {
+            hearthEntity = Class.forName("com.momosoftworks.coldsweat.common.blockentity.HearthBlockEntity");
+            usingHotFuel = hearthEntity.getMethod("isUsingHotFuel");
+            usingColdFuel = hearthEntity.getMethod("isUsingColdFuel");
+        } catch (Exception ignored) {
+            hearthEntity = null;
+        }
+        try {
+            insulationSnapshot = Class.forName("com.momosoftworks.coldsweat.util.world.WorldHelper$InsulationSnapshot")
+                    .getConstructor(long.class, int.class, int.class);
+        } catch (Exception ignored) {
+            insulationSnapshot = null;
         }
         try {
             Class<?> registry = Class.forName("com.momosoftworks.coldsweat.api.registry.BlockTempRegistry");

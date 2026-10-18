@@ -15,4 +15,12 @@ public class ColdSweatRoomQueryMixin {
         var room = RoomHeatBackend.room(level, pos);
         if (room.isPresent()) cir.setReturnValue(room.getAsDouble() / 25.0);
     }
+
+    /** The hearth heats room air instead, so Cold Sweat adds no hearth insulation of its own. */
+    @Inject(method = "getInsulationAt", at = @At("HEAD"), cancellable = true, remap = false, require = 0)
+    private static void townstead$noHearthInsulation(Level level, BlockPos pos, int chunkRadius, CallbackInfoReturnable<Object> cir) {
+        if (!com.aetherianartificer.townstead.temperature.HearthAirRule.active()) return;
+        Object none = com.aetherianartificer.townstead.compat.temperature.ColdSweatTemperatureBridge.INSTANCE.noInsulation(level);
+        if (none != null) cir.setReturnValue(none);
+    }
 }

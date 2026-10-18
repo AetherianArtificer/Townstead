@@ -107,7 +107,10 @@ public final class RoomHeat {
                 if (kind(level, pos) != ThermalRegionScan.Kind.INTERIOR) return OptionalDouble.empty();
             } else {
                 pos = null;
-                for (Direction d : Direction.values()) {
+                // A sensor of another mod (Cold Sweat's thermolith, say) reads the side it faces first.
+                Direction front = facing(sensor);
+                if (front != null && kind(level, position.relative(front)) == ThermalRegionScan.Kind.INTERIOR) pos = position.relative(front);
+                if (pos == null) for (Direction d : Direction.values()) {
                     BlockPos candidate = position.relative(d);
                     if (kind(level, candidate) == ThermalRegionScan.Kind.INTERIOR) { pos = candidate; break; }
                 }
@@ -165,6 +168,14 @@ public final class RoomHeat {
         world.add(region);
 
         return OptionalDouble.of(airOnly ? region.temperature : experienced(level, region, position));
+    }
+
+    private static Direction facing(BlockState state) {
+        for (var property : state.getProperties()) {
+            if (property instanceof net.minecraft.world.level.block.state.properties.DirectionProperty direction
+                    && property.getName().equals("facing")) return state.getValue(direction);
+        }
+        return null;
     }
 
     private static ThermalRegionScan.Kind kind(ServerLevel level, BlockPos pos) {

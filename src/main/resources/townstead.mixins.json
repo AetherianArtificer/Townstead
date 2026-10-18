@@ -136,6 +136,7 @@
     "RoomHeatBlockChangeMixin",
     "compat.temperature.ColdSweatRoomPlayerMixin",
     "compat.temperature.ColdSweatRoomQueryMixin",
+    "compat.temperature.ColdSweatHearthEffectMixin",
     "compat.temperature.LsoOutdoorBlocksMixin",
     "compat.temperature.LsoRoomQueryMixin",
     "compat.temperature.LsoThermometerMixin",

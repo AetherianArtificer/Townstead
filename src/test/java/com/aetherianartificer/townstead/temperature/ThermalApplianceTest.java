@@ -24,6 +24,16 @@ class ThermalApplianceTest {
         assertFalse(profile.output(15,true).estimated());
         assertThrows(IllegalArgumentException.class,()->new ThermalAppliance(Double.NaN,3,15));
     }
+    @Test void aReversibleApplianceHeatsOrCoolsByItsNativeSign() {
+        var settings=TemperatureSettings.parse(JsonParser.parseString("{}").getAsJsonObject());
+        var hearth=settings.appliance("cold_sweat:hearth_bottom");
+        assertEquals(4000,hearth.output(1,true).watts());
+        assertEquals(-4000,hearth.output(-1,true).watts());
+        assertEquals(0,hearth.output(0,true).watts());
+        assertEquals(-3000,settings.appliance("cold_sweat:icebox").output(-1,true).watts());
+        assertEquals(0,settings.appliance("cold_sweat:boiler").output(-1,true).watts(),
+                "A one-way appliance never runs backwards");
+    }
     @Test void firesDraftByDefaultAndControlledHeatersOptOut() {
         assertTrue(ThermalAppliance.parse(JsonParser.parseString("{\"room_power_w\":2500}").getAsJsonObject()).draft());
         assertFalse(ThermalAppliance.parse(JsonParser.parseString("{\"room_power_w\":2500,\"draft\":false}").getAsJsonObject()).draft());

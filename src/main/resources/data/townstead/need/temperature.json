@@ -69,6 +69,25 @@
       "radiant_degrees": 0,
       "native_reference_degrees": 0
     },
+    "cold_sweat:hearth_bottom": {
+      "room_power_w": 4000,
+      "radiant_degrees": 0,
+      "native_reference_degrees": 1,
+      "draft": false,
+      "reversible": true
+    },
+    "cold_sweat:boiler": {
+      "room_power_w": 3000,
+      "radiant_degrees": 0,
+      "native_reference_degrees": 1,
+      "draft": false
+    },
+    "cold_sweat:icebox": {
+      "room_power_w": -3000,
+      "radiant_degrees": 0,
+      "native_reference_degrees": -1,
+      "draft": false
+    },
     "minecraft:campfire": {
       "room_power_w": 2500,
       "radiant_degrees": 30,
