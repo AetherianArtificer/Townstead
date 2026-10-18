@@ -34,6 +34,27 @@ class FoundingPopulationWeightsTest {
                 profile, id("future_pack:unconnected_root"), CulturalSpawnBias.EMPTY), 0.0001F);
     }
 
+    @Test
+    void nativesKeepTheirShareHoweverManyOtherRootsAreInstalled() {
+        ResourceLocation culture = id("example:marshside");
+        FoundingProfileDefinition profile = new FoundingProfileDefinition(id("example:marsh_founders"),
+                Component.literal("Marsh Founders"), culture, 1.0F, SpawnBias.EMPTY, Conditions.ALWAYS,
+                new FoundingProfileDefinition.Population(FoundingProfileDefinition.CULTURAL_AFFINITY,
+                        0.15F, Map.of()),
+                new FoundingProfileDefinition.FactionSpec(id("townstead:village_council"), List.of(), false));
+        ResourceLocation native_ = id("example:marsh_folk");
+        java.util.List<ResourceLocation> roots = new java.util.ArrayList<>(List.of(native_));
+        for (int i = 0; i < 90; i++) roots.add(id("example:other_" + i));
+        java.util.function.Function<ResourceLocation, CulturalSpawnBias> bias = root -> root.equals(native_)
+                ? new CulturalSpawnBias(Map.of(culture.toString(), 6.0F, "any", 2.0F))
+                : CulturalSpawnBias.EMPTY;
+
+        var weight = FoundingPopulationWeights.shares(profile, roots, bias);
+        double total = roots.stream().mapToDouble(weight::applyAsDouble).sum();
+        assertEquals(0.85, weight.applyAsDouble(native_) / total, 0.0001);
+        assertEquals(0.15 / 90, weight.applyAsDouble(id("example:other_3")) / total, 0.0001);
+    }
+
     private static ResourceLocation id(String value) {
         ResourceLocation parsed = DataPackLang.parseId(value);
         if (parsed == null) throw new IllegalArgumentException(value);

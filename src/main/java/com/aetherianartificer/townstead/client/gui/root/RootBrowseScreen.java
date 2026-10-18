@@ -341,7 +341,9 @@ public final class RootBrowseScreen extends Screen {
         String previous = search != null ? search.getValue() : state.query;
         search = new EditBox(font, searchX + 1, GUTTER + 1, Math.max(60, searchRight - searchX - 2), HEADER_H - 2,
                 Component.translatable("townstead.root.browse.search"));
-        search.setHint(Component.translatable("townstead.root.browse.search"));
+        // The box does not clip its hint, so a long one runs into the Group by buttons.
+        search.setHint(Component.literal(GeneVisuals.truncate(font,
+                Component.translatable("townstead.root.browse.search").getString(), search.getInnerWidth())));
         search.setMaxLength(80);
         search.setValue(previous);
         search.setResponder(value -> {

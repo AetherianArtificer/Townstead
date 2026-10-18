@@ -12,6 +12,7 @@
       "rig": "townstead:werewolf_survivalist",
       "talk": false,
       "sleep": false,
+      "ride": false,
       "variants": {
         "coat": "townstead_state:werewolf_coat",
         "eyes": "townstead_state:werewolf_eyes",
@@ -24,6 +25,7 @@
       "rig": "townstead:werewolf_beast",
       "talk": false,
       "sleep": false,
+      "ride": false,
       "variants": {
         "coat": "townstead_state:werewolf_coat",
         "eyes": "townstead_state:werewolf_eyes",

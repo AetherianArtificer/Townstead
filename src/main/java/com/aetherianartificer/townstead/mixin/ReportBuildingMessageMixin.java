@@ -128,6 +128,8 @@ public abstract class ReportBuildingMessageMixin {
                     OptionalBuildingRecognition.Registration registration =
                             OptionalBuildingRecognition.register(level, candidate);
                     if (registration != OptionalBuildingRecognition.Registration.FAILED) {
+                        // Added by hand: a removal the player made here no longer stands.
+                        com.aetherianartificer.townstead.recognition.DismissedSites.changed(level, pos);
                         manager.findNearestVillage(player).ifPresent(v -> {
                             com.aetherianartificer.townstead.compat.mca.BuildingReportReconciler.reconcile(
                                     level, pos, v, TOWNSTEAD$LOG);

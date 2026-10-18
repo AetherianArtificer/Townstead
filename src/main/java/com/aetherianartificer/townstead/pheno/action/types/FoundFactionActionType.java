@@ -21,9 +21,11 @@ import net.minecraft.world.entity.LivingEntity;
 /**
  * Founds a faction of {@code kind} at the village of the villager who leads it. The villager side
  * of the action leads; when the other side is a player, they are told and receive what the
- * founding gives. For now only kinds that hold no land (orders) can be founded this way.
+ * founding gives. For now only kinds that hold no land (orders) can be founded this way. With
+ * {@code on_placement}, nothing is founded yet: the player gets the founding gifts marked to found
+ * the order, led by the villager, wherever one is placed.
  * <pre>
- * { "type": "pheno:found_faction", "kind": "townstead:hunter_order" }
+ * { "type": "pheno:found_faction", "kind": "townstead:hunter_order", "on_placement": true }
  * </pre>
  */
 public final class FoundFactionActionType implements ActionType {
@@ -38,6 +40,7 @@ public final class FoundFactionActionType implements ActionType {
     public Action parse(JsonObject json) {
         ResourceLocation kindId = DataPackLang.parseId(GsonHelper.getAsString(json, "kind", ""));
         if (kindId == null) return null;
+        boolean onPlacement = GsonHelper.getAsBoolean(json, "on_placement", false);
         return ctx -> {
             LivingEntity entity = ctx.entity(), other = ctx.other();
             VillagerEntityMCA leader = entity instanceof VillagerEntityMCA v ? v : other instanceof VillagerEntityMCA v ? v : null;
@@ -45,6 +48,17 @@ public final class FoundFactionActionType implements ActionType {
             FactionKind kind = PoliticalDefinitions.snapshot().kind(kindId);
             if (leader == null || kind == null || kind.holdsLand() || !(leader.level() instanceof ServerLevel level)) {
                 ctx.fail();
+                return;
+            }
+            if (onPlacement) {
+                if (player == null || kind.founding().gifts().isEmpty()) {
+                    ctx.fail();
+                    return;
+                }
+                var claim = new com.aetherianartificer.townstead.politics.order.FoundingClaim(kindId, leader.getUUID(),
+                        leader.getName().getString());
+                claim.remember(player);
+                com.aetherianartificer.townstead.politics.order.Orders.giveFounding(player, kind, claim);
                 return;
             }
             Village village = VillageManager.get(level).findNearestVillage(leader.blockPosition(), Village.MERGE_MARGIN).orElse(null);

@@ -1,6 +1,7 @@
 {
   "schema": "townstead:mob_replacement/v1",
   "mods": "werewolves",
+  "spawn_types": ["natural", "spawner", "event"],
   "replaces": [
     "werewolves:human_werewolf"
   ],

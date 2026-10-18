@@ -1,6 +1,7 @@
 {
   "schema": "townstead:mob_replacement/v1",
   "mods": "vampirism",
+  "spawn_types": ["natural", "spawner", "event"],
   "replaces": [
     "vampirism:advanced_vampire"
   ],

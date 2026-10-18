@@ -220,12 +220,22 @@ public final class SkinPicker {
         if (wear.test(current)) return Optional.empty();
         boolean bodyOnly = !onMcaRig(rootId);
         ClothingList list = ClothingList.getInstance();
-        return RigSkinPicker.pick(skin -> {
+        Optional<String> picked = RigSkinPicker.pick(skin -> {
             if (!wear.test(skin)) return false;
             if (bodyOnly || list == null || list.clothing == null) return true;
             Clothing clothing = list.clothing.get(skin);
             return clothing != null && !clothing.exclude;
         }, gender, profession, seed);
+        // On MCA's body, keep the current outfit rather than take another profession's work clothes.
+        if (!bodyOnly && picked.isPresent() && list != null && list.clothing != null) {
+            Clothing clothing = list.clothing.get(picked.get());
+            String authored = clothing == null ? null : clothing.profession;
+            if (!RigSkinPicker.civilian(authored) && !profession.equals(authored)
+                    && !profession.replace(':', '.').equals(authored)) {
+                return Optional.empty();
+            }
+        }
+        return picked;
     }
 
     /** Whether the skin fits the villager's body: any skin on MCA's villager, else only a fitted one. */

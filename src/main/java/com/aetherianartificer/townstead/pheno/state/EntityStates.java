@@ -509,6 +509,8 @@ public final class EntityStates {
 
     private static @Nullable MobEffectInstance statusEffect(LivingEntity entity, @Nullable ResourceLocation id) {
         if (id == null || !BuiltInRegistries.MOB_EFFECT.containsKey(id)) return null;
+        // A size event can fire inside the entity's constructor, before its effect map exists.
+        if (entity.getActiveEffectsMap() == null) return null;
         //? if neoforge {
         Holder<MobEffect> effect = BuiltInRegistries.MOB_EFFECT
                 .getHolder(ResourceKey.create(Registries.MOB_EFFECT, id)).orElse(null);

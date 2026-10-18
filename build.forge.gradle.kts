@@ -5,7 +5,7 @@ plugins {
 
 val mcaNamespace = "forge.net.conczin.mca"
 val mcaArtifact = "minecraft-comes-alive"
-val mcaVersion = "7.7.1-beta.3+1.20.1"
+val mcaVersion = "7.7.1-beta.5+1.20.1"
 val mcaDevelopmentVersion = "1.20.1-SNAPSHOT"
 
 stonecutter {

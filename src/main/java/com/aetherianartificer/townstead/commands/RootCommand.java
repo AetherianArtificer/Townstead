@@ -8,7 +8,6 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -32,7 +31,7 @@ public final class RootCommand {
         RootRegistry.all().forEach(r -> {
             if (!com.aetherianartificer.townstead.root.RootRules.isOff(r.id())) ids.add("\"" + r.id() + "\"");
         });
-        return SharedSuggestionProvider.suggest(ids, b);
+        return QuotedSuggestions.suggest(ids, b);
     };
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {

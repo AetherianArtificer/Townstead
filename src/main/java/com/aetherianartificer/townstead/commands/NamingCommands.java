@@ -20,7 +20,6 @@ import net.conczin.mca.server.world.data.VillageManager;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -52,7 +51,7 @@ public final class NamingCommands {
     private NamingCommands() {}
 
     private static final SuggestionProvider<CommandSourceStack> CULTURES = (context, builder) ->
-            SharedSuggestionProvider.suggest(
+            QuotedSuggestions.suggest(
                     Cultures.allIds().stream().map(ResourceLocation::toString).sorted(), builder);
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext ctx) {

@@ -13,7 +13,6 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -36,7 +35,7 @@ public final class GeneGrantCommand {
     private static final SuggestionProvider<CommandSourceStack> GENE_IDS = (c, b) -> {
         List<String> ids = new ArrayList<>();
         for (Gene gene : GeneRegistry.all()) ids.add("\"" + gene.id() + "\"");
-        return SharedSuggestionProvider.suggest(ids, b);
+        return QuotedSuggestions.suggest(ids, b);
     };
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {

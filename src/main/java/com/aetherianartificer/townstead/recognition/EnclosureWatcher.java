@@ -72,6 +72,7 @@ public final class EnclosureWatcher {
     public static void onBlockChanged(ServerLevel level, BlockPos pos, BlockState oldState, BlockState newState) {
         if (level == null || pos == null || oldState == null || newState == null) return;
         if (shape(oldState) == shape(newState)) return;
+        DismissedSites.changed(level, pos);
         if (!Switchboard.get(TownsteadConfig.ENABLE_ENCLOSURE_RECOGNITION)) return;
         synchronized (STATES) {
             State state = STATES.computeIfAbsent(level.getServer(), ignored -> new State());
@@ -158,10 +159,17 @@ public final class EnclosureWatcher {
         }
     }
 
+    private static BlockPos center(OptionalBuildingRecognition.Candidate candidate) {
+        return new BlockPos((candidate.min().getX() + candidate.max().getX()) / 2,
+                (candidate.min().getY() + candidate.max().getY()) / 2, (candidate.min().getZ() + candidate.max().getZ()) / 2);
+    }
+
     private static void addClosed(ServerLevel level, BlockPos inside) {
         Optional<OptionalBuildingRecognition.Candidate> found = OptionalBuildingRecognition.find(level, inside);
         if (found.isEmpty() || !SiteRequirements.isEnclosed(found.get().typeName())) return;
         OptionalBuildingRecognition.Candidate candidate = found.get();
+        // Removed by a player and untouched since: not ours to put back.
+        if (DismissedSites.dismissed(level, center(candidate))) return;
         if (BuildingEnclosurePolicies.modeOf(candidate.typeName()).allowsRoom()
                 && OptionalBuildingRecognition.roomCanHandle(VillageManager.get(level), inside, "ADD_BUILDING")) {
             return;

@@ -29,10 +29,13 @@ public final class ModCompat {
      * tier lines are role tags each provider contributes to). Matched by prefix; available
      * when ANY listed mod is loaded. Other compat paths gate on the mod id in the path.
      */
+    /** Temperature mods with climate equipment a Climatologist keeps fuelled. */
+    private static final List<String> CLIMATE_PROVIDERS = List.of("toughasnails", "legendarysurvivaloverhaul", "cold_sweat");
+
     private static final Map<String, List<String>> ANY_PROVIDER_PREFIXES = Map.of(
             "compat/farmersdelight/kitchen", KITCHEN_PROVIDERS,
-            "compat/toughasnails/climate_", List.of("toughasnails", "legendarysurvivaloverhaul"),
-            "compat.toughasnails.climate_", List.of("toughasnails", "legendarysurvivaloverhaul"));
+            "compat/toughasnails/climate_", CLIMATE_PROVIDERS,
+            "compat.toughasnails.climate_", CLIMATE_PROVIDERS);
 
     private ModCompat() {}
 

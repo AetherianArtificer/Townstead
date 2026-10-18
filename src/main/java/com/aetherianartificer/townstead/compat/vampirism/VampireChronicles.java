@@ -45,7 +45,12 @@ public final class VampireChronicles {
             ChronicleTaps.survival(villager, ChronicleTapKeys.BECAME_FULL_VAMPIRE, Map.of());
         }
         // However it happened, a vampire who is a vampire no more has been cured.
-        if (seen && before >= 1 && level == 0) {
+        if (seen && before >= 1 && level == 0) cured(villager, before);
+    }
+
+    /** A cure, chronicled as wanted or not by the cure reaction; plain when no reaction is loaded. */
+    static void cured(VillagerEntityMCA villager, double formerRank) {
+        if (!com.aetherianartificer.townstead.cure.CureReactions.cured(villager, VampireVillagers.STATE, formerRank)) {
             ChronicleTaps.survival(villager, ChronicleTapKeys.VAMPIRE_CURED, Map.of());
         }
     }

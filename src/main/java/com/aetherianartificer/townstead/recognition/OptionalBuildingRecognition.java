@@ -360,6 +360,9 @@ public final class OptionalBuildingRecognition {
     private static Removed removeExisting(ServerLevel level, Existing existing) {
         Village village = existing.village();
         int id = existing.building().getId();
+        if (SiteRequirements.isEnclosed(existing.building().getType())) {
+            DismissedSites.dismiss(level, existing.building().getPos0(), existing.building().getPos1());
+        }
         McaBuildings.remove(village, id);
         village.calculateDimensions();
         village.markDirty();

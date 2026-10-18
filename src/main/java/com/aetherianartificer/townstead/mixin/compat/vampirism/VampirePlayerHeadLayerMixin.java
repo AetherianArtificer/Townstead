@@ -13,7 +13,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * Vampirism draws a vampire player's eyes and fangs on the humanoid head. A player drawn as a
  * non-humanoid rig (a Ribbit) has no such head, so the face would float where a human head would be;
- * the rig shows the vampire look itself (an iris mask). {@code @Pseudo} + {@code require = 0} keep this
+ * the rig shows the vampire look itself (an iris mask). A player drawn with MCA's villager face has
+ * its own eyes, which blink and take the vampire iris tint, so Vampirism's would sit on top of them
+ * as a second pair. {@code @Pseudo} + {@code require = 0} keep this
  * inert without Vampirism. The typed {@code render} keeps its name on both loaders.
  */
 @Pseudo
@@ -25,6 +27,7 @@ public abstract class VampirePlayerHeadLayerMixin {
     private void townstead$hideOnRig(PoseStack pose, MultiBufferSource buffers, int light, Player player,
                                      float limbSwing, float limbSwingAmount, float partialTick, float ageInTicks,
                                      float netHeadYaw, float headPitch, CallbackInfo ci) {
-        if (RigModels.isGeneric(RigModels.rigBaseFor(player))) ci.cancel();
+        if (RigModels.isGeneric(RigModels.rigBaseFor(player))
+                || net.conczin.mca.MCAClient.useVillagerRenderer(player.getUUID())) ci.cancel();
     }
 }

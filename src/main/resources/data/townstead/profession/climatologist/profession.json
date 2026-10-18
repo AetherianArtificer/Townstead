@@ -1,8 +1,9 @@
 {
   "schema": "townstead:profession/v2",
   "mods": {
-    "all": [
-      "legendarysurvivaloverhaul"
+    "any": [
+      "legendarysurvivaloverhaul",
+      "cold_sweat"
     ],
     "not": "toughasnails"
   },
@@ -12,7 +13,7 @@
   "description": {
     "translate": "career.townstead.climatologist.description"
   },
-  "icon": "legendarysurvivaloverhaul:heater",
+  "icon": "minecraft:campfire",
   "skills": [
     "weathered",
     "barometer"

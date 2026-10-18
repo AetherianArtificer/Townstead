@@ -398,6 +398,15 @@ public final class AbilityWheelScreen extends Screen {
         g.fill(left, top, left + plateW, top + 1, Palette.DESK_LIP);
         g.drawString(font, name, cx - font.width(name) / 2, top + 4,
                 entry == null ? 0xFFB79A6C : Palette.BRASS_HOT, false);
+        // Flavour text below the plate, wrapped to its width.
+        String description = entry == null ? "" : AbilityText.description(entry.description());
+        if (!description.isEmpty()) {
+            int y = top + plateH + 5;
+            for (var line : font.split(Component.literal(description), plateW - 8)) {
+                g.drawString(font, line, cx - font.width(line) / 2, y, 0xFFB79A6C, true);
+                y += 10;
+            }
+        }
         if (label.kind().isEmpty()) return;
 
         g.pose().pushPose();

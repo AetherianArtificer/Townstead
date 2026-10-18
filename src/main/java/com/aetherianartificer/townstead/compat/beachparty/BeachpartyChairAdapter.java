@@ -55,7 +55,8 @@ public final class BeachpartyChairAdapter implements HangoutEmbodiment.PostureAd
         if (type == null) return HangoutEmbodiment.BLOCKED;
         Entity chair = type.create(level);
         if (chair == null) return HangoutEmbodiment.BLOCKED;
-        chair.moveTo(position.x, position.y, position.z, 0F, 0F);
+        float yaw = facingYaw(level.getBlockState(base));
+        chair.moveTo(position.x, position.y, position.z, yaw, 0F);
         HangoutEmbodiment.markVisitAnchor(chair, visitId);
         if (!addNativeClaim(api, level, base, chair, villager.blockPosition())) {
             chair.discard();
@@ -66,6 +67,7 @@ public final class BeachpartyChairAdapter implements HangoutEmbodiment.PostureAd
             chair.discard();
             return HangoutEmbodiment.BLOCKED;
         }
+        face(villager, yaw);
         UUID chairId = chair.getUUID();
         return (closeLevel, closeVillager) -> {
             if (closeVillager.isPassenger() && closeVillager.getVehicle() != null
@@ -74,6 +76,32 @@ public final class BeachpartyChairAdapter implements HangoutEmbodiment.PostureAd
             Entity loaded = closeLevel.getEntity(chairId);
             if (loaded != null) loaded.discard();
         };
+    }
+
+    /** Keeps the sitter's body turned the way the chair faces; the head still looks about. */
+    @Override
+    public void maintain(ServerLevel level, VillagerEntityMCA villager, BlockPos spot, ResourceLocation posture,
+                         Vec3 position, UUID visitId) {
+        if (!villager.isPassenger()) return;
+        BlockPos base = normalizeBase(level.getBlockState(spot), spot);
+        float yaw = facingYaw(level.getBlockState(base));
+        villager.setYBodyRot(yaw);
+        villager.setYRot(yaw);
+    }
+
+    private static void face(VillagerEntityMCA villager, float yaw) {
+        villager.setYRot(yaw);
+        villager.setYBodyRot(yaw);
+        villager.setYHeadRot(yaw);
+    }
+
+    /** The way a seated person looks: the chair's own facing, as Beachparty places it toward its placer. */
+    private static float facingYaw(BlockState state) {
+        Property<?> property = state.getBlock().getStateDefinition().getProperty("facing");
+        if (property == null) return 0F;
+        Comparable<?> raw = state.getValue(cast(property));
+        return raw instanceof net.minecraft.core.Direction direction && direction.getAxis().isHorizontal()
+                ? direction.toYRot() : 0F;
     }
 
     /** Beachparty seats at block Y + .25 + each block's authored extra height. */

@@ -18,7 +18,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /** Culture village structures generate only while their culture is on in the Switchboard, at its rate. */
 @Mixin(ChunkGenerator.class)
 public abstract class ChunkGeneratorCultureVillagesMixin {
+    //? if neoforge {
     @Inject(method = "tryGenerateStructure", at = @At("HEAD"), cancellable = true)
+    //?} else {
+    /*@Inject(method = "m_223104_", remap = false, at = @At("HEAD"), cancellable = true)
+    *///?}
     private void townstead$gateCultureVillages(StructureSet.StructureSelectionEntry entry, StructureManager structures,
                                                RegistryAccess registries, RandomState random,
                                                StructureTemplateManager templates, long seed, ChunkAccess chunk,

@@ -19,35 +19,74 @@
             "inverted": true
           },
           {
-            "type": "pheno:entity_in_radius",
-            "radius": 48,
-            "condition": {
-              "type": "pheno:and",
-              "conditions": [
-                {
-                  "type": "pheno:entity_type",
-                  "entity_type": "minecraft:player",
-                  "inverted": true
-                },
-                {
-                  "type": "pheno:or",
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 48,
+                "condition": {
+                  "type": "pheno:and",
                   "conditions": [
                     {
-                      "type": "pheno:state",
-                      "state": "townstead_state:vampire"
+                      "type": "pheno:entity_type",
+                      "entity_type": "minecraft:player",
+                      "inverted": true
                     },
                     {
-                      "type": "pheno:entity_type",
-                      "entity_type": "vampirism:vampire"
-                    },
-                    {
-                      "type": "pheno:entity_type",
-                      "entity_type": "vampirism:advanced_vampire"
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:state",
+                          "state": "townstead_state:vampire"
+                        },
+                        {
+                          "type": "pheno:entity_type",
+                          "entity_type": "vampirism:vampire"
+                        },
+                        {
+                          "type": "pheno:entity_type",
+                          "entity_type": "vampirism:advanced_vampire"
+                        }
+                      ]
                     }
                   ]
                 }
-              ]
-            }
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 96,
+                "condition": {
+                  "type": "pheno:and",
+                  "conditions": [
+                    {
+                      "type": "pheno:entity_type",
+                      "entity_type": "minecraft:player",
+                      "inverted": true
+                    },
+                    {
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:state",
+                          "state": "townstead_state:vampire"
+                        },
+                        {
+                          "type": "pheno:entity_type",
+                          "entity_type": "vampirism:vampire"
+                        },
+                        {
+                          "type": "pheno:entity_type",
+                          "entity_type": "vampirism:advanced_vampire"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:village"
+                    }
+                  ]
+                }
+              }
+            ]
           }
         ]
       }
@@ -222,7 +261,8 @@
   "actions": {
     "found": {
       "type": "pheno:found_faction",
-      "kind": "townstead:hunter_order"
+      "kind": "townstead:hunter_order",
+      "on_placement": true
     },
     "hunger_small": {
       "type": "pheno:add_state",
@@ -789,6 +829,16 @@
     },
     "altar_placed": {
       "type": "pheno:order_altar"
+    },
+    "has_altar": {
+      "type": "pheno:other",
+      "condition": {
+        "type": "pheno:inventory",
+        "item_condition": {
+          "type": "pheno:ingredient",
+          "item": "townstead:oath_altar"
+        }
+      }
     },
     "altar_graveyard": {
       "type": "pheno:order_altar",

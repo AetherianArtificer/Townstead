@@ -12,7 +12,6 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 
 import java.util.Map;
@@ -26,7 +25,7 @@ public final class SwitchboardCommands {
     private SwitchboardCommands() {}
 
     private static final SuggestionProvider<CommandSourceStack> KEYS = (ctx, builder) ->
-            SharedSuggestionProvider.suggest(SettingIndex.all().stream().map(SettingIndex.Entry::key), builder);
+            QuotedSuggestions.suggest(SettingIndex.all().stream().map(SettingIndex.Entry::key), builder);
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("townstead").then(Commands.literal("switchboard")

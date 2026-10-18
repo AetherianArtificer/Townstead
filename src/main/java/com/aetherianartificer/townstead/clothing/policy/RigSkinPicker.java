@@ -87,7 +87,7 @@ public final class RigSkinPicker {
         return authored.equals(profession) || authored.equals(profession.replace(':', '.'));
     }
 
-    private static boolean civilian(@Nullable String authored) {
+    static boolean civilian(@Nullable String authored) {
         return authored == null || authored.isEmpty() || authored.equals("minecraft:none")
                 || authored.equals("minecraft.none");
     }

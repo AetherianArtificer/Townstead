@@ -31,6 +31,10 @@
     "type": "pheno:and",
     "actions": [
       {
+        "type": "pheno:remember",
+        "key": "townstead:cured_by"
+      },
+      {
         "type": "pheno:choice",
         "actions": [
           {

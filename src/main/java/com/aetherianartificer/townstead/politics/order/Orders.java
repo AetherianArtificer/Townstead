@@ -68,9 +68,15 @@ public final class Orders {
 
     /** Hands the player who helped found an order what its founding gives and teaches. */
     public static void giveFounding(net.minecraft.server.level.ServerPlayer player, FactionKind kind) {
+        giveFounding(player, kind, null);
+    }
+
+    /** As {@link #giveFounding(net.minecraft.server.level.ServerPlayer, FactionKind)}; a claim marks the gifts to found the order when placed. */
+    public static void giveFounding(net.minecraft.server.level.ServerPlayer player, FactionKind kind, @Nullable FoundingClaim claim) {
         for (ResourceLocation gift : kind.founding().gifts()) {
             BuiltInRegistries.ITEM.getOptional(gift).ifPresent(item -> {
                 net.minecraft.world.item.ItemStack stack = new net.minecraft.world.item.ItemStack(item);
+                if (claim != null) claim.mark(stack);
                 if (!player.getInventory().add(stack)) player.drop(stack, false);
             });
         }
@@ -84,6 +90,23 @@ public final class Orders {
     }
 
     /** {@code person} takes the order's oath. */
+    /** Whether {@code person} already holds the founder's office in an active order of {@code kind}. */
+    public static boolean leads(PoliticalSavedData data, ResourceLocation kind, UUID person) {
+        FactionKind definition = PoliticalDefinitions.snapshot().kind(kind);
+        if (definition == null) return false;
+        for (BondInstance bond : data.activeBonds(Party.person(person))) {
+            boolean founderOffice = definition.offices().stream()
+                    .anyMatch(office -> office.founder() && office.bond().equals(bond.kind()));
+            if (!founderOffice) continue;
+            for (BondInstance.Side side : bond.sides()) {
+                ResourceLocation id = side.party().faction();
+                Faction faction = id == null ? null : data.faction(id);
+                if (faction != null && faction.active() && faction.kind().equals(kind)) return true;
+            }
+        }
+        return false;
+    }
+
     public static boolean swear(ServerLevel level, Faction order, UUID person) {
         FactionKind definition = PoliticalDefinitions.snapshot().kind(order.kind());
         if (definition == null) return false;

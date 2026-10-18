@@ -94,10 +94,16 @@ public final class CultureVillageFounding {
             LOGGER.info("Culture village {} at {} has no beds; not founded", pending.structure(), anchor);
             return;
         }
-        for (BlockPos home : homes) villages.processBuilding(home);
-        Village village = villages.findNearestVillage(anchor, Village.MERGE_MARGIN).orElse(null);
+        int recognized = 0;
+        for (BlockPos home : homes) {
+            if (villages.processBuilding(home) == net.conczin.mca.server.world.data.Building.validationResult.SUCCESS) recognized++;
+        }
+        // The buildings MCA took may not reach the structure's centre, so look as far as the debug command does.
+        Village village = recognized == 0 ? null : villages.findNearestVillage(anchor, Village.MERGE_MARGIN)
+                .or(() -> villages.findNearestVillage(anchor, DebugVillageSpawner.VILLAGE_RADIUS)).orElse(null);
         if (village == null) {
-            LOGGER.info("MCA did not recognize culture village {} at {}", pending.structure(), anchor);
+            LOGGER.info("MCA did not recognize culture village {} at {} ({} of {} homes recognized)",
+                    pending.structure(), anchor, recognized, homes.size());
             return;
         }
         FoundingProfileDefinition profile = FoundingSelection.choose(level, village);

@@ -15,7 +15,6 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -47,11 +46,11 @@ public final class AttachmentDoctorCommand {
     private static final SuggestionProvider<CommandSourceStack> IDS = (c, b) -> {
         List<String> ids = new ArrayList<>();
         for (AttachmentDef def : AttachmentServerData.definitions()) ids.add(def.id());
-        return SharedSuggestionProvider.suggest(ids, b);
+        return QuotedSuggestions.suggest(ids, b);
     };
 
     private static final SuggestionProvider<CommandSourceStack> BONES = (c, b) ->
-            SharedSuggestionProvider.suggest(
+            QuotedSuggestions.suggest(
                     List.of("head", "body", "left_arm", "right_arm", "left_leg", "right_leg"), b);
 
     // Each knob sets root and tip together; ".root"/".tip" sets one end of the ramp.
@@ -62,7 +61,7 @@ public final class AttachmentDoctorCommand {
             "rest_pitch", "sway", "sway_speed");
 
     private static final SuggestionProvider<CommandSourceStack> PARAMS = (c, b) ->
-            SharedSuggestionProvider.suggest(PHYSICS_PARAMS, b);
+            QuotedSuggestions.suggest(PHYSICS_PARAMS, b);
 
     private static final SuggestionProvider<CommandSourceStack> CHAINS = (c, b) -> {
         List<String> options = new ArrayList<>(List.of("all"));
@@ -70,7 +69,7 @@ public final class AttachmentDoctorCommand {
             AttachmentDef def = find(StringArgumentType.getString(c, "id"));
             if (def != null) for (int i = 0; i < def.physics().size(); i++) options.add(String.valueOf(i));
         } catch (Exception ignored) {}
-        return SharedSuggestionProvider.suggest(options, b);
+        return QuotedSuggestions.suggest(options, b);
     };
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext ctx) {

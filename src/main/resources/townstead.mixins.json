@@ -4,6 +4,7 @@
   "plugin": "com.aetherianartificer.townstead.TownsteadMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "MobFinalizeSpawnCostumeMixin",
     "StateFormSleepMixin",
     "LivingFieldAbilitiesMixin",
     "ItemStackPhenoMixin",
@@ -20,6 +21,7 @@
     "LecternBlockEntityCharterMixin",
     "compat.thirst.TanDrinkValuesMixin",
     "compat.vampirism.ExtendedCreatureMixin",
+    "compat.vampirism.TotemBlockEntityMixin",
     "compat.vampirism.FactionRegistryMixin",
     "compat.vampirism.StakeVampireVillagerMixin",
     "compat.vampirism.CrossbowArrowVampireVillagerMixin",

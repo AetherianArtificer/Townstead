@@ -16,7 +16,6 @@ import net.conczin.mca.server.world.data.VillageManager;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -33,11 +32,11 @@ public final class FoundingCommands {
     private FoundingCommands() {}
 
     private static final SuggestionProvider<CommandSourceStack> PROFILES = (context, builder) ->
-            SharedSuggestionProvider.suggest(FoundingProfiles.ids().stream()
+            QuotedSuggestions.suggest(FoundingProfiles.ids().stream()
                     .map(ResourceLocation::toString).sorted(), builder);
 
     private static final SuggestionProvider<CommandSourceStack> STRUCTURES = (context, builder) ->
-            SharedSuggestionProvider.suggest(Stream.concat(
+            QuotedSuggestions.suggest(Stream.concat(
                             Stream.of("auto", "plains", "desert", "savanna", "snowy", "taiga"),
                             context.getSource().registryAccess().registryOrThrow(Registries.STRUCTURE)
                                     .keySet().stream().map(ResourceLocation::toString))
@@ -63,7 +62,7 @@ public final class FoundingCommands {
                 .executes(command -> spawn(command.getSource(),
                         StringArgumentType.getString(command, "profile"), "auto",
                         IntegerArgumentType.getInteger(command, "residents"))));
-        var structureArgument = Commands.argument("structure", StringArgumentType.word())
+        var structureArgument = Commands.argument("structure", StringArgumentType.string())
                 .suggests(STRUCTURES)
                 .executes(command -> spawn(command.getSource(),
                         StringArgumentType.getString(command, "profile"),

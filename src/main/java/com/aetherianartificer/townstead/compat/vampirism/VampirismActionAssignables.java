@@ -48,7 +48,7 @@ public final class VampirismActionAssignables implements AssignableProvider {
                 int ticks = ((Number) cooldown.invoke(action, factionPlayer)).intValue();
                 out.add(new Assignable(id, (Component) actionName.invoke(action),
                         id.getNamespace() + ":textures/actions/" + id.getPath() + ".png", source,
-                        Assignable.Kind.ABILITY, Math.max(0, ticks), 0, "", 0, ""));
+                        Assignable.Kind.ABILITY, Math.max(0, ticks), 0, "", 0, "", description(action)));
             }
         } catch (Throwable error) {
             // A Vampirism that has moved its API offers nothing here; say so once, so it is never silent.
@@ -152,6 +152,16 @@ public final class VampirismActionAssignables implements AssignableProvider {
         return 0;
     }
 
+    /** Vampirism's own flavour text, where it has one: its action key with {@code .desc}. */
+    private static Component description(Object action) {
+        try {
+            Object key = action.getClass().getMethod("getTranslationKey").invoke(action);
+            return key instanceof String text ? Component.translatable(text + ".desc") : Component.empty();
+        } catch (Throwable ignored) {
+            return Component.empty();
+        }
+    }
+
     /** Vampirism's own message for a refusal, as it says it when its key is pressed. */
     private static void tell(ServerPlayer player, String refusal) {
         String key = switch (refusal) {
@@ -190,7 +200,8 @@ public final class VampirismActionAssignables implements AssignableProvider {
         }
         String now = state.toString();
         String before = SEEN.put(player.getUUID(), now);
-        if (before != null && !before.equals(now)) com.aetherianartificer.townstead.root.ability.ActiveAbilities.syncView(player);
+        // The first look counts too: the view sent at login can predate Vampirism loading the player.
+        if (!now.equals(before == null ? "" : before)) com.aetherianartificer.townstead.root.ability.ActiveAbilities.syncView(player);
     }
 
     /** The player left: forget what they had. */

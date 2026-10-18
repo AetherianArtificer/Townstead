@@ -84,6 +84,15 @@ final class SettingControls {
             List<Object> values = List.of((Object[]) e.getDeclaringClass().getEnumConstants());
             return stepper(values, current, v -> Component.literal(SettingLabels.pretty(((Enum<?>) v).name())), label, width, set);
         }
+        if ("dialogue.dialogueTheme".equals(entry.key()) && current instanceof String s) {
+            // Every theme the loaded packs and the server provide.
+            List<Object> values = new ArrayList<>();
+            values.add("auto");
+            com.aetherianartificer.townstead.client.gui.dialogue.DialogueThemes.ids().stream()
+                    .map(Object::toString).sorted().forEach(values::add);
+            if (!values.contains(s)) values.add(s);
+            return stepper(values, s, v -> Component.literal(choiceName((String) v)), label, width, set);
+        }
         List<Choice> choices = CHOICES.get(entry.key());
         if (choices != null && current instanceof String s) {
             List<Object> values = new ArrayList<>();

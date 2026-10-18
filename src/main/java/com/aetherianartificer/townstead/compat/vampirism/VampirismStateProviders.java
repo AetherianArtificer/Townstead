@@ -113,6 +113,7 @@ public final class VampirismStateProviders {
     private static boolean fogLazy;
     private static Method fogInside;
     private static Method wolfsbaneFor, wolfsbaneAt;
+    private static boolean wolfsbaneLazy;
 
     /** Resolves the Vampirism and Werewolves place checks once; any missing piece is left null. */
     private static synchronized void probeHazards() {
@@ -141,11 +142,19 @@ public final class VampirismStateProviders {
                 fogInside = world.getMethod("isInsideArtificialVampireFogArea", pos);
             } catch (ReflectiveOperationException | LinkageError ignored) {}
         }
+        // Wolfsbane likewise moved from WerewolvesWorld (a LazyOptional) to LevelWolfsbane.
         try {
             Class<?> wolfsbane = Class.forName("de.teamlapen.werewolves.world.LevelWolfsbane");
             wolfsbaneFor = wolfsbane.getMethod("getOpt", net.minecraft.world.level.Level.class);
             wolfsbaneAt = wolfsbane.getMethod("isEffectedByWolfsbane", pos);
-        } catch (ReflectiveOperationException | LinkageError ignored) {}
+        } catch (ReflectiveOperationException | LinkageError absent) {
+            try {
+                Class<?> world = Class.forName("de.teamlapen.werewolves.world.WerewolvesWorld");
+                wolfsbaneFor = world.getMethod("getOpt", net.minecraft.world.level.Level.class);
+                wolfsbaneLazy = true;
+                wolfsbaneAt = world.getMethod("isEffectedByWolfsbane", pos);
+            } catch (ReflectiveOperationException | LinkageError ignored) {}
+        }
     }
 
     /**
@@ -194,6 +203,7 @@ public final class VampirismStateProviders {
         if (wolfsbaneFor == null || wolfsbaneAt == null) return null;
         try {
             Object holder = wolfsbaneFor.invoke(null, entity.level());
+            if (wolfsbaneLazy && holder != null) holder = holder.getClass().getMethod("resolve").invoke(holder);
             Object levelWolfsbane = holder instanceof Optional<?> optional ? optional.orElse(null) : null;
             if (levelWolfsbane == null) return 0.0;
             int amplifier = ((Number) wolfsbaneAt.invoke(levelWolfsbane, pos)).intValue();

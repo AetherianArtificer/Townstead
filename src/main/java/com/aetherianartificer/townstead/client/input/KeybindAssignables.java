@@ -84,7 +84,7 @@ public final class KeybindAssignables {
                     sourceOf(mapping.getName(), pack, category),
                     false,
                     0, 0, "",
-                    Assignable.Kind.KEYBIND.ordinal(), 0, 0));
+                    Assignable.Kind.KEYBIND.ordinal(), 0, 0, ""));
         }
         return out;
     }

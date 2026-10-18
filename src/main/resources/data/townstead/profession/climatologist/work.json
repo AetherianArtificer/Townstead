@@ -10,9 +10,10 @@
   "tasks": [
     {
       "type": "townstead_work:maintain_climate",
-      "workstations": ["legendarysurvivaloverhaul:heater", "legendarysurvivaloverhaul:cooler"],
+      "workstations": ["legendarysurvivaloverhaul:heater", "legendarysurvivaloverhaul:cooler",
+        "cold_sweat:hearth_bottom", "cold_sweat:boiler", "cold_sweat:icebox"],
       "scope": "village", "weight": 10,
-      "order": { "name": "Restock boilers and coolers", "icon": "legendarysurvivaloverhaul:heater" }
+      "order": { "name": "Restock boilers and coolers", "icon": "minecraft:campfire" }
     }
   ],
   "storage": { "preferred_roles": ["townstead:heating_fuel", "townstead:cooling_fuel"] }

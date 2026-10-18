@@ -100,7 +100,7 @@ public final class CareerPackSource {
                         id,
                         Component.translatable(packNameKey(path), displayName(path)),
                         PackSource.BUILT_IN,
-                        Optional.empty());
+                        knownPack(id, path));
                 Pack pack = Pack.readMetaAndCreate(
                         info,
                         resources,
@@ -109,7 +109,8 @@ public final class CareerPackSource {
                 if (pack != null) output.accept(pack);
             });
             //?} else {
-            /*FolderRepositorySource.discoverPacks(directory, false, (path, resources) -> {
+            /*FolderRepositorySource.discoverPacks(directory, true, (path, resources) -> {
+                // Built in, so their worldgen loads as stable and the world is not marked experimental.
                 if (requireTownsteadContent && !isTownsteadPack(path)) return;
                 // A pack with no assets/ has nothing for the client (Townstead syncs data-pack
                 // textures, models and translations itself), so it stays off the resource-pack list.
@@ -291,6 +292,29 @@ public final class CareerPackSource {
         }
         return false;
     }
+
+    //? if >=1.21 {
+    /**
+     * A known-pack identity: vanilla marks worldgen from a pack without one experimental, and the
+     * world with it. The version follows the files, so a client reuses its own copy only when it matches.
+     */
+    public static Optional<net.minecraft.server.packs.repository.KnownPack> knownPack(String id, Path path) {
+        return Optional.of(new net.minecraft.server.packs.repository.KnownPack(Townstead.MOD_ID, id, contentVersion(path)));
+    }
+
+    private static String contentVersion(Path path) {
+        long hash = 17;
+        try (var files = Files.isDirectory(path) ? Files.walk(path) : java.util.stream.Stream.of(path)) {
+            for (Path file : (Iterable<Path>) files.filter(Files::isRegularFile).sorted()::iterator) {
+                hash = hash * 31 + path.relativize(file).toString().hashCode();
+                hash = hash * 31 + Files.size(file);
+                hash = hash * 31 + Files.getLastModifiedTime(file).toMillis();
+            }
+        } catch (IOException | RuntimeException ignored) {
+        }
+        return Long.toHexString(hash);
+    }
+    //?}
 
     private static String packId(Path path, PackType type, String source) {
         String safe = path.getFileName().toString().toLowerCase(Locale.ROOT)

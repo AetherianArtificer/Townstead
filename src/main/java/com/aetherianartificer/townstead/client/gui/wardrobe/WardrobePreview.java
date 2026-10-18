@@ -65,7 +65,12 @@ final class WardrobePreview {
             held[i] = entity.getItemBySlot(slots[i]);
             if (!held[i].isEmpty()) entity.setItemSlot(slots[i], ItemStack.EMPTY);
         }
+        // Drawn standing whatever they are doing: a sleeping or swimming villager would lie down in the cell.
+        net.minecraft.world.entity.Pose pose = entity.getPose();
+        java.util.Optional<net.minecraft.core.BlockPos> bed = entity.getSleepingPos();
         try {
+            entity.setPose(net.minecraft.world.entity.Pose.STANDING);
+            if (bed.isPresent()) entity.clearSleepingPos();
             if (villager != null && skin != null && !skin.isEmpty()) villager.setClothes(skin);
             float cx = (x0 + x1) / 2f;
             float cy = (y0 + y1) / 2f;
@@ -79,6 +84,8 @@ final class WardrobePreview {
             *///?}
         } catch (RuntimeException ignored) {
         } finally {
+            bed.ifPresent(entity::setSleepingPos);
+            entity.setPose(pose);
             if (villager != null && worn != null) villager.setClothes(worn);
             for (int i = 0; i < slots.length; i++) {
                 if (!held[i].isEmpty()) entity.setItemSlot(slots[i], held[i]);

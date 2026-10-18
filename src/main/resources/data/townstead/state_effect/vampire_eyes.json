@@ -8,6 +8,9 @@
     "type": "pheno:or",
     "conditions": [
       {
+        "type": "pheno:embodied"
+      },
+      {
         "type": "pheno:not",
         "condition": {
           "type": "pheno:entity_type",

@@ -1049,9 +1049,9 @@ public class Townstead {
                         level, e.getEntity(), e.getSource(), modified);
             }
         });
-        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent e) -> {
-            if (com.aetherianartificer.townstead.replace.MobReplacer.onFinalizeSpawn(e.getEntity(), e.getLevel(), e.getSpawnType())) {
-                e.setSpawnCancelled(true);
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.EntityMountEvent e) -> {
+            if (e.isMounting() && !com.aetherianartificer.townstead.pheno.state.StateForms.canRide(e.getEntityMounting())) {
+                e.setCanceled(true);
             }
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingDeathEvent e) -> {
@@ -1739,9 +1739,9 @@ public class Townstead {
                         level, e.getEntity(), e.getSource(), modified);
             }
         });
-        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.MobSpawnEvent.FinalizeSpawn e) -> {
-            if (com.aetherianartificer.townstead.replace.MobReplacer.onFinalizeSpawn(e.getEntity(), e.getLevel(), e.getSpawnType())) {
-                e.setSpawnCancelled(true);
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.EntityMountEvent e) -> {
+            if (e.isMounting() && !com.aetherianartificer.townstead.pheno.state.StateForms.canRide(e.getEntityMounting())) {
+                e.setCanceled(true);
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingDeathEvent e) -> {
@@ -2440,6 +2440,8 @@ public class Townstead {
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.MarkStructureActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.RememberActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.KeypressActionType());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.IntroducePersonaActionType());
@@ -2526,6 +2528,8 @@ public class Townstead {
                 new com.aetherianartificer.townstead.pheno.condition.types.EntityTypeConditionType("pheno:in_tag"));
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.GenderConditionType());
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.EmbodiedConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
                 new com.aetherianartificer.townstead.pheno.condition.types.WearingSkinConditionType());
         com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
@@ -3128,6 +3132,7 @@ public class Townstead {
         event.addListener(new com.aetherianartificer.townstead.clothing.policy.WardrobePolicies.Loader());
         event.addListener(new com.aetherianartificer.townstead.culture.CultureJsonLoader());
         event.addListener(new com.aetherianartificer.townstead.gift.GiftReactions());
+        event.addListener(new com.aetherianartificer.townstead.cure.CureReactions());
         event.addListener(new com.aetherianartificer.townstead.culture.VillageLayouts.Loader());
         event.addListener(new com.aetherianartificer.townstead.spirit.SpiritBaseline.Loader());
         event.addListener(new com.aetherianartificer.townstead.livery.LiveryStyles.Loader());

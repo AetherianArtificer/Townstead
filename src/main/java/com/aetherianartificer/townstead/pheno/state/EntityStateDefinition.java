@@ -50,10 +50,10 @@ public record EntityStateDefinition(
      * {@code {coat:11}}), the state whose amount (1 and up) picks it; one never set comes from who they
      * are, so it never changes. {@code variant_state} is the same for a {@code {variant:N}} placeholder.
      */
-    public record Tier(String id, double min, String rig, boolean talk, boolean sleep,
+    public record Tier(String id, double min, String rig, boolean talk, boolean sleep, boolean ride,
                        Map<String, ResourceLocation> variants) {
         public Tier(String id, double min) {
-            this(id, min, "", true, true, Map.of());
+            this(id, min, "", true, true, true, Map.of());
         }
     }
 
@@ -140,7 +140,7 @@ public record EntityStateDefinition(
                 }
                 tiers.add(new Tier(name, threshold, GsonHelper.getAsString(tierJson, "rig", "").trim(),
                         GsonHelper.getAsBoolean(tierJson, "talk", true), GsonHelper.getAsBoolean(tierJson, "sleep", true),
-                        variants(tierJson)));
+                        GsonHelper.getAsBoolean(tierJson, "ride", true), variants(tierJson)));
             }
         }
         tiers.sort(Comparator.comparingDouble(Tier::min));

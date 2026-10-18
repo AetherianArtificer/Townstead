@@ -29,7 +29,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -60,7 +59,7 @@ public final class PhenoCommand {
     private static final Gson PRETTY = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
     private static final SuggestionProvider<CommandSourceStack> SUGGEST_STATES = (c, builder) ->
-            SharedSuggestionProvider.suggest(com.aetherianartificer.townstead.pheno.state.EntityStates.definitions()
+            com.aetherianartificer.townstead.commands.QuotedSuggestions.suggest(com.aetherianartificer.townstead.pheno.state.EntityStates.definitions()
                     .keySet().stream().map(id -> "\"" + id + "\""), builder);
 
     private PhenoCommand() {}
@@ -186,7 +185,7 @@ public final class PhenoCommand {
     }
 
     private static final SuggestionProvider<CommandSourceStack> SUGGEST_SKILLS = (c, b) ->
-            SharedSuggestionProvider.suggest(SkillDefs.all().keySet().stream().map(ResourceLocation::toString), b);
+            com.aetherianartificer.townstead.commands.QuotedSuggestions.suggest(SkillDefs.all().keySet().stream().map(ResourceLocation::toString), b);
 
     private static int skills(CommandSourceStack source, Entity target) {
         if (!(target instanceof LivingEntity living)) {
@@ -404,7 +403,7 @@ public final class PhenoCommand {
     }
 
     private static final SuggestionProvider<CommandSourceStack> SUGGEST_GENES = (c, b) ->
-            SharedSuggestionProvider.suggest(GeneRegistry.all().stream().map(g -> g.id().toString()), b);
+            com.aetherianartificer.townstead.commands.QuotedSuggestions.suggest(GeneRegistry.all().stream().map(g -> g.id().toString()), b);
 
     private static int expand(CommandSourceStack source, String geneId) {
         ResourceLocation id = ResourceLocation.tryParse(geneId);

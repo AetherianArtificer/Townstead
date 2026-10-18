@@ -24,13 +24,25 @@ import java.util.Map;
  */
 @Mixin(targets = "net.minecraft.world.level.levelgen.structure.pools.JigsawPlacement$Placer")
 public abstract class JigsawPlacerVillageLimitsMixin {
+    //? if neoforge {
     @Shadow @Final private List<? super PoolElementStructurePiece> pieces;
 
     @ModifyExpressionValue(method = "tryPlacingChildren", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/world/level/levelgen/structure/pools/StructureTemplatePool;getShuffledTemplates(Lnet/minecraft/util/RandomSource;)Ljava/util/List;"))
+    //?} else {
+    /*@Shadow(remap = false) @Final private List<? super PoolElementStructurePiece> f_210319_;
+
+    @ModifyExpressionValue(method = "m_227264_", remap = false, at = @At(value = "INVOKE", remap = false,
+            target = "Lnet/minecraft/world/level/levelgen/structure/pools/StructureTemplatePool;m_227362_(Lnet/minecraft/util/RandomSource;)Ljava/util/List;"))
+    *///?}
     private List<StructurePoolElement> townstead$limitBuildings(List<StructurePoolElement> shuffled) {
         if (!VillageLayouts.hasLimits()) return shuffled;
         Map<ResourceLocation, Integer> placed = new HashMap<>();
+        //? if neoforge {
+        List<? super PoolElementStructurePiece> pieces = this.pieces;
+        //?} else {
+        /*List<? super PoolElementStructurePiece> pieces = this.f_210319_;
+        *///?}
         for (Object piece : pieces) {
             if (piece instanceof PoolElementStructurePiece element) {
                 ResourceLocation id = template(element.getElement());

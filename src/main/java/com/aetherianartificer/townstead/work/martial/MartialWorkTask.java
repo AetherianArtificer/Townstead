@@ -52,6 +52,10 @@ import java.util.Map;
  * serves them all so they never pull the villager two ways: a fight comes first, then a sweep past
  * the border when one is due, then the first of patrol, hold post or drill. A weapon matching the
  * Job's {@code arms} comes out of the villager's inventory for the shift and goes back after.
+ *
+ * <p>A second instance runs at any hour as the call to arms: while {@link VillageAlarm} sounds it
+ * takes over the Jobs marked {@code rally}, waking the villager if need be, and arms a levy from the
+ * villagers with no martial Job.</p>
  */
 public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
     private static final int JOB_CHECK = 40;
@@ -65,6 +69,10 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
     private static final float CHASE_SPEED = 0.7f;
     private static final int HOLD_XP_INTERVAL = 1200;
     private static final int PLACE_REACH = 6;
+    private static final double RALLY_REACH = 8;
+    private static final String ISSUED = "townstead:levy_issued";
+
+    private final boolean rally;
 
     private List<MartialJob> jobs = List.of();
     private long nextJobCheck;
@@ -77,27 +85,36 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
     private int drawnSlot = -1;
 
     public MartialWorkTask() {
+        this(false);
+    }
+
+    public MartialWorkTask(boolean rally) {
         super(ImmutableMap.of(MemoryModuleType.WALK_TARGET, MemoryStatus.REGISTERED,
                 MemoryModuleType.LOOK_TARGET, MemoryStatus.REGISTERED,
                 MemoryModuleType.ATTACK_TARGET, MemoryStatus.REGISTERED,
                 MemoryModuleType.ATTACK_COOLING_DOWN, MemoryStatus.REGISTERED), 1200);
+        this.rally = rally;
     }
 
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         if (level.getGameTime() < nextJobCheck) return false;
         nextJobCheck = level.getGameTime() + JOB_CHECK;
-        if (villager.isSleeping() || villager.isBaby()) return false;
-        jobs = jobsFor(villager);
+        if (villager.isBaby() || (!rally && villager.isSleeping())) return false;
+        if (rally && !VillageAlarm.sounding(level, villager.blockPosition())) {
+            takeBackIssue(villager);
+            return false;
+        }
+        jobs = jobsNow(level, villager);
         return !jobs.isEmpty() && village(level, villager) != null;
     }
 
     @Override
     protected boolean canStillUse(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
-        if (home == null || villager.isSleeping()) return false;
+        if (home == null || (!rally && villager.isSleeping())) return false;
         if (gameTime >= nextJobCheck) {
             nextJobCheck = gameTime + JOB_CHECK;
-            jobs = jobsFor(villager);
+            jobs = jobsNow(level, villager);
         }
         return !jobs.isEmpty();
     }
@@ -109,11 +126,14 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
         place = null;
         lingerUntil = 0;
         sessionEnd = 0;
+        if (villager.isSleeping()) villager.stopSleeping();
         drawWeapon(villager);
+        if (rally && villager.getMainHandItem().isEmpty()) issue(villager);
     }
 
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (rally && villager.isSleeping()) villager.stopSleeping();
         if (target != null) {
             if (!target.isAlive()) {
                 if (target.getLastHurtByMob() == villager && engaging != null) award(villager, engaging.xp().kill(), gameTime, "townstead:slew_quarry");
@@ -133,7 +153,18 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
                 }
             }
         }
-        if (target == null) {
+        if (target == null && rally && gameTime >= nextSweep) {
+            nextSweep = gameTime + SEARCH_INTERVAL * 2;
+            for (MartialJob job : jobs) {
+                LivingEntity found = inVillage(level, villager, job);
+                if (found != null) {
+                    target = found;
+                    engaging = job;
+                    break;
+                }
+            }
+        }
+        if (target == null && !rally) {
             for (MartialJob job : jobs) {
                 if (job.kind() != MartialJob.Kind.SWEEP || gameTime < nextSweep) continue;
                 nextSweep = gameTime + job.sweep().interval();
@@ -151,6 +182,7 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
         }
         villager.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
         for (MartialJob job : jobs) {
+            if (job.levy() != null) return;
             switch (job.kind()) {
                 case PATROL -> patrol(level, villager, job, gameTime);
                 case HOLD_POST -> hold(level, villager, job, gameTime);
@@ -174,6 +206,7 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
         place = null;
         home = null;
         sheatheWeapon(villager);
+        if (rally && !VillageAlarm.sounding(level, villager.blockPosition())) takeBackIssue(villager);
     }
 
     // ---------------------------------------------------------------- jobs
@@ -191,6 +224,31 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
             for (WorkJobDef job : martial) out.add(job.martial());
         }
         return out == null ? List.of() : out;
+    }
+
+    /**
+     * The Jobs this instance runs now. While the alarm sounds, rally Jobs pass from the shift to the
+     * call to arms, and a villager with no martial Job may be levied; guards answer through MCA.
+     */
+    private List<MartialJob> jobsNow(ServerLevel level, VillagerEntityMCA villager) {
+        List<MartialJob> own = jobsFor(villager);
+        boolean alarm = VillageAlarm.sounding(level, villager.blockPosition());
+        if (!rally) return alarm ? own.stream().filter(job -> !job.rally()).toList() : own;
+        if (!alarm) return List.of();
+        List<MartialJob> rallying = own.stream().filter(MartialJob::rally).toList();
+        if (!rallying.isEmpty() || !own.isEmpty() || villager.isGuard()) return rallying;
+        return levyFor(villager);
+    }
+
+    private static List<MartialJob> levyFor(VillagerEntityMCA villager) {
+        long draw = (villager.getUUID().getLeastSignificantBits() >>> 1) % 1000;
+        for (WorkJobDef def : WorkJobs.all()) {
+            MartialJob job = def.martial();
+            if (job == null || job.levy() == null || draw >= job.levy().share() * 1000) continue;
+            if (job.levy().who() != null && !job.levy().who().test(new com.aetherianartificer.townstead.pheno.condition.ConditionContext(villager))) continue;
+            return List.of(job);
+        }
+        return List.of();
     }
 
     // ---------------------------------------------------------------- fighting
@@ -269,6 +327,16 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
         BoundingBox box = home.getBox();
         AABB area = new AABB(box.minX(), box.minY() - 16, box.minZ(), box.maxX() + 1, box.maxY() + 16, box.maxZ() + 1)
                 .inflate(job.sweep().reach());
+        return level.getEntitiesOfClass(LivingEntity.class, area, other -> engages(villager, other, job))
+                .stream().min(Comparator.comparingDouble(villager::distanceToSqr)).orElse(null);
+    }
+
+    /** Something to fight anywhere in the village, for the call to arms. */
+    private @Nullable LivingEntity inVillage(ServerLevel level, VillagerEntityMCA villager, MartialJob job) {
+        if (home == null) return null;
+        BoundingBox box = home.getBox();
+        AABB area = new AABB(box.minX(), box.minY() - 16, box.minZ(), box.maxX() + 1, box.maxY() + 16, box.maxZ() + 1)
+                .inflate(RALLY_REACH);
         return level.getEntitiesOfClass(LivingEntity.class, area, other -> engages(villager, other, job))
                 .stream().min(Comparator.comparingDouble(villager::distanceToSqr)).orElse(null);
     }
@@ -414,6 +482,33 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
         villager.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
         ItemStack left = villager.getInventory().addItem(held);
         if (!left.isEmpty()) villager.spawnAtLocation(left);
+    }
+
+    /** Hands a levied villager with nothing to draw the levy's {@code issue}, taken back when the alarm ends. */
+    private void issue(VillagerEntityMCA villager) {
+        for (MartialJob job : jobs) {
+            MartialJob.Levy levy = job.levy();
+            if (levy == null || levy.issue() == null) continue;
+            net.minecraft.world.item.Item item = levy.issueTag()
+                    ? BuiltInRegistries.ITEM.getTag(net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM, levy.issue()))
+                            .flatMap(set -> set.stream().findFirst()).map(net.minecraft.core.Holder::value).orElse(null)
+                    : BuiltInRegistries.ITEM.getOptional(levy.issue()).orElse(null);
+            if (item == null || item == Items.AIR) continue;
+            villager.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(item));
+            villager.getPersistentData().putString(ISSUED, BuiltInRegistries.ITEM.getKey(item).toString());
+            return;
+        }
+    }
+
+    private static void takeBackIssue(VillagerEntityMCA villager) {
+        var data = villager.getPersistentData();
+        if (!data.contains(ISSUED)) return;
+        String issued = data.getString(ISSUED);
+        data.remove(ISSUED);
+        ItemStack held = villager.getMainHandItem();
+        if (!held.isEmpty() && issued.equals(BuiltInRegistries.ITEM.getKey(held.getItem()).toString())) {
+            villager.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        }
     }
 
     private static void award(VillagerEntityMCA villager, int xp, long gameTime, String verb) {

@@ -87,7 +87,7 @@ public final class VampireVillagers {
                 || !villager.hasEffect(net.minecraft.world.effect.MobEffects.WEAKNESS)
                 || curing(villager)) return false;
         if (!player.getAbilities().instabuild) stack.shrink(1);
-        curedBy(player);
+        curedBy(player, villager);
         beginCure(villager);
         return true;
     }
@@ -128,12 +128,11 @@ public final class VampireVillagers {
                 if (!player.getInventory().add(left)) player.drop(left, false);
             });
         }
-        curedBy(player);
+        curedBy(player, villager);
         if (early) {
             removeSanguinare(villager);
             villager.playSound(net.minecraft.sounds.SoundEvents.ZOMBIE_VILLAGER_CURE, 1f, 1f);
-            com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.survival(villager,
-                    com.aetherianartificer.townstead.chronicle.emit.ChronicleTapKeys.VAMPIRE_CURED, Map.of());
+            VampireChronicles.cured(villager, 0);
             return true;
         }
         beginCure(villager);
@@ -143,8 +142,9 @@ public final class VampireVillagers {
     /** Chronicle counter on a player for every cure of vampirism they start. */
     public static final String CURED_BY = "townstead:cured_vampirism";
 
-    private static void curedBy(net.minecraft.server.level.ServerPlayer player) {
+    private static void curedBy(net.minecraft.server.level.ServerPlayer player, VillagerEntityMCA villager) {
         com.aetherianartificer.townstead.chronicle.Chronicles.addCounter(player.server, player.getUUID(), CURED_BY, 1);
+        com.aetherianartificer.townstead.cure.CureReactions.curedBy(villager, player);
     }
 
     private static void removeSanguinare(LivingEntity entity) {
@@ -169,6 +169,7 @@ public final class VampireVillagers {
     /** Looks after vampire villagers: rank, garlic, aging, night shift, and an old-style cure in progress. */
     public static void tick(VillagerEntityMCA villager) {
         if (EntityStates.definition(STATE) != null) VampireChronicles.observeRank(villager);
+        com.aetherianartificer.townstead.cure.CureReactions.tick(villager);
         if (EntityStates.definition(STATE) != null) VampireGarlic.tick(villager);
         if (villager.tickCount % 100 == 0) nightShift(villager);
         DhampirAging.tick(villager);

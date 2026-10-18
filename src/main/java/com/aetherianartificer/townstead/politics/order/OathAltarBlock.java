@@ -26,7 +26,14 @@ public class OathAltarBlock extends Block {
     @Override
     public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
         Player player = context.getPlayer();
+        // A founding altar founds its order where it stands, so it has to stand in a village.
+        if (context.getLevel() instanceof ServerLevel level && claimFor(context.getItemInHand(), player, asItem()) != null
+                && VillageManager.get(level).findNearestVillage(context.getClickedPos(), Village.MERGE_MARGIN).isEmpty()) {
+            if (player != null) player.displayClientMessage(Component.translatable("block.townstead.oath_altar.no_village"), true);
+            return null;
+        }
         if (context.getLevel() instanceof ServerLevel level && (player == null || !player.isCreative())
+                && claimFor(context.getItemInHand(), player, asItem()) == null
                 && orderAt(level, context.getClickedPos(), net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(asItem())) == null) {
             if (player != null) player.displayClientMessage(Component.translatable("block.townstead.oath_altar.no_order"), true);
             return null;
@@ -40,7 +47,38 @@ public class OathAltarBlock extends Block {
         super.setPlacedBy(level, pos, state, placer, stack);
         if (!(level instanceof ServerLevel server)) return;
         var order = orderAt(server, pos, net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(asItem()));
+        if (order == null) order = foundFromClaim(server, pos, placer, stack);
         if (order != null) OrderAltars.get(server.getServer()).put(order.id(), net.minecraft.core.GlobalPos.of(server.dimension(), pos));
+    }
+
+    /** The claim this altar founds with: its own mark, else the placing player's pending founding. */
+    private static @Nullable FoundingClaim claimFor(net.minecraft.world.item.ItemStack stack, @Nullable Player player,
+                                                    net.minecraft.world.item.Item item) {
+        FoundingClaim claim = FoundingClaim.of(stack);
+        if (claim != null || player == null) return claim;
+        return FoundingClaim.pending(player, net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item));
+    }
+
+    /** An altar handed over to found an order founds it where it is first placed, in a village. */
+    private static @Nullable com.aetherianartificer.townstead.politics.state.Faction foundFromClaim(
+            ServerLevel level, BlockPos pos, @Nullable net.minecraft.world.entity.LivingEntity placer,
+            net.minecraft.world.item.ItemStack stack) {
+        FoundingClaim claim = claimFor(stack, placer instanceof Player p ? p : null, stack.getItem());
+        if (claim == null) return null;
+        Village village = VillageManager.get(level).findNearestVillage(pos, Village.MERGE_MARGIN).orElse(null);
+        if (village == null) return null;
+        // Founded already, elsewhere: a spare altar does not found a second order.
+        if (Orders.leads(PoliticalSavedData.get(level.getServer()), claim.kind(), claim.leader())) {
+            if (placer instanceof Player founder) FoundingClaim.forget(founder, claim.kind());
+            return null;
+        }
+        var order = Orders.found(level, village, claim.kind(), claim.leader());
+        if (order != null && placer instanceof Player founder) FoundingClaim.forget(founder, claim.kind());
+        if (order != null && placer instanceof Player player) {
+            player.displayClientMessage(Component.translatable("command.townstead.order.founded", order.name(),
+                    village.getName(), claim.leaderName()), false);
+        }
+        return order;
     }
 
     /** Using an altar, such as one found in a village, teaches its recipe. */

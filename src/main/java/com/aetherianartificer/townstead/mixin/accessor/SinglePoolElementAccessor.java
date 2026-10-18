@@ -9,6 +9,11 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 
 @Mixin(SinglePoolElement.class)
 public interface SinglePoolElementAccessor {
+    //? if neoforge {
     @Accessor("template")
     Either<ResourceLocation, StructureTemplate> townstead$template();
+    //?} else {
+    /*@Accessor(value = "f_210411_", remap = false)
+    Either<ResourceLocation, StructureTemplate> townstead$template();
+    *///?}
 }

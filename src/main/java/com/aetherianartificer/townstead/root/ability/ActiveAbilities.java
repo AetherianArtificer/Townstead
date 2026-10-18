@@ -471,7 +471,8 @@ public final class ActiveAbilities {
                     costHave(player, assignable),
                     live == null || live.usable(),
                     live != null ? live.activeUntil() : 0L,
-                    live != null ? live.activeTicks() : 0));
+                    live != null ? live.activeTicks() : 0,
+                    assignable.descriptionWire()));
         }
 
         List<AbilityLoadoutS2CPayload.Option> available = new ArrayList<>();
@@ -484,7 +485,7 @@ public final class ActiveAbilities {
                     live != null ? live.lasting() : isToggle(player, assignable.id()),
                     assignable.cooldownTicks(), assignable.costAmount(), assignable.costLabel(),
                     assignable.kind().ordinal(), assignable.costColor(),
-                    costHave(player, assignable)));
+                    costHave(player, assignable), assignable.descriptionWire()));
         }
         return new AbilityLoadoutS2CPayload(List.copyOf(entries), List.copyOf(available));
     }
