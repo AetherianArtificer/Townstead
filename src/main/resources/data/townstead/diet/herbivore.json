@@ -8,7 +8,8 @@
         "#townstead:orders/cooked_meats",
         "#townstead:orders/raw_fish",
         "#townstead:orders/cooked_fish",
-        "#townstead:cannibal_meats"
+        "#townstead:cannibal_meats",
+        "#townstead:blood_and_organs"
       ],
       "nutrition": "native"
     }

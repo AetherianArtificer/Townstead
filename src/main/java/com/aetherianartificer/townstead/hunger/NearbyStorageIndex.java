@@ -11,11 +11,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerLevel;
-//? if >=1.21 {
-import net.minecraft.core.component.DataComponents;
-//?}
 import net.minecraft.world.Container;
-import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -201,35 +197,6 @@ public final class NearbyStorageIndex {
             }
         }
 
-        void collectBestFoodContainerSlots(VillagerEntityMCA villager,
-                                           BlockPos center,
-                                           int horizontalRadius,
-                                           int verticalRadius,
-                                           Consumer<NearbyItemSources.ContainerSlot> consumer) {
-            for (Entry entry : entries) {
-                if (!withinSearch(center, horizontalRadius, verticalRadius, entry.pos())) continue;
-                if (roleRank(entry.roles(), StorageUse.INGREDIENT) == Integer.MAX_VALUE) continue;
-                if (!com.aetherianartificer.townstead.storage.RoomOwnershipAccess
-                        .mayAccess((ServerLevel) villager.level(), villager, entry.pos())) continue;
-                FoodSlotView bestFoodSlot = entry.bestFoodSlot();
-                if (bestFoodSlot == null) continue;
-                double dist = villager.distanceToSqr(
-                        bestFoodSlot.pos().getX() + 0.5,
-                        bestFoodSlot.pos().getY() + 0.5,
-                        bestFoodSlot.pos().getZ() + 0.5
-                );
-                consumer.accept(new NearbyItemSources.ContainerSlot(
-                        bestFoodSlot.pos(),
-                        bestFoodSlot.container(),
-                        false,
-                        bestFoodSlot.slot(),
-                        bestFoodSlot.nutrition(),
-                        dist,
-                        null
-                ));
-            }
-        }
-
         @Nullable NearbyItemSources.ContainerSlot findBestDrinkNearbySlot(VillagerEntityMCA villager,
                                                                           BlockPos center,
                                                                           int horizontalRadius,
@@ -270,12 +237,10 @@ public final class NearbyStorageIndex {
     }
 
     private record Entry(BlockPos pos, List<SlotView> containerSlots, List<SlotView> allSlots,
-                         @Nullable FoodSlotView bestFoodSlot, Set<StorageRoleDef.Role> roles) {}
+                         Set<StorageRoleDef.Role> roles) {}
 
     private record SlotView(BlockPos pos, @Nullable Container container, boolean itemHandler, int slot,
                             @Nullable Direction side, ItemStack stack) {}
-
-    private record FoodSlotView(BlockPos pos, Container container, int slot, int nutrition) {}
 
     private record SnapshotKey(String dimensionId, int minChunkX, int maxChunkX, int minChunkZ, int maxChunkZ, int minY, int maxY) {
         static SnapshotKey from(ServerLevel level, BlockPos center, int horizontalRadius, int verticalRadius) {
@@ -368,7 +333,6 @@ public final class NearbyStorageIndex {
                 immutablePos,
                 List.copyOf(containerSlots),
                 List.copyOf(allSlots),
-                bestFoodSlot(immutablePos, containerSlots),
                 StorageRoles.semanticRoles(state)
         );
     }
@@ -382,28 +346,6 @@ public final class NearbyStorageIndex {
         if (currentBest == null) return true;
         if (candidateDist < currentBest.distanceSqr() - 4.0d) return true;
         return candidateDist < currentBest.distanceSqr() + 4.0d && candidateScore > currentBest.score();
-    }
-
-    private static @Nullable FoodSlotView bestFoodSlot(BlockPos pos, List<SlotView> containerSlots) {
-        FoodSlotView best = null;
-        for (SlotView slotView : containerSlots) {
-            int nutrition = foodNutrition(slotView.stack());
-            if (nutrition <= 0 || slotView.container() == null) continue;
-            if (best == null || nutrition > best.nutrition()) {
-                best = new FoodSlotView(pos, slotView.container(), slotView.slot(), nutrition);
-            }
-        }
-        return best;
-    }
-
-    private static int foodNutrition(ItemStack stack) {
-        //? if >=1.21 {
-        FoodProperties food = stack.get(DataComponents.FOOD);
-        return food != null ? food.nutrition() : 0;
-        //?} else {
-        /*FoodProperties food = stack.getFoodProperties(null);
-        return food != null ? food.getNutrition() : 0;
-        *///?}
     }
 
     private static boolean withinSearch(BlockPos center, int horizontalRadius, int verticalRadius, BlockPos pos) {

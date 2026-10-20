@@ -118,6 +118,7 @@ public final class TownsteadQueryCommands {
                                         StringArgumentType.getString(c, "path"))))))));
         BuildingDiagnosticsCommands.register(dispatcher, ctx);
         ThermalDiagnosticsCommand.register(dispatcher);
+        ClimateCommands.register(dispatcher);
     }
 
     private static int query(CommandSourceStack source, Object snapshot, String path) {

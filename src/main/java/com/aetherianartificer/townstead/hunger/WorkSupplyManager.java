@@ -11,10 +11,6 @@ import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.BoneMealItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.BlockItem;
-//? if >=1.21 {
-import net.minecraft.core.component.DataComponents;
-//?}
-import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.StemBlock;
 //? if neoforge {
@@ -75,7 +71,7 @@ public final class WorkSupplyManager {
     private static void offloadHarvestOutput(ServerLevel level, VillagerEntityMCA villager,
                                              Predicate<ItemStack> requiredTool) {
         SimpleContainer inv = villager.getInventory();
-        int reserveFoodSlot = findBestFoodSlot(inv);
+        int reserveFoodSlot = findBestFoodSlot(villager, inv);
 
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
@@ -106,25 +102,15 @@ public final class WorkSupplyManager {
         return blockItem.getBlock() instanceof CropBlock || blockItem.getBlock() instanceof StemBlock;
     }
 
-    private static int findBestFoodSlot(SimpleContainer inv) {
+    private static int findBestFoodSlot(VillagerEntityMCA villager, SimpleContainer inv) {
         int bestSlot = -1;
-        int bestNutrition = -1;
+        int bestNutrition = 0;
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
-            //? if >=1.21 {
-            FoodProperties food = stack.get(DataComponents.FOOD);
-            //?} else {
-            /*FoodProperties food = stack.getFoodProperties(null);
-            *///?}
-            //? if >=1.21 {
-            if (food == null || food.nutrition() <= 0) continue;
-            if (food.nutrition() > bestNutrition) {
-                bestNutrition = food.nutrition();
-            //?} else {
-            /*if (food == null || food.getNutrition() <= 0) continue;
-            if (food.getNutrition() > bestNutrition) {
-                bestNutrition = food.getNutrition();
-            *///?}
+            if (!FoodSafety.isSafeNutritiousFood(stack, villager)) continue;
+            int nutrition = FoodSafety.nutritionFor(villager, stack);
+            if (nutrition > bestNutrition) {
+                bestNutrition = nutrition;
                 bestSlot = i;
             }
         }

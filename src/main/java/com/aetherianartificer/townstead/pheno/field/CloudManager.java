@@ -30,6 +30,14 @@ public final class CloudManager {
         }
     }
 
+    /** Summed local-climate offsets of the fields covering a position. Server thread only. */
+    public static float climateOffset(net.minecraft.server.level.ServerLevel level, net.minecraft.core.BlockPos pos) {
+        if (CLOUDS.isEmpty() || !level.getServer().isSameThread()) return 0f;
+        float total = 0f;
+        for (Cloud cloud : CLOUDS) if (cloud.level() == level) total += cloud.climateOffsetAt(pos);
+        return total;
+    }
+
     public static void clear() {
         CLOUDS.clear();
     }

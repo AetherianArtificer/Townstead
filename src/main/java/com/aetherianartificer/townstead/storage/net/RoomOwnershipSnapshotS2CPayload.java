@@ -18,13 +18,15 @@ import java.util.UUID;
 /** Server-authoritative people available in the room ownership editor. */
 //? if neoforge {
 public record RoomOwnershipSnapshotS2CPayload(BlockPos tagPos, long worksiteId, String placeName,
-                                               OwnershipScope scope, boolean privateAccess,
-                                               boolean wholeBuildingAvailable,
+                                               OwnershipScope scope, boolean wholeBuildingAvailable,
+                                               boolean lodging, boolean mayEdit, int roomBeds,
+                                               int buildingBeds,
                                                List<Person> people) implements CustomPacketPayload {
 //?} else {
 /*public record RoomOwnershipSnapshotS2CPayload(BlockPos tagPos, long worksiteId, String placeName,
-                                               OwnershipScope scope, boolean privateAccess,
-                                               boolean wholeBuildingAvailable,
+                                               OwnershipScope scope, boolean wholeBuildingAvailable,
+                                               boolean lodging, boolean mayEdit, int roomBeds,
+                                               int buildingBeds,
                                                List<Person> people) {
 *///?}
     public record Person(UUID uuid, String name, RoomOwner.Kind kind, boolean selected,
@@ -42,8 +44,11 @@ public record RoomOwnershipSnapshotS2CPayload(BlockPos tagPos, long worksiteId, 
         buf.writeLong(worksiteId);
         buf.writeUtf(placeName, 128);
         buf.writeEnum(scope);
-        buf.writeBoolean(privateAccess);
         buf.writeBoolean(wholeBuildingAvailable);
+        buf.writeBoolean(lodging);
+        buf.writeBoolean(mayEdit);
+        buf.writeVarInt(roomBeds);
+        buf.writeVarInt(buildingBeds);
         buf.writeVarInt(people.size());
         for (Person person : people) {
             buf.writeUUID(person.uuid());
@@ -60,8 +65,11 @@ public record RoomOwnershipSnapshotS2CPayload(BlockPos tagPos, long worksiteId, 
         long worksiteId = buf.readLong();
         String placeName = buf.readUtf(128);
         OwnershipScope scope = buf.readEnum(OwnershipScope.class);
-        boolean privateAccess = buf.readBoolean();
         boolean wholeBuildingAvailable = buf.readBoolean();
+        boolean lodging = buf.readBoolean();
+        boolean mayEdit = buf.readBoolean();
+        int roomBeds = buf.readVarInt();
+        int buildingBeds = buf.readVarInt();
         int count = Math.min(1024, buf.readVarInt());
         List<Person> people = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
@@ -69,7 +77,7 @@ public record RoomOwnershipSnapshotS2CPayload(BlockPos tagPos, long worksiteId, 
                     buf.readBoolean(), buf.readBoolean(), buf.readBoolean()));
         }
         return new RoomOwnershipSnapshotS2CPayload(tagPos, worksiteId, placeName, scope,
-                privateAccess, wholeBuildingAvailable, people);
+                wholeBuildingAvailable, lodging, mayEdit, roomBeds, buildingBeds, people);
     }
 
     //? if neoforge {

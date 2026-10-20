@@ -50,7 +50,7 @@ public final class TriggerGeneType implements GeneType {
 
     public static final String KEY = "pheno:trigger";
 
-    public enum Trigger { WHEN_HURT, WHEN_ATTACK, WHEN_KILL, WHEN_DEATH, WHEN_LAND, WHEN_WAKE_UP,
+    public enum Trigger { WHEN_HURT, WHEN_ATTACK, WHEN_KILL, WHEN_DEATH, WHEN_LAND, WHEN_WAKE_UP, WHEN_SLEEP, WHEN_RESTED,
         WHEN_JUMP, WHEN_STRUCK_BY_LIGHTNING, WHEN_EQUIP, WHEN_ITEM_USE, WHEN_ENTER_DIMENSION, PRESS,
         WHEN_WORK, WHEN_CRAFT, WHEN_DEATH_PREVENTED, AI }
 
@@ -165,7 +165,9 @@ public final class TriggerGeneType implements GeneType {
             case "when_kill", "on_kill", "kill" -> Trigger.WHEN_KILL;
             case "when_death", "on_death", "death" -> Trigger.WHEN_DEATH;
             case "when_land", "on_land", "land" -> Trigger.WHEN_LAND;
-            case "when_wake_up", "on_wake_up", "wake_up", "wakeup" -> Trigger.WHEN_WAKE_UP;
+            case "when_wake_up", "on_wake_up", "wake_up", "wakeup", "when_wake", "on_wake" -> Trigger.WHEN_WAKE_UP;
+            case "when_sleep", "on_sleep", "sleep" -> Trigger.WHEN_SLEEP;
+            case "when_rested", "on_rested", "rested" -> Trigger.WHEN_RESTED;
             case "when_jump", "on_jump", "jump" -> Trigger.WHEN_JUMP;
             case "when_struck_by_lightning", "when_lightning_struck", "on_lightning_struck", "lightning_struck" ->
                     Trigger.WHEN_STRUCK_BY_LIGHTNING;

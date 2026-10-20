@@ -55,4 +55,12 @@ class TimedTemperatureEffectsTest {
         assertFalse(ThermalConsumables.thermalPotion("minecraft", "poison"));
         assertFalse(ThermalConsumables.thermalPotion("unrelated", "hot_food"));
     }
+
+    @Test
+    void fireResistanceIsThermalOnlyWithColdSweat() {
+        assertTrue(ThermalConsumables.thermalPotion("cold_sweat", "ice_resistance", true));
+        assertTrue(ThermalConsumables.thermalPotion("minecraft", "fire_resistance", true));
+        assertFalse(ThermalConsumables.thermalPotion("minecraft", "fire_resistance", false));
+        assertFalse(ThermalConsumables.thermalPotion("cold_sweat", "grace", true));
+    }
 }

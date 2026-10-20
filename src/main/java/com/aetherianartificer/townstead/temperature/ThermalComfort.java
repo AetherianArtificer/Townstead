@@ -30,6 +30,7 @@ public final class ThermalComfort {
     /** Temperature-equivalent environment load: ambient after clothing, genes, wetness, water and activity, less 20. */
     public static float load(float ambient, float wetness, boolean immersed, float activityWarmth,
                              ThermalProtection clothing, ThermalProfile profile) {
+        wetness = profile.soak(wetness);
         float retained = 1 - 0.75f * wetness;
         ThermalProtection protection = new ThermalProtection(0, clothing.coldResistance() * retained,
                 clothing.heatResistance(), clothing.thermalResistance() * retained);

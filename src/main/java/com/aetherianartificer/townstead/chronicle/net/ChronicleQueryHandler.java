@@ -312,11 +312,25 @@ public final class ChronicleQueryHandler {
     }
 
     private static void sendPage(ServerPlayer player, ChroniclePageS2CPayload page) {
+        page = masked(player, page);
         //? if neoforge {
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, page);
         //?} else {
         /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(player, page);
         *///?}
+    }
+
+    /** The page with any family name this player has not been told taken back out of it. */
+    private static ChroniclePageS2CPayload masked(ServerPlayer player, ChroniclePageS2CPayload page) {
+        java.util.function.UnaryOperator<String> mask = com.aetherianartificer.townstead.persona.PersonaNameMask.forPlayer(player);
+        List<ChroniclePageS2CPayload.EntryView> entries = new ArrayList<>(page.entries().size());
+        for (ChroniclePageS2CPayload.EntryView entry : page.entries()) {
+            entries.add(new ChroniclePageS2CPayload.EntryView(entry.eventId(), entry.worldDay(), entry.dateLabel(),
+                    mask.apply(entry.headlineLiteral()), entry.headlineLangKey(), entry.args().stream().map(mask).toList(),
+                    entry.category(), entry.channel(), entry.fidelity()));
+        }
+        return new ChroniclePageS2CPayload(page.requestId(), page.scope(), page.status(), page.hasMore(), page.nextCursor(),
+                mask.apply(page.title()), mask.apply(page.sourceLabel()), page.categoryCounts(), entries);
     }
 
     public static void clearAll() {

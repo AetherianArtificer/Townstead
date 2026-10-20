@@ -54,6 +54,13 @@
     -> father_at_birth
 * {named and done_counting and not done_count_talk} [What were you reciting, that night?]
     -> the_count
++ {done_first_oath} [I've brought someone.]
+    {act("enlist_recruit"):
+        All right. They train by the altar after dark, three nights. If they're still here after that, they kneel.
+    - else:
+        Not this one.
+    }
+    -> talk
 + {check("player_sworn")} [Any work?]
     -> contracts ->
     -> talk

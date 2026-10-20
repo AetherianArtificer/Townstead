@@ -9,6 +9,11 @@
           "state": "townstead_state:vampire"
         },
         {
+          "type": "pheno:chronicle_count",
+          "key": "townstead:asked_about",
+          "at_least": 1
+        },
+        {
           "type": "pheno:other",
           "condition": {
             "type": "pheno:chronicle_count",

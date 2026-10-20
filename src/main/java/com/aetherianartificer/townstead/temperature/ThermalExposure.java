@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.temperature;
 
+import com.aetherianartificer.townstead.compat.temperature.ColdSweatEntityCompat;
 import com.aetherianartificer.townstead.compat.temperature.LsoEntityCompat;
 import com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat;
 import com.aetherianartificer.townstead.root.needs.NeedSuppression;
@@ -16,12 +17,14 @@ public record ThermalExposure(float ambient, float wetness, boolean immersed, bo
         return com.aetherianartificer.townstead.TownsteadConfig.isVillagerTemperatureEnabled()
                 && !NeedSuppression.suppressesTemperature(villager)
                 && !ThermalProfile.of(villager).suppressed()
-                && !ToughAsNailsEntityCompat.climateClemency(villager);
+                && !ToughAsNailsEntityCompat.climateClemency(villager)
+                && !ColdSweatEntityCompat.grace(villager);
     }
 
     public static ThermalProtection protection(VillagerEntityMCA villager) {
         return Insulation.clothingProtection(villager).plus(ToughAsNailsEntityCompat.protection(villager))
-                .plus(LsoEntityCompat.effects(villager).protection());
+                .plus(LsoEntityCompat.effects(villager).protection())
+                .plus(ColdSweatEntityCompat.protection(villager));
     }
 
     public static ThermalExposure at(ServerLevel level, VillagerEntityMCA villager, BlockPos pos, float activity) {

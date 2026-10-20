@@ -45,7 +45,7 @@ She wrote it like she was writing about the weather.
     I don't know. Somebody who brought him wine.
     Somebody who might still be bringing him wine.
     -> after
-* [Carry the lamp yourself.]
+* {done_slip} [Carry the lamp yourself.]
     That's the one I said. At the altar, out of nowhere, in front of everyone.
     She told me which one was the hardest, and I said it by accident.
     -> after

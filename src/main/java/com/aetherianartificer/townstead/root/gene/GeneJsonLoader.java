@@ -95,13 +95,14 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                     locus = type.get().defaultLocus(variants.get(0).instance());
                 }
                 com.aetherianartificer.townstead.pheno.condition.Condition expression = GeneExpression.parse(obj, type.get());
+                GeneLayer layer = layer(file, obj, type.get().layer());
                 parsed.put(file, new Gene(file, displayName, description, icon, category,
-                        dominance, locus, weight, variants, GsonHelper.getAsBoolean(obj, "drawback", false)));
+                        dominance, locus, weight, variants, GsonHelper.getAsBoolean(obj, "drawback", false), layer));
                 expressionRules.put(file, expression);
                 if (obj.has("penetrance")) {
                     penetrance.put(file, Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(obj, "penetrance", 1f))));
                 }
-                registerCompanions(file, companionConfigs, lang, parsed, companions, expressionRules);
+                registerCompanions(file, layer, companionConfigs, lang, parsed, companions, expressionRules);
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse gene {}: {}", file, ex.getMessage());
             }
@@ -119,6 +120,16 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
         if (errors > 0) LOGGER.warn("pheno: {} error diagnostic(s); run /pheno validate for detail", errors);
     }
 
+    private static GeneLayer layer(ResourceLocation gene, JsonObject json, GeneLayer fallback) {
+        if (!json.has("layer")) return fallback;
+        GeneLayer layer = GeneLayer.parse(GsonHelper.getAsString(json, "layer", ""));
+        if (layer == null) {
+            LOGGER.warn("Gene {}: 'layer' must be body, being or habits; using {}", gene, fallback.id());
+            return fallback;
+        }
+        return layer;
+    }
+
     /**
      * Register a gene's inline companions (its {@code resources} meters and {@code companions}
      * components) as real genes keyed by the derived id {@code <parentId>/<name>}, and record the
@@ -126,6 +137,14 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
      * when a config is invalid.
      */
     static void registerCompanions(ResourceLocation parent, Map<ResourceLocation, JsonObject> configs,
+                                           Map<String, String> lang, Map<ResourceLocation, Gene> parsed,
+                                           Map<ResourceLocation, List<ResourceLocation>> companions,
+                                           Map<ResourceLocation, com.aetherianartificer.townstead.pheno.condition.Condition> expressionRules) {
+        registerCompanions(parent, GeneLayer.BODY, configs, lang, parsed, companions, expressionRules);
+    }
+
+    /** Companions share their parent's layer: a flight gene's meter goes where the flight goes. */
+    static void registerCompanions(ResourceLocation parent, GeneLayer parentLayer, Map<ResourceLocation, JsonObject> configs,
                                            Map<String, String> lang, Map<ResourceLocation, Gene> parsed,
                                            Map<ResourceLocation, List<ResourceLocation>> companions,
                                            Map<ResourceLocation, com.aetherianartificer.townstead.pheno.condition.Condition> expressionRules) {
@@ -157,7 +176,7 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
             String category = GsonHelper.getAsString(config, "category",
                     ResourceGeneType.KEY.equals(typeKey) ? "resource" : "companion");
             parsed.put(id, new Gene(id, name, null, null, category,
-                    Dominance.fromString("recessive"), locus, 1, variants));
+                    Dominance.fromString("recessive"), locus, 1, variants, false, parentLayer));
             ids.add(id);
         }
         if (!ids.isEmpty()) companions.put(parent, ids);

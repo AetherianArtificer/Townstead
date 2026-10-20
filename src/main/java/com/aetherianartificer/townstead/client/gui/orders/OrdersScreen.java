@@ -696,7 +696,8 @@ public class OrdersScreen extends Screen {
      */
     private String displayedReason(Row row) {
         if (row.status() != OrdersSnapshotS2CPayload.Status.WAITING) return row.reason();
-        Option option = optionFor(row.product());
+        Option option = row.tag() ? shownMember(row.output()) : null;
+        if (option == null) option = optionFor(row.product());
         if (option == null || option.missing().isEmpty()) return row.reason();
         long phase = net.minecraft.Util.getMillis() / 1200L;
         StringBuilder out = new StringBuilder(tr("townstead.orders.missing.prefix"));
@@ -1469,7 +1470,10 @@ public class OrdersScreen extends Screen {
 
     /** What sprite a line shows: itself for a thing, a member's for a set, a job's own icon. */
     private ResourceLocation iconFor(Row row) {
-        if (row.tag()) return tagIcon(row.output());
+        if (row.tag()) {
+            Option member = shownMember(row.output());
+            return member == null ? tagIcon(row.output()) : member.product();
+        }
         if (!row.activity()) return row.product();
         Option option = optionFor(row.product());
         return option == null ? row.output() : option.stationIcon();
@@ -1486,6 +1490,23 @@ public class OrdersScreen extends Screen {
             return BuiltInRegistries.ITEM.getKey(holder.value());
         }
         return BuiltInRegistries.ITEM.getKey(net.minecraft.world.item.Items.AIR);
+    }
+
+    /**
+     * The member a set's line is showing right now. A set has no recipe of its own, so its line
+     * takes turns with each thing here that counts toward it, sprite and shortfall together.
+     */
+    private @Nullable Option shownMember(ResourceLocation tagId) {
+        List<Option> members = new ArrayList<>();
+        for (Option option : data.options()) {
+            if (option.activity() || option.tag()) continue;
+            if (com.aetherianartificer.townstead.work.order.OrderTags.contains(tagId, option.output())) {
+                members.add(option);
+            }
+        }
+        if (members.isEmpty()) return null;
+        long phase = net.minecraft.Util.getMillis() / 1200L;
+        return members.get((int) Math.floorMod(phase, members.size()));
     }
 
     /** The catalogue entry for this output, which is where the recipe's own facts live. */

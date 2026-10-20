@@ -42,7 +42,10 @@ EXTERNAL contract_turn_in(pool)
 ~ return
 
 === function act(id) ===
-~ return
+~ return true
+
+=== function act_on(id, name) ===
+~ return true
 
 === function mod(id) ===
 ~ return false
@@ -87,6 +90,8 @@ EXTERNAL contract_turn_in(pool)
 // act1/02_wolf.ink
 ~ wolf_seen = false
 ~ asked_scraps = false
+~ scraps_offered = false
+~ done_scraps_job = false
 ~ wolf_day = -1
 
 // act1/03_altar.ink
@@ -103,6 +108,10 @@ EXTERNAL contract_turn_in(pool)
 // act1/06_oath.ink
 ~ done_first_oath = false
 
+// act1/06b_player_oath.ink
+~ oath_job = false
+~ oath_put_off = -1
+
 // act1/07_walk.ink
 ~ walking = false
 ~ done_walk = false
@@ -113,6 +122,7 @@ EXTERNAL contract_turn_in(pool)
 // act1/08_watch.ink
 ~ watching = false
 ~ done_watch = false
+~ no_one_turns = false
 
 // act1/09_neighbor.ink
 ~ neighbor = ""
@@ -274,6 +284,8 @@ EXTERNAL contract_turn_in(pool)
 ~ w1_asked = false
 ~ done_w1_items = false
 ~ done_w2 = false
+~ done_w3 = false
+~ w2_kills = 0
 ~ w1_day = -1
 
 -> inky_jump

@@ -32,7 +32,12 @@ public final class ModCompat {
     /** Temperature mods with climate equipment a Climatologist keeps fuelled. */
     private static final List<String> CLIMATE_PROVIDERS = List.of("toughasnails", "legendarysurvivaloverhaul", "cold_sweat");
 
+    /** Mods whose blocks a tailor's shop or a mill needs; without one, MCA would only log empty tags. */
+    private static final List<String> TAILOR_PROVIDERS = List.of("accents", "legendarysurvivaloverhaul", "weaversparadise");
+    private static final List<String> MILL_PROVIDERS = List.of("kaleidoscope_cookery");
     private static final Map<String, List<String>> ANY_PROVIDER_PREFIXES = Map.of(
+            "tailors_shop_", TAILOR_PROVIDERS,
+            "mill", MILL_PROVIDERS,
             "compat/farmersdelight/kitchen", KITCHEN_PROVIDERS,
             "compat/toughasnails/climate_", CLIMATE_PROVIDERS,
             "compat.toughasnails.climate_", CLIMATE_PROVIDERS);

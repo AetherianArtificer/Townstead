@@ -97,16 +97,29 @@ public final class CultureVillages {
     /**
      * Whether a structure may start in this chunk. Structures outside any culture always may; a
      * culture switched off in the Switchboard generates none, and a rate below one thins them out
-     * with a roll fixed by the world seed and chunk.
+     * with a roll fixed by the world seed and chunk. A structure no loaded founding profile can found,
+     * such as one whose profiles need a missing mod, generates none.
      */
     public static boolean allowsGeneration(ResourceLocation structure, long seed, ChunkPos chunk) {
         ResourceLocation culture = culture(structure);
         if (culture == null) return true;
         String id = culture.toString();
-        if (!CultureRules.enabled(id)) return false;
+        if (!CultureRules.enabled(id) || !hasFounder(structure, culture)) return false;
         double rate = CultureRules.rate(id);
         if (rate >= 1.0) return true;
         RandomSource roll = RandomSource.create(seed ^ chunk.toLong() ^ ((long) structure.hashCode() << 32));
         return roll.nextDouble() < rate;
+    }
+
+    /** Whether a loaded founding profile can found this structure: one claiming it, or one of its culture. */
+    static boolean hasFounder(ResourceLocation structure, ResourceLocation culture) {
+        for (ResourceLocation id : profiles(structure)) {
+            if (FoundingProfiles.get(id) != null) return true;
+        }
+        if (!profiles(structure).isEmpty() && !cultureByStructure.containsKey(structure)) return false;
+        for (FoundingProfileDefinition profile : FoundingProfiles.all()) {
+            if (Cultures.within(profile.culture(), culture)) return true;
+        }
+        return false;
     }
 }

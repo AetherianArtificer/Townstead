@@ -110,6 +110,19 @@ public final class MobReplacer {
             villager.setItemSlot(slot, new net.minecraft.world.item.ItemStack(item));
             villager.setDropChance(slot, 0f);
         }
+        if (replacement.clothing() != null) {
+            com.aetherianartificer.townstead.clothing.policy.SkinPicker
+                    .fromProfession(villager, replacement.clothing(), villager.getRandom().nextLong())
+                    .ifPresent(villager::setClothes);
+        }
+        if (!replacement.arms().isEmpty()) {
+            ResourceLocation pick = replacement.arms().get(villager.getRandom().nextInt(replacement.arms().size()));
+            net.minecraft.world.item.Item item = BuiltInRegistries.ITEM.getOptional(pick).orElse(null);
+            if (item != null && item != net.minecraft.world.item.Items.AIR) {
+                villager.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new net.minecraft.world.item.ItemStack(item));
+                villager.setDropChance(net.minecraft.world.entity.EquipmentSlot.MAINHAND, 0f);
+            }
+        }
     }
 
     /** Past the cap, each one checks now and then and leaves with the excess's share of chance. */
@@ -213,8 +226,13 @@ public final class MobReplacer {
     }
 
     private static boolean enabled(MobReplacement replacement) {
-        if (replacement.setting() == null) return true;
-        Object value = Switchboard.valueAt(Arrays.asList(replacement.setting().split("\\.")));
+        return settingOn(replacement.setting());
+    }
+
+    /** Whether a dotted server setting is on; none counts as on. */
+    public static boolean settingOn(@Nullable String setting) {
+        if (setting == null) return true;
+        Object value = Switchboard.valueAt(Arrays.asList(setting.split("\\.")));
         return !Boolean.FALSE.equals(value);
     }
 
@@ -239,6 +257,12 @@ public final class MobReplacer {
         *///?}
         if (table == null) return;
         table.getRandomItems(params.create(LootContextParamSets.ENTITY), stack -> villager.spawnAtLocation(stack));
+    }
+
+    /** Roots that may carry every one of these states, with the body each state needs. */
+    public static Predicate<ResourceLocation> rootsAllowing(java.util.Collection<ResourceLocation> states) {
+        return root -> states.stream().noneMatch(state -> Boolean.FALSE.equals(RootStates.declared(root, state))
+                || needsVillagerBody(state) && !com.aetherianartificer.townstead.root.rig.ServerRig.hasVillagerBody(root));
     }
 
     private static boolean needsVillagerBody(ResourceLocation state) {

@@ -55,7 +55,8 @@ import java.util.Map;
  *
  * <p>A second instance runs at any hour as the call to arms: while {@link VillageAlarm} sounds it
  * takes over the Jobs marked {@code rally}, waking the villager if need be, and arms a levy from the
- * villagers with no martial Job.</p>
+ * villagers with no martial Job. Without an alarm it still answers a threat in sight: anyone whose
+ * profession fights stands and fights instead of fleeing, until badly hurt.</p>
  */
 public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
     private static final int JOB_CHECK = 40;
@@ -101,7 +102,7 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
         if (level.getGameTime() < nextJobCheck) return false;
         nextJobCheck = level.getGameTime() + JOB_CHECK;
         if (villager.isBaby() || (!rally && villager.isSleeping())) return false;
-        if (rally && !VillageAlarm.sounding(level, villager.blockPosition())) {
+        if (rally && !VillageAlarm.sounding(level, villager.blockPosition()) && defending(level, villager).isEmpty()) {
             takeBackIssue(villager);
             return false;
         }
@@ -177,6 +178,12 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
             }
         }
         if (target != null) {
+            // Standing to fight: MCA's panic would run them off. Badly hurt, they may still flee.
+            if (rally && villager.getHealth() >= villager.getMaxHealth() * 0.25f) {
+                villager.getBrain().eraseMemory(MemoryModuleType.HURT_BY);
+                villager.getBrain().eraseMemory(MemoryModuleType.HURT_BY_ENTITY);
+                villager.getBrain().eraseMemory(MemoryModuleType.NEAREST_HOSTILE);
+            }
             fight(level, villager, target, engaging, gameTime);
             return;
         }
@@ -234,10 +241,28 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
         List<MartialJob> own = jobsFor(villager);
         boolean alarm = VillageAlarm.sounding(level, villager.blockPosition());
         if (!rally) return alarm ? own.stream().filter(job -> !job.rally()).toList() : own;
-        if (!alarm) return List.of();
+        if (!alarm) return defending(level, villager);
         List<MartialJob> rallying = own.stream().filter(MartialJob::rally).toList();
         if (!rallying.isEmpty() || !own.isEmpty() || villager.isGuard()) return rallying;
         return levyFor(villager);
+    }
+
+    /**
+     * The martial Jobs of the villager's profession, sworn or not, when something they would fight
+     * is in sight: a fighter defends itself at any hour. Empty when there is nothing to fight.
+     */
+    private static List<MartialJob> defending(ServerLevel level, VillagerEntityMCA villager) {
+        ResourceLocation professionId = BuiltInRegistries.VILLAGER_PROFESSION.getKey(villager.getVillagerData().getProfession());
+        ProfessionDef def = ProfessionDefs.byId(professionId);
+        if (def == null) return List.of();
+        List<MartialJob> fighting = new ArrayList<>();
+        for (WorkTaskDef task : def.workTasks()) {
+            for (WorkJobDef job : WorkJobs.martial(task.type())) fighting.add(job.martial());
+        }
+        for (MartialJob job : fighting) {
+            if (nearest(level, villager, job) != null) return fighting;
+        }
+        return List.of();
     }
 
     private static List<MartialJob> levyFor(VillagerEntityMCA villager) {

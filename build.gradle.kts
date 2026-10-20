@@ -164,6 +164,10 @@ if (stonecutter.current.isActive) {
 
 layout.buildDirectory.set(file("${rootProject.projectDir}/.cache/townstead-build-1.21.1-neoforge"))
 
+// Top-level building types served only when a mod that provides their blocks is installed;
+// their ids stay as they are. Providers live in ModCompat.
+val conditionalTopLevelTypes = listOf("tailors_shop_l1", "tailors_shop_l2", "tailors_shop_l3", "mill")
+
 tasks.withType<ProcessResources> {
     val replaceProperties = mapOf(
         "version" to project.version,
@@ -177,13 +181,13 @@ tasks.withType<ProcessResources> {
     exclude("META-INF/mods.toml")
     // Move compat building types to a non-loading location for conditional runtime loading
     eachFile {
-        if (path.startsWith("data/mca/building_types/compat/")) {
+        if (path.startsWith("data/mca/building_types/compat/") || conditionalTopLevelTypes.any { path == "data/mca/building_types/$it.json" }) {
             path = path.replace("data/mca/", "townstead_compat/")
         }
     }
     doLast {
         if (name != "processResources") return@doLast
-        val compatRoot = destinationDir.resolve("townstead_compat/building_types/compat")
+        val compatRoot = destinationDir.resolve("townstead_compat/building_types")
         val index = destinationDir.resolve("townstead_compat/index.txt")
         val entries = if (compatRoot.isDirectory) compatRoot.walkTopDown()
             .filter { it.isFile && it.extension == "json" }

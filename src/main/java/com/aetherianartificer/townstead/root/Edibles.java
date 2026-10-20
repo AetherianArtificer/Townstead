@@ -37,8 +37,16 @@ public final class Edibles {
     /** A diet food with authored values (a gem, a blood bottle) that vanilla would not let a player eat. */
     private static boolean tryEatDietFood(Player player, ItemStack stack, InteractionHand hand) {
         var nourishment = com.aetherianartificer.townstead.hunger.diet.Diets.nourishment(player, stack);
-        if (nourishment == null || nourishment.nativeValues()) return false;
-        player.getFoodData().eat(nourishment.nutrition(), nourishment.saturation());
+        if (nourishment == null || nourishment.nativeValues() || nourishment.food().playersUseItem()) return false;
+        int nutrition = Math.round(nourishment.nutrition() * nourishment.multiplier());
+        // A Vampirism vampire's food bar is their blood bar: the same meal fills that instead.
+        Boolean needsBlood = com.aetherianartificer.townstead.compat.vampirism.VampirismBlood.needsBlood(player);
+        if (needsBlood != null) {
+            if (!needsBlood) return false;
+            com.aetherianartificer.townstead.compat.vampirism.VampirismBlood.drink(player, nutrition, nourishment.saturation());
+        } else {
+            player.getFoodData().eat(nutrition, nourishment.saturation());
+        }
         if (nourishment.food().effects() != null) nourishment.food().effects().run(new ActionContext(player));
         if (!player.getAbilities().instabuild) {
             stack.shrink(1);

@@ -39,7 +39,9 @@ public record Gene(
          * True for a power that costs its bearer something ({@code "drawback": true}): a weakness the
          * picker shows in red beside the root's strengths.
          */
-        boolean drawback
+        boolean drawback,
+        /** What part of the carrier this gene describes, for states that suppress a whole layer. */
+        GeneLayer layer
 ) {
     public Gene(ResourceLocation id, Component displayName, @Nullable Component description,
                 @Nullable ResourceLocation icon, String category, Dominance dominance,
@@ -47,11 +49,18 @@ public record Gene(
         this(id, displayName, description, icon, category, dominance, locus, weight, variants, false);
     }
 
+    public Gene(ResourceLocation id, Component displayName, @Nullable Component description,
+                @Nullable ResourceLocation icon, String category, Dominance dominance,
+                @Nullable ResourceLocation locus, int weight, List<GeneVariant> variants, boolean drawback) {
+        this(id, displayName, description, icon, category, dominance, locus, weight, variants, drawback, GeneLayer.BODY);
+    }
+
     public Gene {
         if (variants == null || variants.isEmpty()) {
             throw new IllegalArgumentException("gene " + id + " has no variants");
         }
         variants = List.copyOf(variants);
+        if (layer == null) layer = GeneLayer.BODY;
     }
 
     /** True when this gene is a weighted pick-one (more than one variant). */

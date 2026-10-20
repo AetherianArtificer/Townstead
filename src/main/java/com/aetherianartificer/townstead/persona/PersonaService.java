@@ -138,7 +138,7 @@ public final class PersonaService {
         }
         PersonaInstances.get(level.getServer()).add(new PersonaInstances.Instance(persona.id(), villager.getUUID(),
                 level.dimension().location(), village.getId(), level.getGameTime(),
-                com.aetherianartificer.townstead.naming.VillagerNames.display(villager).getString()));
+                com.aetherianartificer.townstead.naming.VillagerNames.parts(villager).fullName()));
         PersonaBonds.add(player, persona.id());
         if (walkIn) WALKING.put(villager.getUUID(), new WalkIn(player.getUUID(), level.getGameTime() + WALK_LIMIT));
         LOGGER.info("Persona {} arrived in village {} for {}", persona.id(), village.getId(), player.getGameProfile().getName());
@@ -350,7 +350,12 @@ public final class PersonaService {
     /** Whether {@code player} may see this villager's family name: anyone's, a Persona's once told. */
     public static boolean familyNameKnown(VillagerEntityMCA villager, net.minecraft.server.level.ServerPlayer player) {
         PersonaDefinition persona = definition(villager);
-        return persona == null || !persona.familyToldOnly()
+        return persona == null || familyKnown(persona, player);
+    }
+
+    /** Whether {@code player} may see this Persona's family name: always, or once told when it is told only. */
+    public static boolean familyKnown(PersonaDefinition persona, net.minecraft.server.level.ServerPlayer player) {
+        return !persona.familyToldOnly()
                 || com.aetherianartificer.townstead.chronicle.Chronicles.count(player.server, player.getUUID(), familyKey(persona)) > 0;
     }
 
@@ -360,6 +365,20 @@ public final class PersonaService {
         if (persona == null || !persona.familyToldOnly() || familyNameKnown(villager, player)) return;
         com.aetherianartificer.townstead.chronicle.Chronicles.addCounter(player.server, player.getUUID(), familyKey(persona), 1);
         com.aetherianartificer.townstead.naming.NameSyncTarget.syncToPlayer(player, villager);
+    }
+
+    /**
+     * The name {@code player} knows a villager by, for screens that may outlive the villager being
+     * loaded: a Persona whose family name is told only shows their given name until it is.
+     */
+    public static String nameFor(net.minecraft.server.level.ServerPlayer player, java.util.UUID villager, String fullName) {
+        PersonaInstances.Instance instance = PersonaInstances.get(player.server).of(villager);
+        PersonaDefinition persona = instance == null ? null : Personas.byId(instance.persona());
+        if (persona == null || familyKnown(persona, player)) {
+            return fullName;
+        }
+        String given = identity(persona, player).given();
+        return given == null || given.isBlank() ? fullName : given;
     }
 
     private static String familyKey(PersonaDefinition persona) {
@@ -460,10 +479,12 @@ public final class PersonaService {
     }
 
     /**
-     * The name of a Persona living in a village, or in any village when none lives there. Uses
-     * the live villager when loaded, else the name they arrived with. Empty when there is none.
+     * The name {@code player} knows a Persona living in a village by, or one in any village when
+     * none lives there. Uses the live villager when loaded, else the name they arrived with. Empty
+     * when there is none.
      */
-    public static String nameOf(MinecraftServer server, ResourceLocation personaId, @Nullable ResourceLocation dimension, int village) {
+    public static String nameOf(MinecraftServer server, ResourceLocation personaId, @Nullable ResourceLocation dimension, int village,
+                                ServerPlayer player) {
         PersonaInstances instances = PersonaInstances.get(server);
         PersonaInstances.Instance instance = dimension == null ? null : instances.in(personaId, dimension, village);
         if (instance == null) {
@@ -472,7 +493,11 @@ public final class PersonaService {
             instance = all.get(0);
         }
         VillagerEntityMCA villager = find(server, instance.villager());
-        return villager != null ? com.aetherianartificer.townstead.naming.VillagerNames.display(villager).getString() : instance.name();
+        if (villager != null) return com.aetherianartificer.townstead.naming.VillagerNames.nameFor(villager, player);
+        PersonaDefinition persona = Personas.byId(personaId);
+        if (persona == null || !persona.familyToldOnly() || familyKnown(persona, player)) return instance.name();
+        String given = instances.rolled(personaId, "name.given");
+        return given == null || given.isBlank() ? instance.name() : given;
     }
 
     /** A spot just outside {@code village}, out of the player's sight where possible. */

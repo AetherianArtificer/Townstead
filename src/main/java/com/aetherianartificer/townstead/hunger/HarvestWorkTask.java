@@ -512,6 +512,16 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
             return;
         }
+        // Seeds in hand, but every one is out of season or wrong for the weather here.
+        if (cachedHasSeed && cachedPlantTarget != null
+                && townstead$seedsOnlyOutOfClimate(villager.getInventory(), level, cachedPlantTarget)) {
+            actionType = ActionType.NONE;
+            targetPos = null;
+            townstead$clearMovementIntent(villager);
+            townstead$setBlockedReason(level, villager, HungerData.FarmBlockedReason.OUT_OF_SEASON);
+            nextAcquireTick = gameTime + townstead$idleBackoffTicks(villager);
+            return;
+        }
         if (cachedTillTarget != null && !cachedHasHoe) {
             actionType = ActionType.NONE;
             targetPos = null;
@@ -1425,6 +1435,17 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             }
         }
         return bestSlot;
+    }
+
+    private boolean townstead$seedsOnlyOutOfClimate(SimpleContainer inv, ServerLevel level, BlockPos plantPos) {
+        boolean anySeed = false;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (!townstead$isSeed(stack)) continue;
+            anySeed = true;
+            if (FarmerCropCompatRegistry.climateAllows(level, plantPos, stack)) return false;
+        }
+        return anySeed;
     }
 
     private int townstead$findSeedSlot(SimpleContainer inv, VillagerEntityMCA villager) {

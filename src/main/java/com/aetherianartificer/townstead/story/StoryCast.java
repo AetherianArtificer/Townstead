@@ -30,6 +30,8 @@ import java.util.function.Predicate;
 final class StoryCast {
     /** How far from the player a villager can be and still join the scene. */
     private static final double RANGE = 12;
+    /** How far a visitor a scene needs can be and still be called back to the player. */
+    private static final double CALL_RANGE = 128;
     /** Past this, a cast villager walks back toward the player. */
     private static final double HOLD_SQR = 4.5 * 4.5;
     /** Past this, a cast villager has left the scene and the role is found again. */
@@ -60,8 +62,13 @@ final class StoryCast {
         Condition named = session.definition.conditions().get(role);
         if (named != null) return nearest(v -> named.test(new ConditionContext(v, player)));
         if (role.startsWith("visitor:")) {
-            VillagerEntityMCA visitor = com.aetherianartificer.townstead.visitor.Visitors.near(
-                    player, role.substring("visitor:".length()), RANGE);
+            String visitorRole = role.substring("visitor:".length());
+            VillagerEntityMCA visitor = com.aetherianartificer.townstead.visitor.Visitors.near(player, visitorRole, RANGE);
+            if (visitor == null) {
+                // A scene is waiting on them and they have wandered off: they come back to the player.
+                VillagerEntityMCA away = com.aetherianartificer.townstead.visitor.Visitors.near(player, visitorRole, CALL_RANGE);
+                if (away != null && away != session.villager) com.aetherianartificer.townstead.persona.PersonaService.walkTo(away, player);
+            }
             return visitor == session.villager ? null : visitor;
         }
         ResourceLocation persona = ResourceLocation.tryParse(role.contains(":") ? role

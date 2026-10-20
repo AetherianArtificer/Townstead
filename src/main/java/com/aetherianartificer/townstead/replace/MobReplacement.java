@@ -23,7 +23,9 @@ import java.util.Set;
  * village. At most {@code cap} of them roam within {@code cap_radius} blocks, standing in for
  * the mob cap they would otherwise escape; a spawn past it is cancelled. {@code outfit} dresses
  * them from a pool per slot ({@code head}, {@code chest}, {@code legs}, {@code feet}), never
- * dropped; {@code "minecraft:air"} in a pool leaves the slot bare. {@code setting} names a server setting that switches the replacement off; none means
+ * dropped; {@code "minecraft:air"} in a pool leaves the slot bare. {@code clothing} names the
+ * clothing profession whose MCA clothes they wear, and {@code arms} what they show in hand when
+ * the mob holds nothing. {@code setting} names a server setting that switches the replacement off; none means
  * always on.
  */
 public record MobReplacement(ResourceLocation id, Set<ResourceLocation> types, Set<ResourceLocation> tags,
@@ -31,7 +33,8 @@ public record MobReplacement(ResourceLocation id, Set<ResourceLocation> types, S
                              @Nullable ResourceLocation behavior, @Nullable String group,
                              int settleHearts, int cap, double capRadius,
                              Map<String, List<ResourceLocation>> outfit, @Nullable String setting,
-                             boolean creditKills, boolean replacedLoot) {
+                             boolean creditKills, boolean replacedLoot,
+                             @Nullable String clothing, List<ResourceLocation> arms) {
     public static final String SCHEMA = "townstead:mob_replacement/v1";
     private static final Set<String> DEFAULT_SPAWN_TYPES = Set.of("natural", "spawner");
     private static final int DEFAULT_SETTLE_HEARTS = 25;
@@ -44,6 +47,7 @@ public record MobReplacement(ResourceLocation id, Set<ResourceLocation> types, S
         spawnTypes = Set.copyOf(spawnTypes);
         states = Map.copyOf(states);
         outfit = Map.copyOf(outfit);
+        arms = List.copyOf(arms);
     }
 
     public static final List<String> OUTFIT_SLOTS = List.of("head", "chest", "legs", "feet");
@@ -113,7 +117,16 @@ public record MobReplacement(ResourceLocation id, Set<ResourceLocation> types, S
         String setting = json.has("setting") ? GsonHelper.getAsString(json, "setting") : null;
         String loot = GsonHelper.getAsString(json, "loot", "replaced");
         if (!loot.equals("replaced") && !loot.equals("own")) throw new IllegalArgumentException("'loot' must be \"replaced\" or \"own\"");
+        String clothing = json.has("clothing") ? GsonHelper.getAsString(json, "clothing") : null;
+        List<ResourceLocation> arms = new java.util.ArrayList<>();
+        if (json.has("arms")) {
+            for (JsonElement item : GsonHelper.getAsJsonArray(json, "arms")) {
+                ResourceLocation itemId = DataPackLang.parseId(item.getAsString());
+                if (itemId == null) throw new IllegalArgumentException("'" + item.getAsString() + "' is not an item id");
+                arms.add(itemId);
+            }
+        }
         return new MobReplacement(id, types, tags, chance, spawnTypes, states, behavior, group, settleHearts, cap, capRadius, outfit, setting,
-                GsonHelper.getAsBoolean(json, "credit_kills", true), loot.equals("replaced"));
+                GsonHelper.getAsBoolean(json, "credit_kills", true), loot.equals("replaced"), clothing, arms);
     }
 }

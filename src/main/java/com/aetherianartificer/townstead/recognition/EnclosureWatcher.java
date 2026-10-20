@@ -72,7 +72,7 @@ public final class EnclosureWatcher {
     public static void onBlockChanged(ServerLevel level, BlockPos pos, BlockState oldState, BlockState newState) {
         if (level == null || pos == null || oldState == null || newState == null) return;
         if (shape(oldState) == shape(newState)) return;
-        DismissedSites.changed(level, pos);
+        DismissedSites.changed(level, pos, oldState, newState);
         if (!Switchboard.get(TownsteadConfig.ENABLE_ENCLOSURE_RECOGNITION)) return;
         synchronized (STATES) {
             State state = STATES.computeIfAbsent(level.getServer(), ignored -> new State());

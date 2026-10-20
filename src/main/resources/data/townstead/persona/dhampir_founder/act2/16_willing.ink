@@ -18,7 +18,7 @@ VAR asked_master = false
 ~ return done_stakeout and not couple_called
 
 === function couple_meet_ready() ===
-~ return couple_called and not done_willing and here("visitor:couple_thrall")
+~ return couple_called and not done_willing and here("visitor:couple_thrall") and here("visitor:couple")
 
 === couple_arrival ===
 ~ couple_called = true

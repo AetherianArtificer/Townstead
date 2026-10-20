@@ -46,7 +46,7 @@ public final class RoomOwnershipPreviewCommand {
 
         RoomOwnershipSnapshotS2CPayload payload = new RoomOwnershipSnapshotS2CPayload(
                 BlockPos.ZERO, PREVIEW_WORKSITE_ID, "Big House", OwnershipScope.ROOM,
-                true, true, people);
+                true, false, true, 3, 5, people);
         //? if neoforge {
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, payload);
         //?} else {

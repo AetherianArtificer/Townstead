@@ -90,8 +90,14 @@ class ThermalCareAcceptanceTest {
         double single = RoomHeatBalance.localExposure(8, 1);
         double row = RoomHeatBalance.combinedExposure(single * 8, single);
         assertTrue(row > single);
-        assertTrue(row <= single * 1.25);
+        assertTrue(row <= single * RoomHeatBalance.RADIANT_STACK);
         assertEquals(single, RoomHeatBalance.combinedExposure(single, single));
+    }
+    @Test void stackedFiresWarmFarMoreThanOneButLevelOff() {
+        double one = RoomHeatBalance.localExposure(30, 2);
+        double three = RoomHeatBalance.combinedExposure(one * 3, one);
+        assertTrue(three > one * 1.6, "three campfires should feel much warmer than one");
+        assertTrue(three <= RoomHeatBalance.RADIANT_MAX);
     }
     @Test void diagnosticFlagsPreserveTheExistingWetReliefAndBodyTiers() {
         int original = TemperatureSyncPayload.flags(true, true, 2) | (1 << 5);

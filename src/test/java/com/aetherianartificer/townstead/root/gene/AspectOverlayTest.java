@@ -28,6 +28,11 @@ class AspectOverlayTest {
         public @Nullable ResourceLocation locus(ResourceLocation canonical) {
             return LOCI.get(canonical);
         }
+
+        @Override
+        public GeneLayer layer(ResourceLocation canonical) {
+            return canonical.equals(id("test:hunger")) ? GeneLayer.HABITS : GeneLayer.BODY;
+        }
     };
 
     private static ResourceLocation id(String raw) {
@@ -68,6 +73,15 @@ class AspectOverlayTest {
         List<Allele> regranted = AspectOverlay.apply(CARRIED, List.of(
                 genes(List.of(new StateEffect.Grant(id("test:tall"), null)), List.of(id("test:tall")))), LOOKUP, 42L);
         assertEquals(List.of("test:human_eyes#brown", "test:hunger", "test:tall"), encoded(regranted));
+    }
+
+    @Test
+    void suppressingALayerKeepsOtherLayersAndStateGrants() {
+        List<Allele> out = AspectOverlay.apply(CARRIED, List.of(
+                genes(List.of(new StateEffect.Grant(id("test:sun_burn"), null)), List.of()),
+                new StateEffect.Genes(List.of(), List.of(), GeneLayer.BODY),
+                genes(List.of(new StateEffect.Grant(id("test:red_eyes"), "crimson")), List.of())), LOOKUP, 42L);
+        assertEquals(List.of("test:hunger", "test:sun_burn", "test:red_eyes#crimson"), encoded(out));
     }
 
     @Test

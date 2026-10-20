@@ -178,6 +178,18 @@ public final class TownsteadNetwork {
                 (p, buf) -> com.aetherianartificer.townstead.politics.order.VillageLocksS2CPayload.write(buf, p),
                 com.aetherianartificer.townstead.politics.order.VillageLocksS2CPayload::read,
                 com.aetherianartificer.townstead.politics.order.VillageLocks::accept);
+        registerS2C(com.aetherianartificer.townstead.quest.QuestGiversS2CPayload.class,
+                (p, buf) -> com.aetherianartificer.townstead.quest.QuestGiversS2CPayload.write(buf, p),
+                com.aetherianartificer.townstead.quest.QuestGiversS2CPayload::read,
+                com.aetherianartificer.townstead.quest.QuestGiversS2CPayload::accept);
+        registerS2C(com.aetherianartificer.townstead.rest.RestSpotsSyncS2CPayload.class,
+                (p, buf) -> com.aetherianartificer.townstead.rest.RestSpotsSyncS2CPayload.write(buf, p),
+                com.aetherianartificer.townstead.rest.RestSpotsSyncS2CPayload::read,
+                com.aetherianartificer.townstead.rest.RestSpotsSyncS2CPayload::accept);
+        registerS2C(com.aetherianartificer.townstead.replace.WildPlateS2CPayload.class,
+                (p, buf) -> com.aetherianartificer.townstead.replace.WildPlateS2CPayload.write(buf, p),
+                com.aetherianartificer.townstead.replace.WildPlateS2CPayload::read,
+                com.aetherianartificer.townstead.replace.WildPlateS2CPayload::accept);
         registerS2C(com.aetherianartificer.townstead.replace.WildNameS2CPayload.class,
                 (p, buf) -> com.aetherianartificer.townstead.replace.WildNameS2CPayload.write(buf, p),
                 com.aetherianartificer.townstead.replace.WildNameS2CPayload::read,

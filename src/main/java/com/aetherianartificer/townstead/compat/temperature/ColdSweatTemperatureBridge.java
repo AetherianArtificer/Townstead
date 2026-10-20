@@ -26,10 +26,13 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     private static final double MC_UNIT_TO_CELSIUS = 25.0;
     /** Marks the modifier as Townstead's, so a replace only ever displaces our own. */
     private static final String INFLUENCE_MARKER = "townstead_influence";
-    /** Cold Sweat's hearth, boiler and icebox. */
-    private static final net.minecraft.tags.TagKey<net.minecraft.world.level.block.Block> THERMAL_SOURCES =
-            net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.BLOCK,
-                    net.minecraft.resources.ResourceLocation.tryParse("cold_sweat:thermal_source"));
+    /** Holder so loading the bridge does not touch the registries before bootstrap. */
+    private static final class Tags {
+        /** Cold Sweat's hearth, boiler and icebox. */
+        static final net.minecraft.tags.TagKey<net.minecraft.world.level.block.Block> THERMAL_SOURCES =
+                net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.BLOCK,
+                        net.minecraft.resources.ResourceLocation.tryParse("cold_sweat:thermal_source"));
+    }
 
     private boolean initialized;
     private boolean active;
@@ -76,6 +79,34 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
         return active;
     }
 
+    private volatile Boolean seasonModifier;
+
+    /** Cold Sweat's Serene modifier, or the Ecliptic MultiMod Patch's, is registered. */
+    @Override
+    public boolean modelsSeasons() {
+        Boolean known = seasonModifier;
+        if (known != null) return known;
+        boolean found = false;
+        try {
+            Method contains = Class.forName("com.momosoftworks.coldsweat.api.registry.TempModifierRegistry")
+                    .getMethod("containsKey", net.minecraft.resources.ResourceLocation.class);
+            for (String id : new String[]{"sereneseasons:season", "eclipticseasons:season"}) {
+                if (Boolean.TRUE.equals(contains.invoke(null, net.minecraft.resources.ResourceLocation.tryParse(id)))) found = true;
+            }
+        } catch (ReflectiveOperationException | LinkageError ignored) {
+            return false;
+        }
+        // The registry fills during load; only a positive answer is final.
+        if (found) seasonModifier = true;
+        return found;
+    }
+
+    /** Cold Sweat's depth regions warm toward the world bottom on their own. */
+    @Override
+    public boolean modelsGeothermal() {
+        return true;
+    }
+
     /** Cold Sweat's insulator registry, so every mod's Cold Sweat garment data reaches villagers. */
     @Override
     public ThermalProtection itemProtection(ItemStack stack) {
@@ -88,7 +119,11 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     public float ambientCelsius(ServerLevel level, BlockPos pos) {
         initIfNeeded();
         if (!active) return Float.NaN;
-        Float value = ambientCache.get(level, pos.immutable(), level.getGameTime(), () -> sampleAmbient(level, pos));
+        Float value = ambientCache.get(level, pos.immutable(), level.getGameTime(), () -> {
+            Float sampled = sampleAmbient(level, pos);
+            if (sampled == null || RoomHeatBackend.bypassed() || RoomHeatBackend.room(level, pos).isPresent()) return sampled;
+            return sampled + RoomHeatBackend.coldSweatShift(level, pos);
+        });
         return value == null ? Float.NaN : value;
     }
 
@@ -192,7 +227,7 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     public boolean blockMayMatter(BlockState state) {
         initIfNeeded();
         if (!active) return false;
-        if (state.is(THERMAL_SOURCES)) return true;
+        if (state.is(Tags.THERMAL_SOURCES)) return true;
         if (getBlockTemps == null) return false;
         try {
             if (!(getBlockTemps.invoke(null, state) instanceof java.util.Collection<?> collection)) return false;
@@ -209,7 +244,7 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
      * redstone and smart mode all count as Cold Sweat runs them. NaN for anything else.
      */
     private float thermalSource(Level level, BlockPos pos, BlockState state) {
-        if (hearthEntity == null || !state.is(THERMAL_SOURCES)) return Float.NaN;
+        if (hearthEntity == null || !state.is(Tags.THERMAL_SOURCES)) return Float.NaN;
         try {
             Object entity = level.getBlockEntity(pos);
             if (!hearthEntity.isInstance(entity)) return Float.NaN;

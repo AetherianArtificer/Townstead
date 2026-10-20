@@ -110,6 +110,28 @@ public final class SkinPicker {
         return villager.getUUID().getLeastSignificantBits() * 31L + day;
     }
 
+    /**
+     * A skin from the MCA clothes authored for {@code profession} (a set such as a faction's attire)
+     * that this villager's body can wear, or empty when none is.
+     */
+    public static Optional<String> fromProfession(VillagerEntityMCA villager, String profession, long seed) {
+        ClothingList list = ClothingList.getInstance();
+        if (villager == null || profession == null || list == null || list.clothing == null) return Optional.empty();
+        var life = TownsteadVillagers.get(villager).life();
+        ResourceLocation rootId = com.aetherianartificer.townstead.data.DataPackLang.parseId(life.rootId());
+        Predicate<String> wear = wearable(rootId, life.hasHeritage() ? life.heritage() : null);
+        String dotted = profession.replace(':', '.');
+        List<String> pool = new ArrayList<>();
+        for (Map.Entry<String, Clothing> e : list.clothing.entrySet()) {
+            Clothing clothing = e.getValue();
+            if (clothing == null || !(profession.equals(clothing.profession) || dotted.equals(clothing.profession))) continue;
+            if (wear.test(e.getKey())) pool.add(e.getKey());
+        }
+        if (pool.isEmpty()) return Optional.empty();
+        java.util.Collections.sort(pool);
+        return Optional.of(pool.get(new Random(seed).nextInt(pool.size())));
+    }
+
     public static List<Candidate> candidates(VillagerEntityMCA villager, WardrobePolicy.Selector selector) {
         ClothingList list = ClothingList.getInstance();
         if (villager == null || selector == null || list == null || list.clothing == null) return List.of();

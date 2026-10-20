@@ -36,6 +36,7 @@ class AuthoredVampireStateTest {
         ConditionTypes.register(new com.aetherianartificer.townstead.pheno.condition.types.EntityStateConditionType());
         ConditionTypes.register(new com.aetherianartificer.townstead.root.condition.types.RigConditionType());
         ConditionTypes.register(new com.aetherianartificer.townstead.pheno.condition.types.EmbodiedConditionType());
+        ConditionTypes.register(new com.aetherianartificer.townstead.root.condition.types.EntityGroupConditionType());
         ActionTypes.register(new com.aetherianartificer.townstead.pheno.action.types.AndActionType());
         ActionTypes.register(new ChangeStateActionType("pheno:add_state", ChangeStateActionType.Mode.ADD));
     }

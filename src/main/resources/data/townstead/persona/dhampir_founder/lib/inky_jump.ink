@@ -17,6 +17,7 @@
 + [scene04_garlic] -> cp_scene04_garlic
 + [scene05_volunteers] -> cp_scene05_volunteers
 + [scene06_first_oath] -> cp_scene06_first_oath
++ [scene06b_oath] -> cp_scene06b_oath
 + [scene07_walk] -> cp_scene07_walk
 + [scene08_watch] -> cp_scene08_watch
 + [scene09_neighbor] -> cp_scene09_neighbor
@@ -113,6 +114,20 @@
 ~ done_volunteers = true
 -> first_oath
 
+= cp_scene06b_oath
+~ met = 2
+~ offered = true
+~ founded = true
+~ asked_wolf = true
+~ wolf_seen = true
+~ altar_started = true
+~ done_lodge = true
+~ garlic_started = true
+~ done_garlic = true
+~ done_volunteers = true
+~ done_first_oath = true
+-> player_oath_offer
+
 = cp_scene07_walk
 ~ met = 2
 ~ offered = true
@@ -143,6 +158,7 @@
 ~ done_volunteers = true
 ~ done_first_oath = true
 ~ done_walk = true
+~ oath_job = true
 + [watch_offer] -> watch_offer
 + [watch_during] -> watch_during
 + [watch_after] -> watch_after
@@ -162,6 +178,7 @@
 ~ done_first_oath = true
 ~ done_walk = true
 ~ done_watch = true
+~ oath_job = true
 + [neighbor_offer] -> neighbor_offer
 + [neighbor_back] -> neighbor_back
 + [Back] -> g_act_1
@@ -180,6 +197,7 @@
 ~ done_first_oath = true
 ~ done_walk = true
 ~ done_watch = true
+~ oath_job = true
 + [bitten_offer] -> bitten_offer
 + [bitten_after] -> bitten_after
 + [Back] -> g_act_1
@@ -199,6 +217,7 @@
 ~ done_walk = true
 ~ done_watch = true
 ~ done_neighbor = true
+~ oath_job = true
 + [thrall_arrival] -> thrall_arrival
 + [thrall_cold] -> thrall_cold
 + [thrall_after] -> thrall_after
@@ -222,6 +241,7 @@
 ~ thrall_called = true
 ~ thrall_seen = true
 ~ done_thrall = true
+~ oath_job = true
 -> counting
 
 = cp_scene12_name
@@ -243,6 +263,7 @@
 ~ thrall_seen = true
 ~ done_thrall = true
 ~ done_counting = true
+~ oath_job = true
 -> the_name
 
 = cp_scene13_count
@@ -265,6 +286,7 @@
 ~ done_thrall = true
 ~ done_counting = true
 ~ named = true
+~ oath_job = true
 -> the_count
 
 = cp_m1_slip
@@ -288,6 +310,7 @@
 ~ done_counting = true
 ~ named = true
 ~ done_count_talk = true
+~ oath_job = true
 + [slip_after] -> slip_after
 + [gift_bread] -> gift_bread
 + [father_at_birth] -> father_at_birth
@@ -315,6 +338,7 @@
 ~ named = true
 ~ done_count_talk = true
 ~ done_slip = true
+~ oath_job = true
 -> greet
 
 = cp_m3_grave
@@ -340,6 +364,7 @@
 ~ done_count_talk = true
 ~ done_slip = true
 ~ bread_known = true
+~ oath_job = true
 + [grave_offer] -> grave_offer
 + [grave_road] -> grave_road
 + [grave_arrive] -> grave_arrive
@@ -372,6 +397,7 @@
 ~ done_grave = true
 ~ court_came = true
 ~ done_wounded = true
+~ oath_job = true
 -> the_book
 
 = cp_midpoint
@@ -403,6 +429,7 @@
 ~ done_wounded = true
 ~ done_book = true
 ~ book_day = -1
+~ oath_job = true
 + [bringer_arrival] -> bringer_arrival
 + [midpoint] -> midpoint
 + [Back] -> g_act_2
@@ -438,6 +465,7 @@
 ~ book_day = -1
 ~ bringer_called = true
 ~ done_midpoint = true
+~ oath_job = true
 + [confession_after] -> confession_after
 + [romance_beat] -> romance_beat
 + [Back] -> g_act_2
@@ -463,6 +491,7 @@
 ~ done_counting = true
 ~ named = true
 ~ done_count_talk = true
+~ oath_job = true
 -> debrief
 
 = cp_scene15_stakeout
@@ -486,6 +515,7 @@
 ~ done_counting = true
 ~ named = true
 ~ done_count_talk = true
+~ oath_job = true
 + [stakeout_offer] -> stakeout_offer
 + [stakeout_night] -> stakeout_night
 + [stakeout_verdict] -> stakeout_verdict
@@ -514,6 +544,7 @@
 ~ done_count_talk = true
 ~ stake_offered = true
 ~ done_stakeout = true
+~ oath_job = true
 + [couple_arrival] -> couple_arrival
 + [couple_meet] -> couple_meet
 + [Back] -> g_act_2
@@ -545,6 +576,7 @@
 ~ done_willing = true
 ~ done_slip = true
 ~ bread_known = true
+~ oath_job = true
 + [fledgling_arrival] -> fledgling_arrival
 + [fledgling_meet] -> fledgling_meet
 + [cure_after] -> cure_after
@@ -585,6 +617,7 @@
 ~ done_confession_after = true
 ~ inside_moved = true
 ~ done_inside = true
+~ oath_job = true
 + [court_offer] -> court_offer
 + [court_road] -> court_road
 + [Back] -> g_act_3
@@ -626,6 +659,7 @@
 ~ court_offered = true
 ~ court_walking = true
 ~ court_arrived = true
+~ oath_job = true
 + [court_arrive] -> court_arrive
 + [court] -> court
 + [court_pivot] -> court_pivot
@@ -659,6 +693,7 @@
 ~ bread_known = true
 ~ grave_seen = true
 ~ done_grave = true
+~ oath_job = true
 + [court_move] -> court_move
 + [wounded_down] -> wounded_down
 + [wounded_up] -> wounded_up
@@ -700,6 +735,7 @@
 ~ bringer_called = true
 ~ done_midpoint = true
 ~ done_confession_after = true
+~ oath_job = true
 + [inside_move] -> inside_move
 + [inside_seen] -> inside_seen
 + [Back] -> g_wolf_line

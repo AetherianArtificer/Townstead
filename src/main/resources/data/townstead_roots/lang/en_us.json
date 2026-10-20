@@ -51,6 +51,8 @@
   "gene.townstead_roots.vampire_sun_burn.desc": "Catches fire in direct sunlight unless wearing a hat or helmet.",
   "gene.townstead_roots.vampire_diet": "Blood Drinker",
   "gene.townstead_roots.vampire_diet.desc": "Feeds on the blood of raw meat instead of eating food.",
+  "gene.townstead_roots.werewolf_diet": "Meat Eater",
+  "gene.townstead_roots.werewolf_diet.desc": "Eats only meat, fish and berries. Raw meat and fish give twice as much.",
   "gene.townstead_roots.vampire_ageless": "Undying Youth",
   "gene.townstead_roots.vampire_ageless.desc": "Stops aging, but can still be killed.",
   "gene.townstead_roots.vampire_deep_pallor": "Deathly Pallor",

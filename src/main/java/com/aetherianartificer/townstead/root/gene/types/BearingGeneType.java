@@ -17,6 +17,11 @@ import net.minecraft.util.GsonHelper;
  */
 public final class BearingGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.BEING;
+    }
+
     public static final String KEY = "townstead_roots:bearing";
     private static final ResourceLocation LOCUS = DataPackLang.parseId(KEY);
 

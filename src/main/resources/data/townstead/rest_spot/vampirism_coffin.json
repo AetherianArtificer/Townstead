@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:rest_spot/v1",
+  "mods": "vampirism",
+  "blocks": [
+    {
+      "id": "#vampirism:coffin",
+      "state": {
+        "part": "head",
+        "vertical": "false"
+      }
+    }
+  ],
+  "who": {
+    "type": "pheno:state",
+    "state": "townstead_state:vampire"
+  },
+  "only": true,
+  "prefer": 10,
+  "time": "day",
+  "sleep": {
+    "pose": "lying",
+    "hidden_when": {
+      "closed": "true"
+    }
+  }
+}

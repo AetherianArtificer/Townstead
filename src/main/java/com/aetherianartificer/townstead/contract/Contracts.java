@@ -251,6 +251,13 @@ public final class Contracts {
     }
 
     /** Adds the player's contracts to the Quest Ledger list. */
+    /** Whoever gave this player a contract they still hold. */
+    public static List<UUID> givers(ServerPlayer player) {
+        List<UUID> out = new ArrayList<>();
+        for (Rolled rolled : state(player).active) if (rolled.giver != null) out.add(rolled.giver);
+        return out;
+    }
+
     public static void ledger(ServerPlayer player, List<StoryQuestSyncS2CPayload.Quest> quests) {
         String locale = locale(player);
         String playerName = player.getGameProfile().getName();
@@ -267,15 +274,18 @@ public final class Contracts {
                         Math.min(current, objective.count()), objective.count(), current >= objective.count()));
             }
             List<StoryQuestSyncS2CPayload.Reward> rewards = new ArrayList<>();
+            // Saved with the name the giver had then, which can carry a family name this player was never told.
+            String giverName = com.aetherianartificer.townstead.persona.PersonaNameMask.forPlayer(player).apply(rolled.giverName);
             String xpText = DataPackLang.resolveFallback("contract.townstead.reward.xp", locale, "Experience");
             for (ContractReward reward : rewards(def, rolled, player)) {
-                for (Reward.Preview preview : reward.preview(rolled.giverName, playerName, xpText)) {
+                for (Reward.Preview preview : reward.preview(giverName, playerName, xpText)) {
                     rewards.add(new StoryQuestSyncS2CPayload.Reward(preview.text(), preview.itemId(), preview.count()));
                 }
             }
             quests.add(new StoryQuestSyncS2CPayload.Quest("contract/" + def.id() + "#" + n++,
                     def.title().resolve(values, locale), def.about().resolve(values, locale),
-                    rolled.giverName, (byte) (rolled.ready ? 1 : 0), true, List.copyOf(objectives), List.copyOf(rewards)));
+                    giverName, (byte) (rolled.ready ? 1 : 0), true, List.copyOf(objectives), List.copyOf(rewards),
+                    rolled.giver == null ? "" : rolled.giver.toString()));
         }
     }
 

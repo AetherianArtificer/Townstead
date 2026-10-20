@@ -63,6 +63,12 @@ public final class DriftPhysics {
      */
     public static double vertical(LivingEntity entity, Vec3 heading, double floatHeight, int age, boolean fluids,
                                   double routeFloor) {
+        return vertical(entity, heading, floatHeight, age, fluids, routeFloor, true);
+    }
+
+    /** As above; without {@code stepUp} the float never rises onto a step ahead, so a player jumps instead. */
+    public static double vertical(LivingEntity entity, Vec3 heading, double floatHeight, int age, boolean fluids,
+                                  double routeFloor, boolean stepUp) {
         Level level = entity.level();
         Vec3 pos = entity.position();
         boolean onRoute = !Double.isNaN(routeFloor);
@@ -75,7 +81,7 @@ public final class DriftPhysics {
             ahead = pos.add(heading.x / h * reach, 0, heading.z / h * reach);
         }
         double base = floor;
-        if (ahead != null && !onRoute) {
+        if (ahead != null && !onRoute && stepUp) {
             double step = surfaceAt(level, ahead.x, ahead.z, floor + MAX_STEP, fluids);
             if (!Double.isNaN(step) && step > floor && fits(entity, ahead.x, step, ahead.z)) base = step;
         }

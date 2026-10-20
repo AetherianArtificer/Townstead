@@ -356,7 +356,8 @@ public final class VillagerConsumptionManager {
         if (nourishment != null && !nourishment.nativeValues()) {
             int before = needs.hunger();
             if (attributes) {
-                float foodScale = com.aetherianartificer.townstead.root.hook.PhenoHooks.foodMultiplier(recipient);
+                float foodScale = com.aetherianartificer.townstead.root.hook.PhenoHooks.foodMultiplier(recipient)
+                        * nourishment.multiplier();
                 needs.applyFood(nourishment.nutrition(), nourishment.saturation(), foodScale);
                 needs.setLastAteTime(recipient.level().getGameTime());
             }
@@ -374,7 +375,8 @@ public final class VillagerConsumptionManager {
         if (food == null) return false;
         int before = needs.hunger();
         if (attributes) {
-            float foodScale = com.aetherianartificer.townstead.root.hook.PhenoHooks.foodMultiplier(recipient);
+            float foodScale = com.aetherianartificer.townstead.root.hook.PhenoHooks.foodMultiplier(recipient)
+                    * (nourishment == null ? 1f : nourishment.multiplier());
             needs.applyFood(food, foodScale);
             needs.setLastAteTime(recipient.level().getGameTime());
         }

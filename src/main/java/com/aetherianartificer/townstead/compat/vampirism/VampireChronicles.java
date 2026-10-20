@@ -61,6 +61,12 @@ public final class VampireChronicles {
     /** Chronicle counter on the killer of a vampire. */
     public static final String SLEW_VAMPIRE = "townstead:slew_vampire";
 
+    /** Chronicle counter on each player close by when a werewolf puts down a vampire. */
+    public static final String SAW_WEREWOLF_KILL = "townstead:saw_werewolf_kill";
+
+    /** How close a player has to be to count as having seen it. */
+    private static final double SAW_RANGE = 64;
+
     /**
      * Counts the kill for whoever put down a vampire. For a vampire villager, resident or wild,
      * killed by a hunter (a hunter mob, a dhampir, or a player in the hunters), also chronicles it.
@@ -72,6 +78,15 @@ public final class VampireChronicles {
         if ("vampire".equals(victimGroup) || "wild_vampire".equals(victimGroup)) {
             if (killer.level() instanceof net.minecraft.server.level.ServerLevel level) {
                 com.aetherianartificer.townstead.chronicle.Chronicles.addCounter(level.getServer(), killer.getUUID(), SLEW_VAMPIRE, 1);
+            }
+            String killerKind = DispositionGroups.of(killer);
+            if (("werewolf".equals(killerKind) || "wild_werewolf".equals(killerKind))
+                    && killer.level() instanceof net.minecraft.server.level.ServerLevel level) {
+                for (net.minecraft.server.level.ServerPlayer player : level.players()) {
+                    if (player.distanceToSqr(victim) <= SAW_RANGE * SAW_RANGE) {
+                        com.aetherianartificer.townstead.chronicle.Chronicles.addCounter(level.getServer(), player.getUUID(), SAW_WEREWOLF_KILL, 1);
+                    }
+                }
             }
         }
         if (!(victim instanceof VillagerEntityMCA villager) || !VampireVillagers.isVampire(villager)) return;

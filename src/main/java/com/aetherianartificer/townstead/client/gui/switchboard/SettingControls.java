@@ -48,6 +48,7 @@ final class SettingControls {
                     new Choice("legendary_survival_overhaul", "legendarysurvivaloverhaul"),
                     new Choice("cold_sweat", "cold_sweat"), new Choice("tough_as_nails", "toughasnails"),
                     new Choice("builtin", null)),
+            "needs.temperature.climateAuthority", List.of(new Choice("townstead", null), new Choice("backend", null)),
             "calendar.profile", List.of(new Choice("auto", null), new Choice("townstead_calendar:default", null),
                     new Choice("townstead_calendar:serene", "sereneseasons"), new Choice("townstead_calendar:tfc", "tfc"),
                     new Choice("townstead_calendar:ecliptic", "eclipticseasons")));

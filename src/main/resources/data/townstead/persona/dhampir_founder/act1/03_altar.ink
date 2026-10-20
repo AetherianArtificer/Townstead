@@ -97,11 +97,11 @@ It's a lodge. I stood in it for a while earlier, just stood there. I don't know 
 * [It's yours.]
     It's the town's. I just sleep in it. I'll have to get used to saying that.
 - Now I need people. That's the next part, and it's harder than carpentry.
--> DONE
+-> recruit_job -> DONE
 
 = skipped
 ~ done_lodge = true
 ~ act("wolf_rest_outside")
 Somebody's already built a lodge. You, I'm guessing. I was going to have opinions about where the altar went, and now I don't get to.
 That's fine. I'll find something else to have opinions about.
--> DONE
+-> recruit_job -> DONE

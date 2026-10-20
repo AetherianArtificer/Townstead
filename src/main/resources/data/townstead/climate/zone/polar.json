@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:climate_zone/v1",
+  "season_kind": "four_seasons",
+  "seasonal_swing_c": 15.0,
+  "peak_lag": 0.083,
+  "diurnal_range_c": 4.0,
+  "humidity": 0.5,
+  "mean_offset_c": 0.0
+}

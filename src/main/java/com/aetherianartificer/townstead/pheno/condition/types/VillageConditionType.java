@@ -15,7 +15,8 @@ import java.util.Optional;
  * building and population bounds: {@code min_free_beds} counts beds nobody lives in yet,
  * {@code player_founded} tells a village a player started from one that was already there, and
  * {@code has_building} needs a recognized building of a type (a name or a list, any of; a plain
- * name matches every tier from every mod, as in {@code pheno:can_build}).
+ * name matches every tier from every mod, as in {@code pheno:can_build}). With {@code home}, a
+ * villager is tested against their home village wherever they stand.
  * <pre>{ "type": "pheno:village", "player_founded": false, "min_free_beds": 2 }</pre>
  * <pre>{ "type": "pheno:village", "has_building": ["farm", "granary"] }</pre>
  */
@@ -39,6 +40,7 @@ public final class VillageConditionType implements ConditionType {
         int minPopulation = GsonHelper.getAsInt(json, "min_population", Integer.MIN_VALUE);
         int maxPopulation = GsonHelper.getAsInt(json, "max_population", Integer.MAX_VALUE);
         boolean withinBorder = GsonHelper.getAsBoolean(json, "within_border", false);
+        boolean home = GsonHelper.getAsBoolean(json, "home", false);
         int minFreeBeds = GsonHelper.getAsInt(json, "min_free_beds", Integer.MIN_VALUE);
         Boolean playerFounded = json.has("player_founded") ? GsonHelper.getAsBoolean(json, "player_founded") : null;
         java.util.List<String> hasBuilding = new java.util.ArrayList<>();
@@ -51,7 +53,9 @@ public final class VillageConditionType implements ConditionType {
         return ctx -> {
             if (!(ctx.level() instanceof ServerLevel serverLevel)) return false;
             VillageManager manager = VillageManager.get(serverLevel);
-            Optional<Village> villageOpt = manager.findNearestVillage(ctx.pos(), Village.MERGE_MARGIN);
+            Optional<Village> villageOpt = home && ctx.entity() instanceof net.conczin.mca.entity.VillagerEntityMCA villager
+                    ? villager.getResidency().getHomeVillage() : Optional.empty();
+            if (villageOpt.isEmpty()) villageOpt = manager.findNearestVillage(ctx.pos(), Village.MERGE_MARGIN);
             if (villageOpt.isEmpty()) return false;
             Village village = villageOpt.get();
             if (withinBorder && !village.isWithinBorder(ctx.entity())) return false;

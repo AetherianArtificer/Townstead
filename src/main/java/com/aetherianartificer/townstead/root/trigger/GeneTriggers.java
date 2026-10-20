@@ -63,6 +63,18 @@ public final class GeneTriggers {
         fire(entity, Trigger.WHEN_LAND, null, null, 0f);
     }
 
+    /** The bearer lay down to sleep, in a bed or another rest spot; self-only. */
+    public static void onSleep(LivingEntity entity) {
+        if (entity.level().isClientSide) return;
+        fire(entity, Trigger.WHEN_SLEEP, null, null, 0f);
+    }
+
+    /** The bearer's sleep has fully rested it; self-only. */
+    public static void onRested(LivingEntity entity) {
+        if (entity.level().isClientSide) return;
+        fire(entity, Trigger.WHEN_RESTED, null, null, 0f);
+    }
+
     /** The bearer woke from a bed (Apoli {@code action_on_wake_up}); self-only. */
     public static void onWakeUp(LivingEntity entity) {
         if (entity.level().isClientSide) return;

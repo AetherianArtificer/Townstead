@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-/** Townstead's deed-like editor for deciding who may use a room or building. */
+/** The Ownership Plaque: one list of the people a room or building belongs to. */
 public final class RoomOwnershipScreen extends Screen {
     private static final int IDEAL_W = 360;
     private static final int IDEAL_H = 260;
@@ -37,9 +37,8 @@ public final class RoomOwnershipScreen extends Screen {
 
     private final RoomOwnershipSnapshotS2CPayload snapshot;
     private final boolean preview;
-    private final Set<UUID> selected = new LinkedHashSet<>();
+    private final Set<UUID> listed = new LinkedHashSet<>();
     private OwnershipScope scope;
-    private boolean privateAccess;
     private int scroll;
     private boolean draggingScrollbar;
 
@@ -53,7 +52,6 @@ public final class RoomOwnershipScreen extends Screen {
     private int listH;
     private boolean showDeed;
     private Controls.Rect[] scopeRects = new Controls.Rect[0];
-    private Controls.Rect publicButton;
     private Controls.Rect cancelButton;
     private Controls.Rect saveButton;
 
@@ -62,10 +60,10 @@ public final class RoomOwnershipScreen extends Screen {
         this.snapshot = snapshot;
         this.preview = snapshot.worksiteId() < 0;
         this.scope = snapshot.scope();
-        this.privateAccess = snapshot.privateAccess();
         for (RoomOwnershipSnapshotS2CPayload.Person person : snapshot.people()) {
-            if (person.selected()) selected.add(person.uuid());
+            if (person.selected()) listed.add(person.uuid());
         }
+        addHousedVillagers();
     }
 
     @Override
@@ -91,7 +89,6 @@ public final class RoomOwnershipScreen extends Screen {
                 scopeLabels);
 
         int buttonY = panelY + panelH - FOOTER_H + 6;
-        publicButton = new Controls.Rect(panelX + PAD, buttonY, 72, 18);
         saveButton = new Controls.Rect(panelX + panelW - PAD - 52, buttonY, 52, 18);
         cancelButton = new Controls.Rect(saveButton.x() - 58, buttonY, 52, 18);
     }
@@ -136,13 +133,23 @@ public final class RoomOwnershipScreen extends Screen {
         place = font.plainSubstrByWidth(place, Math.max(60, panelW - 160));
         graphics.drawString(font, place, panelX + PAD, panelY + 19, Palette.LABEL_WARM, false);
 
-        String status = isPrivate()
-                ? Component.translatable("townstead.room_ownership.private_count", allowedCount()).getString()
-                : Component.translatable("townstead.room_ownership.public_state").getString();
+        String status;
+        Controls.Chip style;
+        if (listed.isEmpty()) {
+            status = Component.translatable("townstead.room_ownership.open_to_all").getString();
+            style = Controls.Chip.SATISFIED;
+        } else if (snapshot.lodging()) {
+            status = Component.translatable("townstead.room_ownership.lodging").getString();
+            style = Controls.Chip.WAITING;
+        } else if (beds() > 0) {
+            status = Component.translatable("townstead.room_ownership.beds", bedsTaken(), beds()).getString();
+            style = freeBeds() > 0 ? Controls.Chip.WAITING : Controls.Chip.WORKING;
+        } else {
+            status = Component.translatable("townstead.room_ownership.listed_count", listed.size()).getString();
+            style = Controls.Chip.WAITING;
+        }
         int chipX = panelX + panelW - PAD - Controls.chipWidth(font, status);
-        Controls.drawChip(graphics, font,
-                isPrivate() ? Controls.Chip.WAITING : Controls.Chip.SATISFIED,
-                status, chipX, panelY + 10);
+        Controls.drawChip(graphics, font, style, status, chipX, panelY + 10);
         graphics.fill(panelX + PAD, panelY + HEADER_H - 2,
                 panelX + panelW - PAD, panelY + HEADER_H - 1, Palette.DESK_LIP);
     }
@@ -154,10 +161,10 @@ public final class RoomOwnershipScreen extends Screen {
                 listX, bodyY + SCOPE_LABEL_TOP);
         String room = Component.translatable("townstead.room_ownership.scope_room").getString();
         String building = Component.translatable("townstead.room_ownership.scope_building").getString();
-        int hovered = Controls.segmentAt(scopeRects, mouseX, mouseY);
+        int hovered = snapshot.mayEdit() ? Controls.segmentAt(scopeRects, mouseX, mouseY) : -1;
         Controls.drawSegments(graphics, font, scopeRects, new String[]{room, building},
                 scope == OwnershipScope.ROOM ? 0 : 1, hovered,
-                new boolean[]{true, snapshot.wholeBuildingAvailable()});
+                new boolean[]{snapshot.mayEdit(), snapshot.mayEdit() && snapshot.wholeBuildingAvailable()});
 
         FrameRenderer.drawWell(graphics, listX, listY, listW, listH);
         if (snapshot.people().isEmpty()) {
@@ -166,25 +173,25 @@ public final class RoomOwnershipScreen extends Screen {
             return;
         }
 
-        List<RoomOwnershipSnapshotS2CPayload.Person> household = people(true);
+        List<RoomOwnershipSnapshotS2CPayload.Person> onPlaque = people(true);
         List<RoomOwnershipSnapshotS2CPayload.Person> others = people(false);
-        int contentHeight = rosterContentHeight(household, others);
+        int contentHeight = rosterContentHeight(onPlaque, others);
         int viewportHeight = listH - 6;
         int y = listY + 3 - scroll;
         graphics.enableScissor(listX + 2, listY + 2, listX + listW - 2, listY + listH - 2);
-        if (!household.isEmpty()) {
-            drawSection(graphics, Component.translatable("townstead.room_ownership.household").getString(), y);
+        if (!onPlaque.isEmpty()) {
+            drawSection(graphics, Component.translatable("townstead.room_ownership.belongs_to").getString(), y);
             y += SECTION_H;
-            for (RoomOwnershipSnapshotS2CPayload.Person person : household) {
-                drawPerson(graphics, person, y, true, contentHeight > viewportHeight, mouseX, mouseY);
+            for (RoomOwnershipSnapshotS2CPayload.Person person : onPlaque) {
+                drawPerson(graphics, person, y, contentHeight > viewportHeight, mouseX, mouseY);
                 y += ROW_H;
             }
         }
-        if (!others.isEmpty()) {
+        if (!others.isEmpty() && snapshot.mayEdit()) {
             drawSection(graphics, Component.translatable("townstead.room_ownership.other_people").getString(), y);
             y += SECTION_H;
             for (RoomOwnershipSnapshotS2CPayload.Person person : others) {
-                drawPerson(graphics, person, y, false, contentHeight > viewportHeight, mouseX, mouseY);
+                drawPerson(graphics, person, y, contentHeight > viewportHeight, mouseX, mouseY);
                 y += ROW_H;
             }
         }
@@ -194,31 +201,46 @@ public final class RoomOwnershipScreen extends Screen {
     }
 
     private void drawPerson(GuiGraphics graphics, RoomOwnershipSnapshotS2CPayload.Person person,
-                            int y, boolean automatic, boolean hasScrollbar,
-                            int mouseX, int mouseY) {
+                            int y, boolean hasScrollbar, int mouseX, int mouseY) {
         int x = listX + 3;
         int w = listW - 6 - (hasScrollbar ? Controls.SCROLLBAR_W + 2 : 0);
         int h = ROW_H - 2;
-        boolean chosen = selected.contains(person.uuid());
-        boolean hover = !automatic && mouseX >= x && mouseX < x + w
+        boolean on = listed.contains(person.uuid());
+        boolean addable = on || canAdd(person);
+        boolean hover = snapshot.mayEdit() && addable && mouseX >= x && mouseX < x + w
                 && mouseY >= y && mouseY < y + h;
-        graphics.fill(x, y, x + w, y + h,
-                !automatic && chosen ? 0xFF49321B : hover ? 0xFF3E2C19 : Palette.ROW);
-        if (!automatic && chosen) graphics.fill(x, y, x + 2, y + h, Palette.BRASS);
+        graphics.fill(x, y, x + w, y + h, on ? 0xFF49321B : hover ? 0xFF3E2C19 : Palette.ROW);
+        if (on) graphics.fill(x, y, x + 2, y + h, Palette.BRASS);
 
         drawIdentityIcon(graphics, person, x + 5, y + 4);
-        String name = font.plainSubstrByWidth(person.name(), Math.max(28, w - 78));
-        graphics.drawString(font, name, x + 32, y + 4, Palette.LABEL_LIGHT, false);
+        String tag = tag(person, on, addable);
+        int tagW = tag.isEmpty() ? 0 : font.width(tag) + 6;
+        String name = font.plainSubstrByWidth(person.name(), Math.max(28, w - 50 - tagW));
+        graphics.drawString(font, name, x + 32, y + 4, addable ? Palette.LABEL_LIGHT : Palette.LABEL_DIM, false);
         String kind = Component.translatable(person.kind() == RoomOwner.Kind.PLAYER
                 ? "townstead.room_ownership.player" : "townstead.room_ownership.villager").getString();
         graphics.drawString(font, kind, x + 32, y + 15, Palette.LABEL_DIM, false);
-        if (automatic) {
-            String resident = Component.translatable("townstead.room_ownership.resident").getString();
-            graphics.drawString(font, resident, x + w - font.width(resident) - 5, y + 10,
-                    Controls.Chip.SATISFIED.ink, false);
-        } else {
-            drawChoiceMark(graphics, x + w - 12, y + 8, chosen);
+        int right = x + w - 5;
+        if (snapshot.mayEdit() && addable) {
+            String mark = on ? "✓" : "+";
+            graphics.drawString(font, mark, right - font.width(mark), y + 8,
+                    on ? Palette.BRASS_HOT : Palette.LABEL_WARM, false);
+            right -= 12;
         }
+        if (!tag.isEmpty()) {
+            graphics.drawString(font, tag, right - font.width(tag), y + 8,
+                    on ? Controls.Chip.SATISFIED.ink : Palette.LABEL_DIM, false);
+        }
+    }
+
+    /** "Lives here" for a housed villager, "Resident" for a listed player in a home, "No free bed" when one can't be added. */
+    private String tag(RoomOwnershipSnapshotS2CPayload.Person person, boolean on, boolean addable) {
+        if (!addable) return Component.translatable("townstead.room_ownership.no_free_bed_row").getString();
+        if (!on || snapshot.lodging()) return "";
+        if (person.kind() == RoomOwner.Kind.PLAYER) {
+            return Component.translatable("townstead.room_ownership.resident").getString();
+        }
+        return beds() > 0 ? Component.translatable("townstead.room_ownership.lives_here").getString() : "";
     }
 
     private void drawIdentityIcon(GuiGraphics graphics,
@@ -229,11 +251,6 @@ public final class RoomOwnershipScreen extends Screen {
         } else {
             PersonPortrait.drawVillager(graphics, person.uuid(), x + 1, y + 1, 16);
         }
-    }
-
-    private void drawChoiceMark(GuiGraphics graphics, int x, int y, boolean chosen) {
-        graphics.drawString(font, chosen ? "✓" : "+", x, y,
-                chosen ? Palette.BRASS_HOT : Palette.LABEL_WARM, false);
     }
 
     private void drawSection(GuiGraphics graphics, String label, int y) {
@@ -251,56 +268,44 @@ public final class RoomOwnershipScreen extends Screen {
         FrameRenderer.drawMapParchment(graphics, x, y, w, h);
         int inkX = x + 12;
         int inkW = w - 24;
-        String heading = Component.translatable(isPrivate()
-                ? "townstead.room_ownership.deed_private"
-                : "townstead.room_ownership.deed_public",
-                Component.translatable(scope == OwnershipScope.BUILDING
-                        ? "townstead.room_ownership.building"
-                        : "townstead.room_ownership.room").getString()).getString();
+        String heading = Component.translatable("townstead.room_ownership.belongs_to").getString();
         graphics.drawString(font, heading, inkX, y + 10, Palette.CARD_INK, false);
         String place = font.plainSubstrByWidth(snapshot.placeName(), Math.max(20, inkW - 18));
         graphics.drawString(font, place, inkX, y + 21, Palette.CARD_INK_DIM, false);
         graphics.fill(inkX, y + 33, x + w - 10, y + 34, 0x554A3216);
 
         int cursor = y + 41;
-        if (!isPrivate()) {
-            cursor = drawWrapped(graphics,
-                    Component.translatable("townstead.room_ownership.deed_public_copy"),
-                    inkX, cursor, inkW, Palette.CARD_INK, 4);
+        if (listed.isEmpty()) {
+            drawWrapped(graphics, Component.translatable("townstead.room_ownership.open_to_all"),
+                    inkX, cursor, inkW, Palette.CARD_INK, 2);
+            return;
         }
-        if (isPrivate()) {
+        for (RoomOwnershipSnapshotS2CPayload.Person person : people(true)) {
             Controls.drawWaxDiamond(graphics, inkX, cursor + 2);
-            String residents = Component.translatable(
-                    "townstead.room_ownership.household").getString();
-            graphics.drawString(font, residents, inkX + 10, cursor, Palette.CARD_INK, false);
+            String kind = Component.translatable(person.kind() == RoomOwner.Kind.PLAYER
+                    ? "townstead.room_ownership.player"
+                    : "townstead.room_ownership.villager").getString();
+            int kindW = font.width(kind);
+            String name = font.plainSubstrByWidth(person.name(), Math.max(20, inkW - kindW - 16));
+            graphics.drawString(font, name, inkX + 10, cursor, Palette.CARD_INK, false);
+            graphics.drawString(font, kind, x + w - 10 - kindW, cursor, Palette.CARD_INK_DIM, false);
             graphics.fill(inkX, cursor + 11, x + w - 10, cursor + 12, 0x334A3216);
             cursor += 16;
-            for (RoomOwnershipSnapshotS2CPayload.Person person : people(false)) {
-                if (!selected.contains(person.uuid())) continue;
-                Controls.drawWaxDiamond(graphics, inkX, cursor + 2);
-                String kind = Component.translatable(person.kind() == RoomOwner.Kind.PLAYER
-                        ? "townstead.room_ownership.player"
-                        : "townstead.room_ownership.villager").getString();
-                int kindW = font.width(kind);
-                String name = font.plainSubstrByWidth(person.name(), Math.max(20, inkW - kindW - 16));
-                graphics.drawString(font, name, inkX + 10, cursor, Palette.CARD_INK, false);
-                graphics.drawString(font, kind, x + w - 10 - kindW, cursor,
-                        Palette.CARD_INK_DIM, false);
-                graphics.fill(inkX, cursor + 11, x + w - 10, cursor + 12, 0x334A3216);
-                cursor += 16;
-                if (cursor > y + h - 15) break;
-            }
+            if (cursor > y + h - 15) break;
         }
     }
 
     private void drawFooter(GuiGraphics graphics, int mouseX, int mouseY) {
         int top = panelY + panelH - FOOTER_H;
         graphics.fill(panelX + 1, top, panelX + panelW - 1, top + 1, Palette.DESK_LIP);
-        Controls.drawButton(graphics, font, publicButton,
-                Component.translatable(isPrivate()
-                        ? "townstead.room_ownership.public"
-                        : "townstead.room_ownership.make_private").getString(),
-                false, publicButton.contains(mouseX, mouseY), true);
+        if (!snapshot.mayEdit()) {
+            graphics.drawString(font, Component.translatable("townstead.room_ownership.read_only").getString(),
+                    panelX + PAD, top + 11, Palette.LABEL_DIM, false);
+            Controls.drawButton(graphics, font, saveButton,
+                    Component.translatable("gui.done").getString(), false,
+                    saveButton.contains(mouseX, mouseY), true);
+            return;
+        }
         Controls.drawButton(graphics, font, cancelButton,
                 Component.translatable("gui.cancel").getString(), false,
                 cancelButton.contains(mouseX, mouseY), true);
@@ -322,15 +327,18 @@ public final class RoomOwnershipScreen extends Screen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
+        if (!snapshot.mayEdit()) {
+            if (saveButton.contains(mouseX, mouseY)) {
+                onClose();
+                return true;
+            }
+            return super.mouseClicked(mouseX, mouseY, button);
+        }
         int segment = Controls.segmentAt(scopeRects, mouseX, mouseY);
         if (segment == 0 || segment == 1 && snapshot.wholeBuildingAvailable()) {
             scope = segment == 0 ? OwnershipScope.ROOM : OwnershipScope.BUILDING;
+            addHousedVillagers();
             clampScroll();
-            return true;
-        }
-        if (publicButton.contains(mouseX, mouseY)) {
-            privateAccess = !privateAccess;
-            if (!privateAccess) selected.clear();
             return true;
         }
         if (cancelButton.contains(mouseX, mouseY)) {
@@ -354,9 +362,8 @@ public final class RoomOwnershipScreen extends Screen {
         }
         RoomOwnershipSnapshotS2CPayload.Person person = personAt(mouseX, mouseY);
         if (person != null) {
-            if (homeForScope(person)) return true;
-            if (!selected.remove(person.uuid())) selected.add(person.uuid());
-            privateAccess = true;
+            if (!listed.remove(person.uuid()) && canAdd(person)) listed.add(person.uuid());
+            clampScroll();
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
@@ -406,18 +413,49 @@ public final class RoomOwnershipScreen extends Screen {
         scroll = Math.max(0, Math.min(scroll, maxScroll()));
     }
 
-    private List<RoomOwnershipSnapshotS2CPayload.Person> people(boolean household) {
+    /** Villagers MCA already houses in the place are on its plaque. */
+    private void addHousedVillagers() {
+        if (snapshot.lodging()) return;
+        for (RoomOwnershipSnapshotS2CPayload.Person person : snapshot.people()) {
+            if (person.kind() == RoomOwner.Kind.VILLAGER && homeForScope(person)) listed.add(person.uuid());
+        }
+    }
+
+    /** A villager added to a home needs a free bed there; anyone else can always be added. */
+    private boolean canAdd(RoomOwnershipSnapshotS2CPayload.Person person) {
+        if (listed.contains(person.uuid()) || snapshot.lodging() || person.kind() != RoomOwner.Kind.VILLAGER
+                || homeForScope(person) || beds() == 0) return true;
+        return freeBeds() > 0;
+    }
+
+    private int beds() {
+        return scope == OwnershipScope.BUILDING ? snapshot.buildingBeds() : snapshot.roomBeds();
+    }
+
+    private int bedsTaken() {
+        int taken = 0;
+        for (RoomOwnershipSnapshotS2CPayload.Person person : snapshot.people()) {
+            if (person.kind() == RoomOwner.Kind.VILLAGER && listed.contains(person.uuid())) taken++;
+        }
+        return Math.min(taken, beds());
+    }
+
+    private int freeBeds() {
+        return Math.max(0, beds() - bedsTaken());
+    }
+
+    private List<RoomOwnershipSnapshotS2CPayload.Person> people(boolean onPlaque) {
         List<RoomOwnershipSnapshotS2CPayload.Person> out = new ArrayList<>();
         for (RoomOwnershipSnapshotS2CPayload.Person person : snapshot.people()) {
-            if (homeForScope(person) == household) out.add(person);
+            if (listed.contains(person.uuid()) == onPlaque) out.add(person);
         }
         return out;
     }
 
-    private int rosterContentHeight(List<RoomOwnershipSnapshotS2CPayload.Person> household,
+    private int rosterContentHeight(List<RoomOwnershipSnapshotS2CPayload.Person> onPlaque,
                                     List<RoomOwnershipSnapshotS2CPayload.Person> others) {
-        return (!household.isEmpty() ? SECTION_H + household.size() * ROW_H : 0)
-                + (!others.isEmpty() ? SECTION_H + others.size() * ROW_H : 0);
+        return (!onPlaque.isEmpty() ? SECTION_H + onPlaque.size() * ROW_H : 0)
+                + (!others.isEmpty() && snapshot.mayEdit() ? SECTION_H + others.size() * ROW_H : 0);
     }
 
     private int maxScroll() {
@@ -430,14 +468,14 @@ public final class RoomOwnershipScreen extends Screen {
         if (mouseX < listX + 3 || mouseX >= scrollbarX
                 || mouseY < listY + 2 || mouseY >= listY + listH - 2) return null;
         int contentY = (int) mouseY - (listY + 3) + scroll;
-        List<RoomOwnershipSnapshotS2CPayload.Person> household = people(true);
+        List<RoomOwnershipSnapshotS2CPayload.Person> onPlaque = people(true);
         List<RoomOwnershipSnapshotS2CPayload.Person> others = people(false);
-        if (!household.isEmpty()) {
+        if (!onPlaque.isEmpty()) {
             if (contentY < SECTION_H) return null;
             contentY -= SECTION_H;
-            int householdHeight = household.size() * ROW_H;
-            if (contentY < householdHeight) return household.get(contentY / ROW_H);
-            contentY -= householdHeight;
+            int listedHeight = onPlaque.size() * ROW_H;
+            if (contentY < listedHeight) return onPlaque.get(contentY / ROW_H);
+            contentY -= listedHeight;
         }
         if (!others.isEmpty()) {
             if (contentY < SECTION_H) return null;
@@ -451,37 +489,13 @@ public final class RoomOwnershipScreen extends Screen {
         return scope == OwnershipScope.BUILDING ? person.homeInBuilding() : person.homeInRoom();
     }
 
-    private int namedCount() {
-        int count = 0;
-        for (RoomOwnershipSnapshotS2CPayload.Person person : snapshot.people()) {
-            if (selected.contains(person.uuid()) && !homeForScope(person)) count++;
-        }
-        return count;
-    }
-
-    private int allowedCount() {
-        int count = 0;
-        for (RoomOwnershipSnapshotS2CPayload.Person person : snapshot.people()) {
-            if (homeForScope(person) || selected.contains(person.uuid())) count++;
-        }
-        return count;
-    }
-
-    private boolean isPrivate() {
-        return privateAccess;
-    }
-
     private void save() {
         if (preview) {
             onClose();
             return;
         }
-        List<UUID> named = new ArrayList<>();
-        for (RoomOwnershipSnapshotS2CPayload.Person person : snapshot.people()) {
-            if (selected.contains(person.uuid()) && !homeForScope(person)) named.add(person.uuid());
-        }
         RoomOwnershipSetC2SPayload payload = new RoomOwnershipSetC2SPayload(
-                snapshot.tagPos(), snapshot.worksiteId(), scope, privateAccess, named);
+                snapshot.tagPos(), snapshot.worksiteId(), scope, new ArrayList<>(listed));
         //? if neoforge {
         net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
         //?} else {

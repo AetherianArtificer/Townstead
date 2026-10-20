@@ -26,6 +26,12 @@ public final class FactionUpkeep {
     /** {@code residents} is everyone living in any of the faction's settlements. */
     public static Result run(PoliticalSavedData data, Faction faction, FactionKind kind,
                              Collection<UUID> residents, List<Set<ResourceLocation>> seats, long now) {
+        return run(data, faction, kind, residents, Set.of(), seats, now);
+    }
+
+    /** {@code players} among the residents become citizens but are never appointed to an office. */
+    public static Result run(PoliticalSavedData data, Faction faction, FactionKind kind,
+                             Collection<UUID> residents, Set<UUID> players, List<Set<ResourceLocation>> seats, long now) {
         if (data == null || faction == null || kind == null || !faction.active()) return Result.NONE;
         List<UUID> people = sorted(residents);
         Set<UUID> living = new LinkedHashSet<>(people);
@@ -54,7 +60,9 @@ public final class FactionUpkeep {
                 }
             }
         }
-        int filled = kind.generated() ? fill(data, faction, kind, people, seats, now) : 0;
+        List<UUID> appointable = players.isEmpty() ? people
+                : people.stream().filter(person -> !players.contains(person)).toList();
+        int filled = kind.generated() ? fill(data, faction, kind, appointable, seats, now) : 0;
         return new Result(added, ended, filled);
     }
 

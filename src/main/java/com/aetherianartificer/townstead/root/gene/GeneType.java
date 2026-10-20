@@ -67,6 +67,11 @@ public interface GeneType {
         return null;
     }
 
+    /** The part of the carrier genes of this type describe, unless a gene sets {@code "layer"}. */
+    default GeneLayer layer() {
+        return GeneLayer.BODY;
+    }
+
     // Future behavior hooks (effect application, model rendering) will be added
     // here as the gene catalogue grows; this iteration is framework + display only.
 }

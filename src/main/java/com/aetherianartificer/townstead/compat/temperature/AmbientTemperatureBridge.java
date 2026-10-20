@@ -29,6 +29,19 @@ public interface AmbientTemperatureBridge {
     float ambientCelsius(ServerLevel level, BlockPos pos);
 
     /**
+     * Whether the backend already runs a season curve here, through its own compat or a compat mod.
+     * Probed from what is actually registered, so it holds whichever mod supplied the seasons.
+     */
+    default boolean modelsSeasons() {
+        return false;
+    }
+
+    /** Whether the backend already warms rock with depth, so Townstead's geothermal gradient is not added. */
+    default boolean modelsGeothermal() {
+        return false;
+    }
+
+    /**
      * The insulation the backend attributes to a worn item, in Celsius, or {@code NaN} when the
      * backend has no opinion.
      */
@@ -86,5 +99,9 @@ public interface AmbientTemperatureBridge {
      */
     default @org.jetbrains.annotations.Nullable net.minecraft.resources.ResourceLocation playerImmunityEffect() {
         return null;
+    }
+
+    /** Turns the mod's own player wetness off while the root stays dry, and back on after. */
+    default void keepPlayerDry(Player player, boolean dry) {
     }
 }

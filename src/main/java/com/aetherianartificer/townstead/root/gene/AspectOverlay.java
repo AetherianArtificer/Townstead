@@ -7,14 +7,18 @@ import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Lays the gene overlays of an entity's active states over its expressed alleles. The
  * genotype is never touched, so leaving the state restores the carrier exactly. Overlays
  * apply in priority order, each its suppressions and then its grants, so a higher tier can
  * take back what a lower one gave; a grant replaces whatever the carrier expresses at the
- * granted gene's locus.
+ * granted gene's locus. Suppressing a {@link GeneLayer} drops the carrier's own alleles in it
+ * but keeps what states granted, whatever their priority.
  */
 public final class AspectOverlay {
     // Resolving a state can evaluate conditions that read expressed genes again.
@@ -27,6 +31,10 @@ public final class AspectOverlay {
         @Nullable ResourceLocation canonical(ResourceLocation id);
 
         @Nullable ResourceLocation locus(ResourceLocation canonical);
+
+        default GeneLayer layer(ResourceLocation canonical) {
+            return GeneLayer.BODY;
+        }
 
         /** A weighted variant of a multi-variant gene picked by {@code seed}, or null for none. */
         default @Nullable String roll(ResourceLocation canonical, long seed) {
@@ -44,6 +52,12 @@ public final class AspectOverlay {
         public @Nullable ResourceLocation locus(ResourceLocation canonical) {
             Gene gene = GeneRegistry.byId(canonical);
             return gene == null ? null : gene.locus();
+        }
+
+        @Override
+        public GeneLayer layer(ResourceLocation canonical) {
+            Gene gene = GeneRegistry.byId(canonical);
+            return gene == null ? GeneLayer.BODY : gene.layer();
         }
 
         @Override
@@ -82,7 +96,15 @@ public final class AspectOverlay {
      */
     static List<Allele> apply(List<Allele> expressed, List<StateEffect.Genes> overlays, GeneLookup genes, long seed) {
         List<Allele> out = new ArrayList<>(expressed);
+        Set<Allele> granted = Collections.newSetFromMap(new IdentityHashMap<>());
         for (StateEffect.Genes overlay : overlays) {
+            if (overlay.suppressLayer() != null) {
+                out.removeIf(allele -> {
+                    if (granted.contains(allele)) return false;
+                    ResourceLocation carried = canonicalOf(allele, genes);
+                    return carried != null && genes.layer(carried) == overlay.suppressLayer();
+                });
+            }
             for (ResourceLocation id : overlay.suppress()) {
                 ResourceLocation canonical = genes.canonical(id);
                 if (canonical != null) out.removeIf(allele -> canonical.equals(canonicalOf(allele, genes)));
@@ -97,7 +119,9 @@ public final class AspectOverlay {
                 });
                 String variant = grant.variant() != null ? grant.variant()
                         : genes.roll(canonical, mix(seed));
-                out.add(Allele.of(canonical, variant));
+                Allele allele = Allele.of(canonical, variant);
+                granted.add(allele);
+                out.add(allele);
             }
         }
         return List.copyOf(out);

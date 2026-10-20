@@ -40,3 +40,38 @@ I'm going to sit here a bit longer, if that's all right. Nothing's wrong. I just
 + [I'll leave you to it.]
     Go on. I'll be here a while.
     -> DONE
+
+// The first recruit. Opens with the lodge: the player can bring someone who wants to join
+// (enlist_recruit), and volunteers still come at dusk. Whoever swears first hands it back, and
+// the hand-back is the scene above.
+=== recruit_job ===
+# quest: The first recruit
+# about: Bring a villager who wants to join to the hunter. They train at the altar for three nights, then swear the oath.
+# goal: founder_oaths
+# skip if: founder_oaths
+If you know somebody who'd do it, bring them to me. Somebody who wants it, not somebody you talked into it. I'll know the difference.
+->->
+
+= waiting
+{~Found anyone? Don't drag them here. If they need dragging, they're not ready.|Still looking? Me too.}
+- (asks)
++ [I've brought someone.]
+    {act("enlist_recruit"):
+        All right. They train by the altar after dark, three nights. If they're still here after that, they kneel.
+    - else:
+        Not this one.
+    }
+    -> DONE
++ [Who are you looking for?]
+    Grown, steady on their feet, nobody at home who'd be left with nothing. That's most of it.
+    -> asks
++ [I'll let you get on.]
+    Go on.
+    -> DONE
+
+= done
+// Scene 6 may have played already, when the oath was sworn before the quest caught up.
+{done_first_oath:
+    -> greet
+}
+-> first_oath

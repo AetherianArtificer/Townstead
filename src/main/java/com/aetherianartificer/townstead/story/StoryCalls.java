@@ -108,9 +108,9 @@ public final class StoryCalls {
         }
         String line = StoryText.resolve(ink.line(), key -> key);
         // A Persona who keeps their family name back is only their given name until they tell it.
-        String name = com.aetherianartificer.townstead.persona.PersonaService.familyNameKnown(villager, player)
-                ? villager.getDisplayName().getString()
-                : com.aetherianartificer.townstead.naming.VillagerNames.parts(villager).given();
+        String name = com.aetherianartificer.townstead.naming.VillagerNames.familyHidden(villager, null)
+                ? com.aetherianartificer.townstead.naming.VillagerNames.titleFor(villager, player).getString()
+                : villager.getDisplayName().getString();
         player.sendSystemMessage(Component.literal("§7" + name + ": §o" + line));
     }
 

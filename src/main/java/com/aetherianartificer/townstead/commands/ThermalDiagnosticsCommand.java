@@ -86,6 +86,8 @@ public final class ThermalDiagnosticsCommand {
                             "No bounded thermal volume resolved; native environment %.1f C; air estimate %.1f C",
                             TemperatureData.ambientCelsius(source.getLevel(), pos), TemperatureData.airCelsius(source.getLevel(), pos)));
                     source.sendSuccess(() -> Component.literal("Backend " + TemperatureBridgeResolver.get().id() + "; " + detail), false);
+                    String ground = com.aetherianartificer.townstead.temperature.GroundClimate.describe(source.getLevel(), pos);
+                    source.sendSuccess(() -> Component.literal(ground), false);
                     return 1;
                 }))));
     }

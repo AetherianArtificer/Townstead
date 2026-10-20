@@ -20,7 +20,8 @@ import java.util.Set;
  * Public identity and tier vocabulary for one open semantic entity state. While it is active, the
  * states it {@code excludes} cannot take hold (a thrall cannot be turned into a vampire). With
  * {@code "body": "villager"} it only takes hold on someone in MCA's own villager body, never a
- * custom rig.
+ * custom rig. {@code requires} is a condition the carrier must meet to take it (a skeleton has no
+ * blood to turn); a Root that declares the state {@code true} takes it anyway.
  */
 public record EntityStateDefinition(
         ResourceLocation id,
@@ -33,7 +34,8 @@ public record EntityStateDefinition(
         DeathPolicy deathPolicy,
         @Nullable Aspect aspect,
         java.util.Set<ResourceLocation> excludes,
-        boolean villagerBody) {
+        boolean villagerBody,
+        @Nullable com.aetherianartificer.townstead.pheno.condition.Condition requires) {
 
     public static final String SCHEMA = "pheno:entity_state/v1";
 
@@ -150,7 +152,15 @@ public record EntityStateDefinition(
                 enumValue(json, "death", DeathPolicy.CLEAR, DeathPolicy.class),
                 json.has("aspect") ? aspect(id, json.get("aspect")) : null,
                 excludes(json),
-                "villager".equals(GsonHelper.getAsString(json, "body", "any")));
+                "villager".equals(GsonHelper.getAsString(json, "body", "any")),
+                requires(json));
+    }
+
+    private static @Nullable com.aetherianartificer.townstead.pheno.condition.Condition requires(JsonObject json) {
+        if (!json.has("requires")) return null;
+        var condition = com.aetherianartificer.townstead.pheno.condition.Conditions.parse(json.get("requires"));
+        if (condition == null) throw new IllegalArgumentException("'requires' is not a valid Pheno condition");
+        return condition;
     }
 
     private static java.util.Set<ResourceLocation> excludes(JsonObject json) {

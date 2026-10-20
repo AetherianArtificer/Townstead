@@ -1,0 +1,20 @@
+[
+  {
+    "id": "townstead:skins/clothing/adapted/werewolves/human_0.png",
+    "profession": "townstead:werewolf",
+    "gender": "neutral",
+    "exclude": true
+  },
+  {
+    "id": "townstead:skins/clothing/adapted/werewolves/human_1.png",
+    "profession": "townstead:werewolf",
+    "gender": "neutral",
+    "exclude": true
+  },
+  {
+    "id": "townstead:skins/clothing/adapted/werewolves/human_2_slim.png",
+    "profession": "townstead:werewolf",
+    "gender": "neutral",
+    "exclude": true
+  }
+]

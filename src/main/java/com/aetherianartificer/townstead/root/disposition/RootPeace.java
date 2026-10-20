@@ -42,7 +42,9 @@ public final class RootPeace {
         return !hostilityOn() || peaceful(candidate) || peaceful(resident);
     }
 
+    // A wild villager is still the mob it replaced (a wild vampire), not folk, until it settles.
     private static boolean isFolk(LivingEntity entity) {
+        if (com.aetherianartificer.townstead.replace.MobReplacer.activeReplacement(entity) != null) return false;
         return entity instanceof Player || entity instanceof AbstractVillager;
     }
 

@@ -25,9 +25,10 @@ public record StoryQuestSyncS2CPayload(List<Quest> quests) implements CustomPack
     /**
      * {@code state}: 0 active, 1 ready to hand back, 2 complete. {@code handBack}: the teller has
      * something to say once the goals are met, so the ledger adds a line to go and talk to them.
+     * {@code giver}: the UUID of whoever gave it, or empty, so the tracker can point the way.
      */
     public record Quest(String id, String title, String about, String teller, byte state, boolean handBack,
-                        List<Objective> objectives, List<Reward> rewards) {}
+                        List<Objective> objectives, List<Reward> rewards, String giver) {}
 
     public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(quests.size());
@@ -51,6 +52,7 @@ public record StoryQuestSyncS2CPayload(List<Quest> quests) implements CustomPack
                 buf.writeUtf(reward.itemId());
                 buf.writeVarInt(reward.count());
             }
+            buf.writeUtf(quest.giver());
         }
     }
 
@@ -72,7 +74,7 @@ public record StoryQuestSyncS2CPayload(List<Quest> quests) implements CustomPack
             int rewardCount = Math.min(buf.readVarInt(), 64);
             List<Reward> rewards = new ArrayList<>(rewardCount);
             for (int j = 0; j < rewardCount; j++) rewards.add(new Reward(buf.readUtf(), buf.readUtf(), buf.readVarInt()));
-            quests.add(new Quest(id, title, about, teller, state, handBack, List.copyOf(objectives), List.copyOf(rewards)));
+            quests.add(new Quest(id, title, about, teller, state, handBack, List.copyOf(objectives), List.copyOf(rewards), buf.readUtf()));
         }
         return new StoryQuestSyncS2CPayload(List.copyOf(quests));
     }

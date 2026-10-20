@@ -302,6 +302,21 @@ final class StorySession {
         }
     }
 
+    /**
+     * Whether the story's own {@code scene_ready()} says a scene is waiting to play. False when it
+     * has none.
+     */
+    boolean sceneReady() {
+        try {
+            if (!story.hasFunction("scene_ready")) return false;
+            Object ready = story.evaluateFunction("scene_ready");
+            return ready instanceof Boolean flag ? flag : ready instanceof Number number && number.intValue() != 0;
+        } catch (Exception e) {
+            LOGGER.warn("Story {}: scene_ready() failed: {}", definition.id(), e.getMessage());
+            return false;
+        }
+    }
+
     @Nullable String menuLabel() {
         try {
             if (!story.hasFunction("menu")) return null;
@@ -528,7 +543,7 @@ final class StorySession {
             if (persona == null) return "";
             var village = goalContext().villageId(true);
             return com.aetherianartificer.townstead.persona.PersonaService.nameOf(player.server, persona,
-                    village.map(v -> v.dimension()).orElse(null), village.map(v -> v.villageId()).orElse(-1));
+                    village.map(v -> v.dimension()).orElse(null), village.map(v -> v.villageId()).orElse(-1), player);
         });
         bindRead("rel", args -> (int) Math.round(rel(string(args, 0))));
         story.bindExternalFunction("trust", args -> {
@@ -543,10 +558,8 @@ final class StorySession {
             memory(string(args, 0));
             return null;
         }, false);
-        story.bindExternalFunction("act", args -> {
-            act(string(args, 0));
-            return null;
-        }, false);
+        story.bindExternalFunction("act", args -> act(string(args, 0)), false);
+        story.bindExternalFunction("act_on", args -> actOn(string(args, 0), string(args, 1)), false);
         bindRead("mod", args -> com.aetherianartificer.townstead.compat.ModCompat.isLoaded(string(args, 0)));
         bindRead("can_build", args -> com.aetherianartificer.townstead.pheno.condition.types.CanBuildConditionType.possible(string(args, 0).toLowerCase(java.util.Locale.ROOT)));
         bindRead("demeanor", args -> Demeanor.of(definition.demeanor(), this::rel));
@@ -656,13 +669,32 @@ final class StorySession {
                 quality(id), player.getUUID(), day, "townstead:story/" + definition.id(), Map.of());
     }
 
-    private void act(String name) {
+    /** Runs a story action; whether it worked, so a line can follow what really happened. */
+    private boolean act(String name) {
         Action action = definition.actions().get(name);
         if (action == null) {
             LOGGER.warn("Story {}: act(\"{}\"): no such action in story.json", definition.id(), name);
-            return;
+            return false;
         }
-        action.run(new ActionContext(villager, player));
+        ActionContext ctx = new ActionContext(villager, player);
+        action.run(ctx);
+        return ctx.succeeded();
+    }
+
+    /**
+     * Runs a story action on the resident of the teller's village shown under {@code name}, with
+     * the player as the other side. False when nobody by that name is here or the action failed.
+     */
+    private boolean actOn(String name, String target) {
+        Action action = definition.actions().get(name);
+        VillagerEntityMCA resident = StoryWorld.named(target, goalContext());
+        if (action == null || resident == null) {
+            if (action == null) LOGGER.warn("Story {}: act_on(\"{}\"): no such action in story.json", definition.id(), name);
+            return false;
+        }
+        ActionContext ctx = new ActionContext(resident, player);
+        action.run(ctx);
+        return ctx.succeeded();
     }
 
     private String operationId() {
@@ -689,7 +721,7 @@ final class StorySession {
         }
     }
 
-    static String displayName(VillagerEntityMCA villager) {
-        return VillagerNames.display(villager).getString();
+    static String displayName(VillagerEntityMCA villager, ServerPlayer player) {
+        return VillagerNames.nameFor(villager, player);
     }
 }

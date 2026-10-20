@@ -125,7 +125,10 @@ public final class TemperatureData {
     private static float unregulatedAmbientCelsius(ServerLevel level, BlockPos pos) {
         var room = RoomHeat.at(level, pos);
         if (room.isPresent()) return (float) room.getAsDouble();
-        AmbientTemperatureBridge bridge = TemperatureBridgeResolver.get();
+        // Under Townstead authority the climate model is the environment for every backend; the
+        // backends' block and garment opinions still reach it through ThermalBlocks and clothing.
+        AmbientTemperatureBridge bridge = com.aetherianartificer.townstead.TownsteadConfig.townsteadClimateAuthority()
+                ? BuiltinTemperatureBridge.INSTANCE : TemperatureBridgeResolver.get();
         float value = bridge.ambientCelsius(level, pos);
         if (!Float.isFinite(value) && bridge != BuiltinTemperatureBridge.INSTANCE) {
             value = BuiltinTemperatureBridge.INSTANCE.ambientCelsius(level, pos);

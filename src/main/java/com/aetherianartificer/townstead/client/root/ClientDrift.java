@@ -9,7 +9,8 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Local-player drift: after each physics tick, float the player over whatever is below.
- * Jump lifts the float higher (up to a few blocks), sneak lets it settle low. Water is
+ * Jump lifts the float higher (up to a few blocks), sneak lets it settle low. It never rises
+ * onto a step by itself, and on a ladder or vine the player climbs as anyone would. Water is
  * floated over, unless the player sneaks: then it sinks in, and once in the water the
  * player swims as anyone would. The player counts as standing, so walking keeps its
  * ground speed and friction, falls do no harm, and the server does not mistake the float
@@ -30,7 +31,8 @@ public final class ClientDrift {
         if (entity != Minecraft.getInstance().player) return;
         LocalPlayer player = (LocalPlayer) entity;
         if (player.getAbilities().flying || player.isFallFlying() || player.isPassenger() || player.isSleeping()
-                || player.isSpectator() || player.noPhysics || player.isInWater() || !DriftPhysics.isDrifter(player)) {
+                || player.isSpectator() || player.noPhysics || player.isInWater() || player.onClimbable()
+                || !DriftPhysics.isDrifter(player)) {
             lift = 0;
             return;
         }
@@ -39,7 +41,7 @@ public final class ClientDrift {
         boolean sneaking = player.input.shiftKeyDown;
         double floatHeight = sneaking ? SNEAK_HEIGHT : FlightStyle.DRIFT.cruiseHeight() + lift;
         Vec3 m = player.getDeltaMovement();
-        double vy = DriftPhysics.vertical(player, m, floatHeight, player.tickCount, !sneaking, Double.NaN);
+        double vy = DriftPhysics.vertical(player, m, floatHeight, player.tickCount, !sneaking, Double.NaN, false);
         player.setDeltaMovement(m.x, vy, m.z);
         player.setOnGround(true);
         player.resetFallDistance();

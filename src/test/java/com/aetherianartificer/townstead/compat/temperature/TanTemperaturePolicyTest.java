@@ -20,6 +20,13 @@ class TanTemperaturePolicyTest {
         assertEquals(21.3f, TanTemperaturePolicy.regulate(21.3f, 1, 1, 3));
         assertEquals(40f, TanTemperaturePolicy.regulate(20, 2, 1, 3));
     }
+    @Test void snowCapAndRockHeatShiftOpenAirButKeepProximitySteps() {
+        assertEquals(1, TanTemperaturePolicy.shiftedIndex(20f, -20f, 0));
+        assertEquals(2, TanTemperaturePolicy.shiftedIndex(20f, -20f, 1));
+        assertEquals(4, TanTemperaturePolicy.shiftedIndex(20f, 20f, 0));
+        assertEquals(4, TanTemperaturePolicy.shiftedIndex(30f, 20f, 2));
+        assertEquals(0, TanTemperaturePolicy.shiftedIndex(-10f, -5f, -1));
+    }
     @Test void internalEffectsCannotCreateExtremes() {
         assertEquals(30f, TanTemperaturePolicy.internal(30, true, false));
         assertEquals(5f, TanTemperaturePolicy.internal(5, false, true));

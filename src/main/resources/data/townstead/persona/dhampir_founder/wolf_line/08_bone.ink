@@ -5,11 +5,11 @@ VAR done_bone = false
 === function bone_ask_ready() ===
 ~ return done_collar and not bone_asked
 
-=== function bone_done_ready() ===
-~ return bone_asked and not done_bone and check("carries_bone")
-
 // Beat 8. A bone, from the butcher when there is one.
 === bone_ask ===
+# quest: A bone for the wolf
+# about: Bring the hunter a bone. A butcher might have one.
+# goal: bone_carried
 ~ bone_asked = true
 {who("butcher") != "":
     Would you ask {who("butcher")} for a bone? A proper one, something with a bit of work in it. I'd go myself but I'd have to explain who it's for.
@@ -18,7 +18,7 @@ VAR done_bone = false
 }
 -> DONE
 
-=== bone_done ===
+= done
 ~ done_bone = true
 ~ act("take_bone")
 Give it here.

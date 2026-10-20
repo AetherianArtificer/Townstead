@@ -62,7 +62,14 @@ public final class TownsteadClient {
             NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGHEST,
                     com.aetherianartificer.townstead.client.render.WildCostumeRender::onRenderLivingPre);
             NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.render.WildCostumeRender::onEntityLeave);
-            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.render.ClosedCoffinRender::onRenderLivingPre);
+            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.render.HiddenSleeperRender::onRenderLivingPre);
+            NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.EntityInteract e) -> {
+                if (e.getLevel().isClientSide() && e.getHand() == net.minecraft.world.InteractionHand.MAIN_HAND
+                        && com.aetherianartificer.townstead.client.render.CostumeTalk.open(e.getTarget())) {
+                    e.setCanceled(true);
+                    e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
+                }
+            });
             NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGHEST, (net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingIn e) ->
                     com.aetherianartificer.townstead.compat.werewolves.WerewolvesMcaNotice.silence());
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onRenderLivingPre);
@@ -105,7 +112,14 @@ public final class TownsteadClient {
             MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.HIGHEST,
                     com.aetherianartificer.townstead.client.render.WildCostumeRender::onRenderLivingPre);
             MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.render.WildCostumeRender::onEntityLeave);
-            MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.render.ClosedCoffinRender::onRenderLivingPre);
+            MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.render.HiddenSleeperRender::onRenderLivingPre);
+            MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.PlayerInteractEvent.EntityInteract e) -> {
+                if (e.getLevel().isClientSide() && e.getHand() == net.minecraft.world.InteractionHand.MAIN_HAND
+                        && com.aetherianartificer.townstead.client.render.CostumeTalk.open(e.getTarget())) {
+                    e.setCanceled(true);
+                    e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
+                }
+            });
             MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.HIGHEST, (net.minecraftforge.client.event.ClientPlayerNetworkEvent.LoggingIn e) ->
                     com.aetherianartificer.townstead.compat.werewolves.WerewolvesMcaNotice.silence());
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onRenderLivingPre);
@@ -221,6 +235,7 @@ public final class TownsteadClient {
         com.aetherianartificer.townstead.pheno.screen.ScreenEffect.Client.clear();
         com.aetherianartificer.townstead.replace.WildNameS2CPayload.clear();
         com.aetherianartificer.townstead.client.render.WildCostumeRender.clear();
+        com.aetherianartificer.townstead.quest.QuestGiversS2CPayload.clear();
         clearClientStore("com.aetherianartificer.townstead.hunger.HungerClientStore");
         clearClientStore("com.aetherianartificer.townstead.client.story.StoryCallMarks");
         clearClientStore("com.aetherianartificer.townstead.client.state.StateFormClient");
@@ -253,6 +268,18 @@ public final class TownsteadClient {
             event.setCanRender(net.neoforged.neoforge.common.util.TriState.FALSE);
             return;
         }
+        net.minecraft.network.chat.Component plate = com.aetherianartificer.townstead.client.render.WildPlateRender.name(event.getEntity());
+        if (plate != null) {
+            if (!com.aetherianartificer.townstead.client.render.WildPlateRender.visible(event.getEntity())) {
+                event.setCanRender(net.neoforged.neoforge.common.util.TriState.FALSE);
+                return;
+            }
+            event.setContent(plate);
+            event.setCanRender(net.neoforged.neoforge.common.util.TriState.TRUE);
+            com.aetherianartificer.townstead.client.render.WildPlateRender.drawAffiliation(event.getEntity(),
+                    event.getPoseStack(), event.getMultiBufferSource(), event.getPackedLight(), event.getPartialTick());
+            return;
+        }
         if (com.aetherianartificer.townstead.replace.WildNameS2CPayload.hidden(event.getEntity().getId())) {
             event.setCanRender(net.neoforged.neoforge.common.util.TriState.FALSE);
             return;
@@ -266,6 +293,18 @@ public final class TownsteadClient {
                 && net.minecraft.client.Minecraft.getInstance().player != null
                 && player.isInvisibleTo(net.minecraft.client.Minecraft.getInstance().player)) {
             event.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
+            return;
+        }
+        net.minecraft.network.chat.Component plate = com.aetherianartificer.townstead.client.render.WildPlateRender.name(event.getEntity());
+        if (plate != null) {
+            if (!com.aetherianartificer.townstead.client.render.WildPlateRender.visible(event.getEntity())) {
+                event.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
+                return;
+            }
+            event.setContent(plate);
+            event.setResult(net.minecraftforge.eventbus.api.Event.Result.ALLOW);
+            com.aetherianartificer.townstead.client.render.WildPlateRender.drawAffiliation(event.getEntity(),
+                    event.getPoseStack(), event.getMultiBufferSource(), event.getPackedLight(), event.getPartialTick());
             return;
         }
         if (com.aetherianartificer.townstead.replace.WildNameS2CPayload.hidden(event.getEntity().getId())) {

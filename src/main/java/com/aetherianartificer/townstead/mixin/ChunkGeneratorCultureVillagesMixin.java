@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.mixin;
 
+import com.aetherianartificer.townstead.culture.CultureVillageSites;
 import com.aetherianartificer.townstead.culture.CultureVillages;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.SectionPos;
@@ -15,7 +16,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Culture village structures generate only while their culture is on in the Switchboard, at its rate. */
+/**
+ * Culture village structures generate only while their culture is on in the Switchboard, at its rate,
+ * on a site their layout accepts.
+ */
 @Mixin(ChunkGenerator.class)
 public abstract class ChunkGeneratorCultureVillagesMixin {
     //? if neoforge {
@@ -29,7 +33,11 @@ public abstract class ChunkGeneratorCultureVillagesMixin {
                                                ChunkPos chunkPos, SectionPos section,
                                                CallbackInfoReturnable<Boolean> cir) {
         entry.structure().unwrapKey().ifPresent(key -> {
-            if (!CultureVillages.allowsGeneration(key.location(), seed, chunkPos)) cir.setReturnValue(false);
+            if (!CultureVillages.allowsGeneration(key.location(), seed, chunkPos)
+                    || !CultureVillageSites.allows(key.location(), (ChunkGenerator) (Object) this, registries,
+                    random, seed, chunk, chunkPos)) {
+                cir.setReturnValue(false);
+            }
         });
     }
 }

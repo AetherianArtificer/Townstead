@@ -1,19 +1,16 @@
 package com.aetherianartificer.townstead.compat.temperature;
 
-import com.aetherianartificer.townstead.calendar.CalendarDate;
-import com.aetherianartificer.townstead.calendar.Season;
-import com.aetherianartificer.townstead.calendar.TownsteadCalendar;
+import com.aetherianartificer.townstead.climate.ClimateModel;
+import com.aetherianartificer.townstead.temperature.GroundClimate;
 import com.aetherianartificer.townstead.temperature.TemperatureSettings;
 import com.aetherianartificer.townstead.temperature.ThermalBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.biome.Biome;
-
 
 /**
- * Climate without a climate mod: the biome's own base temperature mapped through three anchors,
- * then the calendar's season, altitude, rain, night, and the nearest heat or cooling source. Every
- * number lives in {@code data/townstead/need/temperature.json} so packs can retune it.
+ * Climate without a temperature mod: Townstead's climate model (biome mean, zone seasons, day and
+ * night, rain and snow), blended with the ground under cover, then the nearest heat or cooling
+ * source. Tunables live in {@code need/temperature.json} and the {@code climate/} data.
  */
 public final class BuiltinTemperatureBridge implements AmbientTemperatureBridge {
     public static final BuiltinTemperatureBridge INSTANCE = new BuiltinTemperatureBridge();
@@ -30,17 +27,9 @@ public final class BuiltinTemperatureBridge implements AmbientTemperatureBridge 
         return true;
     }
 
-    /** Biome, season, and altitude only: the climate before weather, time of day, walls, and fires. */
-    public static float baseCelsius(ServerLevel level, BlockPos pos) {
-        TemperatureSettings s = TemperatureSettings.get();
-        if (level.dimensionType().ultraWarm()) return s.netherCelsius();
-        if (!level.dimensionType().natural()) return s.endCelsius();
-        Biome biome = level.getBiome(pos).value();
-        float celsius = s.biomeToCelsius(biome.getBaseTemperature());
-        celsius += seasonOffset(level, s);
-        int aboveSea = pos.getY() - level.getSeaLevel();
-        if (aboveSea > 0) celsius -= aboveSea / s.altitudeBlocksPerDegree();
-        return celsius;
+    /** Open air without local sources: the climate model, then the ground under cover. */
+    public static float climateCelsius(ServerLevel level, BlockPos pos) {
+        return GroundClimate.blend(level, pos, ClimateModel.sample(level, pos).air());
     }
 
     @Override
@@ -53,15 +42,7 @@ public final class BuiltinTemperatureBridge implements AmbientTemperatureBridge 
     /** The open-air reading at a position, ignoring any room around it. */
     public float outdoorCelsius(ServerLevel level, BlockPos pos) {
         TemperatureSettings s = TemperatureSettings.get();
-        if (level.dimensionType().ultraWarm()) return s.netherCelsius();
-        if (!level.dimensionType().natural()) return s.endCelsius();
-        float celsius = baseCelsius(level, pos);
-
-        boolean sky = level.canSeeSky(pos);
-        if (sky && level.isRainingAt(pos)) celsius += s.rainOffset();
-        if (level.isNight()) celsius += sky ? s.nightOffset() : s.nightOffset() * 0.5f;
-
-        celsius = EclipticClimate.reconcile(celsius, EclipticClimate.ceiling(level, pos));
+        float celsius = climateCelsius(level, pos);
 
         float sources = ThermalBlocks.sourceOffset(level, pos, s);
         sources += structureZone(level, pos);
@@ -74,12 +55,5 @@ public final class BuiltinTemperatureBridge implements AmbientTemperatureBridge 
 
     private static float structureZone(ServerLevel level, BlockPos pos) {
         return com.aetherianartificer.townstead.decoration.Decorations.thermalZone(level, pos);
-    }
-
-    private static float seasonOffset(ServerLevel level, TemperatureSettings s) {
-        CalendarDate today = TownsteadCalendar.today(level.getServer());
-        Season season = today == null ? null : today.season();
-        if (season == null) return 0f;
-        return s.seasonOffset(season);
     }
 }

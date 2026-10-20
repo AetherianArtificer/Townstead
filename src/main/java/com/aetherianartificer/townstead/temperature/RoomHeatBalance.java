@@ -15,11 +15,25 @@ public final class RoomHeatBalance {
         return sourceEffect * Math.max(0, 1 - distance / 3.0);
     }
 
-    /** The strongest visible source dominates; overlapping sources share a finite field of view. */
+    /** Cold sources are mostly surfaces that surround the body (snow, ice), so they stack far less. */
+    public static final double RADIANT_MAX = 40, RADIANT_STACK = 2, RADIANT_COLD_STACK = 1.25;
+
     public static double combinedExposure(double total, double strongest) {
+        return combinedExposure(total, strongest, RADIANT_MAX, RADIANT_STACK);
+    }
+
+    /**
+     * Visible sources add almost fully at first, then level off at {@code max} degrees or
+     * {@code stack} times the strongest, whichever is lower: three campfires warm far more than
+     * one, while a row of weak sources (a kitchen of stoves) stays near its strongest.
+     */
+    public static double combinedExposure(double total, double strongest, double max, double stack) {
         if (total <= 0 || strongest <= 0) return 0;
+        double limit = Math.min(max, strongest * Math.max(1, stack));
+        if (limit <= strongest) return strongest;
+        double room = limit - strongest;
         double extra = Math.max(0, total - strongest);
-        return strongest + strongest * .25 * -Math.expm1(-extra / strongest);
+        return strongest + room * -Math.expm1(-extra / room);
     }
 
     /** Outside air a burning source pulls through the room, in W/K. */

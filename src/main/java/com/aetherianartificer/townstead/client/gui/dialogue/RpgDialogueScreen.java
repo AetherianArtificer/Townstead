@@ -63,6 +63,10 @@ public class RpgDialogueScreen extends Screen {
     /** The main menu's answers, kept so a finished story can hand the player back to them. */
     private List<String> mainAnswers;
     private boolean storyActive;
+    /** A costumed mob's person: no MCA dialogue, its story starts as soon as it is offered. */
+    private final boolean costume;
+    /** The costume's story was asked for; later offers only refresh the menu and must not restart it. */
+    private boolean costumeStarted;
 
     private enum DialogueState {
         AWAITING_DIALOGUE,
@@ -82,6 +86,7 @@ public class RpgDialogueScreen extends Screen {
         super(Component.translatable("townstead.dialogue.title"));
         this.villager = villager;
         this.villagerUUID = villager.asEntity().getUUID();
+        this.costume = com.aetherianartificer.townstead.client.render.CostumeTalk.isCostume(villager.asEntity());
         if (villager.asEntity() instanceof VillagerEntityMCA mca
                 && com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CAREERS)
                 && com.aetherianartificer.townstead.profession.career.CareerTreeOpener.isScribe(mca)
@@ -120,11 +125,13 @@ public class RpgDialogueScreen extends Screen {
             // The story offer goes first: for a Persona it also tells the server this player is
             // someone they know, before MCA picks its opening from that memory.
             sendStory(com.aetherianartificer.townstead.story.net.StoryC2SPayload.OFFER, 0);
-            //? if neoforge {
-            Network.sendToServer(new InteractionDialogueInitMessage(villagerUUID));
-            //?} else {
-            /*NetworkHandler.sendToServer(new InteractionDialogueInitMessage(villagerUUID));
-            *///?}
+            if (!costume) {
+                //? if neoforge {
+                Network.sendToServer(new InteractionDialogueInitMessage(villagerUUID));
+                //?} else {
+                /*NetworkHandler.sendToServer(new InteractionDialogueInitMessage(villagerUUID));
+                *///?}
+            }
             sendDialogueState(true);
         }
     }
@@ -541,6 +548,9 @@ public class RpgDialogueScreen extends Screen {
         /*Component text = villager.transformMessage(questionText.copy());
         *///?}
         boolean mainGreeting = !silent && DialogueMenuOrganizer.isMainQuestion(dialogQuestionId);
+        // TEMP costume-debug
+        com.aetherianartificer.townstead.Townstead.LOGGER.info("[costume-debug] lastPhrase q={} silent={} persona={} greeting='{}' text='{}'",
+                dialogQuestionId, silent, persona, personaGreeting, questionText.getString());
         if (mainGreeting && persona && !personaGreeting.isEmpty()) text = Component.literal(storyText(personaGreeting));
 
         // Silent text on the main greeting accompanies the menu and must not overwrite
@@ -597,6 +607,8 @@ public class RpgDialogueScreen extends Screen {
     }
 
     public void setFinalPhrase(Component message) {
+        // TEMP costume-debug
+        com.aetherianartificer.townstead.Townstead.LOGGER.info("[costume-debug] finalPhrase persona={} text='{}'", persona, message.getString());
         // Terminal dialogue line — sent via VillagerMessage instead of
         // InteractionDialogueQuestionResponse. Already transformed by server.
         setSpeaker(villager.asEntity());
@@ -745,6 +757,22 @@ public class RpgDialogueScreen extends Screen {
             String before = speakerThemes.put(payload.speakerId(), payload.theme());
             if (!payload.theme().equals(before) && payload.speakerId() == speaker().getId()) applyTheme();
         }
+        if (costume && (payload.kind() == com.aetherianartificer.townstead.story.net.StoryS2CPayload.OFFER
+                || payload.kind() == com.aetherianartificer.townstead.story.net.StoryS2CPayload.OFFER_PERSONA)) {
+            if (costumeStarted) return;
+            costumeStarted = true;
+            if (payload.more()) {
+                sendStory(com.aetherianartificer.townstead.story.net.StoryC2SPayload.TALK, 0);
+            } else {
+                if (minecraft != null && minecraft.player != null) {
+                    minecraft.player.displayClientMessage(Component.translatable("message.townstead.costume.silent",
+                            com.aetherianartificer.townstead.client.naming.ClientNames.displayName(villager.asEntity())), true);
+                }
+                userInitiatedClose = true;
+                onClose();
+            }
+            return;
+        }
         switch (payload.kind()) {
             case com.aetherianartificer.townstead.story.net.StoryS2CPayload.OFFER,
                  com.aetherianartificer.townstead.story.net.StoryS2CPayload.OFFER_PERSONA -> {
@@ -810,6 +838,8 @@ public class RpgDialogueScreen extends Screen {
         }
         Component text = Component.literal(storyText(payload.text()));
         Entity by = minecraft == null || minecraft.level == null ? null : minecraft.level.getEntity(payload.speakerId());
+        // The costume's person carries the mob's id; the mob itself is not who speaks.
+        if (costume && by != null && by.getId() == villager.asEntity().getId()) by = villager.asEntity();
         setSpeaker(by == null ? villager.asEntity() : by);
         dialogueBox.setNameVisible(true);
         dialogueBox.setText(text, font);
@@ -840,10 +870,11 @@ public class RpgDialogueScreen extends Screen {
     /**
      * Where a finished scene leaves the player. A Persona's conversation ends with their scene: the
      * last line stays up and the next click closes the screen, since their menu holds nothing but
-     * the story and would only start it over. Anyone else gets their menu back.
+     * the story and would only start it over. A costumed mob's conversation is its story alone, so it
+     * ends the same way. Anyone else gets their menu back.
      */
     private void afterStory() {
-        if (!persona) {
+        if (!persona && !costume) {
             restoreMainMenu();
             return;
         }

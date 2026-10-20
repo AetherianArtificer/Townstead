@@ -24,8 +24,11 @@ public abstract class VillagerInfectionImmunityMixin {
     private void townstead$blockImmuneInfection(float progress, CallbackInfo ci) {
         if (progress <= 0f) return;
         VillagerEntityMCA self = (VillagerEntityMCA) (Object) this;
-        if (!self.level().isClientSide
-                && !ExpressedGenes.instancesOf(self, InfectionImmunityGeneType.Instance.class).isEmpty()) {
+        if (self.level().isClientSide) return;
+        // A Persona protected from dying (downed instead) is not lost to a zombie bite either.
+        if (!ExpressedGenes.instancesOf(self, InfectionImmunityGeneType.Instance.class).isEmpty()
+                || (com.aetherianartificer.townstead.persona.PersonaService.definition(self) != null
+                    && com.aetherianartificer.townstead.downed.DownedService.covers(self))) {
             ci.cancel();
         }
     }

@@ -356,10 +356,15 @@ public class RefuelTask extends Behavior<VillagerEntityMCA> {
             }
         }
         if (Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING)) {
-            NearbyItemSources.collectBestFoodSlots(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS, villager.blockPosition(), slot -> {
-                if (ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, slot)) return;
-                candidates.add(new ScoredCandidate(TargetType.CONTAINER, slot.score(), null, slot, null));
-            });
+            // Judged by this villager's diet, so a blood bottle or a gem counts and refused food does not.
+            NearbyItemSources.collectMatchingSlots(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
+                    stack -> FoodSafety.isSafeNutritiousFood(stack, villager),
+                    stack -> getNutrition(villager, stack),
+                    villager.blockPosition(),
+                    slot -> {
+                        if (ConsumableTargetClaims.isClaimedByOtherSlot(level, villager.getUUID(), CLAIM_CATEGORY, slot)) return;
+                        candidates.add(new ScoredCandidate(TargetType.CONTAINER, slot.score(), null, slot, null));
+                    });
         }
         if (Switchboard.get(TownsteadConfig.PREFER_SERVED_FOOD)) {
             // Served food within the same search box competes on nutrition like any other source.

@@ -26,6 +26,11 @@ import java.util.List;
  */
 public final class ResourceGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.BEING;
+    }
+
     public static final String KEY = "pheno:resource";
 
     public record Instance(int min, int max, int start, int regen, int regenInterval,

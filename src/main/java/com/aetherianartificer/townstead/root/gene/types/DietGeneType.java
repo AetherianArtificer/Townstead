@@ -18,6 +18,11 @@ import net.minecraft.util.GsonHelper;
  */
 public final class DietGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.HABITS;
+    }
+
     public static final String KEY = "townstead_roots:diet";
 
     /** The diet value that means "does not eat", switching off the hunger need. */

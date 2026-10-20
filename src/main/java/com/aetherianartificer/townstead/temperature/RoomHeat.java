@@ -22,6 +22,9 @@ public final class RoomHeat {
         double temperature;
         double power, draft, conductance, reservoir, capacity;
         double coolingConductance, coolingPotential;
+        /** Ground beyond the room's buried faces, from the backend's reading there. NaN until first sampled. */
+        double ground = Double.NaN;
+        long groundSampledAt;
         double wallCapacity, wallTemperature, airToWalls, externalLoss;
         int unresolved;
         List<String> sourceDetails = new ArrayList<>();
@@ -248,6 +251,16 @@ public final class RoomHeat {
         return RoomHeatBackend.outdoor(level, new BlockPos(anchor.getX(), Math.min(level.getMaxBuildHeight()-1, Math.max(surface, top + 2)), anchor.getZ()));
     }
 
+    private static final long GROUND_RESAMPLE_TICKS = 1200;
+
+    /** Below the room's lowest cell, past the boundary scan, where buried faces end. */
+    private static double ground(ServerLevel level, ThermalRegionScan.Region shape) {
+        BlockPos anchor = BlockPos.of(Collections.min(shape.cells()));
+        int bottom = shape.cells().stream().mapToInt(p -> BlockPos.of(p).getY()).min().orElse(anchor.getY());
+        int y = Math.max(level.getMinBuildHeight(), bottom - ThermalBoundary.MAX_DEPTH - 1);
+        return RoomHeatBackend.outdoor(level, new BlockPos(anchor.getX(), y, anchor.getZ()));
+    }
+
     private static void discoverNeighbors(ServerLevel level, World world) {
         Map<Long,ThermalRegionScan.Kind> kinds = new HashMap<>();
         for (Region r : new ArrayList<>(world.regions)) {
@@ -285,6 +298,7 @@ public final class RoomHeat {
         final List<Integer> solidCreator = new ArrayList<>();
         final List<ThermalNetwork.Link> links = new ArrayList<>();
         final List<double[]> outsides = new ArrayList<>(); // {node, conductance, room}
+        final List<double[]> grounds = new ArrayList<>(); // {node, conductance, room}
         final Map<Long,Integer> solidIndex = new HashMap<>();
         final Set<PhysicalEdge> faces = new HashSet<>();
         final Set<Long> watched = new HashSet<>();
@@ -294,6 +308,8 @@ public final class RoomHeat {
         int nodes() { return rooms.size() + solids.size(); }
     }
     private static final long TOPOLOGY_TTL = 600;
+    /** The wall layer that holds heat; deeper blocks only resist its flow, so a heated room warms in minutes. */
+    private static final int MASS_DEPTH = 1;
 
     private static Topology topology(ServerLevel level, World world, TemperatureSettings settings) {
         long now = level.getGameTime();
@@ -313,13 +329,19 @@ public final class RoomHeat {
                 BlockPos start = BlockPos.of(face.outside()), direction = start.subtract(previous);
                 int previousNode = room;
                 double previousHalfResistance = 0;
+                // Resistance of the blocks past the heat-holding layers, between the last of them and the ray's end.
+                double tail = 0;
                 for (int depth = 0; depth <= ThermalBoundary.MAX_DEPTH; depth++) {
                     BlockPos pos = start.offset(direction.getX()*depth,direction.getY()*depth,direction.getZ()*depth);
                     t.watched.add(pos.asLong());
                     var type = kinds.computeIfAbsent(pos.asLong(), p -> kind(level,BlockPos.of(p)));
-                    if (type == ThermalRegionScan.Kind.UNLOADED) { t.unresolved[room]++; break; }
+                    if (type == ThermalRegionScan.Kind.UNLOADED) {
+                        t.unresolved[room]++;
+                        if (previousNode != room) t.grounds.add(new double[]{previousNode, 1/(previousHalfResistance+tail), room});
+                        break;
+                    }
                     if (type != ThermalRegionScan.Kind.BARRIER) {
-                        double g = previousHalfResistance > 0 ? 1/previousHalfResistance : settings.roomOpeningConductance();
+                        double g = previousHalfResistance+tail > 0 ? 1/(previousHalfResistance+tail) : settings.roomOpeningConductance();
                         if (type == ThermalRegionScan.Kind.EXTERIOR) {
                             if (t.faces.add(PhysicalEdge.of(previous.asLong(),pos.asLong())))
                                 t.outsides.add(new double[]{previousNode, g, room});
@@ -332,13 +354,18 @@ public final class RoomHeat {
                         break;
                     }
                     if (depth == ThermalBoundary.MAX_DEPTH) {
-                        // Reaching a scan budget is not evidence of an outdoor reservoir.
-                        // The explored solid retains its heat; report the unresolved continuation.
+                        // Buried past the scan: the deep ground beyond, not more stored cold.
                         t.unresolved[room]++;
+                        if (previousNode != room) t.grounds.add(new double[]{previousNode, 1/(previousHalfResistance+tail), room});
                         break;
                     }
                     BlockState state = level.getBlockState(pos);
                     double half = .5/ThermalMaterials.conductance(state,settings);
+                    if (depth >= MASS_DEPTH && !ThermalMaterials.openAperture(state)) {
+                        tail += 2*half;
+                        previous = pos;
+                        continue;
+                    }
                     Integer node = t.solidIndex.get(pos.asLong());
                     if (node == null) {
                         if (t.nodes() >= 32768) { world.status = "Thermal node budget exceeded; update deferred"; return null; }
@@ -358,6 +385,15 @@ public final class RoomHeat {
         }
         world.topology = t;
         return t;
+    }
+
+    private static void exposeTo(List<ThermalNetwork.Node> nodes, double[] exposure, double reservoir) {
+        int node = (int) exposure[0];
+        double g = exposure[1];
+        var old = nodes.get(node);
+        double total = old.outsideConductance()+g;
+        nodes.set(node, new ThermalNetwork.Node(old.capacity(),old.temperature(),old.power(),total,
+                (old.outsideConductance()*old.outside()+g*reservoir)/total));
     }
 
     private static void advanceNetwork(ServerLevel level, World world, double seconds) {
@@ -386,14 +422,20 @@ public final class RoomHeat {
             nodes.add(new ThermalNetwork.Node(t.capacities.get(i),
                     stored.solidTemperature(t.solids.get(i),t.materials.get(i),ambient),0,0,ambient));
         }
-        for (double[] exposure : t.outsides) {
-            int node = (int) exposure[0];
-            double g = exposure[1], ambient = ambients[(int) exposure[2]];
-            var old = nodes.get(node);
-            double total = old.outsideConductance()+g;
-            nodes.set(node, new ThermalNetwork.Node(old.capacity(),old.temperature(),old.power(),total,
-                    (old.outsideConductance()*old.outside()+g*ambient)/total));
+        // Ground temperature moves over days, so a sample every minute is plenty.
+        long now = level.getGameTime();
+        double[] grounds = new double[t.rooms.size()];
+        for (int room = 0; room < t.rooms.size(); room++) {
+            Region r = t.rooms.get(room);
+            if (Double.isNaN(r.ground) || now - r.groundSampledAt >= GROUND_RESAMPLE_TICKS) {
+                double sampled = ground(level, r.shape);
+                r.ground = Double.isFinite(sampled) ? sampled : ambients[room];
+                r.groundSampledAt = now;
+            }
+            grounds[room] = r.ground;
         }
+        for (double[] exposure : t.outsides) exposeTo(nodes, exposure, ambients[(int) exposure[2]]);
+        for (double[] exposure : t.grounds) exposeTo(nodes, exposure, grounds[(int) exposure[2]]);
         ThermalNetwork.Result result;
         try { result = ThermalNetwork.advance(nodes,t.links,seconds); }
         catch (IllegalStateException invalid) {
@@ -493,8 +535,9 @@ public final class RoomHeat {
             if (effect > 0) { heat += effect; strongestHeat = Math.max(strongestHeat, effect); }
             else { cool -= effect; strongestCool = Math.max(strongestCool, -effect); }
         }
-        return room.temperature + RoomHeatBalance.combinedExposure(heat, strongestHeat)
-                - RoomHeatBalance.combinedExposure(cool, strongestCool);
+        var settings = TemperatureSettings.get();
+        return room.temperature + RoomHeatBalance.combinedExposure(heat, strongestHeat, settings.radiantMax(), settings.radiantStack())
+                - RoomHeatBalance.combinedExposure(cool, strongestCool, settings.radiantMax(), settings.radiantColdStack());
     }
 
     public static boolean visible(ServerLevel level, BlockPos observer, BlockPos source) {
@@ -534,8 +577,8 @@ public final class RoomHeat {
         Region r = world.cells.get(pos.asLong());
         if (r == null) return Optional.empty();
         return Optional.of(String.format(java.util.Locale.ROOT,
-                "Air %.1f C; operative %.1f C; outside %.1f C; volume %d; input %.0f W; fire draft %.0f W/K; air-to-network %.0f W; ventilation loss %.0f W; adjacent mean %.1f C; unresolved faces %d. Network: %s; supplied %.1f J; escaped %.1f J; balance error %.6f J. Sources: %s. Controllers: %s",
-                r.temperature,experienced(level,r,pos),r.reservoir,r.shape.cells().size(),r.power,r.draft,r.airToWalls,
+                "Air %.1f C; operative %.1f C; outside %.1f C; ground %.1f C; volume %d; input %.0f W; fire draft %.0f W/K; air-to-network %.0f W; ventilation loss %.0f W; adjacent mean %.1f C; unresolved faces %d. Network: %s; supplied %.1f J; escaped %.1f J; balance error %.6f J. Sources: %s. Controllers: %s",
+                r.temperature,experienced(level,r,pos),r.reservoir,r.ground,r.shape.cells().size(),r.power,r.draft,r.airToWalls,
                 r.externalLoss,r.wallTemperature,r.unresolved,world.status,world.supplied,world.escaped,world.energyError,
                 String.join(" | ",r.sourceDetails),String.join(" | ",r.controls)));
     }

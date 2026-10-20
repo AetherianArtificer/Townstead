@@ -68,7 +68,7 @@ public final class GiftReactions extends SimpleJsonResourceReloadListener {
         if (stack.isEmpty()) return false;
         if (com.aetherianartificer.townstead.persona.PersonaGifts.give(player, villager, memory)) return true;
         if (reactions.isEmpty()) return false;
-        ConditionContext ctx = new ConditionContext(villager, player);
+        ConditionContext ctx = new ConditionContext(villager, player).withItem(stack);
         for (GiftReaction reaction : reactions) {
             if (!GiftItems.matches(reaction.items(), stack, Map.of())) continue;
             if (reaction.condition() != null && !reaction.condition().test(ctx)) continue;

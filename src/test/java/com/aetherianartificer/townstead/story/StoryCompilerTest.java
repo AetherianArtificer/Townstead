@@ -161,6 +161,16 @@ class StoryCompilerTest {
     }
 
     @Test
+    void shippedCostumeStoriesCompile() throws IOException {
+        for (String id : java.util.List.of("costume_hunter", "costume_vampire", "costume_werewolf")) {
+            StoryCompiler.Result result = StoryCompiler.compile(folder(id));
+            assertTrue(result.ok(), () -> id + " errors: " + result.errors());
+            assertTrue(result.warnings().isEmpty(), () -> id + " warnings: " + result.warnings());
+            assertNotNull(result.knots().get("greet"), id);
+        }
+    }
+
+    @Test
     void shippedHuntmasterStoryCompiles() throws IOException {
         StoryCompiler.Result result = StoryCompiler.compile(folder("huntmaster"));
         assertTrue(result.ok(), () -> "errors: " + result.errors());

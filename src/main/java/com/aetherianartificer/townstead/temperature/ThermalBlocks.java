@@ -123,8 +123,8 @@ public final class ThermalBlocks {
             sums[i] += Math.abs(effect);
             sums[i + 1] = Math.max(sums[i + 1], Math.abs(effect));
         });
-        return (float) (RoomHeatBalance.combinedExposure(sums[0], sums[1])
-                - RoomHeatBalance.combinedExposure(sums[2], sums[3]));
+        return (float) (RoomHeatBalance.combinedExposure(sums[0], sums[1], settings.radiantMax(), settings.radiantStack())
+                - RoomHeatBalance.combinedExposure(sums[2], sums[3], settings.radiantMax(), settings.radiantColdStack()));
     }
 
     private static float falloff(double distSq, int radius) {

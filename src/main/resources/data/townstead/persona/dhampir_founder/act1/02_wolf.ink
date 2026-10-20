@@ -7,6 +7,8 @@
 
 VAR wolf_seen = false
 VAR asked_scraps = false
+VAR scraps_offered = false
+VAR done_scraps_job = false
 // The day they left to fetch it; they are back the day after.
 VAR wolf_day = -1
 
@@ -45,7 +47,7 @@ VAR wolf_day = -1
             Apparently. Nobody told me.
         ---
     ** [I'll find you some.]
-        Thanks. Don't make it sound like it's for anything, if anybody asks. I've got a reputation, I'd like to keep it a while.
+        -> scraps_job ->
     --
     -> topics
 * [Where's it going to sleep?]
@@ -85,6 +87,9 @@ VAR wolf_day = -1
 === gift_meat ===
 {wolf_seen:
     ~ meat_given++
+    {scraps_offered and not done_scraps_job:
+        ~ act("fed_wolf")
+    }
     {asked_scraps:
         {~Thanks. I'll make sure it gets it. Nobody needs to know.|It eats better than I do now. I'm not sure how that happened.|You're spoiling it. It's going to start expecting this.}
     - else:
@@ -94,6 +99,24 @@ VAR wolf_day = -1
     I've eaten, thanks. # emote:shrug
 }
 -> DONE
+
+// Optional: the player offered to find scraps. Raw meat given as gifts counts (gift_meat). It has
+// no waiting lines, so the main scenes go on while it is open.
+=== scraps_job ===
+# quest: Scraps for the wolf
+# about: Give the hunter raw meat for the wolf: beef, mutton, pork, chicken or rabbit.
+# goal: wolf_fed
+~ scraps_offered = true
+Thanks. Raw, any kind, I'm not fussy and neither is it. Don't make it sound like it's for anything, if anybody asks. I've got a reputation, I'd like to keep it a while.
+->->
+
+= done
+~ done_scraps_job = true
+~ trust(1)
+That's enough. It's stopped watching me eat, which I appreciate.
+* [That's the last of it.]
+    Good. Don't tell it there's more where that came from.
+- -> DONE
 
 // They went to fetch the wolf and came back without it. The game brings the wolf now.
 === wolf_fetch ===

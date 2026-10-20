@@ -58,6 +58,22 @@ public final class LsoTemperatureBridge implements AmbientTemperatureBridge {
         return ModCompat.isLoaded("legendarysurvivaloverhaul") && LSOBridge.INSTANCE.canReadWorldTemperature();
     }
 
+    /** LSO's own Ecliptic or Serene modifier is loaded and switched on in its config. */
+    @Override
+    public boolean modelsSeasons() {
+        return ModCompat.isLoaded("eclipticseasons") && seasonFlag("eclipticSeasonsEnabled")
+                || ModCompat.isLoaded("sereneseasons") && seasonFlag("sereneSeasonsEnabled");
+    }
+
+    /** LSO's baked season switch; false when it cannot be read. */
+    public static boolean seasonFlag(String field) {
+        try {
+            return Class.forName("sfiomn.legendarysurvivaloverhaul.config.Config$Baked").getField(field).getBoolean(null);
+        } catch (ReflectiveOperationException | LinkageError e) {
+            return false;
+        }
+    }
+
     @Override
     public float ambientCelsius(ServerLevel level, BlockPos pos) {
         return LSOBridge.INSTANCE.worldTemperature(level, pos);
@@ -198,5 +214,46 @@ public final class LsoTemperatureBridge implements AmbientTemperatureBridge {
     @Override
     public net.minecraft.resources.ResourceLocation playerImmunityEffect() {
         return net.minecraft.resources.ResourceLocation.tryParse("legendarysurvivaloverhaul:temperature_immunity");
+    }
+
+    private static final String DRY_KEY = "townstead_lso_wetness_off";
+    private boolean wetnessInitialized;
+    private Method wetnessActive, deactivateWetness, activateWetness;
+
+    /**
+     * LSO's own switch, the one its Origins integration uses for water-dwelling origins. Only
+     * wetness Townstead turned off is turned back on, so another mod's choice is left alone.
+     */
+    @Override
+    public void keepPlayerDry(Player player, boolean dry) {
+        if (player.level().isClientSide || !isActive() || !resolveWetness()) return;
+        var data = player.getPersistentData();
+        try {
+            if (dry) {
+                if (Boolean.TRUE.equals(wetnessActive.invoke(null, player))) {
+                    deactivateWetness.invoke(null, player);
+                    data.putBoolean(DRY_KEY, true);
+                }
+            } else if (data.getBoolean(DRY_KEY)) {
+                activateWetness.invoke(null, player);
+                data.remove(DRY_KEY);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private synchronized boolean resolveWetness() {
+        if (!wetnessInitialized) {
+            wetnessInitialized = true;
+            try {
+                Class<?> util = Class.forName("sfiomn.legendarysurvivaloverhaul.api.wetness.WetnessUtil");
+                wetnessActive = util.getMethod("isWetnessActive", Player.class);
+                deactivateWetness = util.getMethod("deactivateWetness", Player.class);
+                activateWetness = util.getMethod("activateWetness", Player.class);
+            } catch (Exception ignored) {
+                wetnessActive = null;
+            }
+        }
+        return wetnessActive != null;
     }
 }

@@ -180,6 +180,22 @@ public abstract class BlueprintScreenMixin extends Screen {
             removeBuildingButton.active = true;
         }
     }
+
+    /**
+     * MCA sends a removal only for a scanned structure, so the button above did nothing at an
+     * open-air building. Send it untargeted; the server removes the building at the player.
+     */
+    @Inject(method = "targetedEditMessage", remap = false, require = 0, at = @At("RETURN"), cancellable = true)
+    private static void townstead$removeOpenAirBuilding(net.conczin.mca.network.c2s.ReportBuildingMessage.Action action,
+            Village village, RoomScanPlan plan, Integer selectedFloor,
+            CallbackInfoReturnable<Optional<net.conczin.mca.network.c2s.ReportBuildingMessage>> cir) {
+        if (action != net.conczin.mca.network.c2s.ReportBuildingMessage.Action.REMOVE
+                || cir.getReturnValue().isPresent() || village == null) return;
+        var player = net.minecraft.client.Minecraft.getInstance().player;
+        if (player == null || OptionalBuildingRecognition.findNearby(village, player.blockPosition()).isEmpty()) return;
+        cir.setReturnValue(Optional.of(new net.conczin.mca.network.c2s.ReportBuildingMessage(
+                net.conczin.mca.network.c2s.ReportBuildingMessage.Action.REMOVE, null, -1)));
+    }
     //?}
 
     /** MCA's catalog makes a plain button for a type with an item icon, not a sprite from its old UVs. */

@@ -100,7 +100,8 @@ public final class DownedService {
         long until = villager.getPersistentData().getLong(KEY);
         if (until > now + HELP_UP_TICKS) {
             villager.getPersistentData().putLong(KEY, now + HELP_UP_TICKS);
-            player.displayClientMessage(Component.translatable("townstead.downed.help", name(villager)), true);
+            player.displayClientMessage(Component.translatable("townstead.downed.help",
+                    VillagerNames.nameFor(villager, player instanceof ServerPlayer sp ? sp : null)), true);
         }
         return true;
     }
@@ -193,13 +194,10 @@ public final class DownedService {
 
     private static void announce(VillagerEntityMCA villager, String key) {
         if (!(villager.level() instanceof ServerLevel level)) return;
-        Component line = Component.translatable(key, name(villager));
         for (ServerPlayer player : level.players()) {
-            if (player.distanceToSqr(villager) <= 48 * 48) player.displayClientMessage(line, true);
+            if (player.distanceToSqr(villager) <= 48 * 48) {
+                player.displayClientMessage(Component.translatable(key, VillagerNames.nameFor(villager, player)), true);
+            }
         }
-    }
-
-    private static String name(VillagerEntityMCA villager) {
-        return VillagerNames.display(villager).getString();
     }
 }

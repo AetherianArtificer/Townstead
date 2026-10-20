@@ -149,6 +149,10 @@ public final class OptionalBuildingRecognition {
                 String key = candidate.typeName() + ':' + candidate.min().asLong() + ':' + candidate.max().asLong();
                 if (!attempted.add(key)) continue;
                 if (candidate.positions().stream().anyMatch(pos -> claimed.contains(pos.asLong()))) continue;
+                // A site the player removed stays removed until they work on it again.
+                if (DismissedSites.dismissed(level, new BlockPos((candidate.min().getX() + candidate.max().getX()) / 2,
+                        (candidate.min().getY() + candidate.max().getY()) / 2,
+                        (candidate.min().getZ() + candidate.max().getZ()) / 2))) continue;
                 Registration registration = register(level, candidate);
                 if (registration == Registration.FAILED) continue;
                 candidate.positions().forEach(pos -> claimed.add(pos.asLong()));
@@ -360,9 +364,8 @@ public final class OptionalBuildingRecognition {
     private static Removed removeExisting(ServerLevel level, Existing existing) {
         Village village = existing.village();
         int id = existing.building().getId();
-        if (SiteRequirements.isEnclosed(existing.building().getType())) {
-            DismissedSites.dismiss(level, existing.building().getPos0(), existing.building().getPos1());
-        }
+        DismissedSites.dismiss(level, existing.building().getPos0(), existing.building().getPos1(),
+                existing.building().getType());
         McaBuildings.remove(village, id);
         village.calculateDimensions();
         village.markDirty();

@@ -108,13 +108,13 @@ public final class FoodSafety {
         if (stack == null || stack.isEmpty()) return 0;
         var nourishment = com.aetherianartificer.townstead.hunger.diet.Diets.nourishment(eater, stack);
         if (nourishment == null) return 0;
-        if (!nourishment.nativeValues()) return nourishment.nutrition();
+        if (!nourishment.nativeValues()) return Math.round(nourishment.nutrition() * nourishment.multiplier());
         FoodProperties food = foodPropertiesOf(stack);
         if (food == null) return 0;
         //? if >=1.21 {
-        return food.nutrition();
+        return Math.round(food.nutrition() * nourishment.multiplier());
         //?} else {
-        /*return food.getNutrition();
+        /*return Math.round(food.getNutrition() * nourishment.multiplier());
         *///?}
     }
 

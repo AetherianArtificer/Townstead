@@ -6,33 +6,90 @@
   "body_recovery_seconds": 120,
   "biome_anchors": [
     [
+      -0.5,
+      -12.0
+    ],
+    [
       0.15,
-      0.0
+      -3.0
     ],
     [
       0.8,
-      20.0
+      13.0
+    ],
+    [
+      0.95,
+      24.0
     ],
     [
       2.0,
-      38.0
+      26.0
     ]
   ],
+  "biome_mean_c": {
+    "minecraft:warm_ocean": 25.0,
+    "minecraft:lukewarm_ocean": 17.0,
+    "minecraft:deep_lukewarm_ocean": 16.0,
+    "minecraft:ocean": 10.0,
+    "minecraft:deep_ocean": 9.0,
+    "minecraft:cold_ocean": 4.0,
+    "minecraft:deep_cold_ocean": 4.0,
+    "minecraft:river": 10.0,
+    "minecraft:stony_shore": 10.0,
+    "minecraft:mushroom_fields": 13.0,
+    "minecraft:windswept_hills": 5.0,
+    "minecraft:windswept_gravelly_hills": 5.0,
+    "minecraft:windswept_forest": 6.0,
+    "minecraft:stony_peaks": 3.0,
+    "minecraft:cherry_grove": 11.0
+  },
   "season_offsets": {
     "spring": 0.0,
-    "summer": 6.0,
-    "autumn": -2.0,
-    "winter": -12.0
+    "summer": 0.0,
+    "autumn": 0.0,
+    "winter": 0.0
   },
   "altitude_blocks_per_degree": 15,
   "rain_offset": -5.0,
-  "night_offset": -6.0,
+  "night_offset": 0.0,
   "nether_celsius": 45.0,
   "end_celsius": 5.0,
   "celsius_per_tan_step": 8.0,
   "source_radius": 7,
   "heat_source_offset": 12.0,
   "cooling_source_offset": -8.0,
+  "crop_default_class": "temperate",
+  "crop_climate": {
+    "hardy": {
+      "min_c": -5.0
+    },
+    "cool_season": {
+      "min_c": 0.0,
+      "max_c": 26.0
+    },
+    "temperate": {
+      "min_c": 2.0
+    },
+    "warm_season": {
+      "min_c": 8.0
+    },
+    "tropical": {
+      "min_c": 18.0
+    }
+  },
+  "snowfall_c": -3.0,
+  "snow_day_max_c": 1.0,
+  "snow_night_cooling_c": -5.0,
+  "cloud_diurnal_factor": 0.4,
+  "ground_damping_depth_blocks": 3.0,
+  "surface_layer_blocks": 3.0,
+  "geothermal_start_y": 48,
+  "geothermal_c_per_block": 0.15,
+  "geothermal_deepslate_y": 0,
+  "geothermal_deepslate_c_per_block": 0.2,
+  "lava_rock_radius": 12,
+  "lava_rock_c": 1.5,
+  "lava_rock_max_c": 25.0,
   "room_heat_enabled": true,
   "thermal_capacity_j_per_block_k": 2000.0,
   "thermal_material_capacity_j_per_block_k": {
@@ -52,6 +109,9 @@
   "thermal_time_scale": 20.0,
   "thermal_air_changes_per_hour": 0.5,
   "thermal_fire_max_rise_c": 25.0,
+  "thermal_radiant_max_c": 40.0,
+  "thermal_radiant_stack_limit": 2.0,
+  "thermal_radiant_cold_stack_limit": 1.25,
   "thermal_appliances": {
     "legendarysurvivaloverhaul:heater": {
       "room_power_w": 3750,

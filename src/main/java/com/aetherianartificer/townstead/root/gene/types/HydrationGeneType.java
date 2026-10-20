@@ -16,6 +16,11 @@ import net.minecraft.util.GsonHelper;
  */
 public final class HydrationGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.HABITS;
+    }
+
     public static final String KEY = "townstead_roots:hydration";
 
     /** The liquid value that means "does not drink", switching off the thirst need. */

@@ -47,6 +47,9 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
     private boolean playerModifierRegistered;
     private boolean changeDelayResolved;
     private int changeDelay;
+    private static final int DEFAULT_WET_CHANGE = -1;
+    private boolean wetChangeResolved;
+    private int wetChange;
     private Method getTemperatureAtPos;
     private Method isHeatingBlock;
     private Method isCoolingBlock;
@@ -91,6 +94,12 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
     public boolean isActive() {
         initIfNeeded();
         return active;
+    }
+
+    /** TaN registers its season modifier whenever a {@code sereneseasons} mod is present, real or the Ecliptic stub. */
+    @Override
+    public boolean modelsSeasons() {
+        return ModCompat.isLoaded("sereneseasons");
     }
 
     @Override
@@ -200,13 +209,16 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
                 if ("modify".equals(method.getName()) && args != null && args.length == 2
                         && args[0] instanceof Player player) {
                     float offset = PlayerThermalOffsets.get(player);
-                    if (offset == 0f) return args[1];
-                    int steps = Math.round(offset / TemperatureSettings.get().celsiusPerTanStep());
-                    // Anything the author meant as a nudge moves at least one step, or a
-                    // warming smaller than the step width would read as doing nothing.
-                    if (steps == 0) steps = offset > 0 ? 1 : -1;
+                    int steps = 0;
+                    if (offset != 0f) {
+                        steps = Math.round(offset / TemperatureSettings.get().celsiusPerTanStep());
+                        // Anything the author meant as a nudge moves at least one step, or a
+                        // warming smaller than the step width would read as doing nothing.
+                        if (steps == 0) steps = offset > 0 ? 1 : -1;
+                    }
+                    steps -= rainSoakSteps(player);
                     // increment clamps to the ICY..HOT range itself.
-                    return increment.invoke(args[1], steps);
+                    return steps == 0 ? args[1] : increment.invoke(args[1], steps);
                 }
                 return switch (method.getName()) {
                     case "toString" -> "TownsteadThermalInfluence";
@@ -256,6 +268,32 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
             if (changeDelay <= 0) changeDelay = DEFAULT_CHANGE_DELAY_TICKS;
         }
         return changeDelay;
+    }
+
+    /**
+     * The rain step TAN's positional modifier applied, for a player whose root stays dry; zero
+     * otherwise. TAN applies it to the position before any player modifier runs, so it is taken
+     * back here using TAN's own rain test. Standing in water is immersion and still counts.
+     */
+    private int rainSoakSteps(Player player) {
+        Level level = player.level();
+        BlockPos pos = player.blockPosition();
+        if (!level.isRaining()
+                || pos.getY() < level.getHeightmapPos(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, pos).below().getY()
+                || level.getBiome(pos).value().coldEnoughToSnow(pos)
+                || !com.aetherianartificer.townstead.temperature.ThermalProfile.waterproof(player)) {
+            return 0;
+        }
+        if (!wetChangeResolved) {
+            wetChangeResolved = true;
+            try {
+                Object config = Class.forName("toughasnails.init.ModConfig").getField("temperature").get(null);
+                wetChange = config.getClass().getField("wetTemperatureChange").getInt(config);
+            } catch (Exception ignored) {
+                wetChange = DEFAULT_WET_CHANGE;
+            }
+        }
+        return wetChange;
     }
 
     /** Townstead's heat and cooling sources become Tough As Nails proximity blocks, so the player feels the villagers' hearth. */

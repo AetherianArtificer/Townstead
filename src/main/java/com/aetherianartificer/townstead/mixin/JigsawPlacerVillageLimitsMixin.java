@@ -13,14 +13,14 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Skips buildings that already fill their per-village maximum from a village layout. Filters the
- * shuffled list rather than redirecting the call, so another mod reweighting it still applies.
+ * Applies a village layout's ranges to the buildings a village tries next: skips those at their
+ * maximum and tries those short of their minimum first. Reorders the shuffled list rather than
+ * redirecting the call, so another mod reweighting it still applies.
  */
 @Mixin(targets = "net.minecraft.world.level.levelgen.structure.pools.JigsawPlacement$Placer")
 public abstract class JigsawPlacerVillageLimitsMixin {
@@ -49,13 +49,7 @@ public abstract class JigsawPlacerVillageLimitsMixin {
                 if (id != null) placed.merge(id, 1, Integer::sum);
             }
         }
-        List<StructurePoolElement> allowed = new ArrayList<>(shuffled.size());
-        for (StructurePoolElement element : shuffled) {
-            ResourceLocation id = template(element);
-            Integer max = VillageLayouts.max(id);
-            if (max == null || placed.getOrDefault(id, 0) < max) allowed.add(element);
-        }
-        return allowed;
+        return VillageLayouts.arrange(shuffled, JigsawPlacerVillageLimitsMixin::template, placed);
     }
 
     private static @Nullable ResourceLocation template(StructurePoolElement element) {

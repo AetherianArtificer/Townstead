@@ -9,7 +9,11 @@ import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 
-/** Queries a canonical open state independently of whichever backing currently supplies it. */
+/**
+ * Queries a canonical open state independently of whichever backing currently supplies it. With
+ * {@code "eligible": true} it asks instead whether the entity's body and Root could carry the state
+ * at all, whatever it holds now.
+ */
 public final class EntityStateConditionType implements ConditionType {
     public static final String KEY = "pheno:state";
 
@@ -30,6 +34,9 @@ public final class EntityStateConditionType implements ConditionType {
         long minRemaining = GsonHelper.getAsLong(json, "min_remaining", 0);
         long maxRemaining = GsonHelper.getAsLong(json, "max_remaining", Long.MAX_VALUE);
         boolean active = GsonHelper.getAsBoolean(json, "active", true);
+        if (GsonHelper.getAsBoolean(json, "eligible", false)) {
+            return ctx -> ctx.entity() != null && EntityStates.eligible(ctx.entity(), id);
+        }
         return ctx -> {
             EntityStates.Resolved resolved = EntityStates.resolve(ctx.entity(), id);
             if (resolved.active() != active) return false;

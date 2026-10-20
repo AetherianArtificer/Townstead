@@ -349,12 +349,29 @@ public final class FarmerCropCompatRegistry {
     }
 
     public static boolean canPlantNow(ServerLevel level, BlockPos cropPos, ItemStack seed) {
+        if (!climateAllows(level, cropPos, seed)) return false;
         for (FarmerCropCompat provider : PROVIDERS) {
             if (!ModCompat.isLoaded(provider.modId())) continue;
             if (!provider.canPlantNow(level, cropPos, seed)) return false;
         }
         return true;
     }
+
+    /**
+     * The crop this seed places is in season and its climate class suits the next few days here,
+     * so farmers stop sowing warm-season crops as autumn cools.
+     */
+    public static boolean climateAllows(ServerLevel level, BlockPos cropPos, ItemStack seed) {
+        if (!(seed.getItem() instanceof net.minecraft.world.item.BlockItem item)) return true;
+        var crop = item.getBlock().defaultBlockState();
+        return com.aetherianartificer.townstead.climate.CropClimate.verdict(level, cropPos, crop, 0)
+                == com.aetherianartificer.townstead.climate.CropClimate.Verdict.GROWS
+                && com.aetherianartificer.townstead.climate.CropClimate.temperatureVerdict(level, cropPos, crop, PLANNING_DAYS)
+                == com.aetherianartificer.townstead.climate.CropClimate.Verdict.GROWS;
+    }
+
+    /** How far ahead a farmer looks before sowing. */
+    private static final int PLANNING_DAYS = 3;
 
     public static boolean providesPaddy() {
         for (FarmerCropCompat provider : PROVIDERS) {

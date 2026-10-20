@@ -57,12 +57,6 @@ public final class NearbyItemSources {
                 .collectMatchingContainerSlots(villager, center, horizontalRadius, verticalRadius, matcher, scorer, consumer);
     }
 
-    public static void collectBestFoodSlots(ServerLevel level, VillagerEntityMCA villager, int horizontalRadius, int verticalRadius,
-                                            BlockPos center, Consumer<ContainerSlot> consumer) {
-        NearbyStorageIndex.snapshot(level, center, horizontalRadius, verticalRadius)
-                .collectBestFoodContainerSlots(villager, center, horizontalRadius, verticalRadius, consumer);
-    }
-
     public static ContainerSlot findBestNearbyDrinkSlot(ServerLevel level, VillagerEntityMCA villager, int horizontalRadius, int verticalRadius,
                                                         BlockPos center, ToIntFunction<ItemStack> scorer) {
         return NearbyStorageIndex.snapshot(level, center, horizontalRadius, verticalRadius)

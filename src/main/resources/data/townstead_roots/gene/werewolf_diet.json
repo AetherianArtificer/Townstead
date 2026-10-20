@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "werewolves",
+  "type": "townstead_roots:diet",
+  "display_name": {
+    "translate": "gene.townstead_roots.werewolf_diet"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.werewolf_diet.desc"
+  },
+  "category": "Diet",
+  "locus": "townstead_roots:diet",
+  "diet": "townstead:werewolf"
+}

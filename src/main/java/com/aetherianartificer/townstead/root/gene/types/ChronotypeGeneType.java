@@ -27,6 +27,11 @@ import java.util.TreeSet;
  */
 public final class ChronotypeGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.HABITS;
+    }
+
     public static final String KEY = "townstead_roots:chronotype";
 
     // One chronotype per creature: matches the locus every pack already declares.

@@ -100,7 +100,8 @@ public final class TemperatureVillagerTicker {
         ThermalProfile profile = state.profile;
 
         // A climate:any root does not thermoregulate: pin the body at neutral so nothing fires.
-        if (state.suppressed || com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat.climateClemency(self)) {
+        if (state.suppressed || com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat.climateClemency(self)
+                || com.aetherianartificer.townstead.compat.temperature.ColdSweatEntityCompat.grace(self)) {
             state.lastStepGameTime = gameTime;
             state.lastMoodGameTime = gameTime;
             state.lastComfortTick = gameTime;
@@ -139,7 +140,8 @@ public final class TemperatureVillagerTicker {
         }
         float seconds = state.lastComfortTick < 0 ? 0.05f : Math.max(0, Math.min(1, (gameTime - state.lastComfortTick) / 20f));
         state.lastComfortTick = gameTime;
-        ThermalProtection protection = state.clothing.plus(com.aetherianartificer.townstead.compat.temperature.LsoEntityCompat.effects(self).protection());
+        ThermalProtection protection = state.clothing.plus(com.aetherianartificer.townstead.compat.temperature.LsoEntityCompat.effects(self).protection())
+                .plus(com.aetherianartificer.townstead.compat.temperature.ColdSweatEntityCompat.protection(self));
         float ambientCelsius = com.aetherianartificer.townstead.temperature.ThermalConsumables.internalAmbient(self, TemperatureData.celsius(needs.ambientTenths()));
         boolean immersed = self.isInWater();
         float load = ThermalComfort.load(ambientCelsius, immersed ? 1 : needs.thermalWetness(),
@@ -150,7 +152,7 @@ public final class TemperatureVillagerTicker {
                 TemperatureSettings.get().dryingSeconds());
         float strain = Math.abs(BodyHeat.excess(load, TemperatureSettings.get().comfortZone())) > 0
                 ? needs.thermalStrainSeconds() + seconds : 0;
-        needs.setThermalComfort(comfort.wetness(), comfort.load(), Math.min(600, strain));
+        needs.setThermalComfort(profile.soak(comfort.wetness()), comfort.load(), Math.min(600, strain));
 
         if (state.lastStepGameTime < 0) state.lastStepGameTime = gameTime;
         int steps = 0;

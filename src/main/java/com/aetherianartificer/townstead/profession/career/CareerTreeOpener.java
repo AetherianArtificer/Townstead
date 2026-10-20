@@ -234,8 +234,11 @@ public final class CareerTreeOpener {
         if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CAREERS)) return;
         com.aetherianartificer.townstead.chronicle.Chronicles.bySubject(target.getUUID(), 0L, 64)
                 .thenAccept(events -> server.execute(() -> {
-                    java.util.Map<String, java.util.List<String>> moments =
-                            momentsFor(server, actedBy(events, target.getUUID()));
+                    java.util.Map<String, java.util.List<String>> moments = new java.util.LinkedHashMap<>();
+                    java.util.function.UnaryOperator<String> mask =
+                            com.aetherianartificer.townstead.persona.PersonaNameMask.forPlayer(viewer);
+                    momentsFor(server, actedBy(events, target.getUUID()))
+                            .forEach((key, lines) -> moments.put(key, lines.stream().map(mask).toList()));
                     CareerGraphS2CPayload payload = new CareerGraphS2CPayload(
                             titleFor(viewer, target), inspect, notice,
                             authorityFor(viewer), todayFor(server, viewer),
@@ -255,6 +258,10 @@ public final class CareerTreeOpener {
 
     /** A player's record carries their MCA persona name, not their account name. */
     private static String titleFor(ServerPlayer viewer, net.minecraft.world.entity.LivingEntity target) {
+        if (target instanceof net.conczin.mca.entity.VillagerEntityMCA villager
+                && com.aetherianartificer.townstead.naming.VillagerNames.familyHidden(villager, null)) {
+            return com.aetherianartificer.townstead.naming.VillagerNames.titleFor(villager, viewer).getString();
+        }
         if (target != viewer) return target.getDisplayName().getString();
         try {
             String name = net.conczin.mca.server.world.data.PlayerSaveData.get(viewer)

@@ -17,7 +17,8 @@ class MoreTestThermalRegressionTest {
             double snow = RoomHeatBalance.localExposure(settings.coolingSourceOffset(), 1);
             // Freezing outdoor climate, adjacent lit fire, a large surrounding snow field.
             float felt = (float) (RoomHeatBalance.localExposure(fire.radiantDegrees(), 1)
-                    - RoomHeatBalance.combinedExposure(-snow * 100, -snow));
+                    - RoomHeatBalance.combinedExposure(-snow * 100, -snow,
+                    settings.radiantMax(), settings.radiantColdStack()));
             var exposure = new ThermalExposure(felt, 0, false, false, 0,
                     ThermalProtection.NONE, ThermalProfile.DEFAULT, false);
             var forecast = exposure.forecast(36.3f, 300); // Jorvain's saved core temperature

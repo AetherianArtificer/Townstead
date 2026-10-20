@@ -12,14 +12,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Enclosed sites, such as pens, that a player removed from their village. Automatic recognition
- * leaves them alone until a block on or in them changes, so a removal sticks while the fence stands.
- * Adding the site by hand still works, and clears it from here.
+ * Open-air sites, such as pens and squares, that a player removed from their village. Automatic
+ * recognition leaves them alone until the player works on them again: for an enclosed site any
+ * block on or in it, for an unenclosed one a block that kind of site is made of (its bell, say), so
+ * building a house where a square once was does not bring the square back. Adding the site by hand
+ * still works, and clears it from here.
  */
 public final class DismissedSites extends SavedData {
     private static final String FILE_ID = "townstead_dismissed_sites";
 
-    private record Site(String dimension, BlockPos min, BlockPos max) {
+    private record Site(String dimension, BlockPos min, BlockPos max, String type) {
         boolean touches(String dim, BlockPos pos) {
             return dimension.equals(dim)
                     && pos.getX() >= min.getX() - 1 && pos.getX() <= max.getX() + 1
@@ -38,9 +40,10 @@ public final class DismissedSites extends SavedData {
         *///?}
     }
 
-    public static void dismiss(ServerLevel level, BlockPos min, BlockPos max) {
+    public static void dismiss(ServerLevel level, BlockPos min, BlockPos max, String type) {
         DismissedSites data = get(level.getServer());
-        data.sites.add(new Site(level.dimension().location().toString(), min.immutable(), max.immutable()));
+        data.sites.add(new Site(level.dimension().location().toString(), min.immutable(), max.immutable(),
+                type == null ? "" : type));
         data.setDirty();
     }
 
@@ -53,7 +56,25 @@ public final class DismissedSites extends SavedData {
         return false;
     }
 
-    /** A block on or in a removed site changed: the player is working on it again. */
+    /** A block changed from {@code before} to {@code after}: reopens the sites that change works on. */
+    public static void changed(ServerLevel level, BlockPos pos,
+                               net.minecraft.world.level.block.state.BlockState before,
+                               net.minecraft.world.level.block.state.BlockState after) {
+        DismissedSites data = get(level.getServer());
+        if (data.sites.isEmpty()) return;
+        String dim = level.dimension().location().toString();
+        if (data.sites.removeIf(site -> site.touches(dim, pos) && reopens(site, before, after))) data.setDirty();
+    }
+
+    private static boolean reopens(Site site, net.minecraft.world.level.block.state.BlockState before,
+                                   net.minecraft.world.level.block.state.BlockState after) {
+        if (site.type().isEmpty() || SiteRequirements.isEnclosed(site.type())) return true;
+        var type = net.conczin.mca.resources.BuildingTypes.getInstance().getBuildingTypes().get(site.type());
+        return type == null || OptionalBuildingRecognition.matchesBlock(type, before)
+                || OptionalBuildingRecognition.matchesBlock(type, after);
+    }
+
+    /** A block on or in a removed site changed, or the site was added by hand: the player is working on it again. */
     public static void changed(ServerLevel level, BlockPos pos) {
         DismissedSites data = get(level.getServer());
         if (data.sites.isEmpty()) return;
@@ -71,7 +92,7 @@ public final class DismissedSites extends SavedData {
         for (int i = 0; i < list.size(); i++) {
             CompoundTag entry = list.getCompound(i);
             data.sites.add(new Site(entry.getString("dimension"),
-                    BlockPos.of(entry.getLong("min")), BlockPos.of(entry.getLong("max"))));
+                    BlockPos.of(entry.getLong("min")), BlockPos.of(entry.getLong("max")), entry.getString("type")));
         }
         return data;
     }
@@ -88,6 +109,7 @@ public final class DismissedSites extends SavedData {
             entry.putString("dimension", site.dimension());
             entry.putLong("min", site.min().asLong());
             entry.putLong("max", site.max().asLong());
+            entry.putString("type", site.type());
             list.add(entry);
         }
         tag.put("sites", list);

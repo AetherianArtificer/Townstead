@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.commands;
 
+import com.aetherianartificer.townstead.culture.VillageLayouts;
 import com.aetherianartificer.townstead.politics.founding.DebugVillageSpawner;
 import com.aetherianartificer.townstead.politics.founding.FoundingProfileApplier;
 import com.aetherianartificer.townstead.politics.founding.FoundingProfileDefinition;
@@ -158,6 +159,10 @@ public final class FoundingCommands {
         line(source, "command.townstead.founding.spawned", result.structure(), result.village().getName(),
                 result.village().getId(), profile.id(), result.buildings(), result.residents(),
                 result.founding().officesFilled());
+        BlockPos anchor = BlockPos.containing(source.getPosition());
+        VillageLayouts.Stage stage = VillageLayouts.stage(result.structure(), source.getLevel().getSeed(),
+                anchor.getX() >> 4, anchor.getZ() >> 4);
+        if (stage != null) line(source, "command.townstead.founding.spawned_stage", stage.name());
         return 1;
     }
 

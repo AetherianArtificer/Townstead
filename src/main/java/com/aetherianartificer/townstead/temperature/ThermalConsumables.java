@@ -76,6 +76,8 @@ public final class ThermalConsumables {
                                 key.getPath().equals("internal_chill")) - current;
                     else if (key.getPath().equals("ice_resistance")) protection = protection.plus(new ThermalProtection(0, 10000, 0, 0));
                     else if (key.getPath().equals("climate_clemency")) protection = protection.plus(new ThermalProtection(0, 0, 0, 10000));
+                } else {
+                    protection = protection.plus(ColdSweatEntityCompat.effect(key.getNamespace(), key.getPath()));
                 }
                 ticks = Math.max(ticks, status.duration());
             }
@@ -180,6 +182,12 @@ public final class ThermalConsumables {
     }
 
     static boolean thermalPotion(String namespace, String path) {
+        return thermalPotion(namespace, path, ModCompat.isLoaded("cold_sweat"));
+    }
+
+    /** Vanilla Fire Resistance only counts where Cold Sweat treats it as heat resistance. */
+    static boolean thermalPotion(String namespace, String path, boolean coldSweat) {
+        if (coldSweat && ColdSweatEntityCompat.thermalPotion(namespace, path)) return true;
         return namespace.equals("legendarysurvivaloverhaul") && switch (path) {
             case "hot_food", "cold_food", "hot_drink", "cold_drink", "heat_resistance", "cold_resistance",
                  "heat_immunity", "cold_immunity", "temperature_immunity" -> true;

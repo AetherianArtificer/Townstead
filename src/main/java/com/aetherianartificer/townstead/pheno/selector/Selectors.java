@@ -23,7 +23,8 @@ import java.util.Locale;
 /**
  * Parses the {@code on} value into a {@link Selector} of entities. A string is a place (the
  * entities there) or a role; an object with {@code radius}/{@code offset}/{@code at} is a spatial
- * region (the entities in it, optionally {@code where}-filtered, {@code limit}/{@code order}); an
+ * region (the entities in it, optionally {@code where}-filtered with each candidate as the entity
+ * and the selecting focus as the other, {@code limit}/{@code order}); an
  * array is the union; an object with {@code type} dispatches to a registered {@link SelectorType}
  * ({@code collection}, {@code command}). The shared {@link Spatial} vocabulary also drives block
  * selection, so a region means entities here and blocks in a block action.
@@ -85,7 +86,8 @@ public final class Selectors {
             LivingEntity self = ctx.self();
             List<LivingEntity> found = ctx.level().getEntitiesOfClass(LivingEntity.class, bounds,
                     e -> e != self && region.contains(ctx, e.position())
-                            && (filter == null || filter.test(new ConditionContext(e))));
+                            && (filter == null || filter.test(new ConditionContext(e, self,
+                                    ctx.origin() != null ? ctx.origin() : e))));
             Vec3 from = ctx.pos();
             switch (ord) {
                 case NEAREST -> found.sort(Comparator.comparingDouble(e -> e.distanceToSqr(from)));

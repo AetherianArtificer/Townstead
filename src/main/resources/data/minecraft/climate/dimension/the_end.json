@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:climate_dimension/v1",
+  "temperature": 5.0,
+  "season_clock": "none",
+  "day_cycle": false,
+  "weather": false,
+  "underground": false
+}

@@ -17,6 +17,15 @@ class ThermalComfortTest {
         var dry = ThermalComfort.update(new ThermalComfort.State(1, -10, 0), -10, false, false, 20, 1, 90);
         assertTrue(dry.wetness() > 0.98f);
     }
+    @Test void dryRootsIgnoreSoakingButColdWaterStillChills() {
+        var d = ThermalProfile.DEFAULT;
+        var dry = new ThermalProfile(d.neutral(), d.band(), d.cold(), d.heat(), d.insulation(), d.sheds(),
+                d.ectotherm(), d.suppressed(), true);
+        var coat = new ThermalProtection(0.5f, 3, 0, 0);
+        assertEquals(ThermalComfort.load(12, 0, false, 0, coat, dry), ThermalComfort.load(12, 1, false, 0, coat, dry));
+        assertTrue(ThermalComfort.load(12, 1, false, 0, coat, dry) > load(12, 1, false, 0, coat));
+        assertTrue(ThermalComfort.load(12, 1, true, 0, ThermalProtection.NONE, dry) < 0, "Cold water still chills");
+    }
     @Test void immersionActsImmediatelyAndRainSoaksGradually() {
         var initial = new ThermalComfort.State(0, 0, 0);
         var water = ThermalComfort.update(initial, -20, true, false, 12, 0.05f, 90);

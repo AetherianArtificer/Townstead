@@ -18,6 +18,7 @@ I want you there. Not to fight. I want somebody there who knew me before I walke
 - else:
     The wolf stays here, by the fire. I'll leave enough food out for a week. It'll eat it in two days, but that's its business.
 }
+If it comes to it with him, an ordinary blade won't finish him. The best hunter's steel might. I'd rather it didn't come to that.
 + [I'll come.]
     ~ start_trip(court_walking, "mark_court", "court_travel")
     You've got the map. Same as last time. You lead, I'll follow, and if I stop, don't wait for me to say why.

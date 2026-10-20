@@ -138,6 +138,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_TEMPERATURE;
     public static final ModConfigSpec.ConfigValue<String> PREFERRED_TEMPERATURE_BACKEND;
+    public static final ModConfigSpec.ConfigValue<String> CLIMATE_AUTHORITY;
     public static final ModConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
@@ -263,6 +264,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_TEMPERATURE;
     public static final ForgeConfigSpec.ConfigValue<String> PREFERRED_TEMPERATURE_BACKEND;
+    public static final ForgeConfigSpec.ConfigValue<String> CLIMATE_AUTHORITY;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
@@ -429,6 +431,12 @@ public final class TownsteadConfig {
                          "Naming a mod pins it when installed; \"builtin\" ignores temperature mods entirely.")
                 // Arrays.asList, not List.of: correct() probes missing keys with null and List.of.contains(null) throws.
                 .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "cold_sweat", "tough_as_nails", "builtin"));
+        CLIMATE_AUTHORITY = b
+                .translation("townstead.configuration.needs.temperature.climateAuthority")
+                .comment("Who decides the climate (seasons, biomes, day and night, weather, dimensions) when a temperature mod is installed.",
+                         "\"townstead\": Townstead's climate model drives the temperature mod's world temperature, so every mod agrees. The temperature mod keeps body temperature, clothing and blocks.",
+                         "\"backend\": the temperature mod's own climate stands; Townstead only adds what it lacks (seasons, snow, depth).")
+                .defineInList("climateAuthority", "townstead", Arrays.asList("townstead", "backend"));
         b.pop();
         // ── Fatigue ──
         b.translation("townstead.configuration.needs.fatigue").push("fatigue");
@@ -1147,6 +1155,16 @@ public final class TownsteadConfig {
             return Switchboard.get(ENABLE_VILLAGER_TEMPERATURE);
         } catch (IllegalStateException e) {
             return false;
+        }
+    }
+
+    /** True when Townstead's climate model drives the temperature mods. Never throws; defaults to true. */
+    public static boolean townsteadClimateAuthority() {
+        if (CLIMATE_AUTHORITY == null) return true;
+        try {
+            return !"backend".equals(Switchboard.get(CLIMATE_AUTHORITY));
+        } catch (IllegalStateException e) {
+            return true;
         }
     }
 

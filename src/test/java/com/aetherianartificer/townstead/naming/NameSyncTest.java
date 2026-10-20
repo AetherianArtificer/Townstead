@@ -51,4 +51,20 @@ class NameSyncTest {
         assertEquals("Hana Smith", name.fullName());
         assertEquals("Hana", NameParts.builder("Hana").authoritativeFamily("").family("Sato").build().fullName());
     }
+
+    @Test void nameOverwrittenWithTheFamilyNameIsTakenBackToTheGivenName() {
+        // MCA 1.20.1's setName wrote the composed name into the villager's own name; the repair takes it back off.
+        assertEquals("Judit", NameParts.withoutFamily("Judit Moldovan", "Moldovan", NamingTradition.Order.GIVEN_FIRST));
+        assertEquals("Hiroshi", NameParts.withoutFamily("Sato Hiroshi", "Sato", NamingTradition.Order.FAMILY_FIRST));
+        assertEquals("Judit", NameParts.withoutFamily("Judit", "Moldovan", NamingTradition.Order.GIVEN_FIRST));
+        assertEquals("Judit Moldovan", NameParts.withoutFamily("Judit Moldovan", "", NamingTradition.Order.GIVEN_FIRST));
+    }
+
+    @Test void hiddenFamilyNameShowsOnlyTheGivenNameUntilItIsSynced() {
+        // A Persona whose family name is told only is synced with an empty one until the player is told.
+        NameClientStore.set(9, "", "", NamingTradition.Order.GIVEN_FIRST, NamingTradition.FamilyType.INHERITED, "");
+        assertEquals("Judit", NameClientStore.fullName(9, "Judit"));
+        NameClientStore.set(9, "Moldovan", "", NamingTradition.Order.GIVEN_FIRST, NamingTradition.FamilyType.INHERITED, "");
+        assertEquals("Judit Moldovan", NameClientStore.fullName(9, "Judit"));
+    }
 }

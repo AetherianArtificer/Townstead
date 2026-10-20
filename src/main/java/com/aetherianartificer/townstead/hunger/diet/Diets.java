@@ -52,6 +52,11 @@ public final class Diets {
         public boolean nativeValues() {
             return nutrition == null;
         }
+
+        /** How much more (or less) this food gives this eater than its values say. */
+        public float multiplier() {
+            return food.multiplier();
+        }
     }
 
     public static @Nullable Diet diet(ResourceLocation id) {

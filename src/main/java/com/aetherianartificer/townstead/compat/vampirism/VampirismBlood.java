@@ -55,6 +55,44 @@ public final class VampirismBlood {
         }
     }
 
+    /** Whether a vampire player's blood bar has room; null when the player is no vampire. */
+    public static @Nullable Boolean needsBlood(Player player) {
+        if (!probe()) return null;
+        try {
+            Object vampire = playerLookup.invoke(null, player);
+            if (vampire == null || ((Number) vampire.getClass().getMethod("getLevel").invoke(vampire)).intValue() <= 0) return null;
+            int level = ((Number) vampire.getClass().getMethod("getBloodLevel").invoke(vampire)).intValue();
+            Object stats = vampire.getClass().getMethod("getBloodStats").invoke(vampire);
+            int max = ((Number) stats.getClass().getMethod("getMaxBlood").invoke(stats)).intValue();
+            return level < max;
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * Fills a vampire player's blood bar through Vampirism's own drinking, so its events and
+     * overflow handling run. False when the player is no vampire or Vampirism is absent.
+     */
+    public static boolean drink(Player player, int amount, float saturation) {
+        if (amount <= 0 || !probe()) return false;
+        try {
+            Object vampire = playerLookup.invoke(null, player);
+            if (vampire == null || ((Number) vampire.getClass().getMethod("getLevel").invoke(vampire)).intValue() <= 0) return false;
+            Class<?> contextType = Class.forName("de.teamlapen.vampirism.entity.vampire.DrinkBloodContext");
+            Object context = contextType.getConstructor(net.minecraft.world.item.ItemStack.class)
+                    .newInstance(net.minecraft.world.item.ItemStack.EMPTY);
+            for (Method method : vampire.getClass().getMethods()) {
+                if (!method.getName().equals("drinkBlood") || method.getParameterCount() != 4) continue;
+                method.invoke(vampire, amount, saturation, false, context);
+                return true;
+            }
+        } catch (Throwable ignored) {
+            // Vampirism reshaped: the drink gives nothing.
+        }
+        return false;
+    }
+
     /** Vampirism's own infection roll for the bitten creature. */
     public static boolean infect(Object creature) {
         return tryInfect(creature);

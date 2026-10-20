@@ -27,12 +27,14 @@ public final class TemperatureSettings {
     private static final String PATH = "need/temperature.json";
     private static volatile TemperatureSettings CURRENT = new TemperatureSettings();
 
-    private float[] anchorBiome = {0.15f, 0.8f, 2.0f};
-    private float[] anchorCelsius = {0f, 20f, 38f};
+    // Vanilla biome temperature to the yearly mean in Celsius; zones add the seasons around it.
+    private float[] anchorBiome = {-0.5f, 0.15f, 0.8f, 0.95f, 2.0f};
+    private float[] anchorCelsius = {-12f, -3f, 13f, 24f, 26f};
     private final Map<Season, Float> seasonOffsets = new EnumMap<>(Season.class);
     private float altitudeBlocksPerDegree = 15f;
     private float rainOffset = -5f;
-    private float nightOffset = -6f;
+    // Legacy extras on top of the climate model; zones now carry the day/night range and seasons.
+    private float nightOffset = 0f;
     private float netherCelsius = 45f;
     private float endCelsius = 5f;
     private int sourceRadius = 7;
@@ -55,6 +57,8 @@ public final class TemperatureSettings {
     private float cookingRoomHeatFraction = 0.15f;
     // A drafting source adds watts / rise W/K of outside air, so fires alone never lift a room past it.
     private float fireMaxRise = 25f;
+    private float radiantMax = (float) RoomHeatBalance.RADIANT_MAX, radiantStack = (float) RoomHeatBalance.RADIANT_STACK,
+            radiantColdStack = (float) RoomHeatBalance.RADIANT_COLD_STACK;
     private final Map<com.aetherianartificer.townstead.temperature.ThermalConductance.Material, Float> materialCapacity =
             new EnumMap<>(com.aetherianartificer.townstead.temperature.ThermalConductance.Material.class);
     private final Map<String, ThermalAppliance> appliances = new java.util.LinkedHashMap<>();
@@ -62,6 +66,9 @@ public final class TemperatureSettings {
     public float materialHeatCapacity(ThermalConductance.Material material) { return materialCapacity.get(material); }
     public float cookingRoomHeatFraction() { return cookingRoomHeatFraction; }
     public float fireMaxRise() { return fireMaxRise; }
+    public float radiantMax() { return radiantMax; }
+    public float radiantStack() { return radiantStack; }
+    public float radiantColdStack() { return radiantColdStack; }
     public float thermalTimeScale() { return thermalTimeScale; }
     public float airChangesPerHour() { return airChangesPerHour; }
     public boolean roomHeatEnabled() { return roomHeatEnabled; }
@@ -70,6 +77,59 @@ public final class TemperatureSettings {
     public float roomWallConductance() { return roomWallConductance; }
     public float roomInsulatedConductance() { return roomInsulatedConductance; }
     public float roomOpeningConductance() { return roomOpeningConductance; }
+    // Ground: the annual season wave fades e-fold per damping depth; covered positions blend to it.
+    private float groundDampingDepth = 3f, surfaceLayer = 3f;
+    // Rock warms below the start height, faster in deepslate: a whole real mine compressed into the world.
+    private int geothermalStartY = 48, geothermalDeepY = 0;
+    private float geothermalPerBlock = 0.15f, geothermalDeepPerBlock = 0.2f;
+    // Buried lava warms rock by heat / distance per block, summed and capped.
+    private int lavaRockRadius = 12;
+    private float lavaRockHeat = 1.5f, lavaRockMax = 25f;
+    // Snow is weather: falling snow caps the air, lying snow holds the day near freezing and chills clear nights.
+    private float snowfallCelsius = -3f, snowDayMax = 1f, snowNightCooling = -5f;
+    // Cloud and rain shrink the day/night range to this fraction.
+    private float cloudDiurnalFactor = 0.4f;
+    // Yearly means for biomes whose vanilla temperature says little (oceans share one value), by id or #tag.
+    private final Map<String, Float> biomeMeans = new java.util.LinkedHashMap<>();
+
+    /** A pack-set yearly mean for this biome, by id first, then by tag in file order. */
+    public java.util.OptionalDouble biomeMean(net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome> biome) {
+        if (biomeMeans.isEmpty()) return java.util.OptionalDouble.empty();
+        String id = biome.unwrapKey().map(k -> k.location().toString()).orElse(null);
+        if (id != null && biomeMeans.containsKey(id)) return java.util.OptionalDouble.of(biomeMeans.get(id));
+        for (Map.Entry<String, Float> entry : biomeMeans.entrySet()) {
+            if (!entry.getKey().startsWith("#")) continue;
+            ResourceLocation tag = ResourceLocation.tryParse(entry.getKey().substring(1));
+            if (tag != null && biome.is(net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.BIOME, tag)))
+                return java.util.OptionalDouble.of(entry.getValue());
+        }
+        return java.util.OptionalDouble.empty();
+    }
+    /** Air range a crop class grows in, in Celsius; open ends are infinite. */
+    public record CropRange(float min, float max) {}
+    // Crops tagged #townstead:crops/climate/<class> grow only inside their class's range.
+    private final Map<String, CropRange> cropClasses = new java.util.LinkedHashMap<>(Map.of(
+            "hardy", new CropRange(-5f, Float.POSITIVE_INFINITY),
+            "cool_season", new CropRange(0f, 26f),
+            "temperate", new CropRange(2f, Float.POSITIVE_INFINITY),
+            "warm_season", new CropRange(8f, Float.POSITIVE_INFINITY),
+            "tropical", new CropRange(18f, Float.POSITIVE_INFINITY)));
+    private String defaultCropClass = "temperate";
+    public Map<String, CropRange> cropClasses() { return cropClasses; }
+    public String defaultCropClass() { return defaultCropClass; }
+    public float snowfallCelsius() { return snowfallCelsius; }
+    public float snowDayMax() { return snowDayMax; }
+    public float snowNightCooling() { return snowNightCooling; }
+    public float cloudDiurnalFactor() { return cloudDiurnalFactor; }
+    public float groundDampingDepth() { return groundDampingDepth; }
+    public float surfaceLayer() { return surfaceLayer; }
+    public int geothermalStartY() { return geothermalStartY; }
+    public int geothermalDeepY() { return geothermalDeepY; }
+    public float geothermalPerBlock() { return geothermalPerBlock; }
+    public float geothermalDeepPerBlock() { return geothermalDeepPerBlock; }
+    public int lavaRockRadius() { return lavaRockRadius; }
+    public float lavaRockHeat() { return lavaRockHeat; }
+    public float lavaRockMax() { return lavaRockMax; }
     private float dryingSeconds = 90;
     // Effective temperatures within this many degrees of 20 C leave the body alone.
     private float comfortZone = 6f;
@@ -97,9 +157,9 @@ public final class TemperatureSettings {
         materialCapacity.put(ThermalConductance.Material.METAL, 16000f);
         materialCapacity.put(ThermalConductance.Material.POROUS, 1000f);
         seasonOffsets.put(Season.SPRING, 0f);
-        seasonOffsets.put(Season.SUMMER, 6f);
-        seasonOffsets.put(Season.AUTUMN, -2f);
-        seasonOffsets.put(Season.WINTER, -12f);
+        seasonOffsets.put(Season.SUMMER, 0f);
+        seasonOffsets.put(Season.AUTUMN, 0f);
+        seasonOffsets.put(Season.WINTER, 0f);
     }
 
     public static TemperatureSettings get() {
@@ -198,10 +258,39 @@ public final class TemperatureSettings {
         s.roomWallConductance = calibrated(json, "thermal_wall_w_per_face_k", "room_wall_conductance", 20, s.roomWallConductance);
         s.roomInsulatedConductance = calibrated(json, "thermal_insulation_w_per_face_k", "room_insulated_conductance", 20, s.roomInsulatedConductance);
         s.roomOpeningConductance = calibrated(json, "thermal_opening_w_per_face_k", "room_opening_conductance", 30, s.roomOpeningConductance);
+        if (json.has("biome_mean_c") && json.get("biome_mean_c").isJsonObject()) {
+            for (var entry : json.getAsJsonObject("biome_mean_c").entrySet())
+                s.biomeMeans.put(entry.getKey(), entry.getValue().getAsFloat());
+        }
+        if (json.has("crop_climate") && json.get("crop_climate").isJsonObject()) {
+            for (var entry : json.getAsJsonObject("crop_climate").entrySet()) {
+                JsonObject range = entry.getValue().getAsJsonObject();
+                s.cropClasses.put(entry.getKey(), new CropRange(
+                        GsonHelper.getAsFloat(range, "min_c", Float.NEGATIVE_INFINITY),
+                        GsonHelper.getAsFloat(range, "max_c", Float.POSITIVE_INFINITY)));
+            }
+        }
+        s.defaultCropClass = GsonHelper.getAsString(json, "crop_default_class", s.defaultCropClass);
+        s.snowfallCelsius = GsonHelper.getAsFloat(json, "snowfall_c", s.snowfallCelsius);
+        s.snowDayMax = GsonHelper.getAsFloat(json, "snow_day_max_c", s.snowDayMax);
+        s.snowNightCooling = Math.min(0f, GsonHelper.getAsFloat(json, "snow_night_cooling_c", s.snowNightCooling));
+        s.cloudDiurnalFactor = Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(json, "cloud_diurnal_factor", s.cloudDiurnalFactor)));
+        s.groundDampingDepth = positive(json, "ground_damping_depth_blocks", s.groundDampingDepth);
+        s.surfaceLayer = Math.max(0f, GsonHelper.getAsFloat(json, "surface_layer_blocks", s.surfaceLayer));
+        s.geothermalStartY = GsonHelper.getAsInt(json, "geothermal_start_y", s.geothermalStartY);
+        s.geothermalDeepY = Math.min(s.geothermalStartY, GsonHelper.getAsInt(json, "geothermal_deepslate_y", s.geothermalDeepY));
+        s.geothermalPerBlock = Math.max(0f, GsonHelper.getAsFloat(json, "geothermal_c_per_block", s.geothermalPerBlock));
+        s.geothermalDeepPerBlock = Math.max(0f, GsonHelper.getAsFloat(json, "geothermal_deepslate_c_per_block", s.geothermalDeepPerBlock));
+        s.lavaRockRadius = Math.max(0, Math.min(24, GsonHelper.getAsInt(json, "lava_rock_radius", s.lavaRockRadius)));
+        s.lavaRockHeat = Math.max(0f, GsonHelper.getAsFloat(json, "lava_rock_c", s.lavaRockHeat));
+        s.lavaRockMax = Math.max(0f, GsonHelper.getAsFloat(json, "lava_rock_max_c", s.lavaRockMax));
         s.thermalTimeScale = positive(json, "thermal_time_scale", s.thermalTimeScale);
         s.airChangesPerHour = positive(json, "thermal_air_changes_per_hour", s.airChangesPerHour);
         s.cookingRoomHeatFraction = Math.min(1f, positive(json, "thermal_cooking_room_heat_fraction", s.cookingRoomHeatFraction));
         s.fireMaxRise = positive(json, "thermal_fire_max_rise_c", s.fireMaxRise);
+        s.radiantMax = positive(json, "thermal_radiant_max_c", s.radiantMax);
+        s.radiantStack = Math.max(1f, positive(json, "thermal_radiant_stack_limit", s.radiantStack));
+        s.radiantColdStack = Math.max(1f, positive(json, "thermal_radiant_cold_stack_limit", s.radiantColdStack));
         if (json.has("thermal_material_capacity_j_per_block_k") && json.get("thermal_material_capacity_j_per_block_k").isJsonObject()) {
             JsonObject capacities = json.getAsJsonObject("thermal_material_capacity_j_per_block_k");
             for (var material : ThermalConductance.Material.values())
@@ -248,6 +337,7 @@ public final class TemperatureSettings {
             BuildingClimate.clear();
             ThermalBlocks.clearCache();
             ThermalReliefTargets.clearCache();
+            GroundClimate.clearCache();
             com.aetherianartificer.townstead.compat.temperature.ColdSweatTemperatureBridge.INSTANCE.clearCache();
             if (prepared.isEmpty()) {
                 CURRENT = new TemperatureSettings();

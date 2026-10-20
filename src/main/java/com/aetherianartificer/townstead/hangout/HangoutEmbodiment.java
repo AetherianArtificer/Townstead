@@ -35,6 +35,14 @@ public final class HangoutEmbodiment {
                 id("townstead_hangouts:tables"));
     }
 
+    /** A bottom slab is floor or a step; only a raised slab reads as a tabletop. */
+    private static boolean isTable(net.minecraft.world.level.block.state.BlockState state) {
+        if (!state.is(Tables.VALUE)) return false;
+        return !state.hasProperty(net.minecraft.world.level.block.SlabBlock.TYPE)
+                || state.getValue(net.minecraft.world.level.block.SlabBlock.TYPE)
+                != net.minecraft.world.level.block.state.properties.SlabType.BOTTOM;
+    }
+
     public interface Handle { void close(ServerLevel level, VillagerEntityMCA villager); }
     /** Adapter understood the furniture but refused it; callers must not try another adapter. */
     public static final Handle BLOCKED = (level, villager) -> {};
@@ -155,7 +163,7 @@ public final class HangoutEmbodiment {
             double nearestDistance = Double.MAX_VALUE;
             for (BlockPos candidate : BlockPos.betweenClosed(
                     spot.offset(-4, -2, -4), spot.offset(4, 2, 4))) {
-                if (!level.getBlockState(candidate).is(Tables.VALUE)) continue;
+                if (!isTable(level.getBlockState(candidate))) continue;
                 double distance = candidate.distToCenterSqr(position.x, position.y, position.z);
                 if (distance < nearestDistance) {
                     nearest = candidate.immutable();

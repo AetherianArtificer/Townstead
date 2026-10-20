@@ -154,13 +154,14 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         Map<String, List<com.aetherianartificer.townstead.recognition.BuildingChecks.Check>> buildingChecks = new HashMap<>();
         Map<String, com.aetherianartificer.townstead.politics.seat.SeatBuildings.Spec> seatSpecs = new HashMap<>();
         Map<String, Set<String>> dialogueTopicsByType = new HashMap<>();
+        Set<String> lodgingTypes = new java.util.HashSet<>();
         THERMAL_SPECS.clear();
         scanLegacyBuildingTypes(resourceManager, enclosurePolicies);
         scanSpiritCompanions(resourceManager);
         scanLegacyBuildingSpawn(resourceManager, spawnPolicies);
         scanExtendedBuildings(resourceManager, spawnPolicies, workersByType,
                 storageRolesByType, recipeNamespacesByType, enclosurePolicies, siteRequirements,
-                dialogueTopicsByType, buildingChecks, seatSpecs);
+                dialogueTopicsByType, buildingChecks, seatSpecs, lodgingTypes);
         scanServingMenus(resourceManager, servingProductsByType);
         BuildingSpawnPolicies.replaceAll(spawnPolicies);
         com.aetherianartificer.townstead.work.site.BuildingWorkforceIndex.replaceAll(workersByType);
@@ -170,6 +171,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
         com.aetherianartificer.townstead.food.BuildingServingMenus.replaceAll(servingProductsByType);
         BuildingEnclosurePolicies.replaceAll(enclosurePolicies);
         SiteRequirements.replaceAll(siteRequirements);
+        com.aetherianartificer.townstead.storage.BuildingLodging.replaceAll(lodgingTypes);
         com.aetherianartificer.townstead.recognition.BuildingChecks.replaceAll(buildingChecks);
         com.aetherianartificer.townstead.politics.seat.SeatBuildings.replaceAll(seatSpecs);
         com.aetherianartificer.townstead.temperature.ThermalStructures.replaceAll(THERMAL_SPECS);
@@ -431,7 +433,8 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
             Map<String, List<SiteRequirements.Requirement>> siteRequirements,
             Map<String, Set<String>> dialogueTopicsByType,
             Map<String, List<com.aetherianartificer.townstead.recognition.BuildingChecks.Check>> buildingChecks,
-            Map<String, com.aetherianartificer.townstead.politics.seat.SeatBuildings.Spec> seatSpecs) {
+            Map<String, com.aetherianartificer.townstead.politics.seat.SeatBuildings.Spec> seatSpecs,
+            Set<String> lodgingTypes) {
         Map<ResourceLocation, Resource> resources = resourceManager.listResources("extended_buildings",
                 id -> id.getPath().endsWith(".json"));
         for (Map.Entry<ResourceLocation, Resource> entry : resources.entrySet()) {
@@ -531,6 +534,7 @@ public final class CatalogDataLoader extends SimpleJsonResourceReloadListener {
                     buildingChecks.put(buildingType,
                             com.aetherianartificer.townstead.recognition.BuildingChecks.parse(requires));
                 }
+                if (GsonHelper.getAsBoolean(json, "lodging", false)) lodgingTypes.add(buildingType);
                 if (json.has("seat")) {
                     seatSpecs.put(buildingType, com.aetherianartificer.townstead.politics.seat.SeatBuildings
                             .parse(GsonHelper.getAsJsonObject(json, "seat")));
