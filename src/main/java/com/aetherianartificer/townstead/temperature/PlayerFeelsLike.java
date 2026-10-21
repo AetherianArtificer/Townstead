@@ -20,6 +20,7 @@ public final class PlayerFeelsLike {
 
     private record Cached(long tick, float environment, float wetness, float sent) {}
     private static final Map<Player, Cached> CACHE = new WeakHashMap<>();
+    private static final Map<Player, Float> EXERTION = new WeakHashMap<>();
 
     /** Whether Townstead decides what players feel; the same switch as block heat. */
     public static boolean active() {
@@ -67,7 +68,7 @@ public final class PlayerFeelsLike {
         float humidity = ThermalAir.humidity(level, player.blockPosition(), environment);
         float water = immersed ? ThermalAir.water(level, player.blockPosition()) : environment;
         return ThermalComfort.feelsLike(environment, humidity, immersed ? 1 : wetness, immersed, water,
-                activity(player), protection(player), profile, body);
+                exertion(player), protection(player), profile, body);
     }
 
     /**
@@ -102,10 +103,22 @@ public final class PlayerFeelsLike {
         return protection;
     }
 
+    /** Builds the player's exertion from what they are doing now. */
+    public static void exert(Player player, float seconds) {
+        EXERTION.put(player, ThermalComfort.exertion(exertion(player), activity(player), seconds));
+    }
+
+    /** Heat the player makes, as a multiple of rest, built up over the last few minutes. */
+    public static float exertion(Player player) {
+        Float value = EXERTION.get(player);
+        return value == null ? 1 : value;
+    }
+
+    /** The same scale as {@link ThermalExposure#activity}: walking 2, working 4, running 6. */
     public static float activity(Player player) {
-        if (player.isSprinting()) return 3;
-        if (player.swinging) return 2;
-        return player.getDeltaMovement().horizontalDistanceSqr() > .0004 ? 1 : 0;
+        if (player.isSprinting()) return 6;
+        if (player.swinging) return 4;
+        return player.getDeltaMovement().horizontalDistanceSqr() > .0004 ? 2 : 0;
     }
 
     /**

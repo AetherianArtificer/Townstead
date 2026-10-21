@@ -541,7 +541,9 @@ public final class RoomHeat {
                     int sign = ThermalBlocks.taggedSource(state);
                     effect = sign > 0 ? settings.heatSourceOffset() : sign < 0 ? settings.coolingSourceOffset() : 0;
                 }
-                output = new ThermalAppliance.Output(RoomHeatBalance.sourcePower(effect,settings.roomSourcePower(),1,1),effect,true);
+                float radiant = effect < 0 && !Float.isFinite(nativeEffect)
+                        ? ThermalBlocks.coolingStrength(settings, (float) r.temperature) : effect;
+                output = new ThermalAppliance.Output(RoomHeatBalance.sourcePower(effect,settings.roomSourcePower(),1,1),radiant,true);
             }
             if (output.radiantDegrees() != 0) r.localSources.put(pos,output.radiantDegrees());
             int exposed = 0;

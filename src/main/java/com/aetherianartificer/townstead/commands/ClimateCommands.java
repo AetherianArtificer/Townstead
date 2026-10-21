@@ -105,8 +105,9 @@ public final class ClimateCommands {
                 float[] felt = com.aetherianartificer.townstead.temperature.PlayerFeelsLike.describe(player,
                         (float) environment.getAsDouble(), Float.isFinite(wet) ? wet : 0f);
                 say(source, String.format(Locale.ROOT,
-                        "You: environment %.1f C, feels like %.1f C, comfortable %.1f to %.1f C; sent to %s %.1f C; Townstead decides %s",
-                        environment.getAsDouble(), felt[0], felt[2], felt[3], backend.id(), felt[1],
+                        "You: environment %.1f C, feels like %.1f C, comfortable %.1f to %.1f C; exertion %.1f; sent to %s %.1f C; Townstead decides %s",
+                        environment.getAsDouble(), felt[0], felt[2], felt[3],
+                        com.aetherianartificer.townstead.temperature.PlayerFeelsLike.exertion(player), backend.id(), felt[1],
                         com.aetherianartificer.townstead.temperature.PlayerFeelsLike.active() ? "yes" : "no"));
             }
         }

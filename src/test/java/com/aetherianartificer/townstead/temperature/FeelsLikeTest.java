@@ -20,9 +20,16 @@ class FeelsLikeTest {
         assertTrue(feels(-20, 0.5f, 0, winter) < RANGE.low(), "and not at -20 C");
     }
 
-    @Test void clothingDoesNotHeatColdAirPastTheMiddleOfTheRange() {
+    @Test void aWinterOutfitInMildAirFeelsWarm() {
         var winter = new ThermalProtection(1.5f, 0, 0, 0);
-        assertTrue(feels(18, 0.5f, 0, winter) <= RANGE.mid() + 1e-4);
+        assertTrue(feels(18, 0.5f, 0, winter) > RANGE.mid() + 2);
+        assertTrue(feels(18, 0.5f, 0, winter) < RANGE.high() + 1);
+    }
+
+    @Test void immunityEffectsHoldTheMiddleOfTheRange() {
+        assertEquals(RANGE.mid(), feels(-40, 0.5f, 0, new ThermalProtection(0, 10000, 0, 0)), 1e-3);
+        assertEquals(RANGE.mid(), feels(45, 0.3f, 0, new ThermalProtection(0, 0, 10000, 0)), 1e-3);
+        assertTrue(feels(40, 0.3f, 0, new ThermalProtection(0, 10000, 0, 0)) > 39, "ice resistance is no coat in heat");
     }
 
     @Test void humidHeatFeelsHotterThanDryHeat() {
@@ -106,6 +113,68 @@ class FeelsLikeTest {
         for (int minute = 0; minute < 60; minute++) a = ThermalAcclimation.step(a, -1, 1f / 60f, limits, 1);
         assertEquals(-1, a, 1e-6);
         assertEquals(0.3f, ThermalAcclimation.step(0.3f, -1, 1, ThermalAcclimation.Limits.OFF, 10), 1e-6, "off stays put");
+    }
+
+    private static final ThermalProtection PARKA = new ThermalProtection(0, 14 / 3f, 0, 0);
+    private static final ThermalProtection FUR_SET = new ThermalProtection(0, 46 / 3f, 0, 0);
+
+    private static float working(float air, float activity, ThermalProtection clothing, ThermalProfile profile) {
+        return ThermalComfort.feelsLike(air, 0.5f, 0, false, air, ThermalComfort.metabolism(activity), clothing, profile, RANGE);
+    }
+
+    @Test void aParkaHelpsMoreWhileWalkingThanStandingStill() {
+        float still = working(-20, 0, PARKA, HUMAN);
+        float walking = working(-20, 2, PARKA, HUMAN);
+        assertTrue(still < RANGE.low(), "standing still in a parka at -20 C: " + still);
+        assertTrue(walking > still + 6, "walking " + walking + ", still " + still);
+        assertTrue(still > -20 + 15, "the parka still counts for a lot: " + still);
+    }
+
+    @Test void aFullFurSetKeepsAWalkerComfortableInDeepCold() {
+        float walking = working(-20, 2, FUR_SET, HUMAN);
+        assertTrue(walking >= RANGE.low() && walking <= RANGE.mid() + 2, "walking in fur at -20 C: " + walking);
+        assertTrue(working(-20, 0, FUR_SET, HUMAN) < RANGE.low(), "but not standing still");
+    }
+
+    @Test void theSameCoatStopsMoreDegreesTheColderItGets() {
+        float mild = working(5, 0, PARKA, HUMAN) - 5;
+        float bitter = working(-25, 0, PARKA, HUMAN) + 25;
+        assertTrue(bitter > mild * 2, "mild " + mild + ", bitter " + bitter);
+    }
+
+    @Test void furCountsAsInsulationAndAnEctothermMakesNoHeatToKeep() {
+        var furred = new ThermalProfile(37, 0.5f, 1, 1, 1, false, false, false, false);
+        assertTrue(working(-20, 0, ThermalProtection.NONE, furred) > -20 + 15);
+        var ectotherm = new ThermalProfile(37, 0.5f, 1, 1, 0, false, true, false, false);
+        assertEquals(working(-20, 0, PARKA, ectotherm), working(-20, 4, PARKA, ectotherm), 1e-4);
+    }
+
+    @Test void metabolicRatesFollowIso8996() {
+        assertEquals(1f, ThermalComfort.metabolism(0), 1e-6);
+        assertEquals(2.4f, ThermalComfort.metabolism(2), 1e-6);
+        assertEquals(3.3f, ThermalComfort.metabolism(4), 1e-6);
+        assertEquals(4f, ThermalComfort.metabolism(6), 1e-6);
+    }
+
+    @Test void exertionBuildsOverMinutesAndASprintBarelyCounts() {
+        assertTrue(ThermalComfort.exertion(1, 6, 5) < 1.5f);
+        float e = 1;
+        for (int s = 0; s < 120; s++) e = ThermalComfort.exertion(e, 6, 1);
+        assertTrue(e > 3.7f, "two minutes of running: " + e);
+        for (int s = 0; s < 180; s++) e = ThermalComfort.exertion(e, 0, 1);
+        assertTrue(e < 1.2f, "three minutes of rest: " + e);
+    }
+
+    @Test void aWalkerInEverydayClothesFeelsNearFreezingAtMinusTwenty() {
+        // ISO 11079 heat balance: about 2 C against a 25 C reference, so a little below freezing here.
+        float walking = working(-20, 2, ThermalProtection.NONE, HUMAN);
+        assertTrue(walking > -5 && walking < 6, "walking at -20 C: " + walking);
+        assertTrue(working(-20, 6, ThermalProtection.NONE, HUMAN) > walking + 5, "running warms more");
+    }
+
+    @Test void exertionMakesHeatFeelHotter() {
+        assertTrue(working(30, 2, ThermalProtection.NONE, HUMAN) > working(30, 0, ThermalProtection.NONE, HUMAN) + 3);
+        assertTrue(working(RANGE.mid(), 6, ThermalProtection.NONE, HUMAN) > RANGE.mid() + 4);
     }
 
     @Test void standingOnACampfireFeelsHotWhateverTheHumidity() {

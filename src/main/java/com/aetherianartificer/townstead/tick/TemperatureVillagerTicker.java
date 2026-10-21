@@ -145,6 +145,8 @@ public final class TemperatureVillagerTicker {
         }
         float seconds = state.lastComfortTick < 0 ? 0.05f : Math.max(0, Math.min(1, (gameTime - state.lastComfortTick) / 20f));
         state.lastComfortTick = gameTime;
+        state.exertion = ThermalComfort.exertion(state.exertion,
+                com.aetherianartificer.townstead.temperature.ThermalExposure.activity(self), seconds);
         ThermalProtection protection = state.clothing.plus(com.aetherianartificer.townstead.compat.temperature.LsoEntityCompat.effects(self).protection())
                 .plus(com.aetherianartificer.townstead.compat.temperature.ColdSweatEntityCompat.protection(self));
         float ambientCelsius = com.aetherianartificer.townstead.temperature.ThermalConsumables.internalAmbient(self, TemperatureData.celsius(needs.ambientTenths()));
@@ -152,8 +154,7 @@ public final class TemperatureVillagerTicker {
         if (immersed && !Float.isFinite(state.water)) state.water = com.aetherianartificer.townstead.temperature.ThermalAir.water(level, self.blockPosition());
         var range = com.aetherianartificer.townstead.temperature.ComfortRange.of(profile, needs.thermalAcclimation());
         float load = ThermalComfort.load(ambientCelsius, state.humidity, immersed ? 1 : needs.thermalWetness(),
-                immersed, immersed ? state.water : ambientCelsius,
-                com.aetherianartificer.townstead.temperature.ThermalExposure.activity(self), protection, profile, range);
+                immersed, immersed ? state.water : ambientCelsius, state.exertion, protection, profile, range);
         ThermalComfort.State comfort = ThermalComfort.update(new ThermalComfort.State(needs.thermalWetness(),
                 needs.comfortLoad(), needs.thermalStrainSeconds()), load, immersed,
                 level.isRainingAt(self.blockPosition()), ambientCelsius, state.humidity, seconds,
@@ -218,7 +219,7 @@ public final class TemperatureVillagerTicker {
         boolean immersed = self.isInWater();
         float feels = com.aetherianartificer.townstead.temperature.ThermalComfort.feelsLike(air, state.humidity,
                 immersed ? 1 : needs.thermalWetness(), immersed, Float.isFinite(state.water) ? state.water : air,
-                com.aetherianartificer.townstead.temperature.ThermalExposure.activity(self), state.clothing, profile, body);
+                state.exertion, state.clothing, profile, body);
         needs.setThermalAcclimation(com.aetherianartificer.townstead.temperature.ThermalAcclimation.step(
                 needs.thermalAcclimation(), com.aetherianartificer.townstead.temperature.ThermalAcclimation.target(feels, body),
                 com.aetherianartificer.townstead.temperature.ThermalAcclimation.ratePerMinute(), profile.acclimationLimits(),
@@ -366,7 +367,7 @@ public final class TemperatureVillagerTicker {
         private long lastStepGameTime = -1;
         private long lastMoodGameTime = -1;
         private ThermalProtection clothing = ThermalProtection.NONE;
-        private float humidity = 0.5f, water = Float.NaN;
+        private float humidity = 0.5f, water = Float.NaN, exertion = 1;
         private double lastPenalty;
         private int lastSyncedBody = Integer.MIN_VALUE;
         private int lastSyncedAmbient = Integer.MIN_VALUE;

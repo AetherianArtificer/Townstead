@@ -20,7 +20,8 @@ import java.util.Optional;
  *
  * <p>Cold Sweat counts insulation in its own units: a wool sweater is 1.5 cold, a cotton shirt
  * is 1 cold and 1 heat, a goat fur parka is 14 cold. {@link #RESISTANCE_PER_UNIT} maps a unit onto
- * the resistance scale {@link ThermalProtection} shares with LSO, where the same sweater reads 0.5.</p>
+ * the resistance scale {@link ThermalProtection} shares with LSO, where the same sweater reads 0.5
+ * and 12 units make about one clo.</p>
  */
 public final class ColdSweatInsulators {
 

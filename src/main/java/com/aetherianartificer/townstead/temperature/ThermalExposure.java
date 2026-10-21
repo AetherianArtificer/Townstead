@@ -67,7 +67,7 @@ public record ThermalExposure(float ambient, float wetness, boolean immersed, bo
     }
 
     public float feelsLike() {
-        return ThermalComfort.feelsLike(ambient, humidity, immersed ? 1 : wetness, immersed, water, activity, protection, profile, range);
+        return ThermalComfort.feelsLike(ambient, humidity, immersed ? 1 : wetness, immersed, water, ThermalComfort.metabolism(activity), protection, profile, range);
     }
     public float load() { return ThermalComfort.load(feelsLike(), range, profile); }
     public float target() { return BodyHeat.target(load(), profile, sleeping); }
@@ -84,7 +84,7 @@ public record ThermalExposure(float ambient, float wetness, boolean immersed, bo
         int recovery = BodyHeat.reliefComplete(body, target, profile) ? 0 : -1;
         for (int elapsed = 0; elapsed < seconds;) {
             int step = Math.min(5, seconds - elapsed);
-            float load = ThermalComfort.load(ambient, humidity, immersed ? 1 : wet, immersed, water, activity, protection, profile, range);
+            float load = ThermalComfort.load(ambient, humidity, immersed ? 1 : wet, immersed, water, ThermalComfort.metabolism(activity), protection, profile, range);
             target = BodyHeat.target(load, profile, sleeping);
             double before = next;
             next = BodyHeat.predict((float) next, target, profile, step);

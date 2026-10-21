@@ -155,7 +155,18 @@ public final class ThermalBlocks {
                 Float.isFinite(nativeEffect) ? nativeEffect != 0 : isActive(state), air).radiantDegrees();
         int sign = taggedSource(state);
         return Float.isFinite(nativeEffect) ? nativeEffect
-                : sign > 0 ? settings.heatSourceOffset() : sign < 0 ? settings.coolingSourceOffset() : 0;
+                : sign > 0 ? settings.heatSourceOffset() : sign < 0 ? coolingStrength(settings, air) : 0;
+    }
+
+    /** Air at which a tagged cooling source gives its full {@code cooling_source_offset}. */
+    static final float COOLING_REFERENCE_AIR = 30f;
+
+    /**
+     * Ice and snow sit at 0 C or below: they chill warm air in proportion to the difference and
+     * do nothing to air already below freezing, so a snowfield does not chill a winter night.
+     */
+    public static float coolingStrength(TemperatureSettings settings, float air) {
+        return settings.coolingSourceOffset() * Math.max(0, Math.min(1, air / COOLING_REFERENCE_AIR));
     }
 
     /** For diagnostics: every source in range with its strength, distance, sight line and the heat it gives. */

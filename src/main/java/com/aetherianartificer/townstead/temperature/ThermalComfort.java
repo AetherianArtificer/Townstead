@@ -15,6 +15,53 @@ public final class ThermalComfort {
     static final float WET_BULB_LIMIT = 31f;
     /** Most a wet body chills by evaporation, as in hot desert air. */
     static final double MAX_EVAPORATIVE_CHILL = 10;
+    /** Degrees of fur or clothing warmth that make one clo: a tagged warm piece is one clo. */
+    static final float WARMTH_PER_CLO = 5f;
+    /** Everyday clothes every body wears, in clo; part of the resting reference. */
+    static final float EVERYDAY_CLO = 0.5f;
+    /** Still air around a resting body, in clo. Moving through air thins it. */
+    static final float STILL_AIR_CLO = 0.75f;
+    /** Share of heat lost by breath and bare skin, which clothing does not stop. */
+    static final float UNCOVERED_SHARE = 0.2f;
+    /** Skin above the middle of the comfortable range: where dry heat stops flowing out. */
+    static final float SKIN_MARGIN = 9f;
+    /** Seconds for exertion to build toward a harder activity, and to fade toward an easier one. */
+    static final float EXERTION_RISE_SECONDS = 40f, EXERTION_FALL_SECONDS = 60f;
+
+    /**
+     * Heat a body makes at an activity (rest 0, walking 2, working 4, running or fighting 6), as a
+     * multiple of rest. ISO 8996 rates: walking 2.4, moderate work 3.3, jogging 4.
+     */
+    public static float metabolism(float activity) {
+        float a = Math.max(0, Math.min(6, activity));
+        if (a <= 2) return 1 + 0.7f * a;
+        if (a <= 4) return 2.4f + 0.45f * (a - 2);
+        return 3.3f + 0.35f * (a - 4);
+    }
+
+    /**
+     * Exertion moves toward the activity's metabolism: most of the way in about two minutes when
+     * work starts, and back down in about three when it stops. A short sprint barely counts.
+     */
+    public static float exertion(float previous, float activity, float seconds) {
+        float target = metabolism(activity);
+        if (!(previous >= 1)) previous = 1;
+        float tau = target > previous ? EXERTION_RISE_SECONDS : EXERTION_FALL_SECONDS;
+        return previous + (target - previous) * (float) (1 - Math.exp(-Math.max(0, seconds) / tau));
+    }
+
+    /**
+     * How much harder the cold works on this body than on the resting reference in everyday
+     * clothes: exertion over heat loss (ISO 11079 heat balance). Clothing slows loss through the
+     * covered skin; moving through air thins the still-air layer.
+     */
+    static float coldFactor(float exertion, float clo) {
+        float m = Math.max(1, exertion);
+        float base = EVERYDAY_CLO + STILL_AIR_CLO / (float) Math.pow(m, 0.75);
+        float rest = EVERYDAY_CLO + STILL_AIR_CLO;
+        float loss = (1 - UNCOVERED_SHARE) * rest / (base + Math.max(0, clo)) + UNCOVERED_SHARE * rest / base;
+        return m / loss;
+    }
 
     /** Persisted feel: wetness, and the latest environment load for display and hangout choice. */
     public record State(float wetness, float load, float strainSeconds) {
@@ -51,27 +98,37 @@ public final class ThermalComfort {
     }
 
     /**
-     * Feels like, in Celsius: the air and radiant heat, after clothing and fur, activity, wetness,
-     * humidity and water. Clothing keeps heat in up to the middle of the comfortable range; warm
-     * clothing adds a little in heat unless the coat sheds.
+     * Feels like, in Celsius: the air and radiant heat, after clothing and fur, exertion, wetness,
+     * humidity and water, as the resting reference in everyday clothes would feel it. Below skin
+     * temperature, heat leaves through the clothing, so insulation and exertion divide the gap to
+     * the skin; in heat, both add warmth the body has to sweat away.
+     *
+     * @param exertion heat the body makes as a multiple of rest ({@link #exertion}); 1 at rest
      */
     public static float feelsLike(float ambient, float humidity, float wetness, boolean immersed, float water,
-                                  float activity, ThermalProtection clothing, ThermalProfile profile, ComfortRange range) {
-        float warmthOfWork = profile.ectotherm() ? 0 : activity;
-        if (immersed) return NEUTRAL_WATER - 13 + (water - NEUTRAL_WATER) * WATER_FACTOR + warmthOfWork;
+                                  float exertion, ThermalProtection clothing, ThermalProfile profile, ComfortRange range) {
+        float m = profile.ectotherm() ? 1 : Math.max(1, exertion);
+        if (immersed) return NEUTRAL_WATER - 13 + (water - NEUTRAL_WATER) * WATER_FACTOR + SKIN_MARGIN * (1 - 1 / m);
         wetness = profile.soak(wetness);
         float retained = 1 - 0.75f * wetness;
-        ThermalProtection protection = new ThermalProtection(0, clothing.coldResistance() * retained,
-                clothing.heatResistance(), clothing.thermalResistance() * retained);
         float mid = range.mid();
-        float air = protection.protectAmbient(ambient, mid);
-        float feels = air;
-        float warmth = (profile.insulation() + clothing.offset() * retained) / TemperatureData.AMBIENT_PULL_PER_DEGREE;
-        if (warmth > 0) {
-            if (air < mid) feels = Math.min(Math.max(air, mid), air + warmth);
-            else if (!profile.sheds()) feels += warmth * 0.35f * Math.min(1f, (air - mid) / 6f);
-        } else feels += warmth;
-        feels += warmthOfWork;
+        float clothingWarmth = clothing.offset() * retained / TemperatureData.AMBIENT_PULL_PER_DEGREE;
+        float fur = Math.max(0, profile.insulation() / TemperatureData.AMBIENT_PULL_PER_DEGREE) / WARMTH_PER_CLO;
+        // Immunity effects are not coats: they hold their side at the middle of the range.
+        boolean coldImmune = clothing.coldResistance() + clothing.thermalResistance() >= ThermalProtection.IMMUNE;
+        boolean heatImmune = clothing.heatResistance() + clothing.thermalResistance() >= ThermalProtection.IMMUNE;
+        float worn = (coldImmune ? 0 : clothing.coldClo() * retained) + Math.max(0, clothingWarmth) / WARMTH_PER_CLO;
+        float feels;
+        if (ambient < mid) {
+            float skin = mid + SKIN_MARGIN;
+            feels = skin - (skin - ambient) / coldFactor(m, worn + fur);
+            if (coldImmune) feels = Math.max(mid, feels);
+        } else {
+            if (heatImmune) return mid;
+            float warmth = SKIN_MARGIN * (1 - 1 / coldFactor(m, worn + (profile.sheds() ? 0 : fur)));
+            feels = mid + (ambient - mid + warmth) / (1 + clothing.heatClo());
+        }
+        if (clothingWarmth < 0) feels += clothingWarmth;
         // Evaporation: wet skin and clothes chill toward the wet bulb.
         double wetBulb = Evaporation.wetBulb(ambient, humidity);
         // The gap to the wet bulb is capped: a fire's radiant heat raises the reading, not the air's thirst.
@@ -103,9 +160,9 @@ public final class ThermalComfort {
         return excess == 0 || sensitivity == 0 ? 0f : excess * sensitivity;
     }
 
-    public static float load(float ambient, float humidity, float wetness, boolean immersed, float water, float activity,
+    public static float load(float ambient, float humidity, float wetness, boolean immersed, float water, float exertion,
                              ThermalProtection clothing, ThermalProfile profile, ComfortRange range) {
-        return load(feelsLike(ambient, humidity, wetness, immersed, water, activity, clothing, profile, range), range, profile);
+        return load(feelsLike(ambient, humidity, wetness, immersed, water, exertion, clothing, profile, range), range, profile);
     }
 
     /** Relative humidity holding the reference vapour at this temperature: neither muggy nor dry. */
@@ -114,9 +171,9 @@ public final class ThermalComfort {
     }
 
     /** Neutral humidity, water at the air's temperature, and Townstead's range moved by the Root's offset. */
-    public static float load(float ambient, float wetness, boolean immersed, float activity,
+    public static float load(float ambient, float wetness, boolean immersed, float exertion,
                              ThermalProtection clothing, ThermalProfile profile) {
-        return load(ambient, neutralHumidity(ambient), wetness, immersed, ambient, activity, clothing, profile,
+        return load(ambient, neutralHumidity(ambient), wetness, immersed, ambient, exertion, clothing, profile,
                 TemperatureSettings.get().comfortRange().offset(profile.comfortOffset()));
     }
 }
