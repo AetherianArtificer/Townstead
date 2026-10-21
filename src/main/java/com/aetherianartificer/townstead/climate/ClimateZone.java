@@ -13,8 +13,14 @@ import java.util.Locale;
  */
 public record ClimateZone(ResourceLocation id, SeasonKind seasonKind, float seasonalSwing, float peakLag,
                           float diurnalRange, float humidity, float meanOffset,
-                          float dryOffset, float wetOffset) {
+                          float dryOffset, float wetOffset, float noSeasonFraction) {
     public static final String SCHEMA = "townstead:climate_zone/v1";
+
+    /** A zone that uses the settings' share of its swing when no season mod runs. */
+    public ClimateZone(ResourceLocation id, SeasonKind seasonKind, float seasonalSwing, float peakLag,
+                       float diurnalRange, float humidity, float meanOffset, float dryOffset, float wetOffset) {
+        this(id, seasonKind, seasonalSwing, peakLag, diurnalRange, humidity, meanOffset, dryOffset, wetOffset, Float.NaN);
+    }
 
     public enum SeasonKind { FOUR_SEASONS, WET_DRY, NONE }
 
@@ -35,6 +41,7 @@ public record ClimateZone(ResourceLocation id, SeasonKind seasonKind, float seas
                 Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(json, "humidity", 0.5f))),
                 GsonHelper.getAsFloat(json, "mean_offset_c", 0f),
                 GsonHelper.getAsFloat(wetDry, "dry_offset_c", 0f),
-                GsonHelper.getAsFloat(wetDry, "wet_offset_c", 0f));
+                GsonHelper.getAsFloat(wetDry, "wet_offset_c", 0f),
+                GsonHelper.getAsFloat(json, "no_season_swing_fraction", Float.NaN));
     }
 }

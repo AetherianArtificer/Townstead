@@ -29,6 +29,8 @@ public final class ClimateZones {
     private static volatile Map<ResourceLocation, ClimateZone> zones = Map.of();
     private static volatile ZoneDerivation derivation = ZoneDerivation.EMPTY;
     private static final Map<ResourceLocation, ZoneDerivation.Resolution> RESOLVED = new ConcurrentHashMap<>();
+    private static volatile Map<ResourceLocation, BiomeProfile> profiles = Map.of();
+    private static final Map<ResourceLocation, Optional<ClimateZone>> CLIMATES = new ConcurrentHashMap<>();
 
     private ClimateZones() {}
 
@@ -38,9 +40,43 @@ public final class ClimateZones {
         return id == null ? Optional.empty() : Optional.ofNullable(zones.get(id));
     }
 
-    /** The biome's zone, or empty when it has none (its dimension then decides its climate). */
+    /**
+     * The biome's climate shape: its profile when it has one (keeping its zone's id, so zone tests
+     * still match), else its zone. Empty when it has neither; its dimension then decides.
+     */
     public static Optional<ClimateZone> of(Holder<Biome> biome) {
-        return get(resolve(biome).zone());
+        ResourceLocation key = biome.unwrapKey().map(k -> k.location()).orElse(null);
+        if (key == null) return get(resolve(biome).zone());
+        return CLIMATES.computeIfAbsent(key, k -> {
+            ClimateZone zone = get(resolve(biome).zone()).orElse(null);
+            BiomeProfile profile = profiles.get(k);
+            return profile == null ? Optional.ofNullable(zone)
+                    : Optional.of(profile.asZone(zone == null ? k : zone.id(), zone));
+        });
+    }
+
+    /** The biome's real-climate profile, if a pack gives it one. */
+    public static Optional<BiomeProfile> profile(Holder<Biome> biome) {
+        return biome.unwrapKey().map(k -> profiles.get(k.location()));
+    }
+
+    /** Height above which altitude cools the biome: its profile's usual surface height, else sea level. */
+    public static int referenceY(Holder<Biome> biome, int seaLevel) {
+        return profile(biome).map(p -> p.typicalY() == Integer.MIN_VALUE ? seaLevel : Math.max(seaLevel, p.typicalY())).orElse(seaLevel);
+    }
+
+    /**
+     * Degrees added for height: colder above the reference height, and for profiled biomes warmer
+     * below it at the same rate, down to sea level.
+     */
+    public static float altitudeOffset(Holder<Biome> biome, int y, int seaLevel, float blocksPerDegree) {
+        return altitudeOffset(y, referenceY(biome, seaLevel), seaLevel, profile(biome).isPresent(), blocksPerDegree);
+    }
+
+    static float altitudeOffset(int y, int reference, int seaLevel, boolean profiled, float blocksPerDegree) {
+        if (y > reference) return -(y - reference) / blocksPerDegree;
+        if (!profiled) return 0f;
+        return (reference - Math.max(y, seaLevel)) / blocksPerDegree;
     }
 
     public static ZoneDerivation.Resolution resolve(Holder<Biome> biome) {
@@ -50,7 +86,7 @@ public final class ClimateZones {
     }
 
     /** Clears per-biome answers, for when biome tags change. */
-    public static void clearResolved() { RESOLVED.clear(); }
+    public static void clearResolved() { RESOLVED.clear(); CLIMATES.clear(); }
 
     private static ZoneDerivation.BiomeFacts facts(Holder<Biome> holder, @Nullable ResourceLocation id) {
         Biome biome = holder.value();
@@ -60,7 +96,7 @@ public final class ClimateZones {
                 biome.getBaseTemperature(), biome.getModifiedClimateSettings().downfall());
     }
 
-    /** Loads {@code data/<ns>/climate/zone/*.json} and every namespace's {@code climate/derivation.json}. */
+    /** Loads zones, biome profiles ({@code climate/biome/<path>.json}, namespaced like the biome), dimensions and derivation rules. */
     public static final class Loader extends SimpleJsonResourceReloadListener {
         public Loader() {
             super(new Gson(), "climate");
@@ -70,6 +106,7 @@ public final class ClimateZones {
         protected void apply(Map<ResourceLocation, JsonElement> files, ResourceManager manager, ProfilerFiller profiler) {
             Map<ResourceLocation, ClimateZone> loaded = new TreeMap<>();
             Map<ResourceLocation, DimensionClimate> dimensions = new TreeMap<>();
+            Map<ResourceLocation, BiomeProfile> loadedProfiles = new TreeMap<>();
             ZoneDerivation base = ZoneDerivation.EMPTY;
             Map<String, JsonObject> packs = new TreeMap<>();
             for (Map.Entry<ResourceLocation, JsonElement> file : new TreeMap<>(files).entrySet()) {
@@ -79,6 +116,9 @@ public final class ClimateZones {
                     if (key.getPath().startsWith("zone/")) {
                         ResourceLocation id = ResourceLocation.tryParse(key.getNamespace() + ":" + key.getPath().substring(5));
                         loaded.put(id, ClimateZone.parse(id, json));
+                    } else if (key.getPath().startsWith("biome/")) {
+                        ResourceLocation id = ResourceLocation.tryParse(key.getNamespace() + ":" + key.getPath().substring(6));
+                        loadedProfiles.put(id, BiomeProfile.parse(json));
                     } else if (key.getPath().startsWith("dimension/")) {
                         ResourceLocation id = ResourceLocation.tryParse(key.getNamespace() + ":" + key.getPath().substring(10));
                         dimensions.put(id, DimensionClimate.parse(json));
@@ -99,11 +139,13 @@ public final class ClimateZones {
                 }
             }
             zones = Map.copyOf(loaded);
+            profiles = Map.copyOf(loadedProfiles);
+            CLIMATES.clear();
             DimensionClimate.replaceAll(dimensions);
             derivation = base;
             RESOLVED.clear();
-            Townstead.LOGGER.info("[Climate] Loaded {} climate zones, {} dimension climates and {} derivation rules",
-                    loaded.size(), dimensions.size(), base.rules().size());
+            Townstead.LOGGER.info("[Climate] Loaded {} climate zones, {} biome profiles, {} dimension climates and {} derivation rules",
+                    loaded.size(), loadedProfiles.size(), dimensions.size(), base.rules().size());
         }
     }
 }

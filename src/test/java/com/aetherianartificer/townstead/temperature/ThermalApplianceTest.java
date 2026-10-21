@@ -42,5 +42,24 @@ class ThermalApplianceTest {
         assertFalse(settings.appliance("legendarysurvivaloverhaul:heater").draft());
         assertEquals(25,settings.fireMaxRise());
     }
+    @Test void radiantHeatComesFromTheSurfaceUnlessOverridden() {
+        var hearth=TemperatureSettings.get().appliance("cold_sweat:hearth_bottom");
+        assertEquals(19.2,hearth.output(1,true,12).radiantDegrees(),0.1,"a hearth radiates about 19 at its face");
+        assertTrue(hearth.output(1,true,30).radiantDegrees()<hearth.output(1,true,0).radiantDegrees(),
+                "a hot face stands out less in warm air");
+        assertTrue(hearth.output(-1,true,20).radiantDegrees()<0,"the cooling side radiates cold from its own face");
+        assertTrue(hearth.output(-1,true,20).radiantDegrees()>-5,"a cold face chills far less than a fire warms");
+        var parsed=ThermalAppliance.parse(JsonParser.parseString("{\"power_w\":2500,\"surface_c\":200}").getAsJsonObject());
+        assertEquals(2500,parsed.output(Float.NaN,true).watts());
+        assertEquals(0.0667f*185,parsed.output(Float.NaN,true,15).radiantDegrees(),0.05);
+        var overridden=ThermalAppliance.parse(JsonParser.parseString("{\"power_w\":2500,\"surface_c\":200,\"radiant_degrees\":5}").getAsJsonObject());
+        assertEquals(5,overridden.output(Float.NaN,true,15).radiantDegrees());
+    }
+    @Test void soulFireIsHeat() {
+        var soul=TemperatureSettings.get().appliance("minecraft:soul_campfire");
+        var fire=TemperatureSettings.get().appliance("minecraft:campfire");
+        assertTrue(soul.output(Float.NaN,true,15).watts()>0);
+        assertTrue(soul.output(Float.NaN,true,15).radiantDegrees()>0);
+        assertTrue(soul.output(Float.NaN,true,15).radiantDegrees()<fire.output(Float.NaN,true,15).radiantDegrees());
+    }
 }
-

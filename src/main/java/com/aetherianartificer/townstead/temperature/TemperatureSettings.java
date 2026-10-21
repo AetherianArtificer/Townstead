@@ -32,12 +32,12 @@ public final class TemperatureSettings {
     private float[] anchorCelsius = {-12f, -3f, 13f, 24f, 26f};
     private final Map<Season, Float> seasonOffsets = new EnumMap<>(Season.class);
     private float altitudeBlocksPerDegree = 15f;
-    private float rainOffset = -5f;
+    private float rainOffset = 0f;
     // Legacy extras on top of the climate model; zones now carry the day/night range and seasons.
     private float nightOffset = 0f;
     private float netherCelsius = 45f;
     private float endCelsius = 5f;
-    private int sourceRadius = 7;
+    private int sourceRadius = 10;
     private float heatSourceOffset = 12f;
     private float coolingSourceOffset = -8f;
     // Tough As Nails has no numeric temperature at all, only five steps from ICY to HOT, so a
@@ -54,7 +54,8 @@ public final class TemperatureSettings {
     private float roomHeatCapacity = 2000f, roomSourcePower = 250f;
     private float roomWallConductance = 1.4f, roomInsulatedConductance = 0.08f, roomOpeningConductance = 30f;
     private float thermalTimeScale = 20f, airChangesPerHour = 0.5f;
-    private float cookingRoomHeatFraction = 0.15f;
+    // Radiant strength per degree of a source's face above the air, per block face of size.
+    private float radiantPerSurfaceDegree = 0.0667f;
     // A drafting source adds watts / rise W/K of outside air, so fires alone never lift a room past it.
     private float fireMaxRise = 25f;
     private float radiantMax = (float) RoomHeatBalance.RADIANT_MAX, radiantStack = (float) RoomHeatBalance.RADIANT_STACK,
@@ -64,7 +65,7 @@ public final class TemperatureSettings {
     private final Map<String, ThermalAppliance> appliances = new java.util.LinkedHashMap<>();
     public ThermalAppliance appliance(String id) { return appliances.get(id); }
     public float materialHeatCapacity(ThermalConductance.Material material) { return materialCapacity.get(material); }
-    public float cookingRoomHeatFraction() { return cookingRoomHeatFraction; }
+    public float radiantPerSurfaceDegree() { return radiantPerSurfaceDegree; }
     public float fireMaxRise() { return fireMaxRise; }
     public float radiantMax() { return radiantMax; }
     public float radiantStack() { return radiantStack; }
@@ -89,6 +90,8 @@ public final class TemperatureSettings {
     private float snowfallCelsius = -3f, snowDayMax = 1f, snowNightCooling = -5f;
     // Cloud and rain shrink the day/night range to this fraction.
     private float cloudDiurnalFactor = 0.4f;
+    // Falling rain cools the air this share of the way to its wet-bulb temperature, midday to night.
+    private float rainWetBulbDay = 0.4f, rainWetBulbNight = 0.2f;
     // Yearly means for biomes whose vanilla temperature says little (oceans share one value), by id or #tag.
     private final Map<String, Float> biomeMeans = new java.util.LinkedHashMap<>();
 
@@ -117,10 +120,15 @@ public final class TemperatureSettings {
     private String defaultCropClass = "temperate";
     public Map<String, CropRange> cropClasses() { return cropClasses; }
     public String defaultCropClass() { return defaultCropClass; }
+    // With no season mod, every day sits this share of the zone's swing above the yearly mean.
+    private float noSeasonSwingFraction = 0.65f;
+    public float noSeasonSwingFraction() { return noSeasonSwingFraction; }
     public float snowfallCelsius() { return snowfallCelsius; }
     public float snowDayMax() { return snowDayMax; }
     public float snowNightCooling() { return snowNightCooling; }
     public float cloudDiurnalFactor() { return cloudDiurnalFactor; }
+    public float rainWetBulbDay() { return rainWetBulbDay; }
+    public float rainWetBulbNight() { return rainWetBulbNight; }
     public float groundDampingDepth() { return groundDampingDepth; }
     public float surfaceLayer() { return surfaceLayer; }
     public int geothermalStartY() { return geothermalStartY; }
@@ -132,23 +140,31 @@ public final class TemperatureSettings {
     public float lavaRockMax() { return lavaRockMax; }
     private float dryingSeconds = 90;
     // Effective temperatures within this many degrees of 20 C leave the body alone.
-    private float comfortZone = 6f;
+    // Feels-like range a body is comfortable in without a temperature mod.
+    private ComfortRange comfortRange = new ComfortRange(15f, 27f);
+    // Acclimation without a temperature mod's own: range shifts at full adaptation, and its pace.
+    private ThermalAcclimation.Limits acclimationLimits = new ThermalAcclimation.Limits(-4f, -2f, 2f, 4f, 1f);
+    private float acclimationRatePerMinute = 1f / 60f;
     // Time constant of the body's drift toward what its surroundings would settle it at.
     private float bodyResponseSeconds = 480f;
     private float bodyRecoverySeconds = 120f;
 
+    private static ThermalAppliance surface(double watts, float nativeReference, boolean draft, float surfaceCelsius) {
+        return new ThermalAppliance(watts, Float.NaN, nativeReference, draft, false, surfaceCelsius, Float.NaN, 1f);
+    }
+
     private TemperatureSettings() {
-        appliances.put("legendarysurvivaloverhaul:heater", new ThermalAppliance(3750, 15, 15, false));
-        appliances.put("legendarysurvivaloverhaul:cooler", new ThermalAppliance(-3750, -15, -15));
+        appliances.put("legendarysurvivaloverhaul:heater", surface(3750, 15, false, 250));
+        appliances.put("legendarysurvivaloverhaul:cooler", surface(-3750, -15, true, -20));
         appliances.put("legendarysurvivaloverhaul:heater_top", new ThermalAppliance(0, 0, 0));
-        appliances.put("cold_sweat:hearth_bottom", new ThermalAppliance(4000, 0, 1, false, true));
-        appliances.put("cold_sweat:boiler", new ThermalAppliance(3000, 0, 1, false));
-        appliances.put("cold_sweat:icebox", new ThermalAppliance(-3000, 0, -1, false));
-        appliances.put("minecraft:campfire", new ThermalAppliance(2500, 30, 0));
-        appliances.put("minecraft:soul_campfire", new ThermalAppliance(-2000, -8, 0));
-        appliances.put("minecraft:furnace", new ThermalAppliance(300, 8, 0));
-        appliances.put("minecraft:smoker", new ThermalAppliance(300, 8, 0));
-        appliances.put("minecraft:blast_furnace", new ThermalAppliance(450, 12, 0));
+        appliances.put("cold_sweat:hearth_bottom", new ThermalAppliance(4000, Float.NaN, 1, false, true, 300, -10, 1));
+        appliances.put("cold_sweat:boiler", surface(3000, 1, false, 200));
+        appliances.put("cold_sweat:icebox", surface(-3000, -1, false, -10));
+        appliances.put("minecraft:campfire", surface(5000, 0, true, 500));
+        appliances.put("minecraft:soul_campfire", surface(3500, 0, true, 300));
+        appliances.put("minecraft:furnace", surface(2500, 0, true, 200));
+        appliances.put("minecraft:smoker", surface(2500, 0, true, 200));
+        appliances.put("minecraft:blast_furnace", surface(4000, 0, true, 300));
         materialCapacity.put(ThermalConductance.Material.INSULATION, 500f);
         materialCapacity.put(ThermalConductance.Material.WOOD, 4000f);
         materialCapacity.put(ThermalConductance.Material.EARTH, 16000f);
@@ -203,14 +219,26 @@ public final class TemperatureSettings {
     /** Interior air volume at which one hearth heats a room by its full offset. */
     public int roomSizeReference() { return roomSizeReference; }
     public float dryingSeconds() { return dryingSeconds; }
-    public float comfortZone() { return comfortZone; }
+    public ComfortRange comfortRange() { return comfortRange; }
+    public ThermalAcclimation.Limits acclimationLimits() { return acclimationLimits; }
+    public float acclimationRatePerMinute() { return acclimationRatePerMinute; }
     public float bodyResponseSeconds() { return bodyResponseSeconds; }
     public float bodyRecoverySeconds() { return bodyRecoverySeconds; }
 
     static TemperatureSettings parse(JsonObject json) {
         TemperatureSettings s = new TemperatureSettings();
         s.dryingSeconds = Math.max(1, GsonHelper.getAsFloat(json, "drying_seconds", 90));
-        s.comfortZone = Math.max(0f, GsonHelper.getAsFloat(json, "comfort_zone_c", s.comfortZone));
+        if (json.has("comfort_range_c")) {
+            var range = GsonHelper.getAsJsonArray(json, "comfort_range_c");
+            float low = range.get(0).getAsFloat(), high = range.get(1).getAsFloat();
+            if (high > low) s.comfortRange = new ComfortRange(low, high);
+        }
+        if (json.has("acclimation")) {
+            ThermalAcclimation.Limits limits = ThermalAcclimation.Limits.parse(json.get("acclimation"));
+            if (limits != null) s.acclimationLimits = limits.over(s.acclimationLimits);
+            if (json.get("acclimation").isJsonObject() && json.getAsJsonObject("acclimation").has("full_minutes"))
+                s.acclimationRatePerMinute = 1f / Math.max(1f, GsonHelper.getAsFloat(json.getAsJsonObject("acclimation"), "full_minutes"));
+        }
         s.bodyResponseSeconds = positive(json, "body_response_seconds", s.bodyResponseSeconds);
         s.bodyRecoverySeconds = positive(json, "body_recovery_seconds", s.bodyRecoverySeconds);
         if (json.has("biome_anchors") && json.get("biome_anchors").isJsonArray()) {
@@ -271,10 +299,13 @@ public final class TemperatureSettings {
             }
         }
         s.defaultCropClass = GsonHelper.getAsString(json, "crop_default_class", s.defaultCropClass);
+        s.noSeasonSwingFraction = Math.max(-1f, Math.min(1f, GsonHelper.getAsFloat(json, "no_season_swing_fraction", s.noSeasonSwingFraction)));
         s.snowfallCelsius = GsonHelper.getAsFloat(json, "snowfall_c", s.snowfallCelsius);
         s.snowDayMax = GsonHelper.getAsFloat(json, "snow_day_max_c", s.snowDayMax);
         s.snowNightCooling = Math.min(0f, GsonHelper.getAsFloat(json, "snow_night_cooling_c", s.snowNightCooling));
         s.cloudDiurnalFactor = Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(json, "cloud_diurnal_factor", s.cloudDiurnalFactor)));
+        s.rainWetBulbDay = Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(json, "rain_wet_bulb_fraction_day", s.rainWetBulbDay)));
+        s.rainWetBulbNight = Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(json, "rain_wet_bulb_fraction_night", s.rainWetBulbNight)));
         s.groundDampingDepth = positive(json, "ground_damping_depth_blocks", s.groundDampingDepth);
         s.surfaceLayer = Math.max(0f, GsonHelper.getAsFloat(json, "surface_layer_blocks", s.surfaceLayer));
         s.geothermalStartY = GsonHelper.getAsInt(json, "geothermal_start_y", s.geothermalStartY);
@@ -286,7 +317,7 @@ public final class TemperatureSettings {
         s.lavaRockMax = Math.max(0f, GsonHelper.getAsFloat(json, "lava_rock_max_c", s.lavaRockMax));
         s.thermalTimeScale = positive(json, "thermal_time_scale", s.thermalTimeScale);
         s.airChangesPerHour = positive(json, "thermal_air_changes_per_hour", s.airChangesPerHour);
-        s.cookingRoomHeatFraction = Math.min(1f, positive(json, "thermal_cooking_room_heat_fraction", s.cookingRoomHeatFraction));
+        s.radiantPerSurfaceDegree = positive(json, "thermal_radiant_per_surface_degree", s.radiantPerSurfaceDegree);
         s.fireMaxRise = positive(json, "thermal_fire_max_rise_c", s.fireMaxRise);
         s.radiantMax = positive(json, "thermal_radiant_max_c", s.radiantMax);
         s.radiantStack = Math.max(1f, positive(json, "thermal_radiant_stack_limit", s.radiantStack));

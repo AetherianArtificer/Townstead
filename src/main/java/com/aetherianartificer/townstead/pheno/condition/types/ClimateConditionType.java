@@ -97,7 +97,7 @@ public final class ClimateConditionType implements ConditionType {
                 if (below != underground) return false;
             }
             if (air != null) {
-                float celsius = TemperatureData.ambientCelsius(level, pos);
+                float celsius = TemperatureData.worldCelsius(level, pos);
                 if (celsius < air[0] || celsius > air[1]) return false;
             }
             return true;

@@ -24,8 +24,13 @@ public final class ClimateModel {
     private ClimateModel() {}
 
     /** Every term of a reading, for diagnostics. */
-    public record Sample(float mean, float seasonal, float diurnal, float weather, float air,
+    public record Sample(float mean, float seasonal, float diurnal, float weather, float air, float humidity,
                          @Nullable ClimateZone zone, @Nullable SeasonClock.State clock, Snow snow) {}
+
+    /** Typical relative humidity where neither a profile nor a zone says otherwise. */
+    static final float DEFAULT_HUMIDITY = 0.6f;
+    /** How far relative humidity moves with the day/night curve: up at dawn, down in the afternoon. */
+    static final float HUMIDITY_DAY_SWING = 0.15f;
 
     /** Falling snow, lying snow, daylight and clear sky at a position. */
     public record Snow(boolean falling, boolean lying, boolean day, boolean clear) {
@@ -46,36 +51,46 @@ public final class ClimateModel {
             mean = (float) TfcClimate.average(level, pos).orElse(0);
             seasonal = (float) TfcClimate.instant(level, pos, TfcClimate.now()).orElse(mean) - mean;
         } else if (dimension.usesBiomes()) {
-            mean = biomeMean(biome, zone);
-            int aboveSea = pos.getY() - level.getSeaLevel();
-            if (aboveSea > 0) mean -= aboveSea / s.altitudeBlocksPerDegree();
+            mean = biomeMean(biome, zone, dimension);
+            mean += ClimateZones.altitudeOffset(biome, pos.getY(), level.getSeaLevel(), s.altitudeBlocksPerDegree());
         } else {
             mean = dimension.fixedCelsius();
         }
         mean += dimension.layerOffset(pos.getY());
         if (clock != null && clock.season() != null) mean += s.seasonOffset(clock.season());
-        if (!tfc && clock != null) seasonal = zoneSeasonal(zone, clock, clock.phase());
+        if (!tfc) seasonal = clock != null ? zoneSeasonal(zone, clock, clock.phase()) : dimension.dayCycle() ? timeless(zone) : 0f;
 
         boolean sky = level.canSeeSky(pos);
         float diurnal = 0f;
+        float shape = 0f, daylight = 1f;
+        if (dimension.dayCycle()) {
+            long dayTicks = Math.floorMod(level.getDayTime(), 24000L);
+            int dayLength = EclipticClimate.dayLength(level).orElse(VANILLA_DAY);
+            shape = diurnalShape(dayTicks, dayLength);
+            daylight = daylight(dayTicks, dayLength);
+        }
         if (dimension.dayCycle() && !tfc) {
             float range = zone == null ? 0f : zone.diurnalRange();
             if (level.isRaining()) range *= s.cloudDiurnalFactor();
-            int dayLength = EclipticClimate.dayLength(level).orElse(VANILLA_DAY);
-            diurnal = range * diurnalShape(Math.floorMod(level.getDayTime(), 24000L), dayLength);
+            diurnal = range * shape;
             if (level.isNight()) diurnal += s.nightOffset();
             if (!sky) diurnal *= 0.5f;
         }
 
+        float dry = mean + seasonal + diurnal;
+        float humidity = humidity(zone == null ? DEFAULT_HUMIDITY : zone.humidity(), shape);
         float weather = 0f;
         Snow snow = new Snow(false, false, level.isDay(), !level.isRaining());
         if (dimension.weather()) {
             snow = snow(level, pos);
-            weather = sky && level.isRainingAt(pos) || snow.falling() ? s.rainOffset() : 0f;
+            if (sky && level.isRainingAt(pos) || snow.falling()) {
+                weather = s.rainOffset() - rainCooling(dry, humidity, daylight, s.rainWetBulbDay(), s.rainWetBulbNight());
+                humidity = 1f;
+            }
         }
-        float air = applySnow(mean + seasonal + diurnal + weather, snow, s.snowfallCelsius(), s.snowDayMax(), s.snowNightCooling())
+        float air = applySnow(dry + weather, snow, s.snowfallCelsius(), s.snowDayMax(), s.snowNightCooling())
                 + localOffset(level, pos);
-        return new Sample(mean, seasonal, diurnal, weather, air, zone, clock, snow);
+        return new Sample(mean, seasonal, diurnal, weather, air, humidity, zone, clock, snow);
     }
 
     /**
@@ -97,14 +112,13 @@ public final class ClimateModel {
         }
         if (dimension.usesBiomes()) {
             zone = ClimateZones.of(biome).orElse(null);
-            mean = biomeMean(biome, zone);
-            int aboveSea = pos.getY() - level.getSeaLevel();
-            if (aboveSea > 0) mean -= aboveSea / s.altitudeBlocksPerDegree();
+            mean = biomeMean(biome, zone, dimension);
+            mean += ClimateZones.altitudeOffset(biome, pos.getY(), level.getSeaLevel(), s.altitudeBlocksPerDegree());
         } else {
             mean = dimension.fixedCelsius();
         }
         mean += dimension.layerOffset(pos.getY()) + localOffset(level, pos);
-        if (clock == null) return mean;
+        if (clock == null) return dimension.dayCycle() ? mean + timeless(zone) : mean;
         if (clock.season() != null) mean += s.seasonOffset(clock.season());
         double phase = clock.phase() + daysAhead / (double) Math.max(1, clock.yearDays());
         return mean + zoneSeasonal(zone, clock, phase);
@@ -130,8 +144,21 @@ public final class ClimateModel {
         return legacy + zoneSeasonal(ClimateZones.of(level.getBiome(pos)).orElse(null), clock, clock.phase());
     }
 
-    /** The biome's yearly mean: a pack-set mean, else its vanilla temperature through the anchors; plus the zone offset. */
+    /** As {@link #biomeMean(net.minecraft.core.Holder, ClimateZone)}, with the dimension's mean for biomes it knows nothing about. */
+    public static float biomeMean(net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome> biome, @Nullable ClimateZone zone,
+                                  DimensionClimate dimension) {
+        if (dimension.defaultCelsius() != null && ClimateZones.profile(biome).isEmpty())
+            return dimension.defaultCelsius();
+        return biomeMean(biome, zone);
+    }
+
+    /**
+     * The biome's yearly mean: its real-climate profile, else a pack-set mean, else its vanilla
+     * temperature through the anchors plus the zone offset.
+     */
     public static float biomeMean(net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome> biome, @Nullable ClimateZone zone) {
+        var profile = ClimateZones.profile(biome);
+        if (profile.isPresent()) return profile.get().mean();
         TemperatureSettings s = TemperatureSettings.get();
         var set = s.biomeMean(biome);
         float mean = set.isPresent() ? (float) set.getAsDouble() : s.biomeToCelsius(biome.value().getBaseTemperature());
@@ -168,15 +195,16 @@ public final class ClimateModel {
             return air;
         }
         if (dimension.usesBiomes()) {
-            air = biomeMean(biome, zone);
-            int aboveSea = pos.getY() - level.getSeaLevel();
-            if (aboveSea > 0) air -= aboveSea / s.altitudeBlocksPerDegree();
+            air = biomeMean(biome, zone, dimension);
+            air += ClimateZones.altitudeOffset(biome, pos.getY(), level.getSeaLevel(), s.altitudeBlocksPerDegree());
         } else {
             air = dimension.fixedCelsius();
         }
         air += dimension.layerOffset(pos.getY());
         if (dimension.seasons() && clock != null) {
             air += s.seasonOffset(seasonAt(phase)) + zoneSeasonal(zone, clock, phase);
+        } else if (dimension.dayCycle()) {
+            air += timeless(zone);
         }
         if (dimension.dayCycle() && zone != null) {
             air += zone.diurnalRange() * diurnalShape(dayTicks, VANILLA_DAY);
@@ -229,9 +257,38 @@ public final class ClimateModel {
         };
     }
 
+    /**
+     * The season of a world without a season clock: the zone's typical day, a share of its swing
+     * above the yearly mean. Mild zones use a growing-season day; cold zones stay near their mean,
+     * so ice does not thaw.
+     */
+    public static float timeless(@Nullable ClimateZone zone) {
+        if (zone == null || zone.seasonKind() == ClimateZone.SeasonKind.NONE) return 0f;
+        float fraction = Float.isNaN(zone.noSeasonFraction()) ? TemperatureSettings.get().noSeasonSwingFraction() : zone.noSeasonFraction();
+        return fraction * zone.seasonalSwing();
+    }
+
     /** The zone's yearly swing, warmest {@code peakLag} of a year after the summer solstice. */
     static float seasonal(float swing, float peakLag, double phase) {
         return (float) (swing * Math.cos(2 * Math.PI * (phase - (SOLSTICE + peakLag))));
+    }
+
+    /** Relative humidity from the place's typical value, higher at dawn and lower in the afternoon. */
+    static float humidity(float typical, float shape) {
+        return Math.max(0.05f, Math.min(1f, typical - HUMIDITY_DAY_SWING * shape));
+    }
+
+    /** Falling rain evaporating: further toward the wet bulb by day than by night. */
+    static float rainCooling(float air, float humidity, float daylight, float dayFraction, float nightFraction) {
+        return Evaporation.cooling(air, humidity, nightFraction + (dayFraction - nightFraction) * daylight);
+    }
+
+    /** Sun height as 0 at night, rising to 1 at midday, over a day of {@code dayLength} ticks. */
+    static float daylight(long dayTicks, int dayLength) {
+        int day = Math.max(2000, Math.min(22000, dayLength));
+        double sunrise = 6000 - day / 2.0;
+        double x = Math.floorMod((long) Math.floor(dayTicks - sunrise), 24000L);
+        return x >= day ? 0f : (float) Math.sin(Math.PI * x / day);
     }
 
     /**

@@ -31,12 +31,18 @@ public final class ClimateValueType implements ValueType {
 
     @Override public String key() { return KEY; }
 
+    private static boolean active() {
+        return com.aetherianartificer.townstead.TownsteadConfig.temperatureActive();
+    }
+
     @Override public Value parse(JsonObject json) {
         String field = GsonHelper.getAsString(json, "field", "mean").toLowerCase(Locale.ROOT);
         ToDoubleFunction<Focus> read = switch (field) {
-            case "mean" -> f -> ClimateModel.dailyMean(f.level(), f.pos(), 0);
-            case "seasonal" -> f -> ClimateModel.sample(f.level(), f.pos()).seasonal();
-            case "diurnal" -> f -> ClimateModel.sample(f.level(), f.pos()).diurnal();
+            // Without temperature, the mean is the vanilla biome's and there is no seasonal or daily swing.
+            case "mean" -> f -> active() ? ClimateModel.dailyMean(f.level(), f.pos(), 0)
+                    : com.aetherianartificer.townstead.temperature.TemperatureData.vanillaCelsius(f.level(), f.pos());
+            case "seasonal" -> f -> active() ? ClimateModel.sample(f.level(), f.pos()).seasonal() : 0;
+            case "diurnal" -> f -> active() ? ClimateModel.sample(f.level(), f.pos()).diurnal() : 0;
             case "phase" -> f -> SeasonClock.current(f.level().getServer()).map(SeasonClock.State::phase).orElse(0.0);
             case "swing" -> f -> zone(f).map(ClimateZone::seasonalSwing).orElse(0f);
             case "humidity" -> f -> zone(f).map(ClimateZone::humidity).orElse(0f);

@@ -8,11 +8,15 @@ public final class RoomHeatBalance {
         if (roomFaces <= 0) return 0;
         return Math.min(1.0, roomFaces / (double) Math.max(1, exposedFaces));
     }
-    /** Visible-source exposure, falling linearly to nothing at six blocks; this is not stored heat. */
+    /** Radiant falloff scale: a source's strength halves at about 1.3 blocks, then falls as 1/d². */
+    public static final double RADIANT_FALLOFF_SQUARED = 5.0 / 3.0;
+    /** Radiant heat weaker than this is not felt. */
+    public static final double RADIANT_FLOOR = 0.5;
+
+    /** Radiant heat a visible source gives a body at this distance; it warms the body, not the air. */
     public static double localExposure(double sourceEffect, double distanceSquared) {
-        double distance = Math.sqrt(Math.max(0, distanceSquared));
-        if (distance > 1) distance = 1 + (distance - 1) * 2 / 5;
-        return sourceEffect * Math.max(0, 1 - distance / 3.0);
+        double effect = sourceEffect / (1 + Math.max(0, distanceSquared) / RADIANT_FALLOFF_SQUARED);
+        return Math.abs(effect) < RADIANT_FLOOR ? 0 : effect;
     }
 
     /** Cold sources are mostly surfaces that surround the body (snow, ice), so they stack far less. */
@@ -36,6 +40,29 @@ public final class RoomHeatBalance {
         return strongest + room * -Math.expm1(-extra / room);
     }
 
+    /** Watts of upward drive per floor block for each degree between floor and ceiling air. */
+    public static final double STRATIFICATION_W_PER_DEGREE = 50;
+    public static final double STRATIFICATION_MAX = 8;
+
+    /**
+     * Ceiling minus floor air. Warm sources drive it by how far below the ceiling they sit (hot
+     * air rises), cold sources by how far above the floor (cold air sinks); both leave the floor
+     * coldest. Taller rooms layer more; a room under two blocks does not layer.
+     */
+    public static double stratification(double warmDrive, double coldDrive, int footprint, int height) {
+        if (height < 2) return 0;
+        double layered = (warmDrive + coldDrive) / (STRATIFICATION_W_PER_DEGREE * Math.max(1, footprint))
+                * Math.min(height, 6) / 3.0;
+        return Math.min(STRATIFICATION_MAX, Math.max(0, layered));
+    }
+
+    /** Offset from the room's mean at {@code height} blocks above its floor; it averages to zero over the room. */
+    public static double layerOffset(double stratification, double heightAboveFloor, int roomHeight) {
+        if (roomHeight < 2 || stratification == 0) return 0;
+        double z = Math.max(0, Math.min(1, heightAboveFloor / roomHeight));
+        return stratification * (z - 0.5);
+    }
+
     /** Outside air a burning source pulls through the room, in W/K. */
     public static double draft(double watts, double maxRise) {
         return watts > 0 && maxRise > 0 ? watts / maxRise : 0;
@@ -56,12 +83,6 @@ public final class RoomHeatBalance {
     /** Mod temperature contributions are authored strengths, converted once to effective watts. */
     public static double sourcePower(double nativeDegrees, double wattsPerDegree, int faces, int exposedFaces) {
         return nativeDegrees * wattsPerDegree * sourceShare(faces, exposedFaces);
-    }
-    /** Cooking strength describes local warmth, not the output of a dedicated space heater. */
-    public static double roomSourcePower(double nativeDegrees, double wattsPerDegree, int faces, int exposedFaces,
-                                         boolean cooking, double cookingFraction) {
-        return sourcePower(nativeDegrees, wattsPerDegree, faces, exposedFaces)
-                * (cooking && nativeDegrees > 0 ? cookingFraction : 1);
     }
     public static double advance(double temperature, double capacity, double power,
                                  double conductance, double reservoir, double seconds) {

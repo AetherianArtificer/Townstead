@@ -485,6 +485,17 @@ public final class TownsteadVillager {
 
         private float thermalWetness, comfortLoad, thermalStrainSeconds;
         private int coreThermalTier = 3;
+        /** -1 cold-adapted to 1 hot-adapted; NaN until first set from where the villager lives. */
+        private float thermalAcclimation = Float.NaN;
+
+        public float thermalAcclimation() { return Float.isNaN(thermalAcclimation) ? 0f : thermalAcclimation; }
+        public boolean thermalAcclimationSet() { return !Float.isNaN(thermalAcclimation); }
+        public void setThermalAcclimation(float value) {
+            float next = Math.max(-1f, Math.min(1f, value));
+            if (thermalAcclimation == next) return;
+            thermalAcclimation = next;
+            markDirty();
+        }
 
         public float thermalWetness() { return thermalWetness; }
         public float comfortLoad() { return comfortLoad; }
@@ -829,6 +840,7 @@ public final class TownsteadVillager {
             new com.aetherianartificer.townstead.temperature.ThermalComfort.State(
                     thermalWetness, comfortLoad, thermalStrainSeconds).write(tag);
             tag.putInt("coreTier", coreThermalTier);
+            if (!Float.isNaN(thermalAcclimation)) tag.putFloat("acclimation", thermalAcclimation);
             tag.putBoolean("seekingRelief", seekingRelief);
             tag.putInt("tier", thermalTier);
             return tag;
@@ -843,6 +855,7 @@ public final class TownsteadVillager {
             comfortLoad = comfort.load();
             thermalStrainSeconds = comfort.strainSeconds();
             coreThermalTier = tag.contains("coreTier") ? Math.max(0, Math.min(6, tag.getInt("coreTier"))) : 3;
+            thermalAcclimation = tag.contains("acclimation") ? Math.max(-1f, Math.min(1f, tag.getFloat("acclimation"))) : Float.NaN;
             temperatureMoodDrift = TemperatureData.getMoodDrift(tag);
             thermalCrisis = TemperatureData.isCrisis(tag);
             seekingRelief = tag.getBoolean("seekingRelief");

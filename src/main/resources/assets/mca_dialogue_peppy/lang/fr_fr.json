@@ -3,6 +3,7 @@
   "peppy.dialogue.chat.butcher_request.no_livestock/2": "<excited>L'enclos est vide ! Envoie-les-moi, je suis chaud bouillant !</excited>",
   "peppy.dialogue.chat.butcher_request.no_hook/1": "<happy>Hé hé, on pourrait avoir un crochet par ici ? Il me faut un endroit pour suspendre les choses !</happy>",
   "peppy.dialogue.chat.butcher_request.no_basin/1": "<excited>Un bac, un bac, mon village pour un bac ! S'il te plaît, dis oui ?</excited>",
+  "peppy.dialogue.chat.butcher_request.no_blood_grate/1": "<excited>Une grille à sang, une grille à sang, mon village pour une grille à sang ! S'il te plaîîît ?</excited>",
   "peppy.dialogue.chat.village_life.butcher_shop/1": "<happy>Notre boucher est le MEILLEUR. Sérieux, les meilleures découpes de la région !</happy>",
   "peppy.dialogue.chat.village_life.smokehouse/1": "<excited>Ce fumoir, oh là là, l'ODEUR ! Jambon jambon jambon jambon jambon !</excited>",
   "peppy.dialogue.chat.village_life.tannery/1": "<happy>La tannerie est piquante mais le cuir ! Magnifique ! J'ai trois ceintures !</happy>",
@@ -125,5 +126,18 @@
   "peppy.dialogue.chat.leatherworker_request.no_salt/1": "<happy>Petite demande, %1$s, du sel s'il te plaît ! Le séchage n'attend personne !</happy>",
   "peppy.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<happy>Une éponge mouillée ! Ou un chiffon ! L'un ou l'autre c'est génial ! Apporte-m'en un !</happy>",
   "peppy.dialogue.chat.leatherworker_request.no_storage/1": "<happy>Le sac est bourré, %1$s ! Un coffre me sauverait sérieusement la journée !</happy>",
-  "peppy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Youpi ! Regarde ce cuir ! Doux, lisse, treees beau !</happy>"
+  "peppy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Youpi ! Regarde ce cuir ! Doux, lisse, treees beau !</happy>",
+  "peppy.dialogue.chat.beverage_artisan_request.no_worksite/1": "<excited>Construisons un poste à boissons ! J'en ferai l'endroit le plus animé de la ville !</excited>",
+  "peppy.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<excited>Plus d'ingrédients ! Vite, remplissons ces étagères !</excited>",
+  "peppy.dialogue.chat.beverage_artisan_request.no_storage/1": "<excited>Tant de boissons prêtes et nulle part où les poser ! Plus de stockage !</excited>",
+  "peppy.dialogue.chat.beverage_artisan_request.unreachable/1": "<excited>Oups, barrage devant le poste ! Dégage-le et je me remets au travail !</excited>",
+  "peppy.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<excited>%2$s, c'est le prochain, dès qu'on aura trouvé les ingrédients !</excited>",
+  "peppy.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<excited>Oh, cette soirée vient de devenir encore plus pétillante !</excited>",
+  "peppy.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<excited>Une autre histoire ! J'en ai au moins sept !</excited>",
+  "peppy.dialogue.chat.townstead_drunk.drunk_arrival/1": "<excited>La meilleure soirée de ma vie ! Peut-être deux fois !</excited>",
+  "peppy.dialogue.chat.townstead_drunk.drunk_ambient/1": "<excited>J'ai commencé une danse et mes pieds en ont inventé une nouvelle !</excited>",
+  "peppy.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>D'accord ! L'heure de l'eau ! Et peut-être du sol !</sleepy>",
+  "peppy.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>Je m'amuse toujours. Juste beaucoup, beaucoup plus doucement.</sleepy>",
+  "peppy.dialogue.chat.townstead_drunk.service_refused/1": "<happy>Plus pour moi ! L'eau peut se joindre à la fête !</happy>",
+  "peppy.dialogue.chat.townstead_drunk.recovered/1": "<happy>Je suis de retour ! Doucement de retour !</happy>"
 }

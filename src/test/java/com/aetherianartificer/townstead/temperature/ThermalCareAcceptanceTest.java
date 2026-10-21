@@ -58,7 +58,7 @@ class ThermalCareAcceptanceTest {
         var ecto = new ThermalProfile(30, .5f, 1, 1, 0, false, true, false);
         var bare = new ThermalExposure(5, 0, false, false, 0, ThermalProtection.NONE, ecto, false);
         assertTrue(bare.withProtection(new ThermalProtection(1.5f, 0, 0, 0)).target() > bare.target());
-        assertEquals(30, BodyHeat.target(0, 6, ecto, false));
+        assertEquals(30, BodyHeat.target(0, ecto, false));
     }
     @Test void thermalServingMustHelpWithoutInstantlyOvershooting() {
         var cold = at(5, 0, ThermalProtection.NONE);

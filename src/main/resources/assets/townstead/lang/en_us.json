@@ -4122,6 +4122,7 @@
   "block.townstead.room_ownership_tag": "Ownership Plaque",
   "block.townstead.room_thermometer": "Room Thermometer",
   "townstead.thermometer.reading": "Temperature: %s",
+  "townstead.thermometer.reading_source": "Air: %s, by the source: %s",
   "townstead.room_ownership.title": "Ownership Plaque",
   "townstead.room_ownership.this_room": "This Room",
   "townstead.room_ownership.public": "Make Public",

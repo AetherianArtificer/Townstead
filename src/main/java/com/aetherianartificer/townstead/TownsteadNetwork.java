@@ -144,6 +144,10 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.root.RootDiscoveredS2CPayload::write,
                 com.aetherianartificer.townstead.root.RootDiscoveredS2CPayload::read,
                 payload -> com.aetherianartificer.townstead.client.root.RootDiscoveryToast.show(payload));
+        registerS2C(com.aetherianartificer.townstead.root.EntityGlowS2CPayload.class,
+                com.aetherianartificer.townstead.root.EntityGlowS2CPayload::write,
+                com.aetherianartificer.townstead.root.EntityGlowS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.root.GeneEntityGlow.apply(payload));
         registerS2C(com.aetherianartificer.townstead.switchboard.SwitchboardSyncS2CPayload.class,
                 com.aetherianartificer.townstead.switchboard.SwitchboardSyncS2CPayload::write,
                 com.aetherianartificer.townstead.switchboard.SwitchboardSyncS2CPayload::read,

@@ -162,7 +162,9 @@ public final class PhenoSchemas {
                 .field(of("condition", PhenoType.CONDITION)).build());
 
         NodeSchemas.register(NodeSchema.of("pheno:glow", NodeDomain.GENE)
-                .doc("Makes the holder glow, optionally only while a condition holds.")
+                .doc("Makes the holder glow, optionally only while a condition holds. With on, the "
+                        + "selected entities glow instead, seen by the holder alone.")
+                .field(of("on", PhenoType.ANY).doc("Entities to outline for the holder alone; omitted means the holder glows for everyone."))
                 .field(of("condition", PhenoType.CONDITION)).build());
 
         NodeSchemas.register(NodeSchema.of("pheno:particle", NodeDomain.GENE)
@@ -495,6 +497,9 @@ public final class PhenoSchemas {
         // --- Consolidated condition ---
         NodeSchemas.register(NodeSchema.of("pheno:reserved", NodeDomain.CONDITION)
                 .doc("Tests whether the current entity is held by any live Pheno reservation.").build());
+        NodeSchemas.register(NodeSchema.of("pheno:hostile", NodeDomain.CONDITION)
+                .doc("The entity is a threat to the other party: a monster, a mob targeting it, or hostile "
+                        + "by disposition. In a selector's where, reads as hostile to the one selecting.").build());
         NodeSchemas.register(NodeSchema.of("pheno:environment", NodeDomain.CONDITION)
                 .doc("One block of weather/exposure/time/biome/dimension/effects (AND across, OR within).")
                 .field(of("weather", PhenoType.STRING).asList())

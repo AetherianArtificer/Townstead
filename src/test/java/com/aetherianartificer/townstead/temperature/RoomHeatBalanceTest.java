@@ -24,9 +24,10 @@ class RoomHeatBalanceTest {
                     RoomHeatBalance.localExposure(-10, distance * distance), 1e-10);
         }
     }
-    @Test void nearbyFireStillWarmsAFewBlocksAway() {
-        assertEquals(10 * (1 - 1.4 / 3), RoomHeatBalance.localExposure(10, 4), 1e-10);
-        assertTrue(RoomHeatBalance.localExposure(10, 9) > 3.5);
+    @Test void aHearthIsFeltStronglyCloseUpAndFallsOffAsInverseSquare() {
+        assertEquals(12, RoomHeatBalance.localExposure(19.2, 1), 0.05);
+        assertEquals(3, RoomHeatBalance.localExposure(19.2, 9), 0.05);
+        assertTrue(RoomHeatBalance.localExposure(19.2, 16) < 2);
     }
     @Test void fireDraftBoundsTheRiseOfASealedRoom() {
         for (double watts : new double[] {500, 2500, 25000}) {
@@ -75,5 +76,20 @@ class RoomHeatBalanceTest {
         assertEquals(22,RoomHeatBalance.advance(10,100,20,0,0,60),1e-10);
         assertThrows(IllegalArgumentException.class, () -> RoomHeatBalance.advance(10,0,1,1,10,1));
         assertThrows(IllegalArgumentException.class, () -> RoomHeatBalance.advance(10,100,Double.NaN,1,10,1));
+    }
+    @Test void aLowFireWarmsTheCeilingAndACoolerChillsTheFloor() {
+        double fire = RoomHeatBalance.stratification(4000 * (1 - 1 / 6.0), 0, 25, 3);
+        assertTrue(fire > 2 && fire < 6, "hearth in a 5 by 5 room: " + fire);
+        assertTrue(RoomHeatBalance.layerOffset(fire, 2.5, 3) > RoomHeatBalance.layerOffset(fire, 0.5, 3));
+        double cooler = RoomHeatBalance.stratification(0, 3000 * 0.5, 25, 3);
+        assertTrue(RoomHeatBalance.layerOffset(cooler, 0.5, 3) < 0, "cold air pools at the floor");
+        assertEquals(0, RoomHeatBalance.stratification(4000, 0, 25, 1), "a crawlspace does not layer");
+        assertEquals(0, RoomHeatBalance.stratification(0, 0, 25, 4), "no source, no layers");
+        assertEquals(RoomHeatBalance.STRATIFICATION_MAX, RoomHeatBalance.stratification(1e7, 0, 1, 10));
+    }
+    @Test void theProfileAveragesToTheRoomsMean() {
+        double s = 5, sum = 0;
+        for (int y = 0; y < 4; y++) sum += RoomHeatBalance.layerOffset(s, y + 0.5, 4);
+        assertEquals(0, sum, 1e-9);
     }
 }

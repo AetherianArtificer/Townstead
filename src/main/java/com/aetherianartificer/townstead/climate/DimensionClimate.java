@@ -17,10 +17,12 @@ import java.util.Map;
 /**
  * How a dimension's climate works: biome climates or one fixed temperature, whether the season
  * clock and the day/night curve apply, whether weather and the ground model apply, and vertical
- * offsets. Dimensions without a file take defaults from their dimension type.
+ * offsets. With biome climates, {@code default_c} is the mean of a biome with neither a profile nor a
+ * zone. Dimensions without a file take defaults from their dimension type.
  */
 public record DimensionClimate(Float fixedCelsius, boolean seasons, boolean dayCycle, boolean weather,
-                               boolean underground, List<Layer> layers) {
+                               boolean underground, List<Layer> layers,
+                               Float defaultCelsius) {
     public static final String SCHEMA = "townstead:climate_dimension/v1";
 
     /** An offset above or below a height; both bounds are optional. */
@@ -50,11 +52,11 @@ public record DimensionClimate(Float fixedCelsius, boolean seasons, boolean dayC
     /** Fixed heat for ultrawarm types, fixed cold for unnatural ones, roofed worlds without sky or seasons. */
     static DimensionClimate defaults(DimensionType type, ResourceLocation id) {
         TemperatureSettings s = TemperatureSettings.get();
-        if (type.ultraWarm()) return new DimensionClimate(s.netherCelsius(), false, false, false, false, List.of());
-        if (!type.natural()) return new DimensionClimate(s.endCelsius(), false, false, false, false, List.of());
-        if (type.hasCeiling()) return new DimensionClimate(null, false, false, false, false, List.of());
+        if (type.ultraWarm()) return new DimensionClimate(s.netherCelsius(), false, false, false, false, List.of(), null);
+        if (!type.natural()) return new DimensionClimate(s.endCelsius(), false, false, false, false, List.of(), null);
+        if (type.hasCeiling()) return new DimensionClimate(null, false, false, false, false, List.of(), null);
         boolean overworld = id.getNamespace().equals("minecraft") && id.getPath().equals("overworld");
-        return new DimensionClimate(null, overworld, type.hasSkyLight(), type.hasSkyLight(), true, List.of());
+        return new DimensionClimate(null, overworld, type.hasSkyLight(), type.hasSkyLight(), true, List.of(), null);
     }
 
     static DimensionClimate parse(JsonObject json) {
@@ -79,6 +81,7 @@ public record DimensionClimate(Float fixedCelsius, boolean seasons, boolean dayC
                 GsonHelper.getAsBoolean(json, "day_cycle", fixed == null),
                 GsonHelper.getAsBoolean(json, "weather", fixed == null),
                 GsonHelper.getAsBoolean(json, "underground", fixed == null),
-                List.copyOf(layers));
+                List.copyOf(layers),
+                json.has("default_c") ? GsonHelper.getAsFloat(json, "default_c") : null);
     }
 }

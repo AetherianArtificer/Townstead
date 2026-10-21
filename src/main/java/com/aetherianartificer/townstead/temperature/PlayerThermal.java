@@ -31,6 +31,9 @@ public final class PlayerThermal {
             /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(serverPlayer, reading);
             *///?}
         }
+        // Acclimation moves over minutes; every ten seconds is plenty.
+        if ((player.level().getGameTime() + player.getId()) % 200 == 0)
+            PlayerFeelsLike.acclimate(player, 10f / 60f);
         if (!PlayerThermalOffsets.expireIfDue(player)) return;
         AmbientTemperatureBridge bridge = TemperatureBridgeResolver.get();
         if (bridge != null) bridge.onThermalInfluenceEnded(player);

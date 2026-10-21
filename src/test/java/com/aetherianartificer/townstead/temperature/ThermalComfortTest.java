@@ -8,7 +8,7 @@ class ThermalComfortTest {
         return ThermalComfort.load(ambient, wet, immersed, activity, gear, ThermalProfile.DEFAULT);
     }
     @Test void movementHelpsButDoesNotEraseColdWaterExposure() {
-        assertTrue(load(15, 0, false, 2, ThermalProtection.NONE) > load(15, 0, false, 0, ThermalProtection.NONE));
+        assertTrue(load(10, 0, false, 2, ThermalProtection.NONE) > load(10, 0, false, 0, ThermalProtection.NONE));
         assertTrue(load(12, 1, true, 2, ThermalProtection.NONE) <= -12, "Cold water is left at once");
     }
     @Test void wetClothingLosesProtectionAndStaysWetOnLand() {

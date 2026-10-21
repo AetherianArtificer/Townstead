@@ -44,13 +44,8 @@ public final class BuiltinTemperatureBridge implements AmbientTemperatureBridge 
         TemperatureSettings s = TemperatureSettings.get();
         float celsius = climateCelsius(level, pos);
 
-        float sources = ThermalBlocks.sourceOffset(level, pos, s);
-        sources += structureZone(level, pos);
-        // Loose blocks and recognised structures add up, but a bonfire ring is not a furnace.
-        float warmCap = Math.abs(s.heatSourceOffset()) * 1.5f;
-        float coolCap = Math.abs(s.coolingSourceOffset()) * 1.5f;
-        celsius += Math.max(-coolCap, Math.min(warmCap, sources));
-        return celsius;
+        // Radiant heat from sources in sight, under the same stacking cap as in rooms.
+        return celsius + ThermalBlocks.sourceOffset(level, pos, s, celsius) + structureZone(level, pos);
     }
 
     private static float structureZone(ServerLevel level, BlockPos pos) {

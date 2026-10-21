@@ -210,13 +210,24 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
                         && args[0] instanceof Player player) {
                     float offset = PlayerThermalOffsets.get(player);
                     int steps = 0;
+                    if (com.aetherianartificer.townstead.temperature.PlayerFeelsLike.active()) {
+                        // The level from Townstead's environment, moved to what this player feels.
+                        var environment = RoomHeatBackend.environment(player.level(), player.blockPosition());
+                        if (environment.isPresent()) {
+                            float air = (float) environment.getAsDouble();
+                            float wet = playerWetness(player);
+                            float felt = com.aetherianartificer.townstead.temperature.PlayerFeelsLike.sent(player, air,
+                                    Float.isFinite(wet) ? wet : 0f);
+                            steps += RoomHeatBackend.tanOrdinal(felt) - RoomHeatBackend.tanOrdinal(air);
+                        }
+                    }
                     if (offset != 0f) {
                         steps = Math.round(offset / TemperatureSettings.get().celsiusPerTanStep());
                         // Anything the author meant as a nudge moves at least one step, or a
                         // warming smaller than the step width would read as doing nothing.
                         if (steps == 0) steps = offset > 0 ? 1 : -1;
                     }
-                    steps -= rainSoakSteps(player);
+                    if (!com.aetherianartificer.townstead.temperature.PlayerFeelsLike.active()) steps -= rainSoakSteps(player);
                     // increment clamps to the ICY..HOT range itself.
                     return steps == 0 ? args[1] : increment.invoke(args[1], steps);
                 }
@@ -334,6 +345,28 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
         } catch (Exception e) {
             Townstead.LOGGER.debug("Tough As Nails proximity modifier hook not available: {}", e.toString());
         }
+    }
+
+    /** Wet just out of water, drying over Tough As Nails' wet ticks. */
+    @Override
+    public float playerWetness(Player player) {
+        if (player.isInWater()) return 1f;
+        try {
+            Object data = Class.forName("toughasnails.api.temperature.TemperatureHelper")
+                    .getMethod("getTemperatureData", Player.class).invoke(null, player);
+            int dry = ((Number) data.getClass().getMethod("getDryTicks").invoke(data)).intValue();
+            Object config = Class.forName("toughasnails.init.ModConfig").getField("temperature").get(null);
+            int wetTicks = config.getClass().getField("wetTicks").getInt(config);
+            return wetTicks <= 0 ? 0f : Math.max(0f, Math.min(1f, 1f - dry / (float) wetTicks));
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            return player.isInWaterOrRain() ? 1f : 0f;
+        }
+    }
+
+    /** The neutral level in Townstead's mapping of Tough As Nails' steps. */
+    @Override
+    public float[] comfortRangeCelsius() {
+        return isActive() ? new float[]{12.5f, 25f} : null;
     }
 
     @Override

@@ -58,8 +58,11 @@ class DimensionClimateTest {
     @Test
     void shippedVanillaDimensionsParse() {
         assertTrue(DimensionClimate.parse(shipped("overworld")).usesBiomes());
-        assertEquals(45f, DimensionClimate.parse(shipped("the_nether")).fixedCelsius());
-        assertEquals(5f, DimensionClimate.parse(shipped("the_end")).fixedCelsius());
+        var nether = DimensionClimate.parse(shipped("the_nether"));
+        assertTrue(nether.usesBiomes());
+        assertEquals(45f, nether.defaultCelsius());
+        assertFalse(nether.seasons() || nether.dayCycle() || nether.weather() || nether.underground());
+        assertEquals(-5f, DimensionClimate.parse(shipped("the_end")).defaultCelsius());
         assertFalse(DimensionClimate.parse(shipped("the_end")).seasons());
     }
 }

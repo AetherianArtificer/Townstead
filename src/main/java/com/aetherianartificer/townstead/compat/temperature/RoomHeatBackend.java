@@ -22,18 +22,38 @@ public final class RoomHeatBackend {
     public static OptionalDouble room(Level level, BlockPos pos) {
         return level instanceof ServerLevel server && !bypassed() ? RoomHeat.at(server, pos) : OptionalDouble.empty();
     }
-    /** LSO players and world queries share the same climate and local source exposure. */
+    /**
+     * Whether Townstead applies heat and cooling blocks to every body, players included. It does
+     * when its climate and room heat both run; otherwise each temperature mod keeps its own block
+     * heat for players.
+     */
+    public static boolean ownsBlockHeat() {
+        return TemperatureSettings.get().roomHeatEnabled() && TownsteadConfig.townsteadClimateAuthority()
+                && TownsteadConfig.temperatureActive();
+    }
+    /**
+     * A player's environment for the temperature mods: room air or open-air climate, plus radiant
+     * heat from sources in sight when Townstead owns block heat. Without it, the mod adds its own.
+     */
     public static OptionalDouble environment(Level level, BlockPos pos) {
-        if (!(level instanceof ServerLevel server) || bypassed()
+        if (!(level instanceof ServerLevel server) || bypassed() || !TownsteadConfig.temperatureActive()
                 || !TemperatureSettings.get().roomHeatEnabled() && !TownsteadConfig.townsteadClimateAuthority())
             return OptionalDouble.empty();
-        return OptionalDouble.of(ENVIRONMENT.get(server, pos.asLong(), server.getGameTime(), () -> {
-            var room = RoomHeat.at(server, pos);
-            return room.isPresent() ? room.getAsDouble() : (double) outdoor(server, pos)
-                    + ThermalBlocks.sourceOffset(server, pos, TemperatureSettings.get());
+        boolean owns = ownsBlockHeat();
+        return OptionalDouble.of((owns ? ENVIRONMENT : CLIMATE_ONLY).get(server, pos.asLong(), server.getGameTime(), () -> {
+            var room = owns ? RoomHeat.at(server, pos) : RoomHeat.airAt(server, pos);
+            if (room.isPresent()) return room.getAsDouble();
+            float outside = outdoor(server, pos);
+            return owns ? (double) outside + ThermalBlocks.sourceOffset(server, pos, TemperatureSettings.get(), outside)
+                    : (double) outside;
         }));
     }
-    public static void clear() { ENVIRONMENT.clear(); }
+    private static final ThermalCache<ServerLevel, Long, Double> CLIMATE_ONLY = new ThermalCache<>(1, 2048);
+    // Player temperature updates ask every tick; the climate at a block changes over seconds.
+    private static final ThermalCache<ServerLevel, Long, Float> COLD_SWEAT_SHIFT = new ThermalCache<>(20, 2048);
+    private record TanReading(float climate, float shift) {}
+    private static final ThermalCache<ServerLevel, Long, TanReading> TAN_SHIFT = new ThermalCache<>(20, 2048);
+    public static void clear() { ENVIRONMENT.clear(); CLIMATE_ONLY.clear(); COLD_SWEAT_SHIFT.clear(); TAN_SHIFT.clear(); }
     public static float outdoor(ServerLevel level, BlockPos pos) {
         return sample(2, () -> {
             var backend = TemperatureBridgeResolver.get();
@@ -56,6 +76,10 @@ public final class RoomHeatBackend {
      * its own model lacks. Zero when nothing applies.
      */
     public static float coldSweatShift(ServerLevel level, BlockPos pos) {
+        if (!TownsteadConfig.temperatureActive()) return 0f;
+        return COLD_SWEAT_SHIFT.get(level, pos.asLong(), level.getGameTime(), () -> computeColdSweatShift(level, pos.immutable()));
+    }
+    private static float computeColdSweatShift(ServerLevel level, BlockPos pos) {
         java.util.function.Supplier<Float> climate =
                 () -> sample(1, () -> ColdSweatTemperatureBridge.INSTANCE.uncachedAmbient(level, pos, true));
         if (TownsteadConfig.townsteadClimateAuthority()) {
@@ -72,23 +96,64 @@ public final class RoomHeatBackend {
      * changes.
      */
     public static String tanOutdoor(ServerLevel level, BlockPos pos, String fullLevel) {
+        if (!TownsteadConfig.temperatureActive()) return null;
         int full = java.util.Arrays.asList(TAN_LEVELS).indexOf(fullLevel);
         if (full < 0) return null;
-        float climate = ToughAsNailsTemperatureBridge.INSTANCE.outdoorCelsius(level, pos);
-        if (!Float.isFinite(climate)) return null;
-        float shift = TownsteadConfig.townsteadClimateAuthority()
-                ? builtinOutdoor(level, pos) - climate
-                : GroundClimate.backendShift(level, pos, ToughAsNailsTemperatureBridge.INSTANCE, () -> climate);
-        if (shift == 0f) return null;
-        int shifted = TanTemperaturePolicy.shiftedIndex(climate, shift, full - tanOrdinal(climate));
+        TanReading reading = TAN_SHIFT.get(level, pos.asLong(), level.getGameTime(), () -> {
+            BlockPos at = pos.immutable();
+            float climate = ToughAsNailsTemperatureBridge.INSTANCE.outdoorCelsius(level, at);
+            if (!Float.isFinite(climate)) return null;
+            float shift = TownsteadConfig.townsteadClimateAuthority()
+                    ? builtinOutdoor(level, at) - climate
+                    : GroundClimate.backendShift(level, at, ToughAsNailsTemperatureBridge.INSTANCE, () -> climate);
+            return new TanReading(climate, shift);
+        });
+        if (reading == null || reading.shift() == 0f) return null;
+        int shifted = TanTemperaturePolicy.shiftedIndex(reading.climate(), reading.shift(), full - tanOrdinal(reading.climate()));
         return shifted == full ? null : TAN_LEVELS[shifted];
     }
     /**
      * Room air replaces Cold Sweat's climate; Cold Sweat keeps its own block heat, and its hearth
      * blends from the room air rather than from the outdoor climate.
      */
-    public static double coldSweatPlayer(Level level, BlockPos pos, java.util.List<?> modifiers, Object trait, double original) {
+    /** Cold Sweat's temperature traits for an entity: WORLD from Townstead's environment, RATE without its clothing. */
+    public static double coldSweatEntity(net.minecraft.world.entity.LivingEntity entity, java.util.List<?> modifiers,
+                                         Object trait, double original) {
+        if (!TownsteadConfig.temperatureActive()) return original;
+        String name = trait instanceof Enum<?> value ? value.name() : "";
+        if (name.equals("WORLD")) return coldSweatPlayer(entity, modifiers, trait, original);
+        // Clothing changes what the player feels, so Cold Sweat's insulation no longer slows the body as well.
+        if (!(entity instanceof net.minecraft.world.entity.player.Player player)
+                || !com.aetherianartificer.townstead.temperature.PlayerFeelsLike.active() || bypassed()) return original;
+        if (name.equals("RATE"))
+            return original - ColdSweatTemperatureBridge.INSTANCE.contribution(modifiers, trait, "ArmorInsulationTempModifier");
+        // A Root with its own acclimation limits acclimates by Townstead's rule instead of Cold Sweat's.
+        if ((name.equals("FREEZING_POINT") || name.equals("BURNING_POINT"))
+                && com.aetherianartificer.townstead.temperature.ThermalProfile.of(player).acclimation() != null)
+            return original - ColdSweatTemperatureBridge.INSTANCE.contribution(modifiers, trait, "AcclimationTempModifier");
+        return original;
+    }
+    public static double coldSweatPlayer(net.minecraft.world.entity.LivingEntity entity, java.util.List<?> modifiers, Object trait, double original) {
+        Level level = entity.level();
+        BlockPos pos = entity.blockPosition();
         if (!(level instanceof ServerLevel server) || bypassed()) return original;
+        var bridge = ColdSweatTemperatureBridge.INSTANCE;
+        if (ownsBlockHeat()) {
+            // Townstead's air and radiant heat replace Cold Sweat's climate and its own block heat.
+            OptionalDouble environment = environment(server, pos);
+            float climate = sample(1, () -> bridge.uncachedAmbient(server, pos, true));
+            if (environment.isEmpty() || !Float.isFinite(climate)) return original;
+            double blocks = bridge.contribution(modifiers, trait, "BlockTempModifier");
+            if (entity instanceof net.minecraft.world.entity.player.Player player) {
+                // What the player feels replaces the air: clothing, wetness, humidity and Root traits.
+                double soak = bridge.contribution(modifiers, trait, "WaterTempModifier");
+                float felt = com.aetherianartificer.townstead.temperature.PlayerFeelsLike.sent(player,
+                        (float) environment.getAsDouble(), bridge.wetness(modifiers, player));
+                return bridge.shiftBeforeThermalSources(modifiers, trait, original, (felt - climate) / 25.0 - blocks - soak);
+            }
+            return bridge.shiftBeforeThermalSources(modifiers, trait, original,
+                    (environment.getAsDouble() - climate) / 25.0 - blocks);
+        }
         OptionalDouble air = RoomHeat.airAt(server, pos);
         if (air.isEmpty()) {
             float shift = coldSweatShift(server, pos);

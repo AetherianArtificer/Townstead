@@ -45,6 +45,8 @@ public final class CropClimate {
 
     /** Only the temperature check, for the growth hook; the season mods gate their own growth. */
     public static Verdict temperatureVerdict(ServerLevel level, BlockPos pos, BlockState crop, int daysAhead) {
+        // Without temperature, crops grow as vanilla and any season mod say.
+        if (!com.aetherianartificer.townstead.TownsteadConfig.temperatureActive()) return Verdict.GROWS;
         var range = TemperatureSettings.get().cropClasses().get(cropClass(crop));
         if (range == null) return Verdict.GROWS;
         return judge(growingCelsius(level, pos, daysAhead), range.min(), range.max());
@@ -58,8 +60,11 @@ public final class CropClimate {
 
     /** The day's mean air at the crop: room air in a room, else the climate without day/night or weather. */
     public static float growingCelsius(ServerLevel level, BlockPos pos, int daysAhead) {
-        var room = RoomHeat.at(level, pos);
-        if (room.isPresent()) return (float) room.getAsDouble();
+        // Only a covered crop can be in a room; an open field never starts a room scan.
+        if (level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, pos.getX(), pos.getZ()) > pos.getY() + 1) {
+            var room = RoomHeat.at(level, pos);
+            if (room.isPresent()) return (float) room.getAsDouble();
+        }
         return ClimateModel.dailyMean(level, pos, daysAhead);
     }
 

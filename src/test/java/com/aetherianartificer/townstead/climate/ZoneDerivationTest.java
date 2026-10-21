@@ -63,8 +63,20 @@ class ZoneDerivationTest {
     void seasonModTagsComeBeforeConventionalTags() {
         var r = shipped().resolve(biome("examplepack:monsoon_hills", 0.8f, 0.9f,
                 "eclipticseasons:rain/monsoonal", "c:is_mountain/slope"), zoneIds());
-        assertEquals(id("tropical_humid"), r.zone());
+        assertEquals(id("semi_arid"), r.zone());
         assertEquals("provider", r.step());
+    }
+
+    @Test
+    void eclipticRainTagsMapToWhatEclipticMeans() {
+        assertEquals(id("tropical_humid"), shipped().resolve(biome("examplepack:wet_jungle", 0.95f, 0.9f,
+                "eclipticseasons:rain/rainy", "eclipticseasons:rain/seasonal/hot"), zoneIds()).zone());
+        assertEquals(id("maritime"), shipped().resolve(biome("examplepack:shore", 0.8f, 0.4f,
+                "eclipticseasons:rain/soft"), zoneIds()).zone());
+        assertEquals(id("polar"), shipped().resolve(biome("examplepack:ice_field", 0.0f, 0.5f,
+                "eclipticseasons:rain/seasonal/cold", "c:is_icy"), zoneIds()).zone());
+        assertEquals(id("subarctic"), shipped().resolve(biome("examplepack:snowy_woods", -0.5f, 0.4f,
+                "eclipticseasons:rain/seasonal/cold", "c:is_snowy"), zoneIds()).zone());
     }
 
     @Test

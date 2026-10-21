@@ -1,22 +1,16 @@
 package com.aetherianartificer.townstead.temperature;
 
 /**
- * The villager body model. {@link ThermalComfort#load} says how the surroundings feel in
- * temperature-equivalent degrees; only the part beyond the comfort zone moves the body, and the
- * body follows slowly, so passing a fire or a cold doorway barely registers while a winter
- * night or a warm hearth does.
+ * The villager body model. {@link ThermalComfort#load} says how far feels like lies past the
+ * comfortable range; only that part moves the body, and the body follows slowly, so passing a fire
+ * or a cold doorway barely registers while a winter night or a warm hearth does.
  */
 public final class BodyHeat {
     private BodyHeat() {}
 
-    /** Environment load beyond the comfort zone, zero inside it. */
-    public static float excess(float load, float zone) {
-        return load > zone ? load - zone : load < -zone ? load + zone : 0f;
-    }
-
     /** Where the body settles in this environment. Sleep halves cold, as a bed and blanket would. */
-    public static float target(float load, float zone, ThermalProfile profile, boolean sleeping) {
-        float pull = excess(load, zone) * TemperatureData.AMBIENT_PULL_PER_DEGREE;
+    public static float target(float load, ThermalProfile profile, boolean sleeping) {
+        float pull = load * TemperatureData.AMBIENT_PULL_PER_DEGREE;
         // Ectotherms have less metabolic reserve, but clothing, water and resistances still apply.
         // Express the target relative to the species' neutral, not human ambient vs core Celsius.
         if (profile.ectotherm()) pull *= 1.5f;

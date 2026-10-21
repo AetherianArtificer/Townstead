@@ -87,10 +87,29 @@ public final class ClimateCommands {
                 TemperatureData.ambientCelsius(level, pos), backend.id(), townstead ? "townstead" : "backend"));
         var sample = ClimateModel.sample(level, pos);
         say(source, String.format(Locale.ROOT,
-                "Open air %.1f C = mean %.1f + season %+.1f + day/night %+.1f + weather %+.1f, then snow %s, local %+.1f",
+                "Open air %.1f C = mean %.1f + season %+.1f + day/night %+.1f + weather %+.1f, then snow %s, local %+.1f; humidity %.0f%%, wet bulb %.1f C",
                 sample.air(), sample.mean(), sample.seasonal(), sample.diurnal(), sample.weather(),
                 sample.snow().falling() ? "falling" : sample.snow().lying() ? "lying" : "none",
-                ClimateModel.localOffset(level, pos)));
+                ClimateModel.localOffset(level, pos), sample.humidity() * 100,
+                com.aetherianartificer.townstead.climate.Evaporation.wetBulb(sample.air(), sample.humidity())));
+        float outside = com.aetherianartificer.townstead.compat.temperature.RoomHeatBackend.outdoor(level, pos);
+        var settings = com.aetherianartificer.townstead.temperature.TemperatureSettings.get();
+        say(source, String.format(Locale.ROOT, "Heat sources in sight: %+.1f C (radius %d)",
+                com.aetherianartificer.townstead.temperature.ThermalBlocks.sourceOffset(level, pos, settings, outside), settings.sourceRadius()));
+        for (String line : com.aetherianartificer.townstead.temperature.ThermalBlocks.describeSources(level, pos, settings, outside, 6))
+            say(source, "  " + line);
+        if (source.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+            var environment = com.aetherianartificer.townstead.compat.temperature.RoomHeatBackend.environment(level, pos);
+            if (environment.isPresent()) {
+                float wet = backend.playerWetness(player);
+                float[] felt = com.aetherianartificer.townstead.temperature.PlayerFeelsLike.describe(player,
+                        (float) environment.getAsDouble(), Float.isFinite(wet) ? wet : 0f);
+                say(source, String.format(Locale.ROOT,
+                        "You: environment %.1f C, feels like %.1f C, comfortable %.1f to %.1f C; sent to %s %.1f C; Townstead decides %s",
+                        environment.getAsDouble(), felt[0], felt[2], felt[3], backend.id(), felt[1],
+                        com.aetherianartificer.townstead.temperature.PlayerFeelsLike.active() ? "yes" : "no"));
+            }
+        }
         describe(source, level.getBiome(pos));
         say(source, SeasonClock.current(level.getServer()).map(clock -> String.format(Locale.ROOT,
                 "Season clock %s: phase %.3f of a %d-day year, %s%s", clock.provider(), clock.phase(), clock.yearDays(),
@@ -147,6 +166,10 @@ public final class ClimateCommands {
                 z.seasonKind().name().toLowerCase(Locale.ROOT), z.seasonalSwing(), z.diurnalRange(), z.humidity())).orElse("");
         say(source, String.format(Locale.ROOT, "%s: zone %s (%s: %s)%s", name(biome),
                 resolution.zone() == null ? "none" : resolution.zone(), resolution.step(), resolution.detail(), shape));
-        return resolution.zone() == null ? 0 : 1;
+        ClimateZones.profile(biome).ifPresent(p -> say(source, String.format(Locale.ROOT,
+                "Biome profile: mean %.1f C, coldest month %.1f C, warmest month %.1f C, daily range %.1f C, %s%s; the profile replaces the zone's numbers",
+                p.mean(), p.coldestMonth(), p.warmestMonth(), p.dailyRange(), p.seasonKind().name().toLowerCase(Locale.ROOT),
+                p.typicalY() == Integer.MIN_VALUE ? "" : ", usual height y=" + p.typicalY())));
+        return resolution.zone() == null && ClimateZones.profile(biome).isEmpty() ? 0 : 1;
     }
 }

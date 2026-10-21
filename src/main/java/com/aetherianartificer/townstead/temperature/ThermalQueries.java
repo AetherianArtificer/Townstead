@@ -18,7 +18,7 @@ public final class ThermalQueries {
             case "thermal_wetness" -> needs.thermalWetness();
             case "thermal_load" -> needs.comfortLoad();
             case "thermal_strain" -> needs.thermalStrainSeconds();
-            case "thermal_trend" -> Math.signum(BodyHeat.target(needs.comfortLoad(), TemperatureSettings.get().comfortZone(), profile, villager.isSleeping()) - body);
+            case "thermal_trend" -> Math.signum(BodyHeat.target(needs.comfortLoad(), profile, villager.isSleeping()) - body);
             default -> Double.NaN;
         };
     }

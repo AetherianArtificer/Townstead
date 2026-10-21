@@ -31,6 +31,8 @@ public final class Weather {
 
     /** The outdoor reading at a position, with rooms ignored. */
     public static float outdoorCelsius(ServerLevel level, BlockPos pos) {
+        if (!com.aetherianartificer.townstead.TownsteadConfig.temperatureActive())
+            return com.aetherianartificer.townstead.temperature.TemperatureData.vanillaCelsius(level, pos);
         float value = RoomHeatBackend.outdoor(level, pos);
         return Float.isFinite(value) ? value : 20f;
     }

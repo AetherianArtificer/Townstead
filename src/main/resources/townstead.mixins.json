@@ -154,7 +154,8 @@
     "compat.temperature.LsoRoomQueryMixin",
     "compat.temperature.LsoSereneUnderBridgeMixin",
     "compat.temperature.LsoThermometerMixin",
-    "compat.temperature.TanRoomQueryMixin"
+    "compat.temperature.TanRoomQueryMixin",
+    "compat.temperature.TanPlayerClothingMixin"
   ],
   "client": [
     "client.RecipeBookChangeMixin",

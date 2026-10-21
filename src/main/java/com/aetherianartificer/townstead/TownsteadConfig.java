@@ -1149,7 +1149,22 @@ public final class TownsteadConfig {
         return false;
     }
 
+    /**
+     * Whether Townstead's temperature runs at all: the setting is on and a temperature mod (Cold
+     * Sweat, Tough As Nails or Legendary Survival Overhaul) is installed. Without one, the villager
+     * need, room heat, room sensors and crop climate are off, as if the setting were.
+     */
+    public static boolean temperatureActive() {
+        return temperatureSwitchOn()
+                && !com.aetherianartificer.townstead.compat.temperature.TemperatureBridgeResolver.installed().isEmpty();
+    }
+
     public static boolean isVillagerTemperatureEnabled() {
+        return temperatureActive();
+    }
+
+    /** The temperature setting itself, whether or not a temperature mod is installed. */
+    public static boolean temperatureSwitchOn() {
         if (ENABLE_VILLAGER_TEMPERATURE == null) return false;
         try {
             return Switchboard.get(ENABLE_VILLAGER_TEMPERATURE);

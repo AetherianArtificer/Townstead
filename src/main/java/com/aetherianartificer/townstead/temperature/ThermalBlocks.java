@@ -55,6 +55,11 @@ public final class ThermalBlocks {
     public static int source(net.minecraft.world.level.Level level, BlockPos pos, BlockState state) {
         if (state.isAir()) return 0;
         float opinion = moddedTemperature(level, pos, state);
+        var profile = appliance(state, TemperatureSettings.get());
+        if (profile != null) {
+            double watts = profile.output(opinion, Float.isFinite(opinion) ? opinion != 0 : isActive(state)).watts();
+            return watts > 0 ? 1 : watts < 0 ? -1 : 0;
+        }
         if (Float.isFinite(opinion)) return opinion == 0f ? 0 : opinion > 0 ? 1 : -1;
         return taggedSource(state);
     }
@@ -69,11 +74,29 @@ public final class ThermalBlocks {
         return Float.NaN;
     }
 
-    /** Townstead tag fallback. Cooling wins overlapping tags (for example soul campfires). */
+    /** Townstead tag fallback, then the kind of block: any fire, campfire, furnace or magma is heat. Cooling wins a block in both tags. */
     public static int taggedSource(BlockState state) {
         if (!isActive(state)) return 0;
         if (state.is(COOLING_SOURCES)) return -1;
-        return state.is(HEAT_SOURCES) ? 1 : 0;
+        if (state.is(HEAT_SOURCES)) return 1;
+        var block = state.getBlock();
+        return block instanceof net.minecraft.world.level.block.BaseFireBlock
+                || block instanceof net.minecraft.world.level.block.CampfireBlock
+                || block instanceof net.minecraft.world.level.block.AbstractFurnaceBlock
+                || block instanceof net.minecraft.world.level.block.MagmaBlock ? 1 : 0;
+    }
+
+    /**
+     * A block's appliance data: its own entry, else the entry of the vanilla block it is a kind of,
+     * so a modded campfire or furnace heats like the vanilla one.
+     */
+    public static @Nullable ThermalAppliance appliance(BlockState state, TemperatureSettings settings) {
+        var own = settings.appliance(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
+        if (own != null) return own;
+        var block = state.getBlock();
+        if (block instanceof net.minecraft.world.level.block.CampfireBlock) return settings.appliance("minecraft:campfire");
+        if (block instanceof net.minecraft.world.level.block.AbstractFurnaceBlock) return settings.appliance("minecraft:furnace");
+        return null;
     }
 
     public static boolean isActive(BlockState state) {
@@ -102,21 +125,12 @@ public final class ThermalBlocks {
      * The warmth or chill the nearest sources within the configured radius add to the ambient at
      * the position, using the same visibility, falloff and overlap rules as room radiation.
      */
-    public static float sourceOffset(ServerLevel level, BlockPos center, TemperatureSettings settings) {
+    public static float sourceOffset(ServerLevel level, BlockPos center, TemperatureSettings settings, float air) {
         int radius = settings.sourceRadius();
         if (radius <= 0) return 0f;
         double[] sums = new double[4]; // heat sum/max, cooling sum/max
         scan(level, center, radius, VERTICAL_REACH, () -> Double.MAX_VALUE, (pos, state) -> {
-            float nativeEffect = moddedTemperature(level, pos, state);
-            var profile = settings.appliance(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
-            float strength;
-            if (profile != null) strength = profile.output(nativeEffect,
-                    Float.isFinite(nativeEffect) ? nativeEffect != 0 : isActive(state)).radiantDegrees();
-            else {
-                int sign = taggedSource(state);
-                strength = Float.isFinite(nativeEffect) ? nativeEffect
-                        : sign > 0 ? settings.heatSourceOffset() : sign < 0 ? settings.coolingSourceOffset() : 0;
-            }
+            float strength = radiantStrength(level, pos, state, settings, air);
             if (strength == 0 || !RoomHeat.visible(level, center, pos)) return;
             double effect = RoomHeatBalance.localExposure(strength, center.distSqr(pos));
             int i = effect > 0 ? 0 : 2;
@@ -130,6 +144,35 @@ public final class ThermalBlocks {
     private static float falloff(double distSq, int radius) {
         double dist = Math.sqrt(distSq);
         return (float) Math.max(0.0, 1.0 - dist / (radius + 1.0));
+    }
+
+    /** A source's radiant strength at its face, in air at {@code air} degrees; zero when it is not active. */
+    static float radiantStrength(net.minecraft.world.level.Level level, BlockPos pos, BlockState state,
+                                 TemperatureSettings settings, float air) {
+        float nativeEffect = moddedTemperature(level, pos, state);
+        var profile = appliance(state, settings);
+        if (profile != null) return profile.output(nativeEffect,
+                Float.isFinite(nativeEffect) ? nativeEffect != 0 : isActive(state), air).radiantDegrees();
+        int sign = taggedSource(state);
+        return Float.isFinite(nativeEffect) ? nativeEffect
+                : sign > 0 ? settings.heatSourceOffset() : sign < 0 ? settings.coolingSourceOffset() : 0;
+    }
+
+    /** For diagnostics: every source in range with its strength, distance, sight line and the heat it gives. */
+    public static java.util.List<String> describeSources(ServerLevel level, BlockPos center, TemperatureSettings settings,
+                                                         float air, int limit) {
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        int radius = settings.sourceRadius();
+        scan(level, center, radius, VERTICAL_REACH, () -> Double.MAX_VALUE, (pos, state) -> {
+            if (lines.size() >= limit) return;
+            float strength = radiantStrength(level, pos, state, settings, air);
+            boolean sight = RoomHeat.visible(level, center, pos);
+            double effect = sight ? RoomHeatBalance.localExposure(strength, center.distSqr(pos)) : 0;
+            lines.add(String.format(java.util.Locale.ROOT, "%s at %s: strength %+.1f, %.1f blocks, %s, gives %+.1f C (native %s)",
+                    net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()), pos.toShortString(), strength,
+                    Math.sqrt(center.distSqr(pos)), sight ? "in sight" : "hidden", effect, moddedTemperature(level, pos, state)));
+        });
+        return lines;
     }
 
     /** Up to {@code limit} nearest sources of one kind within the radius, nearest first. */
@@ -177,8 +220,7 @@ public final class ThermalBlocks {
         if (known != null) return known;
         boolean may = mayBeSource(state)
                 || state.getBlock() instanceof com.aetherianartificer.townstead.block.RoomThermostatBlock
-                || TemperatureSettings.get().appliance(
-                        net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString()) != null;
+                || appliance(state, TemperatureSettings.get()) != null;
         MAY_AFFECT_ROOM.put(state, may);
         return may;
     }

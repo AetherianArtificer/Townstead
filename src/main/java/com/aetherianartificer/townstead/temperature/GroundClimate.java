@@ -4,6 +4,7 @@ import com.aetherianartificer.townstead.calendar.Season;
 import com.aetherianartificer.townstead.calendar.SeasonClock;
 import com.aetherianartificer.townstead.compat.temperature.AmbientTemperatureBridge;
 import com.aetherianartificer.townstead.compat.temperature.TfcClimate;
+import com.aetherianartificer.townstead.climate.BiomeProfile;
 import com.aetherianartificer.townstead.climate.ClimateModel;
 import com.aetherianartificer.townstead.climate.ClimateZone;
 import com.aetherianartificer.townstead.climate.ClimateZones;
@@ -33,18 +34,19 @@ public final class GroundClimate {
 
     private GroundClimate() {}
 
-    /** Terrain cover above a position, and the rock heat there. */
-    public record Probe(int depth, float geothermal, float lava) {}
+    /** Terrain cover above a position, the rock heat there, and the cave biome's own offset. */
+    public record Probe(int depth, float geothermal, float lava, float cave) {}
 
     public static void clearCache() { PROBES.clear(); }
 
     public static Probe probe(ServerLevel level, BlockPos pos) {
         return PROBES.get(level, pos.asLong(), level.getGameTime(), () -> {
             int depth = depth(level, pos);
-            if (depth <= 0) return new Probe(0, 0f, 0f);
+            if (depth <= 0) return new Probe(0, 0f, 0f, 0f);
             TemperatureSettings s = TemperatureSettings.get();
             return new Probe(depth, geothermal(pos.getY(), s.geothermalStartY(), s.geothermalPerBlock(),
-                    s.geothermalDeepY(), s.geothermalDeepPerBlock()), lavaHeat(level, pos, s));
+                    s.geothermalDeepY(), s.geothermalDeepPerBlock()), lavaHeat(level, pos, s),
+                    ClimateZones.profile(level.getBiome(pos)).map(BiomeProfile::undergroundOffset).orElse(0f));
         });
     }
 
@@ -96,7 +98,7 @@ public final class GroundClimate {
         Probe probe = probe(level, pos);
         float w = surfaceWeight(probe.depth());
         if (w >= 1f) return surfaceAir;
-        return w * surfaceAir + (1 - w) * builtinGround(level, pos, probe);
+        return w * surfaceAir + (1 - w) * (builtinGround(level, pos, probe) + probe.cave());
     }
 
     /**
@@ -117,7 +119,8 @@ public final class GroundClimate {
                 shift += w * (ClimateModel.applySnow(level, pos, seasoned) - seasoned);
             }
         }
-        if (w < 1f) shift += (1 - w) * (probe.lava() + (backend.modelsGeothermal() ? 0f : probe.geothermal()));
+        // A backend with its own depth model (Cold Sweat) also has its own cave biome temperatures.
+        if (w < 1f) shift += (1 - w) * (probe.lava() + (backend.modelsGeothermal() ? 0f : probe.geothermal() + probe.cave()));
         return shift + ClimateModel.localOffset(level, pos);
     }
 
@@ -131,8 +134,7 @@ public final class GroundClimate {
         var biome = level.getBiome(surface);
         ClimateZone zone = ClimateZones.of(biome).orElse(null);
         float mean = ClimateModel.biomeMean(biome, zone);
-        int aboveSea = surface.getY() - level.getSeaLevel();
-        if (aboveSea > 0) mean -= aboveSea / s.altitudeBlocksPerDegree();
+        mean += com.aetherianartificer.townstead.climate.ClimateZones.altitudeOffset(biome, surface.getY(), level.getSeaLevel(), s.altitudeBlocksPerDegree());
         return mean + seasonal(level, zone, probe.depth(), s) + probe.geothermal() + probe.lava();
     }
 
@@ -155,7 +157,7 @@ public final class GroundClimate {
      */
     private static float seasonal(ServerLevel level, ClimateZone zone, int depth, TemperatureSettings s) {
         var clock = SeasonClock.current(level.getServer());
-        if (clock.isEmpty()) return 0f;
+        if (clock.isEmpty()) return ClimateModel.timeless(zone);
         double year = clock.get().phase();
         double legacy = legacy(year, depth, s);
         if (zone == null || zone.seasonKind() == ClimateZone.SeasonKind.NONE) return (float) legacy;
@@ -215,8 +217,8 @@ public final class GroundClimate {
         String ground = probe.depth() > 0
                 ? String.format(java.util.Locale.ROOT, "%.1f C", builtinGround(level, pos, probe)) : "n/a";
         return String.format(java.util.Locale.ROOT,
-                "Ground: cover %d blocks; open-air weight %.2f; builtin ground %s; geothermal +%.1f C; lava +%.1f C; snow %s",
-                probe.depth(), surfaceWeight(probe.depth()), ground, probe.geothermal(), probe.lava(),
+                "Ground: cover %d blocks; open-air weight %.2f; builtin ground %s; geothermal +%.1f C; lava +%.1f C; cave %+.1f C; snow %s",
+                probe.depth(), surfaceWeight(probe.depth()), ground, probe.geothermal(), probe.lava(), probe.cave(),
                 snow.falling() ? "falling" : snow.lying() ? "lying" : "none");
     }
 }

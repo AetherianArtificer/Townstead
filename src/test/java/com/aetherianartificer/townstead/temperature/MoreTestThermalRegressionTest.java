@@ -25,7 +25,7 @@ class MoreTestThermalRegressionTest {
             assertTrue(forecast.recovers(), "A nearby fire must actually finish a recovery break");
             assertTrue(forecast.body() > 36.75f);
             assertTrue(forecast.body() < 37.5f);
-            assertEquals(2500, fire.watts(), "Radiant relief must not increase kitchen/room heat input");
+            assertEquals(5000, fire.watts(), "Radiant relief must not change the fire's room heat input");
             assertEquals(0, settings.appliance("minecraft:campfire").output(0, false).radiantDegrees());
         }
     }

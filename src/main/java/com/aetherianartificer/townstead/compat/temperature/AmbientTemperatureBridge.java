@@ -104,4 +104,24 @@ public interface AmbientTemperatureBridge {
     /** Turns the mod's own player wetness off while the root stays dry, and back on after. */
     default void keepPlayerDry(Player player, boolean dry) {
     }
+
+    /** The feels-like range, in Celsius, where the mod leaves a body alone; null when it has none. */
+    default float @org.jetbrains.annotations.Nullable [] comfortRangeCelsius() {
+        return null;
+    }
+
+    /** The mod's acclimation limits, in Celsius; null when it has no acclimation. */
+    default com.aetherianartificer.townstead.temperature.ThermalAcclimation.@org.jetbrains.annotations.Nullable Limits acclimationLimits() {
+        return null;
+    }
+
+    /** How wet the mod says the player is, from 0 to 1; NaN when it does not track wetness. */
+    default float playerWetness(Player player) {
+        return Float.NaN;
+    }
+
+    /** Share of a full acclimation per real minute; NaN when the mod has no acclimation. */
+    default float acclimationRatePerMinute() {
+        return Float.NaN;
+    }
 }

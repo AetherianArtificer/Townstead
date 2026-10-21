@@ -66,6 +66,7 @@ public final class GeneAbilityTicker {
         for (Ability ability : Ability.values()) clear(entity, ability);
         if (entity instanceof Player player) setFlyingSpeed(player, BASE_FLYING_SPEED);
         if (entity.hasGlowingTag()) entity.setGlowingTag(false);
+        EntityGlowSync.clear(entity);
         // Clear hazard path-avoidance; the next tick re-applies whatever the new origin's genes imply.
         if (entity instanceof PathfinderMob mob) {
             Hazard.clearProactive(mob);
@@ -79,7 +80,10 @@ public final class GeneAbilityTicker {
 
         com.aetherianartificer.townstead.root.GeneExpressionSync.tick(entity);
         List<Power> expressed = Powers.active(entity);
-        if (expressed.isEmpty()) return;
+        if (expressed.isEmpty()) {
+            EntityGlowSync.update(entity, List.of(), null);
+            return;
+        }
 
         boolean isPlayer = entity instanceof Player;
         ConditionContext ctx = new ConditionContext(entity);
@@ -116,6 +120,7 @@ public final class GeneAbilityTicker {
             }
         }
         applyGlow(entity, glows, ctx);
+        EntityGlowSync.update(entity, glows, ctx);
         applyParticles(entity, particles, ctx);
         applyRestrictions(entity, restricts, ctx);
         applyAuras(entity, auras, ctx);
@@ -433,9 +438,11 @@ public final class GeneAbilityTicker {
     }
 
     private static void applyGlow(LivingEntity entity, List<GlowGeneType.Instance> glows, ConditionContext ctx) {
-        if (glows.isEmpty()) return;
+        // Only self glows set the flag; an "on" glow outlines others (EntityGlowSync).
+        if (glows.stream().allMatch(glow -> glow.on() != null)) return;
         boolean shouldGlow = false;
         for (GlowGeneType.Instance glow : glows) {
+            if (glow.on() != null) continue;
             if (glow.condition() == null || glow.condition().test(ctx)) {
                 shouldGlow = true;
                 break;

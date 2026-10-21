@@ -595,6 +595,7 @@ public class Townstead {
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> {
             com.aetherianartificer.townstead.temperature.RoomHeat.tick(e.getServer());
+            com.aetherianartificer.townstead.compat.temperature.ColdSweatTemperatureBridge.INSTANCE.drainOverriddenFuel(e.getServer());
             com.aetherianartificer.townstead.politics.founding.CultureVillageFounding.tick(e.getServer());
             com.aetherianartificer.townstead.root.capability.ModifierAuraSource.tick(e.getServer());
             com.aetherianartificer.townstead.politics.charter.CharterMemberships.tick(e.getServer());
@@ -1321,6 +1322,7 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.TickEvent.ServerTickEvent e) -> {
             if (e.phase == net.minecraftforge.event.TickEvent.Phase.END) {
                 com.aetherianartificer.townstead.temperature.RoomHeat.tick(e.getServer());
+                com.aetherianartificer.townstead.compat.temperature.ColdSweatTemperatureBridge.INSTANCE.drainOverriddenFuel(e.getServer());
                 com.aetherianartificer.townstead.politics.founding.CultureVillageFounding.tick(e.getServer());
                 com.aetherianartificer.townstead.root.capability.ModifierAuraSource.tick(e.getServer());
             com.aetherianartificer.townstead.politics.charter.CharterMemberships.tick(e.getServer());
@@ -3798,6 +3800,12 @@ public class Townstead {
                         com.aetherianartificer.townstead.client.root.RootDiscoveryToast.show(payload))
         );
         registrar.playToClient(
+                com.aetherianartificer.townstead.root.EntityGlowS2CPayload.TYPE,
+                com.aetherianartificer.townstead.root.EntityGlowS2CPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.client.root.GeneEntityGlow.apply(payload))
+        );
+        registrar.playToClient(
                 com.aetherianartificer.townstead.switchboard.SwitchboardSyncS2CPayload.TYPE,
                 com.aetherianartificer.townstead.switchboard.SwitchboardSyncS2CPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(payload::apply)
@@ -6059,9 +6067,7 @@ public class Townstead {
                 body == Integer.MIN_VALUE ? TemperatureData.tenths(TemperatureData.DEFAULT_NEUTRAL) : body,
                 TemperatureData.getAmbient(temperature), flags | com.aetherianartificer.townstead.temperature.ThermalStatus.flags(
                         TemperatureData.celsius(body),
-                        com.aetherianartificer.townstead.temperature.BodyHeat.target(temperature.getFloat("comfortLoad"),
-                                com.aetherianartificer.townstead.temperature.TemperatureSettings.get().comfortZone(),
-                                com.aetherianartificer.townstead.temperature.ThermalProfile.of(villager), villager.isSleeping()),
+                        com.aetherianartificer.townstead.temperature.BodyHeat.target(temperature.getFloat("comfortLoad"), com.aetherianartificer.townstead.temperature.ThermalProfile.of(villager), villager.isSleeping()),
                         TemperatureData.getReliefDebug(temperature)));
     }
 

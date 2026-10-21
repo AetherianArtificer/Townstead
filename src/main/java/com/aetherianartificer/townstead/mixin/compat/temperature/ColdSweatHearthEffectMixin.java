@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class ColdSweatHearthEffectMixin {
     @Inject(method = "insulateEntity", at = @At("HEAD"), require = 0)
     private void townstead$enter(LivingEntity entity, CallbackInfoReturnable<Boolean> cir) {
-        HearthAirRule.enter();
+        HearthAirRule.enter(entity);
     }
 
     @Inject(method = "insulateEntity", at = @At("RETURN"), require = 0)

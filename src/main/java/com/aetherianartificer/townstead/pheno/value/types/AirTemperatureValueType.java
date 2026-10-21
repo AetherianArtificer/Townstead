@@ -25,10 +25,11 @@ public final class AirTemperatureValueType implements ValueType {
         return ctx -> {
             if (!(ctx.level() instanceof ServerLevel level)) return 0;
             BlockPos pos = ctx.focusBlock();
-            if (felt && ctx.self() instanceof net.conczin.mca.entity.VillagerEntityMCA villager) {
+            if (felt && com.aetherianartificer.townstead.TownsteadConfig.temperatureActive()
+                    && ctx.self() instanceof net.conczin.mca.entity.VillagerEntityMCA villager) {
                 return ThermalExposure.at(level, villager, villager.blockPosition(), ThermalExposure.activity(villager)).ambient();
             }
-            return TemperatureData.ambientCelsius(level, pos);
+            return TemperatureData.worldCelsius(level, pos);
         };
     }
 }

@@ -211,6 +211,27 @@ public final class LsoTemperatureBridge implements AmbientTemperatureBridge {
         }
     }
 
+    /** Its wetness over its wetness limit. */
+    @Override
+    public float playerWetness(net.minecraft.world.entity.player.Player player) {
+        if (player.isInWater()) return 1f;
+        try {
+            Object wetness = Class.forName("sfiomn.legendarysurvivaloverhaul.util.AttachmentUtil")
+                    .getMethod("getWetnessAttachment", net.minecraft.world.entity.player.Player.class).invoke(null, player);
+            int value = ((Number) wetness.getClass().getMethod("getWetness").invoke(wetness)).intValue();
+            int limit = wetness.getClass().getField("WETNESS_LIMIT").getInt(null);
+            return limit <= 0 ? 0f : Math.max(0f, Math.min(1f, value / (float) limit));
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            return player.isInWaterOrRain() ? 1f : 0f;
+        }
+    }
+
+    /** Between its cold and hot thresholds. */
+    @Override
+    public float[] comfortRangeCelsius() {
+        return isActive() ? new float[]{10f, 30f} : null;
+    }
+
     @Override
     public net.minecraft.resources.ResourceLocation playerImmunityEffect() {
         return net.minecraft.resources.ResourceLocation.tryParse("legendarysurvivaloverhaul:temperature_immunity");

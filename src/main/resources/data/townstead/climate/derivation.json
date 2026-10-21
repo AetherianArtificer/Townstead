@@ -6,7 +6,7 @@
       "any_tags": [
         "eclipticseasons:rain/monsoonal"
       ],
-      "zone": "townstead:tropical_humid"
+      "zone": "townstead:semi_arid"
     },
     {
       "step": "provider",
@@ -20,9 +20,31 @@
     {
       "step": "provider",
       "any_tags": [
+        "eclipticseasons:rain/rainy"
+      ],
+      "zone": "townstead:tropical_humid"
+    },
+    {
+      "step": "provider",
+      "any_tags": [
+        "eclipticseasons:rain/soft"
+      ],
+      "zone": "townstead:maritime"
+    },
+    {
+      "step": "provider",
+      "all_tags": [
+        "eclipticseasons:rain/seasonal/cold",
+        "c:is_icy"
+      ],
+      "zone": "townstead:polar"
+    },
+    {
+      "step": "provider",
+      "any_tags": [
         "eclipticseasons:rain/seasonal/cold"
       ],
-      "zone": "townstead:continental"
+      "zone": "townstead:subarctic"
     },
     {
       "step": "provider",
@@ -30,14 +52,6 @@
         "eclipticseasons:rain/seasonal/hot"
       ],
       "zone": "townstead:semi_arid"
-    },
-    {
-      "step": "provider",
-      "any_tags": [
-        "eclipticseasons:rain/rainy",
-        "eclipticseasons:rain/soft"
-      ],
-      "zone": "townstead:maritime"
     },
     {
       "step": "provider",

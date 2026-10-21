@@ -69,4 +69,18 @@ class ClimateModelTest {
         assertEquals(-1f, ClimateModel.zoneSeasonal(zone, serene, 0.0), 1e-4, "mid wet season");
         assertEquals(0f, ClimateModel.zoneSeasonal(zone, tfc, 0.5), "no wet/dry phase, no season");
     }
+
+    @Test
+    void worldsWithoutSeasonsSitOnAMildGrowingSeasonDay() {
+        var temperate = new ClimateZone(net.minecraft.resources.ResourceLocation.tryParse("townstead:temperate"),
+                ClimateZone.SeasonKind.FOUR_SEASONS, 10f, 1f / 12f, 6f, 0.6f, 0f, 0f, 0f);
+        var arid = new ClimateZone(net.minecraft.resources.ResourceLocation.tryParse("townstead:arid"),
+                ClimateZone.SeasonKind.NONE, 6f, 1f / 12f, 14f, 0.1f, 0f, 0f, 0f);
+        assertEquals(6.5f, ClimateModel.timeless(temperate), 1e-4);
+        assertEquals(0f, ClimateModel.timeless(arid));
+        assertEquals(0f, ClimateModel.timeless(null));
+        var polar = new ClimateZone(net.minecraft.resources.ResourceLocation.tryParse("townstead:polar"),
+                ClimateZone.SeasonKind.FOUR_SEASONS, 15f, 1f / 12f, 4f, 0.5f, 0f, 0f, 0f, 0f);
+        assertEquals(0f, ClimateModel.timeless(polar), "ice stays at its cold mean");
+    }
 }

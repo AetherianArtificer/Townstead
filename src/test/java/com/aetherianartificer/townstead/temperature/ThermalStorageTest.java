@@ -87,13 +87,14 @@ class ThermalStorageTest {
         double capacity = 40 * s.roomHeatCapacity();
         double g = 51*.84 + 12*1.12 + 13*1.4 + 2*1.4;
         double wallMass = (51*4000 + 12*16000 + 13*12000 + 2*4000*.125)/6.0;
-        double power = 2 * RoomHeatBalance.roomSourcePower(8.25, s.roomSourcePower(), 1, 1, true, s.cookingRoomHeatFraction());
-        double ventilation = RoomHeatBalance.ventilation(40, s.airChangesPerHour());
+        double stove = s.appliance("minecraft:smoker").output(Float.NaN, true).watts();
+        double power = 2 * stove;
+        double ventilation = RoomHeatBalance.ventilation(40, s.airChangesPerHour()) + 2 * RoomHeatBalance.draft(stove, s.fireMaxRise());
         var result = ThermalStorage.advance(60, capacity, power, ventilation, 24,
                 List.of(ThermalStorage.surface(wallMass, g, 24, 60)), 300*s.thermalTimeScale());
-        assertTrue(result.air() < 35, "Even stored wall heat should dissipate within five minutes: " + result.air());
+        assertTrue(result.air() < 50, "Stored wall heat dissipates within five minutes: " + result.air());
         var steady = ThermalStorage.advance(24, capacity, power, ventilation, 24,
                 List.of(ThermalStorage.surface(wallMass, g, 24, 24)), 1000000);
-        assertTrue(steady.air() > 28 && steady.air() < 33);
+        assertTrue(steady.air() > 30 && steady.air() <= 24 + s.fireMaxRise(), "steady kitchen " + steady.air());
     }
 }

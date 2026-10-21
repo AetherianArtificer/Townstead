@@ -158,7 +158,7 @@ public final class ThermalSupplyTask extends Behavior<VillagerEntityMCA> {
         var needs = TownsteadVillagers.get(villager).needs();
         var profile = ThermalProfile.of(villager);
         return BodyHeat.reliefComplete(TemperatureData.celsius(needs.bodyTempTenths()),
-                BodyHeat.target(needs.comfortLoad(), TemperatureSettings.get().comfortZone(), profile, false), profile);
+                BodyHeat.target(needs.comfortLoad(), profile, false), profile);
     }
     @Override protected void stop(ServerLevel level, VillagerEntityMCA villager, long now) {
         if (source != null) ConsumableTargetClaims.releaseSlot(level, villager.getUUID(), CLAIM, source);
