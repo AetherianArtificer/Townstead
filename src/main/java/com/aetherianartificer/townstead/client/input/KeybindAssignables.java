@@ -61,7 +61,7 @@ public final class KeybindAssignables {
      * <p>Our own keys are left out. The ability slot keys and the wheel key already reach this
      * system, so offering them here would let a slot fire the key that opens the wheel.</p>
      */
-    public static List<AbilityLoadoutS2CPayload.Option> options() {
+    public static List<AbilityLoadoutS2CPayload.Option> options(java.util.Collection<String> offered) {
         Minecraft mc = Minecraft.getInstance();
         List<AbilityLoadoutS2CPayload.Option> out = new ArrayList<>();
         if (mc == null || mc.options == null) return out;
@@ -69,6 +69,7 @@ public final class KeybindAssignables {
             if (mapping == null) continue;
             String category = mapping.getCategory();
             if (category != null && category.startsWith("townstead.key.")) continue;
+            if (!usable(mapping.getName(), offered)) continue;
             ResourceLocation id = idOf(mapping);
             if (id == null) continue;
             KeybindDetails.Detail pack = KeybindDetails.of(mapping.getName());
@@ -83,7 +84,7 @@ public final class KeybindAssignables {
                     sourceOf(mapping.getName(), pack, category),
                     false,
                     0, 0, "",
-                    Assignable.Kind.KEYBIND.ordinal(), 0, 0));
+                    Assignable.Kind.KEYBIND.ordinal(), 0, 0, ""));
         }
         return out;
     }
@@ -129,13 +130,45 @@ public final class KeybindAssignables {
      * art Vampirism and its addons draw on their own action wheel). Empty when there is none.
      */
     private static String guessIcon(String keybind) {
+        ResourceLocation action = frontedAction(keybind);
+        return action == null ? "" : action.getNamespace() + ":textures/actions/" + action.getPath() + ".png";
+    }
+
+    /**
+     * The faction move a binding fronts: {@code keys.werewolves.bite} is {@code werewolves:bite} when
+     * its mod ships action art of that name. Null for an ordinary binding.
+     */
+    private static ResourceLocation frontedAction(String keybind) {
         String[] parts = keybind.split("\\.");
-        if (parts.length < 3) return "";
-        String candidate = parts[1] + ":textures/actions/" + parts[parts.length - 1] + ".png";
-        ResourceLocation id = ResourceLocation.tryParse(candidate);
+        if (parts.length < 3) return null;
+        ResourceLocation action = ResourceLocation.tryBuild(parts[1], parts[parts.length - 1]);
+        ResourceLocation art = ResourceLocation.tryBuild(parts[1], "textures/actions/" + parts[parts.length - 1] + ".png");
         Minecraft mc = Minecraft.getInstance();
-        if (id == null || mc == null) return "";
-        return mc.getResourceManager().getResource(id).isPresent() ? candidate : "";
+        if (action == null || art == null || mc == null) return null;
+        return mc.getResourceManager().getResource(art).isPresent() ? action : null;
+    }
+
+    /**
+     * Whether a binding is for this player. A mod registers its keys for everyone, but a key that
+     * fronts a faction move only works for someone with that faction's moves, which the server
+     * offers under the mod's namespace. When the server offers the move itself, the move is the
+     * one on the wheel and its key would be the same thing twice.
+     */
+    public static boolean usable(String keybind, java.util.Collection<String> offered) {
+        ResourceLocation action = frontedAction(keybind);
+        return action == null || (!offered.contains(action.toString()) && hasFaction(action, offered));
+    }
+
+    /** Whether a binding already on the wheel still works: a faction move's key needs the faction. */
+    public static boolean stillUsable(String keybind, java.util.Collection<String> offered) {
+        ResourceLocation action = frontedAction(keybind);
+        return action == null || hasFaction(action, offered);
+    }
+
+    private static boolean hasFaction(ResourceLocation action, java.util.Collection<String> offered) {
+        String prefix = action.getNamespace() + ":";
+        for (String id : offered) if (id.startsWith(prefix)) return true;
+        return false;
     }
 
     /** A pack's heading, else the owning mod's name, else the binding's own category. */

@@ -105,8 +105,19 @@ public abstract class ReportBuildingMessageMixin {
         }
 
         if (TOWNSTEAD$OPEN_AIR_SCAN_ACTIONS.contains(actName)) {
-            Optional<OptionalBuildingRecognition.Candidate> optionalCandidate =
-                    OptionalBuildingRecognition.find(level, pos);
+            OptionalBuildingRecognition.Search search = OptionalBuildingRecognition.search(level, pos);
+            Optional<OptionalBuildingRecognition.Candidate> optionalCandidate = search.candidate();
+            if (optionalCandidate.isEmpty() && search.problem() != null) {
+                // Say what is wrong with the enclosure instead of letting MCA's room scan answer
+                // for it with a door or a roof, unless MCA can take the spot as a room after all.
+                boolean roomWillHandle = BuildingEnclosurePolicies.modeOf(search.typeName()).allowsRoom()
+                        && OptionalBuildingRecognition.roomCanHandle(VillageManager.get(level), pos, actName);
+                if (!roomWillHandle) {
+                    com.aetherianartificer.townstead.recognition.EnclosureNotices.problem(player, search.problem());
+                    ci.cancel();
+                    return;
+                }
+            }
             if (optionalCandidate.isPresent()) {
                 OptionalBuildingRecognition.Candidate candidate = optionalCandidate.get();
                 BuildingEnclosurePolicies.Mode mode = BuildingEnclosurePolicies.modeOf(candidate.typeName());
@@ -117,6 +128,8 @@ public abstract class ReportBuildingMessageMixin {
                     OptionalBuildingRecognition.Registration registration =
                             OptionalBuildingRecognition.register(level, candidate);
                     if (registration != OptionalBuildingRecognition.Registration.FAILED) {
+                        // Added by hand: a removal the player made here no longer stands.
+                        com.aetherianartificer.townstead.recognition.DismissedSites.changed(level, pos);
                         manager.findNearestVillage(player).ifPresent(v -> {
                             com.aetherianartificer.townstead.compat.mca.BuildingReportReconciler.reconcile(
                                     level, pos, v, TOWNSTEAD$LOG);

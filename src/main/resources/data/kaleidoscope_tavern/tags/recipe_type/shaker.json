@@ -1,1 +1,9 @@
-{"replace":false,"values":["kaleidoscope_tavern:shaker"]}
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "kaleidoscope_tavern:shaker",
+      "required": false
+    }
+  ]
+}

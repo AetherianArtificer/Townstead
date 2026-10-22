@@ -20,7 +20,8 @@
           ],
           "proprietor": {
             "professions": [
-              "beachparty:sandymerchant"
+              "beachparty:sandymerchant",
+              "beachparty:barkeeper"
             ],
             "slots": 1
           }

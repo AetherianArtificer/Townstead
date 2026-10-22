@@ -26,10 +26,12 @@ public final class RootCatalog {
                            List<TraitCatalogEntry> traits,
                            List<com.aetherianartificer.townstead.root.rig.RigDefinition> rigs,
                            List<String> entityGroups,
-                           List<RootLook> looks) {}
+                           List<RootLook> looks,
+                           List<RootBrowseEntry> browse) {}
 
     public static Snapshot build() {
         List<RootCatalogEntry> origins = new ArrayList<>();
+        List<RootBrowseEntry> browse = new ArrayList<>();
         Map<ResourceLocation, GeneCatalogEntry> genes = new LinkedHashMap<>();
         List<TraitCatalogEntry> traits = new ArrayList<>();
         for (com.aetherianartificer.townstead.root.trait.DataTrait t
@@ -46,7 +48,8 @@ public final class RootCatalog {
             String singular = singC.getString();
             String plural = plurC.getString();
             Component backstory = RootRegistry.resolveBackstory(origin);
-            Species spc = SpeciesRegistry.byId(origin.species());
+            // A root may name no species and follow its ancestry's (or lineage's), so resolve it.
+            Species spc = SpeciesRegistry.byId(RootRegistry.effectiveSpecies(origin.id()));
             Ancestry anc = AncestryRegistry.byId(origin.ancestry());
             Lineage lin = LineageRegistry.byId(origin.lineage());
 
@@ -90,6 +93,7 @@ public final class RootCatalog {
                     spc != null ? spc.characterEditor() : null,
                     RootRules.isOff(origin.id()),
                     RootRules.playersChoose(origin.id())));
+            browse.add(RootBrowse.entry(origin));
         }
         // Every registered gene gets a catalog entry, not just origin-wired ones: a gene
         // granted outright (/townstead gene grant, or a pack gene awaiting wiring) still
@@ -99,7 +103,7 @@ public final class RootCatalog {
         }
         return new Snapshot(origins, new ArrayList<>(genes.values()), traits,
                 com.aetherianartificer.townstead.root.rig.RigRegistry.all(),
-                PresentEntityGroups.keysFromRegistries(), looks());
+                PresentEntityGroups.keysFromRegistries(), looks(), browse);
     }
 
     /** Outfits and fitted skins per root; roots with neither are left out. */
@@ -236,6 +240,9 @@ public final class RootCatalog {
 
     /** An instance's heritable-tint preset colours for the catalog (empty when none). */
     private static List<Integer> paletteEntries(com.aetherianartificer.townstead.root.gene.GeneInstance instance) {
+        // An iris variant's right-eye colour rides in the palette (mismatched eyes).
+        if (instance instanceof com.aetherianartificer.townstead.root.gene.types.IrisGeneType.Instance iris)
+            return iris.tintRight() >= 0 ? List.of(iris.tintRight()) : List.of();
         return instance instanceof com.aetherianartificer.townstead.root.gene.types.AttachmentGeneType.Instance att
                 ? att.palette() : List.of();
     }
@@ -261,6 +268,7 @@ public final class RootCatalog {
     private static int variantTint(com.aetherianartificer.townstead.root.gene.GeneInstance instance) {
         if (instance instanceof com.aetherianartificer.townstead.root.gene.types.SkinToneGeneType.Instance st) return st.tint();
         if (instance instanceof com.aetherianartificer.townstead.root.gene.types.EyeColorGeneType.Instance ec) return ec.tint();
+        if (instance instanceof com.aetherianartificer.townstead.root.gene.types.IrisGeneType.Instance iris) return iris.tint();
         return -1;
     }
 
@@ -274,6 +282,7 @@ public final class RootCatalog {
 
     /** Whether an eyes variant is emissive (glowing). */
     private static boolean variantGlow(com.aetherianartificer.townstead.root.gene.GeneInstance instance) {
+        if (instance instanceof com.aetherianartificer.townstead.root.gene.types.IrisGeneType.Instance iris) return iris.glow();
         return instance instanceof com.aetherianartificer.townstead.root.gene.types.EyesGeneType.Instance e && e.glow();
     }
 
@@ -285,13 +294,18 @@ public final class RootCatalog {
         // This synced slot also preserves the concrete render kind of a generic VARIANTS gene.
         if (instance instanceof com.aetherianartificer.townstead.root.gene.types.SkinOverlayGeneType.Instance) return "skin_overlay";
         if (instance instanceof com.aetherianartificer.townstead.root.gene.types.SkinToneGeneType.Instance) return "skin_tone";
-        if (instance instanceof com.aetherianartificer.townstead.root.gene.types.IrisGeneType.Instance iris) return iris.glow() ? "iris_glow" : "iris";
+        if (instance instanceof com.aetherianartificer.townstead.root.gene.types.IrisGeneType.Instance iris)
+            return iris.editable() ? "iris_seed" : iris.glow() ? "iris_glow" : "iris";
         return "";
     }
 
     /** Translate key of a Component when it is a {@code translatable}, else "" (literal). */
     private static String keyOf(Component c) {
-        if (c != null && c.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents tc) {
+        // A key alone cannot carry arguments: a qualified name ("%s %s" with "Runic", "High Elf")
+        // re-translated from its bare key on the client reads "%s %s". Ship no key for those, so
+        // the client shows the name as resolved here.
+        if (c != null && c.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents tc
+                && tc.getArgs().length == 0) {
             return tc.getKey();
         }
         return "";

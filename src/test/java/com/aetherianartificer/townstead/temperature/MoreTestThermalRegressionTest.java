@@ -17,14 +17,15 @@ class MoreTestThermalRegressionTest {
             double snow = RoomHeatBalance.localExposure(settings.coolingSourceOffset(), 1);
             // Freezing outdoor climate, adjacent lit fire, a large surrounding snow field.
             float felt = (float) (RoomHeatBalance.localExposure(fire.radiantDegrees(), 1)
-                    - RoomHeatBalance.combinedExposure(-snow * 100, -snow));
+                    - RoomHeatBalance.combinedExposure(-snow * 100, -snow,
+                    settings.radiantMax(), settings.radiantColdStack()));
             var exposure = new ThermalExposure(felt, 0, false, false, 0,
                     ThermalProtection.NONE, ThermalProfile.DEFAULT, false);
             var forecast = exposure.forecast(36.3f, 300); // Jorvain's saved core temperature
             assertTrue(forecast.recovers(), "A nearby fire must actually finish a recovery break");
             assertTrue(forecast.body() > 36.75f);
             assertTrue(forecast.body() < 37.5f);
-            assertEquals(2500, fire.watts(), "Radiant relief must not increase kitchen/room heat input");
+            assertEquals(5000, fire.watts(), "Radiant relief must not change the fire's room heat input");
             assertEquals(0, settings.appliance("minecraft:campfire").output(0, false).radiantDegrees());
         }
     }

@@ -168,7 +168,7 @@ public final class FrameRenderer {
     public static void tileTexture(GuiGraphics g, String texture, int x, int y, int w, int h) {
         if (w <= 0 || h <= 0) return;
         final int tileSize = 16;
-        g.enableScissor(x, y, x + w, y + h);
+        UiScissor.enable(g, x, y, x + w, y + h);
         for (int ty = 0; ty < h; ty += tileSize) {
             for (int tx = 0; tx < w; tx += tileSize) {
                 CellTextures.blit(g, texture, x + tx, y + ty, tileSize);

@@ -13,13 +13,17 @@ VAR thrall_scorned = false
 
 // When this scene plays. The greet in persona.ink checks these in order.
 === function thrall_arrival_ready() ===
-~ return (done_neighbor or done_bitten) and not thrall_called
+~ return (done_neighbor or done_bitten or no_one_turns) and not thrall_called
 
 === function thrall_cold_ready() ===
-~ return thrall_called and not thrall_seen and check("thrall_near")
+~ return thrall_called and not thrall_seen and not thrall_decided() and check("thrall_near")
 
 === function thrall_after_ready() ===
-~ return thrall_seen and not done_thrall and not check("thrall_near")
+~ return thrall_called and not done_thrall and thrall_decided()
+
+// The player answered the thrall in their own story. It can happen before the founder sees them.
+=== function thrall_decided() ===
+~ return check("thrall_stayed") or check("thrall_sent_away")
 
 === thrall_arrival ===
 ~ thrall_called = true
@@ -45,10 +49,12 @@ Send them back down the road.
     ...That isn't true. Ask me something else.
 - -> DONE
 
-// The player decided. The thrall stayed, or went.
+// The player decided in the thrall's own story (story/grieving_thrall): they stayed, or went.
 === thrall_after ===
 ~ done_thrall = true
-{is(thrall_name, ""):
+// Seeing it through together is what earns the name (scene 12).
+~ trust(2)
+{check("thrall_stayed"):
     -> stayed
 }
 -> went

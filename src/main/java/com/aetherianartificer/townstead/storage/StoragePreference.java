@@ -49,6 +49,17 @@ public record StoragePreference(List<ResourceLocation> preferredRoles) {
         return EXTERNAL_BASE_RANK + preferredRoles.size() + 1;
     }
 
+    /** This preference with {@code role} ahead of every other, for goods that have their own store. */
+    public StoragePreference preferring(ResourceLocation role) {
+        if (!preferredRoles.isEmpty() && preferredRoles.get(0).equals(role)) return this;
+        List<ResourceLocation> roles = new ArrayList<>(preferredRoles.size() + 1);
+        roles.add(role);
+        for (ResourceLocation existing : preferredRoles) {
+            if (!existing.equals(role)) roles.add(existing);
+        }
+        return new StoragePreference(roles);
+    }
+
     public static StoragePreference forVillager(VillagerEntityMCA villager) {
         if (villager == null) return NONE;
         ResourceLocation id = BuiltInRegistries.VILLAGER_PROFESSION

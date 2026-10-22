@@ -5,11 +5,11 @@ VAR done_collar = false
 === function collar_ask_ready() ===
 ~ return named and not collar_asked
 
-=== function collar_done_ready() ===
-~ return collar_asked and not done_collar and check("carries_collar_things")
-
-// Beat 5. A bell for its collar.
+// Beat 5. A bell for its collar. A quest: the player brings the leather and the nugget.
 === collar_ask ===
+# quest: A bell for the wolf
+# about: Bring the hunter a piece of leather and a nugget of silver, or iron if there is no silver.
+# goal: collar_things
 ~ collar_asked = true
 I want to put a bell on that wolf's collar. A proper one, with a leather strap to hang it from.
 Bring me a bit of leather and a nugget of silver, if there's any about. Iron'll do if there isn't. Silver rings better.
@@ -19,7 +19,7 @@ Bring me a bit of leather and a nugget of silver, if there's any about. Iron'll 
     Thanks. No hurry. It's not like it's going anywhere. It never goes anywhere I'm not.
 - -> DONE
 
-=== collar_done ===
+= done
 ~ done_collar = true
 ~ act("take_collar_things")
 That'll do nicely. # emote:nod

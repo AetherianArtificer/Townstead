@@ -44,7 +44,10 @@ That's a strange thing to want, isn't it. I don't care. Will you come?
 ~ trust(2)
 Here. He's here.
 I never did get his name. I put a stone up for him anyway. You don't need a name for a stone. # emote:ponder
-He'd want to know it ate well. It eats very well. Somebody keeps spoiling it.
+He'd want to know it ate well.
+{meat_given > 0:
+    It eats very well. Somebody keeps spoiling it.
+}
 + [Say something to him.]
     I just did. That's all I've got.
     ...Thank you for the wolf. There. That's the rest of it.

@@ -20,6 +20,7 @@ public final class PlayerThermal {
     public static void tick(Player player) {
         if (player == null || player.level().isClientSide) return;
         if ((player.level().getGameTime() + player.getId()) % INTERVAL != 0) return;
+        PlayerFeelsLike.exert(player, INTERVAL / 20f);
         if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer
                 && TemperatureBridgeResolver.get() == com.aetherianartificer.townstead.compat.temperature.LsoTemperatureBridge.INSTANCE
                 && TemperatureSettings.get().roomHeatEnabled()) {
@@ -31,6 +32,9 @@ public final class PlayerThermal {
             /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(serverPlayer, reading);
             *///?}
         }
+        // Acclimation moves over minutes; every ten seconds is plenty.
+        if ((player.level().getGameTime() + player.getId()) % 200 == 0)
+            PlayerFeelsLike.acclimate(player, 10f / 60f);
         if (!PlayerThermalOffsets.expireIfDue(player)) return;
         AmbientTemperatureBridge bridge = TemperatureBridgeResolver.get();
         if (bridge != null) bridge.onThermalInfluenceEnded(player);

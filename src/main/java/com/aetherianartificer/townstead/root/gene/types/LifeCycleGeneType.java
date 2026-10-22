@@ -56,6 +56,11 @@ import java.util.Set;
  */
 public final class LifeCycleGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.BEING;
+    }
+
     public static final String KEY = "townstead_roots:life_cycle";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/LifeCycleGene");

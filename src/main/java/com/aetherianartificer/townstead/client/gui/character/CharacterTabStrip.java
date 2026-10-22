@@ -48,6 +48,7 @@ public class CharacterTabStrip extends AbstractWidget {
     private final int[] tabW;     // width of each tab
     private final int contentW;   // total laid-out width
     private String selected;
+    private String marked = "";
     private int scrollX;
 
     public CharacterTabStrip(int x, int y, int width, int height, List<Entry> entries,
@@ -80,6 +81,9 @@ public class CharacterTabStrip extends AbstractWidget {
 
     public void setSelected(String pageId) { this.selected = pageId; }
 
+    /** Marks one tab with a small gold corner, such as what someone is now while another tab is open. */
+    public void setMarked(String pageId) { this.marked = pageId == null ? "" : pageId; }
+
     private boolean overflow() { return contentW > width; }
     private int innerX() { return getX() + (overflow() ? ARROW : 0); }
     private int innerWidth() { return width - (overflow() ? ARROW * 2 : 0); }
@@ -101,6 +105,10 @@ public class CharacterTabStrip extends AbstractWidget {
             drawButton(g, sx, w, isSel, hover);
             int color = isSel ? 0xFFA0A0A0 : 0xFFFFFFFF;
             g.drawCenteredString(font, entries.get(i).label(), sx + w / 2, getY() + (height - 8) / 2, color);
+            if (entries.get(i).pageId().equals(marked)) {
+                g.fill(sx + w - 6, getY() + 3, sx + w - 3, getY() + 6, 0xFF3F3F3F);
+                g.fill(sx + w - 7, getY() + 2, sx + w - 4, getY() + 5, 0xFFF2D36B);
+            }
         }
         g.disableScissor();
         if (overflow()) {

@@ -14,10 +14,10 @@ import java.util.Map;
  * keyframe channels. Pure data + Gson, shared by the server (doctor validation) and
  * the client (playback), so it must stay free of sided imports.
  *
- * <p>Times are converted to ticks at parse (Bedrock authors in seconds), values stay
- * in the file's own convention — rotation degrees and position pixels in Bedrock
- * space, exactly what Blockbench shows — and the application side does the Java-space
- * sign flips, same contract as pose bone rotations. Keyframe values may be numbers,
+ * <p>Times are converted to ticks at parse (Bedrock authors in seconds). Rotation
+ * keyframes are read as GeckoLib and Blockbench read a Bedrock file: Y and Z are negated
+ * here, into the internal convention pose bone rotations also use, and the application
+ * side does the Java-space sign flips. Positions stay in the file's own pixels. Keyframe values may be numbers,
  * {@code [x, y, z]} arrays, or {@code pre}/{@code post} objects; Molang expressions
  * are not evaluated (the offending value reads as 0 and the parse warning names it —
  * bake expressions to keyframes in Blockbench before export).</p>
@@ -126,7 +126,7 @@ public final class AttachmentAnimation {
                     if (!bone.getValue().isJsonObject()) continue;
                     JsonObject track = bone.getValue().getAsJsonObject();
                     String where = entry.getKey() + "/" + bone.getKey();
-                    Channel rotation = channel(track.get("rotation"), 0f, where, warnings);
+                    Channel rotation = negateYz(channel(track.get("rotation"), 0f, where, warnings));
                     Channel position = channel(track.get("position"), 0f, where, warnings);
                     Channel scale = channel(track.get("scale"), 1f, where, warnings);
                     if (rotation == null && position == null && scale == null) continue;
@@ -147,6 +147,17 @@ public final class AttachmentAnimation {
 
     private static float lastTime(Channel channel) {
         return channel.times[channel.times.length - 1];
+    }
+
+    /** Rotation keyframes read as GeckoLib reads them: Y and Z negated into the internal convention. */
+    @Nullable
+    private static Channel negateYz(@Nullable Channel channel) {
+        if (channel == null) return null;
+        for (float[] value : channel.values) {
+            value[1] = -value[1];
+            value[2] = -value[2];
+        }
+        return channel;
     }
 
     /** A channel from a Bedrock value: keyframe map, flat array, or single number. */

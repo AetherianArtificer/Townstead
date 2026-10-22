@@ -1,6 +1,11 @@
 {
   "schema": "townstead:mob_replacement/v1",
   "mods": "vampirism",
+  "spawn_types": [
+    "natural",
+    "spawner",
+    "event"
+  ],
   "replaces": [
     "vampirism:advanced_vampire"
   ],
@@ -29,5 +34,6 @@
     ]
   },
   "credit_kills": true,
-  "loot": "replaced"
+  "loot": "replaced",
+  "clothing": "townstead:vampire"
 }

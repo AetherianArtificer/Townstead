@@ -30,6 +30,35 @@ public final class HairColors {
         }
     }
 
+    /**
+     * {@link #roll} onto a player's saved MCA data (its {@code GeneEumelanin}/{@code GenePheomelanin}
+     * and {@code HairColor} keys), for a player re-founded as a new root.
+     */
+    public static void rollInto(net.minecraft.nbt.CompoundTag entityData, HairSettings settings, RandomSource random) {
+        if (entityData == null || settings == null) return;
+        if (!settings.colorRanges().isEmpty()) {
+            HairColorRange range = weightedRange(settings.colorRanges(), random);
+            entityData.putFloat("GeneEumelanin", range.sampleDarkness(random));
+            entityData.putFloat("GenePheomelanin", range.sampleRedness(random));
+        }
+        if (hasFantasy(settings)) entityData.putInt("HairColor", rollFantasy(settings, random));
+    }
+
+    /**
+     * {@link #roll} onto a {@link RootGenes#snapshot}-ordered array; returns the hair dye to wear,
+     * {@code currentDye} when the policy says nothing about dye.
+     */
+    public static int rollSnapshot(float[] snapshot, HairSettings settings, RandomSource random, int currentDye) {
+        if (settings == null) return currentDye;
+        if (!settings.colorRanges().isEmpty()) {
+            HairColorRange range = weightedRange(settings.colorRanges(), random);
+            RootGenes.writeSnapshot(snapshot, Genetics.EUMELANIN, range.sampleDarkness(random));
+            RootGenes.writeSnapshot(snapshot, Genetics.PHEOMELANIN, range.sampleRedness(random));
+        }
+        if (hasFantasy(settings)) return rollFantasy(settings, random);
+        return settings.colorRanges().isEmpty() ? currentDye : 0xFF000000;
+    }
+
     public static void clamp(VillagerEntityMCA villager, HairSettings settings) {
         if (villager == null || settings == null) return;
         if (!settings.colorRanges().isEmpty()) {

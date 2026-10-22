@@ -65,7 +65,7 @@ public class LineField extends EditBox {
         String value = getValue();
         int x = textX(s), y = textY(s);
         boolean focused = isFocused();
-        g.enableScissor(getX() - 1, getY() - 1, getX() + getWidth() + 1, getY() + getHeight() + 1);
+        UiScissor.enable(g, getX() - 1, getY() - 1, getX() + getWidth() + 1, getY() + getHeight() + 1);
         if (value.isEmpty() && !focused) {
             drawScaled(g, hint.getString(), centred ? getX() + (getWidth() - font.width(hint) * s) / 2 : getX(), y, s, BookRenderer.FADED);
         } else {

@@ -51,7 +51,7 @@ public final class ContentGates {
         if (path.equals("serving_plate")) return Systems.on(Systems.HOSPITALITY);
         if (path.equals("scarf")) return Systems.on(Systems.CLOTHING);
         if (path.equals("journal")) return Systems.on(Systems.CAREERS);
-        if (path.startsWith("room_thermo")) return TownsteadConfig.isVillagerTemperatureEnabled();
+        if (path.startsWith("room_thermo")) return TownsteadConfig.temperatureActive();
         return true;
     }
 }

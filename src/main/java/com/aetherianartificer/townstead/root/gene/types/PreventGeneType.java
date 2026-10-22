@@ -31,6 +31,11 @@ import java.util.Set;
  *
  * <p>JSON: {@code { "type":"pheno:prevent", "what":"item_use",
  * "tag":"minecraft:meat" }}</p>
+ *
+ * <p>A {@code death} gene may also set the health the bearer is left on ({@code set_health},
+ * default 1) and run an {@code action} on them once it saves them, with the killer as the
+ * counterpart. A {@code when_death_prevented} trigger fires for every other gene as well, so a
+ * save can be priced with a resource in the gene's {@code condition} and paid in its action.</p>
  */
 public final class PreventGeneType implements GeneType {
 
@@ -53,7 +58,9 @@ public final class PreventGeneType implements GeneType {
     }
 
     public record Instance(What what, @Nullable TagKey<Item> tag, Set<ResourceLocation> items,
-                           @Nullable Condition condition) implements GeneInstance {
+                           @Nullable Condition condition, float setHealth,
+                           @Nullable com.aetherianartificer.townstead.pheno.action.Action action)
+            implements GeneInstance {
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
 
@@ -88,7 +95,14 @@ public final class PreventGeneType implements GeneType {
             }
         }
         Condition condition = json.has("condition") ? Conditions.parse(json.get("condition")) : null;
-        return new Instance(what, tag, items, condition);
+        float setHealth = Math.max(1f, GsonHelper.getAsFloat(json, "set_health", 1f));
+        com.aetherianartificer.townstead.pheno.action.Action action = null;
+        if (json.has("action")) {
+            if (what != What.DEATH) return null;
+            action = com.aetherianartificer.townstead.pheno.action.Actions.parse(json.get("action"));
+            if (action == null) return null;
+        }
+        return new Instance(what, tag, items, condition, setHealth, action);
     }
 
     private static ResourceLocation itemId(ItemStack stack) {

@@ -173,11 +173,13 @@ public final class WorksiteCatalogs {
         for (net.minecraft.resources.ResourceLocation tagId : tagIds) {
             Set<net.minecraft.resources.ResourceLocation> covered = new LinkedHashSet<>();
             Option first = null;
+            Option closest = null;
             boolean available = false;
             for (Option option : out) {
                 if (option.activity() || option.tag()) continue;
                 if (!OrderTags.contains(tagId, option.output())) continue;
                 if (first == null) first = option;
+                closest = closest == null ? option : Option.better(closest, option);
                 available |= option.available();
                 covered.add(option.output());
             }
@@ -189,8 +191,8 @@ public final class WorksiteCatalogs {
             // absorbing it would delete a set the player deliberately declared.
             if (byCoverage.putIfAbsent(covered, tagId) != null) continue;
             categories.add(Option.category(tagId, OrdersService.categoryLabel(tagId), first.output(),
-                    available, available ? "" : first.blocker(),
-                    available ? List.of() : first.missing()));
+                    available, available ? "" : closest.blocker(),
+                    available ? List.of() : closest.missing()));
         }
         out.addAll(categories);
     }

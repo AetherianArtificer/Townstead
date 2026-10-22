@@ -1,0 +1,8 @@
+{
+  "frequency": 3.5,
+  "damping_ratio": 0.35,
+  "gravity": 0.05,
+  "inertia": 0.6,
+  "drag": 0.5,
+  "limit": 20
+}

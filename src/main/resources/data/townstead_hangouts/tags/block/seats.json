@@ -14,6 +14,7 @@
     {"id":"#forge:thrones","required":false},
     {"id":"beachparty:beach_chair","required":false},
     {"id":"beachparty:hooded_beach_chair","required":false},
-    {"id":"beachparty:palm_chair","required":false}
+    {"id":"beachparty:palm_chair","required":false},
+    {"id":"beachparty:chair","required":false}
   ]
 }

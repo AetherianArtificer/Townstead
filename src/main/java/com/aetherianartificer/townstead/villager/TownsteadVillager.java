@@ -485,6 +485,17 @@ public final class TownsteadVillager {
 
         private float thermalWetness, comfortLoad, thermalStrainSeconds;
         private int coreThermalTier = 3;
+        /** -1 cold-adapted to 1 hot-adapted; NaN until first set from where the villager lives. */
+        private float thermalAcclimation = Float.NaN;
+
+        public float thermalAcclimation() { return Float.isNaN(thermalAcclimation) ? 0f : thermalAcclimation; }
+        public boolean thermalAcclimationSet() { return !Float.isNaN(thermalAcclimation); }
+        public void setThermalAcclimation(float value) {
+            float next = Math.max(-1f, Math.min(1f, value));
+            if (thermalAcclimation == next) return;
+            thermalAcclimation = next;
+            markDirty();
+        }
 
         public float thermalWetness() { return thermalWetness; }
         public float comfortLoad() { return comfortLoad; }
@@ -829,6 +840,7 @@ public final class TownsteadVillager {
             new com.aetherianartificer.townstead.temperature.ThermalComfort.State(
                     thermalWetness, comfortLoad, thermalStrainSeconds).write(tag);
             tag.putInt("coreTier", coreThermalTier);
+            if (!Float.isNaN(thermalAcclimation)) tag.putFloat("acclimation", thermalAcclimation);
             tag.putBoolean("seekingRelief", seekingRelief);
             tag.putInt("tier", thermalTier);
             return tag;
@@ -843,6 +855,7 @@ public final class TownsteadVillager {
             comfortLoad = comfort.load();
             thermalStrainSeconds = comfort.strainSeconds();
             coreThermalTier = tag.contains("coreTier") ? Math.max(0, Math.min(6, tag.getInt("coreTier"))) : 3;
+            thermalAcclimation = tag.contains("acclimation") ? Math.max(-1f, Math.min(1f, tag.getFloat("acclimation"))) : Float.NaN;
             temperatureMoodDrift = TemperatureData.getMoodDrift(tag);
             thermalCrisis = TemperatureData.isCrisis(tag);
             seekingRelief = tag.getBoolean("seekingRelief");
@@ -1008,6 +1021,8 @@ public final class TownsteadVillager {
         // blends its parents.
         private com.aetherianartificer.townstead.root.Heritage heritage =
                 com.aetherianartificer.townstead.root.Heritage.EMPTY;
+        // The browser mix this heritage was founded from; any new heritage drops it.
+        private com.aetherianartificer.townstead.root.RootMix rootMix;
 
         public long birthWorldDay() {
             return birthWorldDay;
@@ -1291,6 +1306,12 @@ public final class TownsteadVillager {
             return geneId != null && carriedVariants.containsKey(geneId);
         }
 
+        /** Forget every carried variant: a fresh founder roll starts from none. */
+        public void clearCarriedVariants() {
+            carriedVariants.clear();
+            markDirty();
+        }
+
         /** Stamp (or clear, when {@code variantId} is null/empty) the carried variant for a gene. */
         public void setCarriedVariant(String geneId, String variantId) {
             if (geneId == null || geneId.isEmpty()) return;
@@ -1337,6 +1358,18 @@ public final class TownsteadVillager {
 
         public void setHeritage(com.aetherianartificer.townstead.root.Heritage value) {
             heritage = value == null ? com.aetherianartificer.townstead.root.Heritage.EMPTY : value;
+            rootMix = null;
+            markDirty();
+        }
+
+        /** The mix this villager was founded from in the root browser, or null. */
+        @org.jetbrains.annotations.Nullable
+        public com.aetherianartificer.townstead.root.RootMix rootMix() {
+            return rootMix;
+        }
+
+        public void setRootMix(@org.jetbrains.annotations.Nullable com.aetherianartificer.townstead.root.RootMix value) {
+            rootMix = value;
             markDirty();
         }
 
@@ -1394,6 +1427,7 @@ public final class TownsteadVillager {
             }
             if (!genotype.isEmpty()) tag.put("genotype", genotype.toTag());
             if (!heritage.isEmpty()) tag.put("heritage", heritage.toTag());
+            if (rootMix != null) tag.put("rootMix", rootMix.toTag());
             return tag;
         }
 
@@ -1443,6 +1477,7 @@ public final class TownsteadVillager {
             heritage = tag.contains("heritage")
                     ? com.aetherianartificer.townstead.root.Heritage.fromTag(tag.getCompound("heritage"))
                     : com.aetherianartificer.townstead.root.Heritage.EMPTY;
+            rootMix = com.aetherianartificer.townstead.root.RootMix.fromTag(tag.getList("rootMix", Tag.TAG_COMPOUND));
             markDirty();
         }
     }

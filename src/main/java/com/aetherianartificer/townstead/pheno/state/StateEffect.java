@@ -6,6 +6,7 @@ import com.aetherianartificer.townstead.pheno.action.Action;
 import com.aetherianartificer.townstead.pheno.action.Actions;
 import com.aetherianartificer.townstead.pheno.condition.Condition;
 import com.aetherianartificer.townstead.pheno.condition.Conditions;
+import com.aetherianartificer.townstead.root.gene.GeneLayer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceLocation;
@@ -28,10 +29,18 @@ public record StateEffect(ResourceLocation id, ResourceLocation state, @Nullable
     public static final String SCHEMA = "pheno:state_effect/v1";
     public record Periodic(int interval, double chance, Action action) {}
     public record Grant(ResourceLocation gene, @Nullable String variant) {}
-    public record Genes(List<Grant> grant, List<ResourceLocation> suppress) {
+    /**
+     * {@code suppressLayer} ({@code "suppress": "body"}) drops every gene the carrier has in that layer,
+     * keeping what states granted.
+     */
+    public record Genes(List<Grant> grant, List<ResourceLocation> suppress, @Nullable GeneLayer suppressLayer) {
         public Genes {
             grant = List.copyOf(grant);
             suppress = List.copyOf(suppress);
+        }
+
+        public Genes(List<Grant> grant, List<ResourceLocation> suppress) {
+            this(grant, suppress, null);
         }
     }
 
@@ -96,12 +105,20 @@ public record StateEffect(ResourceLocation id, ResourceLocation state, @Nullable
             grants.add(new Grant(geneId(GsonHelper.getAsString(grant, "gene", "")), variant));
         }
         List<ResourceLocation> suppress = new ArrayList<>();
-        for (JsonElement entry : array(json, "suppress")) {
-            if (!entry.isJsonPrimitive()) throw new IllegalArgumentException("each suppress entry must be a gene id");
-            suppress.add(geneId(entry.getAsString()));
+        GeneLayer layer = null;
+        if (json.has("suppress") && json.get("suppress").isJsonPrimitive()) {
+            layer = GeneLayer.parse(json.get("suppress").getAsString());
+            if (layer == null) throw new IllegalArgumentException("'suppress' must be gene ids or a layer: body, being or habits");
+        } else {
+            for (JsonElement entry : array(json, "suppress")) {
+                if (!entry.isJsonPrimitive()) throw new IllegalArgumentException("each suppress entry must be a gene id");
+                suppress.add(geneId(entry.getAsString()));
+            }
         }
-        if (grants.isEmpty() && suppress.isEmpty()) throw new IllegalArgumentException("'genes' grants and suppresses nothing");
-        return new Genes(grants, suppress);
+        if (grants.isEmpty() && suppress.isEmpty() && layer == null) {
+            throw new IllegalArgumentException("'genes' grants and suppresses nothing");
+        }
+        return new Genes(grants, suppress, layer);
     }
 
     private static List<JsonElement> array(JsonObject json, String key) {

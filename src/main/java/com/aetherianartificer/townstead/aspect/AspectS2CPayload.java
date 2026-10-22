@@ -12,17 +12,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Server to client: the aspects {@code entityId} can be, the one they are ({@code current}, empty
- * for none), and whether this player may change it now; with the looks of their current aspect
- * (a werewolf's coat) and whether this player may change those.
+ * Server to client: the aspects {@code entityId} can be, each with its looks (a werewolf's coat) as
+ * they would be drawn on them; the one they are ({@code current}, empty for none); why this player
+ * may not change it ({@code locked}, a lang key, empty when they may); and whether they may change
+ * the looks.
  */
 //? if neoforge {
-public record AspectS2CPayload(int entityId, List<String> options, String current, boolean allowed, List<Look> looks, boolean styleAllowed) implements CustomPacketPayload {
+public record AspectS2CPayload(int entityId, List<Choice> options, String current, String locked, boolean styleAllowed) implements CustomPacketPayload {
 //?} else {
-/*public record AspectS2CPayload(int entityId, List<String> options, String current, boolean allowed, List<Look> looks, boolean styleAllowed) {
+/*public record AspectS2CPayload(int entityId, List<Choice> options, String current, String locked, boolean styleAllowed) {
 *///?}
 
-    /** One look of the current aspect: its option id, how many there are, and the one shown now. */
+    /** One aspect on offer and its looks. */
+    public record Choice(String id, List<Look> looks) {}
+
+    /** One look of an aspect: its option id, how many there are, and the one shown now. */
     public record Look(String id, int count, int value) {}
 
     //? if neoforge {
@@ -35,31 +39,47 @@ public record AspectS2CPayload(int entityId, List<String> options, String curren
     public Type<? extends CustomPacketPayload> type() { return TYPE; }
     //?}
 
+    /** Whether this player may change the aspect. */
+    public boolean allowed() {
+        return locked.isEmpty();
+    }
+
+    /** The choice with {@code id}, or null. */
+    public Choice choice(String id) {
+        for (Choice choice : options) if (choice.id().equals(id)) return choice;
+        return null;
+    }
+
     public void write(FriendlyByteBuf buf) {
         buf.writeInt(entityId);
         buf.writeVarInt(options.size());
-        for (String option : options) buf.writeUtf(option, 256);
-        buf.writeUtf(current, 256);
-        buf.writeBoolean(allowed);
-        buf.writeVarInt(looks.size());
-        for (Look look : looks) {
-            buf.writeUtf(look.id(), 64);
-            buf.writeVarInt(look.count());
-            buf.writeVarInt(look.value());
+        for (Choice choice : options) {
+            buf.writeUtf(choice.id(), 256);
+            buf.writeVarInt(choice.looks().size());
+            for (Look look : choice.looks()) {
+                buf.writeUtf(look.id(), 64);
+                buf.writeVarInt(look.count());
+                buf.writeVarInt(look.value());
+            }
         }
+        buf.writeUtf(current, 256);
+        buf.writeUtf(locked, 256);
         buf.writeBoolean(styleAllowed);
     }
 
     public static AspectS2CPayload read(FriendlyByteBuf buf) {
         int id = buf.readInt();
         int size = Math.min(buf.readVarInt(), 64);
-        List<String> options = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) options.add(buf.readUtf(256));
+        List<Choice> options = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+            String choiceId = buf.readUtf(256);
+            int lookCount = Math.min(buf.readVarInt(), 16);
+            List<Look> looks = new ArrayList<>(lookCount);
+            for (int j = 0; j < lookCount; j++) looks.add(new Look(buf.readUtf(64), buf.readVarInt(), buf.readVarInt()));
+            options.add(new Choice(choiceId, List.copyOf(looks)));
+        }
         String current = buf.readUtf(256);
-        boolean allowed = buf.readBoolean();
-        int lookCount = Math.min(buf.readVarInt(), 16);
-        List<Look> looks = new ArrayList<>(lookCount);
-        for (int i = 0; i < lookCount; i++) looks.add(new Look(buf.readUtf(64), buf.readVarInt(), buf.readVarInt()));
-        return new AspectS2CPayload(id, List.copyOf(options), current, allowed, List.copyOf(looks), buf.readBoolean());
+        String locked = buf.readUtf(256);
+        return new AspectS2CPayload(id, List.copyOf(options), current, locked, buf.readBoolean());
     }
 }

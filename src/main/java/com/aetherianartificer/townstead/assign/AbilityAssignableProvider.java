@@ -44,7 +44,8 @@ public final class AbilityAssignableProvider implements AssignableProvider {
             }
             out.add(new Assignable(id, Component.literal(AbilityNames.display(id)),
                     AbilityNames.icon(id), Component.literal(AbilityNames.source(id)),
-                    Assignable.Kind.ABILITY, cooldown, costAmount, costLabel, costColor, ""));
+                    Assignable.Kind.ABILITY, cooldown, costAmount, costLabel, costColor, "",
+                    AbilityNames.description(id)));
         }
     }
 

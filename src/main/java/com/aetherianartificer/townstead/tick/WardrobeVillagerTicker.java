@@ -129,9 +129,10 @@ public final class WardrobeVillagerTicker {
         if (!cell.isEmpty() && WardrobeServer.templateOf(cell) == null) {
             return WardrobeServer.skinExists(cell) ? cell : fallback;
         }
+        // Only starred skins: a skin picked for one day stays on that day.
         WardrobeAssignments.Entry entry = assignments.entry(villager.getUUID());
         SkinPicker.Favourites favourites = entry == null ? SkinPicker.Favourites.NONE
-                : new SkinPicker.Favourites(entry.starred(), entry.picks());
+                : new SkinPicker.Favourites(entry.starred(), java.util.Map.of());
         WardrobePolicy.LayerRule rule = plan.rule(ClothingLayer.BASE);
         Optional<String> chosen;
         if (rule != null && rule.requirement() != WardrobePolicy.Requirement.NONE) {

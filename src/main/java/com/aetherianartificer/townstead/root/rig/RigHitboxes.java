@@ -55,7 +55,7 @@ public final class RigHitboxes {
         //? if neoforge {
         float entityScale = BodySize.factor(entity.getScale());
         //?} else {
-        /*float entityScale = 1f;
+        /*float entityScale = BodySize.factor(BodyScale.of(entity));
         *///?}
         return new Inputs(box == null ? HUMANOID : box, width, height, growth,
                 box == null ? 1f : speciesScale(entity), entityScale);
@@ -158,6 +158,9 @@ public final class RigHitboxes {
 
     public static RigDefinition definition(LivingEntity entity) {
         if (!entity.level().isClientSide) return ServerRig.defFor(entity);
+        // a state's form (a werewolf's beast) is the body while it lasts, as the server sees it
+        String form = ClientForm.rig(entity.getId());
+        if (form != null && !form.isEmpty()) return RootCatalogClient.rig(form);
         RootCatalogEntry origin = RootCatalogClient.origin(RootClientStore.resolve(entity));
         if (origin == null) return null;
         String rig = origin.rigBase();
@@ -180,5 +183,12 @@ public final class RigHitboxes {
         var speciesId = RootRegistry.effectiveSpecies(ResourceLocation.tryParse(root));
         var species = speciesId == null ? null : SpeciesRegistry.byId(speciesId);
         return species == null ? 1f : BodySize.factor(species.rig().scale());
+    }
+
+    /** Client-only form access, isolated so dedicated servers never load it. */
+    private static final class ClientForm {
+        static String rig(int entityId) {
+            return com.aetherianartificer.townstead.client.state.StateFormClient.rig(entityId);
+        }
     }
 }

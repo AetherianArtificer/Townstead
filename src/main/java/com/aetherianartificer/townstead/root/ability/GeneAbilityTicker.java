@@ -14,7 +14,7 @@ import com.aetherianartificer.townstead.root.gene.types.GlowGeneType;
 import com.aetherianartificer.townstead.root.gene.types.ParticleGeneType;
 import com.aetherianartificer.townstead.root.gene.types.RestrictEquipmentGeneType;
 import com.aetherianartificer.townstead.root.gene.types.ScareMobGeneType;
-import com.aetherianartificer.townstead.root.hazard.AvoidStrategy;
+import com.aetherianartificer.townstead.root.hazard.Hazard;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -32,7 +32,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.EnumSet;
 import java.util.List;
 
 /**
@@ -67,9 +66,11 @@ public final class GeneAbilityTicker {
         for (Ability ability : Ability.values()) clear(entity, ability);
         if (entity instanceof Player player) setFlyingSpeed(player, BASE_FLYING_SPEED);
         if (entity.hasGlowingTag()) entity.setGlowingTag(false);
+        EntityGlowSync.clear(entity);
         // Clear hazard path-avoidance; the next tick re-applies whatever the new origin's genes imply.
         if (entity instanceof PathfinderMob mob) {
-            for (AvoidStrategy strategy : AvoidStrategy.values()) strategy.installProactive(mob, false);
+            Hazard.clearProactive(mob);
+            com.aetherianartificer.townstead.root.hazard.HazardPaths.clear(mob);
         }
     }
 
@@ -79,7 +80,10 @@ public final class GeneAbilityTicker {
 
         com.aetherianartificer.townstead.root.GeneExpressionSync.tick(entity);
         List<Power> expressed = Powers.active(entity);
-        if (expressed.isEmpty()) return;
+        if (expressed.isEmpty()) {
+            EntityGlowSync.update(entity, List.of(), null);
+            return;
+        }
 
         boolean isPlayer = entity instanceof Player;
         ConditionContext ctx = new ConditionContext(entity);
@@ -116,6 +120,7 @@ public final class GeneAbilityTicker {
             }
         }
         applyGlow(entity, glows, ctx);
+        EntityGlowSync.update(entity, glows, ctx);
         applyParticles(entity, particles, ctx);
         applyRestrictions(entity, restricts, ctx);
         applyAuras(entity, auras, ctx);
@@ -127,80 +132,92 @@ public final class GeneAbilityTicker {
     }
 
     /**
-     * Drives AI avoidance of the environmental hazards an entity's genes impose on it. Two layers:
-     * proactive (keep the pathfinder routing around the hazard, e.g. sunlit tiles) which is set
-     * while the gene is present, and reactive (walk to the nearest safe spot) which fires only while
-     * the hazard condition is currently true. Brain-based MCA villagers are steered via the
-     * WALK_TARGET memory; players are not pathfinders, so they simply take the effect.
+     * Keeps an entity clear of the places its own genes say hurt it (see {@link Hazard}). Proactive:
+     * a sun hazard keeps the pathfinder off sunlit tiles. Reactive: caught in a hazard, head for the
+     * nearest safe block; heading somewhere a hazard covers, pick a safe block instead; standing at
+     * the edge of one, wander the safe side rather than idle. Brain-based villagers are steered
+     * through WALK_TARGET; players are not pathfinders, so they simply take the effect.
      */
     private static void applyHazardAvoidance(LivingEntity entity, List<ActionOverTimeGeneType.Instance> overTime,
                                              ConditionContext ctx) {
         if (overTime.isEmpty() || !(entity instanceof PathfinderMob mob)) return;
-        EnumSet<AvoidStrategy> present = EnumSet.noneOf(AvoidStrategy.class);
+        List<Hazard> hazards = new java.util.ArrayList<>(2);
         boolean inDanger = false;
         for (ActionOverTimeGeneType.Instance aot : overTime) {
-            AvoidStrategy strategy = aot.avoid();
-            if (strategy == null) continue;
-            present.add(strategy);
-            strategy.installProactive(mob, true);
+            Hazard hazard = aot.hazard();
+            if (hazard == null) continue;
+            hazards.add(hazard);
+            hazard.installProactive(mob, ctx);
             if (aot.condition() == null || aot.condition().test(ctx)) inDanger = true;
         }
-        if (!present.isEmpty()) steerToSafety(mob, present, inDanger);
+        com.aetherianartificer.townstead.root.hazard.HazardPaths.update(mob, hazards, ctx);
+        if (!hazards.isEmpty()) steerToSafety(mob, ctx, hazards, inDanger);
     }
 
-    /**
-     * Keep a hazard-bearing mob out of danger without freezing it. Caught in the hazard: head
-     * urgently to the nearest safe spot. Safe but the hazard is still active outside (e.g. daytime
-     * sun): keep wandering, picking a fresh safe spot whenever idle so it roams the shade instead of
-     * standing. Outside the hazard's active window (night, rain): leave it to its normal brain.
-     */
-    private static void steerToSafety(PathfinderMob mob, EnumSet<AvoidStrategy> hazards, boolean inDanger) {
+    private static void steerToSafety(PathfinderMob mob, ConditionContext ctx, List<Hazard> hazards, boolean inDanger) {
+        var brain = mob.getBrain();
+        int radius = 0;
+        float flee = 0f, roam = 0f;
+        for (Hazard hazard : hazards) {
+            radius = Math.max(radius, hazard.searchRadius());
+            flee = Math.max(flee, hazard.fleeSpeed());
+            roam = Math.max(roam, hazard.roamSpeed());
+        }
         if (inDanger) {
-            BlockPos safe = safeSpot(mob, hazards);
-            if (safe != null) mob.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(safe, 1.2f, 0));
+            BlockPos safe = safeSpot(mob, ctx, hazards, radius);
+            if (safe != null) brain.setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(safe, flee, 0));
             return;
         }
-        Level level = mob.level();
-        boolean activeOutside = false;
-        for (AvoidStrategy hazard : hazards) {
-            if (hazard.activeNow(level)) { activeOutside = true; break; }
+        var target = brain.getMemory(MemoryModuleType.WALK_TARGET);
+        if (target.isPresent()) {
+            // Somewhere to be already: only step in when that somewhere is inside a hazard.
+            BlockPos destination = target.get().getTarget().currentBlockPosition();
+            for (Hazard hazard : hazards) {
+                if (!hazard.rejectDestinations() || !hazard.dangerousAt(ctx, destination)) continue;
+                BlockPos safe = safeSpot(mob, ctx, hazards, radius);
+                if (safe != null) brain.setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(safe, roam, 1));
+                else brain.eraseMemory(MemoryModuleType.WALK_TARGET);
+                return;
+            }
+            return;
         }
-        // Only nudge an idle wanderer; if it already has somewhere to be, don't fight that.
-        if (!activeOutside || mob.getBrain().hasMemoryValue(MemoryModuleType.WALK_TARGET)) return;
-        // Deep in cover (underground, well-roofed): no danger nearby, so let it act normal — the
-        // always-on proactive avoidance already keeps its pathing from stepping out. Only steer when
-        // exposure is actually close (a cave mouth, the edge of tree shade).
-        if (!nearExposure(mob, hazards)) return;
-        BlockPos roam = safeSpot(mob, hazards);
-        if (roam != null) mob.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(roam, 0.6f, 1));
+        // Idle at the edge of a hazard (a cave mouth, tree shade, a garlic boundary): roam the safe
+        // side. Deep in cover nothing is near, so it acts normally and its pathing keeps it there.
+        for (Hazard hazard : hazards) {
+            if (!hazard.roam() || !nearExposure(mob, ctx, hazard)) continue;
+            BlockPos spot = safeSpot(mob, ctx, hazards, radius);
+            if (spot != null) brain.setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(spot, roam, 1));
+            return;
+        }
     }
 
-    /** True when a hazard-exposed block sits within a few blocks, i.e. the mob is at an edge not deep cover. */
-    private static boolean nearExposure(PathfinderMob mob, EnumSet<AvoidStrategy> hazards) {
-        Level level = mob.level();
+    /** True when a block within the hazard's edge distance is dangerous, i.e. the mob is at an edge. */
+    private static boolean nearExposure(PathfinderMob mob, ConditionContext ctx, Hazard hazard) {
         BlockPos base = mob.blockPosition();
-        for (int dx = -3; dx <= 3; dx += 3) {
-            for (int dz = -3; dz <= 3; dz += 3) {
-                BlockPos pos = base.offset(dx, 0, dz);
-                for (AvoidStrategy hazard : hazards) {
-                    if (!hazard.safeAt(level, pos)) return true;
-                }
+        int d = hazard.edgeDistance();
+        for (int dx = -d; dx <= d; dx += d) {
+            for (int dz = -d; dz <= d; dz += d) {
+                if ((dx != 0 || dz != 0) && hazard.dangerousAt(ctx, base.offset(dx, 0, dz))) return true;
             }
         }
         return false;
     }
 
-    /** A random nearby stand-able spot safe from every hazard, or null if none found in a few tries. */
-    private static BlockPos safeSpot(PathfinderMob mob, EnumSet<AvoidStrategy> hazards) {
+    /**
+     * A stand-able block safe from every hazard, searching near first and then out to {@code radius},
+     * or null when a dozen tries find none.
+     */
+    private static BlockPos safeSpot(PathfinderMob mob, ConditionContext ctx, List<Hazard> hazards, int radius) {
         Level level = mob.level();
         BlockPos origin = mob.blockPosition();
-        for (int i = 0; i < 10; i++) {
-            BlockPos pos = origin.offset(mob.getRandom().nextInt(17) - 8,
-                    mob.getRandom().nextInt(7) - 3, mob.getRandom().nextInt(17) - 8);
-            if (!level.isEmptyBlock(pos) || level.isEmptyBlock(pos.below())) continue;
+        for (int i = 0; i < 12; i++) {
+            int reach = i < 6 ? Math.max(2, radius / 2) : radius;
+            BlockPos pos = origin.offset(mob.getRandom().nextInt(reach * 2 + 1) - reach,
+                    mob.getRandom().nextInt(7) - 3, mob.getRandom().nextInt(reach * 2 + 1) - reach);
+            if (!level.isLoaded(pos) || !level.isEmptyBlock(pos) || level.isEmptyBlock(pos.below())) continue;
             boolean allSafe = true;
-            for (AvoidStrategy hazard : hazards) {
-                if (!hazard.safeAt(level, pos)) { allSafe = false; break; }
+            for (Hazard hazard : hazards) {
+                if (hazard.dangerousAt(ctx, pos)) { allSafe = false; break; }
             }
             if (allSafe) return pos;
         }
@@ -386,9 +403,8 @@ public final class GeneAbilityTicker {
         if (particles.isEmpty() || !(entity.level() instanceof ServerLevel level)) return;
         for (ParticleGeneType.Instance particle : particles) {
             if (particle.condition() != null && !particle.condition().test(ctx)) continue;
-            if (!(BuiltInRegistries.PARTICLE_TYPE.get(particle.particle()) instanceof SimpleParticleType options)) {
-                continue;
-            }
+            net.minecraft.core.particles.ParticleOptions options = com.aetherianartificer.townstead.pheno.particle.DataParticles.options(particle.particle());
+            if (options == null) continue;
             // Send per-viewer with the force flag: the broadcast overload hardcodes
             // longDistance=false, which the client's Minimal/Decreased particle setting
             // culls. A racial trait particle should show regardless of that setting.
@@ -422,9 +438,11 @@ public final class GeneAbilityTicker {
     }
 
     private static void applyGlow(LivingEntity entity, List<GlowGeneType.Instance> glows, ConditionContext ctx) {
-        if (glows.isEmpty()) return;
+        // Only self glows set the flag; an "on" glow outlines others (EntityGlowSync).
+        if (glows.stream().allMatch(glow -> glow.on() != null)) return;
         boolean shouldGlow = false;
         for (GlowGeneType.Instance glow : glows) {
+            if (glow.on() != null) continue;
             if (glow.condition() == null || glow.condition().test(ctx)) {
                 shouldGlow = true;
                 break;
@@ -445,8 +463,11 @@ public final class GeneAbilityTicker {
             case SLOW_FALL -> {
                 // Stands down during a glide: Slow Falling clamps the dive speed elytra
                 // physics steers with, turning the glide into an unsteerable drift.
-                if (entity.isFallFlying()) removeHidden(entity, MobEffects.SLOW_FALLING);
-                else if (!entity.onGround() && entity.getDeltaMovement().y < 0) {
+                // A parachute keeps hops normal and slows only a real drop (ParachutePhysics).
+                if (entity.isFallFlying() || com.aetherianartificer.townstead.root.locomotion.ParachutePhysics
+                        .isParachutist(entity)) {
+                    removeHidden(entity, MobEffects.SLOW_FALLING);
+                } else if (!entity.onGround() && entity.getDeltaMovement().y < 0) {
                     entity.addEffect(hidden(MobEffects.SLOW_FALLING));
                 }
             }
@@ -470,6 +491,13 @@ public final class GeneAbilityTicker {
                 if (!entity.isSprinting()) entity.setSprinting(true);
             }
             case HOVER -> {
+                if (com.aetherianartificer.townstead.root.locomotion.DriftPhysics.isDrifter(entity)) {
+                    // Drift floats over the ground instead of holding altitude: the drift
+                    // pilot (villagers) or the controlling client (players) moves the body.
+                    if (entity instanceof Player && entity.isNoGravity()) entity.setNoGravity(false);
+                    entity.fallDistance = 0f;
+                    return;
+                }
                 entity.setNoGravity(true);
                 Vec3 m = entity.getDeltaMovement();
                 if (m.y < 0) entity.setDeltaMovement(m.x, 0, m.z);

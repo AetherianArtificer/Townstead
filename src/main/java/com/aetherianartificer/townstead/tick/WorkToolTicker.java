@@ -99,15 +99,17 @@ public final class WorkToolTicker {
                     && com.aetherianartificer.townstead.farming.Farmland.isHoe(stack)) return true;
             if (task.type().equals(WorkTaskTypes.FISH)
                     && FishermanSupplyManager.isFishingRod(stack)) return true;
-            if (task.type().equals(WorkTaskTypes.SHEAR)
-                    && com.aetherianartificer.townstead.shepherd.ShepherdShearToolCompatRegistry
-                    .isCompatibleShears(stack)) return true;
             for (var job : com.aetherianartificer.townstead.work.job.WorkJobs.forTask(task.type())) {
                 // A Job document names every item that could be used, not what can be used now.
                 // Idle workers should not flash those possible tools when no source or target is
                 // runnable.
                 if (!actionableTasks.contains(task.type())) continue;
                 if (job.source() != null && job.source().matches(stack)) return true;
+                if (job.entityTarget() != null) {
+                    for (var interaction : job.entityTarget().interactions()) {
+                        if (interaction.matches(stack)) return true;
+                    }
+                }
                 if (job.target() == null) continue;
                 for (var interaction : job.target().interactions()) {
                     if (interaction.matches(stack)) return true;

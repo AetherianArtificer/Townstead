@@ -20,9 +20,9 @@ import org.jetbrains.annotations.Nullable;
 /**
  * What the entity wears, in degrees, summed over every worn piece {@link ClothingSources} reports.
  *
- * <p>One stack resolves in a fixed order and the first opinion wins: an installed temperature
- * backend, then garment data mods ship for a backend that is absent, then Townstead clothing
- * documents, then the two tags, then nothing. A skin resolves through clothing documents and
+ * <p>One stack resolves in a fixed order and the first opinion wins: Townstead clothing documents,
+ * then an installed temperature backend, then garment data mods ship for a backend that is absent,
+ * then the two tags, then nothing. A skin resolves through clothing documents and
  * MCA's own climate field. The caller clamps the sum so a full outfit moves one tier and no
  * further.</p>
  */
@@ -76,13 +76,13 @@ public final class Insulation {
     /** Shared by wardrobe selection and physiology; never calls back into clothing resolution. */
     public static ThermalProtection resolve(ItemStack stack, @Nullable ThermalProtection declared) {
         if (stack == null || stack.isEmpty()) return ThermalProtection.NONE;
+        if (declared != null) return declared;
         for (AmbientTemperatureBridge bridge : TemperatureBridgeResolver.installed()) {
             ThermalProtection protection = bridge.itemProtection(stack);
             if (protection != null) return protection;
         }
         ThermalProtection provided = ClothingThermal.fromProviders(stack);
         if (provided != null) return provided;
-        if (declared != null) return declared;
         ThermalProtection tagged = taggedProtection(stack);
         return tagged != null ? tagged : ThermalProtection.NONE;
     }

@@ -28,4 +28,27 @@ public interface AssignableProvider {
      * and must not act on one it only half-recognises.</p>
      */
     boolean invoke(ServerPlayer player, net.minecraft.resources.ResourceLocation id);
+
+    /**
+     * How one of this provider's ids stands right now, for an owner that keeps its own timers (a mod
+     * whose actions switch on, run down and cool off). Null when the provider does not own the id or
+     * has nothing to add, and the wheel falls back to what it tracks itself.
+     */
+    default Live live(ServerPlayer player, net.minecraft.resources.ResourceLocation id) {
+        return null;
+    }
+
+    /**
+     * An id's state as its owner keeps it.
+     *
+     * @param lasting      it switches on and stays on, rather than firing once
+     * @param on           it is on now
+     * @param activeUntil  the game time it switches itself off; {@link Long#MAX_VALUE} for never, 0 when off
+     * @param activeTicks  how long it runs in all, for drawing it running down; 0 when it does not
+     * @param readyAt      the game time it can be used again; 0 when it can now
+     * @param cooldownTicks how long its cooldown is in all
+     * @param usable       whether pressing it now would do anything
+     */
+    record Live(boolean lasting, boolean on, long activeUntil, int activeTicks, long readyAt,
+                int cooldownTicks, boolean usable) {}
 }

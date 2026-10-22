@@ -42,6 +42,7 @@ public final class QuestTrackerHud {
         List<String> keys = QuestTracker.keys();
         if (keys.isEmpty()) {
             shown = List.of();
+            QuestGiverGlow.set(java.util.Set.of());
             return;
         }
         long now = minecraft.level.getGameTime();
@@ -72,7 +73,55 @@ public final class QuestTrackerHud {
             if (info != null && info.available() && info.error().isEmpty()) QuestTracker.untrack(key);
         }
         shown = List.copyOf(next);
+        java.util.Set<java.util.UUID> givers = new java.util.HashSet<>();
+        for (QuestEntry entry : shown) {
+            java.util.UUID giver = giver(entry);
+            if (giver != null) givers.add(giver);
+        }
+        QuestGiverGlow.set(givers);
     }
+
+    private static java.util.UUID giver(QuestEntry entry) {
+        for (String tag : entry.tags()) {
+            if (!tag.startsWith(com.aetherianartificer.townstead.client.gui.quest.adapter.StoryQuestProvider.GIVER_TAG)) continue;
+            try {
+                return java.util.UUID.fromString(tag.substring(
+                        com.aetherianartificer.townstead.client.gui.quest.adapter.StoryQuestProvider.GIVER_TAG.length()));
+            } catch (IllegalArgumentException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /** Which way and how far the quest's giver is from where the player looks, or "" when unknown. */
+    private static String pointer(QuestEntry quest) {
+        java.util.UUID id = giver(quest);
+        Minecraft minecraft = Minecraft.getInstance();
+        if (id == null || minecraft.player == null || minecraft.level == null) return "";
+        net.minecraft.world.phys.Vec3 at = null;
+        for (net.minecraft.world.entity.Entity entity : minecraft.level.entitiesForRendering()) {
+            if (id.equals(entity.getUUID())) {
+                at = entity.position();
+                break;
+            }
+        }
+        if (at == null) {
+            var known = com.aetherianartificer.townstead.quest.QuestGiversS2CPayload.of(id);
+            if (known == null) return "";
+            if (!known.dimension().equals(minecraft.level.dimension().location().toString())) {
+                return net.minecraft.client.resources.language.I18n.get("townstead.quest.tracker.elsewhere");
+            }
+            at = net.minecraft.world.phys.Vec3.atCenterOf(known.pos());
+        }
+        double dx = at.x - minecraft.player.getX(), dz = at.z - minecraft.player.getZ();
+        int distance = (int) Math.round(Math.sqrt(dx * dx + dz * dz));
+        double bearing = Math.toDegrees(Math.atan2(-dx, dz)) - minecraft.player.getYRot();
+        int octant = Math.floorMod((int) Math.round(bearing / 45.0), 8);
+        return ARROWS[octant] + " " + distance + "m";
+    }
+
+    private static final String[] ARROWS = {"\u2191", "\u2197", "\u2192", "\u2198", "\u2193", "\u2199", "\u2190", "\u2196"};
 
     private static void draw(GuiGraphics graphics, Font font) {
         int screenW = graphics.guiWidth();
@@ -106,9 +155,14 @@ public final class QuestTrackerHud {
             if (named != null) QuestIcons.draw(graphics, named, x + 4, top + 1);
             else if (!icon.isEmpty()) graphics.renderItem(icon, x + 4, top + 1);
             int titleX = x + (named == null && icon.isEmpty() ? 5 : 23);
-            String title = font.plainSubstrByWidth(quest.title(), Math.max(24, x + width - 5 - titleX));
+            String pointer = pointer(quest);
+            int pointerWidth = pointer.isEmpty() ? 0 : font.width(pointer) + 6;
+            String title = font.plainSubstrByWidth(quest.title(), Math.max(24, x + width - 5 - titleX - pointerWidth));
             int titleColor = rows.get(i).isEmpty() ? 0xFF7FCE70 : 0xFFF2E4C1;
             graphics.drawString(font, title, titleX, top + 5, titleColor, false);
+            if (!pointer.isEmpty()) {
+                graphics.drawString(font, pointer, x + width - 5 - font.width(pointer), top + 5, 0xFFB9A578, false);
+            }
             top += TITLE_HEIGHT;
             for (QuestObjective objective : rows.get(i)) {
                 String count = count(objective);

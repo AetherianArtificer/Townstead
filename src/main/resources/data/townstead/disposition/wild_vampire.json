@@ -10,7 +10,7 @@
     "vampirism:vampire_minion",
     "vampirism:converted_creature",
     "vampirism:converted_creature_imob",
-    "vampirism:converted_villager"
+    "vampirism:villager_converted"
   ],
   "friendly": [
     "wild_vampire",

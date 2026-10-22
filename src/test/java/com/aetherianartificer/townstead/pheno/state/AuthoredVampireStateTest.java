@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AuthoredVampireStateTest {
     private static final List<String> EFFECTS = List.of("vampire_turning_look", "vampire_fledgling_look",
-            "vampire_look", "vampire_features", "vampire_elder_look", "vampire_fledgling_nature", "vampire_thirst",
+            "vampire_look", "vampire_elder_look", "vampire_fledgling_nature", "vampire_thirst",
             "vampire_nature", "vampire_cold_body", "vampire_elder_nature");
     private static final List<String> LEVEL_UPS = List.of("vampire_level_2", "vampire_level_3", "vampire_level_4");
     private static final List<String> BACKINGS = List.of("vampire_villager", "vampire_sanguinare",
@@ -35,6 +35,8 @@ class AuthoredVampireStateTest {
         ConditionTypes.register(new LogicConditionType("pheno:and", LogicConditionType.Mode.AND));
         ConditionTypes.register(new com.aetherianartificer.townstead.pheno.condition.types.EntityStateConditionType());
         ConditionTypes.register(new com.aetherianartificer.townstead.root.condition.types.RigConditionType());
+        ConditionTypes.register(new com.aetherianartificer.townstead.pheno.condition.types.EmbodiedConditionType());
+        ConditionTypes.register(new com.aetherianartificer.townstead.root.condition.types.EntityGroupConditionType());
         ActionTypes.register(new com.aetherianartificer.townstead.pheno.action.types.AndActionType());
         ActionTypes.register(new ChangeStateActionType("pheno:add_state", ChangeStateActionType.Mode.ADD));
     }
@@ -84,7 +86,7 @@ class AuthoredVampireStateTest {
     @Test
     void mechanicsSkipPlayersBecauseVampirismRunsTheirs() throws Exception {
         for (String name : List.of("vampire_fledgling_nature", "vampire_thirst", "vampire_nature",
-                "vampire_features", "vampire_elder_look")) {
+                "vampire_elder_look")) {
             StateEffect effect = StateEffect.parse(id("townstead:" + name),
                     read("/data/townstead/state_effect/" + name + ".json"));
             assertNotNull(effect.condition(), name);

@@ -1,0 +1,6 @@
+{
+  "schema": "townstead:climate_biome/v1",
+  "mean_c": 45.0,
+  "season_kind": "none",
+  "typical_y": 320
+}

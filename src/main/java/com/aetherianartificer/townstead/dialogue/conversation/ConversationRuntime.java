@@ -261,8 +261,11 @@ final class ConversationRuntime {
     static void send(VillagerEntityMCA speaker, Spoken spoken) {
         for (ServerPlayer player : speaker.level().getEntitiesOfClass(ServerPlayer.class, speaker.getBoundingBox().inflate(20))) {
             float distance = player.distanceTo(speaker);
-            speaker.sendChatMessage(spoken.component(locale(player))
-                    .withStyle(distance < 10 ? ChatFormatting.WHITE : ChatFormatting.GRAY), player);
+            MutableComponent line = spoken.component(locale(player));
+            // Names copied into older memories and stories can carry a family name this player was never told.
+            String masked = com.aetherianartificer.townstead.persona.PersonaNameMask.forPlayer(player).apply(line.getString());
+            if (!masked.equals(line.getString())) line = Component.literal(masked);
+            speaker.sendChatMessage(line.withStyle(distance < 10 ? ChatFormatting.WHITE : ChatFormatting.GRAY), player);
         }
     }
 

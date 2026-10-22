@@ -184,7 +184,8 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
                     base.commission(), first.operated() && second.operated(), base.product(), base.labelKey());
         }
 
-        private static Option better(Option first, Option second) {
+        /** The route nearer to running: available first, else the shorter shortfall. */
+        public static Option better(Option first, Option second) {
             if (first.available() != second.available()) return first.available() ? first : second;
             if (first.missing().size() != second.missing().size()) {
                 return first.missing().size() < second.missing().size() ? first : second;

@@ -391,8 +391,8 @@ class WorkTaskSchemaTest {
                                 && building.slotsFor("compat/pizzadelight/pizzeria_l3") == 3
                                 && building.hasPathAffinity("pizzaiolo")),
                 "Pizza Counter, Neighborhood Pizzeria, and Ristorante Pizzeria seat one, two, and three Cooks");
-        assertFalse(work.getAsJsonObject("path_worksites")
-                        .getAsJsonArray("pizzaiolo").asList().stream()
+        assertFalse(resourceJson("/data/townstead/profession/cook/path/pizzaiolo/path.json")
+                        .getAsJsonArray("worksites").asList().stream()
                         .anyMatch(value -> "farmersdelight:stove".equals(value.getAsString())),
                 "a generic Kitchen stove must not identify Pizzaiolo station work");
 

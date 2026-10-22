@@ -45,9 +45,11 @@ public final class PoliticalVillageBootstrap {
                 existing = data.faction(settlement);
             }
         }
-        Collection<UUID> residents = existing == null || existing.status() == Faction.Status.DISSOLVED
-                ? village.getResidentsUUIDs().toList() : residents(level, existing);
-        var result = ensure(data, settlement, village.getName(), residents, level.getGameTime());
+        boolean fresh = existing == null || existing.status() == Faction.Status.DISSOLVED;
+        Collection<UUID> residents = fresh ? villageResidents(level, village) : residents(level, existing);
+        Set<UUID> players = fresh ? com.aetherianartificer.townstead.storage.PlaqueResidents.players(level, village)
+                : plaquePlayers(level, existing);
+        var result = ensure(data, settlement, village.getName(), residents, players, level.getGameTime(), true, false);
         if (result.createdFaction()) {
             String culture = com.aetherianartificer.townstead.naming.NamingRegisterSavedData.get(level.getServer())
                     .villageCulture(level.dimension().location(), village.getId());
@@ -86,8 +88,27 @@ public final class PoliticalVillageBootstrap {
         for (SettlementRef settlement : faction.settlements()) {
             ServerLevel source = level.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, settlement.dimension()));
             Village village = source == null ? null : VillageManager.get(source).getOrEmpty(settlement.villageId()).orElse(null);
-            if (village != null) village.getResidentsUUIDs().forEach(out::add);
+            if (village != null) out.addAll(villageResidents(source, village));
         }
+        return out;
+    }
+
+    /** The players an Ownership Plaque houses in any of the faction's settlements. */
+    static Set<UUID> plaquePlayers(ServerLevel level, Faction faction) {
+        Set<UUID> out = new LinkedHashSet<>();
+        for (SettlementRef settlement : faction.settlements()) {
+            ServerLevel source = level.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, settlement.dimension()));
+            Village village = source == null ? null : VillageManager.get(source).getOrEmpty(settlement.villageId()).orElse(null);
+            if (village != null) out.addAll(com.aetherianartificer.townstead.storage.PlaqueResidents.players(source, village));
+        }
+        return out;
+    }
+
+    /** MCA's villagers living in the village, then the players an Ownership Plaque houses there. */
+    static Set<UUID> villageResidents(ServerLevel level, Village village) {
+        Set<UUID> out = new LinkedHashSet<>();
+        village.getResidentsUUIDs().forEach(out::add);
+        out.addAll(com.aetherianartificer.townstead.storage.PlaqueResidents.players(level, village));
         return out;
     }
 
@@ -104,6 +125,13 @@ public final class PoliticalVillageBootstrap {
      */
     public static Result ensure(PoliticalSavedData data, SettlementRef settlement, String villageName,
                                 Collection<UUID> residentIds, long now, boolean createDefaultGovernment,
+                                boolean explicitRefounding) {
+        return ensure(data, settlement, villageName, residentIds, Set.of(), now, createDefaultGovernment, explicitRefounding);
+    }
+
+    /** {@code players} live there too but are never appointed to a generated office. */
+    public static Result ensure(PoliticalSavedData data, SettlementRef settlement, String villageName,
+                                Collection<UUID> residentIds, Set<UUID> players, long now, boolean createDefaultGovernment,
                                 boolean explicitRefounding) {
         if (data == null || settlement == null || (createDefaultGovernment && !definitionsReady())) return Result.EMPTY;
         String name = villageName == null || villageName.isBlank() ? "Village " + settlement.villageId() : villageName.trim();
@@ -124,7 +152,7 @@ public final class PoliticalVillageBootstrap {
         }
         FactionKind kind = PoliticalDefinitions.snapshot().kind(faction.kind());
         FactionUpkeep.Result upkeep = kind == null ? FactionUpkeep.Result.NONE
-                : FactionUpkeep.run(data, faction, kind, residentIds, seats(data, settlement), now);
+                : FactionUpkeep.run(data, faction, kind, residentIds, players, seats(data, settlement), now);
         return new Result(faction.id(), created, upkeep.citizensAdded(), upkeep.officesFilled());
     }
 

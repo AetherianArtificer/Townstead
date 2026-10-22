@@ -194,6 +194,23 @@ public final class McaBuildingCompat {
         *///?}
     }
 
+    /** The building itself, or with {@code wholeBuilding} every room of its MCA logical building. */
+    public static List<Building> rooms(Village village, Building building, boolean wholeBuilding) {
+        if (building == null) return List.of();
+        //? if >=1.21 {
+        if (wholeBuilding && village != null && building.isFunctionalRoom()) {
+            int logicalBuildingId = village.getLogicalBuildingId(building.getStructureId());
+            if (logicalBuildingId >= 0) {
+                List<Building> rooms = village.getRooms()
+                        .filter(room -> village.getLogicalBuildingId(room.getStructureId()) == logicalBuildingId)
+                        .toList();
+                if (!rooms.isEmpty()) return rooms;
+            }
+        }
+        //?}
+        return List.of(building);
+    }
+
     /** Whether two functional rooms are parts of the same MCA logical building. */
     public static boolean sameWholeBuilding(Village village, Building first, Building second) {
         if (village == null || first == null || second == null) return false;

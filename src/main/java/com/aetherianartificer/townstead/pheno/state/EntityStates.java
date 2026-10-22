@@ -40,6 +40,11 @@ public final class EntityStates {
     private static volatile List<StateBacking> backings = List.of();
     private static volatile List<StateEffect> effects = List.of();
     private static volatile List<StateEffect> geneEffects = List.of();
+    // The same lists keyed by state (and backings by id), in their sorted order, so a lookup only
+    // touches its own entries; resolve and tick run per villager per tick.
+    private static volatile Map<ResourceLocation, List<StateBacking>> backingsByState = Map.of();
+    private static volatile Map<ResourceLocation, StateBacking> backingsById = Map.of();
+    private static volatile Map<ResourceLocation, List<StateEffect>> effectsByState = Map.of();
     private static final Map<UUID, Map<ResourceLocation, Stored>> SESSION = new ConcurrentHashMap<>();
     private static final Map<UUID, Map<ResourceLocation, Resolved>> PREVIOUS = new ConcurrentHashMap<>();
     private static final Map<UUID, Map<ResourceLocation, Long>> NEXT_PERIODIC = new ConcurrentHashMap<>();
@@ -54,10 +59,25 @@ public final class EntityStates {
     }
 
     public static boolean eligible(LivingEntity entity, ResourceLocation state) {
+        return supports(entity, state) && !excluded(entity, state);
+    }
+
+    /**
+     * Whether this entity's body and Root can carry the state at all, whatever it holds now. A
+     * {@code "body": "villager"} state takes a custom rig, and a state's {@code requires} is waived,
+     * only when its Root chain declares it ({@code "states": {"<state>": true}}), so a pack opts in
+     * the bodies it has fitted.
+     */
+    public static boolean supports(LivingEntity entity, ResourceLocation state) {
         EntityStateDefinition definition = definitions.get(state);
-        if (definition != null && definition.villagerBody()
-                && !com.aetherianartificer.townstead.root.rig.ServerRig.hasVillagerBody(entity)) return false;
-        return eligibility.test(entity, state) && !excluded(entity, state);
+        if (definition != null && (definition.villagerBody() || definition.requires() != null)) {
+            boolean optedIn = com.aetherianartificer.townstead.root.RootStates.optedIn(entity, state);
+            if (definition.villagerBody() && !optedIn
+                    && !com.aetherianartificer.townstead.root.rig.ServerRig.hasVillagerBody(entity)) return false;
+            if (definition.requires() != null && !optedIn
+                    && !definition.requires().test(new ConditionContext(entity))) return false;
+        }
+        return eligibility.test(entity, state);
     }
 
     private static final ThreadLocal<java.util.Set<ResourceLocation>> CHECKING = ThreadLocal.withInitial(java.util.HashSet::new);
@@ -115,6 +135,15 @@ public final class EntityStates {
     static void replaceBackings(List<StateBacking> next) {
         backings = next.stream().sorted(Comparator.comparingInt(StateBacking::readPriority).reversed()
                 .thenComparing(backing -> backing.id().toString())).toList();
+        Map<ResourceLocation, List<StateBacking>> byState = new HashMap<>();
+        Map<ResourceLocation, StateBacking> byId = new HashMap<>();
+        for (StateBacking backing : backings) {
+            byState.computeIfAbsent(backing.state(), key -> new ArrayList<>()).add(backing);
+            byId.putIfAbsent(backing.id(), backing);
+        }
+        byState.replaceAll((key, list) -> List.copyOf(list));
+        backingsByState = Map.copyOf(byState);
+        backingsById = Map.copyOf(byId);
         resetRuntime();
     }
 
@@ -124,6 +153,10 @@ public final class EntityStates {
         List<StateEffect> genes = new ArrayList<>(effects.stream().filter(effect -> effect.genes() != null).toList());
         java.util.Collections.reverse(genes);
         geneEffects = List.copyOf(genes);
+        Map<ResourceLocation, List<StateEffect>> byState = new HashMap<>();
+        for (StateEffect effect : effects) byState.computeIfAbsent(effect.state(), key -> new ArrayList<>()).add(effect);
+        byState.replaceAll((key, list) -> List.copyOf(list));
+        effectsByState = Map.copyOf(byState);
         resetRuntime();
     }
 
@@ -254,8 +287,8 @@ public final class EntityStates {
         if (!eligible(entity, stateId)) return Resolved.inactive(definition);
         long now = entity.level().getGameTime();
         List<Sample> samples = new ArrayList<>();
-        for (StateBacking backing : backings) {
-            if (!backing.state().equals(stateId) || !applies(backing, entity)) continue;
+        for (StateBacking backing : backingsByState.getOrDefault(stateId, List.of())) {
+            if (!applies(backing, entity)) continue;
             Sample sample = sample(entity, definition, backing, now);
             if (sample != null) samples.add(sample);
         }
@@ -315,8 +348,8 @@ public final class EntityStates {
         EntityStateDefinition definition = definitions.get(state);
         if (definition == null) return false;
         boolean cleared = false;
-        for (StateBacking backing : backings) {
-            if (!backing.state().equals(state) || !backing.writable() || !applies(backing, entity)) continue;
+        for (StateBacking backing : backingsByState.getOrDefault(state, List.of())) {
+            if (!backing.writable() || !applies(backing, entity)) continue;
             if (source != null && !source.equals(backing.id())) continue;
             removeOwned(entity, definition, backing.id());
             cleared = true;
@@ -334,8 +367,7 @@ public final class EntityStates {
         for (EntityStateDefinition definition : definitions.values()) {
             Resolved before = previous.getOrDefault(definition.id(), Resolved.inactive(definition));
             Resolved current = resolve(entity, definition.id());
-            for (StateEffect effect : effects) {
-                if (!effect.state().equals(definition.id())) continue;
+            for (StateEffect effect : effectsByState.getOrDefault(definition.id(), List.of())) {
                 if (!before.active() && current.active() && matches(entity, effect, current) && effect.onEnter() != null) {
                     effect.onEnter().run(new ActionContext(entity));
                 }
@@ -423,14 +455,13 @@ public final class EntityStates {
     }
 
     private static @Nullable StateBacking backing(ResourceLocation id) {
-        for (StateBacking backing : backings) if (backing.id().equals(id)) return backing;
-        return null;
+        return backingsById.get(id);
     }
 
     private static @Nullable StateBacking writableBacking(LivingEntity entity, ResourceLocation state,
                                                            @Nullable ResourceLocation source) {
-        return backings.stream().filter(backing -> backing.state().equals(state)
-                        && backing.writable() && backing.type() == StateBacking.SourceType.OWNED
+        return backingsByState.getOrDefault(state, List.of()).stream().filter(backing ->
+                        backing.writable() && backing.type() == StateBacking.SourceType.OWNED
                         && (source == null || source.equals(backing.id())) && applies(backing, entity)
                         && resourceAvailable(entity, backing.ownedResource()))
                 .max(Comparator.comparingInt(StateBacking::writePriority)
@@ -483,6 +514,8 @@ public final class EntityStates {
 
     private static @Nullable MobEffectInstance statusEffect(LivingEntity entity, @Nullable ResourceLocation id) {
         if (id == null || !BuiltInRegistries.MOB_EFFECT.containsKey(id)) return null;
+        // A size event can fire inside the entity's constructor, before its effect map exists.
+        if (entity.getActiveEffectsMap() == null) return null;
         //? if neoforge {
         Holder<MobEffect> effect = BuiltInRegistries.MOB_EFFECT
                 .getHolder(ResourceKey.create(Registries.MOB_EFFECT, id)).orElse(null);

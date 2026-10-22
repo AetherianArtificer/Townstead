@@ -66,15 +66,13 @@ class ThermalGameplayModelTest {
         assertEquals(equilibrium, heat(equilibrium, 0, 75, conductance, 10, 1), 1e-8);
     }
 
-    @Test void cookingProfilePreservesNativeStateStrengthAndDedicatedHeating() {
-        double fraction = settings.cookingRoomHeatFraction();
-        double stove = RoomHeatBalance.roomSourcePower(8, 250, 1, 1, true, fraction);
-        assertEquals(300, stove, 1e-4);
-        assertEquals(0, RoomHeatBalance.roomSourcePower(0, 250, 1, 1, true, fraction));
-        assertEquals(stove / 2, RoomHeatBalance.roomSourcePower(4, 250, 1, 1, true, fraction));
-        assertEquals(stove, RoomHeatBalance.roomSourcePower(8, 250, 1, 3, true, fraction)
-                + RoomHeatBalance.roomSourcePower(8, 250, 2, 3, true, fraction), 1e-8);
-        assertEquals(2500, RoomHeatBalance.roomSourcePower(10, 250, 1, 1, false, fraction));
-        assertEquals(-3750, RoomHeatBalance.roomSourcePower(-15, 250, 1, 1, true, fraction));
+    @Test void unprofiledSourcePowerFollowsNativeStrengthWhetherOrNotItCooks() {
+        double stove = RoomHeatBalance.sourcePower(8, 250, 1, 1);
+        assertEquals(2000, stove, 1e-4);
+        assertEquals(0, RoomHeatBalance.sourcePower(0, 250, 1, 1));
+        assertEquals(stove / 2, RoomHeatBalance.sourcePower(4, 250, 1, 1));
+        assertEquals(stove, RoomHeatBalance.sourcePower(8, 250, 1, 3)
+                + RoomHeatBalance.sourcePower(8, 250, 2, 3), 1e-8);
+        assertEquals(-3750, RoomHeatBalance.sourcePower(-15, 250, 1, 1));
     }
 }

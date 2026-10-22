@@ -324,9 +324,11 @@ public record WorkstationDef(
         String fluidSource = obj.has("fluid_source") ? GsonHelper.getAsString(obj, "fluid_source", "") : null;
         if (fluidSource != null && fluidSource.isBlank()) return null;
         boolean fluidStation = GsonHelper.getAsBoolean(obj, "fluid_station", false) || fluidSource != null;
+        // The brewing stand reads the potion registry, so its adapter is its output declaration.
+        boolean nativeRecipes = BrewingStandStationAdapter.NAME.equals(adapter);
         boolean statesItsOutput = !produces.isEmpty()
                 || ((role == StationType.PASSIVE_STATION || role == StationType.CRAFT_SURFACE)
-                        && (recipeType != null || fluidStation));
+                        && (recipeType != null || fluidStation || nativeRecipes));
         if ((role == StationType.PASSIVE_STATION || role == StationType.PLACE_SURFACE
                 || role == StationType.CRAFT_SURFACE) && !statesItsOutput) {
             return null;

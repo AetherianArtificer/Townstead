@@ -164,6 +164,10 @@ if (stonecutter.current.isActive) {
 
 layout.buildDirectory.set(file("${rootProject.projectDir}/.cache/townstead-build-1.21.1-neoforge"))
 
+// Top-level building types served only when a mod that provides their blocks is installed;
+// their ids stay as they are. Providers live in ModCompat.
+val conditionalTopLevelTypes = listOf("tailors_shop_l1", "tailors_shop_l2", "tailors_shop_l3", "mill")
+
 tasks.withType<ProcessResources> {
     val replaceProperties = mapOf(
         "version" to project.version,
@@ -177,13 +181,13 @@ tasks.withType<ProcessResources> {
     exclude("META-INF/mods.toml")
     // Move compat building types to a non-loading location for conditional runtime loading
     eachFile {
-        if (path.startsWith("data/mca/building_types/compat/")) {
+        if (path.startsWith("data/mca/building_types/compat/") || conditionalTopLevelTypes.any { path == "data/mca/building_types/$it.json" }) {
             path = path.replace("data/mca/", "townstead_compat/")
         }
     }
     doLast {
         if (name != "processResources") return@doLast
-        val compatRoot = destinationDir.resolve("townstead_compat/building_types/compat")
+        val compatRoot = destinationDir.resolve("townstead_compat/building_types")
         val index = destinationDir.resolve("townstead_compat/index.txt")
         val entries = if (compatRoot.isDirectory) compatRoot.walkTopDown()
             .filter { it.isFile && it.extension == "json" }
@@ -247,6 +251,44 @@ tasks.register<Jar>("apiJar") {
     dependsOn(tasks.named("classes"))
 }
 // Opt-in headless sizing tests. Test entities/resources never enter the distributable jar.
+// Data pack check: -PpackCheck="<pack dir>;<pack dir>" -PpackCheckNamespaces=ns1,ns2 loads each pack's data/
+// as a test mod and fails when a document of a checked namespace does not register. Report in
+// .cache/pack-check/pack-check-report.txt. Run with: gradlew :1.21.1-neoforge:runPackCheck
+if (providers.gradleProperty("packCheck").isPresent) {
+    val packDirs = providers.gradleProperty("packCheck").get().split(";").filter { it.isNotBlank() }
+    val packCheck by sourceSets.creating {
+        java.setSrcDirs(listOf(rootProject.file("src/packCheck/java")))
+        resources.setSrcDirs(listOf(rootProject.file("src/packCheck/resources")))
+        packDirs.forEach { dir -> resources.srcDir(file(dir)).exclude("pack.mcmeta", "*.md", "*.zip", "*.png.mcmeta") }
+        compileClasspath += sourceSets.main.get().compileClasspath + sourceSets.main.get().output
+        runtimeClasspath += sourceSets.main.get().runtimeClasspath
+    }
+    neoForge {
+        mods {
+            register("townstead_pack_check") { sourceSet(packCheck) }
+        }
+        runs {
+            register("packCheck") {
+                type = "gameTestServer"
+                sourceSet = packCheck
+                gameDirectory = rootProject.file(".cache/pack-check")
+                systemProperty("neoforge.enabledGameTestNamespaces", "townstead_pack_check")
+                systemProperty("townstead.packCheck.namespaces",
+                        providers.gradleProperty("packCheckNamespaces").getOrElse(""))
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink:${property("blade_ink_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink-compiler:${property("blade_ink_version")}")
+                )
+            }
+        }
+    }
+}
+
 if (providers.gradleProperty("bodySizeGameTests").isPresent) {
     val bodySizeGameTest by sourceSets.creating {
         java.setSrcDirs(listOf(rootProject.file("src/bodySizeGameTest/java")))

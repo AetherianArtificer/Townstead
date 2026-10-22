@@ -85,18 +85,43 @@ public final class RootServerLogic {
 
     /** Assign a known root to a player and reset passives on a change. Returns whether it changed. */
     public static boolean setPlayerRoot(ServerPlayer sp, ResourceLocation id) {
-        boolean changed = !id.toString().equals(orDefault(PlayerRoot.getRootId(sp)));
+        return setPlayerRoot(sp, id, true);
+    }
+
+    /**
+     * Become a body that comes with its own genes and heritage (a descendant taken over): the root,
+     * genotype and heritage are adopted as they are, nothing re-rolled, and passives reset.
+     */
+    public static void adoptPlayerBody(ServerPlayer sp, ResourceLocation id, Genotype genes, @Nullable Heritage heritage) {
+        List<Power> oldGenes = new ArrayList<>(Powers.active(sp));
+        PlayerRoot.adopt(sp, id.toString(), genes, heritage);
+        StartingEquipment.grant(sp);
+        resetPassives(sp, oldGenes);
+    }
+
+    /**
+     * As {@link #setPlayerRoot(ServerPlayer, ResourceLocation)}; {@code refound} also gives the player
+     * the new root's look (hair, eyes, a fitted outfit), as a villager gets on a root change. A body
+     * that came with the player (a descendant taken over) keeps its own.
+     */
+    public static boolean setPlayerRoot(ServerPlayer sp, ResourceLocation id, boolean refound) {
+        // leaving a mix for one of its own roots is still a new founding
+        boolean changed = !id.toString().equals(orDefault(PlayerRoot.getRootId(sp))) || PlayerRoot.getMix(sp) != null;
         List<Power> oldGenes = changed ? new ArrayList<>(Powers.active(sp)) : List.of();
         PlayerRoot.setRootId(sp, id.toString());
         StartingEquipment.grant(sp);
-        if (changed) resetPassives(sp, oldGenes);
+        if (changed) {
+            resetPassives(sp, oldGenes);
+            // the new root's hair, eyes and (for a body with its own outfits) clothes, as a villager gets
+            if (refound) com.aetherianartificer.townstead.root.appearance.PlayerFounding.refresh(sp, id);
+        }
         return changed;
     }
 
     /** Assign a known root to a villager, reseeding its root-derived state. Returns whether it changed. */
     public static boolean setVillagerRoot(VillagerEntityMCA villager, ResourceLocation id) {
         TownsteadVillager state = TownsteadVillagers.get(villager);
-        boolean changed = !id.toString().equals(state.life().rootId());
+        boolean changed = !id.toString().equals(state.life().rootId()) || state.life().rootMix() != null;
         List<Power> oldGenes = changed ? new ArrayList<>(Powers.active(villager)) : List.of();
         state.life().setRoot(id.toString());
         // Reseed the diploid genotype + heritage to the new origin. MCA's *float*
@@ -108,7 +133,15 @@ public final class RootServerLogic {
         // origin doesn't randomize an existing villager — matching the picker preview.
         if (changed || !state.life().hasGenotype()) {
             Heredity.seedFounder(state.life(), id, villager.getRandom());
+            com.aetherianartificer.townstead.root.appearance.IrisColors.seed(villager);   // the new people's eye colour, editable from there
         }
+        afterReseed(villager, state, id, changed, oldGenes);
+        return changed;
+    }
+
+    /** Everything a villager's new founding needs once its genes and heritage are rolled. */
+    static void afterReseed(VillagerEntityMCA villager, TownsteadVillager state, ResourceLocation id,
+                                    boolean changed, List<Power> oldGenes) {
         com.aetherianartificer.townstead.root.appearance.HairColors.clamp(villager,
                 com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(id,
                         state.life().hasHeritage() ? state.life().heritage() : null));
@@ -120,12 +153,20 @@ public final class RootServerLogic {
         }
         // Reseeding may have changed the fertility gene; keep MCA's infertile trait in step.
         Fertility.syncMcaInfertileTrait(villager);
+        // an outfit the new body can't wear (a Ribbit's, on a human) gives way to one it can
+        if (changed) {
+            ResourceLocation professionId = net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION
+                    .getKey(villager.getVillagerData().getProfession());
+            com.aetherianartificer.townstead.clothing.policy.SkinPicker.refit(id,
+                    state.life().hasHeritage() ? state.life().heritage() : null, villager.getClothes(),
+                    villager.getGenetics().getGender(), professionId == null ? "minecraft:none" : professionId.toString(),
+                    villager.getUUID().getMostSignificantBits()).ifPresent(villager::setClothes);
+        }
         // Flush now: the origin lives in a data attachment that only persists when
         // the snapshot is written, and the periodic flush may not run before the
         // world saves/exits — which lost the origin (and so the skin tint) on reload.
         TownsteadVillagers.flush(villager);
         if (changed) resetPassives(villager, oldGenes);
-        return changed;
     }
 
     /**
@@ -148,7 +189,7 @@ public final class RootServerLogic {
         if (entityId == RootSetC2SPayload.SELF) {
             ResourceLocation rootId = ResourceLocation.tryParse(PlayerRoot.getRootId(sp));
             var hairSettings = com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(rootId,
-                    RootRegistry.seedHeritage(rootId == null ? RootRegistry.DEFAULT_ID : rootId));
+                    PlayerRoot.getHeritage(sp));
             clamped = com.aetherianartificer.townstead.root.appearance.HairColors.clampSnapshot(
                     clamped, hairSettings);
             net.conczin.mca.server.world.data.PlayerSaveData data =
@@ -158,6 +199,8 @@ public final class RootServerLogic {
                     com.aetherianartificer.townstead.root.appearance.HairColors.clampDye(
                             hairColor, hairSettings));
             RootGenes.writeToPlayerData(entityData, clamped);
+            // getEntityData is a copy on the 1.21.1 line; store the edit or only the broadcast sees it.
+            data.setEntityData(entityData);
             data.setEntityDataSet(true);
             data.setDirty();
             // MCA renders players-as-villagers from this snapshot on every client; mirror its
@@ -261,7 +304,7 @@ public final class RootServerLogic {
             if (genotype.isEmpty()) return RootSetC2SPayload.NONE;
             ResourceLocation rootId = ResourceLocation.tryParse(PlayerRoot.getRootId(sp));
             Allele stored = Heredity.unscaleByHeritage(allele,
-                    RootRegistry.seedHeritage(rootId == null ? RootRegistry.DEFAULT_ID : rootId));
+                    PlayerRoot.getHeritage(sp));
             genotype.set(locus, stored, stored);
             PlayerRoot.setGenotype(sp, genotype);
             return sp.getId();
@@ -337,7 +380,7 @@ public final class RootServerLogic {
     }
 
     /** Operators may give themselves any Root; everyone else needs one players can choose, and the choice on. */
-    private static boolean mayChooseOwn(ServerPlayer sp, ResourceLocation id) {
+    static boolean mayChooseOwn(ServerPlayer sp, ResourceLocation id) {
         if (sp.hasPermissions(2)) return true;
         return com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.ROOTS) && RootRules.playersChoose(id)
                 && com.aetherianartificer.townstead.switchboard.Switchboard.get(
@@ -345,7 +388,7 @@ public final class RootServerLogic {
     }
 
     /** Treat an unset origin as the default (everyone is an Overworlder by default). */
-    private static String orDefault(String rootId) {
+    static String orDefault(String rootId) {
         return rootId == null || rootId.isEmpty() ? RootRegistry.DEFAULT_ID.toString() : rootId;
     }
 }

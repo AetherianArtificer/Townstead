@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:gift_reaction/v1",
+  "priority": 50,
+  "items": [
+    "#townstead:blood_and_organs",
+    "#townstead:cannibal_meats"
+  ],
+  "condition": {
+    "type": "pheno:would_eat",
+    "inverted": true
+  },
+  "response": "dislikes",
+  "satisfaction": -40,
+  "item": "return",
+  "relationship": {
+    "townstead:affection": -10,
+    "townstead:trust": -5
+  }
+}

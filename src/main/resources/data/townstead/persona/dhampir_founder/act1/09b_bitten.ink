@@ -50,6 +50,8 @@ Where I learned this, you do it now, before they turn. People say it's kinder. I
 // It is over for them, one way or another.
 === bitten_after ===
 ~ done_bitten = true
+// Seeing it through together is what earns the name (scene 12).
+~ trust(2)
 {
 - is(bitten, "cured_villager"):
     -> cured

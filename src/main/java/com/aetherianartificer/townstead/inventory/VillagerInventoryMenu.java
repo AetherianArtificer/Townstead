@@ -115,7 +115,7 @@ public class VillagerInventoryMenu extends AbstractContainerMenu {
         int curios = CuriosCompat.slotSpecs(villager).size();
         MenuProvider provider = new SimpleMenuProvider(
                 (id, inventory, p) -> new VillagerInventoryMenu(id, inventory, villager, curios),
-                com.aetherianartificer.townstead.naming.VillagerNames.titleFor(villager));
+                com.aetherianartificer.townstead.naming.VillagerNames.titleFor(villager, player));
         //? if neoforge {
         player.openMenu(provider, buf -> {
             buf.writeVarInt(villager.getId());
@@ -255,7 +255,8 @@ public class VillagerInventoryMenu extends AbstractContainerMenu {
         @Override public int getMaxStackSize(ItemStack stack) { return 1; }
 
         @Override public boolean mayPlace(ItemStack stack) {
-            return wearer != null && !stack.isEmpty() && stack.canEquip(equipmentSlot, wearer);
+            return wearer != null && !stack.isEmpty() && stack.canEquip(equipmentSlot, wearer)
+                    && com.aetherianartificer.townstead.root.rig.RigEquipment.allows(wearer, equipmentSlot);
         }
 
         @Override public boolean mayPickup(Player player) {

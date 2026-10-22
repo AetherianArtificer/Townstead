@@ -125,12 +125,29 @@ public final class TemperatureData {
     private static float unregulatedAmbientCelsius(ServerLevel level, BlockPos pos) {
         var room = RoomHeat.at(level, pos);
         if (room.isPresent()) return (float) room.getAsDouble();
-        AmbientTemperatureBridge bridge = TemperatureBridgeResolver.get();
+        // Under Townstead authority the climate model is the environment for every backend; the
+        // backends' block and garment opinions still reach it through ThermalBlocks and clothing.
+        AmbientTemperatureBridge bridge = com.aetherianartificer.townstead.TownsteadConfig.townsteadClimateAuthority()
+                ? BuiltinTemperatureBridge.INSTANCE : TemperatureBridgeResolver.get();
         float value = bridge.ambientCelsius(level, pos);
         if (!Float.isFinite(value) && bridge != BuiltinTemperatureBridge.INSTANCE) {
             value = BuiltinTemperatureBridge.INSTANCE.ambientCelsius(level, pos);
         }
         return !Float.isFinite(value) ? AMBIENT_REFERENCE : value;
+    }
+
+    /**
+     * The air temperature for readers outside the temperature need (pheno, dressing for the weather):
+     * Townstead's climate while temperature runs, else the vanilla biome temperature in Celsius.
+     */
+    public static float worldCelsius(ServerLevel level, BlockPos pos) {
+        if (com.aetherianartificer.townstead.TownsteadConfig.temperatureActive()) return ambientCelsius(level, pos);
+        return vanillaCelsius(level, pos);
+    }
+
+    /** The vanilla biome temperature at a position, through Townstead's anchors. */
+    public static float vanillaCelsius(ServerLevel level, BlockPos pos) {
+        return TemperatureSettings.get().biomeToCelsius(level.getBiome(pos).value().getBaseTemperature());
     }
 
     /** A thermometer reads stored air, without a person's directional radiant exposure. */
@@ -140,6 +157,20 @@ public final class TemperatureData {
                 : com.aetherianartificer.townstead.compat.temperature.RoomHeatBackend.outdoor(level, pos);
         return com.aetherianartificer.townstead.compat.temperature.ToughAsNailsTemperatureBridge.INSTANCE
                 .regulatedCelsius(level, pos, value);
+    }
+
+    /**
+     * Radiant heat at a thermometer's spot from sources in sight: what an unshielded reading adds to
+     * the air. Zero where no source reaches.
+     */
+    public static float radiantCelsius(ServerLevel level, BlockPos pos) {
+        var air = RoomHeat.airAt(level, pos);
+        if (air.isPresent()) {
+            var felt = RoomHeat.at(level, pos);
+            return felt.isPresent() ? (float) (felt.getAsDouble() - air.getAsDouble()) : 0f;
+        }
+        float outside = com.aetherianartificer.townstead.compat.temperature.RoomHeatBackend.outdoor(level, pos);
+        return ThermalBlocks.sourceOffset(level, pos, TemperatureSettings.get(), outside);
     }
 
     /** The operative environment used by players and villagers, before personal modifiers. */

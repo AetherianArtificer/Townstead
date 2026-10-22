@@ -122,7 +122,8 @@ public final class CatalogPanel {
         widgets.add(graph); widgets.add(inspector);
         int actionY = bodyY + bodyH - 26;
         pinButton = button(inspector.getX() + (detailsW - 156) / 2, actionY, 156, 20, tr("pin_requirements"),
-                () -> BuildingPinClientStore.isPinned(state().selected), b -> togglePin());
+                () -> BuildingPinClientStore.isPinned(state().selected), b -> togglePin())
+                .icon(CatalogBadgeRenderer.TRACKED);
         previousVariant = button(inspector.getX() + 8, inspector.variantControlsY(), 22, 18, Component.literal("‹"), () -> false, b -> inspector.changeVariant(-1));
         nextVariant = button(inspector.getX() + detailsW - 30, inspector.variantControlsY(), 22, 18, Component.literal("›"), () -> false, b -> inspector.changeVariant(1));
         refresh();
@@ -265,7 +266,7 @@ public final class CatalogPanel {
         int hangoutX = x + INSET + 1;
         CatalogBadgeRenderer.hangoutLabel(g, font, tr("hangout").getString(), hangoutX, legendY, 0xADBEAF);
         int pinX = hangoutX + 28 + font.width(tr("hangout"));
-        if (tab == 0) CatalogBadgeRenderer.pinLabel(g, font, tr("filter.pinned").getString(), pinX, legendY, 0xDACB9F);
+        if (tab == 0) CatalogBadgeRenderer.trackedLabel(g, font, tr("filter.pinned").getString(), pinX, legendY, 0xDACB9F);
         String help = tr("navigation_hint").getString();
         g.drawString(font, help, x + w - INSET - font.width(help), legendY, 0xADBEAF, false);
         updateActions();

@@ -88,6 +88,10 @@ class StoryCompilerTest {
         com.bladecoder.ink.runtime.Story story = new com.bladecoder.ink.runtime.Story(result.json());
         story.setAllowExternalFunctionFallbacks(true);
         assertEquals("Who are you?", story.evaluateFunction("menu"));
+        // Inky opens on the scene menu from lib/inky_jump.ink.
+        story.continueMaximally();
+        assertEquals("From the start", story.getCurrentChoices().get(0).getText());
+        story.chooseChoiceIndex(0);
         String text = story.continueMaximally();
         assertFalse(text.isBlank());
         assertNotEquals("", story.getVariablesState().get("given_name"));
@@ -154,6 +158,16 @@ class StoryCompilerTest {
         assertTrue(result.warnings().isEmpty(), () -> "warnings: " + result.warnings());
         assertNotNull(result.knots().get("greet"));
         assertNotNull(result.knots().get("meeting"));
+    }
+
+    @Test
+    void shippedCostumeStoriesCompile() throws IOException {
+        for (String id : java.util.List.of("costume_hunter", "costume_vampire", "costume_werewolf")) {
+            StoryCompiler.Result result = StoryCompiler.compile(folder(id));
+            assertTrue(result.ok(), () -> id + " errors: " + result.errors());
+            assertTrue(result.warnings().isEmpty(), () -> id + " warnings: " + result.warnings());
+            assertNotNull(result.knots().get("greet"), id);
+        }
     }
 
     @Test

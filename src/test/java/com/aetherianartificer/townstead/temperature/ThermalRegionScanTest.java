@@ -46,4 +46,24 @@ class ThermalRegionScanTest {
         cells.put(2L,ThermalRegionScan.Kind.INTERIOR);
         assertEquals(3,ThermalRegionScan.scan(1,100,line(cells)).orElseThrow().cells().size());
     }
+    @Test void aSpaceTooLargeToEncloseBecomesAPartialRoomOpenAtItsEdge() {
+        var access=new ThermalRegionScan.Access() {
+            public ThermalRegionScan.Kind kind(long p) { return ThermalRegionScan.Kind.INTERIOR; }
+            public long[] neighbors(long p) { return new long[]{p-1,p+1}; }
+        };
+        var partial=ThermalRegionScan.scanPartial(0,32,access,p -> false).orElseThrow();
+        assertEquals(32,partial.region().cells().size());
+        assertEquals(2,partial.frontier().size(),"the line runs on at both ends");
+        assertTrue(partial.region().cells().contains(0L));
+    }
+    @Test void aPartialRoomStopsAtRoomsAlreadyThere() {
+        var access=new ThermalRegionScan.Access() {
+            public ThermalRegionScan.Kind kind(long p) { return ThermalRegionScan.Kind.INTERIOR; }
+            public long[] neighbors(long p) { return new long[]{p-1,p+1}; }
+        };
+        var partial=ThermalRegionScan.scanPartial(0,32,access,p -> p>=5).orElseThrow();
+        assertFalse(partial.region().cells().contains(5L));
+        assertFalse(partial.frontier().contains(5L),"an owned cell joins its room, not the outside air");
+        assertTrue(ThermalRegionScan.scanPartial(6,32,access,p -> p>=5).isEmpty());
+    }
 }

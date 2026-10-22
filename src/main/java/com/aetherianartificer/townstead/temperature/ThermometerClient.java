@@ -18,7 +18,14 @@ public final class ThermometerClient {
     public static void show(ThermometerReadingPayload reading) {
         var player = Minecraft.getInstance().player;
         if (player == null || !Float.isFinite(reading.celsius())) return;
-        String text = format(reading.celsius(), fahrenheit(reading.coldSweat()));
+        boolean fahrenheit = fahrenheit(reading.coldSweat());
+        String text = format(reading.celsius(), fahrenheit);
+        if (Float.isFinite(reading.radiant()) && Math.abs(reading.radiant()) >= 0.5f) {
+            String source = format(reading.celsius() + reading.radiant(), fahrenheit);
+            player.displayClientMessage(Component.translatableWithFallback("townstead.thermometer.reading_source",
+                    "Air: " + text + ", by the source: " + source, text, source), true);
+            return;
+        }
         player.displayClientMessage(Component.translatable("townstead.thermometer.reading", text), true);
     }
 

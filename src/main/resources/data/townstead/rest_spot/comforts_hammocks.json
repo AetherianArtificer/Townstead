@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:rest_spot/v1",
+  "mods": "comforts",
+  "blocks": [
+    {
+      "id": "#comforts:hammocks",
+      "state": {
+        "part": "head"
+      }
+    }
+  ],
+  "home": false,
+  "sets_spawn": false
+}

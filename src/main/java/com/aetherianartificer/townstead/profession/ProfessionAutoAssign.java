@@ -78,6 +78,7 @@ public final class ProfessionAutoAssign {
                         + " from " + def.id() + ": no seat left");
                 releaseJobSite(villager);
                 villager.setProfession(VillagerProfession.NONE);
+                ProfessionSites.seatChanged(villager, false);
                 Townstead.townstead$broadcastProfessionTier(villager);
             }
             return;
@@ -90,6 +91,7 @@ public final class ProfessionAutoAssign {
         narrate(level, villager, "SEAT:hired into "
                 + ProfessionSlotRules.professionKey(hired) + " for " + def.id());
         villager.setProfession(hired);
+        ProfessionSites.seatChanged(villager, true);
         Townstead.townstead$broadcastProfessionTier(villager);
     }
 

@@ -180,7 +180,31 @@ public abstract class BlueprintScreenMixin extends Screen {
             removeBuildingButton.active = true;
         }
     }
+
+    /**
+     * MCA sends a removal only for a scanned structure, so the button above did nothing at an
+     * open-air building. Send it untargeted; the server removes the building at the player.
+     */
+    @Inject(method = "targetedEditMessage", remap = false, require = 0, at = @At("RETURN"), cancellable = true)
+    private static void townstead$removeOpenAirBuilding(net.conczin.mca.network.c2s.ReportBuildingMessage.Action action,
+            Village village, RoomScanPlan plan, Integer selectedFloor,
+            CallbackInfoReturnable<Optional<net.conczin.mca.network.c2s.ReportBuildingMessage>> cir) {
+        if (action != net.conczin.mca.network.c2s.ReportBuildingMessage.Action.REMOVE
+                || cir.getReturnValue().isPresent() || village == null) return;
+        var player = net.minecraft.client.Minecraft.getInstance().player;
+        if (player == null || OptionalBuildingRecognition.findNearby(village, player.blockPosition()).isEmpty()) return;
+        cir.setReturnValue(Optional.of(new net.conczin.mca.network.c2s.ReportBuildingMessage(
+                net.conczin.mca.network.c2s.ReportBuildingMessage.Action.REMOVE, null, -1)));
+    }
     //?}
+
+    /** MCA's catalog makes a plain button for a type with an item icon, not a sprite from its old UVs. */
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "setPage", remap = false, require = 0,
+            at = @At(value = "INVOKE", target = "Lnet/conczin/mca/resources/data/BuildingType;hasIcon()Z", remap = false))
+    private boolean townstead$catalogSpriteless(BuildingType type,
+            com.llamalad7.mixinextras.injector.wrapoperation.Operation<Boolean> original) {
+        return BuildingIconResolver.itemIcon(type).isEmpty() && original.call(type);
+    }
 
     @Inject(method = "setPage", remap = false, at = @At("HEAD"), cancellable = true)
     private void townstead$redirectCatalogPage(String pageName, CallbackInfo ci) {
@@ -262,6 +286,26 @@ public abstract class BlueprintScreenMixin extends Screen {
             CallbackInfo ci) {
         if (TOWNSTEAD_CATALOG_PAGE.equals(this.page) && townstead$catalogPanel != null)
             townstead$catalogPanel.render(context, mouseX, mouseY, partialTicks, village);
+        if ("catalog".equals(this.page)) townstead$drawCatalogItemIcons(context);
+    }
+
+    /**
+     * MCA's own catalog draws icons only from its sprite sheet, so a building without a sprite
+     * gets a blank button. Draws its item icon on it. The buttons follow the visible types in order.
+     */
+    @Unique
+    private void townstead$drawCatalogItemIcons(GuiGraphics context) {
+        List<Button> buttons = ((BlueprintScreenAccessor) this).townstead$getCatalogButtons();
+        int i = 0;
+        for (BuildingType bt : BuildingTypes.getInstance()) {
+            if (!bt.visible()) continue;
+            if (i >= buttons.size()) break;
+            Button button = buttons.get(i++);
+            if (!button.visible || button instanceof net.minecraft.client.gui.components.ImageButton) continue;
+            ItemStack icon = BuildingIconResolver.itemIcon(bt);
+            if (icon.isEmpty()) icon = townstead$resolveNodeIcon(bt);
+            if (!icon.isEmpty()) context.renderItem(icon, button.getX() + 2, button.getY() + 2);
+        }
     }
 
     // Map item icons are applied where the renderer still has the BuildingType:

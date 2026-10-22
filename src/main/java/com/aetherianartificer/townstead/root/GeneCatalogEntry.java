@@ -306,7 +306,16 @@ public record GeneCatalogEntry(
 
     /** For ABILITY genes, the granted ability key (e.g. {@code night_vision}); empty otherwise. */
     public String abilityKey() {
-        return isAbility() && targetId != null ? targetId : "";
+        if (!isAbility() || targetId == null) return "";
+        int split = targetId.indexOf(';');
+        return split < 0 ? targetId : targetId.substring(0, split);
+    }
+
+    /** For flight ABILITY genes, the authored {@code style} (rides after a {@code ;} in {@code targetId}); empty when inferred. */
+    public String abilityStyle() {
+        if (!isAbility() || targetId == null) return "";
+        int split = targetId.indexOf(';');
+        return split < 0 ? "" : targetId.substring(split + 1);
     }
 
     /** For ABILITY genes, whether it is toggle-mode (rides in {@code amount}); false = always-on passive. */
@@ -327,6 +336,16 @@ public record GeneCatalogEntry(
     /** For OVERLAY genes, the draw alpha 0–1 (rides in {@code min}). */
     public float overlayAlpha() {
         return isOverlay() ? Math.max(0f, Math.min(1f, min)) : 1f;
+    }
+
+    /** True when this gene scales the whole body (the factor rides in {@code min}). */
+    public boolean isBodyScale() {
+        return displayKind == GeneDisplay.Kind.BODY_SCALE.ordinal();
+    }
+
+    /** For BODY_SCALE genes, the size factor; 1 otherwise. */
+    public float bodyScale() {
+        return isBodyScale() && Float.isFinite(min) && min > 0f ? min : 1f;
     }
 
     /** True when this gene sets a conditional body render opacity (alpha rides in {@code min}). */

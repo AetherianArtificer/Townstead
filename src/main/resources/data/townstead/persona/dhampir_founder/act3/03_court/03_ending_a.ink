@@ -22,6 +22,7 @@ That's yours to say. I can't. I've been deciding what to do about him since befo
 
 = end_him
 ~ father_fate = "ended"
+Someone will have to see to the candle. # who: visitor:father
 ~ act("end_father")
 Ah. # who: visitor:father
 ...There. # emote:ponder

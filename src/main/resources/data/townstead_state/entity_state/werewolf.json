@@ -20,6 +20,7 @@
       "min": 10
     }
   ],
+  "requires": { "type": "pheno:not", "condition": { "type": "pheno:entity_group", "group": "undead" } },
   "merge": "max",
   "persistence": "persistent",
   "death": "keep",

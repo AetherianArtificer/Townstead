@@ -154,7 +154,7 @@ public class SeekThermalReliefTask extends Behavior<VillagerEntityMCA> {
 
     private boolean recoveryComplete(TownsteadVillager.Needs needs) {
         return BodyHeat.reliefComplete(TemperatureData.celsius(needs.bodyTempTenths()),
-                BodyHeat.target(needs.comfortLoad(), TemperatureSettings.get().comfortZone(), profile, false), profile);
+                BodyHeat.target(needs.comfortLoad(), profile, false), profile);
     }
 
     @Override

@@ -6,6 +6,7 @@ import com.aetherianartificer.townstead.clothing.ClothingEntry;
 import com.aetherianartificer.townstead.clothing.ClothingSet;
 import com.aetherianartificer.townstead.clothing.ClothingThermal;
 import com.aetherianartificer.townstead.clothing.VillageSpirits;
+import com.aetherianartificer.townstead.clothing.adapt.AdaptedClothingPack;
 import com.aetherianartificer.townstead.culture.Culture;
 import com.aetherianartificer.townstead.culture.CultureAssignment;
 import com.aetherianartificer.townstead.culture.CultureClothing;
@@ -109,6 +110,28 @@ public final class SkinPicker {
         return villager.getUUID().getLeastSignificantBits() * 31L + day;
     }
 
+    /**
+     * A skin from the MCA clothes authored for {@code profession} (a set such as a faction's attire)
+     * that this villager's body can wear, or empty when none is.
+     */
+    public static Optional<String> fromProfession(VillagerEntityMCA villager, String profession, long seed) {
+        ClothingList list = ClothingList.getInstance();
+        if (villager == null || profession == null || list == null || list.clothing == null) return Optional.empty();
+        var life = TownsteadVillagers.get(villager).life();
+        ResourceLocation rootId = com.aetherianartificer.townstead.data.DataPackLang.parseId(life.rootId());
+        Predicate<String> wear = wearable(rootId, life.hasHeritage() ? life.heritage() : null);
+        String dotted = profession.replace(':', '.');
+        List<String> pool = new ArrayList<>();
+        for (Map.Entry<String, Clothing> e : list.clothing.entrySet()) {
+            Clothing clothing = e.getValue();
+            if (clothing == null || !(profession.equals(clothing.profession) || dotted.equals(clothing.profession))) continue;
+            if (wear.test(e.getKey())) pool.add(e.getKey());
+        }
+        if (pool.isEmpty()) return Optional.empty();
+        java.util.Collections.sort(pool);
+        return Optional.of(pool.get(new Random(seed).nextInt(pool.size())));
+    }
+
     public static List<Candidate> candidates(VillagerEntityMCA villager, WardrobePolicy.Selector selector) {
         ClothingList list = ClothingList.getInstance();
         if (villager == null || selector == null || list == null || list.clothing == null) return List.of();
@@ -130,6 +153,7 @@ public final class SkinPicker {
             String skin = e.getKey();
             Clothing clothing = e.getValue();
             if (skin == null || clothing == null) continue;
+            if (AdaptedClothingPack.unavailable(skin)) continue;
             // Rig skins are excluded from MCA's own random picks (they don't fit its body); a body they
             // fit may still wear them.
             if (clothing.exclude && !(bodyOnly && fits(fitted, skin))) continue;
@@ -174,7 +198,7 @@ public final class SkinPicker {
         return 0.0;
     }
 
-    static boolean fits(List<ClothingEntry> fitted, String skin) {
+    public static boolean fits(List<ClothingEntry> fitted, String skin) {
         for (ClothingEntry entry : fitted) {
             if (entry.matchesSkin(skin)) return true;
         }
@@ -187,6 +211,55 @@ public final class SkinPicker {
         return weight;
     }
 
+    /**
+     * Which skins a root's body can wear. A body with its own fitted skins wears only those. MCA's
+     * villager body wears any skin in the catalog except one fitted to another kind of body (a
+     * Ribbit's outfit). Any other body draws no MCA skin, so every skin passes. Build it once, then
+     * test each skin.
+     */
+    public static Predicate<String> wearable(@Nullable ResourceLocation rootId, @Nullable Heritage heritage) {
+        List<ClothingEntry> fitted = BodyClothingResolver.fitted(rootId, heritage);
+        if (!onMcaRig(rootId)) return skin -> fitted.isEmpty() || (skin != null && fits(fitted, skin));
+        ClothingList list = ClothingList.getInstance();
+        if (list == null || list.clothing == null) return skin -> true;
+        List<ClothingEntry> otherBodies = new ArrayList<>();
+        for (com.aetherianartificer.townstead.root.Root root : RootRegistry.all()) {
+            if (!onMcaRig(root.id())) otherBodies.addAll(BodyClothingResolver.fitted(root.id(), null));
+        }
+        return skin -> skin != null && !skin.isEmpty() && list.clothing.containsKey(skin)
+                && !AdaptedClothingPack.unavailable(skin)
+                && (fits(fitted, skin) || !fits(otherBodies, skin));
+    }
+
+    /**
+     * After a root change: a fresh profession-first skin when the body can't wear {@code current},
+     * else empty (keep it). On MCA's body the roll skips {@code exclude} skins, as MCA's own picks do,
+     * so a human never rolls into an outfit kept for someone. Empty too when nothing fits.
+     */
+    public static Optional<String> refit(@Nullable ResourceLocation rootId, @Nullable Heritage heritage,
+                                         @Nullable String current, Gender gender, String profession, long seed) {
+        Predicate<String> wear = wearable(rootId, heritage);
+        if (wear.test(current)) return Optional.empty();
+        boolean bodyOnly = !onMcaRig(rootId);
+        ClothingList list = ClothingList.getInstance();
+        Optional<String> picked = RigSkinPicker.pick(skin -> {
+            if (!wear.test(skin)) return false;
+            if (bodyOnly || list == null || list.clothing == null) return true;
+            Clothing clothing = list.clothing.get(skin);
+            return clothing != null && !clothing.exclude;
+        }, gender, profession, seed);
+        // On MCA's body, keep the current outfit rather than take another profession's work clothes.
+        if (!bodyOnly && picked.isPresent() && list != null && list.clothing != null) {
+            Clothing clothing = list.clothing.get(picked.get());
+            String authored = clothing == null ? null : clothing.profession;
+            if (!RigSkinPicker.civilian(authored) && !profession.equals(authored)
+                    && !profession.replace(':', '.').equals(authored)) {
+                return Optional.empty();
+            }
+        }
+        return picked;
+    }
+
     /** Whether the skin fits the villager's body: any skin on MCA's villager, else only a fitted one. */
     public static boolean fitsBody(VillagerEntityMCA villager, String skin) {
         var life = TownsteadVillagers.get(villager).life();
@@ -195,7 +268,7 @@ public final class SkinPicker {
         return fits(BodyClothingResolver.fitted(rootId, life.hasHeritage() ? life.heritage() : null), skin);
     }
 
-    static boolean onMcaRig(@Nullable ResourceLocation rootId) {
+    public static boolean onMcaRig(@Nullable ResourceLocation rootId) {
         ResourceLocation speciesId = RootRegistry.effectiveSpecies(rootId);
         Species species = speciesId == null ? null : SpeciesRegistry.byId(speciesId);
         return species == null || species.rig() == null || Rig.VILLAGER.base().equals(species.rig().base());

@@ -200,6 +200,32 @@ public final class WorksiteOrders {
     }
 
     /**
+     * The gate for work done away from the worker's own site, such as shearing in a pen: the
+     * workplace's sheet decides, not whatever building the worker happens to stand in. Falls back
+     * to {@link #mayStart} for a worker with no workplace.
+     */
+    public static boolean mayStartFromWorkplace(ServerLevel level, VillagerEntityMCA villager,
+                                                ResourceLocation activity) {
+        com.aetherianartificer.townstead.work.site.WorksiteRegister register =
+                level.getServer() == null ? null
+                        : com.aetherianartificer.townstead.work.site.WorksiteRegister.get(level.getServer());
+        if (register == null || !register.anyActivityOrders()) return true;
+        BlockPos anchor = workplaceAnchor(level, villager);
+        if (anchor == null) return mayStart(level, villager, activity);
+        return allows(level, anchor, activity) && !outranked(level, villager, anchor, activity);
+    }
+
+    /** The worker's assigned building, else the job-site block in its memory. */
+    private static @Nullable BlockPos workplaceAnchor(ServerLevel level, VillagerEntityMCA villager) {
+        com.aetherianartificer.townstead.work.site.ProfessionWorksites.Assignment assignment =
+                com.aetherianartificer.townstead.work.site.ProfessionWorksites.resolve(level, villager);
+        if (assignment != null) return assignment.reference();
+        net.minecraft.core.GlobalPos jobSite = villager.getBrain()
+                .getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.JOB_SITE).orElse(null);
+        return jobSite != null && jobSite.dimension().equals(level.dimension()) ? jobSite.pos() : null;
+    }
+
+    /**
      * The candidates a task should try, in the order the worksite wants them tried.
      *
      * <p>Ordered lines that still want work come first, in list position; everything else keeps its

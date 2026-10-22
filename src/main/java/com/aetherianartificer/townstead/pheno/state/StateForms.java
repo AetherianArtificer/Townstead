@@ -18,8 +18,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class StateForms {
     /** {@code variants} fill the placeholders in the rig's textures, such as {@code {coat:11}}. */
-    public record Form(String rig, boolean talk, boolean sleep, Map<String, Integer> variants) {
-        public static final Form NONE = new Form("", true, true, Map.of());
+    public record Form(String rig, boolean talk, boolean sleep, boolean ride, Map<String, Integer> variants) {
+        public static final Form NONE = new Form("", true, true, true, Map.of());
     }
 
     private static final Map<UUID, Form> CURRENT = new ConcurrentHashMap<>();
@@ -39,6 +39,11 @@ public final class StateForms {
         return of(entity).sleep();
     }
 
+    /** Whether the entity may mount, as its state tier's {@code ride} says. */
+    public static boolean canRide(Entity entity) {
+        return of(entity).ride();
+    }
+
     public static boolean canTalk(Entity entity) {
         return of(entity).talk();
     }
@@ -48,6 +53,8 @@ public final class StateForms {
         Form form = compute(entity);
         Form before = form.equals(Form.NONE) ? CURRENT.remove(entity.getUUID()) : CURRENT.put(entity.getUUID(), form);
         if (form.equals(before == null ? Form.NONE : before)) return;
+        // A tier that may not ride (a werewolf's beast) gets off whatever it is on.
+        if (!form.ride() && entity.isPassenger()) entity.stopRiding();
         entity.refreshDimensions();
         send(entity, form);
     }
@@ -57,10 +64,10 @@ public final class StateForms {
             EntityStates.Resolved state = EntityStates.resolve(entity, definition.id());
             if (!state.active() || state.tierIndex() < 0 || state.tierIndex() >= definition.tiers().size()) continue;
             EntityStateDefinition.Tier tier = definition.tiers().get(state.tierIndex());
-            if (tier.rig().isEmpty() && tier.talk() && tier.sleep()) continue;
+            if (tier.rig().isEmpty() && tier.talk() && tier.sleep() && tier.ride()) continue;
             Map<String, Integer> variants = new java.util.LinkedHashMap<>();
             tier.variants().forEach((name, chosen) -> variants.put(name, variant(entity, name, chosen)));
-            return new Form(tier.rig(), tier.talk(), tier.sleep(), Map.copyOf(variants));
+            return new Form(tier.rig(), tier.talk(), tier.sleep(), tier.ride(), Map.copyOf(variants));
         }
         return Form.NONE;
     }

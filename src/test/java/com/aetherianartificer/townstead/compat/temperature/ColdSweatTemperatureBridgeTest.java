@@ -46,4 +46,24 @@ class ColdSweatTemperatureBridgeTest {
         assertTrue(Float.isNaN(sample(List.of(fallback), fallback)));
         assertEquals(0f, sample(List.of(new Effect(false, 1)), fallback));
     }
+
+    @Test
+    void aFueledSmartHearthBurnsWhetherOrNotAnyoneIsCold() {
+        assertEquals(1f, ColdSweatTemperatureBridge.sourceSign(true, true, 40, 0, false, false));
+        assertEquals(-1f, ColdSweatTemperatureBridge.sourceSign(true, true, 0, 40, false, false));
+        assertEquals(0f, ColdSweatTemperatureBridge.sourceSign(true, true, 0, 0, false, false));
+    }
+
+    @Test
+    void smartHearthNeedsASmokestackAndBothFuelsDeferToColdSweat() {
+        assertEquals(0f, ColdSweatTemperatureBridge.sourceSign(true, false, 40, 0, false, false));
+        assertEquals(-1f, ColdSweatTemperatureBridge.sourceSign(true, true, 40, 40, false, true));
+        assertEquals(0f, ColdSweatTemperatureBridge.sourceSign(true, true, 40, 40, false, false));
+    }
+
+    @Test
+    void redstoneModeKeepsThePlayersSwitch() {
+        assertEquals(0f, ColdSweatTemperatureBridge.sourceSign(false, true, 40, 0, false, false));
+        assertEquals(1f, ColdSweatTemperatureBridge.sourceSign(false, true, 40, 0, true, false));
+    }
 }

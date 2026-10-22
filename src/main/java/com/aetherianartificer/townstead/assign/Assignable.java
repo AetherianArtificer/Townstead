@@ -32,7 +32,28 @@ public record Assignable(
          * <p>A keybind's translation key, and nothing at all for a command: the server runs those,
          * so shipping the command text would tell every client what it could try to forge.</p>
          */
-        String clientValue) {
+        String clientValue,
+        /** Flavour text shown on hover, or empty. */
+        Component description) {
+
+    public Assignable(ResourceLocation id, Component name, String icon, Component source, Kind kind,
+                      int cooldownTicks, int costAmount, String costLabel, int costColor, String clientValue) {
+        this(id, name, icon, source, kind, cooldownTicks, costAmount, costLabel, costColor, clientValue, Component.empty());
+    }
+
+    /**
+     * The description as sent to the client: a translation key, marked, when it is one (so a mod's
+     * text resolves on a client that has its language files), else the text itself.
+     */
+    public String descriptionWire() {
+        if (description.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents translatable
+                && translatable.getArgs().length == 0 && description.getSiblings().isEmpty()) {
+            return DESCRIPTION_KEY + translatable.getKey();
+        }
+        return description.getString();
+    }
+
+    public static final String DESCRIPTION_KEY = "\u0001";
 
     /**
      * What pressing it does.

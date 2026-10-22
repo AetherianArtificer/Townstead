@@ -11,6 +11,7 @@
   "clothing": [
     "townstead:cook",
     "chefsdelight:cook",
+    "chefsdelight:delightcook",
     "minecraft:butcher"
   ],
   "skills": [

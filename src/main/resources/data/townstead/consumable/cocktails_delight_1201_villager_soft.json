@@ -1,7 +1,7 @@
 {
   "schema": "townstead:consumable/v2",
   "mods": ["brewinandchewin", "brewincompatdelight"],
-  "items": ["brewincompatdelight:lemon_lime", "brewincompatdelight:cranberry_juice"],
+  "items": ["brewincompatdelight:lemon_lime", "brewincompatdelight:tonic_water"],
   "transaction": {
     "mode": "replace_with_pheno",
     "accounting": "consume_one",

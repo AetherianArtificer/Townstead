@@ -13,59 +13,84 @@ import net.conczin.mca.server.world.data.VillageManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.server.level.ServerLevel;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
-/** The single access policy for Townstead systems which let villagers use a place. */
+/**
+ * What an Ownership Plaque allows. A plaque lists the people a place belongs to; villagers MCA
+ * houses inside count as listed. While it lists anyone, it keeps everyone else out of the place's
+ * storage, and the building type decides what it means for beds: in a home only listed villagers
+ * may live, in lodging (an inn) anyone may sleep a night. Players are never stopped by a plaque.
+ */
 public final class RoomOwnershipAccess {
     private RoomOwnershipAccess() {}
 
-    /**
-     * A room deed overrides a whole-building deed; otherwise rooms inherit their MCA logical
-     * building's deed, including attached physical structures.
-     * Open/private is independent of the list of named people, so a private deed with no names is
-     * residents-only. Players are intentionally not intercepted here—the deed governs villager
-     * automation rather than becoming a multiplayer claim system.
-     */
-    public static boolean mayAccess(ServerLevel level, VillagerEntityMCA actor, BlockPos target) {
-        if (level == null || actor == null || target == null || level.getServer() == null) return true;
-        Building building = McaBuildingCompat.buildingAt(level, target);
-        if (building == null) return true;
-        Policy policy = policyFor(level, building);
-        if (policy == null || !policy.site().ownershipPrivate()) return true;
-
-        if (policy.site().owners().stream().anyMatch(owner -> owner.uuid().equals(actor.getUUID()))) {
-            return true;
+    /** The plaque governing a place, the building it hangs in, and whether its beds are lodging. */
+    public record Place(ServerLevel level, @Nullable Village village, Building building, Worksite site,
+                        OwnershipScope scope, boolean lodging) {
+        public boolean restricts() {
+            return site.ownershipPrivate();
         }
-        return mcaHomeIsInside(level, actor, building, policy.scope());
+
+        public List<Building> rooms() {
+            return McaBuildingCompat.rooms(village, building, scope == OwnershipScope.BUILDING);
+        }
+
+        /** Whether the person is named on the plaque, or is a villager MCA houses here. */
+        public boolean lists(UUID person, @Nullable VillagerEntityMCA villager) {
+            if (site.owners().stream().anyMatch(owner -> owner.uuid().equals(person))) return true;
+            return villager != null && mcaHomeIsInside(level, villager, building, scope);
+        }
+    }
+
+    public static @Nullable Place placeAt(ServerLevel level, BlockPos pos) {
+        if (level == null || pos == null || level.getServer() == null) return null;
+        Building building = McaBuildingCompat.buildingAt(level, pos);
+        return building == null ? null : placeOf(level, building);
+    }
+
+    static @Nullable Place placeOf(ServerLevel level, Building building) {
+        Policy policy = policyFor(level, building);
+        if (policy == null) return null;
+        Village village = villageOf(level, building);
+        return new Place(level, village, building, policy.site(), policy.scope(),
+                BuildingLodging.isLodging(village, building));
+    }
+
+    /** Whether a villager may use the storage and work blocks at {@code target}. */
+    public static boolean mayAccess(ServerLevel level, VillagerEntityMCA actor, BlockPos target) {
+        if (actor == null) return true;
+        Place place = placeAt(level, target);
+        return place == null || !place.restricts() || place.lists(actor.getUUID(), actor);
     }
 
     /**
-     * Bed use is narrower than ordinary access. A private deed with named people reserves its
-     * beds for the named villagers; being a resident of the surrounding home does not also grant
-     * a bed in somebody else's private room. A private deed with nobody named retains its
-     * residents-only meaning.
+     * Whether a villager may sleep a night in this bed without it becoming their home. Lodging
+     * beds are open unless a plaque on that very room lists people.
      */
     public static boolean maySleep(ServerLevel level, VillagerEntityMCA actor, BlockPos bed) {
-        if (level == null || actor == null || bed == null || level.getServer() == null) return true;
-        Building building = McaBuildingCompat.buildingAt(level, bed);
-        if (building == null) return true;
-        Policy policy = policyFor(level, building);
-        if (policy == null || !policy.site().ownershipPrivate()) return true;
-
-        if (policy.site().owners().stream().anyMatch(owner -> owner.uuid().equals(actor.getUUID()))) {
-            return true;
-        }
-        if (!policy.site().owners().isEmpty()) return false;
-        return mcaHomeIsInside(level, actor, building, policy.scope());
+        if (actor == null) return true;
+        Place place = placeAt(level, bed);
+        if (place == null || !place.restricts()) return true;
+        if (place.lodging() && place.scope() == OwnershipScope.BUILDING) return true;
+        return place.lists(actor.getUUID(), actor);
     }
 
-    /** Whether this position belongs to a room governed by a private deed. */
+    /** Whether MCA may give this villager the bed as their home. Lodging is left to MCA. */
+    public static boolean mayClaimHome(ServerLevel level, VillagerEntityMCA actor, BlockPos bed) {
+        if (actor == null) return true;
+        Place place = placeAt(level, bed);
+        if (place == null || !place.restricts() || place.lodging()) return true;
+        return place.lists(actor.getUUID(), actor);
+    }
+
+    /** Whether this position is in a place a plaque keeps people out of. */
     public static boolean isPrivate(ServerLevel level, BlockPos target) {
-        if (level == null || target == null || level.getServer() == null) return false;
-        Building building = McaBuildingCompat.buildingAt(level, target);
-        Policy policy = building == null ? null : policyFor(level, building);
-        return policy != null && policy.site().ownershipPrivate();
+        Place place = placeAt(level, target);
+        return place != null && place.restricts();
     }
 
     private static Worksite siteFor(ServerLevel level, Building building) {

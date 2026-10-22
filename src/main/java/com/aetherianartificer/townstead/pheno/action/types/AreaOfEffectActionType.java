@@ -21,6 +21,9 @@ import net.minecraft.world.entity.LivingEntity;
  * {@code non_hostile} groups. {@code bientity_condition} can narrow that group further and is
  * evaluated with the actor against each candidate, for example to produce a forward cone.</p>
  *
+ * <p>{@code limit} picks that many of the matching entities at random instead of all of them, and
+ * fails when none match.</p>
+ *
  * <p>JSON: {@code { "type":"pheno:area_of_effect", "radius":4,
  * "target":"hostile", "bientity_condition":{ "type":"pheno:relative_rotation", "max_angle":60 },
  * "action":{ "type":"pheno:damage", "amount":4 } }}</p>
@@ -38,6 +41,7 @@ public final class AreaOfEffectActionType implements ActionType {
     public Action parse(JsonObject json) {
         double radius = Math.max(0, GsonHelper.getAsDouble(json, "radius", 4));
         boolean includeSelf = GsonHelper.getAsBoolean(json, "include_self", false);
+        int limit = GsonHelper.getAsInt(json, "limit", 0);
         String targetMode = switch (GsonHelper.getAsString(json, "target", "all")
                 .toLowerCase(java.util.Locale.ROOT)) {
             case "hostile" -> "hostile";
@@ -50,21 +54,24 @@ public final class AreaOfEffectActionType implements ActionType {
         if (inner == null) return null;
         return ctx -> {
             LivingEntity self = ctx.entity();
+            java.util.List<LivingEntity> hits = new java.util.ArrayList<>();
             for (LivingEntity target : self.level().getEntitiesOfClass(LivingEntity.class,
                     self.getBoundingBox().inflate(radius))) {
                 if (target == self && !includeSelf) continue;
                 if (!targetMode.equals("all")) {
-                    boolean hostile = target instanceof net.minecraft.world.entity.monster.Enemy
-                            || (target instanceof net.minecraft.world.entity.Mob mob
-                            && mob.getTarget() == self)
-                            || com.aetherianartificer.townstead.root.disposition.Dispositions.between(self, target)
-                            == com.aetherianartificer.townstead.root.disposition.Disposition.HOSTILE;
+                    boolean hostile = com.aetherianartificer.townstead.root.disposition.Hostility.toward(self, target);
                     if (targetMode.equals("hostile") != hostile) continue;
                 }
                 // The actor is always the first argument, so "hostile" reads as "hostile to me".
                 if (filter != null && !filter.test(self, target)) continue;
-                inner.run(ctx.retarget(target, self));
+                hits.add(target);
             }
+            if (limit > 0 && hits.size() > limit) {
+                for (int i = hits.size() - 1; i > 0; i--) java.util.Collections.swap(hits, i, self.getRandom().nextInt(i + 1));
+                hits = hits.subList(0, limit);
+            }
+            if (limit > 0 && hits.isEmpty()) ctx.fail();
+            for (LivingEntity target : hits) inner.run(ctx.retarget(target, self));
         };
     }
 }

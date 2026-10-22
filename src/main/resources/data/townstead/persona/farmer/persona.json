@@ -54,7 +54,7 @@
     "watered": {
       "text": "Get water into a Water cell of the plan",
       "event": "townstead:work_completed",
-      "where": { "verb": "townstead:irrigated" }
+      "where": { "village": "teller", "verb": "townstead:irrigated" }
     },
     "first_harvest": {
       "text": "{teller} brings in the first harvest",
@@ -65,14 +65,14 @@
       "text": "Harvest {count} different kinds of crops",
       "count": 5,
       "event": "townstead:work_completed",
-      "where": { "verb": "townstead:harvested" },
+      "where": { "village": "teller", "verb": "townstead:harvested" },
       "distinct": "objectId"
     },
     "rich_harvest": {
       "text": "Harvest {count} crops grown on rich soil",
       "count": 8,
       "event": "townstead:work_completed",
-      "where": { "verb": "townstead:harvested" },
+      "where": { "village": "teller", "verb": "townstead:harvested" },
       "entity": "worker",
       "condition": {
         "type": "pheno:block_in_radius",
@@ -84,24 +84,24 @@
       "text": "Harvest {count} pumpkins or melons",
       "count": 4,
       "event": "townstead:work_completed",
-      "where": { "verb": "townstead:harvested", "objectId": ["minecraft:pumpkin", "minecraft:melon_slice", "tfc:pumpkin", "tfc:melon"] }
+      "where": { "village": "teller", "verb": "townstead:harvested", "objectId": ["minecraft:pumpkin", "minecraft:melon_slice", "tfc:pumpkin", "tfc:melon"] }
     },
     "giant_crop": {
       "text": "Harvest a giant crop",
       "event": "townstead:work_completed",
-      "where": { "verb": "townstead:harvested", "magnitude": { "min": 9 } }
+      "where": { "village": "teller", "verb": "townstead:harvested", "magnitude": { "min": 9 } }
     },
     "fed_soil": {
       "text": "The farmers fertilize the soil {count} times",
       "count": 8,
       "event": "townstead:work_completed",
-      "where": { "verb": "townstead:fertilized" }
+      "where": { "village": "teller", "verb": "townstead:fertilized" }
     },
     "rice": {
       "text": "Harvest {count} rice",
       "count": 8,
       "event": "townstead:work_completed",
-      "where": { "verb": "townstead:harvested", "objectId": "tfc:food/rice" }
+      "where": { "village": "teller", "verb": "townstead:harvested", "objectId": "tfc:food/rice" }
     },
     "fed": {
       "text": "Get the village's hunger to a good level",
@@ -116,13 +116,13 @@
       "text": "Harvest {count} crops",
       "count": 32,
       "event": "townstead:work_completed",
-      "where": { "verb": "townstead:harvested" }
+      "where": { "village": "teller", "verb": "townstead:harvested" }
     },
     "harvest_48": {
       "text": "Bring in {count} crops for the winter",
       "count": 48,
       "event": "townstead:work_completed",
-      "where": { "verb": "townstead:harvested" }
+      "where": { "village": "teller", "verb": "townstead:harvested" }
     },
     "farm": {
       "text": "Have a recognized farm",
@@ -143,7 +143,7 @@
       },
       "share": 0.75,
       "event": "townstead:work_completed",
-      "where": { "verb": "townstead:harvested" },
+      "where": { "village": "teller", "verb": "townstead:harvested" },
       "per_season": 50
     }
   }

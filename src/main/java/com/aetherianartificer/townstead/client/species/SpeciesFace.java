@@ -120,7 +120,7 @@ public final class SpeciesFace {
                 if (v.id().equals(rolled)) return v;
             }
         }
-        return gene.variants().get(Math.floorMod(entity.getUUID().hashCode(), gene.variants().size()));
+        return gene.variants().get(Math.floorMod(RootClientStore.variantSeed(entity), gene.variants().size()));
     }
 
     /**

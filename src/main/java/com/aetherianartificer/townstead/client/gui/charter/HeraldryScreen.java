@@ -48,7 +48,7 @@ public final class HeraldryScreen extends BookScreen {
     private final List<PageZone> valueZones = new ArrayList<>();
     private @Nullable ArmorStand stand;
     // The livery being drafted: an empty style is the default, what the body inherits.
-    private String liveryStyle = "";
+    private String liveryStyle = "", liveryTrim = "";
     private int liveryPrimary, liverySecondary;
 
     public HeraldryScreen(Screen parent, CharterSnapshotS2CPayload snapshot) {
@@ -78,6 +78,7 @@ public final class HeraldryScreen extends BookScreen {
         liveryStyle = livery.style();
         liveryPrimary = livery.primary();
         liverySecondary = livery.secondary();
+        liveryTrim = livery.trim();
     }
 
     private boolean dirty() { return !draft.encode().equals(target().recipe()); }
@@ -85,7 +86,8 @@ public final class HeraldryScreen extends BookScreen {
     private boolean liveryDirty() {
         var livery = target().livery();
         if (!liveryStyle.equals(livery.style())) return true;
-        return !liveryStyle.isEmpty() && (liveryPrimary != livery.primary() || liverySecondary != livery.secondary());
+        return !liveryStyle.isEmpty() && (liveryPrimary != livery.primary() || liverySecondary != livery.secondary()
+                || !liveryTrim.equals(livery.trim()));
     }
 
     private boolean anyDirty() { return dirty() || liveryDirty(); }
@@ -129,6 +131,8 @@ public final class HeraldryScreen extends BookScreen {
         super.init();
     }
 
+    @Override protected boolean pagesScroll() { return true; }
+
     @Override protected void compose() {
         valueZones.clear();
         List<Component> labels = new ArrayList<>();
@@ -137,6 +141,7 @@ public final class HeraldryScreen extends BookScreen {
             tab = index;
             resetDraft();
             leaveArmed = stampArmed = false;
+            resetScroll();
             rebuildWidgets();
         }, !anyDirty() && !pending);
         composeDesign();
@@ -184,15 +189,66 @@ public final class HeraldryScreen extends BookScreen {
                 : styles.stream().filter(c -> c.id().equals(liveryStyle)).findFirst()
                         .map(c -> c.name().component()).orElse(Component.literal(liveryStyle));
         y = row(tr("livery_style"), style, x, y, w, INK, editable() ? this::openStyleMenu : null);
-        if (liveryStyle.isEmpty()) return y;
-        y = row(tr("livery_primary"), colourName(liveryPrimary), x, y, w, INK, editable() ? a -> openColourMenu(true, a) : null);
-        return row(tr("livery_secondary"), colourName(liverySecondary), x, y, w, INK, editable() ? a -> openColourMenu(false, a) : null);
+        LiveryView shown = previewLivery();
+        if (shown == null) return y;
+        if (shown.tint()) {
+            y = row(tr("livery_primary"), colourName(shown.primary()), x, y, w, INK, editable() ? a -> openColourMenu(true, a) : null);
+            y = row(tr("livery_secondary"), colourName(shown.secondary()), x, y, w, INK, editable() ? a -> openColourMenu(false, a) : null);
+        }
+        String trim = trimMaterial(shown);
+        if (trim != null) y = row(tr("livery_trim"), trimName(trim), x, y, w, INK, editable() ? this::openTrimMenu : null);
+        return y;
+    }
+
+    /** The trim material the shown livery wears, or null when its style has no trims. */
+    private static @Nullable String trimMaterial(LiveryView view) {
+        return view.trims().values().stream().map(LiveryView.Trim::material).findFirst().orElse(null);
+    }
+
+    private @Nullable net.minecraft.core.Registry<net.minecraft.world.item.armortrim.TrimMaterial> trimMaterials() {
+        return minecraft.level == null ? null : minecraft.level.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.TRIM_MATERIAL);
+    }
+
+    private Component trimName(String id) {
+        var registry = trimMaterials();
+        var material = registry == null ? null : registry.get(net.minecraft.resources.ResourceLocation.tryParse(id));
+        return material == null ? Component.literal(id) : material.description();
+    }
+
+    private void openTrimMenu(Controls.Rect anchor) {
+        var registry = trimMaterials();
+        LiveryView shown = previewLivery();
+        if (registry == null || shown == null) return;
+        String current = trimMaterial(shown);
+        List<DropMenu.Entry> entries = new ArrayList<>();
+        registry.entrySet().stream().sorted(java.util.Comparator.comparing(e -> e.getValue().description().getString())).forEach(e -> {
+            String id = e.getKey().location().toString();
+            var colour = e.getValue().description().getStyle().getColor();
+            entries.add(new DropMenu.Entry(Component.literal(e.getValue().description().getString()), () -> {
+                menu = null;
+                adoptInherited();
+                liveryTrim = id;
+                rebuildWidgets();
+            }, false, id.equals(current), colour == null ? 0 : 0xFF000000 | colour.getValue()));
+        });
+        menu = menuBelow(tr("livery_trim"), entries, anchor);
+    }
+
+    /** Recolouring the inherited livery makes it this body's own: the same style, at the chosen colours. */
+    private void adoptInherited() {
+        LiveryView inherited = target().livery().inheritedView();
+        if (!liveryStyle.isEmpty() || inherited == null) return;
+        liveryStyle = inherited.style().toString();
+        liveryPrimary = inherited.primary();
+        liverySecondary = inherited.secondary();
+        String trim = trimMaterial(inherited);
+        liveryTrim = trim == null ? "" : trim;
     }
 
     private void openStyleMenu(Controls.Rect anchor) {
         List<DropMenu.Entry> entries = new ArrayList<>();
         entries.add(new DropMenu.Entry(tr("livery_inherited", target().livery().inherited().component()),
-                () -> { menu = null; liveryStyle = ""; rebuildWidgets(); }, false, liveryStyle.isEmpty(), 0));
+                () -> { menu = null; liveryStyle = ""; liveryTrim = ""; rebuildWidgets(); }, false, liveryStyle.isEmpty(), 0));
         for (var choice : snapshot.book().liveryStyles()) {
             entries.add(new DropMenu.Entry(choice.name().component(), () -> {
                 menu = null;
@@ -202,6 +258,7 @@ public final class HeraldryScreen extends BookScreen {
                     liverySecondary = dyeRgb(draft.symbolColor());
                 }
                 liveryStyle = choice.id();
+                liveryTrim = "";
                 rebuildWidgets();
             }, false, choice.id().equals(liveryStyle), 0));
         }
@@ -209,12 +266,15 @@ public final class HeraldryScreen extends BookScreen {
     }
 
     private void openColourMenu(boolean primary, Controls.Rect anchor) {
-        int current = primary ? liveryPrimary : liverySecondary;
+        LiveryView inherited = liveryStyle.isEmpty() ? target().livery().inheritedView() : null;
+        int current = inherited != null ? (primary ? inherited.primary() : inherited.secondary())
+                : primary ? liveryPrimary : liverySecondary;
         List<DropMenu.Entry> entries = new ArrayList<>();
         for (int dye = 0; dye < 16; dye++) {
             int rgb = dyeRgb(dye);
             entries.add(new DropMenu.Entry(color(dye), () -> {
                 menu = null;
+                adoptInherited();
                 if (primary) liveryPrimary = rgb;
                 else liverySecondary = rgb;
                 rebuildWidgets();
@@ -232,7 +292,7 @@ public final class HeraldryScreen extends BookScreen {
         if (liveryStyle.isEmpty()) return target().livery().inheritedView();
         var option = styles().stream().filter(o -> o.id().equals(liveryStyle)).findFirst().orElse(null);
         if (option == null) return null;
-        return option.view().withColors(liveryPrimary, liverySecondary);
+        return option.view().withColors(liveryPrimary, liverySecondary).withTrimMaterial(liveryTrim);
     }
 
     /** A stand in full iron, only ever drawn here, so the preview shows what a guard would wear. */
@@ -254,8 +314,21 @@ public final class HeraldryScreen extends BookScreen {
         ArmorStand figure = stand();
         if (figure == null) return;
         //? if >=1.21 {
-        net.minecraft.client.gui.screens.inventory.InventoryScreen.renderEntityInInventoryFollowsAngle(
-                g, x, y, x + w, y + h, STAND_SCALE, 0.0625f, 0.35f, -0.05f, figure);
+        // The vanilla helper clips with an unscaled scissor, which lands elsewhere when the book is drawn
+        // shrunk; the page's own clip already bounds the figure, so it is posed here the same way.
+        float angleX = 0.35f, angleY = -0.05f;
+        org.joml.Quaternionf turn = new org.joml.Quaternionf().rotateZ((float) Math.PI);
+        org.joml.Quaternionf camera = new org.joml.Quaternionf().rotateX(angleY * 20f * ((float) Math.PI / 180f));
+        turn.mul(camera);
+        figure.yBodyRot = 180f + angleX * 20f;
+        figure.setYRot(180f + angleX * 40f);
+        figure.setXRot(-angleY * 20f);
+        figure.yHeadRot = figure.getYRot();
+        figure.yHeadRotO = figure.getYRot();
+        float size = figure.getScale();
+        org.joml.Vector3f offset = new org.joml.Vector3f(0f, figure.getBbHeight() / 2f + 0.0625f * size, 0f);
+        net.minecraft.client.gui.screens.inventory.InventoryScreen.renderEntityInInventory(
+                g, x + w / 2f, y + h / 2f, STAND_SCALE / size, offset, turn, camera, figure);
         //?} else {
         /*net.minecraft.client.gui.screens.inventory.InventoryScreen.renderEntityInInventoryFollowsMouse(
                 g, x + w / 2, y + h, STAND_SCALE, 18f, 6f, figure);
@@ -317,7 +390,7 @@ public final class HeraldryScreen extends BookScreen {
             proposing = true;
             if (liveryDirty()) sendDraft("livery", new com.aetherianartificer.townstead.politics.charter.CharterDrafts.LiveryChoice(
                     liveryStyle.isEmpty() ? null : net.minecraft.resources.ResourceLocation.tryParse(liveryStyle),
-                    liveryPrimary, liverySecondary).encode());
+                    liveryPrimary, liverySecondary, liveryTrim).encode());
             if (emblem) send("heraldry");
         }).active = target().editable() && !pending && !conflict && (emblem || liveryDirty());
         Component stampLabel = stampArmed && itemSlot >= 0 ? tr("stamp_confirm", stack(itemSlot).getHoverName()) : tr("stamp");

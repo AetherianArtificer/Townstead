@@ -25,8 +25,21 @@ public record Lineage(
         @Nullable Component backstory,
         Genome genome,
         SpawnBias spawnBias,
-        com.aetherianartificer.townstead.culture.CulturalSpawnBias culturalSpawnBias
+        com.aetherianartificer.townstead.culture.CulturalSpawnBias culturalSpawnBias,
+        /**
+         * False ({@code "ancestry_genes": false}) when the lineage belongs to its ancestry by name and
+         * category only: its founders don't inherit the ancestry's genes. For a pack that files its
+         * lineages under another pack's ancestry (Runic dwarves under Classic Fantasy's Dwarf) without
+         * taking on that pack's ears, build or powers.
+         */
+        boolean ancestryGenes
 ) {
+    public Lineage(ResourceLocation id, Component displayName, @Nullable ResourceLocation ancestry,
+                   @Nullable Demonym demonym, @Nullable Component backstory, Genome genome, SpawnBias spawnBias,
+                   com.aetherianartificer.townstead.culture.CulturalSpawnBias culturalSpawnBias) {
+        this(id, displayName, ancestry, demonym, backstory, genome, spawnBias, culturalSpawnBias, true);
+    }
+
     public Lineage {
         genome = genome == null ? Genome.EMPTY : genome;
         spawnBias = spawnBias == null ? SpawnBias.EMPTY : spawnBias;

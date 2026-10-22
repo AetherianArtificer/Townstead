@@ -54,8 +54,8 @@ import org.jetbrains.annotations.Nullable;
  * Active entries apply in authored order, later ones winning per bone.</p>
  *
  * <p>{@code physics} chains give bones secondary motion: each chain is a root-to-tip
- * bone run simulated client-side as damped springs driven by the bearer's movement,
- * composing on top of poses and whatever animated the anchor.</p>
+ * bone run simulated client-side as world-space particles springing toward the
+ * animated pose, so anchor motion, gravity, and any pose or clip all drive it.</p>
  *
  * <p>{@code animations} are Blockbench keyframe clips ({@code .animation.json},
  * blob-synced like geometry) triggered the same way poses are: while a named state
@@ -92,14 +92,16 @@ public record AttachmentDef(
     /**
      * {@code tintSource} values: the flat tint, or a colour resolved from the bearer.
      * {@code TINT_GENE} reads the {@code tint_r}/{@code tint_g}/{@code tint_b} channels
-     * rolled on the granting gene's allele (a heritable individual colour).
+     * rolled on the granting gene's allele (a heritable individual colour). {@code TINT_COAT} is the
+     * bearer's coat (its expressed skin-tone gene) when it has one, else its hair: a cat's ears match
+     * its fur, a half-cat's with a human skin match its hair.
      */
-    public static final int TINT_FLAT = 0, TINT_SKIN = 1, TINT_HAIR = 2, TINT_EYES = 3, TINT_GENE = 4;
+    public static final int TINT_FLAT = 0, TINT_SKIN = 1, TINT_HAIR = 2, TINT_EYES = 3, TINT_GENE = 4, TINT_COAT = 5;
 
     /** The named pose states the client can resolve without extra sync. */
     public static final java.util.List<String> POSE_STATES = java.util.List.of(
             "sleeping", "sitting", "sprinting", "sneaking", "swimming", "gliding",
-            "moving", "hurt", "attacking", "panicking", "working",
+            "parachuting", "moving", "hurt", "attacking", "panicking", "working",
             "wearing_helmet", "wearing_chestplate", "wearing_leggings", "wearing_boots");
 
     /** The armor-slot names {@code hidesUnder} (and the {@code wearing_*} poses) accept. */
@@ -162,32 +164,32 @@ public record AttachmentDef(
                                  float transitionTicks, float weight, int cooldownTicks, boolean idle) {}
 
     /**
-     * One physics chain, {@code bones} ordered root to tip. {@code stiffness} (0..1)
-     * pulls each joint back to its authored pose, {@code damping} (0..1) is how much
-     * swing survives each tick, {@code gravity} (0..1) droops the chain toward
-     * world-down, {@code restPitch} (degrees) shifts the neutral spring target,
-     * {@code minPitch}/{@code maxPitch} independently clamp downward/upward pitch,
-     * {@code maxAngle} (degrees) clamps side swing, and {@code sway} (degrees) adds
-     * ambient idle motion. Negative pitch is down.
+     * One physics chain, {@code bones} ordered root to tip, fully resolved (defaults,
+     * then {@code preset}, then converted legacy keys, then the chain's own keys).
+     * Each bone's tip is a world-space particle that springs toward the bone's animated
+     * pose: {@code frequency} (Hz) is how fast it returns, {@code dampingRatio} how much
+     * it overshoots (below 1 bounces, 1 settles without overshoot), {@code gravity} how
+     * far each bone droops toward world-down (0 none, 1 heavy), {@code inertia} how much of the
+     * bearer's motion it feels (1 all, 0 none), {@code drag} the air resistance that
+     * streams it back while moving, and {@code limit} (degrees) the largest swing of
+     * each bone away from where its parent points. Every knob takes a root-to-tip ramp.
      *
-     * <p>Feel tuning: {@code follow} (0..1) is how much each joint chases its parent
-     * (the whip lag), {@code droopAngle} (degrees) is the full-gravity rest angle,
-     * {@code swaySpeed} multiplies the ambient sway frequency, {@code snap} multiplies
-     * the acceleration impulse (the whip on starts, stops, jumps, and landings;
-     * 0 = drag streaming only), and {@code response} = [vertical, forward, lateral,
-     * turn] multiplies how strongly each movement component drives the chain
-     * (0 = ignore that component, negative flips it).</p>
+     * <p>{@code hinge} ("pitch", "side", or "none") keeps the swing in one plane;
+     * {@code collide} names the rig colliders it rests against ({@code ["*"]}, the default, is all of them); {@code restPitch} (degrees) tilts the rest
+     * pose; {@code sway} (degrees) and {@code swaySpeed} add idle motion;
+     * {@code scaleWithSize} speeds small bearers up and slows big ones down.
+     * {@code notes} lists legacy keys found at load (server-side only, never synced).</p>
      *
      * <p>{@code segments} > 1 with a single listed bone slices that bone's geometry
      * into that many chained virtual segments at bake time (along {@code axis}, or
      * the longest axis when {@code "auto"}) — bendy-lib-style bending for tails that
      * weren't authored as chains.</p>
      */
-    public record PhysicsChain(java.util.List<String> bones, float stiffness, float damping,
-                               float gravity, float maxAngle, float minPitch, float maxPitch,
-                               float restPitch, float sway,
-                               float follow, float droopAngle, float swaySpeed, float snap,
-                               float[] response, int segments, String axis) {
+    public record PhysicsChain(java.util.List<String> bones, String preset,
+                               Knob frequency, Knob dampingRatio, Knob gravity, Knob inertia,
+                               Knob drag, Knob limit, String hinge, java.util.List<String> collide,
+                               float restPitch, float sway, float swaySpeed, boolean scaleWithSize,
+                               int segments, String axis, java.util.List<String> notes) {
 
         /** The bone names the sim actually runs over: the authored list, or the generated segment names. */
         public java.util.List<String> effectiveBones() {
@@ -196,6 +198,27 @@ public record AttachmentDef(
             out.add(bones.get(0));
             for (int i = 2; i <= segments; i++) out.add(bones.get(0) + "__seg" + i);
             return out;
+        }
+
+        public PhysicsChain withNotes(java.util.List<String> newNotes) {
+            return new PhysicsChain(bones, preset, frequency, dampingRatio, gravity, inertia, drag, limit,
+                    hinge, collide, restPitch, sway, swaySpeed, scaleWithSize, segments, axis, newNotes);
+        }
+    }
+
+    /** A physics knob ramped from the chain's root joint to its tip. */
+    public record Knob(float root, float tip) {
+        public static Knob of(float value) {
+            return new Knob(value, value);
+        }
+
+        /** The value at {@code t} along the chain (0 = root, 1 = tip). */
+        public float at(float t) {
+            return root + (tip - root) * t;
+        }
+
+        public boolean uniform() {
+            return root == tip;
         }
     }
 }

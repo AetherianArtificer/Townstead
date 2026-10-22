@@ -38,9 +38,26 @@ public record Root(
          * eats_sapients}) — a spider-folk taking human meat is hunting, not transgression.
          * Only consulted when the cannibalism setting reaches the predators tier.
          */
-        boolean eatsSapients
+        boolean eatsSapients,
+        /**
+         * What the picker draws for this root: an item id, or a {@code .png} texture (a data-pack
+         * texture syncs like any other). Null leaves the row without art.
+         */
+        @Nullable String icon,
+        /** Whether the root browser lists this root under Featured. Packs and modpacks set it, often by patch. */
+        boolean featured
 ) {
+    public Root(ResourceLocation id, Component displayName, @Nullable ResourceLocation species,
+                @Nullable ResourceLocation ancestry, @Nullable ResourceLocation lineage, @Nullable Demonym demonym,
+                @Nullable Component backstory, Genome genome, SpawnBias spawnBias,
+                com.aetherianartificer.townstead.culture.CulturalSpawnBias culturalSpawnBias,
+                @Nullable ResourceLocation kinFlesh, boolean eatsSapients) {
+        this(id, displayName, species, ancestry, lineage, demonym, backstory, genome, spawnBias, culturalSpawnBias,
+                kinFlesh, eatsSapients, null, false);
+    }
+
     public Root {
+        icon = icon == null || icon.isBlank() ? null : icon.trim();
         genome = genome == null ? Genome.EMPTY : genome;
         spawnBias = spawnBias == null ? SpawnBias.EMPTY : spawnBias;
         culturalSpawnBias = culturalSpawnBias == null ? com.aetherianartificer.townstead.culture.CulturalSpawnBias.EMPTY : culturalSpawnBias;

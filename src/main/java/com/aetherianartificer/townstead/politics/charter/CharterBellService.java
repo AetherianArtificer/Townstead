@@ -487,6 +487,19 @@ public final class CharterBellService {
         return Component.translatable("charter.townstead.join.open");
     }
 
+    /** The join line, followed by the homes an Ownership Plaque gives the player here. */
+    private static Component withHomes(Component hint, ServerPlayer player, Faction faction) {
+        List<String> names = new ArrayList<>();
+        for (var home : com.aetherianartificer.townstead.storage.PlaqueResidents.homes(player.server, player.getUUID())) {
+            boolean here = faction.settlements().stream().anyMatch(settlement ->
+                    settlement.dimension().equals(home.dimension()) && settlement.villageId() == home.villageId());
+            if (here) names.add(home.placeName());
+        }
+        if (names.isEmpty()) return hint;
+        Component homes = Component.translatable("charter.townstead.homes", String.join(", ", names));
+        return hint.getString().isEmpty() ? homes : hint.copy().append(" ").append(homes);
+    }
+
     private static ResourceLocation membershipBond(Faction faction) {
         FactionKind kind = PoliticalDefinitions.snapshot().kind(faction.kind());
         return kind == null ? FactionBonds.CITIZENSHIP : kind.membership().bond();
@@ -532,7 +545,7 @@ public final class CharterBellService {
         }
         int livery = !member ? -1 : com.aetherianartificer.townstead.livery.LiverySavedData.get(player.server).wears(self) ? 1 : 0;
         return new CharterSnapshotS2CPayload.Members(members.size(), visible, people, text(yourStatus(player, data, faction, member)),
-                text(external ? Component.empty() : joinHint(faction, player.serverLevel())),
+                text(external ? Component.empty() : withHomes(joinHint(faction, player.serverLevel()), player, faction)),
                 external ? List.of() : CharterMemberships.actions(player, data, faction), livery);
     }
 

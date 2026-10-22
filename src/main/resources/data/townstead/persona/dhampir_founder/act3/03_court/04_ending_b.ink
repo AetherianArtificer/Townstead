@@ -7,7 +7,12 @@ No, I don't think so.
 ...There you are. # who: visitor:father
 Yes. Here I am.
 You. # emote:point
-This house is mine now. You'll keep it for me. Pour the wine for whoever sits in his chair, and set a cup for me, for when I come.
+{check("court_mansion"):
+    This house is mine now. You'll keep it for me.
+- else:
+    Everything he kept is mine now. You'll keep it for me.
+}
+Pour the wine for whoever sits in his chair, and set a cup for me, for when I come.
 Yes. # who: visitor:father_thrall
 ~ act("ending_b")
 -> offer

@@ -1,6 +1,6 @@
 {
   "schema": "townstead:diet/v1",
   "foods": [
-    { "items": ["*"], "nutrition": "native" }
+    { "items": ["*"], "exclude": ["#townstead:blood_and_organs"], "nutrition": "native" }
   ]
 }

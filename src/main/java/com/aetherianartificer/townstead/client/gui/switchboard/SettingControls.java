@@ -48,6 +48,7 @@ final class SettingControls {
                     new Choice("legendary_survival_overhaul", "legendarysurvivaloverhaul"),
                     new Choice("cold_sweat", "cold_sweat"), new Choice("tough_as_nails", "toughasnails"),
                     new Choice("builtin", null)),
+            "needs.temperature.climateAuthority", List.of(new Choice("townstead", null), new Choice("backend", null)),
             "calendar.profile", List.of(new Choice("auto", null), new Choice("townstead_calendar:default", null),
                     new Choice("townstead_calendar:serene", "sereneseasons"), new Choice("townstead_calendar:tfc", "tfc"),
                     new Choice("townstead_calendar:ecliptic", "eclipticseasons")));
@@ -83,6 +84,15 @@ final class SettingControls {
         if (def instanceof Enum<?> e) {
             List<Object> values = List.of((Object[]) e.getDeclaringClass().getEnumConstants());
             return stepper(values, current, v -> Component.literal(SettingLabels.pretty(((Enum<?>) v).name())), label, width, set);
+        }
+        if ("dialogue.dialogueTheme".equals(entry.key()) && current instanceof String s) {
+            // Every theme the loaded packs and the server provide.
+            List<Object> values = new ArrayList<>();
+            values.add("auto");
+            com.aetherianartificer.townstead.client.gui.dialogue.DialogueThemes.ids().stream()
+                    .map(Object::toString).sorted().forEach(values::add);
+            if (!values.contains(s)) values.add(s);
+            return stepper(values, s, v -> Component.literal(choiceName((String) v)), label, width, set);
         }
         List<Choice> choices = CHOICES.get(entry.key());
         if (choices != null && current instanceof String s) {

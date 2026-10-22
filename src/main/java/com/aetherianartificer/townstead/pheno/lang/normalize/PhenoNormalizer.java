@@ -79,7 +79,7 @@ public final class PhenoNormalizer {
     private static void hoistGeneEnvelope(JsonObject root) {
         if (!root.has("gene") || !root.get("gene").isJsonObject()) return;
         JsonObject gene = root.getAsJsonObject("gene");
-        for (String key : new String[]{"dominance", "category", "weight", "locus"}) {
+        for (String key : new String[]{"dominance", "category", "weight", "locus", "penetrance"}) {
             if (gene.has(key) && !root.has(key)) root.add(key, gene.get(key));
         }
         root.remove("gene");

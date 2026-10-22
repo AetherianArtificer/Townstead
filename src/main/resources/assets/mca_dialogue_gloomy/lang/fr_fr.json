@@ -3,6 +3,7 @@
   "gloomy.dialogue.chat.butcher_request.no_livestock/2": "<sad>L'enclos est vide, comme tout le reste aujourd'hui.</sad>",
   "gloomy.dialogue.chat.butcher_request.no_hook/1": "<sad>Impossible de commencer sans crochet. Pas que ça change quoi que ce soit quand je le fais.</sad>",
   "gloomy.dialogue.chat.butcher_request.no_basin/1": "<sad>Un bac aiderait, mais à quoi bon un travail propre.</sad>",
+  "gloomy.dialogue.chat.butcher_request.no_blood_grate/1": "<sad>Une grille à sang aiderait, mais à quoi bon un travail propre.</sad>",
   "gloomy.dialogue.chat.village_life.slaughterhouse/1": "<sad>L'abattoir me rappelle à quel point tout est bref.</sad>",
   "gloomy.dialogue.chat.village_life.smokehouse/1": "<sad>Le fumoir sent bon. C'est le seul réconfort dans cet endroit misérable.</sad>",
   "gloomy.dialogue.chat.village_life.tannery/1": "<sad>La tannerie empeste. C'est approprié, j'imagine.</sad>",
@@ -132,5 +133,18 @@
   "gloomy.dialogue.chat.leatherworker_request.no_salt/1": "<sad>Pas de sel. La peau va se gâter. Comme tout le reste.</sad>",
   "gloomy.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<sad>Pas d'éponge mouillée. La peau attend, sèche, échoue.</sad>",
   "gloomy.dialogue.chat.leatherworker_request.no_storage/1": "<sad>Le cuir n'a nulle part où aller. Comme moi.</sad>",
-  "gloomy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<sad>Du cuir. Au moins une chose s'est bien passée aujourd'hui.</sad>"
+  "gloomy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<sad>Du cuir. Au moins une chose s'est bien passée aujourd'hui.</sad>",
+  "gloomy.dialogue.chat.beverage_artisan_request.no_worksite/1": "<sad>Pas de poste à boissons. Encore un métier sans endroit où exister.</sad>",
+  "gloomy.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<sad>Les étagères sont vides. Bien sûr qu'elles le sont.</sad>",
+  "gloomy.dialogue.chat.beverage_artisan_request.no_storage/1": "<sad>Même les boissons prêtes n'ont nulle part où aller.</sad>",
+  "gloomy.dialogue.chat.beverage_artisan_request.unreachable/1": "<sad>Le chemin est bloqué. Ça paraît approprié, en quelque sorte.</sad>",
+  "gloomy.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<sad>%2$s restera une idée. Il n'y a pas d'ingrédients.</sad>",
+  "gloomy.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<sad>Un peu de chaleur avant le long matin froid.</sad>",
+  "gloomy.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<sad>La soirée est presque agréable. Ça ne peut pas durer.</sad>",
+  "gloomy.dialogue.chat.townstead_drunk.drunk_arrival/1": "<sad>La salle tangue. Au moins quelque chose essaie de me consoler.</sad>",
+  "gloomy.dialogue.chat.townstead_drunk.drunk_ambient/1": "<sad>J'ai oublié la fin. Elle était sûrement triste.</sad>",
+  "gloomy.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>De l'eau et un coin tranquille. Le matin me trouvera bien assez tôt.</sleepy>",
+  "gloomy.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>Le sol m'a accepté. Je vis peut-être ici, maintenant.</sleepy>",
+  "gloomy.dialogue.chat.townstead_drunk.service_refused/1": "<sad>Plus rien. Que la tasse déçoive quelqu'un d'autre.</sad>",
+  "gloomy.dialogue.chat.townstead_drunk.recovered/1": "<sad>Ma tête est assez claire pour tout se rappeler.</sad>"
 }

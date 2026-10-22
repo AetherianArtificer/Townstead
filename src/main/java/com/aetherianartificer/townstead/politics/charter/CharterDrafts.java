@@ -240,7 +240,7 @@ public final class CharterDrafts {
                     LiveryChoice choice = LiveryChoice.decode(clause.argument());
                     var livery = com.aetherianartificer.townstead.livery.LiverySavedData.get(player.server);
                     if (choice != null) livery.publish(clause.target(), choice.style(), choice.primary(), choice.secondary(),
-                            Long.parseLong(clause.expected()));
+                            choice.trim(), Long.parseLong(clause.expected()));
                     com.aetherianartificer.townstead.livery.LiverySync.refresh();
                 }
                 case SEAT -> {
@@ -302,19 +302,24 @@ public final class CharterDrafts {
      * A drafted livery: a style and two colours, or the culture default when {@code style} is null.
      * Encoded {@code style|primary|secondary} with hex colours; an empty argument is the default.
      */
-    public record LiveryChoice(@Nullable ResourceLocation style, int primary, int secondary) {
+    /** {@code trim} is a trim material id, or empty for the style's own. */
+    public record LiveryChoice(@Nullable ResourceLocation style, int primary, int secondary, String trim) {
         public String encode() {
-            return style == null ? "" : style + "|" + Integer.toHexString(primary) + "|" + Integer.toHexString(secondary);
+            if (style == null) return "";
+            String out = style + "|" + Integer.toHexString(primary) + "|" + Integer.toHexString(secondary);
+            return trim.isEmpty() ? out : out + "|" + trim;
         }
 
         public static @Nullable LiveryChoice decode(String raw) {
-            if (raw == null || raw.isEmpty()) return new LiveryChoice(null, 0, 0);
-            String[] parts = raw.split("\\|", 3);
-            if (parts.length != 3) return null;
+            if (raw == null || raw.isEmpty()) return new LiveryChoice(null, 0, 0, "");
+            String[] parts = raw.split("\\|", 4);
+            if (parts.length < 3) return null;
             ResourceLocation style = ResourceLocation.tryParse(parts[0]);
             if (style == null || com.aetherianartificer.townstead.livery.LiveryStyles.get(style) == null) return null;
+            String trim = parts.length == 4 ? parts[3] : "";
+            if (!trim.isEmpty() && ResourceLocation.tryParse(trim) == null) return null;
             try {
-                return new LiveryChoice(style, Integer.parseInt(parts[1], 16) & 0xFFFFFF, Integer.parseInt(parts[2], 16) & 0xFFFFFF);
+                return new LiveryChoice(style, Integer.parseInt(parts[1], 16) & 0xFFFFFF, Integer.parseInt(parts[2], 16) & 0xFFFFFF, trim);
             } catch (NumberFormatException error) {
                 return null;
             }

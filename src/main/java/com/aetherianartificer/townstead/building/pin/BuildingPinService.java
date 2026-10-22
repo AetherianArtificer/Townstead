@@ -138,6 +138,13 @@ public final class BuildingPinService {
         }
         Building current = village == null ? null
                 : currentBuilding(player.serverLevel(), village, player.blockPosition());
+        // Recognized some other way, or before the pin was set: standing in one finishes it too.
+        if (current != null && pin.buildingType.equals(current.getType())) {
+            clearSaved(player);
+            send(player, BuildingPinProgressS2CPayload.completed(pin.buildingType));
+            PINS.remove(player.getUUID());
+            return;
+        }
         Map<ResourceLocation, Integer> inventory = inventoryGroups(player, type);
         Map<ResourceLocation, Integer> placed = placedGroups(player, type, current);
 

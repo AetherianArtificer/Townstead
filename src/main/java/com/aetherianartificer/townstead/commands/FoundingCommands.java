@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.commands;
 
+import com.aetherianartificer.townstead.culture.VillageLayouts;
 import com.aetherianartificer.townstead.politics.founding.DebugVillageSpawner;
 import com.aetherianartificer.townstead.politics.founding.FoundingProfileApplier;
 import com.aetherianartificer.townstead.politics.founding.FoundingProfileDefinition;
@@ -16,7 +17,6 @@ import net.conczin.mca.server.world.data.VillageManager;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -33,11 +33,11 @@ public final class FoundingCommands {
     private FoundingCommands() {}
 
     private static final SuggestionProvider<CommandSourceStack> PROFILES = (context, builder) ->
-            SharedSuggestionProvider.suggest(FoundingProfiles.ids().stream()
+            QuotedSuggestions.suggest(FoundingProfiles.ids().stream()
                     .map(ResourceLocation::toString).sorted(), builder);
 
     private static final SuggestionProvider<CommandSourceStack> STRUCTURES = (context, builder) ->
-            SharedSuggestionProvider.suggest(Stream.concat(
+            QuotedSuggestions.suggest(Stream.concat(
                             Stream.of("auto", "plains", "desert", "savanna", "snowy", "taiga"),
                             context.getSource().registryAccess().registryOrThrow(Registries.STRUCTURE)
                                     .keySet().stream().map(ResourceLocation::toString))
@@ -63,7 +63,7 @@ public final class FoundingCommands {
                 .executes(command -> spawn(command.getSource(),
                         StringArgumentType.getString(command, "profile"), "auto",
                         IntegerArgumentType.getInteger(command, "residents"))));
-        var structureArgument = Commands.argument("structure", StringArgumentType.word())
+        var structureArgument = Commands.argument("structure", StringArgumentType.string())
                 .suggests(STRUCTURES)
                 .executes(command -> spawn(command.getSource(),
                         StringArgumentType.getString(command, "profile"),
@@ -159,6 +159,10 @@ public final class FoundingCommands {
         line(source, "command.townstead.founding.spawned", result.structure(), result.village().getName(),
                 result.village().getId(), profile.id(), result.buildings(), result.residents(),
                 result.founding().officesFilled());
+        BlockPos anchor = BlockPos.containing(source.getPosition());
+        VillageLayouts.Stage stage = VillageLayouts.stage(result.structure(), source.getLevel().getSeed(),
+                anchor.getX() >> 4, anchor.getZ() >> 4);
+        if (stage != null) line(source, "command.townstead.founding.spawned_stage", stage.name());
         return 1;
     }
 

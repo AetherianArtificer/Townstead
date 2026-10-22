@@ -49,16 +49,29 @@ public final class PhysicalStorageDelivery {
             Set<Long> excluded,
             StorageUse use
     ) {
+        return findDestination(level, villager, worksiteBounds, carried, excluded, use,
+                StoragePreference.forVillager(villager));
+    }
+
+    /** As above, ranking named stores by {@code preference} instead of the profession's own. */
+    public static @Nullable BlockPos findDestination(
+            ServerLevel level,
+            VillagerEntityMCA villager,
+            Set<Long> worksiteBounds,
+            Predicate<ItemStack> carried,
+            Set<Long> excluded,
+            StorageUse use,
+            StoragePreference preference
+    ) {
         if (level == null || villager == null || carried == null || !hasMatching(villager, carried)) {
             return null;
         }
-        StoragePreference preference = StoragePreference.forVillager(villager);
         Map<Long, Candidate> unique = new HashMap<>();
 
         for (BlockPos pos : WorksiteStorageIndex.candidateStoragePositions(level, worksiteBounds)) {
             addCandidate(unique, level, pos, preference.localRank(use), villager, use);
         }
-        for (var building : PreferredStorageBuildings.resolve(level, villager)) {
+        for (var building : PreferredStorageBuildings.resolve(level, villager, preference)) {
             int buildingRank = preference.buildingRank(building.getType());
             building.getBlockPosStream().forEach(pos -> addCandidate(
                     unique, level, pos, buildingRank, villager, use));

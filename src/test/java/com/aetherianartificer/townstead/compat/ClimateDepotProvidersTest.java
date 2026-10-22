@@ -8,7 +8,7 @@ class ClimateDepotProvidersTest {
     @Test void sharedDepotsAreAvailableFromEitherProviderWithoutChangingOtherTanBuildings() {
         for (String path : List.of("compat/toughasnails/climate_fuel_store", "compat/toughasnails/climate_icehouse",
                 "compat.toughasnails.climate_fuel_store", "compat.toughasnails.climate_icehouse"))
-            assertEquals(List.of("toughasnails", "legendarysurvivaloverhaul"), ModCompat.providersForCompat(path));
+            assertEquals(List.of("toughasnails", "legendarysurvivaloverhaul", "cold_sweat"), ModCompat.providersForCompat(path));
         assertEquals(List.of("toughasnails"), ModCompat.providersForCompat("compat/toughasnails/another_building"));
     }
 }

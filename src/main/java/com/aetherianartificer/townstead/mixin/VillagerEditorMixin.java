@@ -587,7 +587,15 @@ public abstract class VillagerEditorMixin extends Screen {
     @Override
     public void removed() {
         super.removed();
-        townstead$cleanupOnClose();
+        // Opening the root browser takes the editor off screen, but the browser draws its model.
+        if (com.aetherianartificer.townstead.client.gui.root.RootBrowseScreen.isOver((Screen) (Object) this)) return;
+        // So does MCA's skin library, which comes back here on close. The next screen is only set
+        // after removed(), so look once it is.
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        mc.tell(() -> {
+            if (mc.screen instanceof net.conczin.mca.client.gui.SkinLibraryScreen) return;
+            townstead$cleanupOnClose();
+        });
     }
 
     @Unique
@@ -598,6 +606,15 @@ public abstract class VillagerEditorMixin extends Screen {
         LifeClientStore.clearOnChange();
         LifeStageScale.clearPreviewOverride(villager.getId());
         com.aetherianartificer.townstead.client.species.RigModels.clearPreviewStage(villager.getId());
+        // The preview dummy's Root state (origin, mirrored genes, carried variants) must not outlive
+        // the editor: a later entity reusing its client id would read it. This is the one removed()
+        // override (VillagerEditorRootMixin's would be skipped as a conflicting overwrite).
+        com.aetherianartificer.townstead.client.root.RootClientStore.remove(villager.getId());
+        VillagerEntityMCA grid = ((com.aetherianartificer.townstead.mixin.accessor.VillagerEditorScreenAccessor) (Object) this)
+                .townstead$getVillagerVisualization();
+        if (grid != null) com.aetherianartificer.townstead.client.root.RootClientStore.remove(grid.getId());
+        com.aetherianartificer.townstead.client.root.PreviewParticles.clear();
+        com.aetherianartificer.townstead.client.gui.character.EditorPreviewFocus.clear();
         SeniorHairDesat.clearPreviewProgress(villager.getId());
         townstead$hungerDisplay = null;
         townstead$thirstDisplay = null;

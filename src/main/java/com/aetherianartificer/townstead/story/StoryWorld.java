@@ -23,11 +23,11 @@ final class StoryWorld {
      * whose profession has that id or path. Empty when nobody fits.
      */
     static String who(String role, GoalContext ctx) {
-        // who("visitor:fledgling"): the visitor with that role near the teller.
+        // who("visitor:fledgling"): the visitor with that role near the teller, as far as a scene calls them back from.
         if (role.startsWith("visitor:")) {
             VillagerEntityMCA visitor = ctx.speaker() == null ? null
-                    : com.aetherianartificer.townstead.visitor.Visitors.near(ctx.speaker(), role.substring("visitor:".length()), 64);
-            return visitor == null ? "" : VillagerNames.display(visitor).getString();
+                    : com.aetherianartificer.townstead.visitor.Visitors.near(ctx.speaker(), role.substring("visitor:".length()), 128);
+            return visitor == null ? "" : nameFor(visitor, ctx);
         }
         JsonObject json = new JsonObject();
         json.addProperty("type", "pheno:profession");
@@ -41,7 +41,7 @@ final class StoryWorld {
                 .map(id -> find(ctx, id))
                 .filter(v -> v != null && profession.test(new ConditionContext(v)))
                 .findFirst()
-                .map(v -> VillagerNames.display(v).getString())
+                .map(v -> nameFor(v, ctx))
                 .orElse("");
     }
 
@@ -76,7 +76,7 @@ final class StoryWorld {
                 .map(id -> find(ctx, id))
                 .filter(v -> v != null && condition.test(new ConditionContext(v, player)))
                 .findFirst()
-                .map(v -> VillagerNames.display(v).getString())
+                .map(v -> nameFor(v, ctx))
                 .orElse("");
     }
 
@@ -86,9 +86,14 @@ final class StoryWorld {
         if (name.isBlank() || village.isEmpty()) return null;
         return village.get().getResidentsUUIDs()
                 .map(id -> find(ctx, id))
-                .filter(v -> v != null && name.equals(VillagerNames.display(v).getString()))
+                .filter(v -> v != null && name.equals(nameFor(v, ctx)))
                 .findFirst()
                 .orElse(null);
+    }
+
+    /** A villager's name as the story's player knows it. */
+    private static String nameFor(VillagerEntityMCA villager, GoalContext ctx) {
+        return VillagerNames.nameFor(villager, ctx.server().getPlayerList().getPlayer(ctx.playerId()));
     }
 
     private static VillagerEntityMCA find(GoalContext ctx, UUID id) {

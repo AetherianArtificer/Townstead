@@ -21,6 +21,11 @@ public final class ConditionContext {
     private final @Nullable LivingEntity other;
     private final @Nullable LivingEntity origin;
     private final @Nullable java.util.UUID otherId;
+    // Set when asking "would this hold if the entity stood there?", as hazard avoidance does.
+    private @Nullable BlockPos probe;
+    // The item the question is about, such as a gift being offered. Null until set, so building a
+    // context never loads ItemStack (offline Pheno and unit tests have no game bootstrap).
+    private net.minecraft.world.item.@Nullable ItemStack item;
 
     public ConditionContext(LivingEntity entity) {
         this(entity, null, entity);
@@ -77,6 +82,38 @@ public final class ConditionContext {
     }
 
     public @Nullable BlockPos pos() {
+        if (probe != null) return probe;
         return entity == null ? null : entity.blockPosition();
+    }
+
+    /**
+     * The same context, read as if the entity stood at {@code pos}: every condition that asks where
+     * the entity is answers for that block, and conditions about the entity itself are unchanged.
+     */
+    public ConditionContext at(BlockPos pos) {
+        ConditionContext copy = entity != null ? new ConditionContext(entity, other, origin)
+                : new ConditionContext(subject, otherId);
+        copy.probe = pos == null ? null : pos.immutable();
+        copy.item = item;
+        return copy;
+    }
+
+    /** The same context, asked about {@code stack} (a gift being offered, an item being used). */
+    public ConditionContext withItem(net.minecraft.world.item.ItemStack stack) {
+        ConditionContext copy = entity != null ? new ConditionContext(entity, other, origin)
+                : new ConditionContext(subject, otherId);
+        copy.probe = probe;
+        copy.item = stack;
+        return copy;
+    }
+
+    /** The item this context asks about; empty when it asks about none. */
+    public net.minecraft.world.item.ItemStack item() {
+        return item == null ? net.minecraft.world.item.ItemStack.EMPTY : item;
+    }
+
+    /** True when this context is answering for a position other than the entity's own. */
+    public boolean probing() {
+        return probe != null;
     }
 }

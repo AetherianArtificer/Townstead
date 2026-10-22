@@ -22,9 +22,10 @@ import net.minecraft.server.level.ServerPlayer;
  * {@code /townstead persona [list | spawn <id> | reset <id> | travel <id>]}. Operator only.
  * {@code spawn} brings a Persona to the village you stand in, next to you, ignoring its arrival
  * goals. {@code reset} forgets that Persona for you in this village: the villager stays as an
- * ordinary resident, your bond and your story progress with them are cleared. When no village
- * still has that Persona, what the world rolled for them is cleared too. {@code travel} sends the
- * Persona living in this village on the road, ready to arrive in another village at once.
+ * ordinary resident, your bond and your story progress with them are cleared. A Persona on the
+ * road is called back for good instead. When no village still has that Persona, what the world
+ * rolled for them is cleared too. {@code travel} sends the Persona living in this village on the
+ * road, ready to arrive at once in the next village a player is in, this one included.
  */
 public final class PersonaCommands {
     private PersonaCommands() {}
@@ -104,6 +105,7 @@ public final class PersonaCommands {
             // Asked to leave this town: they may come back to it again.
             removed |= instances.undismiss(id, player.serverLevel().dimension().location(), village.getId());
         }
+        removed |= endTravel(source, instances, id);
         removed |= PersonaBonds.remove(player, id);
         PersonaBonds.forgetGifts(player, id);
         removed |= StoryService.reset(player, Personas.storyId(id));
@@ -122,6 +124,7 @@ public final class PersonaCommands {
         ServerPlayer player = source.getPlayerOrException();
         PersonaInstances instances = PersonaInstances.get(source.getServer());
         int removed = 0, unloaded = 0;
+        if (endTravel(source, instances, id)) removed++;
         for (PersonaInstances.Instance instance : List.copyOf(instances.of(id))) {
             VillagerEntityMCA villager = PersonaService.find(source.getServer(), instance.villager());
             instances.remove(instance.villager());
@@ -142,6 +145,15 @@ public final class PersonaCommands {
         return gone + left;
     }
 
+    /** Takes a Persona off the road for good: the trip ends and they never arrive. */
+    private static boolean endTravel(CommandSourceStack source, PersonaInstances instances, ResourceLocation id) {
+        PersonaInstances.Instance travelling = instances.travelling(id);
+        if (travelling == null) return false;
+        com.aetherianartificer.townstead.journey.Journeys.get(source.getServer()).forget(travelling.villager());
+        instances.remove(travelling.villager());
+        return true;
+    }
+
     private static int travel(CommandSourceStack source, ResourceLocation id) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
         PersonaDefinition persona = Personas.byId(id);
@@ -151,7 +163,7 @@ public final class PersonaCommands {
                 .in(id, player.serverLevel().dimension().location(), village.getId());
         VillagerEntityMCA villager = instance == null ? null : PersonaService.find(source.getServer(), instance.villager());
         if (villager == null) return fail(source, persona.name() + " does not live here, or is not loaded.");
-        if (!PersonaMoves.send(source.getServer(), persona, instance, villager, "command", 0)) {
+        if (!PersonaMoves.send(source.getServer(), persona, instance, villager, PersonaMoves.COMMAND, 0)) {
             return fail(source, "Could not send " + persona.name() + " on the road.");
         }
         source.sendSuccess(() -> Component.literal(persona.name() + " is on the road."), false);

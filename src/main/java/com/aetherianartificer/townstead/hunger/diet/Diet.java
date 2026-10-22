@@ -38,13 +38,16 @@ public record Diet(ResourceLocation id, List<Food> foods, List<ResourceLocation>
      * One accepted group. A null {@code nutrition} means native: the item's own food values,
      * and only items that have them. A {@code fluid} food is a serving: {@code amount} of that
      * fluid (an id, or a {@code #tag} with {@code fluidTag}) drawn from any container that holds
-     * it, the container kept.
+     * it, the container kept. {@code multiplier} scales what the food gives (its nutrition,
+     * and so its saturation), native or authored. {@code playersUseItem} leaves a player to the
+     * item's own use (a mod that already feeds its players from it); villagers still eat it here.
      */
     public record Food(boolean anyFood, Set<ResourceLocation> items, Set<ResourceLocation> tags,
                        Set<ResourceLocation> excludeItems, Set<ResourceLocation> excludeTags,
                        @Nullable Integer nutrition, float saturation,
                        @Nullable ResourceLocation remainder, @Nullable Action effects,
-                       @Nullable ResourceLocation fluid, boolean fluidTag, int amount) {
+                       @Nullable ResourceLocation fluid, boolean fluidTag, int amount, float multiplier,
+                       boolean playersUseItem) {
         public Food {
             items = Set.copyOf(items);
             tags = Set.copyOf(tags);
@@ -56,7 +59,7 @@ public record Diet(ResourceLocation id, List<Food> foods, List<ResourceLocation>
                     Set<ResourceLocation> excludeItems, Set<ResourceLocation> excludeTags,
                     @Nullable Integer nutrition, float saturation,
                     @Nullable ResourceLocation remainder, @Nullable Action effects) {
-            this(anyFood, items, tags, excludeItems, excludeTags, nutrition, saturation, remainder, effects, null, false, 0);
+            this(anyFood, items, tags, excludeItems, excludeTags, nutrition, saturation, remainder, effects, null, false, 0, 1f, false);
         }
 
         public boolean fluidServing() {
@@ -148,6 +151,8 @@ public record Diet(ResourceLocation id, List<Food> foods, List<ResourceLocation>
         }
         float saturation = GsonHelper.getAsFloat(json, "saturation", 0.3f);
         if (!Float.isFinite(saturation) || saturation < 0) throw new IllegalArgumentException("'saturation' must be a non-negative number");
+        float multiplier = GsonHelper.getAsFloat(json, "multiplier", 1f);
+        if (!Float.isFinite(multiplier) || multiplier < 0) throw new IllegalArgumentException("'multiplier' must be a non-negative number");
         ResourceLocation remainder = json.has("remainder") ? id(GsonHelper.getAsString(json, "remainder")) : null;
         Action effects = null;
         if (json.has("effects")) {
@@ -155,7 +160,7 @@ public record Diet(ResourceLocation id, List<Food> foods, List<ResourceLocation>
             if (effects == null) throw new IllegalArgumentException("'effects' is not a valid Pheno action");
         }
         return new Food(anyFood, items, tags, excludeItems, excludeTags, nutrition, saturation, remainder, effects,
-                fluid, fluidTag, amount);
+                fluid, fluidTag, amount, multiplier, GsonHelper.getAsBoolean(json, "players_use_item", false));
     }
 
     /** Fills ids and {@code #tags}; returns whether the {@code "*"} selector appeared. */

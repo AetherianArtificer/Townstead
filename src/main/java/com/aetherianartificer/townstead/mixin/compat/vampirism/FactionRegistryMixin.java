@@ -9,7 +9,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** A vampire villager answers "vampire" wherever Vampirism asks an entity's faction. */
+/**
+ * A vampire villager answers "vampire", and a werewolf villager "werewolf", wherever Vampirism asks
+ * an entity's faction. The Werewolves mod asks this too, for silver, wolfsbane and its plants.
+ */
 @Pseudo
 @Mixin(targets = "de.teamlapen.vampirism.entity.factions.FactionRegistry", remap = false)
 public abstract class FactionRegistryMixin {
@@ -17,8 +20,12 @@ public abstract class FactionRegistryMixin {
             at = @At("RETURN"), cancellable = true, require = 0)
     private void townstead$vampireVillager(Entity entity, CallbackInfoReturnable<Object> cir) {
         if (cir.getReturnValue() != null || !(entity instanceof LivingEntity living)) return;
-        if (!VampireVillagers.isVampire(living)) return;
-        Object faction = VampireVillagers.vampireFaction();
+        Object faction = null;
+        if (VampireVillagers.isVampire(living)) faction = VampireVillagers.vampireFaction();
+        else if (com.aetherianartificer.townstead.compat.ModCompat.isLoaded("werewolves")
+                && com.aetherianartificer.townstead.compat.werewolves.WerewolfVillagers.isWerewolf(living)) {
+            faction = com.aetherianartificer.townstead.compat.werewolves.WerewolfVillagers.werewolfFaction();
+        }
         if (faction != null) cir.setReturnValue(faction);
     }
 }

@@ -3,6 +3,8 @@ package com.aetherianartificer.townstead.work.martial;
 import com.aetherianartificer.townstead.data.DataPackLang;
 import com.aetherianartificer.townstead.pheno.action.Action;
 import com.aetherianartificer.townstead.pheno.action.Actions;
+import com.aetherianartificer.townstead.pheno.condition.Condition;
+import com.aetherianartificer.townstead.pheno.condition.Conditions;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.core.registries.Registries;
@@ -30,9 +32,13 @@ import java.util.Set;
  *   "arms": { "draw": "#townstead:hunter_arms", "style": "auto" },
  *   "xp": { "post": 1, "kill": 8 } }
  * }</pre>
+ *
+ * <p>{@code rally} sends the Job out whenever the village is attacked, at any hour. A {@code levy}
+ * Job belongs to no profession: during an attack it arms a share of the villagers with no martial
+ * Job of their own.</p>
  */
 public record MartialJob(Kind kind, Route route, Engage engage, Arms arms, Sweep sweep, @Nullable Place place,
-                         Drill drill, Xp xp) {
+                         Drill drill, Xp xp, boolean rally, @Nullable Levy levy) {
 
     public enum Kind { PATROL, HOLD_POST, SWEEP, DRILL;
         static @Nullable Kind of(ResourceLocation type) {
@@ -81,6 +87,9 @@ public record MartialJob(Kind kind, Route route, Engage engage, Arms arms, Sweep
 
     public record Xp(int post, int kill, int drill) {}
 
+    /** Who a levy arms: {@code share} of the villagers that pass {@code who}; {@code issue} is handed to one with nothing to draw. */
+    public record Levy(double share, @Nullable Condition who, @Nullable ResourceLocation issue, boolean issueTag) {}
+
     public static @Nullable MartialJob parse(ResourceLocation type, JsonObject json) {
         Kind kind = Kind.of(type);
         if (kind == null) return null;
@@ -115,6 +124,15 @@ public record MartialJob(Kind kind, Route route, Engage engage, Arms arms, Sweep
         JsonObject drill = GsonHelper.getAsJsonObject(json, "drill", new JsonObject());
         Action after = drill.has("after") ? Actions.parse(drill.get("after")) : null;
         JsonObject xp = GsonHelper.getAsJsonObject(json, "xp", new JsonObject());
+        Levy levy = null;
+        if (json.has("levy")) {
+            JsonObject raw = GsonHelper.getAsJsonObject(json, "levy");
+            String issue = GsonHelper.getAsString(raw, "issue", "");
+            boolean issueTag = issue.startsWith("#");
+            levy = new Levy(GsonHelper.getAsDouble(raw, "share", 1),
+                    raw.has("who") ? Conditions.parse(raw.get("who")) : null,
+                    issue.isEmpty() ? null : DataPackLang.parseId(issueTag ? issue.substring(1) : issue), issueTag);
+        }
         return new MartialJob(kind,
                 new Route(GsonHelper.getAsInt(route, "inset", 4), GsonHelper.getAsInt(route, "linger", 80)),
                 new Engage(GsonHelper.getAsBoolean(engage, "hostile", true), Set.copyOf(groups),
@@ -123,7 +141,8 @@ public record MartialJob(Kind kind, Route route, Engage engage, Arms arms, Sweep
                 new Sweep(GsonHelper.getAsDouble(json, "reach", 48), GsonHelper.getAsInt(json, "interval", 200)),
                 place,
                 new Drill(GsonHelper.getAsInt(drill, "session", 1200), after),
-                new Xp(GsonHelper.getAsInt(xp, "post", 1), GsonHelper.getAsInt(xp, "kill", 8), GsonHelper.getAsInt(xp, "drill", 2)));
+                new Xp(GsonHelper.getAsInt(xp, "post", 1), GsonHelper.getAsInt(xp, "kill", 8), GsonHelper.getAsInt(xp, "drill", 2)),
+                levy != null || GsonHelper.getAsBoolean(json, "rally", false), levy);
     }
 
     /** Whether {@code item} counts as a ranged weapon for {@code style}. */

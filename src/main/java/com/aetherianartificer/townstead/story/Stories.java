@@ -96,13 +96,14 @@ public final class Stories {
             Map<ResourceLocation, com.aetherianartificer.townstead.persona.PersonaDefinition> nextPersonas = new LinkedHashMap<>();
             loadGoalLibrary(folders.getOrDefault(GOAL_LIBRARY, Map.of()), nextProblems);
             loadRewardLibrary(folders.getOrDefault(REWARD_LIBRARY, Map.of()), nextProblems);
+            Set<ResourceLocation> introduced = introducedPersonas(folders);
             for (Map.Entry<ResourceLocation, Map<String, String>> folder : folders.entrySet()) {
                 if (folder.getKey().equals(GOAL_LIBRARY) || folder.getKey().equals(REWARD_LIBRARY)) continue;
                 List<String> issues = new ArrayList<>();
                 ResourceLocation persona = folder.getKey().getPath().startsWith("persona/")
                         ? ResourceLocation.tryParse(folder.getKey().getNamespace() + ":" + folder.getKey().getPath().substring(8))
                         : null;
-                StoryDefinition story = build(folder.getKey(), folder.getValue(), issues, persona, nextPersonas);
+                StoryDefinition story = build(folder.getKey(), folder.getValue(), issues, persona, nextPersonas, introduced);
                 if (story != null) next.put(story.id(), story);
                 if (!issues.isEmpty()) {
                     nextProblems.put(folder.getKey(), List.copyOf(issues));
@@ -115,6 +116,38 @@ public final class Stories {
             if (!nextPersonas.isEmpty()) LOGGER.info("Loaded {} Personas", nextPersonas.size());
             LOGGER.info("Loaded {} stories", next.size());
             StoryService.onReload();
+        }
+    }
+
+    /** Personas that some story brings in with {@code pheno:introduce_persona}. */
+    private static Set<ResourceLocation> introducedPersonas(Map<ResourceLocation, Map<String, String>> folders) {
+        Set<ResourceLocation> out = new HashSet<>();
+        for (Map.Entry<ResourceLocation, Map<String, String>> folder : folders.entrySet()) {
+            if (folder.getKey().equals(GOAL_LIBRARY) || folder.getKey().equals(REWARD_LIBRARY)) continue;
+            for (Map.Entry<String, String> file : folder.getValue().entrySet()) {
+                if (!file.getKey().endsWith(".json")) continue;
+                try {
+                    collectIntroduced(JsonParser.parseString(file.getValue()), out);
+                } catch (Exception ignored) {
+                    // The folder's own build reports the parse error.
+                }
+            }
+        }
+        return out;
+    }
+
+    private static void collectIntroduced(JsonElement element, Set<ResourceLocation> out) {
+        if (element.isJsonArray()) {
+            for (JsonElement child : element.getAsJsonArray()) collectIntroduced(child, out);
+        } else if (element.isJsonObject()) {
+            JsonObject obj = element.getAsJsonObject();
+            if (obj.has("type") && obj.get("type").isJsonPrimitive()
+                    && "pheno:introduce_persona".equals(obj.get("type").getAsString())
+                    && obj.has("persona") && obj.get("persona").isJsonPrimitive()) {
+                ResourceLocation persona = ResourceLocation.tryParse(obj.get("persona").getAsString());
+                if (persona != null) out.add(persona);
+            }
+            for (Map.Entry<String, JsonElement> e : obj.entrySet()) collectIntroduced(e.getValue(), out);
         }
     }
 
@@ -222,6 +255,13 @@ public final class Stories {
     static @Nullable StoryDefinition build(ResourceLocation id, Map<String, String> files, List<String> issues,
                                            @Nullable ResourceLocation persona,
                                            Map<ResourceLocation, com.aetherianartificer.townstead.persona.PersonaDefinition> personas) {
+        return build(id, files, issues, persona, personas, Set.of());
+    }
+
+    static @Nullable StoryDefinition build(ResourceLocation id, Map<String, String> files, List<String> issues,
+                                           @Nullable ResourceLocation persona,
+                                           Map<ResourceLocation, com.aetherianartificer.townstead.persona.PersonaDefinition> personas,
+                                           Set<ResourceLocation> introduced) {
         String jsonFile = persona == null ? "story.json" : "persona.json";
         Map<String, String> ink = new LinkedHashMap<>();
         files.entrySet().stream()
@@ -329,7 +369,7 @@ public final class Stories {
         if (persona != null) {
             attach = StoryAttach.persona(persona);
             personaDefinition = com.aetherianartificer.townstead.persona.Personas.parse(persona,
-                    json == null ? new JsonObject() : json, goals, issues);
+                    json == null ? new JsonObject() : json, goals, issues, introduced.contains(persona));
             if (personaDefinition != null) {
                 for (var gift : personaDefinition.gifts()) {
                     for (String knot : gift.knots()) {

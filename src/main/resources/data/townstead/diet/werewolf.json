@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:diet/v1",
+  "mods": "werewolves",
+  "foods": [
+    {
+      "items": [
+        "#werewolves:raw_food"
+      ],
+      "nutrition": "native",
+      "multiplier": 2
+    },
+    {
+      "items": [
+        "#werewolves:werewolf_food"
+      ],
+      "nutrition": "native"
+    }
+  ]
+}

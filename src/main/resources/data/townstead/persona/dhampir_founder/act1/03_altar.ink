@@ -6,6 +6,7 @@
 
 VAR altar_started = false
 VAR done_lodge = false
+VAR altar_replaced = false
 
 // When this scene plays. The greet in persona.ink checks these in order.
 === function altar_offer_ready() ===
@@ -71,6 +72,11 @@ It still wants the workbenches, and a room round the lot.
 -> advice
 
 = advice
+// Lost before it was placed: one more, once. After that, the player can craft one.
++ {not altar_replaced and not check("altar_placed") and not check("has_altar")} [I lost the altar.]
+    ~ altar_replaced = true
+    ~ act("found")
+    Gone? It's as heavy as an anvil. Fine. Here's another. Don't ask where I got it, and don't lose this one.
 + [How do I finish it?]
     The altar and two workbenches, in the same room, with walls and a roof. Once it's a real room, it's a lodge.
     If it doesn't count, it's usually the roof. It's always the roof.
@@ -91,11 +97,11 @@ It's a lodge. I stood in it for a while earlier, just stood there. I don't know 
 * [It's yours.]
     It's the town's. I just sleep in it. I'll have to get used to saying that.
 - Now I need people. That's the next part, and it's harder than carpentry.
--> DONE
+-> recruit_job -> DONE
 
 = skipped
 ~ done_lodge = true
 ~ act("wolf_rest_outside")
 Somebody's already built a lodge. You, I'm guessing. I was going to have opinions about where the altar went, and now I don't get to.
 That's fine. I'll find something else to have opinions about.
--> DONE
+-> recruit_job -> DONE

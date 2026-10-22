@@ -1,6 +1,7 @@
 // A vampire who lives in town, asked the hunters' question by the player: have they fed on anyone
-// here? It only attaches while the player is carrying that question (the founder's scene 9). The
-// answer is true to their own record: unwilling bites, people who said yes, or animals only.
+// here? It only attaches while the player is carrying that question (the founder's scene 9), and
+// only to the one the founder named. The answer is true to their own record: unwilling bites,
+// people who said yes, or animals only.
 // Their own voice: tired of being looked at, polite about it, not a pushover.
 
 === function menu() ===

@@ -235,6 +235,8 @@ public final class CharacterEditorResolver {
 
     private static boolean isEditable(GeneCatalogEntry g) {
         if (g == null) return false;
+        // Eye colour belongs to MCA's Eyes tab: an editable iris seeds it, a state's iris overrides it.
+        if (g.faceSlot().startsWith("iris")) return false;
         return (g.isVariants() && !g.variants().isEmpty()) || !g.channels().isEmpty();
     }
 

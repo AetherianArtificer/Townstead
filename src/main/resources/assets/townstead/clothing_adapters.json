@@ -67,6 +67,76 @@
           "texture": "vampirism:textures/entity/hunter/hunter16.png"
         }
       ]
+    },
+    {
+      "mod": "vampirism",
+      "into": "townstead:skins/clothing/adapted/vampirism",
+      "sources": [
+        {
+          "texture": "vampirism:textures/entity/vampire/vampire1.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/vampire/vampire3.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/vampire/vampire4.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/vampire/vampire5.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/vampire/vampire6.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/vampire/vampire8.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/vampire/vampire9.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/vampire/vampire10.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/vampire/vampire11.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/vampire/vampire12.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/vampire/vampire13.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/vampire/vampire14.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/vampire/vampire15.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/vampire/vampire16.png"
+        },
+        {
+          "texture": "vampirism:textures/entity/vampire/vampire17.png"
+        }
+      ]
+    },
+    {
+      "mod": "werewolves",
+      "into": "townstead:skins/clothing/adapted/werewolves",
+      "sources": [
+        {
+          "texture": "werewolves:textures/entity/human/human_0.png",
+          "hat_rows": 4
+        },
+        {
+          "texture": "werewolves:textures/entity/human/human_1.png",
+          "hat_rows": 4
+        },
+        {
+          "texture": "werewolves:textures/entity/human/human_2_slim.png",
+          "slim": true,
+          "hat_rows": 4
+        }
+      ]
     }
   ]
 }

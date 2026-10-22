@@ -49,6 +49,7 @@ public final class CapitalsNameBridge {
      * a culture that declares none leaves Capitals' surname standing.
      */
     private static void contribute(VillagerEntityMCA villager, NameParts.Builder builder) {
+        if (keepsFamilyBack(villager)) return;
         CompoundTag identity = villager.getPersistentData().getCompound(IDENTITY_TAG);
         if (externalOwns(identity)) builder.authoritativeFamily(identity.getString(KEY_SURNAME));
         else builder.family(surnameOf(villager));
@@ -62,8 +63,26 @@ public final class CapitalsNameBridge {
         if (!persistent.contains(IDENTITY_TAG)) return;
         CompoundTag identity = persistent.getCompound(IDENTITY_TAG);
 
+        // Capitals shows its surname to every player, so a Persona's family name that is told
+        // only stays out of it. One written there before is taken back, and Capitals gives them
+        // a surname of its own.
+        if (keepsFamilyBack(villager)) {
+            if (parts.family().equals(identity.getString(LAST_APPLIED))) {
+                identity.remove(KEY_SURNAME);
+                identity.remove(KEY_SURNAME_SOURCE);
+                identity.remove(LAST_APPLIED);
+                persistent.put(IDENTITY_TAG, identity);
+            }
+            return;
+        }
         apply(identity, parts.family());
         persistent.put(IDENTITY_TAG, identity);
+    }
+
+    private static boolean keepsFamilyBack(VillagerEntityMCA villager) {
+        com.aetherianartificer.townstead.persona.PersonaDefinition persona =
+                com.aetherianartificer.townstead.persona.PersonaService.definition(villager);
+        return persona != null && persona.familyToldOnly();
     }
 
     static boolean externalOwns(CompoundTag identity) {

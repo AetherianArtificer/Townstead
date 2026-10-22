@@ -51,12 +51,16 @@ public final class PhenoSchemas {
         // --- Gene types (their behavior tree starts here) ---
         NodeSchemas.register(NodeSchema.of("pheno:trigger", NodeDomain.GENE)
                 .doc("Runs an action when a life-cycle event fires (attack, hurt, kill, land, ...).")
-                .field(required("trigger", PhenoType.STRING).doc("Event: when_attack, when_hurt, when_kill, when_work, ..."))
+                .field(required("trigger", PhenoType.STRING).doc("Event: when_attack, when_hurt, when_kill, when_work, press, ai, ..."))
                 .field(of("verbs", PhenoType.ANY).doc("when_work only: work verb or list of verbs (e.g. townstead:harvested); omitted accepts all."))
                 .field(of("item_condition", PhenoType.OBJECT).doc("when_item_use: the used item. when_work: the work's output."))
+                .field(of("key", PhenoType.STRING).doc("press only: the key (jump, sneak, ...)."))
+                .field(of("ai_trigger", PhenoType.STRING).doc("ai only: when villagers' AI fires it (when_flying, when_threatened, when_hurt, when_hurt_nearby, always)."))
                 .field(of("target", PhenoType.STRING).doc("self or other (the counterpart entity)."))
-                .field(required("action", PhenoType.ACTION))
+                .field(of("action", PhenoType.ACTION).doc("Required except for when_craft, which may only change the item."))
+                .field(of("item_action", PhenoType.ITEM_ACTION).doc("when_craft only: changes the crafted item."))
                 .field(of("condition", PhenoType.CONDITION))
+                .field(of("bientity_condition", PhenoType.BIENTITY_CONDITION).doc("Tests (bearer, counterpart)."))
                 .primaryChild("action").build());
 
         NodeSchemas.register(NodeSchema.of("pheno:thermal_tolerance", NodeDomain.GENE)
@@ -94,6 +98,13 @@ public final class PhenoSchemas {
                 .field(of("default", PhenoType.STRING)
                         .doc("Toggle-mode initial state: on or off (default off). Reload restores it."))
                 .field(of("slot", PhenoType.INT))
+                .field(of("style", PhenoType.STRING)
+                        .doc("Movement abilities only. elytra_flight: glide, flap, soar or hover. hover: hover or drift. "
+                                + "swimming, water_breathing: paddle, dive or fish. slow_fall: float or parachute. Omitted: flap with a when_flying "
+                                + "lift ability, else glide; drift for hover; dive for water_breathing, paddle for "
+                                + "swimming alone; float for slow_fall."))
+                .field(of("cruise_height", PhenoType.FLOAT)
+                        .doc("Flight abilities only. Blocks above the terrain while travelling; the float height for drift."))
                 .field(of("condition", PhenoType.CONDITION)).build());
 
         NodeSchemas.register(NodeSchema.of("pheno:attribute", NodeDomain.GENE)
@@ -151,7 +162,9 @@ public final class PhenoSchemas {
                 .field(of("condition", PhenoType.CONDITION)).build());
 
         NodeSchemas.register(NodeSchema.of("pheno:glow", NodeDomain.GENE)
-                .doc("Makes the holder glow, optionally only while a condition holds.")
+                .doc("Makes the holder glow, optionally only while a condition holds. With on, the "
+                        + "selected entities glow instead, seen by the holder alone.")
+                .field(of("on", PhenoType.ANY).doc("Entities to outline for the holder alone; omitted means the holder glows for everyone."))
                 .field(of("condition", PhenoType.CONDITION)).build());
 
         NodeSchemas.register(NodeSchema.of("pheno:particle", NodeDomain.GENE)
@@ -203,6 +216,12 @@ public final class PhenoSchemas {
         NodeSchemas.register(NodeSchema.of("pheno:target_action", NodeDomain.ACTION)
                 .doc("Runs the inner action on the other entity (target).")
                 .field(required("action", PhenoType.ACTION)).primaryChild("action").build());
+        NodeSchemas.register(NodeSchema.of("pheno:use_item_on", NodeDomain.ACTION)
+                .doc("The actor uses an item from its inventory on the target as a player would "
+                        + "(shears on a sheep, a bucket on a cow). Results go back to the actor; fails "
+                        + "when nothing happened.")
+                .field(of("item", PhenoType.TAG_OR_ID).doc("Item id or #tag; empty hand when absent."))
+                .field(of("secondary_use", PhenoType.BOOL).doc("Use while sneaking.")).build());
         NodeSchemas.register(NodeSchema.of("pheno:invert", NodeDomain.ACTION)
                 .doc("Swaps actor and target for the inner action.")
                 .field(required("action", PhenoType.ACTION)).primaryChild("action").build());
@@ -316,6 +335,10 @@ public final class PhenoSchemas {
                 .field(of("min_remaining", PhenoType.DURATION))
                 .field(of("max_remaining", PhenoType.DURATION)).build());
 
+        NodeSchemas.register(NodeSchema.of("pheno:keypress", NodeDomain.ACTION)
+                .doc("Presses a key for the entity: runs its press triggers bound to key, as the "
+                        + "player's own keypress does. Lets an ai trigger use a key-driven power.")
+                .field(required("key", PhenoType.STRING)).build());
         NodeSchemas.register(NodeSchema.of("pheno:jump", NodeDomain.ACTION)
                 .doc("Makes the entity jump (the vanilla impulse, respecting Jump Boost), scaled by "
                         + "strength; clears fall distance so a mid-air jump banks no fall damage.")
@@ -368,7 +391,7 @@ public final class PhenoSchemas {
         NodeSchemas.register(NodeSchema.of("pheno:at", NodeDomain.ACTION)
                 .doc("Runs a block action at blocks chosen from an entity context (a ray's block hit, a "
                         + "place, a region): the bridge from an entity action to a block action.")
-                .field(required("blocks", PhenoType.OBJECT).doc("A block selector (e.g. { type: pheno:ray, stop_on: block })."))
+                .field(required("blocks", PhenoType.ANY).doc("A block selector (e.g. { type: pheno:ray, stop_on: block }) or a shortcut such as \"here\"."))
                 .field(required("do", PhenoType.BLOCK_ACTION)).primaryChild("do").build());
 
         NodeSchemas.register(NodeSchema.of("pheno:haze", NodeDomain.ACTION)
@@ -474,6 +497,9 @@ public final class PhenoSchemas {
         // --- Consolidated condition ---
         NodeSchemas.register(NodeSchema.of("pheno:reserved", NodeDomain.CONDITION)
                 .doc("Tests whether the current entity is held by any live Pheno reservation.").build());
+        NodeSchemas.register(NodeSchema.of("pheno:hostile", NodeDomain.CONDITION)
+                .doc("The entity is a threat to the other party: a monster, a mob targeting it, or hostile "
+                        + "by disposition. In a selector's where, reads as hostile to the one selecting.").build());
         NodeSchemas.register(NodeSchema.of("pheno:environment", NodeDomain.CONDITION)
                 .doc("One block of weather/exposure/time/biome/dimension/effects (AND across, OR within).")
                 .field(of("weather", PhenoType.STRING).asList())
@@ -494,6 +520,9 @@ public final class PhenoSchemas {
                 "thermal_trend", "Server villager predicted direction: -1 cooling, 0 steady, 1 warming.").entrySet())
             NodeSchemas.register(NodeSchema.of("pheno:" + query.getKey(), NodeDomain.CONDITION)
                     .doc(query.getValue()).field(of("min", PhenoType.FLOAT)).field(of("max", PhenoType.FLOAT)).build());
+        NodeSchemas.register(NodeSchema.of("pheno:wearing_skin", NodeDomain.CONDITION)
+                .doc("The entity (villager or player) wears an MCA clothing skin: an id, a pattern ending in *, or a list.")
+                .field(required("skin", PhenoType.STRING)).build());
         NodeSchemas.register(NodeSchema.of("pheno:wet", NodeDomain.CONDITION)
                 .doc("True in water/rain, and while a villager remains wet during drying.").build());
         NodeSchemas.register(NodeSchema.of("pheno:body_temperature", NodeDomain.CONDITION)
@@ -572,6 +601,10 @@ public final class PhenoSchemas {
         NodeSchemas.register(NodeSchema.of("pheno:interaction", NodeDomain.CONDITION)
                 .doc("Social and UI-driven interaction state.")
                 .field(of("interaction", PhenoType.STRING)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:shearable", NodeDomain.CONDITION)
+                .doc("The entity can be sheared now: a grown sheep, a mooshroom, a snow golem, or a "
+                        + "modded mob that declares itself shearable.").build());
 
         NodeSchemas.register(NodeSchema.of("pheno:step_height", NodeDomain.GENE)
                 .doc("Raises how high the entity steps up by amount (Apugli step_height's upper_height), "

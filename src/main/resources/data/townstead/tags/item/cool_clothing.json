@@ -1,4 +1,9 @@
 {
   "replace": false,
-  "values": []
+  "values": [
+    { "id": "cold_sweat:hoglin_helmet", "required": false },
+    { "id": "cold_sweat:hoglin_chestplate", "required": false },
+    { "id": "cold_sweat:hoglin_leggings", "required": false },
+    { "id": "cold_sweat:hoglin_boots", "required": false }
+  ]
 }

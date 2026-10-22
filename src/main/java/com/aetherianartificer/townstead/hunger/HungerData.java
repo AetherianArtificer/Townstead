@@ -259,7 +259,8 @@ public final class HungerData {
         NO_VALID_TARGET("no_valid_target", "townstead.farm.blocked.no_valid_target"),
         OUT_OF_SCOPE("out_of_scope", "townstead.farm.blocked.out_of_scope"),
         UNSUPPORTED_CROP("unsupported_crop", "townstead.farm.blocked.unsupported_crop"),
-        NO_SUPPORT("no_support", "townstead.farm.blocked.no_support");
+        NO_SUPPORT("no_support", "townstead.farm.blocked.no_support"),
+        OUT_OF_SEASON("out_of_season", "townstead.farm.blocked.out_of_season");
 
         private final String id;
         private final String translationKey;

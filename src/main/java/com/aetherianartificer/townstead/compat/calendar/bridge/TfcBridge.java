@@ -71,6 +71,15 @@ public final class TfcBridge {
         }
     }
 
+    /** The first month of TFC's spring (0 = January), found from its own month seasons; March if unknown. */
+    public static int springStartMonth() {
+        if (!ensureProbe() || months == null || monthSeason == null) return 2;
+        for (int m = 0; m < 12; m++) {
+            if (seasonOf(m) == Season.SPRING && seasonOf(Math.floorMod(m - 1, 12)) != Season.SPRING) return m;
+        }
+        return 2;
+    }
+
     @Nullable
     private static Season seasonOf(int month0) {
         if (months == null || monthSeason == null || month0 < 0 || month0 >= months.length) return null;

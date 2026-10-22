@@ -51,6 +51,8 @@ Stay behind me, and don't be brave. Brave is how people end up in stories.
 === walk_after ===
 ~ walking = false
 ~ done_walk = true
+// Seeing it through together is what earns the name (scene 12).
+~ trust(2)
 ~ act("walk_end")
 {
 - count("founder_toyed") > walk_toyed:

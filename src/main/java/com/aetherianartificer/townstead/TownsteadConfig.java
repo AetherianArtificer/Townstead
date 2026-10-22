@@ -63,6 +63,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_HUNGER;
     public static final ModConfigSpec.DoubleValue NEEDS_PACE;
     public static final ModConfigSpec.BooleanValue NEEDS_CAN_KILL;
+    public static final ModConfigSpec.BooleanValue TEENS_MAY_DRINK_ALCOHOL;
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_THIRST;
     public static final ModConfigSpec.BooleanValue THIRST_LETHAL_FALLBACK;
     public static final ModConfigSpec.BooleanValue ENABLE_COOK_WATER_PURIFICATION;
@@ -125,6 +126,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.IntValue RESOURCE_HUD_FADE_TICKS;
     public static final ModConfigSpec.BooleanValue RESOURCE_HUD_SHOW_VALUES;
     public static final ModConfigSpec.BooleanValue REDUCE_MOTION;
+    public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.client.attachment.PhysicsQuality> ATTACHMENT_PHYSICS;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
     public static final ModConfigSpec.BooleanValue SPIRIT_COLORBLIND_PATTERNS;
@@ -136,6 +138,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
     public static final ModConfigSpec.BooleanValue ENABLE_VILLAGER_TEMPERATURE;
     public static final ModConfigSpec.ConfigValue<String> PREFERRED_TEMPERATURE_BACKEND;
+    public static final ModConfigSpec.ConfigValue<String> CLIMATE_AUTHORITY;
     public static final ModConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
@@ -143,6 +146,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue DEBUG_LOGGING;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> API_DENIED_WRITE_SOURCES;
     public static final ModConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
+    public static final ModConfigSpec.BooleanValue ENABLE_ENCLOSURE_RECOGNITION;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ROOTS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
@@ -185,6 +189,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_HUNGER;
     public static final ForgeConfigSpec.DoubleValue NEEDS_PACE;
     public static final ForgeConfigSpec.BooleanValue NEEDS_CAN_KILL;
+    public static final ForgeConfigSpec.BooleanValue TEENS_MAY_DRINK_ALCOHOL;
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_THIRST;
     public static final ForgeConfigSpec.BooleanValue THIRST_LETHAL_FALLBACK;
     public static final ForgeConfigSpec.BooleanValue ENABLE_COOK_WATER_PURIFICATION;
@@ -247,6 +252,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.IntValue RESOURCE_HUD_FADE_TICKS;
     public static final ForgeConfigSpec.BooleanValue RESOURCE_HUD_SHOW_VALUES;
     public static final ForgeConfigSpec.BooleanValue REDUCE_MOTION;
+    public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.client.attachment.PhysicsQuality> ATTACHMENT_PHYSICS;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
     public static final ForgeConfigSpec.BooleanValue SPIRIT_COLORBLIND_PATTERNS;
@@ -258,6 +264,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_FATIGUE;
     public static final ForgeConfigSpec.BooleanValue ENABLE_VILLAGER_TEMPERATURE;
     public static final ForgeConfigSpec.ConfigValue<String> PREFERRED_TEMPERATURE_BACKEND;
+    public static final ForgeConfigSpec.ConfigValue<String> CLIMATE_AUTHORITY;
     public static final ForgeConfigSpec.BooleanValue ENABLE_FATIGUE_ALERTS;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_NOCTURNAL_MULTIPLIER;
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
@@ -265,6 +272,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue DEBUG_LOGGING;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> API_DENIED_WRITE_SOURCES;
     public static final ForgeConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_ENCLOSURE_RECOGNITION;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ROOTS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_SPECIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOCKED_ANCESTRIES;
@@ -319,6 +327,10 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.needs.canKill")
                 .comment("Villagers with no food or no water left take damage, like a starving player. Babies are spared.")
                 .define("canKill", false);
+        TEENS_MAY_DRINK_ALCOHOL = b
+                .translation("townstead.configuration.needs.teensMayDrinkAlcohol")
+                .comment("Teens may drink alcohol. Children and younger never do.")
+                .define("teensMayDrinkAlcohol", false);
         b.translation("townstead.configuration.needs.hunger").push("hunger");
         ENABLE_VILLAGER_HUNGER = b
                 .translation("townstead.configuration.needs.hunger.enableVillagerHunger")
@@ -419,6 +431,12 @@ public final class TownsteadConfig {
                          "Naming a mod pins it when installed; \"builtin\" ignores temperature mods entirely.")
                 // Arrays.asList, not List.of: correct() probes missing keys with null and List.of.contains(null) throws.
                 .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "cold_sweat", "tough_as_nails", "builtin"));
+        CLIMATE_AUTHORITY = b
+                .translation("townstead.configuration.needs.temperature.climateAuthority")
+                .comment("Who decides the climate (seasons, biomes, day and night, weather, dimensions) when a temperature mod is installed.",
+                         "\"townstead\": Townstead's climate model drives the temperature mod's world temperature, so every mod agrees. The temperature mod keeps body temperature, clothing and blocks.",
+                         "\"backend\": the temperature mod's own climate stands; Townstead only adds what it lacks (seasons, snow, depth).")
+                .defineInList("climateAuthority", "townstead", Arrays.asList("townstead", "backend"));
         b.pop();
         // ── Fatigue ──
         b.translation("townstead.configuration.needs.fatigue").push("fatigue");
@@ -638,6 +656,11 @@ public final class TownsteadConfig {
                 .comment("Ask MCA to rescan a room after Townstead building-signature blocks change.",
                          "This fixes automatic discovery for modded appliances that are not vanilla POIs.")
                 .define("enableDiscoveryBridge", true);
+        ENABLE_ENCLOSURE_RECOGNITION = b
+                .translation("townstead.configuration.mca_buildings.enableEnclosureRecognition")
+                .comment("Add a pen to the village when its fence is closed, and track when it opens.",
+                         "Villages with MCA's Auto Scan turned off are left alone.")
+                .define("enableEnclosureRecognition", true);
         b.pop();
 
         // ── Chef's Delight ──
@@ -926,6 +949,13 @@ public final class TownsteadConfig {
                 .define("showValues", true);
         clientBuilder.pop();
 
+        clientBuilder.translation("townstead.configuration.attachments").push("attachments");
+        ATTACHMENT_PHYSICS = clientBuilder
+                .translation("townstead.configuration.attachments.physics")
+                .comment("Secondary motion on tails, ears, hair and other attachments: FULL, LOW (nearby bearers only, no wind) or OFF. Reduce Motion caps this at LOW.")
+                .defineEnum("physics", com.aetherianartificer.townstead.client.attachment.PhysicsQuality.FULL);
+        clientBuilder.pop();
+
         clientBuilder.translation("townstead.configuration.accessibility").push("accessibility");
         REDUCE_MOTION = clientBuilder
                 .translation("townstead.configuration.accessibility.reduceMotion")
@@ -1119,12 +1149,37 @@ public final class TownsteadConfig {
         return false;
     }
 
+    /**
+     * Whether Townstead's temperature runs at all: the setting is on and a temperature mod (Cold
+     * Sweat, Tough As Nails or Legendary Survival Overhaul) is installed. Without one, the villager
+     * need, room heat, room sensors and crop climate are off, as if the setting were.
+     */
+    public static boolean temperatureActive() {
+        return temperatureSwitchOn()
+                && !com.aetherianartificer.townstead.compat.temperature.TemperatureBridgeResolver.installed().isEmpty();
+    }
+
     public static boolean isVillagerTemperatureEnabled() {
+        return temperatureActive();
+    }
+
+    /** The temperature setting itself, whether or not a temperature mod is installed. */
+    public static boolean temperatureSwitchOn() {
         if (ENABLE_VILLAGER_TEMPERATURE == null) return false;
         try {
             return Switchboard.get(ENABLE_VILLAGER_TEMPERATURE);
         } catch (IllegalStateException e) {
             return false;
+        }
+    }
+
+    /** True when Townstead's climate model drives the temperature mods. Never throws; defaults to true. */
+    public static boolean townsteadClimateAuthority() {
+        if (CLIMATE_AUTHORITY == null) return true;
+        try {
+            return !"backend".equals(Switchboard.get(CLIMATE_AUTHORITY));
+        } catch (IllegalStateException e) {
+            return true;
         }
     }
 

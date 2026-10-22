@@ -11,7 +11,7 @@
         "name": "Shear sheep",
         "icon": "minecraft:shears"
       }
-    },
-    { "type": "townstead_work:store", "weight": 9 }
-  ]
+    }
+  ],
+  "storage": { "preferred_roles": ["townstead:textiles"] }
 }

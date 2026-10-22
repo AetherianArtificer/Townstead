@@ -34,8 +34,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * One data-authored villager job. The job {@code type} owns its semantic fields: a block
- * interaction has a {@code target}, while entity delivery has a {@code source} and
+ * One data-authored villager job. The job {@code type} owns its semantic fields: a block or
+ * entity interaction has a {@code target}, while entity delivery has a {@code source} and
  * {@code destination}. Content nouns remain resource values rather than structural keys.
  */
 public record WorkJobDef(
@@ -45,11 +45,20 @@ public record WorkJobDef(
         @Nullable EntitySource source,
         @Nullable BlockTarget destination,
         @Nullable BlockTarget target,
-        @Nullable com.aetherianartificer.townstead.work.martial.MartialJob martial) {
+        @Nullable com.aetherianartificer.townstead.work.martial.MartialJob martial,
+        @Nullable EntityTarget entityTarget) {
 
     public static final String SCHEMA = "townstead:job/v3";
     public static final ResourceLocation ENTITY_DELIVERY = id("townstead:entity_delivery");
     public static final ResourceLocation BLOCK_INTERACTION = id("townstead:block_interaction");
+    public static final ResourceLocation ENTITY_INTERACTION = id("townstead:entity_interaction");
+
+    public WorkJobDef(ResourceLocation id, ResourceLocation task, ResourceLocation type,
+                      @Nullable EntitySource source, @Nullable BlockTarget destination,
+                      @Nullable BlockTarget target,
+                      @Nullable com.aetherianartificer.townstead.work.martial.MartialJob martial) {
+        this(id, task, type, source, destination, target, martial, null);
+    }
 
     /**
      * The Chronicle counter for this Job. The resource identity is already unique and stable, so
@@ -65,12 +74,83 @@ public record WorkJobDef(
      * the Job id, preserving the original one-counter contract.
      */
     public List<String> activityKeys() {
+        if (entityTarget != null) {
+            LinkedHashSet<String> keys = new LinkedHashSet<>();
+            for (EntityInteraction interaction : entityTarget.interactions()) {
+                keys.add(interaction.activityKey(this));
+            }
+            return List.copyOf(keys);
+        }
         if (target == null || target.interactions().isEmpty()) return List.of(activityKey());
         LinkedHashSet<String> keys = new LinkedHashSet<>();
         for (Interaction interaction : target.interactions()) {
             keys.add(interaction.activityKey(this));
         }
         return List.copyOf(keys);
+    }
+
+    /**
+     * Living things a worker uses an item on where they are kept: sheep in a pen, cows in a
+     * stable. {@code buildings} names where they must stand; an empty list means the worker's own
+     * site. {@code entities} narrows by id or #tag; an empty list leaves it to the condition.
+     */
+    public record EntityTarget(
+            List<String> buildings,
+            Set<ResourceLocation> entities,
+            List<ResourceLocation> entityTags,
+            @Nullable Condition condition,
+            double range,
+            int interval,
+            List<EntityInteraction> interactions) {
+
+        public boolean matchesBuilding(@Nullable String buildingType) {
+            return matchesBuildingPattern(buildings, buildingType);
+        }
+
+        public boolean matches(LivingEntity entity) {
+            if (entity == null) return false;
+            if (!entities.isEmpty() || !entityTags.isEmpty()) {
+                boolean listed = entities.contains(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()));
+                for (int i = 0; !listed && i < entityTags.size(); i++) {
+                    listed = entity.getType().is(TagKey.create(Registries.ENTITY_TYPE, entityTags.get(i)));
+                }
+                if (!listed) return false;
+            }
+            return condition == null || condition.test(new ConditionContext(entity));
+        }
+    }
+
+    /**
+     * One use of an item on a target. The action runs with the worker as actor and the animal as
+     * target; without one, the worker uses the item as a player would ({@code pheno:use_item_on}).
+     * Declared outputs are carried to storage; anything else stays with the worker.
+     */
+    public record EntityInteraction(@Nullable String item, Action action, List<String> outputs,
+                                    @Nullable Condition condition, int xp,
+                                    @Nullable ResourceLocation activity) {
+
+        public boolean requiresItem() {
+            return item != null;
+        }
+
+        public boolean matches(ItemStack stack) {
+            return item != null && matchesItem(item, stack);
+        }
+
+        public boolean ready(LivingEntity target) {
+            return condition == null || condition.test(new ConditionContext(target));
+        }
+
+        public boolean producesOutput(ItemStack stack) {
+            for (String output : outputs) {
+                if (matchesItem(output, stack)) return true;
+            }
+            return false;
+        }
+
+        public String activityKey(WorkJobDef job) {
+            return activity == null ? job.activityKey() : activity.toString();
+        }
     }
 
     public record Placement(
@@ -247,6 +327,11 @@ public record WorkJobDef(
             return source == null || destination == null ? null
                     : new WorkJobDef(definitionId, task, type, source, destination, null, null);
         }
+        if (ENTITY_INTERACTION.equals(type)) {
+            EntityTarget animals = parseEntityTarget(json.get("target"));
+            return animals == null ? null
+                    : new WorkJobDef(definitionId, task, type, null, null, null, null, animals);
+        }
         var martial = com.aetherianartificer.townstead.work.martial.MartialJob.parse(type, json);
         if (martial != null) return new WorkJobDef(definitionId, task, type, null, null, null, martial);
         return null;
@@ -258,6 +343,56 @@ public record WorkJobDef(
 
     public boolean producesBlock(ResourceLocation block) {
         return source != null && source.results().containsValue(block);
+    }
+
+    private static @Nullable EntityTarget parseEntityTarget(@Nullable JsonElement element) {
+        if (element == null || !element.isJsonObject()) return null;
+        JsonObject json = element.getAsJsonObject();
+        List<String> buildings = strings(json.get("buildings"));
+        List<String> rawEntities = strings(json.get("entities"));
+        if (buildings == null || rawEntities == null) return null;
+        Set<ResourceLocation> entities = new LinkedHashSet<>();
+        List<ResourceLocation> entityTags = new ArrayList<>();
+        for (String raw : rawEntities) {
+            boolean tag = raw.startsWith("#");
+            ResourceLocation entity = id(tag ? raw.substring(1) : raw);
+            if (entity == null) return null;
+            if (tag) entityTags.add(entity);
+            else entities.add(entity);
+        }
+        Condition condition = json.has("condition") ? Conditions.parse(json.get("condition")) : null;
+        if (json.has("condition") && condition == null) return null;
+        double range = number(json, "range", 2.0);
+        int interval = integer(json, "interval", 12);
+        if (range <= 0.0 || interval < 1 || !json.has("interactions")
+                || !json.get("interactions").isJsonArray()) return null;
+        List<EntityInteraction> interactions = new ArrayList<>();
+        for (JsonElement child : json.getAsJsonArray("interactions")) {
+            if (!child.isJsonObject()) return null;
+            JsonObject entry = child.getAsJsonObject();
+            String item = string(entry, "item");
+            if (entry.has("item") && !validSelector(item)) return null;
+            JsonElement actionJson = entry.get("action");
+            if (actionJson == null) {
+                JsonObject use = new JsonObject();
+                use.addProperty("type", "pheno:use_item_on");
+                if (item != null) use.addProperty("item", item);
+                actionJson = use;
+            }
+            Action action = Actions.parse(actionJson);
+            if (action == null) return null;
+            List<String> outputs = strings(entry.get("outputs"));
+            if (outputs == null || outputs.stream().anyMatch(output -> !validSelector(output))) return null;
+            Condition ready = entry.has("condition") ? Conditions.parse(entry.get("condition")) : null;
+            if (entry.has("condition") && ready == null) return null;
+            int xp = integer(entry, "xp", 1);
+            ResourceLocation activity = entry.has("activity") ? resource(entry, "activity") : null;
+            if (xp < 1 || (entry.has("activity") && activity == null)) return null;
+            interactions.add(new EntityInteraction(item, action, List.copyOf(outputs), ready, xp, activity));
+        }
+        return interactions.isEmpty() ? null
+                : new EntityTarget(List.copyOf(buildings), Set.copyOf(entities), List.copyOf(entityTags),
+                condition, range, interval, List.copyOf(interactions));
     }
 
     private static @Nullable EntitySource parseEntitySource(@Nullable JsonElement element) {

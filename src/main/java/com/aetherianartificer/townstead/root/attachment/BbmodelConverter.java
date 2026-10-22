@@ -18,8 +18,9 @@ import java.util.Map;
  * the converted bytes ride the existing content-addressed blob sync.
  *
  * <p>Transform: coordinates pass through in the project's own space (NO X mirror);
- * rotations map per-axis as {@code (-x, -y, z)}. The loader's own Bedrock→Java Y-flip
- * (and its {@code (x,-y,-z)} rotation flip) is the whole coordinate change; an earlier
+ * rotations map per-axis as {@code (-x, y, -z)}. The loader's own Bedrock→Java Y-flip
+ * is the whole coordinate change. A real Bedrock file mirrors X; this output does not,
+ * so its Y and Z rotation signs differ from a Bedrock export's. An earlier
  * X-mirror here rendered every model left-right flipped (invisible on symmetric models)
  * and, combined with the rotation map, bent multi-axis cubes — verified by rendering the
  * converted geometry through the exact loader math against Blockbench's ZYX display.
@@ -35,8 +36,8 @@ import java.util.Map;
  *
  * <p>Blockbench 5.0 flipped the X/Y sign convention of animation rotation keyframes
  * to match group rotations (its project codec inverts them when loading older files).
- * Pre-5.0 values are therefore already in the Bedrock convention our dialect uses and
- * pass verbatim; 5.0+ values take the same {@code (-x, -y, z)} transform as groups.
+ * Pre-5.0 values are first inverted on X/Y back to display values; then every keyframe
+ * takes the same {@code (-x, y, -z)} transform as groups.
  * The flip is rotation-only: position keyframes take the {@code -x} mirror the pivots
  * take (nothing else), and scale keyframes are axis-signless and pass through.</p>
  */
@@ -344,11 +345,11 @@ public final class BbmodelConverter {
 
     /**
      * Blockbench display rotation (degrees) → geo-dialect rotation: the per-axis sign
-     * map {@code (-x, -y, z)}, identical to Blockbench's bedrock export codec. Both
+     * map {@code (-x, y, -z)} for the unmirrored coordinates this converter emits. Both
      * sides compose Euler ZYX, so the map is exact for multi-axis rotations too.
      */
     private static float[] toGeoRotation(float[] bb) {
-        return new float[]{-bb[0], -bb[1], bb[2]};
+        return new float[]{-bb[0], bb[1], -bb[2]};
     }
 
     private static float[] vec(JsonObject json, String key) {

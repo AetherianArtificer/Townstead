@@ -32,6 +32,3 @@ A bit. It'll close up by morning, it always does. Don't waste a potion on it.
 * [Always?]
     Always. I heal fast. Don't ask me why, I'd rather not get into it tonight.
 - ->->
-, I'd rather not get into it tonight.
-- ->->
-

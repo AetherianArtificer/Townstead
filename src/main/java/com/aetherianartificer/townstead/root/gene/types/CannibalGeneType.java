@@ -18,6 +18,11 @@ import com.google.gson.JsonObject;
  */
 public final class CannibalGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.HABITS;
+    }
+
     public static final String KEY = "townstead_roots:cannibal";
 
     public record Instance() implements GeneInstance {

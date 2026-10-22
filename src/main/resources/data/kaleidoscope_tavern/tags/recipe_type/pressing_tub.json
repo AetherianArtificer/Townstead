@@ -1,1 +1,9 @@
-{"replace":false,"values":["kaleidoscope_tavern:pressing_tub"]}
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "kaleidoscope_tavern:pressing_tub",
+      "required": false
+    }
+  ]
+}

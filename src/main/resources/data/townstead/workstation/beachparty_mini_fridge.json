@@ -2,6 +2,6 @@
   "schema": "townstead:workstation/v2",
   "mods": "beachparty",
   "blocks": ["beachparty:mini_fridge"],
-  "inventory": {"slots": {"outputs": [0], "ingredients": [1]}},
+  "inventory": {"slots": {"outputs": [0], "ingredients": [1,2]}},
   "shift_end": "finish"
 }

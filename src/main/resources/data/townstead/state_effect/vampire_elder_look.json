@@ -5,8 +5,11 @@
   "min_tier": "elder",
   "priority": 40,
   "condition": {
-    "type": "pheno:and",
+    "type": "pheno:or",
     "conditions": [
+      {
+        "type": "pheno:embodied"
+      },
       {
         "type": "pheno:not",
         "condition": {
@@ -15,8 +18,11 @@
         }
       },
       {
-        "type": "pheno:rig",
-        "rig": "none"
+        "type": "pheno:not",
+        "condition": {
+          "type": "pheno:rig",
+          "rig": "none"
+        }
       }
     ]
   },

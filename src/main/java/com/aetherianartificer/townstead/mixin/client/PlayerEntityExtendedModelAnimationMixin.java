@@ -69,11 +69,25 @@ public abstract class PlayerEntityExtendedModelAnimationMixin<T extends LivingEn
                 animationProgress,
                 headYaw,
                 headPitch);
-        // hide_feature genes: zero the hidden parts on the player's genetics model too
-        // (the villager model handles its own; this covers the player render).
-        com.aetherianartificer.townstead.client.root.HideFeatures.hide(
-                (net.minecraft.client.model.HumanoidModel<?>) (Object) this,
-                com.aetherianartificer.townstead.client.root.HideFeatures.hiddenGroups(player));
+        // The build's per-part proportions (and hidden features), as the villager model gets them:
+        // a villager-mode player is drawn with this player model, so without this the editor's
+        // villager preview wore the build and the player in the world didn't. MCA scales this model
+        // by its stand-in villager's genetics, so the de-squash reads those.
+        net.minecraft.client.model.HumanoidModel<?> humanoid = (net.minecraft.client.model.HumanoidModel<?>) (Object) this;
+        if (com.aetherianartificer.townstead.client.root.RootClientStore.expresses(player)) {
+            net.conczin.mca.entity.ai.Genetics genetics = null;
+            net.conczin.mca.entity.ai.Traits traits = null;
+            var standIn = net.conczin.mca.MCAClient.getPlayerData(player.getUUID()).orElse(null);
+            if (standIn != null) {
+                genetics = standIn.getGenetics();
+                traits = standIn.getTraits();
+            }
+            com.aetherianartificer.townstead.client.species.BuildProportions.apply(humanoid, player, genetics, traits);
+        } else {
+            com.aetherianartificer.townstead.client.species.BuildProportions.reset(humanoid);
+            com.aetherianartificer.townstead.client.root.HideFeatures.hide(humanoid,
+                    com.aetherianartificer.townstead.client.root.HideFeatures.hiddenGroups(player));
+        }
         String rigBase = com.aetherianartificer.townstead.client.species.RigModels.rigBaseFor(player);
         boolean generic = com.aetherianartificer.townstead.client.species.RigModels.isGeneric(rigBase);
         // Hide the host's mis-fitting boots on a non-humanoid rig by zeroing the leg scale (the worn

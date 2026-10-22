@@ -59,9 +59,32 @@ public final class VillagerNames {
         return builder.build();
     }
 
-    /** The composed name, ready to draw. */
+    /**
+     * The composed name, ready to draw, for text that can reach anyone. A Persona who keeps their
+     * family name back is only their given name here; {@link #nameFor} gives one player's version.
+     */
     public static Component display(VillagerEntityMCA villager) {
-        return Component.literal(parts(villager).fullName());
+        return Component.literal(nameFor(villager, null));
+    }
+
+    /**
+     * The name {@code player} knows this villager by: the full name, or a Persona's given name until
+     * they tell this player their family name. A null player stands for anyone.
+     */
+    public static String nameFor(VillagerEntityMCA villager, @org.jetbrains.annotations.Nullable net.minecraft.server.level.ServerPlayer player) {
+        NameParts parts = parts(villager);
+        return familyHidden(villager, player)
+                ? NameParts.withoutFamily(parts.given(), parts.family(), parts.order())
+                : parts.fullName();
+    }
+
+    /** Whether {@code player} (null for anyone) must not see this villager's family name yet. */
+    public static boolean familyHidden(VillagerEntityMCA villager, @org.jetbrains.annotations.Nullable net.minecraft.server.level.ServerPlayer player) {
+        if (villager.level().isClientSide) return false;
+        com.aetherianartificer.townstead.persona.PersonaDefinition persona =
+                com.aetherianartificer.townstead.persona.PersonaService.definition(villager);
+        if (persona == null || !persona.familyToldOnly()) return false;
+        return player == null || !com.aetherianartificer.townstead.persona.PersonaService.familyNameKnown(villager, player);
     }
 
     /**
@@ -73,6 +96,7 @@ public final class VillagerNames {
         // part of who they are, not a render detail: Chronicles, dialogue and the editor all read it
         // later, and skipping the work when no target happens to be registered would mean a world
         // without the right mod installed quietly had no family names at all.
+        restoreGiven(villager);
         NameParts parts = parts(villager);
         for (NameTarget target : TARGETS) {
             try {
@@ -84,11 +108,27 @@ public final class VillagerNames {
     }
 
     /**
+     * Takes the family name back off a villager's own name. The family tree target used to write
+     * through MCA's {@code setName}, which on 1.20.1 also set the villager's name to the composed
+     * one, so saves from then carry it in the name itself. Runs on every publish, which includes
+     * every load.
+     */
+    private static void restoreGiven(VillagerEntityMCA villager) {
+        if (villager.level().isClientSide) return;
+        NameParts parts = parts(villager);
+        String base = baseName(villager);
+        String given = NameParts.withoutFamily(base, parts.family(), parts.order());
+        if (given.isEmpty() || given.equals(base)) return;
+        villager.setCustomName(Component.literal(given));
+    }
+
+    /**
      * A server-built screen title using the same surname ownership and ordering as client names.
      * The existing display component is retained when no name decoration is needed.
      */
-    public static Component titleFor(VillagerEntityMCA villager) {
+    public static Component titleFor(VillagerEntityMCA villager, net.minecraft.server.level.ServerPlayer player) {
         Component display = villager.getDisplayName();
+        if (familyHidden(villager, player)) return display;
         NameParts parts = parts(villager);
         String full = NameParts.format(display.getString(), parts.family(), parts.order());
         return full.equals(display.getString()) ? display : Component.literal(full);

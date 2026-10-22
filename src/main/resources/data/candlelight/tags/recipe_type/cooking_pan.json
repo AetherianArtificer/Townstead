@@ -1,1 +1,9 @@
-{"replace":false,"values":["farm_and_charm:roaster"]}
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "farm_and_charm:roaster",
+      "required": false
+    }
+  ]
+}

@@ -58,7 +58,10 @@ public final class VillagerDoorCleanup {
                 }
                 iterator.remove();
                 if (decision == DoorClosePolicy.Decision.CLOSE) {
-                    if (state.getBlock() instanceof DoorBlock door) door.setOpen(null, level, state, pos, false);
+                    if (state.getBlock() instanceof DoorBlock door) {
+                        door.setOpen(null, level, state, pos, false);
+                        closePartner(level, state, pos);
+                    }
                     //? if >=1.21 {
                     else net.conczin.mca.entity.ai.PathingBlockInteraction.setOpen(null, level, state, pos, false);
                     //?} else {
@@ -70,6 +73,24 @@ public final class VillagerDoorCleanup {
             if (queue.isEmpty()) PENDING.remove(level);
         }
     }
+    /** The other leaf of a double door: beside it, same facing, opposite hinge. Closed with it unless in use. */
+    private static void closePartner(ServerLevel level, BlockState state, BlockPos pos) {
+        if (!state.hasProperty(BlockStateProperties.HORIZONTAL_FACING) || !state.hasProperty(BlockStateProperties.DOOR_HINGE)) return;
+        net.minecraft.core.Direction facing = state.getValue(BlockStateProperties.HORIZONTAL_FACING);
+        boolean leftHinge = state.getValue(BlockStateProperties.DOOR_HINGE) == net.minecraft.world.level.block.state.properties.DoorHingeSide.LEFT;
+        BlockPos other = pos.relative(leftHinge ? facing.getClockWise() : facing.getCounterClockWise());
+        BlockState partner = level.getBlockState(other);
+        if (!(partner.getBlock() instanceof DoorBlock door) || !partner.hasProperty(BlockStateProperties.DOOR_HINGE)
+                || partner.getValue(BlockStateProperties.HORIZONTAL_FACING) != facing
+                || partner.getValue(BlockStateProperties.DOOR_HINGE) == state.getValue(BlockStateProperties.DOOR_HINGE)
+                || partner.getValue(BlockStateProperties.DOUBLE_BLOCK_HALF) != DoubleBlockHalf.LOWER
+                || !partner.getValue(BlockStateProperties.OPEN)) return;
+        boolean powered = partner.getValue(BlockStateProperties.POWERED)
+                || level.hasNeighborSignal(other) || level.hasNeighborSignal(other.above());
+        if (powered || passageInUse(level, other)) return;
+        door.setOpen(null, level, partner, other, false);
+    }
+
     private static boolean passageInUse(ServerLevel level, BlockPos pos) {
         AABB passage = new AABB(pos).expandTowards(0, 1, 0).inflate(0.25, 0, 0.25);
         for (LivingEntity entity : level.getEntitiesOfClass(LivingEntity.class, passage.inflate(2), LivingEntity::isAlive)) {
@@ -79,7 +100,7 @@ public final class VillagerDoorCleanup {
                 if (path == null || path.isDone()) continue;
                 for (int i = path.getNextNodeIndex(); i < Math.min(path.getNodeCount(), path.getNextNodeIndex() + 2); i++) {
                     BlockPos step = path.getNode(i).asBlockPos();
-                    if (step.equals(pos) || step.equals(pos.above())) return true;
+                    if (step.equals(pos) || step.equals(pos.above()) || step.equals(pos.below())) return true;
                 }
             }
         }

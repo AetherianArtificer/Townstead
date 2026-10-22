@@ -42,7 +42,10 @@ EXTERNAL contract_turn_in(pool)
 ~ return
 
 === function act(id) ===
-~ return
+~ return true
+
+=== function act_on(id, name) ===
+~ return true
 
 === function mod(id) ===
 ~ return false
@@ -74,10 +77,9 @@ EXTERNAL contract_turn_in(pool)
 ~ quest_open = false
 ~ interrupted = false
 
-// Story progress, by the file that declares it. Every line is at its starting value, so this
-// changes nothing until you edit one. To try a later scene, set what the earlier scenes would
-// have set, and change "-> greet" at the bottom to that scene's knot if you want to jump straight
-// in. The checkpoints in persona.json list the values for each scene.
+// Story progress, by the file that declares it. Every line is at its starting value. The menu
+// at the bottom (lib/inky_jump.ink, made from the checkpoints in persona.json) sets what the
+// earlier scenes would have set and jumps to the scene you pick.
 
 // persona.ink
 ~ met = 0
@@ -88,6 +90,8 @@ EXTERNAL contract_turn_in(pool)
 // act1/02_wolf.ink
 ~ wolf_seen = false
 ~ asked_scraps = false
+~ scraps_offered = false
+~ done_scraps_job = false
 ~ wolf_day = -1
 
 // act1/03_altar.ink
@@ -104,6 +108,10 @@ EXTERNAL contract_turn_in(pool)
 // act1/06_oath.ink
 ~ done_first_oath = false
 
+// act1/06b_player_oath.ink
+~ oath_job = false
+~ oath_put_off = -1
+
 // act1/07_walk.ink
 ~ walking = false
 ~ done_walk = false
@@ -114,6 +122,7 @@ EXTERNAL contract_turn_in(pool)
 // act1/08_watch.ink
 ~ watching = false
 ~ done_watch = false
+~ no_one_turns = false
 
 // act1/09_neighbor.ink
 ~ neighbor = ""
@@ -216,6 +225,8 @@ EXTERNAL contract_turn_in(pool)
 ~ ending = ""
 ~ father_fate = ""
 ~ b_answer = ""
+~ court_wine = ""
+~ court_lean = 0
 
 // act3/04_epilogue.ink
 ~ done_epilogue = false
@@ -273,6 +284,8 @@ EXTERNAL contract_turn_in(pool)
 ~ w1_asked = false
 ~ done_w1_items = false
 ~ done_w2 = false
+~ done_w3 = false
+~ w2_kills = 0
 ~ w1_day = -1
 
--> greet
+-> inky_jump

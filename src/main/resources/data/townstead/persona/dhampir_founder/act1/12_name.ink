@@ -8,7 +8,7 @@ VAR named = false
 
 // When this scene plays. The greet in persona.ink checks these in order.
 === function the_name_ready() ===
-~ return done_counting and not named and (done_walk or done_watch) and (done_neighbor or done_bitten) and rel("trust") >= 15 and check("evening")
+~ return done_counting and not named and (done_walk or done_watch) and (done_neighbor or done_bitten or no_one_turns) and rel("trust") >= 15 and check("evening")
 
 === the_name ===
 Sit down, if you want. I'm not doing anything. I'm practicing not doing anything, I'm told it's good for you.

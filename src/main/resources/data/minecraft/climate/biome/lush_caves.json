@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:climate_biome/v1",
+  "mean_c": 12.0,
+  "season_kind": "none",
+  "underground_offset_c": 2.0,
+  "humidity": 0.95
+}

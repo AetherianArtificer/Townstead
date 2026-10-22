@@ -61,7 +61,7 @@ public class ParchmentButton extends Button {
         // Clip rather than overflow: a long rank name used to run out through the button's edge.
         int room = w - 8;
         if (textWidth > room) {
-            g.enableScissor(x + 4, y, x + w - 4, y + h);
+            UiScissor.enable(g, x + 4, y, x + w - 4, y + h);
         }
         g.drawString(font, message, x + (w - Math.min(textWidth, room)) / 2,
                 y + (h - font.lineHeight) / 2 + 1, on ? (selected ? Palette.LABEL_LIGHT : INK) : INK_OFF, false);

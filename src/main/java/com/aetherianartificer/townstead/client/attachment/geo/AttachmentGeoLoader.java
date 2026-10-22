@@ -22,8 +22,8 @@ import java.util.Map;
  * positions and normals — static rotation costs nothing at render time).
  *
  * <p>Coordinate transform is the standard Bedrock→Java change: Y negated (with
- * cube corners offset by their height), bone rotations carry the {@code (x,-y,-z)}
- * sign flip. A per-face UV entry that omits a face skips that face's quad, matching
+ * cube corners offset by their height); rotations pass through as {@code (x,y,z)},
+ * as GeckoLib and Blockbench read a Bedrock file. A per-face UV entry that omits a face skips that face's quad, matching
  * Blockbench's transparent-face export. Returns {@code null} on a malformed file.</p>
  */
 public final class AttachmentGeoLoader {
@@ -101,8 +101,8 @@ public final class AttachmentGeoLoader {
                 -(bone.pivot()[1] - parentPivot[1]),
                 bone.pivot()[2] - parentPivot[2],
                 (float) Math.toRadians(bone.rotation()[0]),
-                (float) Math.toRadians(-bone.rotation()[1]),
-                (float) Math.toRadians(-bone.rotation()[2]),
+                (float) Math.toRadians(bone.rotation()[1]),
+                (float) Math.toRadians(bone.rotation()[2]),
                 cubes, new ArrayList<>());
     }
 
@@ -110,6 +110,8 @@ public final class AttachmentGeoLoader {
     // y-down, so the vanilla "DOWN" polygon (min-Y vertices) is the visual TOP face and vice versa;
     // Bedrock's per-face "up" therefore lands in the DOWN slot.
     private static final int F_DOWN = 0, F_UP = 1, F_WEST = 2, F_NORTH = 3, F_EAST = 4, F_SOUTH = 5;
+    // Thinner than this along an axis (in pixels, after inflate) is a plane, not a box.
+    private static final float FLAT = 1.0e-3f;
     private static final Vector3f[] NORMALS = {
             new Vector3f(0, -1, 0), new Vector3f(0, 1, 0), new Vector3f(-1, 0, 0),
             new Vector3f(0, 0, -1), new Vector3f(1, 0, 0), new Vector3f(0, 0, 1),
@@ -174,6 +176,17 @@ public final class AttachmentGeoLoader {
             uvRects[F_SOUTH] = new float[]{u + sz + sx + sz, v + sz, u + sz + sx + sz + sx, v + sz + sy};
         }
 
+        // A flat cube (a wing membrane, a fin) is one plane: its two faces lie on each other and the
+        // attachment layers draw without culling, so both would show and z-fight. Keep the front
+        // face of the box layout, which shows from behind too, and drop the zero-area edges.
+        boolean flatX = Math.abs(x2 - x1) < FLAT, flatY = Math.abs(y2 - y1) < FLAT, flatZ = Math.abs(z2 - z1) < FLAT;
+        if (flatX) uvRects[F_EAST] = null;
+        if (flatY) uvRects[F_UP] = null;
+        if (flatZ) uvRects[F_SOUTH] = null;
+        if (flatX || flatZ) uvRects[F_DOWN] = uvRects[F_UP] = null;
+        if (flatX || flatY) uvRects[F_NORTH] = uvRects[F_SOUTH] = null;
+        if (flatY || flatZ) uvRects[F_WEST] = uvRects[F_EAST] = null;
+
         List<AttachmentGeo.Polygon> polygons = new ArrayList<>(6);
         for (int face = 0; face < 6; face++) {
             float[] rect = uvRects[face];
@@ -208,7 +221,7 @@ public final class AttachmentGeoLoader {
             float py = -(pivot[1] - bone.pivot()[1]);
             float pz = pivot[2] - bone.pivot()[2];
             Quaternionf q = new Quaternionf().rotationZYX(
-                    (float) Math.toRadians(-rot[2]), (float) Math.toRadians(-rot[1]),
+                    (float) Math.toRadians(rot[2]), (float) Math.toRadians(rot[1]),
                     (float) Math.toRadians(rot[0]));
             List<AttachmentGeo.Polygon> rotated = new ArrayList<>(polygons.size());
             Vector3f work = new Vector3f();

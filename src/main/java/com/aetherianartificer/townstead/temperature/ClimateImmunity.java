@@ -21,7 +21,8 @@ import net.minecraft.world.effect.MobEffect;
 /**
  * A player whose Root has {@code "climate": "any"} holds each installed temperature mod's own
  * immunity effect, kept topped up and hidden. Townstead does not simulate player body heat, so
- * this is how the gene reaches players. When the gene goes, the effect runs out by itself.
+ * this is how the gene reaches players. When the gene goes, the effect runs out by itself. A root
+ * that stays dry has the mod's own player wetness switched off the same way.
  */
 public final class ClimateImmunity {
     private static final int CHECK_INTERVAL = 40;
@@ -30,7 +31,10 @@ public final class ClimateImmunity {
     private ClimateImmunity() {}
 
     public static void tick(ServerPlayer player) {
-        if (player.tickCount % CHECK_INTERVAL != 0 || !careless(player)) return;
+        if (player.tickCount % CHECK_INTERVAL != 0) return;
+        boolean dry = ThermalProfile.waterproof(player);
+        for (AmbientTemperatureBridge bridge : TemperatureBridgeResolver.installed()) bridge.keepPlayerDry(player, dry);
+        if (!careless(player)) return;
         for (AmbientTemperatureBridge bridge : TemperatureBridgeResolver.installed()) {
             ResourceLocation id = bridge.playerImmunityEffect();
             if (id != null) topUp(player, id);

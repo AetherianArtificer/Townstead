@@ -85,7 +85,23 @@ public abstract class VillagerEditorRootMixin extends Screen {
     @Shadow(remap = false) protected abstract String[] getPages();
 
     @Unique private boolean townstead$previewDirty;
+    /** The outfit the editor opened with (fitted to the body when it needed one), restored on revert. */
+    @Unique private String townstead$clothesSnapshot;
+    /**
+     * After Apply, the server rolls the real individual (ear style, skin variant...), which needn't be
+     * the typical member the browse preview showed. Until the target's gene sync arrives (its
+     * carried-variant map is replaced), this holds the map seen at Apply; then the preview re-mirrors.
+     */
+    @Unique private java.util.Map<String, String> townstead$awaitingSyncFrom;
+    /** The founding just applied, worn by the model until the target's own sync catches up. */
+    @Unique private com.aetherianartificer.townstead.root.FoundingLook townstead$appliedLook;
+    @Unique private com.aetherianartificer.townstead.client.gui.root.RootEditSession townstead$session;
     @Unique private float[] townstead$geneSnapshot;
+    // The rest of what a founding changes on the model, for revert.
+    @Unique private int townstead$hairDyeSnapshot;
+    @Unique private int townstead$eyeDyeSnapshot;
+    @Unique private int townstead$eyeLeftDyeSnapshot;
+    @Unique private boolean townstead$heterochromiaSnapshot;
     @Unique private String townstead$baseRootId = "";
     @Unique private boolean townstead$primed;
     @Unique private int townstead$target;
@@ -177,6 +193,57 @@ public abstract class VillagerEditorRootMixin extends Screen {
         return out;
     }
 
+    // The hair the target's own data gave the model. The editor shows it as it is, even when the
+    // root's colors don't include it, until the player changes it; only then does the clamp apply.
+    @Unique private boolean townstead$loadingData;
+    @Unique private boolean townstead$hasLoadedHair;
+    @Unique private int townstead$loadedDye;
+    @Unique private float townstead$loadedDarkness;
+    @Unique private float townstead$loadedRedness;
+
+    // MCA reads incoming data only when no other command is in flight, then calls setPage.
+    @Inject(method = "setVillagerData", remap = false, at = @At("HEAD"))
+    private void townstead$noteDataLoad(net.minecraft.nbt.CompoundTag data, CallbackInfo ci) {
+        townstead$loadingData = ((com.aetherianartificer.townstead.mixin.accessor.VillagerEditorScreenAccessor) (Object) this)
+                .townstead$getCommandsInFlight() <= 1;
+    }
+
+    @Unique
+    private void townstead$recordLoadedHair() {
+        townstead$hasLoadedHair = true;
+        townstead$loadedDye = villager.getHairDye();
+        townstead$loadedDarkness = villager.getGenetics().getGene(Genetics.EUMELANIN);
+        townstead$loadedRedness = villager.getGenetics().getGene(Genetics.PHEOMELANIN);
+    }
+
+    /** Keeps the model's hair to what the root allows, once it differs from the target's own. */
+    @Unique
+    private void townstead$clampHair(HairSettings settings) {
+        if (villager == null) return;
+        if (townstead$hasLoadedHair && villager.getHairDye() == townstead$loadedDye
+                && villager.getGenetics().getGene(Genetics.EUMELANIN) == townstead$loadedDarkness
+                && villager.getGenetics().getGene(Genetics.PHEOMELANIN) == townstead$loadedRedness) return;
+        com.aetherianartificer.townstead.root.appearance.HairColors.clamp(villager, settings);
+    }
+
+    // MCA's selection grids (clothes, hair, skin) and its skin library draw a second model loaded
+    // from the first's data each frame; it gets the first's Root too, so they show the real body.
+    // The preset compare panel loads a preset's data instead, so it is left alone.
+    //? if neoforge {
+    @Inject(method = "render", remap = false, at = @At("HEAD"))
+    //?} else {
+    /*@Inject(method = "m_88315_", remap = false, at = @At("HEAD"))
+    *///?}
+    private void townstead$shareRootWithGrid(GuiGraphics context, int mouseX, int mouseY, float delta,
+                                             CallbackInfo ci) {
+        if (!townstead$primed) return;
+        VillagerEntityMCA grid = ((com.aetherianartificer.townstead.mixin.accessor.VillagerEditorScreenAccessor) (Object) this)
+                .townstead$getVillagerVisualization();
+        if (grid == null) return;
+        if ("presets".equals(page)) RootClientStore.remove(grid.getId());
+        else RootClientStore.copy(villager.getId(), grid.getId());
+    }
+
     // Draw the previewed origin's ambient particles around the model (the real emitter is
     // server-side and never runs in this GUI). Matches MCA's entity render box:
     // x = width/2 - DATA_WIDTH(175), y = height/2, half-height 75.
@@ -187,8 +254,8 @@ public abstract class VillagerEditorRootMixin extends Screen {
     *///?}
     private void townstead$renderPreviewParticles(GuiGraphics context, int mouseX, int mouseY, float delta,
                                                   CallbackInfo ci) {
-        com.aetherianartificer.townstead.root.appearance.HairColors.clamp(
-                villager, RootClientStore.hairSettings(villager));
+        townstead$clampHair(RootClientStore.hairSettings(villager));
+        townstead$followAppliedRoll();
         int x = this.width / 2 - 175;
         int y = this.height / 2;
         PreviewParticles.render(context, villager, townstead$previewSubject(), x, y - 75, x + 175, y + 75);
@@ -269,9 +336,17 @@ public abstract class VillagerEditorRootMixin extends Screen {
     // browsed origin can't leak into another tab or get saved by MCA's Done.
     @Inject(method = "setPage", remap = false, at = @At("HEAD"))
     private void townstead$revertOnPageChange(String page, CallbackInfo ci) {
+        if (townstead$loadingData && villager != null) {
+            // the target's data just arrived: it is what the model shows, and what a revert restores
+            townstead$loadingData = false;
+            townstead$recordLoadedHair();
+            if (!townstead$previewDirty) townstead$takeSnapshot();
+        }
         townstead$revertPreview();
+        // Rebuilding the Root tab (back from the browser) keeps what is on show; leaving it drops it.
+        if (townstead$session != null && !"origins".equals(page)) townstead$session.drop();
         var settings = RootClientStore.hairSettings(villager);
-        com.aetherianartificer.townstead.root.appearance.HairColors.clamp(villager, settings);
+        townstead$clampHair(settings);
         // MCA flips into its HSV dye-slider mode at load whenever the character carries a hair
         // dye. Under a policy the dye is ours to manage (a palette always has one, a genetic range
         // never does), so those sliders would only fight the clamp; force the genetic layout,
@@ -287,8 +362,8 @@ public abstract class VillagerEditorRootMixin extends Screen {
     @Inject(method = "syncVillagerData", remap = false, at = @At("HEAD"))
     private void townstead$revertOnSync(CallbackInfo ci) {
         townstead$revertPreview();
-        com.aetherianartificer.townstead.root.appearance.HairColors.clamp(
-                villager, RootClientStore.hairSettings(villager));
+        if (townstead$session != null) townstead$session.drop();
+        townstead$clampHair(RootClientStore.hairSettings(villager));
     }
 
     // Runs for the Destiny screen too: it routes its real pages through super.setPage,
@@ -306,8 +381,30 @@ public abstract class VillagerEditorRootMixin extends Screen {
                     ? RootSetC2SPayload.SELF
                     : townstead$resolveVillagerEntityId(villagerUUID);
             townstead$sendRootSet(townstead$target, "");      // also makes the picker row highlight
+            townstead$session = new com.aetherianartificer.townstead.client.gui.root.RootEditSession(townstead$target,
+                    new com.aetherianartificer.townstead.client.gui.root.RootEditSession.Host() {
+                        @Override
+                        public void show(com.aetherianartificer.townstead.client.gui.root.RootEditSession.Founding founding) {
+                            townstead$show(founding);
+                        }
+
+                        @Override
+                        public void applied(com.aetherianartificer.townstead.client.gui.root.RootEditSession.Founding founding) {
+                            townstead$applied(founding);
+                        }
+
+                        @Override
+                        public void identityChanged() {
+                            townstead$identityChanged();
+                        }
+                    });
             townstead$baseRootId = RootClientStore.get(townstead$target);
-            townstead$geneSnapshot = RootGenes.snapshot(villager);   // baseline for revert
+            // genes with no synced variant pick by UUID: pick as the target does, not as this new model
+            RootClientStore.standIn(villager.getId(), villagerUUID);
+            // already on a body with its own outfits but wearing one that doesn't fit it (a player who
+            // became a zombie in old clothes): dress the preview, and Done saves it
+            townstead$fitClothes(townstead$baseRootId);
+            townstead$takeSnapshot();   // baseline for revert
             townstead$primed = true;
         }
         // Keep the dummy tinted to the real origin on every page. A page change reverts any
@@ -319,8 +416,12 @@ public abstract class VillagerEditorRootMixin extends Screen {
         // renders a different random face than the real villager and falls back to each
         // attachment gene's default style (a Braided or Clean-shaven dwarf previews Full).
         // Seed every carried variant from the real target so the preview matches the game.
-        townstead$seedCarriedVariants();
-        townstead$mirrorRealState();
+        if (townstead$appliedLook != null) {
+            townstead$wearGenes(townstead$appliedLook);
+        } else {
+            townstead$seedCarriedVariants();
+            townstead$mirrorRealState();
+        }
 
         // Data-pack-driven Character layout: when the species declares one (or the character
         // carries editable Townstead genes, which synthesizes the default layout — native groups +
@@ -392,7 +493,7 @@ public abstract class VillagerEditorRootMixin extends Screen {
 
         if (com.aetherianartificer.townstead.client.gui.aspect.AspectPage.PAGE.equals(page)) {
             com.aetherianartificer.townstead.client.gui.aspect.AspectPage.build(townstead$target,
-                    this.width / 2, this.height / 2 - 80, 175, button -> addRenderableWidget(button), () -> {
+                    this.width / 2, this.height / 2 - 80, 175, 185, widget -> addRenderableWidget(widget), () -> {
                         if (Minecraft.getInstance().screen == (Object) this
                                 && com.aetherianartificer.townstead.client.gui.aspect.AspectPage.PAGE.equals(this.page)) {
                             setPage(com.aetherianartificer.townstead.client.gui.aspect.AspectPage.PAGE);
@@ -405,17 +506,9 @@ public abstract class VillagerEditorRootMixin extends Screen {
         if (!"origins".equals(page)) return;
 
         RootPicker.Widgets ws = RootPicker.build(
-                Minecraft.getInstance(),
-                this.width / 2, this.height / 2 - 80, 175, 185, townstead$target,
-                rootId -> townstead$applyRoot(townstead$target, rootId),
-                entry -> townstead$previewRoot(townstead$target, entry));
-        addRenderableWidget(ws.tabRoot());
-        addRenderableWidget(ws.tabGenes());
-        addRenderableWidget(ws.search());
-        addRenderableWidget(ws.list());
-        addRenderableWidget(ws.description());
-        addRenderableWidget(ws.master());
-        addRenderableWidget(ws.apply());
+                Minecraft.getInstance(), this, villager,
+                this.width / 2, this.height / 2 - 80, 175, 185, townstead$session);
+        for (net.minecraft.client.gui.components.AbstractWidget widget : ws.all()) addRenderableWidget(widget);
     }
 
     // Keep MCA's "Character" top tab highlighted while we're on one of our own gene subpages
@@ -674,62 +767,174 @@ public abstract class VillagerEditorRootMixin extends Screen {
     }
 
     /**
-     * Roll the selected origin's genome onto the editor dummy for a live, WYSIWYG preview.
-     * Re-selecting the origin the target already is (or the default Overworlder when it has
-     * none) must not re-roll: that would randomize the existing genes (e.g. skin tone) for
-     * no reason, so instead we drop any in-progress preview back to the dummy's real genes.
+     * Put a founding the server rolled on the model exactly as it will be given (null: the target as
+     * it is). Nothing is rolled here; the server already made every choice.
      */
     @Unique
-    private void townstead$previewRoot(int target, RootCatalogEntry entry) {
-        String current = RootClientStore.get(target);
-        if (current.isEmpty()) current = RootRegistry.DEFAULT_ID.toString();
-        if (entry.id().equals(current)) {
-            townstead$revertPreview();
-            return;
+    private void townstead$show(com.aetherianartificer.townstead.client.gui.root.RootEditSession.Founding founding) {
+        townstead$revertPreview();
+        if (founding == null) return;
+        com.aetherianartificer.townstead.root.FoundingLook look = founding.look();
+        RootGenes.restore(villager, look.floats());
+        villager.setHairDye(look.hairDye());
+        if (look.iris()) {
+            // A player's eyes are written the way their saved data takes them, without MCA's trait.
+            if (townstead$target == RootSetC2SPayload.SELF) {
+                com.aetherianartificer.townstead.root.appearance.IrisColors.applyAsPlayer(villager, look.irisTint(), look.irisRight());
+            } else {
+                com.aetherianartificer.townstead.root.appearance.IrisColors.apply(villager, look.irisTint(), look.irisRight());
+            }
         }
-        Map<String, GeneRange> ranges = new LinkedHashMap<>();
-        for (RootCatalogEntry.GeneRangeView r : entry.geneRanges()) {
-            ranges.put(r.key(), new GeneRange(r.min(), r.max()));
-        }
-        // Match spawn: roll a fresh random villager first (MCA's own genome roll covers the
-        // floats this origin doesn't constrain — base skin melanin/hemoglobin, hair, face,
-        // voice), then constrain the genes the origin defines to its ranges. So the preview is
-        // a representative member, not the opening skin re-tinted in place. A race can still pin
-        // any of these by declaring a body-metric gene for it (apply runs after, so it wins).
-        com.aetherianartificer.townstead.compat.mca.McaGeneticsCompat.randomize(villager);
-        RootGenes.apply(villager, ranges, villager.getRandom());
-        RootClientStore.setHair(villager.getId(), entry.hair(), entry.hairColorRanges(),
-                entry.hairColors(), entry.hairGradients());
-        com.aetherianartificer.townstead.root.appearance.HairColors.roll(villager,
-                RootClientStore.hairSettings(villager), villager.getRandom());
-        RootClientStore.set(villager.getId(), entry.id());   // so the skin-tint layer paints the preview
-        // Browsing previews the root's typical kit: drop the mirrored real expressed set so
-        // the attachment layer falls back to this origin's grant list (restored on revert).
-        RootClientStore.clearExpressed(villager.getId());
+        if (!look.clothes().isEmpty()) villager.setClothes(look.clothes());
+        RootClientStore.set(villager.getId(), founding.choice().rootId());   // so the skin-tint layer paints it
+        townstead$wearGenes(look);
         townstead$previewDirty = true;
     }
 
-    /** Commit the previewed genes (exactly) + the origin id to the real villager. */
+    /** The founding's expressed genes and hair policy on the model, as the target's sync will give them. */
     @Unique
-    private void townstead$applyRoot(int target, String rootId) {
-        townstead$previewDirty = false;            // keep the preview; the revert hooks must not undo it
-        townstead$baseRootId = rootId;         // the applied origin is the new baseline, so page changes
-                                                   // (which reset the dummy to baseline) and the Body picker
-                                                   // both reflect it, not the origin the editor opened with
-        townstead$sendRootSet(target, rootId); // sets Life.rootId on the real villager
-        // Commit the dummy's previewed MCA floats directly (WYSIWYG), NOT via MCA's
-        // syncVillagerData: the editor's full save also rewrites the target's family-tree
-        // entry (gender, typed-in parents) and the player's whole MCA snapshot from stale
-        // editor-buffer keys, which erased parent names and broke gendered family dialogue.
-        townstead$sendCommitGenes(target, RootGenes.snapshot(villager));
+    private void townstead$wearGenes(com.aetherianartificer.townstead.root.FoundingLook look) {
+        var genes = look.genes();
+        RootClientStore.setExpressed(villager.getId(), genes.genes(), genes.hair(), genes.hairColorRanges(),
+                genes.hairColors(), genes.hairGradients());
     }
 
+    /**
+     * The founding on the model was given to the target: it is the target now, so it becomes what a
+     * revert returns to, and the model keeps wearing it until the target's own sync arrives.
+     */
+    @Unique
+    private void townstead$applied(com.aetherianartificer.townstead.client.gui.root.RootEditSession.Founding founding) {
+        townstead$previewDirty = false;
+        townstead$baseRootId = founding.choice().rootId();
+        townstead$takeSnapshot();
+        townstead$appliedLook = founding.look();
+        net.minecraft.world.entity.LivingEntity subject = townstead$previewSubject();
+        townstead$awaitingSyncFrom = subject == null ? null : RootClientStore.carriedVariants(subject.getId());
+    }
+
+    /** The server said what the target is; the Root tab, if open and showing the target, redraws. */
+    @Unique
+    private void townstead$identityChanged() {
+        var identity = townstead$session.identity();
+        if (identity == null || townstead$previewDirty) return;
+        townstead$baseRootId = identity.choice().rootId();
+        RootClientStore.set(villager.getId(), townstead$baseRootId);
+    }
+
+    /** Remember what the model looks like now, as the target, for {@link #townstead$revertPreview}. */
+    @Unique
+    private void townstead$takeSnapshot() {
+        townstead$geneSnapshot = RootGenes.snapshot(villager);
+        townstead$clothesSnapshot = villager.getClothes();
+        townstead$hairDyeSnapshot = villager.getHairDye();
+        townstead$eyeDyeSnapshot = villager.getEyeDye();
+        townstead$eyeLeftDyeSnapshot = villager.getEyeLeftDye();
+        townstead$heterochromiaSnapshot = villager.getTraits().hasTrait(net.conczin.mca.entity.ai.Traits.HETEROCHROMIA);
+    }
+
+    /**
+     * On a body that wears only its own fitted skins, the clothes list shows exactly those: MCA
+     * hides {@code exclude} skins (rig skins are excluded so MCA's own villagers never draw them),
+     * and its human skins would not fit. Copies of the fitted ones with {@code exclude} cleared go
+     * through MCA's own filter, so its search, gender and paging still apply.
+     */
+    @org.spongepowered.asm.mixin.injection.ModifyVariable(method = "filter(Ljava/util/Map;)Ljava/util/List;",
+            at = @At("HEAD"), argsOnly = true, remap = false)
+    private Map<String, ?> townstead$fittedClothingOnly(Map<String, ?> entries) {
+        if (entries.isEmpty() || !(entries.values().iterator().next()
+                instanceof net.conczin.mca.resources.data.skin.Clothing)) return entries;
+        com.aetherianartificer.townstead.root.RootLook look = com.aetherianartificer.townstead.client.root.RootCatalogClient
+                .look(RootClientStore.resolve(villager));
+        if (look == null || look.skins().isEmpty()) return entries;
+        Map<String, net.conczin.mca.resources.data.skin.Clothing> fitted = new LinkedHashMap<>();
+        entries.forEach((key, value) -> {
+            if (!(value instanceof net.conczin.mca.resources.data.skin.Clothing clothing)
+                    || !look.fits(clothing.getIdentifier())) return;
+            fitted.put(key, clothing.exclude ? new net.conczin.mca.resources.data.skin.Clothing(clothing.getIdentifier(),
+                    clothing.profession, clothing.temperature, false, clothing.getGender()) : clothing);
+        });
+        return fitted;
+    }
+
+    /** The clothes cycler and Random Clothes draw from the same fitted skins as the list. */
+    @Inject(method = "getClothingChoices", at = @At("RETURN"), cancellable = true, remap = false)
+    private void townstead$fittedCycle(CallbackInfoReturnable<List<net.conczin.mca.resources.data.skin.Clothing>> cir) {
+        List<net.conczin.mca.resources.data.skin.Clothing> fitted = townstead$fittedChoices();
+        if (fitted != null) cir.setReturnValue(fitted);
+    }
+
+    @Inject(method = "getRandomClothingChoices", at = @At("RETURN"), cancellable = true, remap = false)
+    private void townstead$fittedRandom(CallbackInfoReturnable<List<net.conczin.mca.resources.data.skin.Clothing>> cir) {
+        List<net.conczin.mca.resources.data.skin.Clothing> fitted = townstead$fittedChoices();
+        if (fitted != null) cir.setReturnValue(fitted);
+    }
+
+    /** The skins that fit the preview's body and gender, {@code exclude} ones included; null on MCA's own body. */
+    @Unique
+    private List<net.conczin.mca.resources.data.skin.Clothing> townstead$fittedChoices() {
+        com.aetherianartificer.townstead.root.RootLook look = com.aetherianartificer.townstead.client.root.RootCatalogClient
+                .look(RootClientStore.resolve(villager));
+        if (look == null || look.skins().isEmpty()) return null;
+        var gender = villager.getGenetics().getGender();
+        List<net.conczin.mca.resources.data.skin.Clothing> out = new ArrayList<>();
+        for (net.conczin.mca.resources.data.skin.Clothing clothing
+                : net.conczin.mca.client.resources.ClientSkinCatalog.clothing().values()) {
+            if (look.fits(clothing.getIdentifier())
+                    && net.conczin.mca.resources.SkinSelection.matchesGender(clothing, gender)) out.add(clothing);
+        }
+        out.sort(java.util.Comparator.comparing(net.conczin.mca.resources.data.skin.Clothing::getIdentifier));
+        return out;
+    }
+
+    /**
+     * Dress the preview in an outfit made for {@code rootId}'s body when that body only wears its own
+     * (a zombie's tattered clothes) and the current one isn't among them: the rig draws nothing else,
+     * so it would preview, and then save, bare. MCA's Done carries the outfit to the target.
+     */
+    @Unique
+    private void townstead$fitClothes(String rootId) {
+        com.aetherianartificer.townstead.root.RootLook look = com.aetherianartificer.townstead.client.root.RootCatalogClient.look(rootId);
+        if (look == null || look.skins().isEmpty() || look.fits(villager.getClothes())) return;
+        com.aetherianartificer.townstead.clothing.policy.RigSkinPicker.pick(look::fits,
+                villager.getGenetics().getGender(), "minecraft:none", villagerUUID.getMostSignificantBits())
+                .ifPresent(villager::setClothes);
+    }
+
+    /** Once the target's own sync arrives after an Apply, the model follows the target again. */
+    @Unique
+    private void townstead$followAppliedRoll() {
+        if (townstead$awaitingSyncFrom == null) return;
+        net.minecraft.world.entity.LivingEntity subject = townstead$previewSubject();
+        if (subject != null && RootClientStore.carriedVariants(subject.getId()) == townstead$awaitingSyncFrom) return;
+        townstead$awaitingSyncFrom = null;
+        townstead$appliedLook = null;
+        if (townstead$previewDirty) return;
+        townstead$seedCarriedVariants();
+        townstead$mirrorRealState();
+    }
+
+    /** Put the model back to the target as it is: body, dyes, eyes, outfit and genes. */
     @Unique
     private void townstead$revertPreview() {
         if (!townstead$previewDirty) return;
         RootGenes.restore(villager, townstead$geneSnapshot);
-        RootClientStore.set(villager.getId(), townstead$baseRootId);   // back to the real origin's tint
-        townstead$mirrorRealState();   // back to the real individual's expressed genes
+        if (townstead$clothesSnapshot != null) villager.setClothes(townstead$clothesSnapshot);
+        villager.setHairDye(townstead$hairDyeSnapshot);
+        villager.setEyeDye(townstead$eyeDyeSnapshot);
+        villager.setEyeLeftDye(townstead$eyeLeftDyeSnapshot);
+        boolean hetero = villager.getTraits().hasTrait(net.conczin.mca.entity.ai.Traits.HETEROCHROMIA);
+        if (hetero && !townstead$heterochromiaSnapshot) villager.getTraits().removeTrait(net.conczin.mca.entity.ai.Traits.HETEROCHROMIA);
+        else if (!hetero && townstead$heterochromiaSnapshot) villager.getTraits().addTrait(net.conczin.mca.entity.ai.Traits.HETEROCHROMIA);
+        // A founding replaced the model's genes and variants wholesale; clear them, then take the target's.
+        RootClientStore.remove(villager.getId());
+        RootClientStore.set(villager.getId(), townstead$baseRootId);
+        if (townstead$appliedLook != null) {
+            townstead$wearGenes(townstead$appliedLook);
+        } else {
+            townstead$mirrorRealState();
+            townstead$seedCarriedVariants();
+        }
         townstead$previewDirty = false;
     }
 
@@ -1016,7 +1221,7 @@ public abstract class VillagerEditorRootMixin extends Screen {
         int w = mca.getWidth();
         int h = mca.getHeight();
         removeWidget(mca);
-        com.aetherianartificer.townstead.root.appearance.HairColors.clamp(villager, settings);
+        townstead$clampHair(settings);
         if (RootHairPickerTexture.hasPalette(settings)) {
             townstead$buildHairPalette(settings, x, y, w);
             return;
@@ -1798,13 +2003,6 @@ public abstract class VillagerEditorRootMixin extends Screen {
 
     // Drop this editor's throwaway dummy from the tint cache when the screen goes away,
     // so its origin tint can't bleed onto a real entity sharing its client-side id.
-    @Override
-    public void removed() {
-        super.removed();
-        RootClientStore.remove(villager.getId());
-        PreviewParticles.clear();
-        com.aetherianartificer.townstead.client.gui.character.EditorPreviewFocus.clear();
-    }
 
     // The editor's preview dummies are created and never ticked, so they keep spawn-default
     // air state (onGround false). Since MCA models became EMF-interceptable, animation packs

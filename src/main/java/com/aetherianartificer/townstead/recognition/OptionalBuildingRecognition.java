@@ -22,6 +22,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 
+import javax.annotation.Nullable;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -52,6 +53,8 @@ public final class OptionalBuildingRecognition {
     private static final int DEFAULT_REACH = 12;
     /** Liquids are surroundings rather than furniture; only the nearest few are recorded. */
     private static final int LIQUID_CAP = 64;
+    /** How close a reported problem must be to the type's own blocks to be about that type. */
+    private static final int NEAR_OWN_BLOCK = 2;
 
     /** MCA floor-system v2's native external registration path. Absent on older MCA. */
     private static final Method PROCESS_EXTERNAL = findProcessExternal();
@@ -73,6 +76,12 @@ public final class OptionalBuildingRecognition {
     }
 
     public enum Registration { CREATED, EXISTING, FAILED }
+
+    /** What a report found: a building, or else the type and problem of the site it nearly was. */
+    public record Search(Optional<Candidate> candidate, @Nullable String typeName,
+                         @Nullable SiteRequirements.Problem problem) {
+        static final Search NOTHING = new Search(Optional.empty(), null, null);
+    }
 
     /** Result of the explicit village-wide pass used by Blueprint's Refresh action. */
     public record RefreshResult(int created, int refreshed) {}
@@ -123,6 +132,7 @@ public final class OptionalBuildingRecognition {
         int radius = Math.min(160, Math.max(48, villageReach + Math.max(24, maxReach)));
         List<List<MatchedBlock>> visible = sweep(level, center, radius, types);
         List<RoomBounds> rooms = registeredRooms(level, center);
+        SiteRequirements.Scan scan = new SiteRequirements.Scan(level);
         Set<String> attempted = new HashSet<>();
         Set<Long> claimed = new HashSet<>();
         int created = 0;
@@ -134,11 +144,15 @@ public final class OptionalBuildingRecognition {
             matches.sort(Comparator.comparingDouble(block -> block.pos().distSqr(center)));
             for (MatchedBlock seed : matches) {
                 if (claimed.contains(seed.pos().asLong())) continue;
-                Candidate candidate = assemble(level, seed.pos(), entry, matches, rooms);
+                Candidate candidate = assemble(level, scan, seed.pos(), entry, matches, rooms, null);
                 if (candidate == null) continue;
                 String key = candidate.typeName() + ':' + candidate.min().asLong() + ':' + candidate.max().asLong();
                 if (!attempted.add(key)) continue;
                 if (candidate.positions().stream().anyMatch(pos -> claimed.contains(pos.asLong()))) continue;
+                // A site the player removed stays removed until they work on it again.
+                if (DismissedSites.dismissed(level, new BlockPos((candidate.min().getX() + candidate.max().getX()) / 2,
+                        (candidate.min().getY() + candidate.max().getY()) / 2,
+                        (candidate.min().getZ() + candidate.max().getZ()) / 2))) continue;
                 Registration registration = register(level, candidate);
                 if (registration == Registration.FAILED) continue;
                 candidate.positions().forEach(pos -> claimed.add(pos.asLong()));
@@ -151,8 +165,17 @@ public final class OptionalBuildingRecognition {
 
     /** Best complete optional/open-air building around the report position. */
     public static Optional<Candidate> find(ServerLevel level, BlockPos origin) {
+        return search(level, origin).candidate();
+    }
+
+    /**
+     * As {@link #find}, and when nothing was found, why the enclosure the player stands by is not
+     * one. A problem is only kept where the type's own blocks stand near it, so a house with a
+     * missing door is left to MCA's room scan rather than reported as a broken fence.
+     */
+    public static Search search(ServerLevel level, BlockPos origin) {
         if (level == null || origin == null || BuildingEnclosurePolicies.snapshot().isEmpty()) {
-            return Optional.empty();
+            return Search.NOTHING;
         }
 
         List<TypeEntry> types = new ArrayList<>();
@@ -167,20 +190,62 @@ public final class OptionalBuildingRecognition {
             types.add(new TypeEntry(policy.getKey(), type, reach));
             maxReach = Math.max(maxReach, reach);
         }
-        if (types.isEmpty()) return Optional.empty();
+        if (types.isEmpty()) return Search.NOTHING;
 
         List<List<MatchedBlock>> visible = sweep(level, origin, DISCOVERY_RADIUS + maxReach, types);
         List<RoomBounds> rooms = registeredRooms(level, origin);
+        SiteRequirements.Scan scan = new SiteRequirements.Scan(level);
         List<Candidate> matches = new ArrayList<>();
+        SiteRequirements.Problem[] problem = new SiteRequirements.Problem[1];
+        String[] problemType = new String[1];
         for (int i = 0; i < types.size(); i++) {
-            Candidate candidate = assemble(level, origin, types.get(i), visible.get(i), rooms);
+            TypeEntry entry = types.get(i);
+            Candidate candidate = assemble(level, scan, origin, entry, visible.get(i), rooms, found -> {
+                if (problem[0] == null && nearOwnBlock(level, entry.type(), found.at())) {
+                    problem[0] = found;
+                    problemType[0] = entry.name();
+                }
+            });
             if (candidate != null) matches.add(candidate);
         }
         matches.sort(Comparator
                 .<Candidate>comparingInt(c -> c.type().priority()).reversed()
                 .thenComparingInt(c -> -c.type().getMinBlocks())
                 .thenComparing(Candidate::typeName));
-        return matches.stream().findFirst();
+        Optional<Candidate> best = matches.stream().findFirst();
+        return best.isPresent() ? new Search(best, null, null) : new Search(best, problemType[0], problem[0]);
+    }
+
+    /**
+     * Register a site that has just closed, but only into a village that already exists: MCA's
+     * native external path founds a village when none is near, and a fence in the wild must not.
+     */
+    public static Registration registerInVillage(ServerLevel level, Candidate candidate) {
+        if (level == null || candidate == null || candidate.positions().isEmpty()) return Registration.FAILED;
+        if (VillageManager.get(level).findNearestVillage(registrationAnchor(candidate), Village.MERGE_MARGIN)
+                .isEmpty()) {
+            return Registration.FAILED;
+        }
+        return register(level, candidate);
+    }
+
+    /** How far the type's site may reach from where its walk starts. */
+    public static int reach(String typeName) {
+        BuildingType type = typeName == null ? null : BuildingTypes.getInstance().getBuildingTypes().get(typeName);
+        return type != null && type.mergeRange() > 0 ? type.mergeRange() : DEFAULT_REACH;
+    }
+
+    private static boolean nearOwnBlock(ServerLevel level, BuildingType type, BlockPos at) {
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int dx = -NEAR_OWN_BLOCK; dx <= NEAR_OWN_BLOCK; dx++) {
+            for (int dy = -NEAR_OWN_BLOCK; dy <= NEAR_OWN_BLOCK; dy++) {
+                for (int dz = -NEAR_OWN_BLOCK; dz <= NEAR_OWN_BLOCK; dz++) {
+                    cursor.set(at.getX() + dx, at.getY() + dy, at.getZ() + dz);
+                    if (level.isLoaded(cursor) && matchesBlock(type, level.getBlockState(cursor))) return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -299,6 +364,8 @@ public final class OptionalBuildingRecognition {
     private static Removed removeExisting(ServerLevel level, Existing existing) {
         Village village = existing.village();
         int id = existing.building().getId();
+        DismissedSites.dismiss(level, existing.building().getPos0(), existing.building().getPos1(),
+                existing.building().getType());
         McaBuildings.remove(village, id);
         village.calculateDimensions();
         village.markDirty();
@@ -363,22 +430,25 @@ public final class OptionalBuildingRecognition {
     }
 
     private static int[] typesMatching(List<TypeEntry> types, BlockState state) {
+        List<Integer> owners = new ArrayList<>();
+        for (int i = 0; i < types.size(); i++) {
+            if (matchesBlock(types.get(i).type(), state)) owners.add(i);
+        }
+        return owners.stream().mapToInt(Integer::intValue).toArray();
+    }
+
+    /** Whether MCA's recipe for the type counts this block. */
+    public static boolean matchesBlock(BuildingType type, BlockState state) {
         // MCA 7.7 keeps tags separate from the direct map and resolves them from the
         // BlockState; that lookup also teaches getGroups() the concrete block -> tag
         // mapping needed by the completeness check below. MCA 7.6 eagerly expands tags
         // into getBlockToGroup(), so retain that generation's equivalent lookup.
-        //? if <1.21 {
-        /*ResourceLocation id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        //? if >=1.21 {
+        return type.matchesBlock(state);
+        //?} else {
+        /*return type.getBlockToGroup().containsKey(
+                net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()));
         *///?}
-        List<Integer> owners = new ArrayList<>();
-        for (int i = 0; i < types.size(); i++) {
-            //? if >=1.21 {
-            if (types.get(i).type().matchesBlock(state)) owners.add(i);
-            //?} else {
-            /*if (types.get(i).type().getBlockToGroup().containsKey(id)) owners.add(i);
-            *///?}
-        }
-        return owners.stream().mapToInt(Integer::intValue).toArray();
     }
 
     /** Rooms keep what is inside them; an open-air site never claims furniture through a wall. */
@@ -407,8 +477,9 @@ public final class OptionalBuildingRecognition {
         return false;
     }
 
-    private static Candidate assemble(ServerLevel level, BlockPos origin, TypeEntry entry,
-                                      List<MatchedBlock> visible, List<RoomBounds> rooms) {
+    private static Candidate assemble(ServerLevel level, SiteRequirements.Scan scan, BlockPos origin,
+                                      TypeEntry entry, List<MatchedBlock> visible, List<RoomBounds> rooms,
+                                      java.util.function.Consumer<SiteRequirements.Problem> problems) {
         if (visible.isEmpty()) return null;
         BuildingType type = entry.type();
 
@@ -430,8 +501,11 @@ public final class OptionalBuildingRecognition {
         Set<BlockPos> siteCells = Set.of();
         if (!SiteRequirements.of(entry.name()).isEmpty()) {
             SiteRequirements.Evaluation site = SiteRequirements.evaluate(
-                    level, entry.name(), List.of(origin, anchor), anchor, entry.reach());
-            if (site.verdict() != SiteRequirements.Verdict.SATISFIED) return null;
+                    scan, entry.name(), List.of(origin, anchor), anchor, entry.reach());
+            if (site.verdict() != SiteRequirements.Verdict.SATISFIED) {
+                if (site.problem() != null && problems != null) problems.accept(site.problem());
+                return null;
+            }
             siteCells = site.cells();
         }
         Set<Long> footprint = SiteGeometry.columnsNear(
@@ -493,12 +567,18 @@ public final class OptionalBuildingRecognition {
                 // A landing that has grown into a wharf is the same place at a new tier.
                 if (!sameOpenAirSiteFamily(candidate.typeName(), building.getType())) continue;
                 if (!McaBuildings.isOpenAirRecord(level, village, building)) continue;
+                BlockPos oldCenter = building.getCenter();
+                if (SiteRequirements.isEnclosed(candidate.typeName())) {
+                    // Neighbouring pens share fences, so a shared block does not make them one
+                    // pen. The same pen, grown or not, still has its old middle in its new box.
+                    if (inside(candidate, oldCenter)) return new Existing(village, building);
+                    continue;
+                }
                 if (building.getBlockPosStream().anyMatch(pos -> positions.contains(pos.asLong()))) {
                     return new Existing(village, building);
                 }
                 // Repair malformed records produced before synthetic BlockPos NBT used MCA's
                 // codec shape. They retain their type and center but have no decoded blocks.
-                BlockPos oldCenter = building.getCenter();
                 if (inside(candidate, oldCenter) || building.containsPos(candidateCenter)) {
                     return new Existing(village, building);
                 }

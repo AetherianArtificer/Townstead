@@ -26,6 +26,7 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import org.jetbrains.annotations.Nullable;
+import com.aetherianartificer.townstead.compat.mca.McaResidency;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -89,6 +90,9 @@ public final class MobReplacer {
             double amount = range[0] + villager.getRandom().nextDouble() * (range[1] - range[0]);
             EntityStates.set(villager, state.getKey(), Math.round(amount), 0, null);
         }
+        // A mob its mod has already named keeps that name; the person it shows goes by it too.
+        String own = WildCostume.ownName(mob);
+        if (own != null) com.aetherianartificer.townstead.naming.Naming.adopt(villager, own);
         WildCostume.dress(mob, villager);
         return false;
     }
@@ -108,6 +112,19 @@ public final class MobReplacer {
             };
             villager.setItemSlot(slot, new net.minecraft.world.item.ItemStack(item));
             villager.setDropChance(slot, 0f);
+        }
+        if (replacement.clothing() != null) {
+            com.aetherianartificer.townstead.clothing.policy.SkinPicker
+                    .fromProfession(villager, replacement.clothing(), villager.getRandom().nextLong())
+                    .ifPresent(villager::setClothes);
+        }
+        if (!replacement.arms().isEmpty()) {
+            ResourceLocation pick = replacement.arms().get(villager.getRandom().nextInt(replacement.arms().size()));
+            net.minecraft.world.item.Item item = BuiltInRegistries.ITEM.getOptional(pick).orElse(null);
+            if (item != null && item != net.minecraft.world.item.Items.AIR) {
+                villager.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, new net.minecraft.world.item.ItemStack(item));
+                villager.setDropChance(net.minecraft.world.entity.EquipmentSlot.MAINHAND, 0f);
+            }
         }
     }
 
@@ -196,7 +213,7 @@ public final class MobReplacer {
         villager.getPersistentData().remove(WILD);
         villager.getPersistentData().remove(REPLACED);
         villager.refreshBrain(level);
-        villager.getResidency().seekHome();
+        McaResidency.joinVillage(villager);
         com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.survival(villager,
                 com.aetherianartificer.townstead.chronicle.emit.ChronicleTapKeys.WILD_SETTLED, Map.of());
     }
@@ -212,8 +229,13 @@ public final class MobReplacer {
     }
 
     private static boolean enabled(MobReplacement replacement) {
-        if (replacement.setting() == null) return true;
-        Object value = Switchboard.valueAt(Arrays.asList(replacement.setting().split("\\.")));
+        return settingOn(replacement.setting());
+    }
+
+    /** Whether a dotted server setting is on; none counts as on. */
+    public static boolean settingOn(@Nullable String setting) {
+        if (setting == null) return true;
+        Object value = Switchboard.valueAt(Arrays.asList(setting.split("\\.")));
         return !Boolean.FALSE.equals(value);
     }
 
@@ -238,6 +260,12 @@ public final class MobReplacer {
         *///?}
         if (table == null) return;
         table.getRandomItems(params.create(LootContextParamSets.ENTITY), stack -> villager.spawnAtLocation(stack));
+    }
+
+    /** Roots that may carry every one of these states, with the body each state needs. */
+    public static Predicate<ResourceLocation> rootsAllowing(java.util.Collection<ResourceLocation> states) {
+        return root -> states.stream().noneMatch(state -> Boolean.FALSE.equals(RootStates.declared(root, state))
+                || needsVillagerBody(state) && !com.aetherianartificer.townstead.root.rig.ServerRig.hasVillagerBody(root));
     }
 
     private static boolean needsVillagerBody(ResourceLocation state) {

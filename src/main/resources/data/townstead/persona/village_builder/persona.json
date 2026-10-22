@@ -13,7 +13,7 @@
   },
   "arrives": [
     {
-      "text": "Raise 3 buildings in a settlement",
+      "text": "Raise or upgrade buildings in a settlement",
       "value": {
         "type": "pheno:standing",
         "source": "deeds"
@@ -77,13 +77,8 @@
           "line": "thirst"
         },
         "when": {
-          "type": "pheno:value",
-          "value": {
-            "type": "pheno:village_needs",
-            "need": "thirst"
-          },
-          "comparison": "!=",
-          "compare_to": 0
+          "type": "pheno:need_enabled",
+          "need": "thirst"
         },
         "outfit": "townstead:skins/clothing/persona/village_builder/well.png"
       }
@@ -151,13 +146,8 @@
       "compare_to": 0
     },
     "thirst_on": {
-      "type": "pheno:value",
-      "value": {
-        "type": "pheno:village_needs",
-        "need": "thirst"
-      },
-      "comparison": "!=",
-      "compare_to": 0
+      "type": "pheno:need_enabled",
+      "need": "thirst"
     },
     "has_farm": {
       "type": "pheno:village",
@@ -207,7 +197,10 @@
       "value": {
         "type": "pheno:count",
         "on": {
-          "type": "pheno:village"
+          "type": "pheno:village",
+          "where": {
+            "type": "pheno:resident"
+          }
         }
       },
       "target": 1
@@ -221,6 +214,9 @@
           "where": {
             "type": "pheno:and",
             "conditions": [
+              {
+                "type": "pheno:resident"
+              },
               {
                 "type": "pheno:profession",
                 "profession": [
@@ -242,7 +238,10 @@
       "text": "Upgrade a building here",
       "event": "townstead:building_upgraded",
       "where": {
-        "village": "teller"
+        "village": "teller",
+        "tierAfter": {
+          "above": "tierBefore"
+        }
       }
     },
     "rest_days": {
@@ -297,14 +296,22 @@
         "on": {
           "type": "pheno:village",
           "where": {
-            "type": "pheno:not",
-            "condition": {
-              "type": "pheno:profession",
-              "profession": [
-                "minecraft:none",
-                "minecraft:nitwit"
-              ]
-            }
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:resident"
+              },
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:profession",
+                  "profession": [
+                    "minecraft:none",
+                    "minecraft:nitwit"
+                  ]
+                }
+              }
+            ]
           }
         }
       },

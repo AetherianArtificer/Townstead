@@ -42,6 +42,7 @@ public final class DispositionRelationsLoader extends SimpleJsonResourceReloadLi
         Map<String, DispositionRelations.GroupDef> groups = new HashMap<>();
         Map<EntityType<?>, String> members = new HashMap<>();
         Map<String, net.minecraft.network.chat.Component> welcomable = new java.util.TreeMap<>();
+        Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             String group = entry.getKey().getPath();
             try {
@@ -49,7 +50,7 @@ public final class DispositionRelationsLoader extends SimpleJsonResourceReloadLi
                 TownsteadSchema.validate(obj, "townstead:disposition/v1");
                 if (!com.aetherianartificer.townstead.data.ModGate.allows(obj)) continue;
                 if (obj.has("welcome")) {
-                    welcomable.put(group, DataPackLang.parseComponent(obj.get("welcome"), group, Map.of()));
+                    welcomable.put(group, DataPackLang.parseComponent(obj.get("welcome"), group, lang));
                 }
                 groups.put(group, new DispositionRelations.GroupDef(
                         names(obj, "friendly"), names(obj, "hostile")));

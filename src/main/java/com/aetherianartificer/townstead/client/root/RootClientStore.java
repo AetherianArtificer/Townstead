@@ -28,6 +28,7 @@ public final class RootClientStore {
     private static final Map<Integer, List<com.aetherianartificer.townstead.root.appearance.HairColorRange>> HAIR_COLORS = new ConcurrentHashMap<>();
     private static final Map<Integer, List<com.aetherianartificer.townstead.root.appearance.HairColorChoice>> HAIR_PALETTES = new ConcurrentHashMap<>();
     private static final Map<Integer, List<com.aetherianartificer.townstead.root.appearance.HairGradient>> HAIR_GRADIENTS = new ConcurrentHashMap<>();
+    private static final Map<Integer, java.util.UUID> STAND_INS = new ConcurrentHashMap<>();
 
     private RootClientStore() {}
 
@@ -277,15 +278,53 @@ public final class RootClientStore {
         return set != null && set.contains(geneId);
     }
 
+    /** Give {@code toId} everything {@code fromId} has (the editor's second model wearing the first's Root). */
+    public static void copy(int fromId, int toId) {
+        if (fromId == toId) return;
+        copyEntry(BY_ENTITY, fromId, toId);
+        copyEntry(EXPRESSED, fromId, toId);
+        copyEntry(VARIANTS, fromId, toId);
+        copyEntry(TOGGLES, fromId, toId);
+        copyEntry(HAIR, fromId, toId);
+        copyEntry(HAIR_COLORS, fromId, toId);
+        copyEntry(HAIR_PALETTES, fromId, toId);
+        copyEntry(HAIR_GRADIENTS, fromId, toId);
+        copyEntry(STAND_INS, fromId, toId);
+    }
+
+    /**
+     * Has the model with {@code entityId} show the entity with {@code shown}'s UUID: the picks a gene
+     * makes from the UUID when no variant is synced come out as they do on that entity (the editor's
+     * preview is a new model, with a new UUID, each time it opens).
+     */
+    public static void standIn(int entityId, java.util.UUID shown) {
+        STAND_INS.put(entityId, shown);
+    }
+
+    /** The seed for a gene's pick when the entity has no synced variant for it. */
+    public static int variantSeed(LivingEntity entity) {
+        java.util.UUID shown = STAND_INS.get(entity.getId());
+        return (shown != null ? shown : entity.getUUID()).hashCode();
+    }
+
+    // Shares the value: the copy only ever reads it, and follows the source's in-place edits.
+    private static <V> void copyEntry(Map<Integer, V> map, int fromId, int toId) {
+        V value = map.get(fromId);
+        if (value == null) map.remove(toId);
+        else map.put(toId, value);
+    }
+
     /** Drop a single entry; used to evict an editor's throwaway dummy when its screen closes. */
     public static void remove(int entityId) {
         BY_ENTITY.remove(entityId);
         EXPRESSED.remove(entityId);
+        VARIANTS.remove(entityId);
         TOGGLES.remove(entityId);
         HAIR.remove(entityId);
         HAIR_COLORS.remove(entityId);
         HAIR_PALETTES.remove(entityId);
         HAIR_GRADIENTS.remove(entityId);
+        STAND_INS.remove(entityId);
     }
 
     public static void clear() {
@@ -296,5 +335,6 @@ public final class RootClientStore {
         HAIR_COLORS.clear();
         HAIR_PALETTES.clear();
         HAIR_GRADIENTS.clear();
+        STAND_INS.clear();
     }
 }

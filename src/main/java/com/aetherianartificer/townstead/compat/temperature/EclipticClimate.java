@@ -2,55 +2,71 @@ package com.aetherianartificer.townstead.compat.temperature;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.ModCompat;
-import com.aetherianartificer.townstead.temperature.TemperatureSettings;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.biome.Biome;
 
 import java.lang.reflect.Method;
+import java.util.OptionalInt;
 
-/** Reconciles environmental Celsius with Ecliptic's local snow climate, before local heat. */
+/**
+ * What Ecliptic Seasons knows about local weather: whether its snow cover lies here (it draws snow
+ * on the client, so the server has no snow blocks to find), whether snow is the precipitation
+ * here, and how long today's daylight lasts.
+ */
 public final class EclipticClimate {
     private static boolean initialized;
-    private static Method solarTerm, maySnow, snowy, temperature;
+    private static Method solarTerm, maySnow, snowy, termDayTime;
     private static boolean warned;
 
     private EclipticClimate() {}
 
-    /** NaN means no constraint. Old APIs can still report actual snowfall. */
-    public static float ceiling(Level level, BlockPos pos) {
+    private static boolean ready(Level level) {
         if (!level.dimensionType().natural() || level.dimensionType().ultraWarm()
-                || !ModCompat.isLoaded("eclipticseasons")) return Float.NaN;
+                || !ModCompat.isLoaded("eclipticseasons")) return false;
         init();
-        if (solarTerm == null || snowy == null) return Float.NaN;
+        return solarTerm != null && snowy != null;
+    }
+
+    private static boolean seasonal(Level level) throws ReflectiveOperationException {
+        Object term = solarTerm.invoke(null, level);
+        return term instanceof Enum<?> season && !season.name().equals("NONE");
+    }
+
+    /** Ecliptic's snow cover is down here: its snow season for this biome, or snow weather. */
+    public static boolean snowCover(Level level, BlockPos pos) {
+        if (!ready(level)) return false;
         try {
-            Object term = solarTerm.invoke(null, level);
-            if (!(term instanceof Enum<?> season) || season.name().equals("NONE")) return Float.NaN;
-            boolean snowClimate = maySnow != null && Boolean.TRUE.equals(maySnow.invoke(null, level, pos));
-            // Weather effects can override the normal snow season.
-            snowClimate |= Boolean.TRUE.equals(snowy.invoke(null, level, pos));
-            if (!snowClimate) return Float.NaN;
-            float climate = Float.NaN;
-            if (temperature != null) {
-                Object raw = temperature.invoke(null, level, level.getBiome(pos).value(), pos);
-                if (raw instanceof Number n && Float.isFinite(n.floatValue())) {
-                    climate = TemperatureSettings.get().biomeToCelsius(n.floatValue());
-                }
-            }
-            return snowCeiling(climate);
+            if (!seasonal(level)) return false;
+            if (maySnow != null && Boolean.TRUE.equals(maySnow.invoke(null, level, pos))) return true;
+            return Boolean.TRUE.equals(snowy.invoke(null, level, pos));
         } catch (ReflectiveOperationException | RuntimeException e) {
             warn(e);
-            return Float.NaN;
+            return false;
         }
     }
 
-    static float snowCeiling(float climateCelsius) {
-        // Snow periods are authored independently of Ecliptic's biome-temperature curve.
-        return Float.isFinite(climateCelsius) ? Math.min(0f, climateCelsius) : 0f;
+    /** Ecliptic says precipitation here falls as snow. */
+    public static boolean snowPrecipitation(Level level, BlockPos pos) {
+        if (!ready(level)) return false;
+        try {
+            return seasonal(level) && Boolean.TRUE.equals(snowy.invoke(null, level, pos));
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            warn(e);
+            return false;
+        }
     }
 
-    public static float reconcile(float climate, float ceiling) {
-        return Float.isFinite(climate) && Float.isFinite(ceiling) ? Math.min(climate, ceiling) : climate;
+    /** Today's daylight in ticks from the current solar term; empty without Ecliptic. */
+    public static OptionalInt dayLength(Level level) {
+        if (!ready(level) || termDayTime == null) return OptionalInt.empty();
+        try {
+            Object term = solarTerm.invoke(null, level);
+            if (!(term instanceof Enum<?> e) || e.name().equals("NONE")) return OptionalInt.empty();
+            return OptionalInt.of(((Number) termDayTime.invoke(term)).intValue());
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            warn(e);
+            return OptionalInt.empty();
+        }
     }
 
     private static synchronized void init() {
@@ -62,7 +78,7 @@ public final class EclipticClimate {
             snowy = api.getMethod("isHereSnowy", Level.class, BlockPos.class);
             try { maySnow = api.getMethod("maySnow", Level.class, BlockPos.class); }
             catch (NoSuchMethodException ignored) {}
-            try { temperature = api.getMethod("getTemperatureFloat", Level.class, Biome.class, BlockPos.class); }
+            try { termDayTime = solarTerm.getReturnType().getMethod("getDayTime"); }
             catch (NoSuchMethodException ignored) {}
         } catch (ReflectiveOperationException | LinkageError e) {
             warn(e);
@@ -72,6 +88,6 @@ public final class EclipticClimate {
     private static void warn(Throwable e) {
         if (warned) return;
         warned = true;
-        Townstead.LOGGER.warn("Ecliptic local climate query unavailable; retaining the temperature backend reading: {}", e.toString());
+        Townstead.LOGGER.warn("Ecliptic local climate query unavailable; snow and day length fall back to vanilla: {}", e.toString());
     }
 }

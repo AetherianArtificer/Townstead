@@ -1,6 +1,11 @@
 {
   "schema": "townstead:mob_replacement/v1",
   "mods": "werewolves",
+  "spawn_types": [
+    "natural",
+    "spawner",
+    "event"
+  ],
   "replaces": [
     "werewolves:human_werewolf"
   ],
@@ -14,5 +19,6 @@
   "behavior": "townstead:wild_werewolf",
   "group": "wild_werewolf",
   "credit_kills": true,
-  "loot": "replaced"
+  "loot": "replaced",
+  "clothing": "townstead:werewolf"
 }

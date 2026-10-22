@@ -15,6 +15,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.aetherianartificer.townstead.compat.mca.McaResidency;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -70,7 +71,7 @@ public final class Journeys extends SavedData {
     public static @Nullable Journey depart(VillagerEntityMCA villager, ResourceLocation purpose, int days, CompoundTag data) {
         MinecraftServer server = villager.getServer();
         if (server == null || !villager.isAlive()) return null;
-        if (!data.getBoolean(KEEP_HOME)) villager.getResidency().leaveHome();
+        if (!data.getBoolean(KEEP_HOME)) McaResidency.leaveVillage(villager);
         // Townstead's own villager state rides in the entity data, so it is written out first.
         com.aetherianartificer.townstead.villager.TownsteadVillagers.flush(villager);
         CompoundTag entity = new CompoundTag();
@@ -114,7 +115,7 @@ public final class Journeys extends SavedData {
         if (level.getEntity(traveller) != null || !level.addFreshEntity(villager)) return null;
         journeys.away.remove(traveller);
         journeys.setDirty();
-        if (!journey.data().getBoolean(KEEP_HOME)) villager.getResidency().seekHome();
+        if (!journey.data().getBoolean(KEEP_HOME)) McaResidency.joinVillage(villager);
         ListTag companions = journey.data().getList(COMPANIONS, Tag.TAG_COMPOUND);
         for (int i = 0; i < companions.size(); i++) {
             Entity pet = EntityType.loadEntityRecursive(companions.getCompound(i).copy(), level, e -> {
@@ -237,7 +238,7 @@ public final class Journeys extends SavedData {
                 // Off them before they are saved for the road, or they would set out again on arrival.
                 villager.getPersistentData().remove(LEAVING_TAG);
                 if (leaving.purpose() == null) {
-                    villager.getResidency().leaveHome();
+                    McaResidency.leaveVillage(villager);
                     villager.discard();
                 } else {
                     depart(villager, leaving.purpose(), leaving.days(), leaving.data());

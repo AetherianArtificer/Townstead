@@ -802,6 +802,10 @@ public final class HarvestWorkIndex {
             return fertilizeTargets.size();
         }
 
+        List<BlockPos> fertilizeTargets() {
+            return fertilizeTargets;
+        }
+
         @Nullable BlockPos nearestFertilizeTarget(VillagerEntityMCA villager, Predicate<BlockPos> filter) {
             return nearestTo(villager, fertilizeTargets, filter);
         }

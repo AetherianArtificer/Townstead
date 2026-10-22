@@ -55,6 +55,18 @@ public final class BuildingIconResolver {
         });
     }
 
+    /**
+     * The item a type shows in place of an MCA sprite, or empty when it has a real sprite. A type
+     * with {@code icon: false} keeps its legacy UVs for old MCA, which newer MCA reads as a sprite.
+     */
+    public static net.minecraft.world.item.ItemStack itemIcon(BuildingType type) {
+        if (type == null || type.isIcon()) return net.minecraft.world.item.ItemStack.EMPTY;
+        return nodeItemForType(type.name())
+                .filter(BuiltInRegistries.ITEM::containsKey)
+                .map(id -> new net.minecraft.world.item.ItemStack(BuiltInRegistries.ITEM.get(id)))
+                .orElse(net.minecraft.world.item.ItemStack.EMPTY);
+    }
+
     /** Records MCA's legacy render address for a type; it does not define Townstead's item. */
     public static void registerBuildingTypeIcon(String buildingTypeName, int u, int v) {
         if (buildingTypeName == null || buildingTypeName.isBlank()) return;

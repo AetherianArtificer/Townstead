@@ -49,6 +49,25 @@ public final class FarmerNutrientCompatRegistry {
         return false;
     }
 
+    public static double score(ServerLevel level, BlockPos soilPos, ItemStack stack) {
+        if (stack.isEmpty()) return 0;
+        double best = 0;
+        for (FarmerNutrientCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            best = Math.max(best, provider.score(level, soilPos, stack));
+        }
+        return best;
+    }
+
+    public static boolean feedsLowest(ServerLevel level, BlockPos soilPos, ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        for (FarmerNutrientCompat provider : PROVIDERS) {
+            if (!ModCompat.isLoaded(provider.modId())) continue;
+            if (provider.feedsLowest(level, soilPos, stack)) return true;
+        }
+        return false;
+    }
+
     public static boolean feed(ServerLevel level, BlockPos soilPos, ItemStack stack) {
         for (FarmerNutrientCompat provider : PROVIDERS) {
             if (!ModCompat.isLoaded(provider.modId())) continue;

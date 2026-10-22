@@ -29,6 +29,7 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import com.aetherianartificer.townstead.compat.mca.McaResidency;
 
 import java.util.List;
 import java.util.Set;
@@ -65,7 +66,7 @@ public final class DebugVillageSpawner {
         refreshPoiData(level, anchor);
         Set<BlockPos> existingHomes = homes(level, anchor).collect(Collectors.toSet());
 
-        ResourceLocation structureId = resolveStructure(level, anchor, requestedStructure);
+        ResourceLocation structureId = resolveStructure(level, anchor, requestedStructure, profile);
         Registry<Structure> registry = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
         Holder.Reference<Structure> structure = registry
                 .getHolder(ResourceKey.create(Registries.STRUCTURE, structureId)).orElse(null);
@@ -86,7 +87,7 @@ public final class DebugVillageSpawner {
         // pre-existing villagers are deliberately preserved.
         for (Villager generated : level.getEntitiesOfClass(Villager.class, area)) {
             if (existingResidents.contains(generated.getUUID())) continue;
-            if (generated instanceof VillagerEntityMCA mca) mca.getResidency().leaveHome();
+            if (generated instanceof VillagerEntityMCA mca) McaResidency.leaveVillage(mca);
             generated.discard();
         }
 
@@ -146,7 +147,7 @@ public final class DebugVillageSpawner {
         int removed = 0;
         for (VillagerEntityMCA resident : level.getEntitiesOfClass(VillagerEntityMCA.class, area)) {
             if (!residentIds.contains(resident.getUUID())) continue;
-            resident.getResidency().leaveHome();
+            McaResidency.leaveVillage(resident);
             resident.discard();
             removed++;
         }
@@ -241,7 +242,7 @@ public final class DebugVillageSpawner {
             for (VillagerEntityMCA resident : level.getEntitiesOfClass(VillagerEntityMCA.class,
                     new AABB(center).inflate(VILLAGE_RADIUS, 64.0D, VILLAGE_RADIUS))) {
                 if (!residentIds.contains(resident.getUUID())) continue;
-                resident.getResidency().leaveHome();
+                McaResidency.leaveVillage(resident);
                 resident.discard();
                 removed++;
             }
@@ -286,7 +287,7 @@ public final class DebugVillageSpawner {
         return box.minX() != 0 || box.minY() != 0 || box.minZ() != 0 || box.maxX() != 0 || box.maxY() != 0 || box.maxZ() != 0;
     }
 
-    private static int spawnResidents(ServerLevel level, FoundingProfileDefinition profile,
+    static int spawnResidents(ServerLevel level, FoundingProfileDefinition profile,
                                       List<BlockPos> homes, int residentCount) {
         int spawned = 0;
         for (int index = 0; index < residentCount; index++) {
@@ -298,7 +299,7 @@ public final class DebugVillageSpawner {
             // Culture must exist before MCA chooses the given name during finalizeSpawn. Residency
             // is not reliable until the entity joins the level, so do not make naming depend on it.
             Naming.prepareFounder(villager, profile.culture());
-            villager.getResidency().seekHome();
+            McaResidency.joinVillage(villager);
             //? if >=1.21 {
             villager.finalizeSpawn(level, level.getCurrentDifficultyAt(position),
                     MobSpawnType.COMMAND, null);
@@ -307,14 +308,14 @@ public final class DebugVillageSpawner {
                     MobSpawnType.COMMAND, null, null);
             *///?}
             if (level.addFreshEntity(villager)) {
-                villager.getResidency().seekHome();
+                McaResidency.joinVillage(villager);
                 spawned++;
             }
         }
         return spawned;
     }
 
-    private static java.util.stream.Stream<BlockPos> homes(ServerLevel level, BlockPos anchor) {
+    static java.util.stream.Stream<BlockPos> homes(ServerLevel level, BlockPos anchor) {
         return level.getPoiManager().findAll(
                         holder -> holder.is(PoiTypes.HOME), ignored -> true, anchor, VILLAGE_RADIUS,
                         PoiManager.Occupancy.ANY)
@@ -322,7 +323,7 @@ public final class DebugVillageSpawner {
                 .distinct();
     }
 
-    private static void refreshPoiData(ServerLevel level, BlockPos anchor) {
+    static void refreshPoiData(ServerLevel level, BlockPos anchor) {
         int chunkRadius = Math.floorDiv(VILLAGE_RADIUS, 16) + 1;
         ChunkPos center = new ChunkPos(anchor);
         int minSectionY = SectionPos.blockToSectionCoord(
@@ -345,8 +346,18 @@ public final class DebugVillageSpawner {
         }
     }
 
-    public static ResourceLocation resolveStructure(ServerLevel level, BlockPos pos, String requested) {
-        if (requested != null && !requested.isBlank() && !"auto".equalsIgnoreCase(requested)) {
+    /**
+     * The structure to place: a named one, or for {@code auto} the profile's own village type when
+     * its pack has one, else the native village for the biome. {@code native} skips the profile's own.
+     */
+    public static ResourceLocation resolveStructure(ServerLevel level, BlockPos pos, String requested,
+                                                    FoundingProfileDefinition profile) {
+        boolean auto = requested == null || requested.isBlank() || "auto".equalsIgnoreCase(requested);
+        if (auto) {
+            ResourceLocation own = com.aetherianartificer.townstead.culture.CultureVillages.structureFor(profile);
+            if (own != null) return own;
+        }
+        if (!auto && !"native".equalsIgnoreCase(requested)) {
             return switch (requested.toLowerCase(java.util.Locale.ROOT)) {
                 case "plains" -> PLAINS;
                 case "desert" -> DESERT;

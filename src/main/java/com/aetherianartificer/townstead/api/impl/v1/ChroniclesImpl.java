@@ -137,9 +137,10 @@ final class ChroniclesImpl implements ChroniclesApi {
             }
             ChronicleDigestPager.Page paged = ChronicleDigestPager.page(history.entries(), at.value(), clamp(limit));
             List<VillageDigestView.Entry> entries = new ArrayList<>();
+            java.util.function.UnaryOperator<String> mask = com.aetherianartificer.townstead.persona.PersonaNameMask.forAnyone(ApiSupport.currentServer());
             for (VillageHistory.Entry entry : paged.entries()) {
                 entries.add(new VillageDigestView.Entry(entry.worldDay(), entry.eventId(), entry.templateId(),
-                        entry.headlineLiteral(), entry.headlineLangKey(), entry.params()));
+                        mask.apply(entry.headlineLiteral()), entry.headlineLangKey(), com.aetherianartificer.townstead.persona.PersonaNameMask.params(entry.params(), mask)));
             }
             Page<VillageDigestView.Entry> page = new Page<>(entries, paged.hasMore(),
                     paged.hasMore() ? new Cursor(paged.nextCursor()) : Cursor.END);
@@ -208,19 +209,21 @@ final class ChroniclesImpl implements ChroniclesApi {
     }
 
     static ChronicleEventView view(ChronicleEvent event) {
+        // Other mods may show these to anyone, so a Persona's family name that is told only stays out.
+        java.util.function.UnaryOperator<String> mask = com.aetherianartificer.townstead.persona.PersonaNameMask.forAnyone(ApiSupport.currentServer());
         List<ChronicleEventView.Participant> participants = new ArrayList<>();
         for (Participation participation : event.participations()) {
             ChronicleRef ref = participation.ref();
             participants.add(new ChronicleEventView.Participant(participation.role(),
                     ref.kind().name().toLowerCase(Locale.ROOT), Optional.ofNullable(ref.uuid()), ref.intA(), ref.intB(),
-                    ref.str(), ref.displayName()));
+                    ref.str(), mask.apply(ref.displayName())));
         }
         Optional<VillageId> village = event.villageId() == ChronicleEvent.VILLAGE_NONE
                 ? Optional.empty() : Optional.of(new VillageId(event.dimension(), event.villageId()));
         return new ChronicleEventView(event.eventId(), event.templateId().toString(), event.worldDay(),
                 event.gameTime(), event.dimension(), BlockPos.of(event.packedPos()), village, event.category(),
                 event.magnitude(), reach(event.reach()), event.causeEventId(), event.arcId(), event.keep(),
-                participants, event.params());
+                participants, com.aetherianartificer.townstead.persona.PersonaNameMask.params(event.params(), mask));
     }
 
     static String reach(int reach) {
@@ -249,7 +252,7 @@ final class ChroniclesImpl implements ChroniclesApi {
                 for (VillagerMemory memory : Chronicles.memories(server, knower)) {
                     out.add(new MemoryView(memory.memoryKey(), Optional.ofNullable(memory.otherParty()),
                             memory.firstDay(), memory.lastDay(), memory.count(), memory.strength(), memory.valence(),
-                            memory.source(), memory.episodic(), memory.params()));
+                            memory.source(), memory.episodic(), com.aetherianartificer.townstead.persona.PersonaNameMask.params(memory.params(), com.aetherianartificer.townstead.persona.PersonaNameMask.forAnyone(server))));
                 }
             } catch (Throwable t) {
                 ApiSupport.swallow("chronicles.beliefs.memories", t);

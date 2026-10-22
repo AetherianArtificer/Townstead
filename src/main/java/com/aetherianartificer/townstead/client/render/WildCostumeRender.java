@@ -24,7 +24,8 @@ import java.util.Map;
  * mob's id (so Root looks keyed by id apply to it), posed from the mob every frame.
  */
 public final class WildCostumeRender {
-    private record Person(WildCostumeS2CPayload look, Level level, VillagerEntityMCA villager) {}
+    /** {@code arms}: what the costume holds when the mob's own hand is empty. */
+    private record Person(WildCostumeS2CPayload look, Level level, VillagerEntityMCA villager, ItemStack arms) {}
 
     private static final Map<Integer, Person> PEOPLE = new HashMap<>();
 
@@ -56,12 +57,23 @@ public final class WildCostumeRender {
     *///?}
         if (!event.getLevel().isClientSide()) return;
         WildCostumeS2CPayload.forget(event.getEntity().getId());
+        com.aetherianartificer.townstead.replace.WildPlateS2CPayload.forget(event.getEntity().getId());
         PEOPLE.remove(event.getEntity().getId());
     }
 
     public static void clear() {
         WildCostumeS2CPayload.clear();
+        com.aetherianartificer.townstead.replace.WildPlateS2CPayload.clear();
         PEOPLE.clear();
+    }
+
+    /** The person a costumed mob shows on this client, or null when it wears none. */
+    public static @Nullable VillagerEntityMCA personOf(LivingEntity mob) {
+        WildCostumeS2CPayload look = WildCostumeS2CPayload.of(mob.getId());
+        if (look == null || mob instanceof VillagerEntityMCA) return null;
+        VillagerEntityMCA person = person(mob, look);
+        if (person != null) pose(mob, person);
+        return person;
     }
 
     private static @Nullable VillagerEntityMCA person(LivingEntity mob, WildCostumeS2CPayload look) {
@@ -77,7 +89,7 @@ public final class WildCostumeRender {
         villager.setId(mob.getId());
         if (look.data().hasUUID("UUID")) villager.setUUID(look.data().getUUID("UUID"));
         villager.readAdditionalSaveData(look.data());
-        PEOPLE.put(mob.getId(), new Person(look, mob.level(), villager));
+        PEOPLE.put(mob.getId(), new Person(look, mob.level(), villager, villager.getMainHandItem().copy()));
         return villager;
     }
 
@@ -115,7 +127,9 @@ public final class WildCostumeRender {
         person.setOnGround(mob.onGround());
         person.setInvisible(mob.isInvisible());
         if (mob instanceof Mob m) person.setAggressive(m.isAggressive());
-        hold(person, EquipmentSlot.MAINHAND, mob.getMainHandItem());
+        Person known = PEOPLE.get(mob.getId());
+        ItemStack held = mob.getMainHandItem();
+        hold(person, EquipmentSlot.MAINHAND, held.isEmpty() && known != null ? known.arms() : held);
         hold(person, EquipmentSlot.OFFHAND, mob.getOffhandItem());
     }
 

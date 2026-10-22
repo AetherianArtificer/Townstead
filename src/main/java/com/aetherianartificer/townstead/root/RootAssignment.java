@@ -83,7 +83,21 @@ public final class RootAssignment {
      * villager whose body came with them. No body re-roll, no root-changed event.
      */
     public static void adoptPlayerRoot(ServerPlayer player, ResourceLocation id) {
-        RootServerLogic.setPlayerRoot(player, id);
+        adoptPlayerRoot(player, id, null, null);
+    }
+
+    /**
+     * As {@link #adoptPlayerRoot(ServerPlayer, ResourceLocation)}, carrying the body's own genes and
+     * heritage (a descendant's) instead of rolling fresh ones; null genes falls back to a roll.
+     */
+    public static void adoptPlayerRoot(ServerPlayer player, ResourceLocation id,
+                                       @org.jetbrains.annotations.Nullable com.aetherianartificer.townstead.root.gene.Genotype genes,
+                                       @org.jetbrains.annotations.Nullable Heritage heritage) {
+        if (genes != null && !genes.isEmpty()) {
+            RootServerLogic.adoptPlayerBody(player, id, genes, heritage);
+        } else {
+            RootServerLogic.setPlayerRoot(player, id, false);
+        }
         syncPlayer(player, id);
     }
 

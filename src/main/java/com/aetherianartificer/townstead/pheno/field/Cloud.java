@@ -41,6 +41,7 @@ public final class Cloud {
     private final Map<UUID, Long> victims = new HashMap<>();
 
     private float radius;
+    private float climateOffset;
     private int waitRemaining;
     private int durationRemaining;
 
@@ -64,6 +65,21 @@ public final class Cloud {
 
     ServerLevel level() {
         return level;
+    }
+
+    /** Makes this field a local climate: air inside reads warmer (positive) or colder by this much. */
+    public Cloud withClimateOffset(float celsius) {
+        this.climateOffset = celsius;
+        return this;
+    }
+
+    /** This field's climate offset at a position, once it has settled; zero outside it. */
+    float climateOffsetAt(net.minecraft.core.BlockPos pos) {
+        if (climateOffset == 0f || waitRemaining > 0) return 0f;
+        double dx = pos.getX() + 0.5 - center.x, dz = pos.getZ() + 0.5 - center.z;
+        if (dx * dx + dz * dz > radius * radius) return 0f;
+        double y = pos.getY();
+        return y >= Math.floor(center.y) && y <= center.y + 1.0 + height ? climateOffset : 0f;
     }
 
     /** Advance one tick; returns false when the field has dissipated and should be dropped. */

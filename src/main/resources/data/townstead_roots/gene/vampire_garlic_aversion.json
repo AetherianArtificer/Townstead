@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "pheno:action_over_time",
+  "display_name": { "translate": "gene.townstead_roots.vampire_garlic_aversion" },
+  "description": { "translate": "gene.townstead_roots.vampire_garlic_aversion.desc" },
+  "category": "Abilities",
+  "interval": 20,
+  "condition": {
+    "type": "pheno:or",
+    "conditions": [
+      {
+        "type": "pheno:value",
+        "value": { "type": "pheno:provider", "provider": "vampirism:garlic" },
+        "comparison": ">=",
+        "compare_to": 1
+      },
+      {
+        "type": "pheno:block",
+        "block_condition": { "type": "pheno:block", "block": "vampirism:garlic" }
+      }
+    ]
+  },
+  "action": { "type": "pheno:nothing" },
+  "avoid": { "search_radius": 16, "edge_distance": 4 }
+}

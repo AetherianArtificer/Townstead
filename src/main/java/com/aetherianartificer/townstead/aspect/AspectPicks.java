@@ -59,12 +59,18 @@ public final class AspectPicks {
 
     /** Whether {@code sp} may change {@code target}'s aspect right now. */
     public static boolean mayPick(ServerPlayer sp, LivingEntity target) {
-        if (sp.hasPermissions(2) || sp.isCreative()) return true;
-        if (target != sp) return false;
-        return Switchboard.get(TownsteadConfig.ALLOW_ASPECT_START)
-                && Chronicles.count(sp.server, sp.getUUID(), PICKED) == 0
-                && current(sp) == null
-                && VampirismStateProviders.factionOf(sp) == null;
+        return lockReason(sp, target).isEmpty();
+    }
+
+    /** Why {@code sp} may not change {@code target}'s aspect right now, as a lang key; empty when they may. */
+    public static String lockReason(ServerPlayer sp, LivingEntity target) {
+        if (sp.hasPermissions(2) || sp.isCreative()) return "";
+        if (target != sp) return "townstead.aspect.locked.operator";
+        if (!Switchboard.get(TownsteadConfig.ALLOW_ASPECT_START)) return "townstead.aspect.locked.off";
+        if (Chronicles.count(sp.server, sp.getUUID(), PICKED) > 0) return "townstead.aspect.locked.picked";
+        if (current(sp) != null) return "townstead.aspect.locked.has";
+        if (VampirismStateProviders.factionOf(sp) != null) return "townstead.aspect.locked.faction";
+        return "";
     }
 
     /** The definition of the pickable aspect {@code target} has now, or null. */
@@ -94,6 +100,11 @@ public final class AspectPicks {
     public static boolean setOption(ServerPlayer sp, LivingEntity target, String optionId, int value) {
         EntityStateDefinition definition = currentDefinition(target);
         if (definition == null || !mayStyle(sp, target)) return false;
+        return applyOption(target, definition, optionId, value);
+    }
+
+    /** Sets an option of {@code definition}'s aspect on {@code target}, 0 to count-1, with no checks. */
+    public static boolean applyOption(LivingEntity target, EntityStateDefinition definition, String optionId, int value) {
         for (EntityStateDefinition.Option option : definition.aspect().options()) {
             if (!option.id().equals(optionId)) continue;
             int v = Math.floorMod(value, option.count());
@@ -114,9 +125,19 @@ public final class AspectPicks {
         EntityStateDefinition chosen = null;
         if (aspect != null) {
             for (EntityStateDefinition definition : pickable()) if (definition.id().equals(aspect)) chosen = definition;
-            if (chosen == null) return false;
+            if (chosen == null || !EntityStates.supports(target, chosen.id())) return false;
         }
-        // Clear whatever they were.
+        boolean done = become(target, chosen, chosen == null ? 0 : chosen.aspect().pick(), true);
+        if (done && target == sp && !sp.hasPermissions(2) && !sp.isCreative()) Chronicles.addCounter(sp.server, sp.getUUID(), PICKED, 1);
+        return done;
+    }
+
+    /**
+     * Makes {@code target} {@code chosen} (null for none) at {@code level}, clearing every other
+     * pickable aspect, with no checks. A player's faction aspect joins the mod's faction; with
+     * {@code keepLevel}, one already in it stays at their level.
+     */
+    public static boolean become(LivingEntity target, @Nullable EntityStateDefinition chosen, double level, boolean keepLevel) {
         for (EntityStateDefinition definition : pickable()) {
             if (chosen != null && definition.id().equals(chosen.id())) continue;
             ResourceLocation faction = definition.aspect().faction();
@@ -126,14 +147,12 @@ public final class AspectPicks {
                 EntityStates.clear(target, definition.id(), null);
             }
         }
-        boolean done = true;
-        if (chosen != null) {
-            ResourceLocation faction = chosen.aspect().faction();
-            done = target instanceof Player player && faction != null
-                    ? faction.equals(VampirismStateProviders.factionOf(player)) || VampirismStateProviders.joinFaction(player, faction, 1)
-                    : EntityStates.set(target, chosen.id(), chosen.aspect().pick(), 0, null);
+        if (chosen == null) return true;
+        ResourceLocation faction = chosen.aspect().faction();
+        if (target instanceof Player player && faction != null) {
+            return keepLevel && faction.equals(VampirismStateProviders.factionOf(player))
+                    || VampirismStateProviders.joinFaction(player, faction, (int) Math.max(1, level));
         }
-        if (done && target == sp && !sp.hasPermissions(2) && !sp.isCreative()) Chronicles.addCounter(sp.server, sp.getUUID(), PICKED, 1);
-        return done;
+        return EntityStates.set(target, chosen.id(), level, 0, null);
     }
 }

@@ -35,7 +35,9 @@ public final class LineageJsonLoader extends SimpleJsonResourceReloadListener {
     @Override
     protected void apply(Map<ResourceLocation, JsonElement> entries, ResourceManager resourceManager,
                          ProfilerFiller profiler) {
+        entries = com.aetherianartificer.townstead.data.DataDocuments.resolve("lineage", entries, resourceManager);
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
+        com.aetherianartificer.townstead.data.NameCollisions.qualify("lineage", entries, resourceManager, lang);
         Map<ResourceLocation, Lineage> parsed = new LinkedHashMap<>();
         Map<ResourceLocation, Map<ResourceLocation, Boolean>> states = new LinkedHashMap<>();
         Map<ResourceLocation, Personalities> policies = new LinkedHashMap<>();
@@ -63,7 +65,7 @@ public final class LineageJsonLoader extends SimpleJsonResourceReloadListener {
                 com.aetherianartificer.townstead.culture.CulturalSpawnBias culturalSpawnBias = com.aetherianartificer.townstead.culture.CulturalSpawnBias.parse(obj);
                 states.put(file, RootStates.parse(obj));
                 parsed.put(file, new Lineage(file, displayName, ancestry, demonym, backstory, genome, spawnBias,
-                        culturalSpawnBias));
+                        culturalSpawnBias, GsonHelper.getAsBoolean(obj, "ancestry_genes", true)));
                 policies.put(file, PersonalityPolicies.parse(obj));
                 hairPolicies.put(file, com.aetherianartificer.townstead.root.appearance.HairPolicy.parse(obj, lang));
                 bodyClothing.put(file, com.aetherianartificer.townstead.clothing.BodyClothing.parse(obj));

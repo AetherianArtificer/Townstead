@@ -85,6 +85,7 @@ public final class FoodSafety {
         if (stack == null || stack.isEmpty()) return false;
         if (isCannibalFare(stack) && !CannibalismPolicy.mayEat(eater, stack)) return false;
         if (eater != null) {
+            if (!com.aetherianartificer.townstead.needs.Consumables.permitsConsumer(eater, stack)) return false;
             var nourishment = com.aetherianartificer.townstead.hunger.diet.Diets.nourishment(eater, stack);
             if (nourishment == null) return false;
             if (!nourishment.nativeValues()) return nourishment.nutrition() > 0;
@@ -107,13 +108,13 @@ public final class FoodSafety {
         if (stack == null || stack.isEmpty()) return 0;
         var nourishment = com.aetherianartificer.townstead.hunger.diet.Diets.nourishment(eater, stack);
         if (nourishment == null) return 0;
-        if (!nourishment.nativeValues()) return nourishment.nutrition();
+        if (!nourishment.nativeValues()) return Math.round(nourishment.nutrition() * nourishment.multiplier());
         FoodProperties food = foodPropertiesOf(stack);
         if (food == null) return 0;
         //? if >=1.21 {
-        return food.nutrition();
+        return Math.round(food.nutrition() * nourishment.multiplier());
         //?} else {
-        /*return food.getNutrition();
+        /*return Math.round(food.getNutrition() * nourishment.multiplier());
         *///?}
     }
 

@@ -24,8 +24,9 @@ import java.util.Set;
  * tree. Applies the standard Bedrock→Java transform: Bedrock entity space is
  * Y-up with cube origins at the min corner, Java {@code ModelPart} is Y-down with
  * the box grown from a pivot-relative corner, so Y is negated and cube corners are
- * offset by their height. Bone rotations carry the {@code (x,-y,-z)} sign flip the
- * coordinate change implies. A rotated cube bakes as a synthetic child part
+ * offset by their height. Bone and cube rotations pass through as {@code (x,y,z)}, which
+ * matches GeckoLib and Blockbench for a Bedrock file (whose X is already mirrored against
+ * Blockbench's own space). A rotated cube bakes as a synthetic child part
  * (vanilla cubes cannot rotate), posed at the cube's pivot.
  *
  * <p>Box UV only (per-face UV is not parsed). Returns {@code null} on a malformed
@@ -133,8 +134,8 @@ public final class BedrockGeometryLoader {
                 -(bone.pivot()[1] - parentPivot[1]),
                 bone.pivot()[2] - parentPivot[2],
                 (float) Math.toRadians(bone.rotation()[0]),
-                (float) Math.toRadians(-bone.rotation()[1]),
-                (float) Math.toRadians(-bone.rotation()[2]));
+                (float) Math.toRadians(bone.rotation()[1]),
+                (float) Math.toRadians(bone.rotation()[2]));
         PartDefinition def = parentDef.addOrReplaceChild(bone.name(), cubes, pose);
         // A vanilla cube cannot carry its own rotation, so each rotated cube becomes a synthetic
         // child part posed at the cube's pivot with the (x,-y,-z)-flipped rotation, holding the box
@@ -160,8 +161,8 @@ public final class BedrockGeometryLoader {
                     -(pivot[1] - bone.pivot()[1]),
                     pivot[2] - bone.pivot()[2],
                     (float) Math.toRadians(rot[0]),
-                    (float) Math.toRadians(-rot[1]),
-                    (float) Math.toRadians(-rot[2])));
+                    (float) Math.toRadians(rot[1]),
+                    (float) Math.toRadians(rot[2])));
         }
         return def;
     }

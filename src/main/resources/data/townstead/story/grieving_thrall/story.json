@@ -10,14 +10,18 @@
   "bind": "player",
   "actions": {
     "stay": {
-      "type": "pheno:visitor_stay",
-      "role": "grieving_thrall",
-      "radius": 8
+      "type": "pheno:and",
+      "actions": [
+        { "type": "pheno:visitor_stay", "role": "grieving_thrall", "radius": 8 },
+        { "type": "pheno:add_count", "key": "townstead:thrall_stayed", "on": "other" }
+      ]
     },
     "leave": {
-      "type": "pheno:visitor_leave",
-      "role": "grieving_thrall",
-      "radius": 8
+      "type": "pheno:and",
+      "actions": [
+        { "type": "pheno:visitor_leave", "role": "grieving_thrall", "radius": 8 },
+        { "type": "pheno:add_count", "key": "townstead:thrall_sent_away", "on": "other" }
+      ]
     }
   }
 }

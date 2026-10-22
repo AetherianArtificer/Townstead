@@ -77,7 +77,7 @@ public final class KubeJsPackSource {
                 PACK_ID,
                 Component.translatable("townstead.pack.kubejs_compat.name"),
                 PackSource.BUILT_IN,
-                Optional.empty());
+                com.aetherianartificer.townstead.profession.CareerPackSource.knownPack(PACK_ID, contentRoot));
         return Pack.readMetaAndCreate(
                 info,
                 new Pack.ResourcesSupplier() {
@@ -141,6 +141,11 @@ public final class KubeJsPackSource {
         @Override
         public String packId() {
             return id;
+        }
+
+        @Override
+        public boolean isBuiltin() {
+            return true;
         }
         *///?}
 

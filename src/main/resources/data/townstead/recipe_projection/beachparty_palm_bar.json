@@ -1,7 +1,7 @@
 {
   "schema":"townstead:recipe_projection/v1",
   "mods":"beachparty",
-  "recipe_types":["beachparty:palm_bar_mixing"],
+  "recipe_types":["beachparty:palm_bar_mixing","beachparty:tiki_bar_mixing"],
   "domain":"hospitality.non_alcoholic_mixology",
   "fields":{
     "inputs":{"path":"inputs","operation":"list","required":true},

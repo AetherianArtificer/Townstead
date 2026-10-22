@@ -18,7 +18,11 @@ public final class PreferredStorageBuildings {
     private PreferredStorageBuildings() {}
 
     public static List<Building> resolve(ServerLevel level, VillagerEntityMCA villager) {
-        StoragePreference preference = StoragePreference.forVillager(villager);
+        return resolve(level, villager, StoragePreference.forVillager(villager));
+    }
+
+    public static List<Building> resolve(ServerLevel level, VillagerEntityMCA villager,
+                                         StoragePreference preference) {
         var village = ProfessionCapacity.resolveVillage(villager);
         if (village.isEmpty()) return List.of();
 

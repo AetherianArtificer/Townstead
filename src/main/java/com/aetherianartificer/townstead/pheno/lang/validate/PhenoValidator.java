@@ -57,12 +57,12 @@ public final class PhenoValidator {
                     JsonPath path = JsonPath.ROOT.field("variants").field(e.getKey());
                     // Each variant config is parsed under the gene's own type, so check its
                     // fields and descend it against that type.
-                    checkFields(variant, type, path, diag);
+                    checkFields(variant, type, NodeDomain.GENE, path, diag);
                     descend(variant, NodeDomain.GENE, path, diag);
                 }
             }
         } else {
-            checkFields(root, type, JsonPath.ROOT, diag);
+            checkFields(root, type, NodeDomain.GENE, JsonPath.ROOT, diag);
             descend(root, NodeDomain.GENE, JsonPath.ROOT, diag);
         }
     }
@@ -93,7 +93,7 @@ public final class PhenoValidator {
                 diag.error(path.field("type"), "Unknown gene type '" + type + "'.",
                         "Check the type id and that the providing mod is loaded.");
             }
-            checkFields(entry, type, path, diag);
+            checkFields(entry, type, NodeDomain.GENE, path, diag);
             if ("pheno:resource".equals(type)) validateResourceDisplay(entry, path, diag);
             descend(entry, NodeDomain.GENE, path, diag);
         }
@@ -198,7 +198,7 @@ public final class PhenoValidator {
                     "Unknown " + domain.label() + " type '" + type + "'.",
                     "Check the type id and that the providing mod is loaded.");
         }
-        checkFields(obj, type, path, diag);
+        checkFields(obj, type, domain, path, diag);
         descend(obj, domain, path, diag);
     }
 
@@ -209,8 +209,10 @@ public final class PhenoValidator {
      * adds real checks without false positives on legacy content. Child-node fields are
      * validated by recursion, not here.
      */
-    private static void checkFields(JsonObject obj, String type, JsonPath path, Diagnostics diag) {
-        NodeSchema schema = NodeSchemas.get(type);
+    private static void checkFields(JsonObject obj, String type, NodeDomain domain, JsonPath path, Diagnostics diag) {
+        // One id can name nodes in several domains (pheno:and is an action, a condition and a
+        // bi-entity condition); only the schema of the domain this slot expects applies.
+        NodeSchema schema = NodeSchemas.get(type, domain);
         if (schema != null) checkFields(obj, schema, path, diag);
     }
 
@@ -314,7 +316,8 @@ public final class PhenoValidator {
     /** Follow the canonical typed child slots of an object of {@code parentDomain}. */
     private static void descend(JsonObject obj, NodeDomain parentDomain, JsonPath path, Diagnostics diag) {
         for (Map.Entry<String, JsonElement> e : obj.entrySet()) {
-            NodeDomain child = ChildSlots.childDomain(parentDomain, e.getKey());
+            NodeDomain child = ChildSlots.childDomain(parentDomain, e.getKey(),
+                    GsonHelper.getAsString(obj, "type", ""));
             if (child == null) continue;
             visit(e.getValue(), child, path.field(e.getKey()), diag);
         }

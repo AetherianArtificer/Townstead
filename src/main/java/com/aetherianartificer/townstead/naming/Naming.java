@@ -57,7 +57,7 @@ public final class Naming {
         if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.NAMING)) return "";
         TownsteadVillager state = TownsteadVillagers.get(villager);
         String recorded = state.life().familyName();
-        if (!recorded.isEmpty()) return recorded;
+        if (!recorded.isEmpty() || state.life().familyNameFixed()) return recorded;
 
         NamingTradition tradition = traditionOf(villager);
         if (tradition == null) return "";
@@ -74,7 +74,8 @@ public final class Naming {
      * their tradition gives none. Lets the retry stop asking.
      */
     public static boolean settled(VillagerEntityMCA villager) {
-        if (!TownsteadVillagers.get(villager).life().familyName().isEmpty()) return true;
+        TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
+        if (!life.familyName().isEmpty() || life.familyNameFixed()) return true;
         NamingTradition tradition = traditionOf(villager);
         return tradition == null
                 || tradition.family().type() == NamingTradition.FamilyType.NONE;
@@ -206,6 +207,26 @@ public final class Naming {
         life.setFamilyNameFixed(false);
         villager.setCustomName(null);
         TownsteadVillagers.flush(villager);
+    }
+
+    /**
+     * Gives a villager a name they already carry from elsewhere, such as the mob whose costume they
+     * are. The name is kept exactly: given-first traditions split off the last word as the family
+     * name, and any other keeps it whole as the given name. Either way the family name is fixed, so
+     * no rule adds or replaces one.
+     */
+    public static void adopt(VillagerEntityMCA villager, String full) {
+        String name = full == null ? "" : full.trim();
+        if (name.isEmpty()) return;
+        NamingTradition tradition = traditionOf(villager);
+        int split = name.lastIndexOf(' ');
+        boolean splits = split > 0 && (tradition == null || tradition.order() == NamingTradition.Order.GIVEN_FIRST);
+        TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
+        villager.setCustomName(net.minecraft.network.chat.Component.literal(splits ? name.substring(0, split) : name));
+        life.setFamilyName(splits ? name.substring(split + 1) : "");
+        life.setFamilyNameFixed(true);
+        TownsteadVillagers.flush(villager);
+        VillagerNames.publish(villager);
     }
 
     /** The culture recorded on a villager, or empty. */

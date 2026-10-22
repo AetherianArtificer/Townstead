@@ -41,6 +41,9 @@ public final class GuardRestEnforcerTicker {
 
         if (villager.isSleeping()) return;
         if (brain.getMemory(MemoryModuleType.HOME).isPresent()) return;
+        // MCA's REST package walks homeless villagers to a shelter bed; erasing
+        // its walk target here pins guards outside until they turn drowsy.
+        if (brain.isActive(Activity.REST)) return;
 
         brain.eraseMemory(MemoryModuleType.WALK_TARGET);
         brain.eraseMemory(MemoryModuleType.LOOK_TARGET);

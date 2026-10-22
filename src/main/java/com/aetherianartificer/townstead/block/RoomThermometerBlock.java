@@ -131,6 +131,7 @@ public final class RoomThermometerBlock extends SnowCoatedBlock {
             float celsius = TemperatureData.airCelsius(serverLevel, pos);
             updateDisplay(state, serverLevel, pos, celsius);
             var reading = new com.aetherianartificer.townstead.temperature.ThermometerReadingPayload(celsius,
+                    TemperatureData.radiantCelsius(serverLevel, pos),
                     com.aetherianartificer.townstead.compat.temperature.TemperatureBridgeResolver.get()
                             == com.aetherianartificer.townstead.compat.temperature.ColdSweatTemperatureBridge.INSTANCE);
             //? if neoforge {

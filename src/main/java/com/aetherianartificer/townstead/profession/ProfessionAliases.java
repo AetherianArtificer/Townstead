@@ -22,6 +22,8 @@ public final class ProfessionAliases {
             "townstead:cook",
             "chefsdelight:cook",
             "chefsdelight:chef",
+            "chefsdelight:delightcook",
+            "chefsdelight:delightchef",
             "vca:cook",
             "villagerclothingaddition:cook"
     };

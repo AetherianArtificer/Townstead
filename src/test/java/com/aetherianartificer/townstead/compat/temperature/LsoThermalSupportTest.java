@@ -36,7 +36,7 @@ class LsoThermalSupportTest {
         assertEquals(3f, LsoEntityCompat.effect("hot_food", 2).ambientOffset());
         assertEquals(-2f, LsoEntityCompat.effect("cold_drink", 1).ambientOffset());
         assertEquals(0f, LsoEntityCompat.effect("heat_resistance", 1).ambientOffset());
-        assertEquals(28f, LsoEntityCompat.effect("heat_resistance", 1).protection().protectAmbient(30, 20));
+        assertEquals(20 + 10 / 1.5f, LsoEntityCompat.effect("heat_resistance", 1).protection().protectAmbient(30, 20), 1e-4f);
         assertEquals(20f, LsoEntityCompat.effect("cold_immunity", 0).protection().protectAmbient(-10, 20));
     }
 
@@ -53,7 +53,7 @@ class LsoThermalSupportTest {
         var total = LsoTemperatureBridge.combineProtection(true, new ThermalProtection(0.2f, 3, 0, 0),
                 new ThermalProtection(0, 2, 0, 1));
         assertEquals(new ThermalProtection(0.2f, 5, 0, 1), total);
-        assertEquals(6f, total.protectAmbient(0, 20));
-        assertEquals(29f, total.protectAmbient(30, 20));
+        assertEquals(12f, total.protectAmbient(0, 20), 1e-4f);
+        assertEquals(28f, total.protectAmbient(30, 20), 1e-4f);
     }
 }

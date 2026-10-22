@@ -100,7 +100,8 @@ public final class TemperatureVillagerTicker {
         ThermalProfile profile = state.profile;
 
         // A climate:any root does not thermoregulate: pin the body at neutral so nothing fires.
-        if (state.suppressed || com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat.climateClemency(self)) {
+        if (state.suppressed || com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat.climateClemency(self)
+                || com.aetherianartificer.townstead.compat.temperature.ColdSweatEntityCompat.grace(self)) {
             state.lastStepGameTime = gameTime;
             state.lastMoodGameTime = gameTime;
             state.lastComfortTick = gameTime;
@@ -135,22 +136,32 @@ public final class TemperatureVillagerTicker {
             // Worn gear changes slowly; its enchantment lookups need not run every tick.
             state.clothing = Insulation.clothingProtection(self)
                     .plus(com.aetherianartificer.townstead.compat.temperature.ToughAsNailsEntityCompat.protection(self));
+            // Humidity and water temperature change over minutes, like the clothes.
+            float air = TemperatureData.celsius(needs.ambientTenths());
+            state.humidity = com.aetherianartificer.townstead.temperature.ThermalAir.humidity(level, self.blockPosition(), air);
+            state.water = self.isInWater() ? com.aetherianartificer.townstead.temperature.ThermalAir.water(level, self.blockPosition()) : Float.NaN;
+            acclimate(level, self, needs, profile, state, air);
             state.nextClothingSampleTick = gameTime + TemperatureData.AMBIENT_SAMPLE_TICKS;
         }
         float seconds = state.lastComfortTick < 0 ? 0.05f : Math.max(0, Math.min(1, (gameTime - state.lastComfortTick) / 20f));
         state.lastComfortTick = gameTime;
-        ThermalProtection protection = state.clothing.plus(com.aetherianartificer.townstead.compat.temperature.LsoEntityCompat.effects(self).protection());
+        state.exertion = ThermalComfort.exertion(state.exertion,
+                com.aetherianartificer.townstead.temperature.ThermalExposure.activity(self), seconds);
+        ThermalProtection protection = state.clothing.plus(com.aetherianartificer.townstead.compat.temperature.LsoEntityCompat.effects(self).protection())
+                .plus(com.aetherianartificer.townstead.compat.temperature.ColdSweatEntityCompat.protection(self));
         float ambientCelsius = com.aetherianartificer.townstead.temperature.ThermalConsumables.internalAmbient(self, TemperatureData.celsius(needs.ambientTenths()));
         boolean immersed = self.isInWater();
-        float load = ThermalComfort.load(ambientCelsius, immersed ? 1 : needs.thermalWetness(),
-                immersed, com.aetherianartificer.townstead.temperature.ThermalExposure.activity(self), protection, profile);
+        if (immersed && !Float.isFinite(state.water)) state.water = com.aetherianartificer.townstead.temperature.ThermalAir.water(level, self.blockPosition());
+        var range = com.aetherianartificer.townstead.temperature.ComfortRange.of(profile, needs.thermalAcclimation());
+        float load = ThermalComfort.load(ambientCelsius, state.humidity, immersed ? 1 : needs.thermalWetness(),
+                immersed, immersed ? state.water : ambientCelsius, state.exertion, protection, profile, range);
         ThermalComfort.State comfort = ThermalComfort.update(new ThermalComfort.State(needs.thermalWetness(),
                 needs.comfortLoad(), needs.thermalStrainSeconds()), load, immersed,
-                level.isRainingAt(self.blockPosition()), ambientCelsius, seconds,
+                level.isRainingAt(self.blockPosition()), ambientCelsius, state.humidity, seconds,
                 TemperatureSettings.get().dryingSeconds());
-        float strain = Math.abs(BodyHeat.excess(load, TemperatureSettings.get().comfortZone())) > 0
+        float strain = load != 0
                 ? needs.thermalStrainSeconds() + seconds : 0;
-        needs.setThermalComfort(comfort.wetness(), comfort.load(), Math.min(600, strain));
+        needs.setThermalComfort(profile.soak(comfort.wetness()), comfort.load(), Math.min(600, strain));
 
         if (state.lastStepGameTime < 0) state.lastStepGameTime = gameTime;
         int steps = 0;
@@ -193,11 +204,33 @@ public final class TemperatureVillagerTicker {
         if (!self.isAlive() || self.isRemoved()) STATE.remove(self.getId());
     }
 
+    /**
+     * A villager adapts to the climate it lives in: it starts adapted to where it is first seen, then
+     * drifts toward the side of its range that its feels like falls on.
+     */
+    private static void acclimate(ServerLevel level, VillagerEntityMCA self, TownsteadVillager.Needs needs,
+                                  ThermalProfile profile, TickState state, float air) {
+        if (!needs.thermalAcclimationSet()) {
+            needs.setThermalAcclimation(com.aetherianartificer.townstead.temperature.ThermalAcclimation.seed(
+                    com.aetherianartificer.townstead.climate.ClimateModel.sample(level, self.blockPosition()).mean()));
+            return;
+        }
+        var body = com.aetherianartificer.townstead.temperature.ComfortRange.active().offset(profile.comfortOffset());
+        boolean immersed = self.isInWater();
+        float feels = com.aetherianartificer.townstead.temperature.ThermalComfort.feelsLike(air, state.humidity,
+                immersed ? 1 : needs.thermalWetness(), immersed, Float.isFinite(state.water) ? state.water : air,
+                state.exertion, state.clothing, profile, body);
+        needs.setThermalAcclimation(com.aetherianartificer.townstead.temperature.ThermalAcclimation.step(
+                needs.thermalAcclimation(), com.aetherianartificer.townstead.temperature.ThermalAcclimation.target(feels, body),
+                com.aetherianartificer.townstead.temperature.ThermalAcclimation.ratePerMinute(), profile.acclimationLimits(),
+                TemperatureData.AMBIENT_SAMPLE_TICKS / 1200f));
+    }
+
     /** One accumulation interval of drift toward the target. Returns true when the reading moved. */
     private static boolean step(VillagerEntityMCA self, TownsteadVillager.Needs needs, ThermalProfile profile, float load,
                                 float ambient, com.aetherianartificer.townstead.temperature.BodyTemperatureDrift drift) {
         var settings = TemperatureSettings.get();
-        float target = BodyHeat.target(load, settings.comfortZone(), profile, self.isSleeping());
+        float target = BodyHeat.target(load, profile, self.isSleeping());
         double rate = BodyHeat.rate(TemperatureData.celsius(needs.bodyTempTenths()), target, profile.neutral(),
                 TemperatureData.ACCUMULATION_INTERVAL / 20d, settings.bodyResponseSeconds(), settings.bodyRecoverySeconds());
         int nextTenths = drift.step(needs.bodyTempTenths(), target, rate);
@@ -266,8 +299,7 @@ public final class TemperatureVillagerTicker {
         int body = needs.bodyTempTenths();
         int ambient = needs.ambientTenths();
         int flags = needs.temperatureFlags() | com.aetherianartificer.townstead.temperature.ThermalStatus.flags(
-                TemperatureData.celsius(body), BodyHeat.target(needs.comfortLoad(), TemperatureSettings.get().comfortZone(),
-                        state.profile, self.isSleeping()), needs.reliefDebug());
+                TemperatureData.celsius(body), BodyHeat.target(needs.comfortLoad(), state.profile, self.isSleeping()), needs.reliefDebug());
         if (!force && body == state.lastSyncedBody && ambient == state.lastSyncedAmbient && flags == state.lastSyncedFlags) return;
         state.lastSyncedBody = body;
         state.lastSyncedAmbient = ambient;
@@ -335,6 +367,7 @@ public final class TemperatureVillagerTicker {
         private long lastStepGameTime = -1;
         private long lastMoodGameTime = -1;
         private ThermalProtection clothing = ThermalProtection.NONE;
+        private float humidity = 0.5f, water = Float.NaN, exertion = 1;
         private double lastPenalty;
         private int lastSyncedBody = Integer.MIN_VALUE;
         private int lastSyncedAmbient = Integer.MIN_VALUE;

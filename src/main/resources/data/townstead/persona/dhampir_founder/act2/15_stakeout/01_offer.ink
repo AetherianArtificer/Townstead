@@ -21,7 +21,14 @@ VAR argued_consent = false
 ~ return done_count_talk and not stake_offered and not done_stakeout
 
 === function stakeout_night_ready() ===
-~ return staking and check("late_night") and stake_last < today
+~ return staking and check("late_night") and stake_last < today and settler_placed()
+
+// A settler being watched is close by, or has really gone. One who wandered off is called back first.
+=== function settler_placed() ===
+{not stake_visitor:
+    ~ return true
+}
+~ return here("visitor:settler") or who("visitor:settler") == ""
 
 === stakeout_offer ===
 ~ stake_offered = true

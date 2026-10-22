@@ -64,6 +64,9 @@ public final class CultureAssignment {
     public static String ofVillage(ServerLevel level, VillagerEntityMCA villager) {
         try {
             Optional<Village> home = villager.getResidency().getHomeVillage();
+            // A villager still spawning has no residency yet; the village they appear in is home.
+            if (home.isEmpty()) home = net.conczin.mca.server.world.data.VillageManager.get(level)
+                    .findNearestVillage(villager.blockPosition(), Village.MERGE_MARGIN);
             if (home.isEmpty()) return "";
             NamingRegisterSavedData data = NamingRegisterSavedData.get(level.getServer());
             String stored = data.villageCulture(level.dimension().location(), home.get().getId());

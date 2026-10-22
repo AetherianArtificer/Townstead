@@ -14,7 +14,10 @@
       "workstations": [
         "toughasnails:thermoregulator",
         "legendarysurvivaloverhaul:heater",
-        "legendarysurvivaloverhaul:cooler"
+        "legendarysurvivaloverhaul:cooler",
+        "cold_sweat:hearth_bottom",
+        "cold_sweat:boiler",
+        "cold_sweat:icebox"
       ],
       "scope": "village",
       "weight": 10,

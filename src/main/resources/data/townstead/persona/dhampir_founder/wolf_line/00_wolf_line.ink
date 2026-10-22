@@ -56,12 +56,8 @@ VAR wolf_beat_day = -1
     ~ return -> mutter
 - collar_ask_ready():
     ~ return -> collar_ask
-- collar_done_ready():
-    ~ return -> collar_done
 - bone_ask_ready():
     ~ return -> bone_ask
-- bone_done_ready():
-    ~ return -> bone_done
 - shepherd_offer_ready():
     ~ return -> shepherd_offer
 }

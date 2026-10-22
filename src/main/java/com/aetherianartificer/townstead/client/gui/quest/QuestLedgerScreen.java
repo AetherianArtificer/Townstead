@@ -48,13 +48,15 @@ public final class QuestLedgerScreen extends Screen {
 
     private final QuestLedgerService ledger;
     private QuestState view = QuestState.ACTIVE;
-    private String provider = QuestFilter.ALL_PROVIDERS;
+    /** Sources unchecked in the filter, kept while the game runs; a new source shows until unchecked. */
+    private static final java.util.Set<String> HIDDEN = new java.util.HashSet<>();
     private List<String> providerCycle = List.of(QuestFilter.ALL_PROVIDERS);
     private List<QuestEntry> filtered = List.of();
     private final List<QuestRowButton> rowButtons = new ArrayList<>();
     private final Map<String, Integer> rowOffsets = new HashMap<>();
     private ViewTabStrip viewTabs;
-    private ProviderTabStrip providerTabs;
+    private Button sourcesButton;
+    private final com.aetherianartificer.townstead.client.gui.common.CheckMenu sourceMenu = new com.aetherianartificer.townstead.client.gui.common.CheckMenu();
 
     private EditBox search;
     private Button trackButton;
@@ -85,7 +87,7 @@ public final class QuestLedgerScreen extends Screen {
         String previousSearch = search == null ? "" : search.getValue();
         String previousSelection = selected == null ? "" : selected.key();
         viewTabs = null;
-        providerTabs = null;
+        sourceMenu.close();
         ledger.refresh();
         buildProviderCycle();
 
@@ -150,13 +152,7 @@ public final class QuestLedgerScreen extends Screen {
         ledger.refresh();
         List<String> previousProviders = providerCycle;
         buildProviderCycle();
-        if (!QuestFilter.ALL_PROVIDERS.equals(provider) && !providerCycle.contains(provider)) {
-            provider = QuestFilter.ALL_PROVIDERS;
-        }
-        if (!previousProviders.equals(providerCycle)) {
-            if (providerTabs != null) removeWidget(providerTabs);
-            createProviderTabs(leftY + 48);
-        }
+        if (!previousProviders.equals(providerCycle)) sourceMenu.close();
         updateProviderButtons();
         applyFilter(false);
         selectKey(key);
@@ -171,25 +167,36 @@ public final class QuestLedgerScreen extends Screen {
 
     private void buildProviderCycle() {
         List<String> values = new ArrayList<>();
-        values.add(QuestFilter.ALL_PROVIDERS);
         for (QuestProviderInfo info : ledger.snapshot().providers()) {
             if (info.available() && info.error().isBlank()) values.add(info.id());
         }
         providerCycle = List.copyOf(values);
     }
 
-    private void selectProvider(String id) {
-        provider = id;
+    private void createProviderTabs(int y) {
+        sourcesButton = addRenderableWidget(Button.builder(Component.empty(), b -> openSourceMenu())
+                .bounds(leftX + 4, y, leftW - 8, 18).build());
         updateProviderButtons();
-        listScroll = 0;
-        applyFilter(false);
     }
 
-    private void createProviderTabs(int y) {
-        List<ProviderTabStrip.Entry> entries = providerCycle.stream()
-                .map(id -> new ProviderTabStrip.Entry(id, providerTabLabel(id))).toList();
-        providerTabs = addRenderableWidget(new ProviderTabStrip(leftX + 4, y, leftW - 8, 18,
-                entries, provider, this::selectProvider));
+    /** The source filter: one checkbox per quest source, and one for all of them. */
+    private void openSourceMenu() {
+        if (sourceMenu.open()) {
+            sourceMenu.close();
+            return;
+        }
+        List<Component> labels = providerCycle.stream().map(this::providerTabLabel).toList();
+        sourceMenu.open(font, Component.translatable("townstead.quest_ledger.provider.tab.all"), labels,
+                i -> !HIDDEN.contains(providerCycle.get(i)),
+                (i, on) -> {
+                    if (on) HIDDEN.remove(providerCycle.get(i));
+                    else HIDDEN.add(providerCycle.get(i));
+                    listScroll = 0;
+                    updateProviderButtons();
+                    applyFilter(true);
+                },
+                sourcesButton.getX(), sourcesButton.getY() + sourcesButton.getHeight(), sourcesButton.getWidth(),
+                width, height);
     }
 
     private Component providerTabLabel(String id) {
@@ -200,7 +207,11 @@ public final class QuestLedgerScreen extends Screen {
     }
 
     private void updateProviderButtons() {
-        if (providerTabs != null) providerTabs.setSelected(provider);
+        if (sourcesButton == null) return;
+        long shown = providerCycle.stream().filter(id -> !HIDDEN.contains(id)).count();
+        sourcesButton.setMessage(shown == providerCycle.size()
+                ? Component.translatable("townstead.quest_ledger.sources.all")
+                : Component.translatable("townstead.quest_ledger.sources.some", shown, providerCycle.size()));
     }
 
     private void applyFilter(boolean preserveSelection) {
@@ -208,7 +219,7 @@ public final class QuestLedgerScreen extends Screen {
         for (QuestRowButton row : rowButtons) removeWidget(row);
         rowButtons.clear();
         rowOffsets.clear();
-        filtered = ledger.filtered(new QuestFilter(view, provider, search == null ? "" : search.getValue()));
+        filtered = ledger.filtered(QuestFilter.hiding(view, HIDDEN, search == null ? "" : search.getValue()));
         int offset = 0;
         String group = null;
         for (QuestEntry quest : filtered) {
@@ -326,6 +337,7 @@ public final class QuestLedgerScreen extends Screen {
         }
         drawListOverlay(g);
         drawDetail(g);
+        sourceMenu.render(g, font, mouseX, mouseY);
     }
 
     // Screen#render performs its own background pass on 1.21. The ledger has already
@@ -575,17 +587,27 @@ public final class QuestLedgerScreen extends Screen {
     //? if >=1.21 {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        return scroll(mouseX, mouseY, scrollY) || super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return sourceMenu.scroll(mouseX, mouseY, scrollY) || scroll(mouseX, mouseY, scrollY)
+                || super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
     //?} else {
     /*@Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        return scroll(mouseX, mouseY, delta) || super.mouseScrolled(mouseX, mouseY, delta);
+        return sourceMenu.scroll(mouseX, mouseY, delta) || scroll(mouseX, mouseY, delta)
+                || super.mouseScrolled(mouseX, mouseY, delta);
     }
     *///?}
 
     @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // The open source menu takes every click: on a row it toggles, outside it closes.
+        if (sourceMenu.click(mouseX, mouseY, button)) return true;
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (sourceMenu.key(keyCode)) return true;
         if (Screen.hasControlDown() && keyCode == GLFW.GLFW_KEY_F && search != null) {
             setFocused(search);
             search.setFocused(true);
@@ -758,193 +780,6 @@ public final class QuestLedgerScreen extends Screen {
         @Override
         protected void updateWidgetNarration(NarrationElementOutput output) {
             defaultButtonNarrationText(output);
-        }
-    }
-
-    /**
-     * Source-filter tabs using the same compact collection-navigation language as the ability
-     * wheel: a dark band, gold active edge, and a paired overflow paddle at the right. Labels keep
-     * their natural width and scroll instead of being squeezed as optional providers are added.
-     */
-    private static final class ProviderTabStrip extends AbstractWidget {
-        private static final int PAD = 6;
-        private static final int GAP = 1;
-        private static final int MIN_TAB = 26;
-        private static final int ARROW = 10;
-        private static final int PADDLE_STEP = 48;
-        private static final int BAND = 0xCC120E09;
-        private static final int DIVIDER = 0xFF3A2C1C;
-        private static final int NORMAL = 0xCC19140E;
-        private static final int HOVER = 0xDD302617;
-        private static final int SELECTED = 0xDD4A3B24;
-        private static final int GOLD = 0xFFFFC64A;
-        private static final int TEXT = 0xFFA88D66;
-        private static final int TEXT_HOVER = 0xFFE0C69A;
-        private static final int TEXT_SELECTED = 0xFFFFF0CA;
-
-        private record Entry(String id, Component label) {}
-
-        private final List<Entry> entries;
-        private final Consumer<String> onSelect;
-        private final int[] tabX;
-        private final int[] tabW;
-        private final int contentW;
-        private String selected;
-        private int scrollX;
-
-        private ProviderTabStrip(int x, int y, int width, int height, List<Entry> entries,
-                                 String selected, Consumer<String> onSelect) {
-            super(x, y, width, height, Component.translatable("townstead.quest_ledger.provider.tabs"));
-            this.entries = List.copyOf(entries);
-            this.selected = selected;
-            this.onSelect = onSelect;
-            this.tabX = new int[entries.size()];
-            this.tabW = new int[entries.size()];
-            int cursor = 0;
-            var font = Minecraft.getInstance().font;
-            for (int index = 0; index < entries.size(); index++) {
-                tabX[index] = cursor;
-                tabW[index] = Math.max(MIN_TAB, font.width(entries.get(index).label()) + PAD * 2);
-                cursor += tabW[index] + GAP;
-            }
-            contentW = Math.max(0, cursor - GAP);
-            revealSelected();
-        }
-
-        private boolean overflow() { return contentW > width; }
-        private int tabsWidth() { return width - (overflow() ? ARROW * 2 : 0); }
-        private int maxScroll() { return Math.max(0, contentW - tabsWidth()); }
-
-        private void setSelected(String id) {
-            selected = id;
-            revealSelected();
-        }
-
-        private void revealSelected() {
-            int viewport = tabsWidth();
-            for (int index = 0; index < entries.size(); index++) {
-                if (!entries.get(index).id().equals(selected)) continue;
-                if (tabX[index] < scrollX) scrollX = tabX[index];
-                if (tabX[index] + tabW[index] > scrollX + viewport) {
-                    scrollX = tabX[index] + tabW[index] - viewport;
-                }
-                scrollX = Math.max(0, Math.min(scrollX, maxScroll()));
-                return;
-            }
-        }
-
-        @Override
-        protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-            scrollX = Math.max(0, Math.min(scrollX, maxScroll()));
-            int tabsRight = getX() + tabsWidth();
-            g.fill(getX(), getY(), getX() + width, getY() + height, BAND);
-            g.enableScissor(getX(), getY(), tabsRight, getY() + height);
-            boolean inTabs = mouseY >= getY() && mouseY < getY() + height
-                    && mouseX >= getX() && mouseX < tabsRight;
-            var font = Minecraft.getInstance().font;
-            for (int index = 0; index < entries.size(); index++) {
-                int x = getX() + tabX[index] - scrollX;
-                int w = tabW[index];
-                if (x + w <= getX() || x >= tabsRight) continue;
-                boolean active = entries.get(index).id().equals(selected);
-                boolean hovered = inTabs && mouseX >= x && mouseX < x + w;
-                g.fill(x, getY(), x + w, getY() + height - 1,
-                        active ? SELECTED : hovered ? HOVER : NORMAL);
-                g.fill(x + w - 1, getY() + 2, x + w, getY() + height - 2, DIVIDER);
-                if (active) g.fill(x, getY(), x + w, getY() + 1, GOLD);
-                int color = active ? TEXT_SELECTED : hovered ? TEXT_HOVER : TEXT;
-                Component label = entries.get(index).label();
-                g.drawString(font, label, x + (w - font.width(label)) / 2,
-                        getY() + (height - 8) / 2, color, false);
-            }
-            g.disableScissor();
-            g.fill(getX(), getY() + height - 1, getX() + width, getY() + height, DIVIDER);
-            if (overflow()) drawPaddle(g, mouseX, mouseY, tabsRight);
-        }
-
-        private void drawPaddle(GuiGraphics g, int mouseX, int mouseY, int x) {
-            boolean over = mouseY >= getY() && mouseY < getY() + height;
-            drawArrow(g, x, "‹", scrollX > 0,
-                    over && mouseX >= x && mouseX < x + ARROW);
-            drawArrow(g, x + ARROW, "›", scrollX < maxScroll(),
-                    over && mouseX >= x + ARROW && mouseX < x + ARROW * 2);
-        }
-
-        private void drawArrow(GuiGraphics g, int x, String glyph, boolean enabled, boolean hovered) {
-            g.fill(x, getY(), x + ARROW, getY() + height - 1, hovered && enabled ? HOVER : NORMAL);
-            int color = enabled ? (hovered ? TEXT_SELECTED : TEXT_HOVER) : 0xFF5B4A33;
-            var font = Minecraft.getInstance().font;
-            g.drawString(font, glyph, x + (ARROW - font.width(glyph)) / 2,
-                    getY() + (height - 8) / 2, color, false);
-        }
-
-        @Override
-        public void onClick(double mouseX, double mouseY) {
-            if (overflow() && mouseX >= getX() + tabsWidth()) {
-                if (mouseX < getX() + tabsWidth() + ARROW) {
-                    scrollX = Math.max(0, scrollX - PADDLE_STEP);
-                } else {
-                    scrollX = Math.min(maxScroll(), scrollX + PADDLE_STEP);
-                }
-                return;
-            }
-            int tabsRight = getX() + tabsWidth();
-            for (int index = 0; index < entries.size(); index++) {
-                int x = getX() + tabX[index] - scrollX;
-                if (mouseX >= x && mouseX < x + tabW[index]
-                        && mouseX >= getX() && mouseX < tabsRight) {
-                    choose(index);
-                    return;
-                }
-            }
-        }
-
-        private void choose(int index) {
-            String id = entries.get(index).id();
-            if (id.equals(selected)) return;
-            selected = id;
-            revealSelected();
-            onSelect.accept(id);
-        }
-
-        private boolean scroll(double mouseX, double mouseY, double delta) {
-            if (!overflow() || !isMouseOver(mouseX, mouseY)) return false;
-            scrollX = Math.max(0, Math.min(scrollX - (int) Math.signum(delta) * 24, maxScroll()));
-            return true;
-        }
-
-        //? if >=1.21 {
-        @Override
-        public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-            return scroll(mouseX, mouseY, scrollY);
-        }
-        //?} else {
-        /*@Override
-        public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-            return scroll(mouseX, mouseY, delta);
-        }
-        *///?}
-
-        @Override
-        public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-            if (!isFocused() || (keyCode != GLFW.GLFW_KEY_LEFT && keyCode != GLFW.GLFW_KEY_RIGHT)) {
-                return super.keyPressed(keyCode, scanCode, modifiers);
-            }
-            int current = 0;
-            for (int index = 0; index < entries.size(); index++) {
-                if (entries.get(index).id().equals(selected)) { current = index; break; }
-            }
-            choose(Math.max(0, Math.min(entries.size() - 1,
-                    current + (keyCode == GLFW.GLFW_KEY_RIGHT ? 1 : -1))));
-            return true;
-        }
-
-        @Override
-        protected void updateWidgetNarration(NarrationElementOutput output) {
-            Component current = entries.stream().filter(entry -> entry.id().equals(selected))
-                    .map(Entry::label).findFirst().orElse(getMessage());
-            output.add(net.minecraft.client.gui.narration.NarratedElementType.TITLE,
-                    Component.translatable("townstead.quest_ledger.provider.current", current));
         }
     }
 

@@ -1,6 +1,8 @@
 package com.aetherianartificer.townstead.politics.founding;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.culture.CultureJsonLoader;
+import com.aetherianartificer.townstead.culture.CultureVillages;
 import com.aetherianartificer.townstead.data.DataPackLang;
 import com.aetherianartificer.townstead.data.LegacyIds;
 import com.aetherianartificer.townstead.data.ModGate;
@@ -15,6 +17,7 @@ import net.minecraft.util.profiling.ProfilerFiller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,9 +34,11 @@ public final class FoundingProfileJsonLoader extends SimpleJsonResourceReloadLis
     @Override
     protected void apply(Map<ResourceLocation, JsonElement> entries, ResourceManager resources,
                          ProfilerFiller profiler) {
+        entries = com.aetherianartificer.townstead.data.DataDocuments.resolve("founding_profile", entries, resources);
         Map<String, String> lang = DataPackLang.loadLangIndex(resources);
         Map<ResourceLocation, FoundingProfileDefinition> loaded = new LinkedHashMap<>();
         Map<ResourceLocation, ResourceLocation> legacyIds = new LinkedHashMap<>();
+        Map<ResourceLocation, List<ResourceLocation>> villages = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation id = entry.getKey();
             try {
@@ -54,8 +59,13 @@ public final class FoundingProfileJsonLoader extends SimpleJsonResourceReloadLis
                                 + " is already claimed by " + previous);
                     }
                 }
+                // A subculture's own village type, such as a Freeblade encampment, founds as this profile.
+                List<ResourceLocation> claims = CultureJsonLoader.villages(json);
                 loaded.put(id, profile);
                 for (ResourceLocation legacyId : aliases) legacyIds.put(legacyId, id);
+                for (ResourceLocation structure : claims) {
+                    villages.computeIfAbsent(structure, key -> new ArrayList<>()).add(id);
+                }
             } catch (RuntimeException error) {
                 LOGGER.warn("Founding profile {} rejected: {}", id, error.getMessage());
             }
@@ -68,6 +78,7 @@ public final class FoundingProfileJsonLoader extends SimpleJsonResourceReloadLis
             }
         }
         FoundingProfiles.replace(loaded, legacyIds);
+        CultureVillages.replaceProfiles(villages);
         LOGGER.info("Loaded {} founding profile(s)", loaded.size());
     }
 }

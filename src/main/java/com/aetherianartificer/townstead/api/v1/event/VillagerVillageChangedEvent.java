@@ -4,7 +4,7 @@ import com.aetherianartificer.townstead.api.v1.model.VillageId;
 import java.util.Optional;
 import java.util.UUID;
 
-/** A villager's home village changed, as seen by the resident register. */
+/** A villager claimed a home in a new village, including the first home it is seen with. */
 public record VillagerVillageChangedEvent(
         UUID uuid,
         String name,

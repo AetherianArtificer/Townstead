@@ -38,11 +38,20 @@ public final class RestDayConditionType implements ConditionType {
             Optional<Village> home = TownRange.at(level, ctx.pos());
             if (home.isEmpty()) return false;
             boolean anyWorker = false;
-            for (VillagerEntityMCA resident : home.get().getResidents(level)) {
-                VillagerProfession profession = resident.getVillagerData().getProfession();
-                if (profession == VillagerProfession.NONE || profession == VillagerProfession.NITWIT) continue;
+            var register = com.aetherianartificer.townstead.village.ResidentRegister.get(level.getServer());
+            for (java.util.UUID uuid : home.get().getResidentsUUIDs().toList()) {
+                // Residents in unloaded chunks answer from their last known schedule.
+                if (level.getEntity(uuid) instanceof VillagerEntityMCA resident) {
+                    VillagerProfession profession = resident.getVillagerData().getProfession();
+                    if (profession == VillagerProfession.NONE || profession == VillagerProfession.NITWIT) continue;
+                    anyWorker = true;
+                    if (!hasRestDay(level.getServer(), resident)) return false;
+                    continue;
+                }
+                Optional<Boolean> known = register.lastRestDay(uuid);
+                if (known.isEmpty()) continue;
                 anyWorker = true;
-                if (!hasRestDay(level.getServer(), resident)) return false;
+                if (!known.get()) return false;
             }
             return anyWorker;
         };

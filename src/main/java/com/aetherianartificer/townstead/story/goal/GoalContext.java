@@ -37,6 +37,11 @@ public record GoalContext(MinecraftServer server, UUID playerId, UUID speakerId,
     /** The village of the teller or the player, as the public API names it. */
     public Optional<VillageId> villageId(boolean ofTeller) {
         Entity who = ofTeller ? speaker : player();
+        if (who == null && ofTeller && speakerId != null) {
+            // An unloaded teller still lives somewhere: the resident register keeps where.
+            return com.aetherianartificer.townstead.village.ResidentRegister.get(server)
+                    .record(server, speakerId, false).flatMap(com.aetherianartificer.townstead.api.v1.model.VillagerRecord::village);
+        }
         if (who == null || !(who.level() instanceof ServerLevel level)) return Optional.empty();
         Optional<Village> village = ofTeller ? village() : Village.findNearest(who);
         return village.map(v -> new VillageId(level.dimension().location(), v.getId()));

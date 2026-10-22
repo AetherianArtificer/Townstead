@@ -14,6 +14,11 @@ import com.google.gson.JsonObject;
  */
 public final class AgelessGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.BEING;
+    }
+
     public static final String KEY = "townstead_roots:ageless";
 
     public record Instance() implements GeneInstance {

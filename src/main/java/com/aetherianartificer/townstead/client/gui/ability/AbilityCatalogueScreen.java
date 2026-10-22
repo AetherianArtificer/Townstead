@@ -223,6 +223,13 @@ public final class AbilityCatalogueScreen extends Screen {
         drawSearch(g);
         drawGrid(g, mouseX, mouseY);
         drawDetail(g, mouseX, mouseY);
+        if (dragId == null || !dragMoved) {
+            AbilityLoadoutS2CPayload.Option option = hovered(mouseX, mouseY);
+            String description = option == null ? "" : AbilityText.description(option.description());
+            if (!description.isEmpty()) {
+                g.renderTooltip(font, font.split(Component.literal(description), 200), mouseX, mouseY);
+            }
+        }
         if (dragId != null && dragMoved) {
             g.flush();
             g.pose().pushPose();

@@ -6,6 +6,7 @@
 
 VAR watching = false
 VAR done_watch = false
+VAR no_one_turns = false
 
 // When this scene plays. The greet in persona.ink checks these in order.
 === function watch_offer_ready() ===
@@ -43,7 +44,17 @@ We hold the edge of town. You can hold it with us, or you can get people behind 
 === watch_after ===
 ~ watching = false
 ~ done_watch = true
+// Seeing it through together is what earns the name (scene 12).
+~ trust(2)
 ~ act("rounds")
+// With no vampire living here and no one turning, scenes 9 and 9b would have no one to be
+// about. One of the ferals got to somebody tonight; scene 9b finds them.
+// When nobody here could turn either, the lodge goes on to the thrall without them.
+{who("resident_vampire") == "" and who("turning_villager") == "" and not act("bite_one"):
+    ~ no_one_turns = true
+    // Scene 9 or 9b would have earned this; this town has neither to give.
+    ~ trust(2)
+}
 {check("hurt"):
     Don't. Some of it's mine. It'll close.
 - else:

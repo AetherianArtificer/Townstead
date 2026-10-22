@@ -171,9 +171,15 @@ public final class StoryService {
     }
 
     private static @Nullable VillagerEntityMCA villager(ServerPlayer player, int entityId) {
-        if (player.serverLevel().getEntity(entityId) instanceof VillagerEntityMCA villager
+        net.minecraft.world.entity.Entity entity = player.serverLevel().getEntity(entityId);
+        if (entity instanceof VillagerEntityMCA villager
                 && villager.isAlive() && villager.distanceToSqr(player) <= TALK_RANGE_SQ) {
             return villager;
+        }
+        // A costumed mob talks as the person it shows.
+        if (entity instanceof net.minecraft.world.entity.Mob mob && com.aetherianartificer.townstead.replace.WildCostume.has(mob)
+                && mob.isAlive() && mob.distanceToSqr(player) <= TALK_RANGE_SQ) {
+            return com.aetherianartificer.townstead.replace.WildCostume.person(mob);
         }
         return null;
     }
@@ -211,7 +217,7 @@ public final class StoryService {
         PlayerStories.Entry entry = stories(player).get(PlayerStories.key(story, villager.getUUID()));
         if (entry != null && !entry.villager.equals(villager.getUUID())) return null;
         PlayerStories.Entry forCall = entry != null ? entry
-                : new PlayerStories.Entry(story.id(), villager.getUUID(), StorySession.displayName(villager));
+                : new PlayerStories.Entry(story.id(), villager.getUUID(), StorySession.displayName(villager, player));
         try {
             refresh(player.server, player.getUUID(), forCall, story, villager);
             return StorySession.open(player, villager, story, forCall).calling();
@@ -228,7 +234,7 @@ public final class StoryService {
         if (SESSIONS.get(player.getUUID()) != null) closeSession(player);
         PlayerStories.Entry entry = stories(player).get(PlayerStories.key(story, villager.getUUID()));
         PlayerStories.Entry forLine = entry != null ? entry
-                : new PlayerStories.Entry(story.id(), villager.getUUID(), StorySession.displayName(villager));
+                : new PlayerStories.Entry(story.id(), villager.getUUID(), StorySession.displayName(villager, player));
         try {
             refresh(player.server, player.getUUID(), forLine, story, villager);
             return StorySession.open(player, villager, story, forLine).farewellLine();
@@ -245,7 +251,7 @@ public final class StoryService {
         PlayerStories.Entry entry = stories(player).get(PlayerStories.key(story, villager.getUUID()));
         String greeting = "";
         if ((entry == null || entry.villager.equals(villager.getUUID())) && SESSIONS.get(player.getUUID()) == null) {
-            String name = StorySession.displayName(villager);
+            String name = StorySession.displayName(villager, player);
             PlayerStories.Entry forMenu = entry != null ? entry
                     : new PlayerStories.Entry(story.id(), villager.getUUID(), name);
             try {
@@ -303,13 +309,14 @@ public final class StoryService {
 
     private static boolean talk(ServerPlayer player, VillagerEntityMCA villager, @Nullable String knot, Map<String, Object> variables) {
         closeSession(player);
+        com.aetherianartificer.townstead.replace.CostumeHearts.talked(player, villager);
         StoryOverheard.stop(player);
         StoryDefinition story = storyFor(player, villager);
         if (story == null) {
             send(player, new StoryS2CPayload(villager.getId(), StoryS2CPayload.END, "", List.of(), false));
             return false;
         }
-        String name = StorySession.displayName(villager);
+        String name = StorySession.displayName(villager, player);
         String key = PlayerStories.key(story, villager.getUUID());
         PlayerStories.Entry entry = stories(player).getOrCreate(key, story, villager.getUUID(), name);
         entry.villagerName = name;
@@ -330,7 +337,7 @@ public final class StoryService {
         } else {
             entry.interrupted = false;
             entry.resumeLines.clear();
-            session.start(knot != null ? knot : entryPath(entry, story));
+            session.start(knot != null ? knot : entryPath(entry, story, session));
         }
         DIRTY.add(player.getUUID());
         return true;
@@ -338,9 +345,10 @@ public final class StoryService {
 
     /**
      * Where a conversation starts: a quest ready to hand back first, then an open quest's waiting
-     * lines, otherwise the greeting.
+     * lines, otherwise the greeting. A scene the story says is ready ({@code scene_ready()}) goes
+     * ahead of the waiting lines, so an open quest never holds the rest of the story back.
      */
-    private static String entryPath(PlayerStories.Entry entry, StoryDefinition story) {
+    private static String entryPath(PlayerStories.Entry entry, StoryDefinition story, StorySession session) {
         for (PlayerStories.QuestRecord record : entry.quests.values()) {
             StoryDefinition.Quest quest = story.quests().get(record.knot);
             if (quest == null || record.state != PlayerStories.QuestState.READY) continue;
@@ -348,6 +356,7 @@ public final class StoryService {
             if (record.skipped && quest.hasSkipped()) return quest.knot() + ".skipped";
             if (quest.hasDone()) return quest.knot() + ".done";
         }
+        if (session.sceneReady()) return "greet";
         for (PlayerStories.QuestRecord record : entry.quests.values()) {
             StoryDefinition.Quest quest = story.quests().get(record.knot);
             if (quest != null && record.state == PlayerStories.QuestState.ACTIVE && quest.hasWaiting()) {
@@ -388,6 +397,8 @@ public final class StoryService {
 
     static void sessionEnded(StorySession session) {
         StoryCalls.forget(session.player.getUUID());
+        // The name they are known by may have changed during the talk: a Persona told their family name.
+        session.entry.villagerName = StorySession.displayName(session.villager, session.player);
         if (SESSIONS.get(session.player.getUUID()) == session) SESSIONS.remove(session.player.getUUID());
         payOut(session.player);
         save(session.player);
@@ -637,12 +648,30 @@ public final class StoryService {
 
     // ---- quest ledger ----
 
+    /** Whoever gave this player a story quest that is not yet complete. */
+    public static java.util.Set<java.util.UUID> activeGivers(ServerPlayer player) {
+        java.util.Set<java.util.UUID> out = new java.util.LinkedHashSet<>();
+        if (!Systems.on(Systems.STORIES)) return out;
+        for (PlayerStories.Entry entry : stories(player).entries()) {
+            for (PlayerStories.QuestRecord record : entry.quests.values()) {
+                if (record.state != PlayerStories.QuestState.COMPLETE) {
+                    out.add(entry.villager);
+                    break;
+                }
+            }
+        }
+        out.addAll(com.aetherianartificer.townstead.contract.Contracts.givers(player));
+        return out;
+    }
+
     public static void sync(ServerPlayer player) {
         List<StoryQuestSyncS2CPayload.Quest> quests = new ArrayList<>();
         if (Systems.on(Systems.STORIES)) {
             for (PlayerStories.Entry entry : stories(player).entries()) {
                 StoryDefinition story = Stories.byId(entry.story);
                 if (story == null) continue;
+                String known = com.aetherianartificer.townstead.persona.PersonaService.nameFor(player, entry.villager, entry.villagerName);
+                String called = known.equals(entry.villagerName) && !entry.givenName.isEmpty() ? entry.givenName : known;
                 for (PlayerStories.QuestRecord record : entry.quests.values()) {
                     StoryDefinition.Quest quest = story.quests().get(record.knot);
                     if (quest == null) continue;
@@ -652,22 +681,22 @@ public final class StoryService {
                         Goal goal = quest.goals().get(i);
                         long current = i < record.values.length ? record.values[i] : 0L;
                         objectives.add(new StoryQuestSyncS2CPayload.Objective(
-                                withMarker(goal.label(entry.givenName.isEmpty() ? entry.villagerName : entry.givenName,
+                                withMarker(goal.label(called,
                                         com.aetherianartificer.townstead.dialogue.McaPlayerName.of(player)), goal.marker(), player),
                                 Math.min(current, goal.total()), goal.total(),
                                 complete || record.skipped || current >= goal.total()));
                     }
                     List<StoryQuestSyncS2CPayload.Reward> rewards = new ArrayList<>();
-                    String teller = entry.givenName.isEmpty() ? entry.villagerName : entry.givenName;
+                    String teller = called;
                     for (var reward : quest.rewards()) {
                         for (var preview : reward.preview(teller, com.aetherianartificer.townstead.dialogue.McaPlayerName.of(player))) {
                             rewards.add(new StoryQuestSyncS2CPayload.Reward(preview.text(), preview.itemId(), preview.count()));
                         }
                     }
                     quests.add(new StoryQuestSyncS2CPayload.Quest(entry.story + "/" + record.knot + "@" + entry.villager,
-                            quest.title(), quest.about(), entry.villagerName, (byte) record.state.ordinal(),
+                            quest.title(), quest.about(), known, (byte) record.state.ordinal(),
                             quest.hasDone() || (record.skipped && quest.hasSkipped()), List.copyOf(objectives),
-                            List.copyOf(rewards)));
+                            List.copyOf(rewards), entry.villager.toString()));
                 }
             }
         }

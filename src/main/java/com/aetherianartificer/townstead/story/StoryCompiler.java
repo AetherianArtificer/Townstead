@@ -43,6 +43,7 @@ final class StoryCompiler {
             Map.entry("contribute", "quality, amount, reason"),
             Map.entry("memory", "id"),
             Map.entry("act", "id"),
+            Map.entry("act_on", "id, name"),
             Map.entry("mod", "id"),
             Map.entry("can_build", "building"),
             Map.entry("demeanor", ""),

@@ -26,6 +26,13 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     private static final double MC_UNIT_TO_CELSIUS = 25.0;
     /** Marks the modifier as Townstead's, so a replace only ever displaces our own. */
     private static final String INFLUENCE_MARKER = "townstead_influence";
+    /** Holder so loading the bridge does not touch the registries before bootstrap. */
+    private static final class Tags {
+        /** Cold Sweat's hearth, boiler and icebox. */
+        static final net.minecraft.tags.TagKey<net.minecraft.world.level.block.Block> THERMAL_SOURCES =
+                net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.BLOCK,
+                        net.minecraft.resources.ResourceLocation.tryParse("cold_sweat:thermal_source"));
+    }
 
     private boolean initialized;
     private boolean active;
@@ -47,6 +54,17 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     private Method isValid;
     private Method blockTemperature;
     private Method getDummyPlayer;
+    private Class<?> thermalSource;
+    private Method lastInput;
+    private Method lastOutput;
+    private Method applyModifier;
+    private Class<?> hearthEntity;
+    private Method usingHotFuel;
+    private Method usingColdFuel;
+    private Method smartEnabled, smokestack, hotFuel, coldFuel, drainHot, drainCold, drainInterval;
+    /** Smart hearths Townstead counts as burning while Cold Sweat idles them, by next fuel drain tick. */
+    private final java.util.Map<ServerLevel, java.util.Map<Long, Long>> overridden = new java.util.WeakHashMap<>();
+    private java.lang.reflect.Constructor<?> insulationSnapshot;
     private final ThermalCache<ServerLevel, BlockPos, Float> ambientCache = new ThermalCache<>(20, 4096);
 
     public void clearCache() { ambientCache.clear(); }
@@ -64,6 +82,34 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
         return active;
     }
 
+    private volatile Boolean seasonModifier;
+
+    /** Cold Sweat's Serene modifier, or the Ecliptic MultiMod Patch's, is registered. */
+    @Override
+    public boolean modelsSeasons() {
+        Boolean known = seasonModifier;
+        if (known != null) return known;
+        boolean found = false;
+        try {
+            Method contains = Class.forName("com.momosoftworks.coldsweat.api.registry.TempModifierRegistry")
+                    .getMethod("containsKey", net.minecraft.resources.ResourceLocation.class);
+            for (String id : new String[]{"sereneseasons:season", "eclipticseasons:season"}) {
+                if (Boolean.TRUE.equals(contains.invoke(null, net.minecraft.resources.ResourceLocation.tryParse(id)))) found = true;
+            }
+        } catch (ReflectiveOperationException | LinkageError ignored) {
+            return false;
+        }
+        // The registry fills during load; only a positive answer is final.
+        if (found) seasonModifier = true;
+        return found;
+    }
+
+    /** Cold Sweat's depth regions warm toward the world bottom on their own. */
+    @Override
+    public boolean modelsGeothermal() {
+        return true;
+    }
+
     /** Cold Sweat's insulator registry, so every mod's Cold Sweat garment data reaches villagers. */
     @Override
     public ThermalProtection itemProtection(ItemStack stack) {
@@ -76,7 +122,11 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     public float ambientCelsius(ServerLevel level, BlockPos pos) {
         initIfNeeded();
         if (!active) return Float.NaN;
-        Float value = ambientCache.get(level, pos.immutable(), level.getGameTime(), () -> sampleAmbient(level, pos));
+        Float value = ambientCache.get(level, pos.immutable(), level.getGameTime(), () -> {
+            Float sampled = sampleAmbient(level, pos);
+            if (sampled == null || RoomHeatBackend.bypassed() || RoomHeatBackend.room(level, pos).isPresent()) return sampled;
+            return sampled + RoomHeatBackend.coldSweatShift(level, pos);
+        });
         return value == null ? Float.NaN : value;
     }
 
@@ -112,6 +162,32 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
         finally { if (dummy != null && previous != null) dummy.setPos(previous); }
     }
 
+    /**
+     * Adds {@code shift} to a player's WORLD result as if it entered before the first hearth or
+     * Warmth/Frigidness modifier, so those blend from the shifted value. Every modifier from there on
+     * is re-run on its stored function, and anything Cold Sweat added after the list is kept.
+     */
+    public double shiftBeforeThermalSources(java.util.List<?> modifiers, Object trait, double result, double shift) {
+        initIfNeeded();
+        if (thermalSource == null || lastInput == null || lastOutput == null || applyModifier == null
+                || modifiers.isEmpty()) return result + shift;
+        try {
+            int first = -1;
+            for (int i = 0; i < modifiers.size(); i++) {
+                if (thermalSource.isInstance(modifiers.get(i))) { first = i; break; }
+            }
+            if (first < 0) return result + shift;
+            double tail = result - ((Number) lastOutput.invoke(modifiers.get(modifiers.size() - 1), trait)).doubleValue();
+            double value = ((Number) lastInput.invoke(modifiers.get(first), trait)).doubleValue() + shift;
+            for (int i = first; i < modifiers.size(); i++) {
+                value = ((Number) applyModifier.invoke(modifiers.get(i), trait, value)).doubleValue();
+            }
+            return Double.isFinite(value + tail) ? value + tail : result + shift;
+        } catch (Exception e) {
+            return result + shift;
+        }
+    }
+
     private Float sampleAmbient(ServerLevel level, BlockPos pos) {
         try {
             Object raw = getTemperatureAt.invoke(null, level, pos);
@@ -131,7 +207,10 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     @Override
     public float blockTemperatureCelsius(Level level, BlockPos pos, BlockState state) {
         initIfNeeded();
-        if (!active || getBlockTemps == null) return Float.NaN;
+        if (!active) return Float.NaN;
+        float running = thermalSource(level, pos, state);
+        if (Float.isFinite(running)) return running;
+        if (getBlockTemps == null) return Float.NaN;
         try {
             Object temps = getBlockTemps.invoke(null, state);
             if (!(temps instanceof java.util.Collection<?> collection) || collection.isEmpty()) return Float.NaN;
@@ -150,13 +229,150 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
     @Override
     public boolean blockMayMatter(BlockState state) {
         initIfNeeded();
-        if (!active || getBlockTemps == null) return false;
+        if (!active) return false;
+        if (state.is(Tags.THERMAL_SOURCES)) return true;
+        if (getBlockTemps == null) return false;
         try {
             if (!(getBlockTemps.invoke(null, state) instanceof java.util.Collection<?> collection)) return false;
             for (Object effect : collection) if (effect != defaultBlockTemp) return true;
             return false;
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    /**
+     * A hearth, boiler or icebox as a room appliance: 1 while it burns hot fuel, -1 while it uses
+     * cold fuel, 0 when idle. NaN for anything else. See {@link #sourceSign}.
+     */
+    private float thermalSource(Level level, BlockPos pos, BlockState state) {
+        if (hearthEntity == null || !state.is(Tags.THERMAL_SOURCES)) return Float.NaN;
+        try {
+            Object entity = level.getBlockEntity(pos);
+            if (!hearthEntity.isInstance(entity)) return Float.NaN;
+            float sign = burning(entity);
+            if (sign != coldSweatSign(entity) && level instanceof ServerLevel server)
+                overridden.computeIfAbsent(server, k -> new java.util.HashMap<>())
+                        .putIfAbsent(pos.asLong(), server.getGameTime() + drainInterval(entity));
+            return sign;
+        } catch (Exception e) {
+            return Float.NaN;
+        }
+    }
+
+    /** What Cold Sweat itself is burning: 1 hot fuel, -1 cold fuel, 0 idle. */
+    private float coldSweatSign(Object entity) throws ReflectiveOperationException {
+        boolean hot = Boolean.TRUE.equals(usingHotFuel.invoke(entity));
+        boolean cold = Boolean.TRUE.equals(usingColdFuel.invoke(entity));
+        return (hot ? 1f : 0f) - (cold ? 1f : 0f);
+    }
+
+    /** Whether Townstead counts the source as burning; Cold Sweat's own choice unless Townstead owns block heat. */
+    private float burning(Object entity) throws ReflectiveOperationException {
+        if (smartEnabled == null || !RoomHeatBackend.ownsBlockHeat()) return coldSweatSign(entity);
+        return sourceSign(Boolean.TRUE.equals(smartEnabled.invoke(entity)),
+                Boolean.TRUE.equals(smokestack.invoke(entity)),
+                ((Number) hotFuel.invoke(entity)).intValue(), ((Number) coldFuel.invoke(entity)).intValue(),
+                Boolean.TRUE.equals(usingHotFuel.invoke(entity)), Boolean.TRUE.equals(usingColdFuel.invoke(entity)));
+    }
+
+    private int drainInterval(Object entity) {
+        try {
+            return drainInterval == null ? 20 : Math.max(1, ((Number) drainInterval.invoke(entity)).intValue());
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return 20;
+        }
+    }
+
+    /**
+     * A smart hearth that Townstead counts as burning while Cold Sweat idles it still uses fuel, one
+     * unit per Cold Sweat drain interval, until it runs out or Cold Sweat takes over again.
+     */
+    public void drainOverriddenFuel(net.minecraft.server.MinecraftServer server) {
+        if (overridden.isEmpty() || drainHot == null || hearthEntity == null) return;
+        for (var levelEntry : overridden.entrySet()) {
+            ServerLevel level = levelEntry.getKey();
+            long now = level.getGameTime();
+            var iterator = levelEntry.getValue().entrySet().iterator();
+            while (iterator.hasNext()) {
+                var entry = iterator.next();
+                BlockPos pos = BlockPos.of(entry.getKey());
+                if (!level.isLoaded(pos)) { iterator.remove(); continue; }
+                Object entity = level.getBlockEntity(pos);
+                try {
+                    if (!hearthEntity.isInstance(entity)) { iterator.remove(); continue; }
+                    float sign = burning(entity), own = coldSweatSign(entity);
+                    if (sign == own) { iterator.remove(); continue; }
+                    if (now < entry.getValue()) continue;
+                    if (sign > 0 && own <= 0) drainHot.invoke(entity, 1, true);
+                    if (sign < 0 && own >= 0) drainCold.invoke(entity, 1, true);
+                    entry.setValue(now + drainInterval(entity));
+                } catch (ReflectiveOperationException | RuntimeException e) {
+                    iterator.remove();
+                }
+            }
+        }
+        overridden.values().removeIf(java.util.Map::isEmpty);
+    }
+
+    /**
+     * How wet Cold Sweat says the player is: its stored soak over its maximum rain soak, or 1 in
+     * water. Its soak keeps updating; only its temperature effect is set aside.
+     */
+    public float wetness(java.util.List<?> modifiers, Player player) {
+        if (player.isInWater()) return 1f;
+        double max = configDouble("MAX_RAIN_SOAK");
+        for (Object modifier : modifiers) {
+            if (!modifier.getClass().getSimpleName().equals("WaterTempModifier")) continue;
+            try {
+                double soak = ((Number) modifier.getClass().getMethod("getTemperature").invoke(modifier)).doubleValue();
+                return (float) Math.max(0, Math.min(1, Math.abs(soak) / (Double.isFinite(max) && max > 0 ? max : 1)));
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                return 0f;
+            }
+        }
+        return 0f;
+    }
+
+    /** What every WORLD modifier of this class added to a player's result, in Cold Sweat units. */
+    public double contribution(java.util.List<?> modifiers, Object trait, String simpleName) {
+        initIfNeeded();
+        if (lastInput == null || lastOutput == null) return 0;
+        double total = 0;
+        for (Object modifier : modifiers) {
+            if (!modifier.getClass().getSimpleName().equals(simpleName)) continue;
+            try {
+                double in = ((Number) lastInput.invoke(modifier, trait)).doubleValue();
+                double out = ((Number) lastOutput.invoke(modifier, trait)).doubleValue();
+                if (Double.isFinite(out - in)) total += out - in;
+            } catch (ReflectiveOperationException | RuntimeException ignored) {
+            }
+        }
+        return total;
+    }
+
+    /**
+     * A fire burns whether anyone is cold or not. In smart mode Cold Sweat only lights the hearth for
+     * a player outside the habitable range, so a fueled hearth with a smokestack counts as burning.
+     * With both fuels loaded, Cold Sweat's choice decides. Redstone mode keeps the player's switch.
+     */
+    static float sourceSign(boolean smart, boolean smokestack, int hotFuel, int coldFuel, boolean usingHot, boolean usingCold) {
+        boolean hot = usingHot, cold = usingCold;
+        if (smart && smokestack && !(hotFuel > 0 && coldFuel > 0)) {
+            hot = hotFuel > 0;
+            cold = coldFuel > 0;
+        }
+        return (hot ? 1f : 0f) - (cold ? 1f : 0f);
+    }
+
+    /** No hearth insulation at a position: Townstead's room air carries the hearth's heat instead. */
+    public Object noInsulation(Level level) {
+        initIfNeeded();
+        if (insulationSnapshot == null) return null;
+        try {
+            return insulationSnapshot.newInstance(level.getGameTime(), 0, 0);
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -314,6 +530,48 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
             traitCore = null;
         }
         try {
+            Class<?> trait = Class.forName("com.momosoftworks.coldsweat.api.util.Temperature$Trait");
+            Class<?> tempModifier = Class.forName(
+                    "com.momosoftworks.coldsweat.api.temperature.modifier.TempModifier");
+            lastInput = tempModifier.getMethod("getLastInput", trait);
+            lastOutput = tempModifier.getMethod("getLastOutput", trait);
+            applyModifier = tempModifier.getMethod("apply", trait, double.class);
+            thermalSource = Class.forName(
+                    "com.momosoftworks.coldsweat.api.temperature.modifier.ThermalSourceTempModifier");
+        } catch (Exception ignored) {
+            thermalSource = null;
+        }
+        try {
+            hearthEntity = Class.forName("com.momosoftworks.coldsweat.common.blockentity.HearthBlockEntity");
+            usingHotFuel = hearthEntity.getMethod("isUsingHotFuel");
+            usingColdFuel = hearthEntity.getMethod("isUsingColdFuel");
+        } catch (Exception ignored) {
+            hearthEntity = null;
+        }
+        if (hearthEntity != null) {
+            try {
+                smartEnabled = hearthEntity.getMethod("isSmartEnabled");
+                smokestack = hearthEntity.getMethod("hasSmokestack");
+                hotFuel = hearthEntity.getMethod("getHotFuel");
+                coldFuel = hearthEntity.getMethod("getColdFuel");
+            } catch (Exception ignored) {
+                smartEnabled = null;
+            }
+            try {
+                drainHot = hearthEntity.getMethod("drainHotFuel", int.class, boolean.class);
+                drainCold = hearthEntity.getMethod("drainColdFuel", int.class, boolean.class);
+                drainInterval = hearthEntity.getMethod("getFuelDrainInterval");
+            } catch (Exception ignored) {
+                drainHot = null;
+            }
+        }
+        try {
+            insulationSnapshot = Class.forName("com.momosoftworks.coldsweat.util.world.WorldHelper$InsulationSnapshot")
+                    .getConstructor(long.class, int.class, int.class);
+        } catch (Exception ignored) {
+            insulationSnapshot = null;
+        }
+        try {
             Class<?> registry = Class.forName("com.momosoftworks.coldsweat.api.registry.BlockTempRegistry");
             getBlockTemps = registry.getMethod("getBlockTempsFor", BlockState.class);
             defaultBlockTemp = registry.getField("DEFAULT_BLOCK_TEMP").get(null);
@@ -326,6 +584,58 @@ public final class ColdSweatTemperatureBridge implements AmbientTemperatureBridg
         }
         active = true;
         Townstead.LOGGER.info("Cold Sweat temperature compatibility enabled.");
+    }
+
+    /** Its habitable range, from its live config. */
+    @Override
+    public float[] comfortRangeCelsius() {
+        double low = configDouble("MIN_TEMP"), high = configDouble("MAX_TEMP");
+        return Double.isFinite(low) && Double.isFinite(high) ? new float[]{(float) (low * 25), (float) (high * 25)} : null;
+    }
+
+    /** Its acclimation ranges: the cold and hot shifts of the minimum and maximum habitable temperature. */
+    @Override
+    public com.aetherianartificer.townstead.temperature.ThermalAcclimation.Limits acclimationLimits() {
+        double[] min = configPair("MIN_ACCLIMATION_RANGE"), max = configPair("MAX_ACCLIMATION_RANGE");
+        if (min == null || max == null) return null;
+        return new com.aetherianartificer.townstead.temperature.ThermalAcclimation.Limits(
+                (float) (min[0] * 25), (float) (max[0] * 25), (float) (min[1] * 25), (float) (max[1] * 25), Float.NaN);
+    }
+
+    /** Its acclimation speed is in its units per minute; the share of the widest shift that covers. */
+    @Override
+    public float acclimationRatePerMinute() {
+        double speed = configDouble("ACCLIMATION_SPEED");
+        var limits = acclimationLimits();
+        if (!Double.isFinite(speed) || limits == null) return Float.NaN;
+        float widest = Math.max(Math.max(Math.abs(limits.coldMin()), Math.abs(limits.coldMax())),
+                Math.max(Math.abs(limits.hotMin()), Math.abs(limits.hotMax())));
+        return widest <= 0 ? Float.NaN : (float) (speed * 25 / widest);
+    }
+
+    private Object configValue(String field) {
+        if (!isActive()) return null;
+        try {
+            Object holder = Class.forName("com.momosoftworks.coldsweat.config.ConfigSettings").getField(field).get(null);
+            return holder == null ? null : holder.getClass().getMethod("get").invoke(holder);
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
+            return null;
+        }
+    }
+
+    private double configDouble(String field) {
+        return configValue(field) instanceof Number n ? n.doubleValue() : Double.NaN;
+    }
+
+    private double[] configPair(String field) {
+        Object pair = configValue(field);
+        if (pair == null) return null;
+        try {
+            Object a = pair.getClass().getMethod("getFirst").invoke(pair), b = pair.getClass().getMethod("getSecond").invoke(pair);
+            return a instanceof Number x && b instanceof Number y ? new double[]{x.doubleValue(), y.doubleValue()} : null;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return null;
+        }
     }
 
     @Override

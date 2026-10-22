@@ -20,6 +20,12 @@
         ]
       },
       {
+        "type": "pheno:value",
+        "value": { "type": "pheno:provider", "provider": "vampirism:sun_damage", "default": 1 },
+        "comparison": ">=",
+        "compare_to": 1
+      },
+      {
         "type": "pheno:equipped_item",
         "slot": "head",
         "inverted": true

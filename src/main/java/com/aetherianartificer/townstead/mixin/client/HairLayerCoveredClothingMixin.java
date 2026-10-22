@@ -34,11 +34,13 @@ public abstract class HairLayerCoveredClothingMixin<T extends LivingEntity, M ex
                                                       boolean visible,
                                                       boolean glowing,
                                                       CallbackInfo ci) {
-        if (!(CommonVillagerModel.getVillager(entity) instanceof VillagerEntityMCA villager)) return;
-        if (!com.aetherianartificer.townstead.client.root.RootClientStore.usesHair(villager)) {
+        // The rendered entity carries the hair sync: for a player that's the player, not MCA's stand-in
+        // villager (a separate, never-synced entity whose hair read always defaulted to on).
+        if (!com.aetherianartificer.townstead.client.root.RootClientStore.usesHair(entity)) {
             this.model.setAllVisible(false);
             return;
         }
+        if (!(CommonVillagerModel.getVillager(entity) instanceof VillagerEntityMCA villager)) return;
         ClothingChoice.HairPolicy policy = ProfessionClothing.hairPolicy(villager);
         if (policy == ClothingChoice.HairPolicy.HIDDEN) {
             this.model.setAllVisible(false);

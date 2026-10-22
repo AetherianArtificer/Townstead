@@ -8,6 +8,9 @@ import com.aetherianartificer.townstead.food.ConsumptionPolicy;
 import com.aetherianartificer.townstead.pheno.action.Action;
 import com.aetherianartificer.townstead.pheno.action.ActionContext;
 import com.aetherianartificer.townstead.pheno.action.Actions;
+import com.aetherianartificer.townstead.pheno.condition.Condition;
+import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
+import com.aetherianartificer.townstead.pheno.condition.Conditions;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -21,6 +24,8 @@ import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
@@ -56,7 +61,7 @@ public final class Consumables {
     public record Definition(ResourceLocation id, Set<ResourceLocation> items,
                              Set<ResourceLocation> tags, @Nullable Action effects,
                              boolean fallback, NeedEffectProjection projection,
-                             @Nullable ConsumptionPolicy transaction) {
+                             @Nullable ConsumptionPolicy transaction, @Nullable Condition requires) {
         boolean matches(ItemStack stack) {
             ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
             if (items.contains(itemId)) return true;
@@ -193,6 +198,18 @@ public final class Consumables {
         return definition == null ? NeedEffectProjection.NONE : definition.projection();
     }
 
+    /** Whether {@code consumer} meets the {@code requires} condition of the definition authored for it. */
+    public static boolean permitsConsumer(@Nullable LivingEntity consumer, ItemStack stack) {
+        if (consumer == null) return true;
+        ConsumptionPolicy.Consumer audience = consumer instanceof VillagerEntityMCA
+                ? ConsumptionPolicy.Consumer.VILLAGER
+                : consumer instanceof Player ? ConsumptionPolicy.Consumer.PLAYER
+                : ConsumptionPolicy.Consumer.OTHER_LIVING;
+        Definition definition = resolve(stack, audience);
+        return definition == null || definition.requires() == null
+                || definition.requires().test(new ConditionContext(consumer));
+    }
+
     public static boolean apply(VillagerEntityMCA villager, ItemStack consumed) {
         Definition definition = resolve(consumed, ConsumptionPolicy.Consumer.VILLAGER);
         if (definition == null || definition.effects() == null) return false;
@@ -306,8 +323,10 @@ public final class Consumables {
         ConsumptionPolicy transaction = json.has("transaction")
                 ? ConsumptionPolicy.parse(json.get("transaction")) : null;
         if (!v2 && transaction != null) return null;
+        Condition requires = json.has("requires") ? Conditions.parse(json.get("requires")) : null;
+        if (json.has("requires") && requires == null) return null;
         return new Definition(id, Set.copyOf(items), Set.copyOf(tags), effects, fallback,
-                projection, transaction);
+                projection, transaction, requires);
     }
 
     /**

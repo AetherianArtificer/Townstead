@@ -1,27 +1,37 @@
 package com.aetherianartificer.townstead.client.gui.root;
 
+import com.aetherianartificer.townstead.client.gui.quest.QuestIconButton;
+import com.aetherianartificer.townstead.client.gui.quest.QuestIcons;
 import com.aetherianartificer.townstead.client.root.RootCatalogClient;
+import com.aetherianartificer.townstead.client.root.RootClientStore;
 import com.aetherianartificer.townstead.root.RootCatalogEntry;
+import com.aetherianartificer.townstead.root.RootRegistry;
+import com.aetherianartificer.townstead.root.RootSetC2SPayload;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.LivingEntity;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.function.Consumer;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Builds and wires the Roots tab's vertical-stack UI. Two native {@link Button}
- * tabs flip the column in place between two views that share the same regions;
- * the current view's tab is left {@code active=false} so it reads as the pressed,
- * greyed-out tab (matching MCA's own page-tab row):
+ * Builds and wires the Roots tab. Two native {@link Button} tabs flip the column in place; the
+ * current view's tab is left {@code active=false} so it reads as pressed, like MCA's own page tabs:
  * <ul>
- *   <li><b>Root</b> — search box, grouped master list, description box.</li>
- *   <li><b>Genes</b> — the inherited-gene chips ({@link RootTraitsWidget}),
- *       full height; hovering a chip shows its full stat-block tooltip.</li>
+ *   <li><b>Root</b>: a summary of what is on show (art, name, backstory, facts, powers), with
+ *       <b>Browse roots...</b> to open {@link RootBrowseScreen} and <b>Random</b> to try another.
+ *       A mix shows as one too, and Random becomes <b>Roll again</b>.</li>
+ *   <li><b>Genes</b>: the target's own genes ({@link HeritageGenesWidget}) while they are shown as
+ *       they are; a single root on preview shows its inherited-gene chips ({@link RootTraitsWidget}).
+ *       A mix on preview has none to show, since its genes are rolled on Apply.</li>
  * </ul>
- * A single Apply row sits below both. No modal, so there is only ever one screen
- * and one background. The host adds the returned widgets via
- * {@code addRenderableWidget}; {@code onApply} sends the set packet.
+ * The tab opens on the target as it is; anything else on show is a founding from its
+ * {@link RootEditSession}, and Apply, below both, gives the target exactly that one. With a single root
+ * to pick there is nothing to choose, so the tab is only the summary.
  */
 public final class RootPicker {
 
@@ -50,94 +60,144 @@ public final class RootPicker {
         return out;
     }
 
-    public record Widgets(Button tabRoot, Button tabGenes, EditBox search, RootListWidget list,
-                          RootDescriptionWidget description, RootTraitsWidget master, Button apply) {}
+    /** The tab's widgets, for the host to add with {@code addRenderableWidget}. */
+    public record Widgets(List<AbstractWidget> all) {}
 
-    public static Widgets build(Minecraft mc, int x, int y, int w, int h, int target,
-                                Consumer<String> onApply, Consumer<RootCatalogEntry> onPreview) {
-        final int gap = 2, tabH = 20, searchH = 18, applyH = 20;
+    public static Widgets build(Minecraft mc, Screen parent, @Nullable LivingEntity model,
+                                int x, int y, int w, int h, RootEditSession session) {
+        final int gap = 2, tabH = 20, buttonH = 20;
+        boolean self = session.target() == RootSetC2SPayload.SELF;
+
+        List<RootCatalogEntry> listed = new ArrayList<>();
+        for (RootCatalogEntry e : RootCatalogClient.origins()) {
+            if (e.listedFor(self)) listed.add(e);
+        }
+        String currentId = currentRootId(session.target());
+        // A blocked current root is still shown; there is a choice whenever another root is on offer.
+        boolean choice = listed.size() > 1 || (listed.size() == 1 && !listed.get(0).id().equals(currentId));
 
         int contentTop = y + tabH + gap;
-        int applyTop = y + h - applyH;
-        int contentBottom = applyTop - gap;   // content stops a gap above Apply
-
-        // Root view: search / list / description.
-        int listTop = contentTop + searchH + gap;
-        int oUsable = contentBottom - listTop;
-        int listH = Math.max(40, (int) (oUsable * 0.42));
-        int descTop = listTop + listH + gap;
-        int descH = contentBottom - descTop;
-
+        int applyTop = y + h - buttonH;
+        int browseTop = applyTop - gap - buttonH;
+        int summaryBottom = choice ? browseTop - gap : y + h;
         int halfW = (w - gap) / 2;
 
-        // EditBox draws its border 1px outside its bounds, so inset it by 1px and shrink
-        // by 2px to make its outer edge sit flush with the panels below (which fill [x, x+w]).
-        EditBox search = new EditBox(mc.font, x + 1, contentTop + 1, w - 2, searchH - 2,
-                Component.translatable("townstead.origin.search"));
-        search.setHint(Component.translatable("townstead.origin.search"));
+        RootSummaryWidget summary = new RootSummaryWidget(x, contentTop, w, summaryBottom - contentTop);
+        int genesH = (choice ? applyTop - gap : y + h) - contentTop;
+        RootTraitsWidget master = new RootTraitsWidget(x, contentTop, w, genesH);
+        HeritageGenesWidget own = new HeritageGenesWidget(x, contentTop, w, genesH);
+        own.visible = false;
 
-        RootListWidget list = new RootListWidget(mc, x, w, listH, listTop, target);
-        RootDescriptionWidget description = new RootDescriptionWidget(x, descTop, w, descH);
-        // Genes view: the chips fill the whole content region (no detail pane).
-        RootTraitsWidget master = new RootTraitsWidget(x, contentTop, w, contentBottom - contentTop);
+        Button apply = Button.builder(Component.translatable("townstead.origin.apply"), b -> session.apply())
+                .pos(x, applyTop).size(w, buttonH).build();
+        int randomW = Math.max(44, w / 3);
+        Button browse = new QuestIconButton(x, browseTop, w - randomW - gap, buttonH,
+                Component.translatable("townstead.root.browse.open"),
+                b -> mc.setScreen(new RootBrowseScreen(parent, self, model, session)),
+                QuestIcons.Icon.DETAILS);
+        Button random = Button.builder(Component.translatable("townstead.root.random"), b -> {
+            RootEditSession.Choice shown = session.shownChoice();
+            if (shown == null) return;
+            if (shown.mix() != null) {
+                session.roll(shown);
+                return;
+            }
+            if (listed.size() < 2) return;
+            RootCatalogEntry pick;
+            do {
+                pick = listed.get(mc.level != null ? mc.level.random.nextInt(listed.size())
+                        : (int) (Math.random() * listed.size()));
+            } while (pick.id().equals(shown.rootId()));
+            session.want(RootEditSession.Choice.root(pick.id()));
+        }).pos(x + w - randomW, browseTop).size(randomW, buttonH).build();
 
-        Button apply = Button.builder(Component.translatable("townstead.origin.apply"), b -> {
-            RootCatalogEntry sel = list.selectedRoot();
-            if (sel != null) onApply.accept(sel.id());
-        }).pos(x, applyTop).size(w, applyH).build();
-        apply.active = false;
-
-        final RootCatalogEntry[] selectedRef = { null };
-        final boolean[] previewReady = { false };   // suppress preview during the initial auto-select
         final Runnable[] mode = new Runnable[2];
-
         Button tabRoot = Button.builder(Component.translatable("townstead.origin.tab_origin"),
                 b -> mode[0].run()).pos(x, y).size(halfW, tabH).build();
         Button tabGenes = Button.builder(Component.translatable("townstead.origin.tab_genes"),
                 b -> mode[1].run()).pos(x + halfW + gap, y).size(w - halfW - gap, tabH).build();
 
+        // What is on show: the founding when one is, else the target as it is.
+        final RootEditSession.Choice[] last = { null };
+        final RootCatalogEntry[] single = { null };
+        final boolean[] genesView = { false };
+        // The target as they are, not a founding on preview: their own genes can show.
+        final boolean[] asIs = { false };
+        Runnable showGenes = () -> {
+            boolean ownGenes = asIs[0];
+            own.visible = genesView[0] && ownGenes;
+            master.visible = genesView[0] && !ownGenes;
+            if (own.visible) own.show(targetUuid(mc, session.target()));
+            if (master.visible) master.setRoot(single[0]);
+        };
+        Runnable refresh = () -> {
+            RootEditSession.Choice shown = session.shownChoice();
+            RootEditSession.Founding founding = session.shown();
+            RootEditSession.Identity identity = session.identity();
+            single[0] = shown != null && shown.mix() == null ? RootCatalogClient.origin(shown.rootId()) : null;
+            boolean wasAsIs = asIs[0];
+            asIs[0] = shown != null && founding == null;
+            if (shown == null) {
+                summary.setStatus(Component.translatable("townstead.root.loading"));
+            } else {
+                summary.setStatus(null);
+                if (!shown.same(last[0]) || wasAsIs != asIs[0]) {
+                    if (shown.mix() != null) {
+                        String name = founding != null ? founding.name() : identity != null ? identity.name() : "";
+                        String backstory = founding != null ? founding.backstory() : identity != null ? identity.backstory() : "";
+                        summary.setMix(shown.mix(), name, backstory);
+                    } else {
+                        summary.setRoot(single[0]);
+                    }
+                    showGenes.run();
+                }
+            }
+            last[0] = shown;
+            apply.active = session.canApply();
+            random.active = shown != null && !session.rolling();
+            browse.active = shown != null;
+            tabGenes.active = (asIs[0] || single[0] != null) && !genesView[0];
+            random.setMessage(Component.translatable(shown != null && shown.mix() != null
+                    ? "townstead.root.roll" : "townstead.root.random"));
+        };
         mode[0] = () -> {   // Root view
-            search.visible = true;
-            list.setShown(true);
-            description.visible = true;
-            master.visible = false;
-            tabRoot.active = false;                       // current tab reads as pressed
-            tabGenes.active = selectedRef[0] != null;
+            summary.visible = true;
+            browse.visible = choice;
+            random.visible = choice && listed.size() > 1;
+            genesView[0] = false;
+            showGenes.run();
+            tabRoot.active = false;
+            tabGenes.active = asIs[0] || single[0] != null;
         };
         mode[1] = () -> {   // Genes view
-            search.visible = false;
-            search.setFocused(false);
-            list.setShown(false);
-            description.visible = false;
-            master.visible = true;
-            if (selectedRef[0] != null) master.setRoot(selectedRef[0]);
+            summary.visible = false;
+            browse.visible = false;
+            random.visible = false;
+            genesView[0] = true;
+            showGenes.run();
             tabRoot.active = true;
-            tabGenes.active = false;                         // current tab reads as pressed
+            tabGenes.active = false;
         };
+        apply.visible = choice;
 
-        list.setOnSelect(entry -> {
-            description.setRoot(entry);
-            apply.active = entry != null;
-            selectedRef[0] = entry;
-            tabGenes.active = entry != null && !master.visible;
-            if (previewReady[0] && entry != null) onPreview.accept(entry);
-        });
-        search.setResponder(list::setFilter);
+        mode[0].run();
+        refresh.run();
+        session.onChange(refresh);
+        // The editor rebuilt the tab and reset its model; the founding on show goes back on it as it was.
+        session.redisplay();
 
-        mode[0].run();   // start on the Root view
+        return new Widgets(List.of(tabRoot, tabGenes, summary, master, own, browse, random, apply));
+    }
 
-        list.rebuild();
-        String current = list.currentRootId();
-        for (RootCatalogEntry e : RootCatalogClient.origins()) {
-            // A blocked current root has no row to select; the target keeps it until a new pick applies.
-            if (e.id().equals(current) && e.listedFor(target == com.aetherianartificer.townstead.root.RootSetC2SPayload.SELF)) {
-                list.choose(e);
-                break;
-            }
-        }
-        list.scrollToSelected();   // open scrolled to the target's current origin
-        previewReady[0] = true;   // user selections from here on drive the live preview
+    @Nullable
+    private static java.util.UUID targetUuid(Minecraft mc, int target) {
+        if (target == RootSetC2SPayload.SELF) return mc.player == null ? null : mc.player.getUUID();
+        net.minecraft.world.entity.Entity entity = mc.level == null ? null : mc.level.getEntity(target);
+        return entity == null ? null : entity.getUUID();
+    }
 
-        return new Widgets(tabRoot, tabGenes, search, list, description, master, apply);
+    static String currentRootId(int target) {
+        String id = RootClientStore.get(target);
+        return id.isEmpty() ? RootRegistry.DEFAULT_ID.toString() : id;
     }
 }

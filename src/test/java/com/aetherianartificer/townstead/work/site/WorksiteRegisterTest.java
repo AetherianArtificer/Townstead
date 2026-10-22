@@ -157,6 +157,14 @@ class WorksiteRegisterTest {
                 "private with no named people is the residents-only policy");
         assertTrue(site.owners().isEmpty());
 
+        site.setOwnership(new BlockPos(4, 70, 9), OwnershipScope.BUILDING, java.util.List.of());
+        assertFalse(site.ownershipPrivate(), "a plaque that lists nobody keeps nobody out");
+
+        site.setOwnership(new BlockPos(4, 70, 9), OwnershipScope.BUILDING, false, java.util.List.of(
+                new RoomOwner(player, "Builder", RoomOwner.Kind.PLAYER)));
+        assertFalse(site.ownershipPrivate());
+        assertTrue(site.owners().isEmpty(), "an old open deed named people without keeping anyone out");
+
         site.clearOwnership();
         assertNull(site.ownershipTag());
         assertEquals(OwnershipScope.ROOM, site.ownershipScope());

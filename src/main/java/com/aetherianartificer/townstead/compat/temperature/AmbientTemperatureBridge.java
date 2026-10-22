@@ -29,6 +29,19 @@ public interface AmbientTemperatureBridge {
     float ambientCelsius(ServerLevel level, BlockPos pos);
 
     /**
+     * Whether the backend already runs a season curve here, through its own compat or a compat mod.
+     * Probed from what is actually registered, so it holds whichever mod supplied the seasons.
+     */
+    default boolean modelsSeasons() {
+        return false;
+    }
+
+    /** Whether the backend already warms rock with depth, so Townstead's geothermal gradient is not added. */
+    default boolean modelsGeothermal() {
+        return false;
+    }
+
+    /**
      * The insulation the backend attributes to a worn item, in Celsius, or {@code NaN} when the
      * backend has no opinion.
      */
@@ -86,5 +99,29 @@ public interface AmbientTemperatureBridge {
      */
     default @org.jetbrains.annotations.Nullable net.minecraft.resources.ResourceLocation playerImmunityEffect() {
         return null;
+    }
+
+    /** Turns the mod's own player wetness off while the root stays dry, and back on after. */
+    default void keepPlayerDry(Player player, boolean dry) {
+    }
+
+    /** The feels-like range, in Celsius, where the mod leaves a body alone; null when it has none. */
+    default float @org.jetbrains.annotations.Nullable [] comfortRangeCelsius() {
+        return null;
+    }
+
+    /** The mod's acclimation limits, in Celsius; null when it has no acclimation. */
+    default com.aetherianartificer.townstead.temperature.ThermalAcclimation.@org.jetbrains.annotations.Nullable Limits acclimationLimits() {
+        return null;
+    }
+
+    /** How wet the mod says the player is, from 0 to 1; NaN when it does not track wetness. */
+    default float playerWetness(Player player) {
+        return Float.NaN;
+    }
+
+    /** Share of a full acclimation per real minute; NaN when the mod has no acclimation. */
+    default float acclimationRatePerMinute() {
+        return Float.NaN;
     }
 }

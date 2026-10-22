@@ -41,6 +41,7 @@ You'd get the same out of it. I'd set up an altar and swear in anyone who's got 
 ~ founded = true
 ~ trust(2)
 Good. Thank you. I'll start looking for the ones who don't mind the dark. They usually find me first, if I'm honest. # emote:nod
+Here. Take this. Put it down somewhere in your town, and once it's standing, we're a lodge. Until then we're two people with a plan.
 {asked_wolf:
     I'll be gone a day first. There's a rope I need to go and cut.
 }

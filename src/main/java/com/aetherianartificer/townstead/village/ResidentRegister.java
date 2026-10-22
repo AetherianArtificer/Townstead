@@ -52,6 +52,13 @@ public final class ResidentRegister extends SavedData {
     private static final long REFRESH_STRIDE_TICKS = 600L;
     /** Entries unseen for this many days are dropped. */
     private static final long PRUNE_AFTER_DAYS = 120L;
+    /** Home village of a record saved before homes were kept. */
+    private static final int HOME_UNKNOWN = Integer.MIN_VALUE;
+    /** Rest-day states: not seen since this was kept, not a worker, a worker with a day off, one without. */
+    private static final int REST_UNKNOWN = -1;
+    private static final int REST_NOT_WORKER = 0;
+    private static final int REST_HAS_DAY = 1;
+    private static final int REST_NO_DAY = 2;
 
     private final Map<UUID, Entry> entries = new HashMap<>();
 
@@ -110,14 +117,52 @@ public final class ResidentRegister extends SavedData {
                 needs.collapsed(),
                 level.getGameTime(),
                 TownsteadCalendar.worldDay(server),
-                true);
+                true,
+                homeVillageId(villager),
+                restState(server, villager));
         Entry previous = entries.put(villager.getUUID(), entry);
         setDirty();
-        Optional<VillageId> after = entry.village();
-        // A villager seen for the first time is not moving; only a record that already existed can change village.
-        if (previous != null && after.isPresent() && !previous.village().equals(after)) {
+        // Moving in is claiming a home, not standing inside a border. A first sighting with a home counts, so
+        // villagers born or spawned into a village arrive too. Records saved before homes were kept have no baseline.
+        Optional<VillageId> after = entry.home();
+        if (after.isPresent() && (previous == null
+                || (previous.homeVillageId != HOME_UNKNOWN && !previous.home().equals(after)))) {
             com.aetherianartificer.townstead.api.impl.v1.ApiEvents.villageChanged(villager.getUUID(), entry.name,
-                    previous.village().orElse(null), after.get());
+                    previous == null ? null : previous.home().orElse(null), after.get());
+        }
+    }
+
+    private static int restState(MinecraftServer server, VillagerEntityMCA villager) {
+        var profession = villager.getVillagerData().getProfession();
+        if (profession == net.minecraft.world.entity.npc.VillagerProfession.NONE
+                || profession == net.minecraft.world.entity.npc.VillagerProfession.NITWIT) return REST_NOT_WORKER;
+        try {
+            return com.aetherianartificer.townstead.pheno.condition.types.RestDayConditionType.hasRestDay(server, villager)
+                    ? REST_HAS_DAY : REST_NO_DAY;
+        } catch (RuntimeException e) {
+            return REST_UNKNOWN;
+        }
+    }
+
+    /**
+     * The last known rest-day reading for a villager that is not loaded: empty when unknown or not a
+     * worker, otherwise whether its week has a day off.
+     */
+    public Optional<Boolean> lastRestDay(UUID uuid) {
+        Entry entry = entries.get(uuid);
+        if (entry == null || !entry.alive) return Optional.empty();
+        return switch (entry.restState) {
+            case REST_HAS_DAY -> Optional.of(true);
+            case REST_NO_DAY -> Optional.of(false);
+            default -> Optional.empty();
+        };
+    }
+
+    private static int homeVillageId(VillagerEntityMCA villager) {
+        try {
+            return villager.getResidency().getHomeVillage().map(Village::getId).orElse(ChronicleEvent.VILLAGE_NONE);
+        } catch (Throwable t) {
+            return ChronicleEvent.VILLAGE_NONE;
         }
     }
 
@@ -269,11 +314,17 @@ public final class ResidentRegister extends SavedData {
     private record Entry(String name, @Nullable ResourceLocation dimension, int villageId, String professionId,
                          int tier, int hunger, int thirst, int fatigue, int bodyTenths, int thermalTier,
                          boolean thermalCrisis, boolean collapsed, long lastSeenGameTime, long lastSeenWorldDay,
-                         boolean alive) {
+                         boolean alive, int homeVillageId, int restState) {
 
         Optional<VillageId> village() {
             return dimension == null || villageId == ChronicleEvent.VILLAGE_NONE
                     ? Optional.empty() : Optional.of(new VillageId(dimension, villageId));
+        }
+
+        /** The village the villager has a home in, ignoring where it stands. */
+        Optional<VillageId> home() {
+            return dimension == null || homeVillageId == ChronicleEvent.VILLAGE_NONE || homeVillageId == HOME_UNKNOWN
+                    ? Optional.empty() : Optional.of(new VillageId(dimension, homeVillageId));
         }
 
         Map<String, NeedLevel> levels() {
@@ -282,7 +333,8 @@ public final class ResidentRegister extends SavedData {
 
         Entry dead() {
             return new Entry(name, dimension, villageId, professionId, tier, hunger, thirst, fatigue, bodyTenths,
-                    thermalTier, thermalCrisis, collapsed, lastSeenGameTime, lastSeenWorldDay, false);
+                    thermalTier, thermalCrisis, collapsed, lastSeenGameTime, lastSeenWorldDay, false, homeVillageId,
+                    restState);
         }
 
         CompoundTag save() {
@@ -302,6 +354,8 @@ public final class ResidentRegister extends SavedData {
             t.putLong("seenTick", lastSeenGameTime);
             t.putLong("seenDay", lastSeenWorldDay);
             t.putBoolean("alive", alive);
+            t.putInt("home", homeVillageId);
+            t.putInt("rest", restState);
             return t;
         }
 
@@ -311,7 +365,9 @@ public final class ResidentRegister extends SavedData {
                     t.getInt("hunger"), t.getInt("thirst"), t.getInt("fatigue"),
                     t.contains("bodyTenths") ? t.getInt("bodyTenths") : Integer.MIN_VALUE, t.getInt("thermalTier"),
                     t.getBoolean("thermalCrisis"), t.getBoolean("collapsed"), t.getLong("seenTick"), t.getLong("seenDay"),
-                    !t.contains("alive") || t.getBoolean("alive"));
+                    !t.contains("alive") || t.getBoolean("alive"),
+                    t.contains("home") ? t.getInt("home") : HOME_UNKNOWN,
+                    t.contains("rest") ? t.getInt("rest") : REST_UNKNOWN);
         }
     }
 }

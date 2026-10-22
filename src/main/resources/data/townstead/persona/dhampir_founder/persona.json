@@ -19,35 +19,74 @@
             "inverted": true
           },
           {
-            "type": "pheno:entity_in_radius",
-            "radius": 48,
-            "condition": {
-              "type": "pheno:and",
-              "conditions": [
-                {
-                  "type": "pheno:entity_type",
-                  "entity_type": "minecraft:player",
-                  "inverted": true
-                },
-                {
-                  "type": "pheno:or",
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 48,
+                "condition": {
+                  "type": "pheno:and",
                   "conditions": [
                     {
-                      "type": "pheno:state",
-                      "state": "townstead_state:vampire"
+                      "type": "pheno:entity_type",
+                      "entity_type": "minecraft:player",
+                      "inverted": true
                     },
                     {
-                      "type": "pheno:entity_type",
-                      "entity_type": "vampirism:vampire"
-                    },
-                    {
-                      "type": "pheno:entity_type",
-                      "entity_type": "vampirism:advanced_vampire"
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:state",
+                          "state": "townstead_state:vampire"
+                        },
+                        {
+                          "type": "pheno:entity_type",
+                          "entity_type": "vampirism:vampire"
+                        },
+                        {
+                          "type": "pheno:entity_type",
+                          "entity_type": "vampirism:advanced_vampire"
+                        }
+                      ]
                     }
                   ]
                 }
-              ]
-            }
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 96,
+                "condition": {
+                  "type": "pheno:and",
+                  "conditions": [
+                    {
+                      "type": "pheno:entity_type",
+                      "entity_type": "minecraft:player",
+                      "inverted": true
+                    },
+                    {
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:state",
+                          "state": "townstead_state:vampire"
+                        },
+                        {
+                          "type": "pheno:entity_type",
+                          "entity_type": "vampirism:vampire"
+                        },
+                        {
+                          "type": "pheno:entity_type",
+                          "entity_type": "vampirism:advanced_vampire"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:village"
+                    }
+                  ]
+                }
+              }
+            ]
           }
         ]
       }
@@ -215,14 +254,21 @@
   "mca_menu": {
     "hide": [
       "hire",
-      "stay"
+      "stay",
+      "chat",
+      "joke",
+      "story",
+      "rumors",
+      "rock_paper_scissor",
+      "apologize"
     ]
   },
   "family_name": "told",
   "actions": {
     "found": {
       "type": "pheno:found_faction",
-      "kind": "townstead:hunter_order"
+      "kind": "townstead:hunter_order",
+      "on_placement": true
     },
     "hunger_small": {
       "type": "pheno:add_state",
@@ -272,6 +318,10 @@
       "type": "pheno:add_count",
       "key": "townstead:slipped"
     },
+    "asked_about": {
+      "type": "pheno:add_count",
+      "key": "townstead:asked_about"
+    },
     "carry_question": {
       "type": "pheno:add_count",
       "key": "townstead:asked_neighbor",
@@ -284,6 +334,43 @@
       "type": "pheno:take_items",
       "tag": "townstead:garlic",
       "count": 16
+    },
+    "enlist_recruit": {
+      "type": "pheno:enlist",
+      "range": 6
+    },
+    "swear_player": {
+      "type": "pheno:start_ritual",
+      "ritual": "townstead:hunter_oath",
+      "on": "other"
+    },
+    "bite_one": {
+      "type": "pheno:area_of_effect",
+      "radius": 96,
+      "limit": 1,
+      "bientity_condition": {
+        "type": "pheno:target_condition",
+        "condition": {
+          "type": "pheno:and",
+          "conditions": [
+            { "type": "pheno:resident" },
+            { "type": "pheno:life_stage", "stage": "adult" },
+            { "type": "pheno:persona", "inverted": true },
+            { "type": "pheno:state", "state": "townstead_state:vampire", "eligible": true },
+            { "type": "pheno:state", "state": "townstead_state:vampire", "inverted": true },
+            { "type": "pheno:status_effect", "effect": "vampirism:sanguinare", "inverted": true }
+          ]
+        }
+      },
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "vampirism:sanguinare",
+        "duration": 48000
+      }
+    },
+    "fed_wolf": {
+      "type": "pheno:add_count",
+      "key": "townstead:fed_wolf"
     },
     "fetch_wolf": {
       "type": "pheno:errand",
@@ -790,6 +877,16 @@
     "altar_placed": {
       "type": "pheno:order_altar"
     },
+    "has_altar": {
+      "type": "pheno:other",
+      "condition": {
+        "type": "pheno:inventory",
+        "item_condition": {
+          "type": "pheno:ingredient",
+          "item": "townstead:oath_altar"
+        }
+      }
+    },
     "altar_graveyard": {
       "type": "pheno:order_altar",
       "building": "graveyard"
@@ -831,6 +928,7 @@
     },
     "lodge_built": {
       "type": "pheno:village",
+      "home": true,
       "has_building": "hunter_lodge"
     },
     "second_kill": {
@@ -846,10 +944,10 @@
           "stage": "adult"
         },
         {
-          "type": "pheno:personality",
-          "personality": [
+          "type": "pheno:trait",
+          "trait": [
             "athletic",
-            "confident"
+            "tough"
           ]
         },
         {
@@ -988,6 +1086,14 @@
       "type": "pheno:chronicle_count",
       "key": "townstead:vampire_cured",
       "at_least": 1
+    },
+    "thrall_stayed": {
+      "type": "pheno:other",
+      "condition": { "type": "pheno:chronicle_count", "key": "townstead:thrall_stayed", "at_least": 1 }
+    },
+    "thrall_sent_away": {
+      "type": "pheno:other",
+      "condition": { "type": "pheno:chronicle_count", "key": "townstead:thrall_sent_away", "at_least": 1 }
     },
     "thrall_near": {
       "type": "pheno:visitor",
@@ -1216,6 +1322,10 @@
       "key": "father_court",
       "radius": 32
     },
+    "court_mansion": {
+      "type": "pheno:structure",
+      "structure": "minecraft:woodland_mansion"
+    },
     "at_shepherd": {
       "type": "pheno:near_marker",
       "key": "shepherd_grave",
@@ -1297,6 +1407,7 @@
       "text": "Build the lodge: the altar and two workbenches in one room",
       "condition": {
         "type": "pheno:village",
+        "home": true,
         "has_building": "hunter_lodge"
       }
     },
@@ -1353,6 +1464,113 @@
         "key": "townstead:pet_downed"
       },
       "target": 1
+    },
+    "second_hunter": {
+      "text": "Swear in another hunter",
+      "value": {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:slipped"
+      },
+      "target": 1
+    },
+    "collar_things": {
+      "text": "Carry leather and a silver or iron nugget",
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:other",
+            "condition": {
+              "type": "pheno:inventory",
+              "min": 1,
+              "item_condition": {
+                "type": "pheno:ingredient",
+                "item": "minecraft:leather"
+              }
+            }
+          },
+          {
+            "type": "pheno:other",
+            "condition": {
+              "type": "pheno:inventory",
+              "min": 1,
+              "item_condition": {
+                "type": "pheno:ingredient",
+                "tag": "townstead:bell_metal"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "bone_carried": {
+      "text": "Carry a bone",
+      "condition": {
+        "type": "pheno:other",
+        "condition": {
+          "type": "pheno:inventory",
+          "min": 1,
+          "item_condition": {
+            "type": "pheno:ingredient",
+            "item": "minecraft:bone"
+          }
+        }
+      }
+    },
+    "werewolf_things": {
+      "text": "Carry silver and wolfsbane",
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:other",
+            "condition": {
+              "type": "pheno:inventory",
+              "min": 1,
+              "item_condition": {
+                "type": "pheno:ingredient",
+                "tag": "townstead:werewolf_silver"
+              }
+            }
+          },
+          {
+            "type": "pheno:other",
+            "condition": {
+              "type": "pheno:inventory",
+              "min": 1,
+              "item_condition": {
+                "type": "pheno:ingredient",
+                "tag": "townstead:wolfsbane"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "werewolf_kills_seen": {
+      "text": "Vampires a werewolf put down near you",
+      "subject": "player",
+      "value": {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:saw_werewolf_kill"
+      },
+      "target": 1
+    },
+    "swear_oath": {
+      "text": "Swear the hunter's oath at the altar",
+      "subject": "player",
+      "condition": {
+        "type": "pheno:faction_bond",
+        "kind": "townstead:oath"
+      }
+    },
+    "wolf_fed": {
+      "text": "Raw meat given",
+      "value": {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:fed_wolf"
+      },
+      "target": 3
     }
   },
   "gifts": [
@@ -1460,6 +1678,27 @@
         "townstead:officiated/hunter_oath": 1
       }
     },
+    "scene06b_oath": {
+      "vars": {
+        "met": 2,
+        "offered": true,
+        "founded": true,
+        "asked_wolf": true,
+        "wolf_seen": true,
+        "altar_started": true,
+        "done_lodge": true,
+        "garlic_started": true,
+        "done_garlic": true,
+        "done_volunteers": true,
+        "done_first_oath": true
+      },
+      "knot": "player_oath_offer",
+      "villager_counters": {
+        "townstead:slew_vampire": 2,
+        "townstead:officiated/hunter_oath": 1
+      },
+      "note": "The hunter offers you the oath. Take it at the Oath Altar; they hold the ritual."
+    },
     "scene07_walk": {
       "vars": {
         "met": 2,
@@ -1479,7 +1718,7 @@
         "townstead:slew_vampire": 2,
         "townstead:officiated/hunter_oath": 1
       },
-      "note": "You must be sworn into the lodge for the walk to be offered normally."
+      "note": "The hunter offers you the oath first (scene06b_oath). The walk is offered only once you are sworn."
     },
     "scene08_watch": {
       "vars": {
@@ -1494,7 +1733,8 @@
         "done_garlic": true,
         "done_volunteers": true,
         "done_first_oath": true,
-        "done_walk": true
+        "done_walk": true,
+        "oath_job": true
       },
       "knot": "watch_offer",
       "villager_counters": {
@@ -1517,7 +1757,8 @@
         "done_volunteers": true,
         "done_first_oath": true,
         "done_walk": true,
-        "done_watch": true
+        "done_watch": true,
+        "oath_job": true
       },
       "knot": "neighbor_offer",
       "villager_counters": {
@@ -1540,7 +1781,8 @@
         "done_volunteers": true,
         "done_first_oath": true,
         "done_walk": true,
-        "done_watch": true
+        "done_watch": true,
+        "oath_job": true
       },
       "knot": "bitten_offer",
       "villager_counters": {
@@ -1564,7 +1806,8 @@
         "done_first_oath": true,
         "done_walk": true,
         "done_watch": true,
-        "done_neighbor": true
+        "done_neighbor": true,
+        "oath_job": true
       },
       "knot": "thrall_arrival",
       "villager_counters": {
@@ -1591,7 +1834,8 @@
         "done_neighbor": true,
         "thrall_called": true,
         "thrall_seen": true,
-        "done_thrall": true
+        "done_thrall": true,
+        "oath_job": true
       },
       "knot": "counting",
       "villager_counters": {
@@ -1618,7 +1862,8 @@
         "thrall_called": true,
         "thrall_seen": true,
         "done_thrall": true,
-        "done_counting": true
+        "done_counting": true,
+        "oath_job": true
       },
       "knot": "the_name",
       "villager_counters": {
@@ -1646,7 +1891,8 @@
         "thrall_seen": true,
         "done_thrall": true,
         "done_counting": true,
-        "named": true
+        "named": true,
+        "oath_job": true
       },
       "knot": "the_count",
       "villager_counters": {
@@ -1678,7 +1924,8 @@
         "done_thrall": true,
         "done_counting": true,
         "named": true,
-        "done_count_talk": true
+        "done_count_talk": true,
+        "oath_job": true
       },
       "knot": "slip_after",
       "villager_counters": {
@@ -1712,7 +1959,8 @@
         "done_counting": true,
         "named": true,
         "done_count_talk": true,
-        "done_slip": true
+        "done_slip": true,
+        "oath_job": true
       },
       "knot": "greet",
       "counters": {
@@ -1752,7 +2000,8 @@
         "named": true,
         "done_count_talk": true,
         "done_slip": true,
-        "bread_known": true
+        "bread_known": true,
+        "oath_job": true
       },
       "knot": "grave_offer",
       "counters": {
@@ -1794,7 +2043,8 @@
         "done_slip": true,
         "bread_known": true,
         "grave_seen": true,
-        "done_grave": true
+        "done_grave": true,
+        "oath_job": true
       },
       "knot": "court_move",
       "counters": {
@@ -1839,7 +2089,8 @@
         "grave_seen": true,
         "done_grave": true,
         "court_came": true,
-        "done_wounded": true
+        "done_wounded": true,
+        "oath_job": true
       },
       "knot": "the_book",
       "counters": {
@@ -1888,7 +2139,8 @@
         "court_came": true,
         "done_wounded": true,
         "done_book": true,
-        "book_day": -1
+        "book_day": -1,
+        "oath_job": true
       },
       "knot": "bringer_arrival",
       "counters": {
@@ -1939,7 +2191,8 @@
         "done_book": true,
         "book_day": -1,
         "bringer_called": true,
-        "done_midpoint": true
+        "done_midpoint": true,
+        "oath_job": true
       },
       "knot": "confession_after",
       "counters": {
@@ -1982,7 +2235,8 @@
         "done_thrall": true,
         "done_counting": true,
         "named": true,
-        "done_count_talk": true
+        "done_count_talk": true,
+        "oath_job": true
       },
       "knot": "debrief",
       "villager_counters": {
@@ -2015,7 +2269,8 @@
         "done_thrall": true,
         "done_counting": true,
         "named": true,
-        "done_count_talk": true
+        "done_count_talk": true,
+        "oath_job": true
       },
       "knot": "stakeout_offer",
       "villager_counters": {
@@ -2050,7 +2305,8 @@
         "named": true,
         "done_count_talk": true,
         "stake_offered": true,
-        "done_stakeout": true
+        "done_stakeout": true,
+        "oath_job": true
       },
       "knot": "couple_arrival",
       "villager_counters": {
@@ -2089,7 +2345,8 @@
         "couple_called": true,
         "done_willing": true,
         "done_slip": true,
-        "bread_known": true
+        "bread_known": true,
+        "oath_job": true
       },
       "knot": "fledgling_arrival",
       "villager_counters": {
@@ -2133,7 +2390,8 @@
         "book_day": -1,
         "bringer_called": true,
         "done_midpoint": true,
-        "done_confession_after": true
+        "done_confession_after": true,
+        "oath_job": true
       },
       "knot": "inside_move",
       "counters": {
@@ -2189,7 +2447,8 @@
         "done_midpoint": true,
         "done_confession_after": true,
         "inside_moved": true,
-        "done_inside": true
+        "done_inside": true,
+        "oath_job": true
       },
       "knot": "court_offer",
       "counters": {
@@ -2248,7 +2507,8 @@
         "done_inside": true,
         "court_offered": true,
         "court_walking": true,
-        "court_arrived": true
+        "court_arrived": true,
+        "oath_job": true
       },
       "knot": "court_arrive",
       "counters": {

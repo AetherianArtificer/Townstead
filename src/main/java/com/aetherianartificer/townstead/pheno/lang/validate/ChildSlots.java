@@ -14,6 +14,29 @@ public final class ChildSlots {
 
     @Nullable
     public static NodeDomain childDomain(NodeDomain parent, String key) {
+        return childDomain(parent, key, "");
+    }
+
+    /**
+     * As above, for a parent of a known type. A few slots mean different things under different
+     * types: an item action's {@code action} is an entity action under {@code holder_action} but an
+     * item action under {@code chance}; a bi-entity {@code condition} is an entity condition under
+     * {@code actor_condition} but a bi-entity condition under {@code not}.
+     */
+    @Nullable
+    public static NodeDomain childDomain(NodeDomain parent, String key, String parentType) {
+        if (parent == NodeDomain.ITEM_ACTION && !parentType.isEmpty()
+                && !parentType.equals("pheno:holder_action")) {
+            if (key.equals("action") || key.equals("actions") || key.equals("else_action")) return NodeDomain.ITEM_ACTION;
+        }
+        if (parent == NodeDomain.BIENTITY_CONDITION) {
+            boolean logic = parentType.equals("pheno:and") || parentType.equals("pheno:or")
+                    || parentType.equals("pheno:not");
+            if (key.equals("condition") || key.equals("conditions")) {
+                return logic ? NodeDomain.BIENTITY_CONDITION : NodeDomain.CONDITION;
+            }
+            return null;
+        }
         switch (parent) {
             case GENE:
             case ACTION:

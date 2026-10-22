@@ -1,7 +1,9 @@
 package com.aetherianartificer.townstead.work.job;
 
+import com.aetherianartificer.townstead.TestBootstrap;
 import com.google.gson.JsonParser;
 import net.minecraft.resources.ResourceLocation;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStreamReader;
@@ -11,6 +13,12 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class WorkJobDefTest {
+
+    @BeforeAll
+    static void bootstrap() {
+        TestBootstrap.ensure();
+    }
+
     @Test
     void lsoFuelReserveIsIndependentOfThermostatDemandAndUsesTheCorrectDepot() throws Exception {
         registerProcedurePrimitives();
@@ -313,6 +321,45 @@ class WorkJobDefTest {
             assertTrue(def.destination().blocks()
                     .contains(id("butchery:hook")));
         }
+    }
+
+    @Test
+    void bundledShearingJobUsesTheGeneralEntityInteraction() throws Exception {
+        registerEntityPrimitives();
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.pheno.condition.types.ShearableConditionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.UseItemOnActionType());
+        String path = "/data/townstead/work_job/shear_sheep.json";
+        try (var stream = getClass().getResourceAsStream(path)) {
+            assertNotNull(stream, path);
+            WorkJobDef def = WorkJobDef.parse(id("townstead:shear_sheep"),
+                    JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8))
+                            .getAsJsonObject());
+            assertNotNull(def);
+            assertEquals(WorkJobDef.ENTITY_INTERACTION, def.type());
+            var animals = def.entityTarget();
+            assertNotNull(animals);
+            // Where the flock is kept comes from data, so a pen that grows into a stable keeps it.
+            assertTrue(animals.matchesBuilding("pen"));
+            assertTrue(animals.matchesBuilding("stable"));
+            assertFalse(animals.matchesBuilding("compat/butchery/slaughter_pen"));
+            assertEquals(1, animals.interactions().size());
+            var shear = animals.interactions().get(0);
+            assertEquals("#townstead:shears", shear.item());
+            assertNotNull(shear.action(), "no action defaults to using the item as a player would");
+            assertEquals(List.of("#minecraft:wool"), shear.outputs());
+            assertEquals("townstead:tended", shear.activityKey(def));
+            assertEquals(List.of("townstead:tended"), def.activityKeys());
+        }
+    }
+
+    @Test
+    void anEntityInteractionWithoutInteractionsIsRejected() {
+        assertNull(WorkJobDef.parse(id("test:empty"), JsonParser.parseString("""
+                {"task":"townstead_work:shear","type":"townstead:entity_interaction",
+                 "target":{"buildings":["pen"],"interactions":[]}}
+                """).getAsJsonObject()));
     }
 
     private static void registerEntityPrimitives() {

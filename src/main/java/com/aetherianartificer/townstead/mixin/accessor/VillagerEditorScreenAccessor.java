@@ -27,4 +27,8 @@ public interface VillagerEditorScreenAccessor {
      */
     @Accessor(value = "villagerVisualization", remap = false)
     VillagerEntityMCA townstead$getVillagerVisualization();
+
+    /** Editor commands awaiting the server; MCA reads incoming data only once none are left. */
+    @Accessor(value = "commandsInFlightCount", remap = false)
+    int townstead$getCommandsInFlight();
 }

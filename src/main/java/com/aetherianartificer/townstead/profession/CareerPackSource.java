@@ -92,12 +92,15 @@ public final class CareerPackSource {
             DirectoryValidator validator = new DirectoryValidator(path -> true);
             FolderRepositorySource.discoverPacks(directory, validator, (path, resources) -> {
                 if (requireTownsteadContent && !isTownsteadPack(path)) return;
+                // A pack with no assets/ has nothing for the client (Townstead syncs data-pack
+                // textures, models and translations itself), so it stays off the resource-pack list.
+                if (type == PackType.CLIENT_RESOURCES && !hasAssets(path)) return;
                 String id = packId(path, type, source);
                 PackLocationInfo info = new PackLocationInfo(
                         id,
                         Component.translatable(packNameKey(path), displayName(path)),
                         PackSource.BUILT_IN,
-                        Optional.empty());
+                        knownPack(id, path));
                 Pack pack = Pack.readMetaAndCreate(
                         info,
                         resources,
@@ -106,8 +109,12 @@ public final class CareerPackSource {
                 if (pack != null) output.accept(pack);
             });
             //?} else {
-            /*FolderRepositorySource.discoverPacks(directory, false, (path, resources) -> {
+            /*FolderRepositorySource.discoverPacks(directory, true, (path, resources) -> {
+                // Built in, so their worldgen loads as stable and the world is not marked experimental.
                 if (requireTownsteadContent && !isTownsteadPack(path)) return;
+                // A pack with no assets/ has nothing for the client (Townstead syncs data-pack
+                // textures, models and translations itself), so it stays off the resource-pack list.
+                if (type == PackType.CLIENT_RESOURCES && !hasAssets(path)) return;
                 Pack pack = Pack.readMetaAndCreate(
                         packId(path, type, source),
                         Component.translatable(packNameKey(path), displayName(path)),
@@ -164,6 +171,17 @@ public final class CareerPackSource {
             }
         } catch (IOException error) {
             Townstead.LOGGER.warn("Could not list Townstead Career packs in {}", directory, error);
+        }
+    }
+
+    /** Whether a directory or ZIP pack carries client assets at its root. */
+    static boolean hasAssets(Path pack) {
+        if (Files.isDirectory(pack)) return Files.isDirectory(pack.resolve("assets"));
+        if (!isZip(pack)) return false;
+        try (FileSystem zip = FileSystems.newFileSystem(pack)) {
+            return Files.isDirectory(zip.getRootDirectories().iterator().next().resolve("assets"));
+        } catch (Exception error) {
+            return true;   // unreadable here; let the normal pack loader report it
         }
     }
 
@@ -274,6 +292,29 @@ public final class CareerPackSource {
         }
         return false;
     }
+
+    //? if >=1.21 {
+    /**
+     * A known-pack identity: vanilla marks worldgen from a pack without one experimental, and the
+     * world with it. The version follows the files, so a client reuses its own copy only when it matches.
+     */
+    public static Optional<net.minecraft.server.packs.repository.KnownPack> knownPack(String id, Path path) {
+        return Optional.of(new net.minecraft.server.packs.repository.KnownPack(Townstead.MOD_ID, id, contentVersion(path)));
+    }
+
+    private static String contentVersion(Path path) {
+        long hash = 17;
+        try (var files = Files.isDirectory(path) ? Files.walk(path) : java.util.stream.Stream.of(path)) {
+            for (Path file : (Iterable<Path>) files.filter(Files::isRegularFile).sorted()::iterator) {
+                hash = hash * 31 + path.relativize(file).toString().hashCode();
+                hash = hash * 31 + Files.size(file);
+                hash = hash * 31 + Files.getLastModifiedTime(file).toMillis();
+            }
+        } catch (IOException | RuntimeException ignored) {
+        }
+        return Long.toHexString(hash);
+    }
+    //?}
 
     private static String packId(Path path, PackType type, String source) {
         String safe = path.getFileName().toString().toLowerCase(Locale.ROOT)

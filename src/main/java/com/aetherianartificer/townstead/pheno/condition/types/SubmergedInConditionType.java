@@ -40,6 +40,8 @@ public final class SubmergedInConditionType implements ConditionType {
                 }
             };
         }
-        return ctx -> ctx.entity().isEyeInFluid(tag);
+        return ctx -> ctx.probing()
+                ? ctx.level().getFluidState(ctx.pos().above((int) ctx.entity().getEyeHeight())).is(tag)
+                : ctx.entity().isEyeInFluid(tag);
     }
 }

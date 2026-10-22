@@ -100,7 +100,12 @@ public final class VillagerServerTickDispatcher {
                     com.aetherianartificer.townstead.root.attribute.GeneAttributeApplier.tick(v)),
             new Step("villager.active_ability", null, (v, t) ->
                     com.aetherianartificer.townstead.root.ability.ActiveAbilities.aiTick(v)),
+            new Step("villager.locomotion", null, (v, t) -> {
+                com.aetherianartificer.townstead.root.locomotion.fly.DriftPilot.maintain(v);
+                com.aetherianartificer.townstead.root.locomotion.Locomotion.tick(v);
+            }),
             new Step("villager.glide", null, (v, t) -> com.aetherianartificer.townstead.root.ability.GlideAI.tick(v)),
+            new Step("villager.swim", null, (v, t) -> com.aetherianartificer.townstead.root.locomotion.SwimAI.tick(v)),
             new Step("villager.gene_resource", null, (v, t) ->
                     com.aetherianartificer.townstead.root.ability.ResourceValues.tick(v)),
             new Step("villager.gene_collection", null, (v, t) ->
@@ -119,7 +124,8 @@ public final class VillagerServerTickDispatcher {
                     com.aetherianartificer.townstead.chronicle.emit.MarriageWatcher.tick(v, t)),
             resident("villager.thrall", null, (v, t) ->
                     com.aetherianartificer.townstead.compat.vampirism.Thralls.tick(v)),
-            resident("villager.werewolf", null, (v, t) ->
+            // Wild werewolves turn too, as the mod's own human werewolves do.
+            new Step("villager.werewolf", null, (v, t) ->
                     com.aetherianartificer.townstead.compat.werewolves.WerewolfVillagers.tick(v)),
             resident("villager.order_profession", Systems.POLITICS, (v, t) ->
                     com.aetherianartificer.townstead.politics.order.Orders.syncProfession(v)),

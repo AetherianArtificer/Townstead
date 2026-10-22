@@ -42,19 +42,27 @@ public final class RigSkinPicker {
 
     /** A fitted work skin for the villager's profession, or empty when no fitted skin exists. */
     public static Optional<String> pick(VillagerEntityMCA villager) {
-        ClothingList list = ClothingList.getInstance();
-        if (list == null || list.clothing == null) return Optional.empty();
         List<ClothingEntry> fitted = fitted(villager);
-        Gender gender = villager.getGenetics().getGender();
         ResourceLocation professionId = BuiltInRegistries.VILLAGER_PROFESSION
                 .getKey(villager.getVillagerData().getProfession());
         String profession = professionId == null ? "minecraft:none" : professionId.toString();
+        return pick(skin -> SkinPicker.fits(fitted, skin), villager.getGenetics().getGender(), profession,
+                villager.getUUID().getMostSignificantBits() ^ profession.hashCode());
+    }
 
+    /**
+     * The same profession-first pick from any fit test: the profession's own fitted skins, else civilian
+     * ones, else any fitted skin; stable for a seed. Either side (the editor dresses its preview with it).
+     */
+    public static Optional<String> pick(java.util.function.Predicate<String> fits, Gender gender, String profession,
+                                        long seed) {
+        ClothingList list = ClothingList.getInstance();
+        if (list == null || list.clothing == null) return Optional.empty();
         List<Clothing> own = new ArrayList<>();
         List<Clothing> civilian = new ArrayList<>();
         List<Clothing> any = new ArrayList<>();
         for (Clothing clothing : list.clothing.values()) {
-            if (clothing == null || !SkinPicker.fits(fitted, clothing.getIdentifier())) continue;
+            if (clothing == null || !fits.test(clothing.getIdentifier())) continue;
             if (!SkinSelection.matchesGender(clothing, gender)) continue;
             any.add(clothing);
             if (sameProfession(clothing.profession, profession)) own.add(clothing);
@@ -63,7 +71,7 @@ public final class RigSkinPicker {
         List<Clothing> pool = !own.isEmpty() ? own : !civilian.isEmpty() ? civilian : any;
         if (pool.isEmpty()) return Optional.empty();
         pool.sort(Comparator.comparing(Clothing::getIdentifier));
-        Random random = new Random(villager.getUUID().getMostSignificantBits() ^ profession.hashCode());
+        Random random = new Random(seed);
         return Optional.of(pool.get(random.nextInt(pool.size())).getIdentifier());
     }
 
@@ -79,7 +87,7 @@ public final class RigSkinPicker {
         return authored.equals(profession) || authored.equals(profession.replace(':', '.'));
     }
 
-    private static boolean civilian(@Nullable String authored) {
+    static boolean civilian(@Nullable String authored) {
         return authored == null || authored.isEmpty() || authored.equals("minecraft:none")
                 || authored.equals("minecraft.none");
     }

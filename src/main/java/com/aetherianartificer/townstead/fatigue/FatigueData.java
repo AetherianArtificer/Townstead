@@ -307,7 +307,7 @@ public final class FatigueData {
             ItemStack stack = inv.getItem(i);
             if (isEnergyRestoring(stack)
                     && com.aetherianartificer.townstead.hunger.VillagerConsumptionManager
-                            .permitsManagedVillagerConsumption(stack)) {
+                            .permitsManagedVillagerConsumption(villager, stack)) {
                 //? if >=1.21 {
                 ItemStack consumed = stack.copyWithCount(1);
                 //?} else {

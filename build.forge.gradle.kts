@@ -5,7 +5,7 @@ plugins {
 
 val mcaNamespace = "forge.net.conczin.mca"
 val mcaArtifact = "minecraft-comes-alive"
-val mcaVersion = "7.7.1-beta.3+1.20.1"
+val mcaVersion = "7.7.1-beta.5+1.20.1"
 val mcaDevelopmentVersion = "1.20.1-SNAPSHOT"
 
 stonecutter {
@@ -155,6 +155,10 @@ layout.buildDirectory.set(file(
     "${rootProject.projectDir}/.cache/townstead-build-1.20.1-forge"
 ))
 
+// Top-level building types served only when a mod that provides their blocks is installed;
+// their ids stay as they are. Providers live in ModCompat.
+val conditionalTopLevelTypes = listOf("tailors_shop_l1", "tailors_shop_l2", "tailors_shop_l3", "mill")
+
 tasks.withType<ProcessResources> {
     val replaceProperties = mapOf(
         "version" to project.version,
@@ -192,7 +196,7 @@ tasks.withType<ProcessResources> {
         if (path.contains("/loot_table/")) {
             path = path.replace("/loot_table/", "/loot_tables/")
         }
-        if (path.startsWith("data/mca/building_types/compat/")) {
+        if (path.startsWith("data/mca/building_types/compat/") || conditionalTopLevelTypes.any { path == "data/mca/building_types/$it.json" }) {
             path = path.replace("data/mca/", "townstead_compat/")
         }
     }
@@ -210,7 +214,7 @@ tasks.withType<ProcessResources> {
     }
     doLast {
         if (name != "processResources") return@doLast
-        val compatRoot = destinationDir.resolve("townstead_compat/building_types/compat")
+        val compatRoot = destinationDir.resolve("townstead_compat/building_types")
         val index = destinationDir.resolve("townstead_compat/index.txt")
         val entries = if (compatRoot.isDirectory) compatRoot.walkTopDown()
             .filter { it.isFile && it.extension == "json" }

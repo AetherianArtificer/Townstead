@@ -6,6 +6,8 @@
     { "id": "rusticdelight:chocolate_coffee", "required": false },
     { "id": "rusticdelight:honey_coffee", "required": false },
     { "id": "rusticdelight:syrup_coffee", "required": false },
-    { "id": "rusticdelight:dark_coffee", "required": false }
+    { "id": "rusticdelight:dark_coffee", "required": false },
+    { "id": "rusticdelight:pumpkin_coffee", "required": false },
+    { "id": "rusticdelight:cherry_blossom_coffee", "required": false }
   ]
 }

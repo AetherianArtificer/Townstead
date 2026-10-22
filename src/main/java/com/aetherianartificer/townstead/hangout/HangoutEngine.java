@@ -811,11 +811,8 @@ public final class HangoutEngine {
                 if (Math.abs(load) < Math.abs(bestLoad)) bestLoad = load;
                 if (++samples >= 4) break;
             }
-            // Only discomfort beyond the comfort zone steers the choice, as it does the body.
-            float zone = com.aetherianartificer.townstead.temperature.TemperatureSettings.get().comfortZone();
-            thermal = HangoutPreferences.thermalWeight(
-                    com.aetherianartificer.townstead.temperature.BodyHeat.excess(needs.comfortLoad(), zone),
-                    com.aetherianartificer.townstead.temperature.BodyHeat.excess(bestLoad, zone));
+            // Only discomfort past the comfortable range steers the choice, as it does the body.
+            thermal = HangoutPreferences.thermalWeight(needs.comfortLoad(), bestLoad);
         }
         return HangoutPreferences.affinity(candidate.definition(), policy, personality) * distancePreference * thermal;
     }

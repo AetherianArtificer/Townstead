@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Gameplay acceptance for the villager body, at the shipped defaults, one step per second. */
 class BodyHeatTest {
     private static final ThermalProfile HUMAN = ThermalProfile.DEFAULT;
-    private static final float ZONE = 6f, DRIFT = 480f, RECOVERY = 120f;
+    private static final float DRIFT = 480f, RECOVERY = 120f;
 
     private static float load(float ambient) {
         return ThermalComfort.load(ambient, 0, false, 0, ThermalProtection.NONE, HUMAN);
@@ -26,7 +26,7 @@ class BodyHeatTest {
     }
 
     private static int step(BodyTemperatureDrift drift, int body, float ambient) {
-        float target = BodyHeat.target(load(ambient), ZONE, HUMAN, false);
+        float target = BodyHeat.target(load(ambient), HUMAN, false);
         return drift.step(body, target, BodyHeat.rate(TemperatureData.celsius(body), target, HUMAN.neutral(), 1, DRIFT, RECOVERY));
     }
 
@@ -40,9 +40,11 @@ class BodyHeatTest {
         return -1;
     }
 
-    @Test void comfortZoneLeavesMildWeatherAlone() {
-        assertEquals(0, BodyHeat.excess(load(14), ZONE));
-        assertEquals(0, BodyHeat.excess(load(26), ZONE));
+    @Test void theComfortableRangeLeavesMildWeatherAlone() {
+        assertEquals(0, load(15));
+        assertEquals(0, load(27));
+        assertTrue(load(14) < 0);
+        assertTrue(load(28) > 0);
         assertEquals(-1, secondsUntilTierChanges(370, 10, 3600), "A cool day never chills an idle villager");
         assertEquals(-1, secondsUntilTierChanges(370, 30, 3600), "A warm kitchen never overheats one");
     }
@@ -89,9 +91,9 @@ class BodyHeatTest {
     }
 
     @Test void sleepHalvesColdOnly() {
-        assertEquals(HUMAN.neutral() + (BodyHeat.target(-20, ZONE, HUMAN, false) - HUMAN.neutral()) / 2,
-                BodyHeat.target(-20, ZONE, HUMAN, true), 1e-6);
-        assertEquals(BodyHeat.target(20, ZONE, HUMAN, false), BodyHeat.target(20, ZONE, HUMAN, true));
+        assertEquals(HUMAN.neutral() + (BodyHeat.target(-14, HUMAN, false) - HUMAN.neutral()) / 2,
+                BodyHeat.target(-14, HUMAN, true), 1e-6);
+        assertEquals(BodyHeat.target(14, HUMAN, false), BodyHeat.target(14, HUMAN, true));
     }
 
     @Test void comfortableBodiesDoNotWaitForPerfectRecovery() {

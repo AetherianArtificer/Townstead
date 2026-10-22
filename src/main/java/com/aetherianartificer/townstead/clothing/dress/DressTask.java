@@ -279,6 +279,8 @@ public class DressTask extends Behavior<VillagerEntityMCA> {
         if (itemId.getNamespace().equals("legendarysurvivaloverhaul") && itemId.getPath().contains("coat")) return false;
         EquipmentSlot slot = armorSlot(entry == null ? null : entry.slot());
         if (slot == null || !villager.getItemBySlot(slot).isEmpty()) return false;
+        // a body without legs or feet doesn't dress them (the backstop would only strip it again)
+        if (!com.aetherianartificer.townstead.root.rig.RigEquipment.allows(villager, slot)) return false;
         villager.setItemSlot(slot, stack.split(1));
         com.aetherianartificer.townstead.tick.TemperatureVillagerTicker.invalidateEquipment(villager);
         return true;

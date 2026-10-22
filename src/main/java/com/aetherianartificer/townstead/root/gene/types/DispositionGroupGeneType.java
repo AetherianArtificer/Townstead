@@ -15,6 +15,11 @@ import net.minecraft.util.GsonHelper;
  */
 public final class DispositionGroupGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.HABITS;
+    }
+
     public static final String KEY = "pheno:disposition_group";
     private static final ResourceLocation LOCUS = ResourceLocation.tryParse(KEY);
 

@@ -785,6 +785,9 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
      * the water block it first enters. Null when it strikes a block first (a
      * wall, the deck, the bank) or never comes down within range.
      */
+    /** Room left around the simulated bobber, wider than vanilla's own box to absorb its spread. */
+    private static final double CAST_MARGIN = 0.4;
+
     private static @Nullable BlockPos townstead$simulateCast(ServerLevel level, VillagerEntityMCA villager,
                                                              double eyeHeight, float yaw, float pitch) {
         float yawRad = -yaw * ((float) Math.PI / 180F) - (float) Math.PI;
@@ -803,6 +806,14 @@ public class FishermanWorkTask extends Behavior<VillagerEntityMCA> implements Wo
         for (int tick = 0; tick < CAST_SIM_MAX_TICKS; tick++) {
             vel = vel.add(0.0, -HOOK_GRAVITY, 0.0);
             Vec3 next = pos.add(vel);
+            // The real bobber has width and some spread: a line that only just clears a fence post,
+            // or passes someone standing by the water, is not a clear cast.
+            net.minecraft.world.phys.AABB margin = net.minecraft.world.phys.AABB.ofSize(next, CAST_MARGIN, CAST_MARGIN, CAST_MARGIN);
+            if (!level.noCollision(margin)
+                    || !level.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class, margin,
+                            other -> other != villager && other.isAlive()).isEmpty()) {
+                return null;
+            }
             BlockPos hit = townstead$clip(level, villager, pos, next, net.minecraft.world.level.ClipContext.Fluid.ANY);
             if (hit != null) {
                 return level.getFluidState(hit).is(net.minecraft.tags.FluidTags.WATER)

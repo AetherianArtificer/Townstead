@@ -37,6 +37,16 @@ public final class AbilityNames {
         return prettify(id.getPath());
     }
 
+    /** The authored flavour text for an ability, or empty. */
+    public static Component description(ResourceLocation id) {
+        if (id == null) return Component.empty();
+        SkillDef skill = SkillDefs.byId(id);
+        if (skill != null && skill.description() != null) return skill.description();
+        com.aetherianartificer.townstead.root.gene.Gene gene =
+                com.aetherianartificer.townstead.root.gene.GeneRegistry.byId(id);
+        return gene != null && gene.description() != null ? gene.description() : Component.empty();
+    }
+
     /** The item a slot draws, or empty when nothing authored one. */
     public static String icon(ResourceLocation id) {
         if (id == null) return "";

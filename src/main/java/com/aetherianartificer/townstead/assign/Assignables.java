@@ -66,6 +66,20 @@ public final class Assignables {
      * <p>Every provider is asked in turn until one claims it, and none is told what the others
      * decided. That is what keeps a bridge from having to know about Townstead's ability layer.</p>
      */
+    /** The live state the owning provider reports for this id, or null when none does. */
+    public static AssignableProvider.Live live(ServerPlayer player, ResourceLocation id) {
+        if (player == null || id == null) return null;
+        for (AssignableProvider provider : PROVIDERS) {
+            try {
+                AssignableProvider.Live live = provider.live(player, id);
+                if (live != null) return live;
+            } catch (Exception ignored) {
+                // A provider that throws has nothing to say about this id.
+            }
+        }
+        return null;
+    }
+
     public static boolean invoke(ServerPlayer player, ResourceLocation id) {
         if (player == null || id == null) return false;
         for (AssignableProvider provider : PROVIDERS) {

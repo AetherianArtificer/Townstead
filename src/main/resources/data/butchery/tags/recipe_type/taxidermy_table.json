@@ -1,4 +1,9 @@
 {
   "replace": false,
-  "values": ["butchery:taxidermy"]
+  "values": [
+    {
+      "id": "butchery:taxidermy",
+      "required": false
+    }
+  ]
 }

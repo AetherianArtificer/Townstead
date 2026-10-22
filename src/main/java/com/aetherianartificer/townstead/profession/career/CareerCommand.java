@@ -11,7 +11,6 @@ import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -45,7 +44,7 @@ public final class CareerCommand {
                                         EntityArgument.getEntity(ctx, "target"))))))
                 .then(Commands.literal("choose")
                         .then(Commands.argument("skill", StringArgumentType.string())
-                                .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(
+                                .suggests((ctx, builder) -> com.aetherianartificer.townstead.commands.QuotedSuggestions.suggest(
                                         SkillDefs.all().keySet().stream().map(ResourceLocation::toString), builder))
                                 .executes(ctx -> choose(ctx.getSource(), focusOrSelf(ctx.getSource()),
                                         ResourceLocation.tryParse(StringArgumentType.getString(ctx, "skill"))))

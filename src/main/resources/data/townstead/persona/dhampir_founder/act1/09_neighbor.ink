@@ -35,6 +35,8 @@ Would you ask them something for me? Just one thing. Whether they've fed on anyo
 + [I'll ask.]
     ~ asking = true
     ~ act("carry_question")
+    // Only the one they named answers (story/resident_vampire).
+    ~ act_on("asked_about", neighbor)
     Thanks. Go in daylight, somewhere with people around. I'm not saying they'd try anything. I'm saying don't give them the choice.
     -> DONE
 + [Why not leave them alone?]
@@ -96,6 +98,8 @@ Well? What did {neighbor} say?
     -> DONE
 - ~ asking = false
 ~ done_neighbor = true
+// Seeing it through together is what earns the name (scene 12).
+~ trust(2)
 ~ neighbor_mood_until = today + 3
 -> DONE
 

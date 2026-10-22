@@ -50,6 +50,9 @@ public final class DisplayNames {
 
     private static String serverSide(VillagerEntityMCA villager, String given, NameStyle style) {
         NameParts parts = VillagerNames.parts(villager);
+        // Server text has no one reader, so a Persona who keeps their family name back is only
+        // their given name in it.
+        if (VillagerNames.familyHidden(villager, null)) return NameParts.withoutFamily(given, parts.family(), parts.order());
         return style.apply(given, parts.family(), parts.order());
     }
 

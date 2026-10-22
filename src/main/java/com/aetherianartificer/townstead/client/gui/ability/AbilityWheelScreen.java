@@ -151,14 +151,17 @@ public final class AbilityWheelScreen extends Screen {
             // a cooldown. A borrowed keybind has neither, and a permanently full ring is worse than
             // none, because it cannot be told apart from a cooldown that happens to be ready.
             tracked[i] = entry != null
-                    && (entry.toggle() || entry.cooldownTicks() > 0 || entry.costAmount() > 0);
+                    && (entry.toggle() || entry.cooldownTicks() > 0 || entry.costAmount() > 0 || !entry.usable());
             if (entry == null) continue;
-            steady[i] = entry.toggle();
-            fill[i] = entry.toggle() ? (entry.toggledOn() ? 1f : 0f) : readyFraction(entry, now);
+            steady[i] = entry.toggle() && !(entry.toggledOn() && entry.activeTicks() > 0);
+            // A switch's ring is on or off; one that runs out drains as it runs. Its cooldown
+            // after switching off shows on the frame, so a nearly-ready ring never reads as on.
+            fill[i] = entry.toggle() ? (entry.toggledOn() ? activeFraction(entry, now) : 0f) : readyFraction(entry, now);
             // A cost you cannot pay is an AVAILABILITY answer, so the ring owns it. Without
             // this the wheel showed a full ring for something that would refuse the press,
-            // and the only feedback was nothing happening.
-            if (!affordable(entry)) fill[i] = 0f;
+            // and the only feedback was nothing happening. The same for an owner that refuses
+            // it now, except when it is on: then the ring still says on, the frame says locked.
+            if (!affordable(entry) || (!entry.usable() && !entry.toggledOn())) fill[i] = 0f;
         }
 
         // The dark outline first, so the rim's gradient can run right to the dial's edge.
@@ -229,9 +232,9 @@ public final class AbilityWheelScreen extends Screen {
             return;
         }
 
-        float ready = entry.toggle() ? 1f : readyFraction(entry, now);
-        // Both answers are "not now", so both dull the frame. The plate says which.
-        boolean cooling = ready < 1f || !affordable(entry);
+        float ready = entry.toggle() && entry.toggledOn() ? 1f : readyFraction(entry, now);
+        // Every answer is "not now", so each dulls the frame. The plate says which.
+        boolean cooling = ready < 1f || !affordable(entry) || !entry.usable();
         int rim;
         int inner;
         int edge;
@@ -281,6 +284,10 @@ public final class AbilityWheelScreen extends Screen {
         if (cooling && entry.cooldownTicks() > 0) {
             // The arc is for glancing; the numeral is for deciding whether it is worth waiting.
             int seconds = (int) Math.ceil((ClientAbilityLoadout.readyAt(entry) - now) / 20d);
+            if (seconds > 0) WheelArt.number(g, x + 6, y + FRAME - 7, seconds, Palette.BRASS_HOT);
+        } else if (entry.toggle() && entry.toggledOn() && entry.activeTicks() > 0 && entry.activeUntil() != Long.MAX_VALUE) {
+            // A switch that runs out: how long it has left.
+            int seconds = (int) Math.ceil((entry.activeUntil() - now) / 20d);
             if (seconds > 0) WheelArt.number(g, x + 6, y + FRAME - 7, seconds, Palette.BRASS_HOT);
         }
     }
@@ -391,6 +398,15 @@ public final class AbilityWheelScreen extends Screen {
         g.fill(left, top, left + plateW, top + 1, Palette.DESK_LIP);
         g.drawString(font, name, cx - font.width(name) / 2, top + 4,
                 entry == null ? 0xFFB79A6C : Palette.BRASS_HOT, false);
+        // Flavour text below the plate, wrapped to its width.
+        String description = entry == null ? "" : AbilityText.description(entry.description());
+        if (!description.isEmpty()) {
+            int y = top + plateH + 5;
+            for (var line : font.split(Component.literal(description), plateW - 8)) {
+                g.drawString(font, line, cx - font.width(line) / 2, y, 0xFFB79A6C, true);
+                y += 10;
+            }
+        }
         if (label.kind().isEmpty()) return;
 
         g.pose().pushPose();
@@ -452,6 +468,12 @@ public final class AbilityWheelScreen extends Screen {
     /** False when the cost resource is short. Entries with no cost are always affordable. */
     static boolean affordable(AbilityLoadoutS2CPayload.Entry entry) {
         return entry == null || entry.costAmount() <= 0 || entry.costHave() >= entry.costAmount();
+    }
+
+    /** What is left of a running switch: 1 for one that runs until switched off. */
+    private static float activeFraction(AbilityLoadoutS2CPayload.Entry entry, long now) {
+        if (entry.activeTicks() <= 0 || entry.activeUntil() == Long.MAX_VALUE) return 1f;
+        return Mth.clamp((entry.activeUntil() - now) / (float) entry.activeTicks(), 0f, 1f);
     }
 
     /** Reads the MERGED cooldown, so a client-performed action's ring is not always full. */

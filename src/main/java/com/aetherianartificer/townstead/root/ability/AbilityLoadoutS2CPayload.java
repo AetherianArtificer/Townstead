@@ -40,7 +40,18 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
     public record Entry(int slot, String id, String name, String icon, boolean toggle,
                         boolean toggledOn, int cooldownTicks, long readyAt,
                         int costAmount, String costLabel, int kind, String clientValue,
-                        String source, int costColor, int costHave) {}
+                        String source, int costColor, int costHave,
+                        boolean usable, long activeUntil, int activeTicks, String description) {
+
+        /** One whose owner keeps no timers of its own: usable, and not running. */
+        public Entry(int slot, String id, String name, String icon, boolean toggle,
+                     boolean toggledOn, int cooldownTicks, long readyAt,
+                     int costAmount, String costLabel, int kind, String clientValue,
+                     String source, int costColor, int costHave) {
+            this(slot, id, name, icon, toggle, toggledOn, cooldownTicks, readyAt, costAmount, costLabel,
+                    kind, clientValue, source, costColor, costHave, true, 0L, 0, "");
+        }
+    }
 
     /**
      * Something the player owns and could prepare, whether or not it is in a slot.
@@ -50,7 +61,7 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
      */
     public record Option(String id, String name, String icon, String source, boolean toggle,
                          int cooldownTicks, int costAmount, String costLabel, int kind,
-                         int costColor, int costHave) {}
+                         int costColor, int costHave, String description) {}
 
     public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(entries.size());
@@ -70,6 +81,10 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
             buf.writeUtf(entry.source());
             buf.writeInt(entry.costColor());
             buf.writeVarInt(entry.costHave());
+            buf.writeBoolean(entry.usable());
+            buf.writeLong(entry.activeUntil());
+            buf.writeVarInt(entry.activeTicks());
+            buf.writeUtf(entry.description());
         }
         buf.writeVarInt(available.size());
         for (Option option : available) {
@@ -84,6 +99,7 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
             buf.writeVarInt(option.kind());
             buf.writeInt(option.costColor());
             buf.writeVarInt(option.costHave());
+            buf.writeUtf(option.description());
         }
     }
 
@@ -94,14 +110,14 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
             entries.add(new Entry(buf.readVarInt(), buf.readUtf(), buf.readUtf(), buf.readUtf(),
                     buf.readBoolean(), buf.readBoolean(), buf.readVarInt(), buf.readLong(),
                     buf.readVarInt(), buf.readUtf(), buf.readVarInt(), buf.readUtf(), buf.readUtf(),
-                    buf.readInt(), buf.readVarInt()));
+                    buf.readInt(), buf.readVarInt(), buf.readBoolean(), buf.readLong(), buf.readVarInt(), buf.readUtf()));
         }
         int optionCount = buf.readVarInt();
         List<Option> available = new ArrayList<>(optionCount);
         for (int i = 0; i < optionCount; i++) {
             available.add(new Option(buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf(),
                     buf.readBoolean(), buf.readVarInt(), buf.readVarInt(), buf.readUtf(),
-                    buf.readVarInt(), buf.readInt(), buf.readVarInt()));
+                    buf.readVarInt(), buf.readInt(), buf.readVarInt(), buf.readUtf()));
         }
         return new AbilityLoadoutS2CPayload(List.copyOf(entries), List.copyOf(available));
     }

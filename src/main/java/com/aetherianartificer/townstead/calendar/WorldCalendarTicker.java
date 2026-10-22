@@ -30,6 +30,10 @@ public final class WorldCalendarTicker {
      */
     private static final long REBASE_THRESHOLD_TICKS = TICKS_PER_DAY * 7L;
 
+    private static final int DATE_CHECK_TICKS = 40;
+    /** The date clients were last sent. A seasons mod can move its date without the clock crossing a day. */
+    private static CalendarDate lastSentDate;
+
     private WorldCalendarTicker() {}
 
     /**
@@ -123,6 +127,16 @@ public final class WorldCalendarTicker {
         if (!data.hasLastSample()) {
             data.primeSample(current);
             return;
+        }
+
+        // A seasons mod's command (or a /time jump) can change the date between day rollovers.
+        if (server.getTickCount() % DATE_CHECK_TICKS == 0) {
+            CalendarDate today = TownsteadCalendar.today(server);
+            if (lastSentDate != null && !today.equals(lastSentDate)) {
+                ShiftScheduleApplier.reapplyWeeklySchedules(server);
+                Townstead.townstead$broadcastCalendarSync(server);
+            }
+            lastSentDate = today;
         }
 
         long lastSample = data.lastDayTimeSample();

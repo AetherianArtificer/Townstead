@@ -89,6 +89,8 @@ public final class CharterScreen extends BookScreen {
 
     private @Nullable Book charter() { return snapshot == null ? null : snapshot.book(); }
 
+    @Override protected boolean pagesScroll() { return true; }
+
     @Override protected void init() {
         if (signet == null) signet = new Signet(font);
         super.init();
@@ -129,6 +131,7 @@ public final class CharterScreen extends BookScreen {
             selection = null;
             menu = null;
             renaming = false;
+            resetScroll();
             rebuildWidgets();
         }, true);
         if (tab == MEMBERS) {
@@ -158,7 +161,7 @@ public final class CharterScreen extends BookScreen {
             below += ROW + detailHeight(b.seat().detail().component(), w);
             if (b.legitimacy() != null) below += ROW + detailHeight(b.legitimacyDetail().component(), w);
         }
-        Title title = fit(bottom(p) - y, nameHeight(snapshot.faction(), w), BookRenderer.lines(font, b.proclaimed().component(), w, 2), below);
+        Title title = fit(bottom(p) - y - offset(p), nameHeight(snapshot.faction(), w), BookRenderer.lines(font, b.proclaimed().component(), w, 2), below);
         if (title.emblem() > 0) {
             Controls.Rect emblem = new Controls.Rect(x + (w - title.emblem()) / 2, y, title.emblem(), title.emblem());
             PageZone emblemZone = b.heraldry().isEmpty() ? null : zone(emblem, tr("change.emblem"), this::openHeraldry);
@@ -230,7 +233,7 @@ public final class CharterScreen extends BookScreen {
         if (title.emblem() == 0) return y;
         Controls.Rect emblem = new Controls.Rect(x + (w - title.emblem()) / 2, y, title.emblem(), title.emblem());
         op(g -> drawEmblem(g, null, emblem, false));
-        return y + title.emblem() + HEAD_GAP;
+        return reach(y + title.emblem() + HEAD_GAP);
     }
 
     private int nameHeight(String name, int w) {
@@ -261,7 +264,7 @@ public final class CharterScreen extends BookScreen {
             setFocused(field);
             field.setCursorPosition(renameDraft.length());
             field.setHighlightPos(0);
-            return y + LineField.height(2) + HEAD_GAP;
+            return reach(y + LineField.height(2) + HEAD_GAP);
         }
         List<String> lines = nameLines(name, w);
         int h = lines.size() * NAME_LINE;
@@ -278,7 +281,7 @@ public final class CharterScreen extends BookScreen {
             }
             if (zone != null) BookRenderer.line(g, x + (w - widest) / 2, y + h + 1, widest, zone.hot(), false);
         });
-        return y + h + 2 + HEAD_GAP;
+        return reach(y + h + 2 + HEAD_GAP);
     }
 
     private List<String> nameLines(String name, int w) {
@@ -299,13 +302,11 @@ public final class CharterScreen extends BookScreen {
         runningHead(p, Component.literal(snapshot.faction()), true);
         var draft = b.draft();
         boolean urgent = snapshot.state() == CharterSnapshotS2CPayload.REPAIR || draft != null && draft.prepared();
-        int footTop = foot(p, footText(b), urgent ? RUBRIC : FADED);
-        int limit = footTop - SECTION;
+        foot(p, footText(b), urgent ? RUBRIC : FADED);
         var civic = b.civic();
         if (civic != null && civic.controlsGovernment()) {
             y = heading(civic.governance().component(), x, y, w);
             for (var office : b.offices()) {
-                if (y + ROW > limit) break;
                 y = row(office.name().component(), holders(office), x, y, w, INK, null);
             }
             return;
@@ -315,10 +316,7 @@ public final class CharterScreen extends BookScreen {
         if (lines.isEmpty()) {
             y = plain(tr("offices.none"), x, y, w, FADED);
         } else {
-            int fit = Math.max(1, (limit - y - (draft == null ? 0 : draftHeight(draft))) / ROW);
-            int shown = lines.size() <= fit ? lines.size() : Math.max(1, fit - 1);
-            for (int i = 0; i < shown; i++) y = seatRow(b, lines.get(i), "seat:" + i, x, y, w);
-            if (shown < lines.size()) y = plain(tr("offices.more", lines.size() - shown), x, y, w, FADED);
+            for (int i = 0; i < lines.size(); i++) y = seatRow(b, lines.get(i), "seat:" + i, x, y, w);
         }
         if (draft != null) composeDraft(b, draft, x, y + SECTION, w);
     }
@@ -369,12 +367,6 @@ public final class CharterScreen extends BookScreen {
         return ROW + (clause.detail().component().getString().isBlank() ? 0 : DETAIL_GAP + DETAIL);
     }
 
-    private int draftHeight(CharterSnapshotS2CPayload.Draft draft) {
-        int h = SECTION + HEADING;
-        for (var clause : draft.clauses()) h += clauseHeight(clause);
-        return h + SECTION + HEADING + draft.signers().size() * SIG_H;
-    }
-
     /** The amendment: its clauses, numbered, then a signature line for each signer. */
     private void composeDraft(Book b, CharterSnapshotS2CPayload.Draft draft, int x, int y, int w) {
         y = heading(tr("amendment"), x, y, w);
@@ -403,6 +395,7 @@ public final class CharterScreen extends BookScreen {
             Controls.Rect block = new Controls.Rect(x, y + i * SIG_H, w, SIG_H - 6);
             if (signer.you() && draft.maySign()) sealTarget = block;
             op(g -> drawSignature(g, draft, signer, block));
+            reach(block.bottom());
         }
     }
 
@@ -480,7 +473,7 @@ public final class CharterScreen extends BookScreen {
         }
         var people = members.people();
         int more = members.count() - people.size();
-        int rows = Math.max(1, (bottom - y) / ROW - (more > 0 ? 1 : 0));
+        int rows = Math.max(1, (bottom - y - offset(p)) / ROW - (more > 0 ? 1 : 0));
         int per = people.size() <= rows ? rows : Math.max(1, rows - 1);
         int pages = Math.max(1, (people.size() + per - 1) / per);
         rosterPage = Math.max(0, Math.min(rosterPage, pages - 1));
@@ -552,13 +545,13 @@ public final class CharterScreen extends BookScreen {
             g.drawString(font, "‹", prev.x() + 4, y + TEXT_Y, back == null ? LEADER : back.hot() ? LINE_HOT : INK, false);
             g.drawString(font, "›", next.x() + 4, y + TEXT_Y, forward == null ? LEADER : forward.hot() ? LINE_HOT : INK, false);
         });
-        return y + ROW;
+        return reach(y + ROW);
     }
 
     /** The Members' right page: who lives here, and requests to join or leave. */
     private void composeResidents(Book b) {
         Controls.Rect p = rightPage;
-        int x = x(p), w = w(p), y = y(p), bottom = BookRenderer.foot(p) + 9;
+        int x = x(p), w = w(p), y = y(p);
         runningHead(p, Component.literal(snapshot.faction()), true);
         var scope = b.census().isEmpty() ? null : b.census().get(0);
         if (scope != null && scope.available()) {
@@ -570,7 +563,6 @@ public final class CharterScreen extends BookScreen {
         List<CharterSnapshotS2CPayload.Request> open = b.requests().stream().filter(r -> isOpen(r.state())).toList();
         if (open.isEmpty()) y = plain(tr("requests_open_empty"), x, y, w, FADED);
         for (var request : open) {
-            if (y + ROW + DETAIL_GAP + DETAIL > bottom) break;
             String key = "request:" + request.id();
             boolean choosable = !request.actions().isEmpty();
             if (choosable) selectable.add(key);
@@ -587,11 +579,10 @@ public final class CharterScreen extends BookScreen {
             y += ROW + DETAIL_GAP + DETAIL;
         }
         List<CharterSnapshotS2CPayload.Request> past = b.requests().stream().filter(r -> !isOpen(r.state())).limit(PAST_MAX).toList();
-        if (past.isEmpty() || y + SECTION + HEADING + ROW > bottom) return;
+        if (past.isEmpty()) return;
         y += SECTION;
         y = heading(tr("requests_past"), x, y, w);
         for (var request : past) {
-            if (y + ROW > bottom) break;
             String person = request.person().component().getString();
             String state = requestState(request).getString();
             int ry = y;
@@ -615,7 +606,7 @@ public final class CharterScreen extends BookScreen {
                 sx = ex;
             }
         });
-        y += 6 + HEAD_GAP;
+        y = reach(y + 6 + HEAD_GAP);
         java.text.NumberFormat percent = java.text.NumberFormat.getPercentInstance();
         percent.setMaximumFractionDigits(0);
         int others = 0;
@@ -634,7 +625,7 @@ public final class CharterScreen extends BookScreen {
             g.fill(x, y + TEXT_Y + 1, x + 6, y + TEXT_Y + 7, color);
             BookRenderer.leader(g, font, name, value, x + 10, y, w - 10, INK, FADED);
         });
-        return y + ROW;
+        return reach(y + ROW);
     }
 
     private static Component requestState(CharterSnapshotS2CPayload.Request request) {
@@ -812,7 +803,7 @@ public final class CharterScreen extends BookScreen {
         Controls.Rect p = leftPage;
         int x = x(p), w = w(p), y = y(p);
         runningHead(p, tr("unfounded"), false);
-        Title title = fit(bottom(p) - y, LineField.height(2) + HEAD_GAP, 2, SECTION + HEADING + 3 * ROW);
+        Title title = fit(bottom(p) - y - offset(p), LineField.height(2) + HEAD_GAP, 2, SECTION + HEADING + 3 * ROW);
         y = plainEmblem(title, x, y, w);
         if (draftName.isBlank()) draftName = tr("default_settlement").getString();
         if (draftFaction.isBlank()) suggestFaction();
@@ -900,7 +891,7 @@ public final class CharterScreen extends BookScreen {
         int x = x(p), w = w(p), y = y(p);
         runningHead(p, tr("prepared_head"), false);
         Component proclaimed = tr("to_be_proclaimed", snapshot.settlement());
-        Title title = fit(bottom(p) - y, nameHeight(snapshot.faction(), w), BookRenderer.lines(font, proclaimed, w, 2),
+        Title title = fit(bottom(p) - y - offset(p), nameHeight(snapshot.faction(), w), BookRenderer.lines(font, proclaimed, w, 2),
                 SECTION + HEADING + 3 * ROW);
         y = plainEmblem(title, x, y, w);
         y = composeName(snapshot.faction(), x, y, w, false);
@@ -922,7 +913,7 @@ public final class CharterScreen extends BookScreen {
         Controls.Rect p = leftPage;
         int x = x(p), w = w(p), y = y(p);
         runningHead(p, tr("existing_settlement"), false);
-        Title title = fit(bottom(p) - y, nameHeight(snapshot.faction(), w), 0, SECTION + HEADING + 2 * ROW);
+        Title title = fit(bottom(p) - y - offset(p), nameHeight(snapshot.faction(), w), 0, SECTION + HEADING + 2 * ROW);
         y = plainEmblem(title, x, y, w);
         y = composeName(snapshot.faction(), x, y, w, false);
         y += SECTION;
@@ -1020,7 +1011,7 @@ public final class CharterScreen extends BookScreen {
     }
 
     @Override public void mouseMoved(double mx, double my) {
-        if (signet.held()) signet.moveTo(mx, my);
+        if (signet.held()) signet.moveTo(mx * shrink, my * shrink);
         super.mouseMoved(mx, my);
     }
 

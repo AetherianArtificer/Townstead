@@ -17,7 +17,8 @@ import java.util.Map;
  * Which open states a Root's people can have, declared as {@code "states": {"townstead_state:vampire": false}}
  * on a Root, lineage, ancestry or species. The most specific declaration wins (Root, then lineage,
  * then ancestry, then species), so a Skeletownie ancestry can rule out vampirism once and a single
- * Root can still opt back in. An undeclared state is allowed.
+ * Root can still opt back in. An undeclared state is allowed. Declaring {@code true} also lets a
+ * custom rig carry a {@code "body": "villager"} state the pack has fitted that body for.
  */
 public final class RootStates {
     public enum Kind { ROOT, LINEAGE, ANCESTRY, SPECIES }
@@ -74,6 +75,15 @@ public final class RootStates {
                 : entity instanceof Player player ? PlayerRoot.getRootId(player) : null;
         if (raw == null || raw.isEmpty()) return true;
         return !Boolean.FALSE.equals(declared(ResourceLocation.tryParse(raw), state));
+    }
+
+    /** Whether the entity's Root chain declares {@code state} true outright. */
+    public static boolean optedIn(LivingEntity entity, ResourceLocation state) {
+        String raw = entity instanceof VillagerEntityMCA villager
+                ? com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).life().rootId()
+                : entity instanceof Player player ? PlayerRoot.getRootId(player) : null;
+        if (raw == null || raw.isEmpty()) return false;
+        return Boolean.TRUE.equals(declared(ResourceLocation.tryParse(raw), state));
     }
 
     private static @Nullable Boolean lookup(Kind kind, ResourceLocation id, ResourceLocation state) {

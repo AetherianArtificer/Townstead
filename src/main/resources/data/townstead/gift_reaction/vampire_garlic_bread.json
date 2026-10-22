@@ -1,0 +1,27 @@
+{
+  "schema": "townstead:gift_reaction/v1",
+  "mods": "vampirism",
+  "priority": 50,
+  "items": [
+    "vampirism:garlic_bread"
+  ],
+  "condition": {
+    "type": "pheno:state",
+    "state": "townstead_state:vampire",
+    "min": 1
+  },
+  "response": "dislikes",
+  "satisfaction": -60,
+  "item": "return",
+  "relationship": {
+    "townstead:affection": -15,
+    "townstead:trust": -10,
+    "townstead:resentment": 15
+  },
+  "action": {
+    "type": "pheno:apply_effect",
+    "effect": "vampirism:garlic",
+    "duration": 400,
+    "amplifier": 1
+  }
+}

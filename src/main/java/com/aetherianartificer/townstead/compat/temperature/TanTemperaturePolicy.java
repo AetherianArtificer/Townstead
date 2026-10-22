@@ -10,8 +10,14 @@ public final class TanTemperaturePolicy {
         return shift(ambient, heating > cooling ? 2 : -2);
     }
     public static float shift(float ambient, int steps) {
-        int index = ambient < -2.5 ? 0 : ambient < 12.5 ? 1 : ambient < 25 ? 2 : ambient < 35 ? 3 : 4;
-        return CELSIUS[Math.max(0, Math.min(4, index + steps))];
+        return CELSIUS[Math.max(0, Math.min(4, index(ambient) + steps))];
+    }
+    /** The level index after shifting the open-air climate in Celsius, then re-adding proximity steps. */
+    public static int shiftedIndex(float climate, float shift, int proximitySteps) {
+        return Math.max(0, Math.min(4, index(climate + shift) + proximitySteps));
+    }
+    private static int index(float celsius) {
+        return celsius < -2.5 ? 0 : celsius < 12.5 ? 1 : celsius < 25 ? 2 : celsius < 35 ? 3 : 4;
     }
     public static float internal(float ambient, boolean warmth, boolean chill) {
         int steps = (warmth ? 1 : 0) - (chill ? 1 : 0);

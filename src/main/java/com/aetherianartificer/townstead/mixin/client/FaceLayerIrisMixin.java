@@ -36,7 +36,7 @@ public abstract class FaceLayerIrisMixin<T extends LivingEntity, M extends Human
     @Inject(method = "getEyeColor", at = @At("RETURN"), cancellable = true, remap = false, require = 0)
     private void townstead$irisTint(T villager, float tickDelta, boolean left, CallbackInfoReturnable<Integer> cir) {
         IrisTint.Tint tint = IrisTint.of(villager);
-        if (tint != null) cir.setReturnValue(0xFF000000 | tint.rgb());
+        if (tint != null && tint.override()) cir.setReturnValue(0xFF000000 | tint.rgb(left));
     }
 
     @Inject(method = "renderFinal", at = @At("TAIL"), remap = false, require = 0)
@@ -51,7 +51,11 @@ public abstract class FaceLayerIrisMixin<T extends LivingEntity, M extends Human
                 EyeTextureLayers.Layer.IRIS, EyeTextureLayers.Side.FULL);
         if (iris == null) return;
         var buffer = provider.getBuffer(RenderType.eyes(iris));
-        int color = tint.rgb();
+        // an editable iris glows in MCA's own eye colour (a player's lives on MCA's stand-in villager)
+        net.conczin.mca.entity.VillagerLike<?> like = tint.override() ? null
+                : net.conczin.mca.client.model.CommonVillagerModel.getVillager(villager);
+        int color = tint.override() ? tint.rgb()
+                : like != null ? EyeTextureLayers.getStaticEyeColor(like, false) & 0xFFFFFF : 0xFFFFFF;
         //? if neoforge {
         self.model.renderToBuffer(transform, buffer, 0xF000F0, OverlayTexture.NO_OVERLAY, 0xFF000000 | color);
         //?} else {

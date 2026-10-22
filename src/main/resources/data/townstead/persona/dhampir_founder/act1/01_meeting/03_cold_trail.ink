@@ -39,10 +39,3 @@ You're not... Did you notice anything strange last night? Wolves howling, strang
 + [Another time.]
     Sure. Keep your door shut tonight.
     -> DONE
-    -> DONE
-.
-    -> DONE
-    -> DONE
- Sure. Keep your door shut tonight.
-    -> DONE
-    -> DONE

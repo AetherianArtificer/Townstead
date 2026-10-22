@@ -21,5 +21,16 @@ public final class CreativeTabRefresh {
                 mc.player.connection.enabledFeatures(), mc.player.canUseGameMasterBlocks(), mc.level.registryAccess());
         Townstead.TOWNSTEAD_TAB.get().buildContents(params);
         CreativeModeTabs.searchTab().buildContents(params);
+        //? if neoforge {
+        // Search text matches its own index, which vanilla refreshes only when the screen rebuilds tabs.
+        var trees = mc.player.connection.searchTrees();
+        for (CreativeModeTab tab : CreativeModeTabs.allTabs()) {
+            if (!tab.hasSearchBar()) continue;
+            java.util.List<net.minecraft.world.item.ItemStack> items = java.util.List.copyOf(tab.getDisplayItems());
+            trees.updateCreativeTooltips(mc.level.registryAccess(), items,
+                    net.neoforged.neoforge.client.CreativeModeTabSearchRegistry.getNameSearchKey(tab));
+            trees.updateCreativeTags(items, net.neoforged.neoforge.client.CreativeModeTabSearchRegistry.getTagSearchKey(tab));
+        }
+        //?}
     }
 }

@@ -62,6 +62,7 @@ public final class StoryCallMarks {
         if (providers == null) {
             providers = java.util.List.of(new com.aetherianartificer.townstead.client.gui.quest.adapter.McaQuestsProvider(),
                     new com.aetherianartificer.townstead.client.gui.quest.adapter.StoryQuestProvider(),
+                    new com.aetherianartificer.townstead.client.gui.quest.adapter.VampirismTaskProvider(),
                     new com.aetherianartificer.townstead.client.gui.quest.adapter.BountifulProvider(),
                     new com.aetherianartificer.townstead.client.gui.quest.adapter.FtbQuestsProvider());
         }

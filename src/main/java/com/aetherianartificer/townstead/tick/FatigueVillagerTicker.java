@@ -105,6 +105,7 @@ public final class FatigueVillagerTicker {
 
     public static void tick(VillagerEntityMCA self) {
         if (!(self.level() instanceof ServerLevel level)) return;
+        com.aetherianartificer.townstead.rest.RestEvents.tick(self);
         if (!TownsteadConfig.isVillagerFatigueEnabled() || self.isBaby()) {
             clearRuntimeOverride(self, level);
             return;
@@ -167,9 +168,10 @@ public final class FatigueVillagerTicker {
             } else if (inBed) {
                 // Sleeping inside the chronotype window = full recovery; an
                 // off-window nap recovers at the reduced rate.
-                float recovery = inSleepWindow
+                float recovery = (inSleepWindow
                         ? FatigueData.RECOVERY_BED_ALIGNED
-                        : FatigueData.RECOVERY_BED_MISALIGNED;
+                        : FatigueData.RECOVERY_BED_MISALIGNED)
+                        * com.aetherianartificer.townstead.rest.RestGenes.recovery(self);
                 applyFatigueDelta(needs, state, recovery);
             } else if (activity == Activity.REST && !needs.restOverrideActive()) {
                 applyFatigueDelta(needs, state, FatigueData.RECOVERY_REST_NO_BED);

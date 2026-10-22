@@ -81,6 +81,7 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
         Map<ResourceLocation, GivenNames> inlineGiven = new LinkedHashMap<>();
         Map<ResourceLocation, FamilyNames> inlineFamily = new LinkedHashMap<>();
         Map<ResourceLocation, ResourceLocation> legacyIds = new LinkedHashMap<>();
+        Map<ResourceLocation, ResourceLocation> villages = new LinkedHashMap<>();
 
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
@@ -139,6 +140,10 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
                         Demonym.parse(root, file.toString(), lang), parent(root, file), spirit(root, file),
                         forms(root, file)));
                 for (ResourceLocation legacyId : aliases) legacyIds.put(legacyId, file);
+                for (ResourceLocation structure : villages(root)) {
+                    ResourceLocation previous = villages.putIfAbsent(structure, file);
+                    if (previous != null) LOGGER.warn("Village {} is claimed by both {} and {}", structure, previous, file);
+                }
             } catch (Exception exception) {
                 LOGGER.warn("Could not load culture {}", file, exception);
             }
@@ -156,7 +161,47 @@ public final class CultureJsonLoader extends SimpleJsonResourceReloadListener {
         }
         Map<ResourceLocation, Culture> resolved = inherit(loaded);
         Cultures.replace(resolved, legacyIds);
+        CultureVillages.replaceCultures(villages);
+        CultureVillages.replaceLabels(labels(villages, resolved, lang));
         LOGGER.info("Loaded {} culture(s)", resolved.size());
+    }
+
+    /**
+     * A name for each culture village structure: the pack's {@code gui.destiny.<namespace>.<path>}
+     * translation when it has one (path dots for slashes), else the culture's adjective and the
+     * village kind, as in "Highland Town".
+     */
+    static Map<ResourceLocation, String> labels(Map<ResourceLocation, ResourceLocation> villages,
+                                                Map<ResourceLocation, Culture> cultures, Map<String, String> lang) {
+        Map<ResourceLocation, String> out = new LinkedHashMap<>();
+        villages.forEach((structure, cultureId) -> {
+            String key = "gui.destiny." + structure.getNamespace() + "." + structure.getPath().replace('/', '.');
+            String label = lang.get(key);
+            if (label == null) {
+                Culture culture = cultures.get(cultureId);
+                if (culture == null) return;
+                String people = culture.demonym() != null
+                        ? culture.demonym().adjectiveOrSingular().getString() : culture.displayName().getString();
+                String path = structure.getPath();
+                String kind = path.substring(path.lastIndexOf('/') + 1).replace('_', ' ');
+                if (kind.isEmpty()) return;
+                label = people + " " + Character.toUpperCase(kind.charAt(0)) + kind.substring(1);
+            }
+            out.put(structure, label);
+        });
+        return out;
+    }
+
+    /** {@code "villages": ["ns:village/town"]}: the village structures that found as this culture. */
+    public static List<ResourceLocation> villages(JsonObject root) {
+        if (!root.has("villages")) return List.of();
+        List<ResourceLocation> out = new ArrayList<>();
+        for (JsonElement element : GsonHelper.getAsJsonArray(root, "villages")) {
+            ResourceLocation structure = DataPackLang.parseId(GsonHelper.convertToString(element, "villages[]"));
+            if (structure == null) throw new IllegalArgumentException("Every village must be a structure id");
+            out.add(structure);
+        }
+        return out;
     }
 
     private static @Nullable ResourceLocation parent(JsonObject root, ResourceLocation file) {

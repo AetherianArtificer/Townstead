@@ -173,8 +173,8 @@ public final class Worksite {
 
     // ── Room ownership ──
     //
-    // Ownership is place state, not villager residency. MCA continues to own HOME; this list only
-    // records the people a player explicitly selected on the room's ownership tag.
+    // The people a place belongs to, from its Ownership Plaque. Villagers MCA houses inside count
+    // as listed too, so this holds whoever was named on top of them.
 
     @Nullable
     private net.minecraft.core.BlockPos ownershipTag;
@@ -193,7 +193,7 @@ public final class Worksite {
         return owners;
     }
 
-    /** Whether this deed limits storage use to residents and the explicitly named people. */
+    /** Whether the plaque keeps out people who are not on it. An empty plaque keeps out nobody. */
     public boolean ownershipPrivate() {
         return ownershipPrivate;
     }
@@ -202,10 +202,6 @@ public final class Worksite {
         return ownershipScope;
     }
 
-    /**
-     * Selects explicit owners using the legacy rule where at least one named person means private.
-     * Kept for callers and old tests which predate the separate open/private state.
-     */
     public void setOwnership(@Nullable net.minecraft.core.BlockPos tag,
                              List<com.aetherianartificer.townstead.storage.RoomOwner> selected) {
         setOwnership(tag, com.aetherianartificer.townstead.storage.OwnershipScope.ROOM, selected);
@@ -225,7 +221,8 @@ public final class Worksite {
         ownershipScope = scope == null
                 ? com.aetherianartificer.townstead.storage.OwnershipScope.ROOM : scope;
         ownershipPrivate = ownershipTag != null && privateAccess;
-        owners = selected == null ? List.of() : List.copyOf(selected);
+        // An open deed from before plaques named people without keeping them out; it lists nobody now.
+        owners = selected == null || !ownershipPrivate ? List.of() : List.copyOf(selected);
     }
 
     /** Removing the tag makes the room public without affecting MCA HOME or village residency. */

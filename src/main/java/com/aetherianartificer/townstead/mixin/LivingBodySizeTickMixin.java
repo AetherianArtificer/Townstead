@@ -15,6 +15,7 @@ public abstract class LivingBodySizeTickMixin {
     /*@Inject(method = "m_8119_", at = @At("TAIL"), remap = false)
     *///?}
     private void townstead$refreshBodySize(CallbackInfo ci) {
+        com.aetherianartificer.townstead.root.rig.BodyScale.tick((LivingEntity)(Object)this);
         RigHitboxes.tick((LivingEntity)(Object)this);
     }
 }

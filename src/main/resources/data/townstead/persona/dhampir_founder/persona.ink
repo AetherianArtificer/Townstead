@@ -15,6 +15,7 @@ INCLUDE act1/03_altar.ink
 INCLUDE act1/04_garlic.ink
 INCLUDE act1/05_volunteers.ink
 INCLUDE act1/06_oath.ink
+INCLUDE act1/06b_player_oath.ink
 INCLUDE act1/07_walk.ink
 INCLUDE act1/08_watch.ink
 INCLUDE act1/09_neighbor.ink
@@ -73,6 +74,7 @@ INCLUDE lib/trips.ink
 
 // Stand-ins for the game's helpers, for Inky
 INCLUDE lib/fallbacks.ink
+INCLUDE lib/inky_jump.ink
 
 
 
@@ -91,8 +93,9 @@ VAR offered = false
 VAR founded = false
 VAR asked_wolf = false
 
-// The menu line for the next scene. next_scene() sets it.
+// The menu line for the next scene, and whether it is only about the open job. next_scene() sets them.
 VAR scene_line = ""
+VAR scene_job = false
 
 -> inky_start
 
@@ -180,8 +183,10 @@ VAR scene_line = ""
     ~ return scene(-> grave_offer, "You're quiet today.")
 - first_oath_ready():
     ~ return scene(-> first_oath, "That went well.")
+- player_oath_offer_ready():
+    ~ return scene(-> player_oath_offer, "What happens now?")
 - volunteers_ready():
-    ~ return scene(-> volunteers, "")
+    ~ return scene(-> volunteers, "You've been watching people.")
 - walk_offer_ready():
     ~ return scene(-> walk_offer, "Going out tonight?")
 - watch_offer_ready():
@@ -191,11 +196,13 @@ VAR scene_line = ""
 - bitten_offer_ready():
     ~ return scene(-> bitten_offer, "You look worried.")
 - thrall_arrival_ready():
-    ~ return scene(-> thrall_arrival, "")
+    ~ return scene(-> thrall_arrival, "What is it?")
 - counting_ready():
     ~ return scene(-> counting, "")
 - the_name_ready():
     ~ return scene(-> the_name, "Mind if I sit?")
+- count_talk_ready():
+    ~ return scene(-> the_count, "What were you reciting, that night?")
 - garlic_offer_ready():
     ~ return scene(-> garlic_offer, "Another one?")
 - court_offer_ready():
@@ -205,17 +212,17 @@ VAR scene_line = ""
 - romance_ready():
     ~ return scene(-> romance_beat, "Mind the company?")
 - stakeout_offer_ready():
-    ~ return scene(-> stakeout_offer, "")
+    ~ return scene(-> stakeout_offer, "You look restless.")
 - couple_arrival_ready():
-    ~ return scene(-> couple_arrival, "")
+    ~ return scene(-> couple_arrival, "Who's coming?")
 - fledgling_arrival_ready():
-    ~ return scene(-> fledgling_arrival, "")
+    ~ return scene(-> fledgling_arrival, "You've gone quiet.")
 - fledgling_after_ready():
     ~ return scene(-> fledgling_after, "")
 - werewolf_signs_ready():
     ~ return scene(-> werewolf_signs, "")
-- werewolf_items_ready():
-    ~ return scene(-> werewolf_items, "")
+- werewolf_kill_ready():
+    ~ return scene(-> werewolf_kill, "Was that what I think it was?")
 - werewolf_wolf_ready():
     ~ return scene(-> werewolf_wolf, "")
 - wolf_beat_ready():
@@ -223,16 +230,28 @@ VAR scene_line = ""
 }
 {
 - quest_ready:
-    ~ return scene(-> dusk, "Come and look.")
+    ~ return job_scene("Come and look.")
 - quest_open:
-    ~ return scene(-> dusk, "About that job...")
+    ~ return job_scene("About that job...")
 }
 ~ return scene(-> dusk, "")
+
+// Whether a scene is ready to play. The game asks this first, so a scene goes ahead of an open
+// job's waiting lines; the job and everyday talk are not scenes.
+=== function scene_ready() ===
+~ temp next = next_scene()
+~ return not (next == -> dusk)
 
 // Sets the menu line for the scene that next_scene() picks.
 === function scene(target, line) ===
 ~ scene_line = line
+~ scene_job = false
 ~ return target
+
+=== function job_scene(line) ===
+~ scene_line = line
+~ scene_job = true
+~ return -> dusk
 
 // What the player says to start the next scene.
 === function menu() ===
@@ -246,10 +265,12 @@ VAR scene_line = ""
 ~ return "Got a moment?"
 
 // What they call out to bring the player over when a scene is waiting, or "" for nothing.
-// They do not call during walks and trips, or for everyday talk.
+// They do not call during walks and trips, for everyday talk, or about a job the player has.
 === function calling() ===
 {
 - menu() == "Got a moment?" or interrupted:
+    ~ return ""
+- scene_job:
     ~ return ""
 - walking or watching or grave_walking or court_walking or shepherd_walking:
     ~ return ""

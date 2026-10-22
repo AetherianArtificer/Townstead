@@ -2,6 +2,7 @@
   "replace": false,
   "values": [
     {"id":"beachparty:palm_bar_stool","required":false},
+    {"id":"beachparty:tiki_chair","required":false},
     {"id":"kaleidoscope_tavern:white_bar_stool","required":false},
     {"id":"kaleidoscope_tavern:light_gray_bar_stool","required":false},
     {"id":"kaleidoscope_tavern:gray_bar_stool","required":false},

@@ -2,6 +2,7 @@
   "sensitive.dialogue.chat.butcher_request.no_livestock/1": "<sad>Aucune bête à m'occuper aujourd'hui. Au moins, aucune ne demande qu'on lui dise adieu.</sad>",
   "sensitive.dialogue.chat.butcher_request.no_hook/1": "<nervous>Pourrais-tu... pourrais-tu installer un crochet ? Je ne peux pas faire le travail sans lui.</nervous>",
   "sensitive.dialogue.chat.butcher_request.no_basin/1": "<nervous>Un bac aiderait. Je n'aime pas le désordre quand il n'y en a pas.</nervous>",
+  "sensitive.dialogue.chat.butcher_request.no_blood_grate/1": "<nervous>Une grille à sang aiderait. Je n'aime pas le désordre quand il n'y en a pas.</nervous>",
   "sensitive.dialogue.chat.village_life.butcher_shop/1": "<happy>Notre boucher traite les bêtes avec respect. Ça compte, ça.</happy>",
   "sensitive.dialogue.chat.village_life.slaughterhouse/1": "<sad>J'essaie de ne pas penser à l'abattoir. Ça semble un travail important, mais... difficile.</sad>",
   "sensitive.dialogue.chat.village_life.smokehouse/1": "<happy>Le fumoir me rappelle la cuisine de ma grand-mère. Chaleureuse et bonne.</happy>",
@@ -171,5 +172,18 @@
   "sensitive.dialogue.chat.leatherworker_request.no_salt/1": "<nervous>Sans sel, la peau se gâte. Je préférerais vraiment éviter que ça arrive.</nervous>",
   "sensitive.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<nervous>Une éponge mouillée ou un chiffon compterait énormément. La peau attend.</nervous>",
   "sensitive.dialogue.chat.leatherworker_request.no_storage/1": "<nervous>Je détesterais que du cuir fini traîne dans mon sac. Un coffre, si tu peux.</nervous>",
-  "sensitive.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Regarde... c'est séché. Correctement. Je suis tellement soulagé.</happy>"
+  "sensitive.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Regarde... c'est séché. Correctement. Je suis tellement soulagé.</happy>",
+  "sensitive.dialogue.chat.beverage_artisan_request.no_worksite/1": "<nervous>Je déteste décevoir tout le monde. On pourrait installer un poste à boissons ?</nervous>",
+  "sensitive.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<nervous>Les étagères sont vides. J'aurais dû m'en apercevoir plus tôt.</nervous>",
+  "sensitive.dialogue.chat.beverage_artisan_request.no_storage/1": "<nervous>Les boissons méritent mieux qu'une étagère encombrée. On pourrait ajouter du stockage ?</nervous>",
+  "sensitive.dialogue.chat.beverage_artisan_request.unreachable/1": "<nervous>Je ne peux pas atteindre mon poste. J'espère n'avoir fait attendre personne.</nervous>",
+  "sensitive.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<nervous>Je voulais que %2$s soit parfait, mais il nous manque les ingrédients.</nervous>",
+  "sensitive.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<happy>Tout paraît un peu plus doux sur les bords.</happy>",
+  "sensitive.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<happy>Je suis vraiment content qu'on soit tous ici ensemble.</happy>",
+  "sensitive.dialogue.chat.townstead_drunk.drunk_arrival/1": "<sad>J'en ai peut-être trop dit. Personne n'est fâché, n'est-ce pas ?</sad>",
+  "sensitive.dialogue.chat.townstead_drunk.drunk_ambient/1": "<sad>Cette chanson me fait toujours penser à tous ceux qui m'ont manqué.</sad>",
+  "sensitive.dialogue.chat.townstead_drunk.wasted_arrival/1": "<nervous>Je ne me sens pas bien. Reste près de moi pendant que je bois de l'eau, s'il te plaît.</nervous>",
+  "sensitive.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>Ça va. J'ai juste besoin que tout soit calme.</sleepy>",
+  "sensitive.dialogue.chat.townstead_drunk.service_refused/1": "<nervous>Plus rien, s'il vous plaît. De l'eau serait gentil.</nervous>",
+  "sensitive.dialogue.chat.townstead_drunk.recovered/1": "<happy>Je me sens de nouveau moi-même. Merci d'avoir pris soin de moi.</happy>"
 }

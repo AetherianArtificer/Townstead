@@ -29,7 +29,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -60,7 +59,7 @@ public final class PhenoCommand {
     private static final Gson PRETTY = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
     private static final SuggestionProvider<CommandSourceStack> SUGGEST_STATES = (c, builder) ->
-            SharedSuggestionProvider.suggest(com.aetherianartificer.townstead.pheno.state.EntityStates.definitions()
+            com.aetherianartificer.townstead.commands.QuotedSuggestions.suggest(com.aetherianartificer.townstead.pheno.state.EntityStates.definitions()
                     .keySet().stream().map(id -> "\"" + id + "\""), builder);
 
     private PhenoCommand() {}
@@ -160,6 +159,7 @@ public final class PhenoCommand {
                                 .suggests(SUGGEST_GENES)
                                 .executes(c -> expand(c.getSource(), StringArgumentType.getString(c, "gene")))))
                 .then(Commands.literal("dump").executes(c -> dump(c.getSource())))
+                .then(Commands.literal("patches").executes(c -> patches(c.getSource())))
                 .then(Commands.literal("parity")
                         .then(Commands.argument("target", EntityArgument.entity())
                                 .executes(c -> parity(c.getSource(), EntityArgument.getEntity(c, "target")))))
@@ -185,7 +185,7 @@ public final class PhenoCommand {
     }
 
     private static final SuggestionProvider<CommandSourceStack> SUGGEST_SKILLS = (c, b) ->
-            SharedSuggestionProvider.suggest(SkillDefs.all().keySet().stream().map(ResourceLocation::toString), b);
+            com.aetherianartificer.townstead.commands.QuotedSuggestions.suggest(SkillDefs.all().keySet().stream().map(ResourceLocation::toString), b);
 
     private static int skills(CommandSourceStack source, Entity target) {
         if (!(target instanceof LivingEntity living)) {
@@ -353,6 +353,28 @@ public final class PhenoCommand {
         return 0;
     }
 
+    /** Every data patch, what it targets, and what it actually changed in the latest reload. */
+    private static int patches(CommandSourceStack source) {
+        var targets = com.aetherianartificer.townstead.data.DataPatches.targets();
+        var provenance = com.aetherianartificer.townstead.data.DataPatches.provenance();
+        source.sendSuccess(() -> Component.translatable("command.pheno.patches.heading", targets.size(),
+                com.aetherianartificer.townstead.data.DataNamespaces.all().size())
+                .withStyle(ChatFormatting.GOLD), false);
+        for (var patch : targets.entrySet()) {
+            for (var kind : patch.getValue().entrySet()) {
+                for (ResourceLocation target : kind.getValue()) {
+                    List<ResourceLocation> applied = provenance.getOrDefault(kind.getKey() + " " + target, List.of());
+                    boolean hit = applied.contains(patch.getKey());
+                    source.sendSuccess(() -> Component.translatable(hit
+                                    ? "command.pheno.patches.applied" : "command.pheno.patches.missing",
+                            patch.getKey().toString(), kind.getKey(), target.toString())
+                            .withStyle(hit ? ChatFormatting.AQUA : ChatFormatting.GRAY), false);
+                }
+            }
+        }
+        return targets.size();
+    }
+
     private static int dump(CommandSourceStack source) {
         try {
             Path dir = phenoDir(source);
@@ -381,7 +403,7 @@ public final class PhenoCommand {
     }
 
     private static final SuggestionProvider<CommandSourceStack> SUGGEST_GENES = (c, b) ->
-            SharedSuggestionProvider.suggest(GeneRegistry.all().stream().map(g -> g.id().toString()), b);
+            com.aetherianartificer.townstead.commands.QuotedSuggestions.suggest(GeneRegistry.all().stream().map(g -> g.id().toString()), b);
 
     private static int expand(CommandSourceStack source, String geneId) {
         ResourceLocation id = ResourceLocation.tryParse(geneId);

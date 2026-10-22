@@ -102,6 +102,14 @@ public final class RoomOwnershipTagBlock extends SnowCoatedBlock {
     }
 
     @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state,
+                            @Nullable net.minecraft.world.entity.LivingEntity placer,
+                            net.minecraft.world.item.ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        if (placer instanceof ServerPlayer player) RoomOwnershipService.placed(player, pos);
+    }
+
+    @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState,
                          boolean movedByPiston) {
         if (!state.is(newState.getBlock()) && level instanceof ServerLevel serverLevel) {

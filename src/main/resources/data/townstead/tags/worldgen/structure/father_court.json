@@ -1,6 +1,9 @@
 {
   "values": [
-    "minecraft:woodland_mansion",
+    {
+      "id": "minecraft:woodland_mansion",
+      "required": false
+    },
     {
       "id": "vampirism:crypt",
       "required": false

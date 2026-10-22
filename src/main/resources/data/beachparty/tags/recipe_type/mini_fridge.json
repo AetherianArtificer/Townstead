@@ -1,1 +1,13 @@
-{"replace":false,"values":["beachparty:mini_fridge_freezing"]}
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "beachparty:mini_fridge_freezing",
+      "required": false
+    },
+    {
+      "id": "beachparty:mini_fridge_mixing",
+      "required": false
+    }
+  ]
+}

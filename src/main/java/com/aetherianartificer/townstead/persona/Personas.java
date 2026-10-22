@@ -60,6 +60,12 @@ public final class Personas {
      */
     public static @Nullable PersonaDefinition parse(ResourceLocation id, JsonObject json, Map<String, JsonObject> goals,
                                                     List<String> issues) {
+        return parse(id, json, goals, issues, false);
+    }
+
+    /** As above; {@code introduced} means another story brings this Persona in. */
+    public static @Nullable PersonaDefinition parse(ResourceLocation id, JsonObject json, Map<String, JsonObject> goals,
+                                                    List<String> issues, boolean introduced) {
         for (String mod : strings(json.get("requires_mods"))) {
             if (!ModCompat.isLoaded(mod)) {
                 issues.add("warning: not loaded, because mod '" + mod + "' is not installed");
@@ -211,8 +217,8 @@ public final class Personas {
             if (mode.equals("told")) familyToldOnly = true;
             else if (!mode.equals("shown")) issues.add("error: family_name must be \"shown\" or \"told\"");
         }
-        if (arrives.isEmpty() && arrivesJson == null) {
-            issues.add("warning: no \"arrives\"; this Persona only comes through /townstead persona spawn");
+        if (arrives.isEmpty() && arrivesJson == null && !introduced) {
+            issues.add("warning: no \"arrives\" and no story introduces it; this Persona only comes through /townstead persona spawn");
         }
         if (issues.stream().anyMatch(i -> i.startsWith("error:"))) return null;
         return new PersonaDefinition(id, storyId(id), name, List.copyOf(arrives), arrival, profession, root, gender, downed, List.copyOf(rolls), List.copyOf(gifts), schedule, Map.copyOf(personalities), worldUnique, outfit,

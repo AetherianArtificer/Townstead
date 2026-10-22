@@ -15,6 +15,9 @@ import java.util.Set;
 
 /** Quests villagers give in their stories, grouped by the villager who gave them. */
 public final class StoryQuestProvider implements QuestProvider {
+    /** Tags a quest with the UUID of whoever gave it, for the tracker's pointer and outline. */
+    public static final String GIVER_TAG = "giver:";
+
     @Override public String id() { return "townstead_stories"; }
     @Override public String displayName() { return I18n.get("townstead.story.provider"); }
 
@@ -64,7 +67,8 @@ public final class StoryQuestProvider implements QuestProvider {
             QuestState state = quest.state() == 2 ? QuestState.COMPLETE : QuestState.ACTIVE;
             out.add(new QuestEntry(id(), displayName(), quest.id(), quest.title(), quest.about(), quest.teller(),
                     com.aetherianartificer.townstead.client.gui.quest.QuestIcons.PREFIX + "letter", state, objectives, rewards, Set.of(),
-                    false, false, List.of(), I18n.get("townstead.story.quest.teller", quest.teller())));
+                    false, false, quest.giver().isEmpty() ? List.of() : List.of(GIVER_TAG + quest.giver()),
+                    I18n.get("townstead.story.quest.teller", quest.teller())));
         }
         return out;
     }

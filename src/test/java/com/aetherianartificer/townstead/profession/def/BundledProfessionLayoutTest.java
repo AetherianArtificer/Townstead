@@ -53,7 +53,8 @@ class BundledProfessionLayoutTest {
     void customProfessionsDeclareOrderedClothingFallbacks() {
         assertEquals(List.of("townstead:baker", "mca:baker"),
                 strings(resource("/data/townstead/profession/baker/profession.json"), "clothing"));
-        assertEquals(List.of("townstead:cook", "chefsdelight:cook", "minecraft:butcher"),
+        // Chef's Delight names its cook delightcook on 1.20.1
+        assertEquals(List.of("townstead:cook", "chefsdelight:cook", "chefsdelight:delightcook", "minecraft:butcher"),
                 strings(resource("/data/townstead/profession/cook/profession.json"), "clothing"));
         assertEquals(List.of("townstead:scribe", "iceandfire:scribe", "minecraft:librarian"),
                 strings(resource("/data/townstead/profession/scribe/profession.json"), "clothing"));

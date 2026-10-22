@@ -9,7 +9,8 @@ VAR court_downs = 0
 VAR done_wounded = false
 VAR done_court_note = false
 
-// When this scene plays. The greet in persona.ink checks these in order.
+// When this scene plays. The greet in persona.ink checks these in order. The note waits for
+// morning: the court's people walk in from the edge, so none are close yet when they arrive.
 === function court_move_ready() ===
 ~ return done_grave and not court_came and check("late_night")
 
@@ -20,7 +21,7 @@ VAR done_court_note = false
 ~ return court_came and not done_wounded and count("wolf_downs") > court_downs and not check("wolf_down")
 
 === function court_note_ready() ===
-~ return court_came and not done_wounded and not done_court_note and not check("raid_near") and count("wolf_downs") <= court_downs
+~ return court_came and not done_wounded and not done_court_note and not check("raid_near") and not check("night") and count("wolf_downs") <= court_downs
 
 === court_move ===
 ~ court_came = true
