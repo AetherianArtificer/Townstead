@@ -38,6 +38,15 @@ public final class WildCostume {
         return !(entity instanceof VillagerEntityMCA) && entity.getPersistentData().contains(COSTUME);
     }
 
+    /**
+     * The name {@code mob} carries of its own, from a name tag or a mod that names its mobs, or null
+     * when it goes by its type's name.
+     */
+    public static @Nullable String ownName(Entity mob) {
+        String name = mob.getName().getString();
+        return name.equals(mob.getType().getDescription().getString()) ? null : name;
+    }
+
     /** Saves {@code person} (never added to the world) as the look {@code mob} wears. */
     public static void dress(Mob mob, VillagerEntityMCA person) {
         TownsteadVillagers.flush(person);
@@ -133,7 +142,11 @@ public final class WildCostume {
         person.setYBodyRot(mob.yBodyRot);
         person.setHealth(Math.max(1f, person.getMaxHealth() * mob.getHealth() / mob.getMaxHealth()));
         for (MobEffectInstance effect : mob.getActiveEffects()) person.addEffect(new MobEffectInstance(effect));
-        if (mob.hasCustomName() && !person.hasCustomName()) person.setCustomName(mob.getCustomName());
+        // A name the mob took on while costumed (a name tag) outlives the costume.
+        String own = ownName(mob);
+        if (own != null && !own.equals(com.aetherianartificer.townstead.naming.VillagerNames.nameFor(person, null))) {
+            com.aetherianartificer.townstead.naming.Naming.adopt(person, own);
+        }
         mob.discard();
         synchronized (PEOPLE) {
             PEOPLE.remove(mob);

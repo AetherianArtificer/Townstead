@@ -27,9 +27,10 @@ public final class LiverySavedData extends SavedData {
 
     /**
      * {@code revision} counts proclamations, so a drafted change can tell if it went stale. A null
-     * style is a proclaimed return to the culture's default; the entry stays to keep the count.
+     * style is a proclaimed return to the culture's default; the entry stays to keep the count. An
+     * empty {@code trim} keeps the style's own trim material.
      */
-    public record Entry(@Nullable ResourceLocation style, int primary, int secondary, long revision) {}
+    public record Entry(@Nullable ResourceLocation style, int primary, int secondary, String trim, long revision) {}
 
     private final Map<String, Entry> entries = new LinkedHashMap<>();
     private final Set<UUID> wearers = new LinkedHashSet<>();
@@ -55,9 +56,9 @@ public final class LiverySavedData extends SavedData {
      * Proclaims a livery, or with a null style returns the body to its culture's default. False when
      * another was proclaimed since this one was drafted.
      */
-    public boolean publish(String actor, @Nullable ResourceLocation style, int primary, int secondary, long expected) {
+    public boolean publish(String actor, @Nullable ResourceLocation style, int primary, int secondary, String trim, long expected) {
         if (revision(actor) != expected) return false;
-        entries.put(actor, new Entry(style, primary, secondary, expected + 1));
+        entries.put(actor, new Entry(style, primary, secondary, trim, expected + 1));
         setDirty();
         return true;
     }
@@ -78,7 +79,8 @@ public final class LiverySavedData extends SavedData {
         for (String actor : all.getAllKeys()) {
             CompoundTag entry = all.getCompound(actor);
             ResourceLocation style = entry.getString("style").isEmpty() ? null : ResourceLocation.tryParse(entry.getString("style"));
-            data.entries.put(actor, new Entry(style, entry.getInt("primary"), entry.getInt("secondary"), entry.getLong("revision")));
+            data.entries.put(actor, new Entry(style, entry.getInt("primary"), entry.getInt("secondary"),
+                    entry.getString("trim"), entry.getLong("revision")));
         }
         ListTag wearers = tag.getList("wearers", Tag.TAG_STRING);
         for (int i = 0; i < wearers.size(); i++) {
@@ -102,6 +104,7 @@ public final class LiverySavedData extends SavedData {
             one.putString("style", entry.style() == null ? "" : entry.style().toString());
             one.putInt("primary", entry.primary());
             one.putInt("secondary", entry.secondary());
+            if (!entry.trim().isEmpty()) one.putString("trim", entry.trim());
             one.putLong("revision", entry.revision());
             all.put(actor, one);
         });

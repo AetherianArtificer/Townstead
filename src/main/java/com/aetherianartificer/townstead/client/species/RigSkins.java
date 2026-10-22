@@ -33,6 +33,8 @@ public final class RigSkins {
         int alpha = Math.round(Math.max(0f, Math.min(1f, fade)) * 255f);
         VertexConsumer buffer = buffers.getBuffer(RenderType.entityTranslucent(texture));
         if (model instanceof net.minecraft.client.model.HumanoidModel<?> humanoid) buffer = SkinUv.fit(humanoid, buffer);
+        // drawn on the body's own model, so lift it off the body's surface or the two z-fight
+        buffer = ShellOffset.wrap(buffer, ShellOffset.CLOTHING);
         // A rig may limit which parts a worn skin covers (a legless ghost, thin arms whose UVs don't
         // match a villager skin's): hide the rest for this pass, then put them back.
         java.util.List<net.minecraft.client.model.geom.ModelPart> hidden = hideUnskinned(entity, model);
@@ -41,6 +43,27 @@ public final class RigSkins {
         } finally {
             for (net.minecraft.client.model.geom.ModelPart part : hidden) part.visible = true;
         }
+    }
+
+    /**
+     * The worn skin on one posed part (the first-person hand), when the rig lets a skin cover it,
+     * matching what the third-person body shows there.
+     */
+    public static void renderPart(LivingEntity entity, net.minecraft.client.model.HumanoidModel<?> model,
+                                  net.minecraft.client.model.geom.ModelPart part, String partName,
+                                  PoseStack pose, MultiBufferSource buffers, int light, float fade) {
+        ResourceLocation texture = texture(entity);
+        if (texture == null) return;
+        com.aetherianartificer.townstead.root.rig.RigDefinition def = RootCatalogClient.rig(RigModels.rigBaseFor(entity));
+        if (def != null && !def.skinParts().isEmpty() && !def.skinParts().contains(partName)) return;
+        int alpha = Math.round(Math.max(0f, Math.min(1f, fade)) * 255f);
+        VertexConsumer buffer = ShellOffset.wrap(
+                SkinUv.fit(model, buffers.getBuffer(RenderType.entityTranslucent(texture))), ShellOffset.CLOTHING);
+        //? if neoforge {
+        part.render(pose, buffer, light, OverlayTexture.NO_OVERLAY, (alpha << 24) | 0xFFFFFF);
+        //?} else {
+        /*part.render(pose, buffer, light, OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, alpha / 255f);
+        *///?}
     }
 
     private static void draw(EntityModel<LivingEntity> model, PoseStack pose, VertexConsumer buffer, int light, int alpha) {

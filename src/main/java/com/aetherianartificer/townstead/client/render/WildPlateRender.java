@@ -30,12 +30,24 @@ public final class WildPlateRender {
     public static @Nullable Component name(Entity entity) {
         WildPlateS2CPayload plate = WildPlateS2CPayload.of(entity.getId());
         if (plate == null) return null;
-        MutableComponent name = Component.literal(plate.name());
+        MutableComponent name = Component.literal(shownName(entity, plate));
         return switch (plate.disposition()) {
             case 2 -> name.withStyle(ChatFormatting.RED);
             case 1 -> name.withStyle(ChatFormatting.GOLD);
             default -> name;
         };
+    }
+
+    /**
+     * The person's name, unless the mob has taken on one of its own since it was costumed (a name
+     * tag). The mob's name is synced entity state, so a rename shows on the next frame.
+     */
+    public static String shownName(Entity entity, WildPlateS2CPayload plate) {
+        // The renderer may hold the person standing in for the mob; the mob is what the world has.
+        Minecraft minecraft = Minecraft.getInstance();
+        Entity mob = minecraft.level == null ? null : minecraft.level.getEntity(entity.getId());
+        String own = mob == null ? null : com.aetherianartificer.townstead.replace.WildCostume.ownName(mob);
+        return own == null ? plate.name() : own;
     }
 
     /** Draws the line under the name: the type of the mob the person stands in for. */

@@ -45,25 +45,38 @@ public abstract class FertilityPregnancyMixin {
         }
     }
 
-    @Inject(method = "procreate", at = @At("HEAD"), cancellable = true)
+    // Older MCA: procreate(Entity) returns void.
+    @Inject(method = "procreate(Lnet/minecraft/world/entity/Entity;)V", at = @At("HEAD"), cancellable = true, require = 0)
     private void townstead$gateProcreate(Entity spouse, CallbackInfo ci) {
+        if (townstead$handledProcreate(spouse)) ci.cancel();
+    }
+
+    // Newer MCA: procreate(Entity) delegates here and returns whether it succeeded. A false return
+    // resets the cooldown and tells the player their inventory is full, so a handled attempt
+    // returns true, as the void version kept the cooldown and sent no message.
+    @Inject(method = "procreate(Lnet/minecraft/world/entity/Entity;I)Z", at = @At("HEAD"), cancellable = true, require = 0)
+    private void townstead$gateProcreateCount(Entity spouse, int count, CallbackInfoReturnable<Boolean> cir) {
+        if (townstead$handledProcreate(spouse)) cir.setReturnValue(true);
+    }
+
+    /** True when Townstead refused the pair or bore the young itself, so MCA must not make baby items. */
+    private boolean townstead$handledProcreate(Entity spouse) {
         LivingEntity other = spouse instanceof LivingEntity living ? living : null;
         if (!Fertility.isFertile(mother) || (other != null && !Fertility.isFertile(other))
                 || !Fertility.canBear(mother) || (other != null && !Fertility.canBear(other))) {
-            ci.cancel();
-            return;
+            return true;
         }
         if (other != null && !SpeciesBreeding.sameSpecies(mother, other)) {
-            ci.cancel();
             SpeciesBreeding.notifyIfPlayer(spouse);
-            return;
+            return true;
         }
         // A fertile, same-species pair. Non-overworlder species bear young directly
         // rather than handing the player a (human) baby item.
         if (DirectBirth.bypassesBabyItem(mother)) {
             DirectBirth.spawnOffspring(mother, spouse);
-            ci.cancel();
+            return true;
         }
+        return false;
     }
 
     private VillagerEntityMCA partner() {

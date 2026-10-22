@@ -168,7 +168,7 @@ public final class LiveryService {
 
     private static @Nullable LiveryView proclaimed(@Nullable LiverySavedData.Entry entry) {
         LiveryStyle style = entry == null ? null : LiveryStyles.get(entry.style());
-        return style == null ? null : LiveryView.of(style, entry.primary(), entry.secondary());
+        return style == null ? null : LiveryView.of(style, entry.primary(), entry.secondary()).withTrimMaterial(entry.trim());
     }
 
     /** The culture most of a settlement's loaded residents keep, counted at most daily. */

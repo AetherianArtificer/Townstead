@@ -90,6 +90,9 @@ public final class MobReplacer {
             double amount = range[0] + villager.getRandom().nextDouble() * (range[1] - range[0]);
             EntityStates.set(villager, state.getKey(), Math.round(amount), 0, null);
         }
+        // A mob its mod has already named keeps that name; the person it shows goes by it too.
+        String own = WildCostume.ownName(mob);
+        if (own != null) com.aetherianartificer.townstead.naming.Naming.adopt(villager, own);
         WildCostume.dress(mob, villager);
         return false;
     }

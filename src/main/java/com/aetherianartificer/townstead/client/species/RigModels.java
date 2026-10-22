@@ -637,6 +637,36 @@ public final class RigModels {
     public static void renderOverlays(String rigBase, LivingEntity entity, net.minecraft.client.model.EntityModel<?> model,
                                       com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.client.renderer.MultiBufferSource buffers,
                                       int light) {
+        renderOverlays(rigBase, entity, buffers, (buffer, rgb) -> {
+            //? if neoforge {
+            model.renderToBuffer(pose, buffer, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, 0xFF000000 | rgb);
+            //?} else {
+            /*model.renderToBuffer(pose, buffer, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,
+                    ((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
+            *///?}
+        });
+    }
+
+    /** The rig's overlays on one posed part: the first-person hand, matching the third-person body. */
+    public static void renderOverlays(String rigBase, LivingEntity entity, ModelPart part,
+                                      com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.client.renderer.MultiBufferSource buffers,
+                                      int light) {
+        renderOverlays(rigBase, entity, buffers, (buffer, rgb) -> {
+            //? if neoforge {
+            part.render(pose, buffer, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, 0xFF000000 | rgb);
+            //?} else {
+            /*part.render(pose, buffer, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,
+                    ((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
+            *///?}
+        });
+    }
+
+    private interface OverlayDraw {
+        void draw(com.mojang.blaze3d.vertex.VertexConsumer buffer, int rgb);
+    }
+
+    private static void renderOverlays(String rigBase, LivingEntity entity,
+                                       net.minecraft.client.renderer.MultiBufferSource buffers, OverlayDraw drawer) {
         RigDefinition def = RootCatalogClient.rig(rigBase);
         if (def == null || def.overlays().isEmpty()) return;
         for (RigDefinition.Overlay overlay : def.overlays()) {
@@ -655,12 +685,7 @@ public final class RigModels {
             com.mojang.blaze3d.vertex.VertexConsumer buffer = buffers.getBuffer(glow
                     ? net.minecraft.client.renderer.RenderType.eyes(tex)
                     : net.minecraft.client.renderer.RenderType.entityCutoutNoCull(tex));
-            //? if neoforge {
-            model.renderToBuffer(pose, buffer, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, 0xFF000000 | rgb);
-            //?} else {
-            /*model.renderToBuffer(pose, buffer, light, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,
-                    ((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
-            *///?}
+            drawer.draw(buffer, rgb);
         }
     }
 

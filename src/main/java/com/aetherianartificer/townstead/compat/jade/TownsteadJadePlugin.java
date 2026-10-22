@@ -31,9 +31,37 @@ public class TownsteadJadePlugin implements IWailaPlugin {
     @Override
     public void registerClient(IWailaClientRegistration registration) {
         registration.registerEntityComponent(NextStageProvider.INSTANCE, VillagerEntityMCA.class);
+        registration.registerEntityComponent(CostumeNameProvider.INSTANCE, net.minecraft.world.entity.Mob.class);
         registration.registerEntityComponent(AspectJadeProvider.INSTANCE, net.minecraft.world.entity.LivingEntity.class);
         registration.registerEntityComponent(OfficeJadeProvider.INSTANCE, net.minecraft.world.entity.LivingEntity.class);
         registration.registerEntityComponent(AccordJadeProvider.INSTANCE, net.minecraft.world.entity.LivingEntity.class);
+    }
+
+    /** A costumed mob is titled as its nameplate is: the person's name, or one the mob has taken on since. */
+    private enum CostumeNameProvider implements IEntityComponentProvider {
+        INSTANCE;
+
+        private static final ResourceLocation UID = ResourceLocation.tryParse("townstead:costume_name");
+        private static final ResourceLocation OBJECT_NAME = ResourceLocation.tryParse("jade:object_name");
+
+        @Override
+        public void appendTooltip(ITooltip tooltip, EntityAccessor accessor, IPluginConfig config) {
+            Component name = com.aetherianartificer.townstead.client.render.WildPlateRender.name(accessor.getEntity());
+            // Only where Jade drew a name: the player may have turned it off.
+            if (name == null || tooltip.get(OBJECT_NAME).isEmpty()) return;
+            tooltip.remove(OBJECT_NAME);
+            tooltip.add(0, name, OBJECT_NAME);
+        }
+
+        @Override
+        public ResourceLocation getUid() {
+            return UID;
+        }
+
+        @Override
+        public int getDefaultPriority() {
+            return 1000;
+        }
     }
 
     private enum NextStageProvider implements IEntityComponentProvider {

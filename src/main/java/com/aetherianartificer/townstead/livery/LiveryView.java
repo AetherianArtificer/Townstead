@@ -31,6 +31,14 @@ public record LiveryView(ResourceLocation style, boolean tint, int primary, int 
         return new LiveryView(style, tint, primary, secondary, tintArmor, trims);
     }
 
+    /** The style's trims in another trim material; empty keeps the style's own. */
+    public LiveryView withTrimMaterial(String material) {
+        if (material == null || material.isEmpty() || trims.isEmpty()) return this;
+        Map<String, Trim> recoloured = new LinkedHashMap<>();
+        trims.forEach((slot, trim) -> recoloured.put(slot, new Trim(trim.pattern(), material)));
+        return new LiveryView(style, tint, primary, secondary, tintArmor, recoloured);
+    }
+
     public void write(FriendlyByteBuf buf) {
         buf.writeUtf(style.toString(), 256);
         buf.writeBoolean(tint);

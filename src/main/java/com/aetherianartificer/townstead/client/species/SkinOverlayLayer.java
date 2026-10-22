@@ -55,6 +55,8 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
     public void renderFinal(PoseStack transform, MultiBufferSource provider, int light, T entity,
                             float tickDelta, boolean visible, boolean glowing) {
         int overlay = LivingEntityRenderer.getOverlayCoords(entity, 0);
+        // Fade with the body under it (pheno:opacity, invisibility), so marks don't float solid on a ghost.
+        float fade = InvisFade.alpha(entity, tickDelta);
         for (String geneId : orderedOverlayGenes(entity)) {
             GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
             if (gene.skinOverlayOverFace() != overFace) continue;
@@ -64,7 +66,8 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
                 if (visible) drawGlow(transform, provider, material.texture(), material.color());
                 continue;
             }
-            draw(transform, provider, light, overlay, material.texture(), material.color(), visible, glowing);
+            draw(transform, provider, light, overlay, material.texture(),
+                    HandFade.color(0xFF000000 | (material.color() & 0xFFFFFF), fade), visible, glowing);
         }
     }
 
@@ -91,12 +94,12 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
         if (layer == null) return;
         com.mojang.blaze3d.vertex.VertexConsumer buffer = provider.getBuffer(layer);
         //? if neoforge {
-        model.renderToBuffer(transform, buffer, light, overlayCoords, 0xFF000000 | (color & 0xFFFFFF));
+        model.renderToBuffer(transform, buffer, light, overlayCoords, color);
         //?} else {
         /*float r = ((color >> 16) & 0xFF) / 255f;
         float g = ((color >> 8) & 0xFF) / 255f;
         float b = (color & 0xFF) / 255f;
-        model.renderToBuffer(transform, buffer, light, overlayCoords, r, g, b, 1f);
+        model.renderToBuffer(transform, buffer, light, overlayCoords, r, g, b, ((color >>> 24) & 0xFF) / 255f);
         *///?}
     }
 
@@ -196,6 +199,20 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
         };
     }
 
+    // Set when the overlay was already painted on MCA's own visible arm this hand pass, so the
+    // vanilla-arm fallback doesn't paint a second copy on the renderer's animation arm.
+    private static boolean firstPersonArmPainted;
+
+    public static void markFirstPersonArmPainted() {
+        firstPersonArmPainted = true;
+    }
+
+    public static boolean consumeFirstPersonArmPainted() {
+        boolean painted = firstPersonArmPainted;
+        firstPersonArmPainted = false;
+        return painted;
+    }
+
     /**
      * Paint the same expressed overlay textures onto Minecraft's separate first-person hand pass.
      * Entity render layers are not invoked by {@code PlayerRenderer.renderRightHand/renderLeftHand},
@@ -211,48 +228,37 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
         renderFirstPersonPart(pose, buffers, light, player, arm);
     }
 
-    /** Paint overlays on an already-posed arm supplied by MCA's own 1.20.1 custom-arm pass. */
+    /**
+     * Paint overlays on an already-posed arm supplied by MCA's own custom-arm pass. Drawn like the
+     * third-person body: faded by the bearer's opacity, glow overlays full-bright.
+     */
     public static void renderFirstPersonPart(PoseStack pose, MultiBufferSource buffers, int light,
                                              AbstractClientPlayer player, ModelPart arm) {
+        float fade = HandFade.alpha(player);
+        if (fade <= 0f) return;
         int layerIndex = 0;
         for (String geneId : orderedOverlayGenes(player)) {
             GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
             Material material = materialFor(player, gene);
             if (material == null) continue;
-            com.mojang.blaze3d.vertex.VertexConsumer buffer =
-                    buffers.getBuffer(RenderType.entityTranslucent(material.texture()));
-
-            // Expand around the already-animated arm's own pivot. This keeps Fresh Player's exact
-            // rotation/translation while moving the overlay a fraction of a texel off the base
-            // surface. Each additional overlay is slightly farther out to preserve stack order.
-            float xScale = arm.xScale;
-            float yScale = arm.yScale;
-            float zScale = arm.zScale;
+            boolean glow = gene.skinOverlayGlow();
+            // Lifted off the arm along each face's normal, each overlay a little farther out to keep
+            // stack order. Scaling around the pivot left faces near it coplanar with the arm, and
+            // those z-fight once the hand is translucent.
+            com.mojang.blaze3d.vertex.VertexConsumer buffer = ShellOffset.wrap(buffers.getBuffer(glow
+                    ? RenderType.eyes(material.texture())
+                    : RenderType.entityTranslucent(material.texture())),
+                    ShellOffset.CLOTHING * 0.25f * ++layerIndex);
+            int drawLight = glow ? 0xF000F0 : light;
+            int color = glow ? 0xFF000000 | (material.color() & 0xFFFFFF)
+                    : HandFade.color(0xFF000000 | (material.color() & 0xFFFFFF), fade);
             //? if neoforge {
-            float shell = 1.0025f + layerIndex++ * 0.001f;
+            arm.render(pose, buffer, drawLight, OverlayTexture.NO_OVERLAY, color);
             //?} else {
-            /*// MCA 7.6 supplies its own custom arm geometry. It needs only a minimal depth
-            // separation; the 1.21 expansion visibly bloats the outer hand edges here.
-            float shell = 1.0005f + layerIndex++ * 0.00025f;
+            /*arm.render(pose, buffer, drawLight, OverlayTexture.NO_OVERLAY,
+                    ((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f,
+                    (color & 0xFF) / 255f, ((color >>> 24) & 0xFF) / 255f);
             *///?}
-            arm.xScale *= shell;
-            arm.yScale *= shell;
-            arm.zScale *= shell;
-            try {
-                //? if neoforge {
-                arm.render(pose, buffer, light, OverlayTexture.NO_OVERLAY,
-                        0xFF000000 | (material.color() & 0xFFFFFF));
-                //?} else {
-                /*arm.render(pose, buffer, light, OverlayTexture.NO_OVERLAY,
-                        ((material.color() >> 16) & 0xFF) / 255f,
-                        ((material.color() >> 8) & 0xFF) / 255f,
-                        (material.color() & 0xFF) / 255f, 1f);
-                *///?}
-            } finally {
-                arm.xScale = xScale;
-                arm.yScale = yScale;
-                arm.zScale = zScale;
-            }
         }
     }
 }

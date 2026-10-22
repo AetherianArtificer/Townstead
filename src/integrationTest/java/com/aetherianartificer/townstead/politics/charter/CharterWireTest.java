@@ -35,7 +35,7 @@ class CharterWireTest {
                         List.of(new CharterSnapshotS2CPayload.CensusGroup("test:culture", literal("Culture"), 12, 0xff397f79)), 12, 3, true)),
                 List.of(text), List.of(new CharterSnapshotS2CPayload.Heraldry("faction:test:one", text,
                         com.aetherianartificer.townstead.politics.heraldry.EmblemRecipe.DEFAULT.encode(), 7, true,
-                        new CharterSnapshotS2CPayload.Livery("pack:plate", 0x8A1C1C, 0xC9A227, 2, literal("Culture default"), null))),
+                        new CharterSnapshotS2CPayload.Livery("pack:plate", 0x8A1C1C, 0xC9A227, "minecraft:copper", 2, literal("Culture default"), null))),
                 true, List.of(office),
                 new CharterSnapshotS2CPayload.Members(100, true, people, literal("You hold: Leader"), literal("Anyone may join."), List.of(action), 1),
                 List.of(new CharterSnapshotS2CPayload.Request("request", text, literal("Applicant"), "application", "pending", 1, 2, List.of(action))),
@@ -65,6 +65,7 @@ class CharterWireTest {
             assertTrue(decoded.book().offices().get(0).maximum() == -1, "An unlimited office came back limited");
             assertTrue(decoded.book().census().get(0).uncounted() == 3, "Uncounted residents were lost");
             assertTrue(decoded.book().heraldry().get(0).livery().primary() == 0x8A1C1C, "A livery lost its colour");
+            assertTrue(decoded.book().heraldry().get(0).livery().trim().equals("minecraft:copper"), "A livery lost its trim");
             assertTrue(decoded.book().members().livery() == 1 && decoded.book().liveryStyles().size() == 1, "Livery state was lost");
             assertTrue(decoded.book().liveryStyles().get(0).view().trims().get("chest").pattern().equals("minecraft:ward"), "A style lost its trims");
             assertTrue(decoded.book().draft().signers().get(0).date().fallback().equals("Autumn 3"), "A seal lost its date");

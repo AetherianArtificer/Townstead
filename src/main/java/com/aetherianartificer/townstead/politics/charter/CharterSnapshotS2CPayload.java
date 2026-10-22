@@ -248,14 +248,14 @@ public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int sta
      * A body's proclaimed livery. {@code style} is empty when it wears what it would by default, which
      * {@code inherited} names (the faction above's, or the culture's), so the desk can say so.
      */
-    public record Livery(String style, int primary, int secondary, long revision, Text inherited,
+    public record Livery(String style, int primary, int secondary, String trim, long revision, Text inherited,
                          @Nullable com.aetherianartificer.townstead.livery.LiveryView inheritedView) {
         void write(FriendlyByteBuf b) {
-            b.writeUtf(style, 256); b.writeInt(primary); b.writeInt(secondary); b.writeLong(revision); inherited.write(b);
+            b.writeUtf(style, 256); b.writeInt(primary); b.writeInt(secondary); b.writeUtf(trim, 256); b.writeLong(revision); inherited.write(b);
             b.writeBoolean(inheritedView != null); if (inheritedView != null) inheritedView.write(b);
         }
         static Livery read(FriendlyByteBuf b) {
-            return new Livery(b.readUtf(256), b.readInt(), b.readInt(), b.readLong(), Text.read(b),
+            return new Livery(b.readUtf(256), b.readInt(), b.readInt(), b.readUtf(256), b.readLong(), Text.read(b),
                     b.readBoolean() ? com.aetherianartificer.townstead.livery.LiveryView.read(b) : null);
         }
     }

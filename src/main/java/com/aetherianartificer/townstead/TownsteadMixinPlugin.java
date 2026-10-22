@@ -36,6 +36,7 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
             "net/conczin/mca/mixin/client/MixinPlayerEntityRenderer.class";
     private static final String MCA_LEGACY_FORGE_PLAYER_MIXIN =
             "forge/net/mca/mixin/client/MixinPlayerEntityRenderer.class";
+    private static final String MCA_PLAYER_MIXIN = "net/conczin/mca/mixin/client/MixinPlayerRenderer.class";
     private static final String EMF_STATE_MARKER =
             "traben/entity_model_features/models/animation/state/EMFState.class";
     private static final String EMOTECRAFT_EMF_MIXIN_MARKER =
@@ -52,6 +53,7 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
     private Boolean floorV2;
     private Boolean mcaForge;
     private Boolean emfEmotecraftBridge;
+    private Boolean mcaArmLayer;
 
     private boolean isNewApi() {
         if (newApi == null) {
@@ -65,6 +67,22 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
             widgetUtils = TownsteadMixinPlugin.class.getClassLoader().getResource(WIDGET_UTILS_MARKER) != null;
         }
         return widgetUtils;
+    }
+
+    /** MCA builds that draw first-person hands per layer carry {@code mca$renderArmLayer} in this mixin. */
+    private boolean hasMcaArmLayer() {
+        if (mcaArmLayer == null) {
+            mcaArmLayer = false;
+            try (java.io.InputStream in = TownsteadMixinPlugin.class.getClassLoader()
+                    .getResourceAsStream(MCA_PLAYER_MIXIN)) {
+                if (in != null) {
+                    String bytes = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.ISO_8859_1);
+                    mcaArmLayer = bytes.contains("mca$renderArmLayer");
+                }
+            } catch (java.io.IOException ignored) {
+            }
+        }
+        return mcaArmLayer;
     }
 
     private boolean isFloorV2() {
@@ -107,6 +125,9 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
         }
         if (mixinClassName.endsWith("McaPlayerArmOverlayMixin")) {
             return isMcaForge();
+        }
+        if (mixinClassName.endsWith("McaPlayerArmLayerOverlayMixin")) {
+            return hasMcaArmLayer();
         }
         if (mixinClassName.endsWith("EmfAnimationEntityContextCompatMixin")) {
             return needsEmfEmotecraftBridge();

@@ -27,7 +27,7 @@ public final class CostumeTalk {
         WildPlateS2CPayload plate = WildPlateS2CPayload.of(mob.getId());
         if (plate != null && plate.disposition() == 2) {
             if (minecraft.player != null) {
-                minecraft.player.displayClientMessage(Component.translatable("message.townstead.costume.hostile", plate.name()), true);
+                minecraft.player.displayClientMessage(Component.translatable("message.townstead.costume.hostile", WildPlateRender.shownName(mob, plate)), true);
             }
             return true;
         }

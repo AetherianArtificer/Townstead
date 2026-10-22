@@ -39,7 +39,7 @@ public final class HeraldryService {
         var livery = com.aetherianartificer.townstead.livery.LiverySavedData.get(player.server).get(actor);
         var liveryView = new CharterSnapshotS2CPayload.Livery(livery == null || livery.style() == null ? "" : livery.style().toString(),
                 livery == null ? 0 : livery.primary(), livery == null ? 0 : livery.secondary(),
-                livery == null ? 0 : livery.revision(), CharterSnapshotS2CPayload.Text.of(inherited), inheritedView);
+                livery == null ? "" : livery.trim(), livery == null ? 0 : livery.revision(), CharterSnapshotS2CPayload.Text.of(inherited), inheritedView);
         return new CharterSnapshotS2CPayload.Heraldry(actor, CharterSnapshotS2CPayload.Text.of(name), entry.recipe().encode(), entry.revision(), edit, liveryView);
     }
 

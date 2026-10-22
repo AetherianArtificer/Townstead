@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.mixin.compat.vampirism;
 
+import com.aetherianartificer.townstead.compat.otectus.CaptureAmnesty;
 import com.aetherianartificer.townstead.work.martial.VillageAlarm;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.server.level.ServerLevel;
@@ -42,7 +43,10 @@ public abstract class TotemBlockEntityMixin {
                 method = this.getClass().getMethod("getVillageArea");
                 townstead$villageArea = method;
             }
-            if (method.invoke(this) instanceof AABB area) VillageAlarm.siege(level, totem.getBlockPos(), area);
+            if (method.invoke(this) instanceof AABB area) {
+                VillageAlarm.siege(level, totem.getBlockPos(), area);
+                CaptureAmnesty.report(level, totem.getBlockPos(), area);
+            }
         } catch (Throwable ignored) {
         }
     }

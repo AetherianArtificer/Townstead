@@ -2151,6 +2151,8 @@ public class Townstead {
             com.aetherianartificer.townstead.reaction.backend.ReactionBackends.register(
                     new com.aetherianartificer.townstead.reaction.backend.EmotecraftReactionBackend());
             com.aetherianartificer.townstead.compat.otectus.OtectusBridge.init();
+            com.aetherianartificer.townstead.compat.otectus.CrimeGateCheck.verify();
+            com.aetherianartificer.townstead.compat.otectus.ReputationCaptureExemption.register();
             com.aetherianartificer.townstead.politics.standing.StandingDeeds.init();
             com.aetherianartificer.townstead.village.HarvestTally.init();
             com.aetherianartificer.townstead.politics.legitimacy.LegitimacyService.init();
