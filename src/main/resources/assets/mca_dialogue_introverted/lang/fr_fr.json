@@ -2,6 +2,7 @@
   "introverted.dialogue.chat.butcher_request.no_livestock/1": "<nervous>Euh... il n'y a pas de bêtes... si je peux me permettre de le signaler.</nervous>",
   "introverted.dialogue.chat.butcher_request.no_hook/1": "<nervous>Je... je me sentirais mieux avec un crochet. Si ce n'est pas trop demander.</nervous>",
   "introverted.dialogue.chat.butcher_request.no_basin/1": "<nervous>Un bac, euh, ça aiderait vraiment. Quand tu auras un moment.</nervous>",
+  "introverted.dialogue.chat.butcher_request.no_blood_grate/1": "<nervous>Une grille à sang, euh, aiderait vraiment. Quand tu auras un moment.</nervous>",
   "introverted.dialogue.chat.village_life.butcher_shop/1": "<nervous>La boucherie est bondée. J'essaie d'y aller quand c'est calme.</nervous>",
   "introverted.dialogue.chat.village_life.slaughterhouse/1": "<nervous>L'abattoir, euh, je garde mes distances avec celui-là.</nervous>",
   "introverted.dialogue.chat.village_life.smokehouse/1": "<happy>J'aime passer devant le fumoir. L'odeur est... réconfortante.</happy>",
@@ -149,5 +150,18 @@
   "introverted.dialogue.chat.leatherworker_request.no_salt/1": "<nervous>Désolé, juste... il me faudrait du sel pour la peau. Si tu en as.</nervous>",
   "introverted.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<nervous>Une, euh, éponge mouillée ? Ou un chiffon humide marcherait aussi.</nervous>",
   "introverted.dialogue.chat.leatherworker_request.no_storage/1": "<nervous>Mon sac est, euh, un peu plein. Un coffre à proximité aiderait.</nervous>",
-  "introverted.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Oh... c'est séché. Le cuir a l'air vraiment beau.</happy>"
+  "introverted.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Oh... c'est séché. Le cuir a l'air vraiment beau.</happy>",
+  "introverted.dialogue.chat.beverage_artisan_request.no_worksite/1": "<nervous>Euh, il me faut un poste à boissons. Un endroit calme serait bien.</nervous>",
+  "introverted.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<nervous>Il n'y a plus d'ingrédients. Quelqu'un pourrait les remplacer ?</nervous>",
+  "introverted.dialogue.chat.beverage_artisan_request.no_storage/1": "<nervous>Il n'y a pas de place pour les boissons prêtes. Peut-être un autre coffre ?</nervous>",
+  "introverted.dialogue.chat.beverage_artisan_request.unreachable/1": "<nervous>Je n'arrive pas à atteindre mon poste. Quelque chose bloque.</nervous>",
+  "introverted.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<nervous>Je pourrais faire %2$s, si on avait les ingrédients.</nervous>",
+  "introverted.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<happy>La foule me paraît un peu moins effrayante, maintenant.</happy>",
+  "introverted.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<nervous>Je crois que j'ai plus parlé ce soir que toute la semaine.</nervous>",
+  "introverted.dialogue.chat.townstead_drunk.drunk_arrival/1": "<nervous>Je viens de saluer tout le monde ? Tout le monde ?</nervous>",
+  "introverted.dialogue.chat.townstead_drunk.drunk_ambient/1": "<nervous>J'avais une pensée privée, mais apparemment je l'ai annoncée.</nervous>",
+  "introverted.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>Il me faut de l'eau et un endroit sans personne.</sleepy>",
+  "introverted.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>Je vais être très silencieux, maintenant. Extrêmement silencieux.</sleepy>",
+  "introverted.dialogue.chat.townstead_drunk.service_refused/1": "<nervous>Plus rien, s'il vous plaît. De l'eau suffira.</nervous>",
+  "introverted.dialogue.chat.townstead_drunk.recovered/1": "<happy>De nouveau au calme. Je me sens bien plus moi-même.</happy>"
 }

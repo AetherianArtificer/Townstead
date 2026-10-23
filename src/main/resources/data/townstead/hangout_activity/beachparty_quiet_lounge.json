@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:hangout_activity/v2",
+  "mods": "beachparty",
+  "kind": "socialize",
+  "minimum_participants": 1,
+  "maximum_participants": 3,
+  "duration_ticks": 600,
+  "yield_to_groups": true,
+  "roles": {
+    "guest": 3
+  },
+  "postures": [
+    "townstead:sit",
+    "townstead:relax"
+  ],
+  "on_start": {
+    "type": "pheno:speak",
+    "pool": "dialogue.chat.townstead_beachparty.cabana_solo",
+    "variants": 4
+  },
+  "social_cues": {
+    "dialogue_intent": "social:cocktail_lounge",
+    "dialogue_interval_ticks": 220,
+    "expressions": [
+      "townstead_expressions:relief",
+      "townstead_expressions:question",
+      "townstead_expressions:delight"
+    ],
+    "expression_interval_ticks": 150,
+    "conversations": true
+  },
+  "performance": {
+    "id": "townstead:quiet_lounge",
+    "channel": "social",
+    "duration_ticks": 600,
+    "priority": 5,
+    "fallback": "stand"
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.jam_maker.honey_keeper"
+  },
+  "icon": "minecraft:beehive",
+  "description": {
+    "translate": "skill.townstead.baker.jam_maker.honey_keeper.description"
+  },
+  "cost": 1,
+  "requires": [
+    "clean_jar"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 600,
+    "condition": {
+      "type": "pheno:village",
+      "within_border": true
+    },
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 6,
+        "where": {
+          "type": "and",
+          "conditions": [
+            {
+              "type": "in_tag",
+              "tag": "minecraft:beehives"
+            },
+            {
+              "type": "or",
+              "conditions": [
+                {
+                  "type": "block_state",
+                  "property": "honey_level",
+                  "value": "0"
+                },
+                {
+                  "type": "block_state",
+                  "property": "honey_level",
+                  "value": "1"
+                },
+                {
+                  "type": "block_state",
+                  "property": "honey_level",
+                  "value": "2"
+                },
+                {
+                  "type": "block_state",
+                  "property": "honey_level",
+                  "value": "3"
+                },
+                {
+                  "type": "block_state",
+                  "property": "honey_level",
+                  "value": "4"
+                }
+              ]
+            }
+          ]
+        },
+        "limit": 1
+      },
+      "do": {
+        "type": "pheno:modify_block_state",
+        "property": "honey_level",
+        "operation": "add",
+        "amount": 1
+      }
+    }
+  }
+}

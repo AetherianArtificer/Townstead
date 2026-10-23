@@ -1,0 +1,68 @@
+[mood_audio]
+	#Mute villager mood vocalizations tied to laughter/celebration and crying.
+	muteMoodVocalizations = true
+
+[catalog]
+	#Use the Townstead extended catalog with kitchen building tiers. Disable to use MCA's original catalog.
+	useTownsteadCatalog = true
+
+[needs_display]
+	#Unit for villager temperature readouts. Everything is Celsius underneath; this only changes what is shown.
+	#Allowed Values: CELSIUS, FAHRENHEIT
+	temperatureUnit = "CELSIUS"
+
+[resource_hud]
+	#Screen anchor for resource meters, or PACK_DECIDED to use each resource's datapack anchor.
+	#Allowed Values: TOP_LEFT, TOP_CENTER, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_CENTER, BOTTOM_RIGHT, PACK_DECIDED
+	anchor = "PACK_DECIDED"
+	#Horizontal pixel offset from the selected anchor, before HUD scale.
+	# Default: 4
+	# Range: -4096 ~ 4096
+	offsetX = 4
+	#Vertical pixel offset from the selected anchor, before HUD scale.
+	# Default: 4
+	# Range: -4096 ~ 4096
+	offsetY = 4
+	#Scale of Townstead resource meters, in addition to Minecraft's GUI scale.
+	# Default: 1.0
+	# Range: 0.5 ~ 3.0
+	scale = 1.0
+	#Direction used when more than one resource meter is visible.
+	#Allowed Values: DOWN, RIGHT
+	stack = "DOWN"
+	#CONTEXTUAL leaves after activity using the selected exit style; NOT_AT_REST stays while away from its resting value; ALWAYS and NEVER are explicit overrides.
+	#Allowed Values: CONTEXTUAL, NOT_AT_REST, ALWAYS, NEVER
+	visibility = "CONTEXTUAL"
+	#Visual transition used when a contextual resource leaves the HUD. INSTANT disables the transition without forcing the meter to stay visible.
+	#Allowed Values: INSTANT, FADE, SLIDE, FLICKER
+	exitStyle = "FADE"
+	#Ticks a contextual resource stays fully visible after its value or definition changes.
+	# Default: 60
+	# Range: 0 ~ 1200
+	holdTicks = 60
+	#Ticks used by the selected contextual exit transition after the hold time.
+	# Default: 10
+	# Range: 0 ~ 200
+	fadeTicks = 10
+	#Draw the current and maximum values beside resource meters.
+	showValues = true
+
+[accessibility]
+	#Reduce non-essential motion across Townstead UI: dialogue text effects (wave, shake, bounce, scale), the calendar stamp drawer slide, and similar. Emotion colors still apply.
+	reduceMotion = false
+	#Disable screen-space and world-space particles during dialogue.
+	disableParticles = false
+	#Prevent the camera from rotating to face the villager during dialogue.
+	disableCameraMovement = false
+	#Add distinct hatching patterns to Spirit page bars so they can be told apart without color.
+	spiritColorblindPatterns = false
+	#Announce the hovered spirit row through the narrator (e.g., 'Nautical: 10 of 25 points, Dockside').
+	spiritNarration = false
+	#Grow Spirit page row heights and bar thickness for easier clicking on touch or low-precision setups.
+	spiritLargerHitTargets = false
+	#Use stronger borders and pure black/white text on the Spirit page.
+	spiritHighContrast = false
+	#Text scale multiplier for the Spirit page (1.0 = default, 1.5 = 50% larger). Respects MC's overall GUI scale.
+	# Default: 1.0
+	# Range: 1.0 ~ 2.0
+	spiritFontScale = 1.0

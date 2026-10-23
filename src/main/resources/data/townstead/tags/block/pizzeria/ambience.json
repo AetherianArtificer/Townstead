@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:lantern",
+    "minecraft:soul_lantern",
+    "#minecraft:candles",
+    "minecraft:flower_pot",
+    "minecraft:potted_azalea_bush",
+    "minecraft:potted_flowering_azalea_bush"
+  ]
+}

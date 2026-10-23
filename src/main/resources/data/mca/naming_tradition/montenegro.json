@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:naming_tradition/v1",
+  "given": "mca:montenegro",
+  "family": {
+    "type": "inherited",
+    "list": "townstead_naming:montenegro",
+    "descent": "father"
+  }
+}

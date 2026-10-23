@@ -20,7 +20,7 @@ public final class ClientStuckImmunity {
     private ClientStuckImmunity() {}
 
     public static boolean covers(LivingEntity entity, BlockState state) {
-        Set<String> geneIds = RootClientStore.expressedGenes(entity.getId());
+        Set<String> geneIds = RootClientStore.behaviorGenes(entity.getId());
         if (geneIds.isEmpty()) return false;
         for (String geneId : geneIds) {
             GeneCatalogEntry gene = RootCatalogClient.gene(geneId);

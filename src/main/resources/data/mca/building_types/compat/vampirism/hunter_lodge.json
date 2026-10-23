@@ -1,0 +1,14 @@
+{
+  "color": "ff5a1a24",
+  "visible": true,
+  "priority": 3,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 200,
+  "noBeds": true,
+  "blocks": {
+    "townstead:oath_altar": 1,
+    "#townstead:lodge/workbenches": 2
+  },
+  "margin": 2
+}

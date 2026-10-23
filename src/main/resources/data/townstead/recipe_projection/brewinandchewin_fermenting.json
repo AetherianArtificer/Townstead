@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:recipe_projection/v1",
+  "mods": "brewinandchewin",
+  "recipe_types": ["brewinandchewin:fermenting"],
+  "domain": "brewing.fermentation",
+  "fields": {
+    "inputs": {"path": "getIngredients", "operation": "list"},
+    "input_fluid": {"aliases": ["base_fluid", "basefluid", "base", "baseFluid", "fluidBase"], "operation": "fluid_amount"},
+    "output_fluid": {"aliases": ["result", "output", "resultFluid"], "operation": "fluid_amount", "required": true},
+    "time": {"aliases": ["time", "fermentingTime", "fermentationTime"], "operation": "integer", "default": 1200},
+    "conditions": {"aliases": ["conditions", "getConditions"], "operation": "list"},
+    "readiness": {"default": true, "operation": "boolean"}
+  }
+}

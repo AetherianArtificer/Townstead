@@ -1,0 +1,31 @@
+{
+  "type": "place_surface",
+  "blocks": ["pizzadelight:raw_pizza", "pizzadelight:pizza"],
+  "surface": [
+    "minecraft:campfire",
+    "minecraft:soul_campfire",
+    "#minecraft:campfires",
+    "#farmersdelight:heat_sources"
+  ],
+  "places": "pizzadelight:raw_pizza",
+  "done": "pizzadelight:pizza",
+  "mods": "pizzadelight",
+  "adapter": "townstead:pizzadelight_pizza",
+  "work_task": "townstead_work:cook",
+  "orderable": "all",
+  "stands": [[1, -1, 0], [-1, -1, 0], [0, -1, 1], [0, -1, -1], [1, -2, 0], [-1, -2, 0], [0, -2, 1], [0, -2, -1]],
+  "tool": [
+    "pizzadelight:stone_pizza_peel",
+    "pizzadelight:iron_pizza_peel",
+    "pizzadelight:golden_pizza_peel",
+    "pizzadelight:diamond_pizza_peel",
+    "pizzadelight:netherite_pizza_peel"
+  ],
+  "produces": [
+    {
+      "inputs": ["product:townstead_product:pizza/assembled_raw"],
+      "output": "pizzadelight:pizza",
+      "time": 600
+    }
+  ]
+}

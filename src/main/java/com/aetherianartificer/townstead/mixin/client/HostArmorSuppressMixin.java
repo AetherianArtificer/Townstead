@@ -39,7 +39,7 @@ public abstract class HostArmorSuppressMixin {
         // Players keep their own armor path entirely (helmet/etc. render normally and ride the head
         // anchor). A generic-rig player's mis-fitting boots are hidden instead by zeroing the host
         // model's leg scale (see the host-model animation mixins), which the armor copies.
-        if (entity instanceof Player) return;
+        if (entity instanceof Player && !com.aetherianartificer.townstead.client.species.RigGeometryArmor.enabled(RigModels.rigBaseFor(entity))) return;
         if (RigModels.isAlternate(RigModels.rigBaseFor(entity))) ci.cancel();
     }
 }

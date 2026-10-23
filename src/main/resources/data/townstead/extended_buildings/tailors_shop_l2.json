@@ -1,0 +1,27 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "mods": {
+    "any": [
+      "accents",
+      "legendarysurvivaloverhaul",
+      "weaversparadise"
+    ]
+  },
+  "workers": [
+    "townstead:tailor"
+  ],
+  "orders": {
+    "recipe_namespaces": [
+      "accents",
+      "legendarysurvivaloverhaul",
+      "weaversparadise"
+    ]
+  },
+  "catalog": {
+    "node_item": "minecraft:shears"
+  },
+  "spirit": {
+    "commercial": 4,
+    "industrious": 2
+  }
+}

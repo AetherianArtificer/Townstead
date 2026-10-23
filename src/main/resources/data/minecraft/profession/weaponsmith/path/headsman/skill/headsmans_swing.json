@@ -1,0 +1,80 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.headsman.headsmans_swing"
+  },
+  "icon": "minecraft:diamond_axe",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.headsman.headsmans_swing.description"
+  },
+  "cost": 1,
+  "requires": [
+    "cleave_through"
+  ],
+  "skill_group": "townstead:headsman_axe",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 4,
+          "include_self": false,
+          "target": "hostile",
+          "bientity_condition": {
+            "type": "pheno:relative_rotation",
+            "max_angle": 60
+          },
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:damage",
+                "amount": 3,
+                "source": "other"
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:health",
+                  "max": 0.3,
+                  "relative": true
+                },
+                "if_action": {
+                  "type": "pheno:damage",
+                  "amount": 8,
+                  "source": "other"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:entity.player.attack.sweep",
+              "volume": 1.0,
+              "pitch": 0.9
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:sweep_attack",
+              "count": 6,
+              "spread": 1.2
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

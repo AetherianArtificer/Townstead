@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "social.outcome",
+  "contexts": ["live"],
+  "trigger": {"type": "social", "key": "townstead:social_outcome"},
+  "keep": false,
+  "cooldown_days": 0,
+  "reach": "none",
+  "news_value": 0,
+  "roles": [
+    {"id": "actor", "kind": "villager"},
+    {"id": "other", "kind": "villager"}
+  ],
+  "witnesses": {"radius": 0, "max": 0},
+  "display": {
+    "headline": {"translate": "chronicle.townstead_social.social_outcome"},
+    "params": ["actor", "other"]
+  }
+}

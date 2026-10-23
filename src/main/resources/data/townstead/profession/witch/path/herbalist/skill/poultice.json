@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.herbalist.poultice"
+  },
+  "icon": "minecraft:moss_carpet",
+  "description": {
+    "translate": "skill.townstead.witch.herbalist.poultice.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_hurt",
+    "condition": {
+      "type": "pheno:health",
+      "max": 0.3,
+      "relative": true
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:absorption",
+      "duration": 200,
+      "amplifier": 1
+    }
+  }
+}

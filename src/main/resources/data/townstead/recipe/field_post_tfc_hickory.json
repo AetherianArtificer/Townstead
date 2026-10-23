@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_tfc_hickory"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "tfc:wood/lumber/hickory"
+    },
+    "L": {
+      "item": "tfc:wood/log/hickory"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_tfc_hickory",
+    "count": 1
+  }
+}

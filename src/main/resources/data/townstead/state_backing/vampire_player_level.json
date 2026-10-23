@@ -1,0 +1,13 @@
+{
+  "schema": "pheno:state_backing/v1",
+  "mods": "vampirism",
+  "state": "townstead_state:vampire",
+  "applies_to": {
+    "type": "pheno:entity_type",
+    "entity_type": "minecraft:player"
+  },
+  "source": {
+    "type": "pheno:provider",
+    "provider": "vampirism:vampire_level"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:climate_dimension/v1",
+  "temperature": "biomes",
+  "default_c": -5.0,
+  "season_clock": "none",
+  "day_cycle": false,
+  "weather": false,
+  "underground": false
+}

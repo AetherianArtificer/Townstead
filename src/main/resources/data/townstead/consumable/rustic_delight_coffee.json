@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:consumable/v1",
+  "mods": ["rusticdelight"],
+  "items": [
+    "rusticdelight:coffee",
+    "rusticdelight:chocolate_coffee",
+    "rusticdelight:syrup_coffee"
+  ],
+  "effects": [
+    { "type": "pheno:hydrate", "immediate": 6, "lasting": 11 },
+    { "type": "pheno:energize", "amount": 5 }
+  ]
+}

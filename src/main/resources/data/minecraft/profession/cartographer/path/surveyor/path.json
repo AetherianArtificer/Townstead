@@ -1,0 +1,106 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.cartographer.path.surveyor"
+  },
+  "title": {
+    "translate": "career.townstead.cartographer.title.surveyor"
+  },
+  "color": "#7FA8C8",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:bearing",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cartographer/surveyor/vantage"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cartographer/surveyor/glide"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cartographer/surveyor/lay_of_the_land"
+              }
+            ]
+          },
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:block",
+                "y": 0,
+                "block_condition": {
+                  "type": "height",
+                  "min": 100
+                }
+              },
+              {
+                "type": "pheno:and",
+                "conditions": [
+                  {
+                    "type": "pheno:not",
+                    "condition": {
+                      "type": "pheno:movement",
+                      "movement": "moving"
+                    }
+                  },
+                  {
+                    "type": "pheno:block",
+                    "y": 0,
+                    "block_condition": {
+                      "type": "exposed_to_sky"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:bearing",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "head_for_heights",
+      "updraft",
+      "spot"
+    ],
+    [
+      "clear_air",
+      "birds_eye",
+      "triangulate"
+    ],
+    [
+      "vantage",
+      "glide",
+      "lay_of_the_land"
+    ],
+    [
+      "eagle_eye",
+      "thermals",
+      "signal_fire"
+    ],
+    [
+      "cloudwalker",
+      "skyward",
+      "grand_survey"
+    ]
+  ]
+}

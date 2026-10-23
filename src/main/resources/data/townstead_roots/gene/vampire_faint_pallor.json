@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "townstead_roots:skin_tone",
+  "display_name": { "translate": "gene.townstead_roots.vampire_faint_pallor" },
+  "description": { "translate": "gene.townstead_roots.vampire_faint_pallor.desc" },
+  "category": "Appearance",
+  "locus": "townstead_roots:skin",
+  "tint": "#4A4650",
+  "blend": "screen",
+  "strength": 0.5
+}

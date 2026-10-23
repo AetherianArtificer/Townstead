@@ -1,0 +1,5 @@
+{
+  "schema": "townstead:resource_color_theme/v1",
+  "primary_color": "#BF4A4A",
+  "secondary_color": "#FF9A82"
+}

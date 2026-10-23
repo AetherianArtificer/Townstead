@@ -1,0 +1,78 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.librarian.path.hush"
+  },
+  "title": {
+    "translate": "career.townstead.librarian.title.hush"
+  },
+  "color": "#4A4A6A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:insight",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:librarian/hush/tiptoe"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:librarian/hush/whisper_step"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:librarian/hush/blackout"
+              }
+            ]
+          },
+          {
+            "type": "pheno:movement",
+            "movement": "sneaking"
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:insight",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "soft_steps",
+      "fade",
+      "hush_now"
+    ],
+    [
+      "quiet_habits",
+      "library_quiet",
+      "quiet_room"
+    ],
+    [
+      "tiptoe",
+      "whisper_step",
+      "blackout"
+    ],
+    [
+      "shadow_reader",
+      "vanishing_act",
+      "silent_retreat"
+    ],
+    [
+      "unnoticed",
+      "unseen_scholar",
+      "great_silence"
+    ]
+  ]
+}

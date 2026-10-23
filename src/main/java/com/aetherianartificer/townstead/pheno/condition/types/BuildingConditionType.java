@@ -21,6 +21,7 @@ public final class BuildingConditionType implements ConditionType {
     @Override
     public Condition parse(JsonObject json) {
         String expectedType = firstString(json, "building", "building_type");
+        String expectedPrefix = firstString(json, "building_prefix", "type_prefix");
         int expectedId = GsonHelper.getAsInt(json, "id", Integer.MIN_VALUE);
         int expectedVillage = GsonHelper.getAsInt(json, "village", Integer.MIN_VALUE);
         int expectedVillageId = GsonHelper.getAsInt(json, "village_id", expectedVillage);
@@ -34,7 +35,9 @@ public final class BuildingConditionType implements ConditionType {
             if (expectedId != Integer.MIN_VALUE && building.id() != expectedId) return false;
             if (expectedVillageId != Integer.MIN_VALUE && building.villageId() != expectedVillageId) return false;
             if (building.size() < minSize || building.size() > maxSize) return false;
-            return expectedType == null || matchesType(building.type(), expectedType);
+            if (expectedType != null && !matchesType(building.type(), expectedType)) return false;
+            return expectedPrefix == null || (building.type() != null
+                    && building.type().startsWith(expectedPrefix));
         };
     }
 

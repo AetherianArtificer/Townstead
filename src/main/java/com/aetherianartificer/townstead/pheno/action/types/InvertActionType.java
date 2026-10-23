@@ -27,7 +27,7 @@ public final class InvertActionType implements ActionType {
         Action inner = Actions.parse(json.get("action"));
         if (inner == null) return null;
         return ctx -> {
-            if (ctx.other() != null) inner.run(new ActionContext(ctx.other(), ctx.entity()));
+            if (ctx.other() != null) inner.run(ctx.retarget(ctx.other(), ctx.entity()));
         };
     }
 }

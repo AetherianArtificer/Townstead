@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "vampire_neighbor_lead",
+  "groups": [
+    {
+      "lines": {
+        "between_us": "Between us..."
+      }
+    },
+    {
+      "valence": "positive",
+      "lines": {
+        "funny_thing": "Funny thing."
+      }
+    }
+  ]
+}

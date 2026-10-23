@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "PPP"
+  ],
+  "key": {
+    "P": { "item": "minecraft:paper" }
+  },
+  "result": {
+    "id": "townstead:order_sheet",
+    "count": 1
+  }
+}

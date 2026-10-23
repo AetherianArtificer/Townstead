@@ -1,0 +1,13 @@
+{
+  "color": "ff4a5468",
+  "visible": true,
+  "priority": 5,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 200,
+  "blocks": {
+    "minecraft:barrel": 6,
+    "#minecraft:trapdoors": 1
+  },
+  "margin": 1
+}

@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:conversation_subject/v1",
+  "source": {
+    "type": "townstead:biome"
+  },
+  "register": "ambient",
+  "slots": {
+    "biome": {
+      "type": "place",
+      "from": "biome.name"
+    }
+  }
+}

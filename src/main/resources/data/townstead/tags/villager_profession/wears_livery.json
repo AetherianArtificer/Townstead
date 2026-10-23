@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "mca:guard", "required": false },
+    { "id": "mca:archer", "required": false }
+  ]
+}

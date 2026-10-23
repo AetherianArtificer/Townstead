@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "joke_lead",
+  "lines": {
+    "heard_this_one": "Heard this one?",
+    "okay_listen": "Okay, listen.",
+    "my_cousin_told_me_this": "My cousin told me this.",
+    "heres_one": "Here's one.",
+    "okay_okay_ready": "Okay, okay. Ready?",
+    "youll_love_this": "You'll love this.",
+    "stop_me_if_youve_heard": "Stop me if you've heard it.",
+    "ive_got_a_good_one": "I've got a good one.",
+    "wanna_hear_a_joke": "Wanna hear a joke?",
+    "okay_this_ones_so_funny": { "text": "Okay, this one's SO funny.", "stages": "child" },
+    "not_that_youll_laugh_but": { "text": "Not that you'll laugh, but.", "personalities": "gloomy" }
+  }
+}

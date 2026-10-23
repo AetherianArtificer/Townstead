@@ -16,6 +16,12 @@ import java.util.Map;
  */
 public interface GeneType {
 
+    /**
+     * Whether the standard condition gates this gene's presence and its companions.
+     * Behavior types that already evaluate condition with their own event context keep false.
+     */
+    default boolean conditionControlsExpression() { return false; }
+
     /** Wire key matched against a gene JSON's {@code "type"} (e.g. {@code townstead_roots:scaled_part}). */
     String key();
 
@@ -59,6 +65,11 @@ public interface GeneType {
     @Nullable
     default net.minecraft.resources.ResourceLocation defaultLocus(GeneInstance instance) {
         return null;
+    }
+
+    /** The part of the carrier genes of this type describe, unless a gene sets {@code "layer"}. */
+    default GeneLayer layer() {
+        return GeneLayer.BODY;
     }
 
     // Future behavior hooks (effect application, model rendering) will be added

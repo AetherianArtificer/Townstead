@@ -20,9 +20,17 @@ public final class MovementAbilities {
         // These mixins target LivingEntity/Entity hot paths, but ordinary animals
         // and hostile mobs cannot carry Townstead genotype or synced abilities.
         if (!com.aetherianartificer.townstead.root.ExpressedGenes.canCarry(entity)) return false;
+        // Wall climbing needs the Root's body; a player drawn as a plain player keeps to the floor.
+        if (ability == Ability.CLIMBING && !embodied(entity)) return false;
         if (entity.level().isClientSide) {
             return com.aetherianartificer.townstead.client.root.ClientAbilities.isActive(entity, ability);
         }
         return Abilities.isActive(entity, ability);
+    }
+
+    private static boolean embodied(LivingEntity entity) {
+        return entity.level().isClientSide
+                ? com.aetherianartificer.townstead.client.root.RootClientStore.expresses(entity)
+                : com.aetherianartificer.townstead.root.Embodiment.embodied(entity);
     }
 }

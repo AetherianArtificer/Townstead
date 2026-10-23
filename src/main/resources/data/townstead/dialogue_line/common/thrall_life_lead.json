@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "thrall_life_lead",
+  "groups": [
+    {
+      "lines": {
+        "well_tl": "Well."
+      }
+    }
+  ]
+}

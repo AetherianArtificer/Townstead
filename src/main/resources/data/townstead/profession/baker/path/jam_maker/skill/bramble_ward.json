@@ -1,0 +1,98 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.jam_maker.bramble_ward"
+  },
+  "icon": "minecraft:sweet_berries",
+  "description": {
+    "translate": "skill.townstead.baker.jam_maker.bramble_ward.description"
+  },
+  "cost": 1,
+  "requires": [
+    "orchard_bloom"
+  ],
+  "skill_group": "townstead:jam_orchard",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:bramble",
+          "blocks": [
+            {
+              "radius": [
+                3,
+                0,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  0,
+                  3
+                ]
+              }
+            },
+            {
+              "radius": [
+                3,
+                0,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  0,
+                  -3
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                0,
+                3
+              ],
+              "around": {
+                "offset": [
+                  3,
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                0,
+                3
+              ],
+              "around": {
+                "offset": [
+                  -3,
+                  0,
+                  0
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.sweet_berry_bush.place",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

@@ -22,6 +22,11 @@ import net.minecraft.util.GsonHelper;
  */
 public final class TraitOccurrenceGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.HABITS;
+    }
+
     public static final String KEY = "townstead_roots:trait_occurrence";
 
     public record Instance(String trait, float delta) implements GeneInstance {

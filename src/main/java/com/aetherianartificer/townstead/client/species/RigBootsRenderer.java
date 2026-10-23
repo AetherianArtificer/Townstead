@@ -39,7 +39,7 @@ public final class RigBootsRenderer {
     private static final float OUTER_DEFORM = 1.0f;
     // The boot model is a humanoid leg whose foot sits this many (unscaled) pixels below the part pivot;
     // lifting the pose by it lands the boot's sole at the bone tip when offset/rotation are zero.
-    private static final float FOOT_DROP = 12f;
+    static final float FOOT_DROP = 12f;
     // A fixed source for getRandomCube; a one-cube bone returns its only cube regardless of the value.
     private static final net.minecraft.util.RandomSource CUBE_PICK = net.minecraft.util.RandomSource.create(0L);
 
@@ -73,40 +73,26 @@ public final class RigBootsRenderer {
         List<RigDefinition.Boot> boots = def == null ? List.of() : def.boots();
         if (boots.isEmpty()) return;
         if (entity.getItemBySlot(EquipmentSlot.FEET).isEmpty()) return;
+        if (def != null && def.hiddenSlots().contains(EquipmentSlot.FEET)) return;   // worn, not shown
         java.lang.reflect.Method render = renderPiece();
         if (render == null) return;
-        ModelPart root = RigModels.root(rigBase);
         Holder holder = HOLDERS.computeIfAbsent(rigBase, b -> build());
         RENDERING.set(true);
         try {
             for (RigDefinition.Boot boot : boots) {
-                ModelPart bone = RigModels.bakedBone(rigBase, boot.bone());
-                if (bone == null) continue;
+                if (RigModels.bakedBone(rigBase, boot.bone()) == null) continue;
                 // The worn leg draws flat (at the pose frame); the other is collapsed so only one boot draws.
                 ModelPart worn = boot.left() ? holder.inner.leftLeg : holder.inner.rightLeg;
                 ModelPart other = boot.left() ? holder.inner.rightLeg : holder.inner.leftLeg;
-                float s = boot.scale();
+                float s = boot.scale() * boot.seat().scale();
                 flatLeg(worn, s);
+                worn.xScale *= boot.seat().scaleAxes()[0];
+                worn.yScale *= boot.seat().scaleAxes()[1];
+                worn.zScale *= boot.seat().scaleAxes()[2];
                 hideLeg(other);
 
                 pose.pushPose();
-                // Walk into the bone's live frame: root then the bone (vanilla leg bones are direct
-                // children of the root, whose own transform is identity). This is the dynamic tip finder.
-                if (root != null) root.translateAndRotate(pose);
-                bone.translateAndRotate(pose);
-                // Out to the bone's tip (its cube's far corner), in the bone's own frame.
-                org.joml.Vector3f tip = boneTip(bone);
-                pose.translate(tip.x() / 16f, tip.y() / 16f, tip.z() / 16f);
-                // Authored orientation, then offset, in the tip frame: dial each boot onto its bone.
-                RigDefinition.Adjust seat = boot.seat();
-                float[] rot = seat.rotation();
-                if (rot[0] != 0f) pose.mulPose(Axis.XP.rotationDegrees(rot[0]));
-                if (rot[1] != 0f) pose.mulPose(Axis.YP.rotationDegrees(rot[1]));
-                if (rot[2] != 0f) pose.mulPose(Axis.ZP.rotationDegrees(rot[2]));
-                float[] off = seat.offset();
-                pose.translate(off[0] / 16f, off[1] / 16f, off[2] / 16f);
-                // Lift so the boot's sole lands on the tip instead of hanging a leg-length below it.
-                pose.translate(0f, -FOOT_DROP / 16f * s, 0f);
+                enterSeat(rigBase, boot, pose, FOOT_DROP);
                 render.invoke(holder.layer, pose, buffers, entity, EquipmentSlot.FEET, light, holder.inner);
                 pose.popPose();
             }
@@ -117,8 +103,39 @@ public final class RigBootsRenderer {
         }
     }
 
+    /**
+     * Move {@code pose} from the rig's model frame to where {@code boot} sits: into its bone's live frame,
+     * out to the bone's tip, through the authored seat, then up by {@code drop} (the humanoid limb's length
+     * above its end, in unscaled pixels) so a limb drawn flat at the result ends on the tip. False, with the
+     * pose untouched, when the bone is missing.
+     */
+    public static boolean enterSeat(String rigBase, RigDefinition.Boot boot, PoseStack pose, float drop) {
+        ModelPart bone = RigModels.bakedBone(rigBase, boot.bone());
+        if (bone == null) return false;
+        // Walk into the bone's live frame: root then the bone (vanilla leg bones are direct
+        // children of the root, whose own transform is identity). This is the dynamic tip finder.
+        ModelPart root = RigModels.bakedRoot(rigBase);
+        if (root != null) root.translateAndRotate(pose);
+        RigModels.translateToParent(rigBase, boot.bone(), pose);
+        bone.translateAndRotate(pose);
+        // Out to the bone's tip (its cube's far corner), in the bone's own frame.
+        org.joml.Vector3f tip = boneTip(bone);
+        pose.translate(tip.x() / 16f, tip.y() / 16f, tip.z() / 16f);
+        // Authored orientation, then offset, in the tip frame: dial each boot onto its bone.
+        RigDefinition.Adjust seat = boot.seat();
+        float[] rot = seat.rotation();
+        if (rot[0] != 0f) pose.mulPose(Axis.XP.rotationDegrees(rot[0]));
+        if (rot[1] != 0f) pose.mulPose(Axis.YP.rotationDegrees(rot[1]));
+        if (rot[2] != 0f) pose.mulPose(Axis.ZP.rotationDegrees(rot[2]));
+        float[] off = seat.offset();
+        pose.translate(off[0] / 16f, off[1] / 16f, off[2] / 16f);
+        // Lift so the limb's end lands on the tip instead of hanging a limb-length below it.
+        pose.translate(0f, -drop / 16f * boot.scale() * seat.scale(), 0f);
+        return true;
+    }
+
     /** Draw the worn leg flat at the pose frame: pivot at the origin, no rotation, uniform scale. */
-    private static void flatLeg(ModelPart leg, float s) {
+    static void flatLeg(ModelPart leg, float s) {
         leg.x = 0f;
         leg.y = 0f;
         leg.z = 0f;
@@ -131,7 +148,7 @@ public final class RigBootsRenderer {
     }
 
     /** Collapse a leg to nothing so its boot does not draw alongside the per-bone one. */
-    private static void hideLeg(ModelPart leg) {
+    static void hideLeg(ModelPart leg) {
         leg.xScale = 0f;
         leg.yScale = 0f;
         leg.zScale = 0f;
@@ -141,6 +158,7 @@ public final class RigBootsRenderer {
     public static org.joml.Vector3f boneTip(ModelPart leg) {
         if (leg == null) return new org.joml.Vector3f();
         try {
+            CUBE_PICK.setSeed(0L);
             ModelPart.Cube cube = leg.getRandomCube(CUBE_PICK);
             float x = Math.abs(cube.minX) > Math.abs(cube.maxX) ? cube.minX : cube.maxX;
             float y = Math.abs(cube.minY) > Math.abs(cube.maxY) ? cube.minY : cube.maxY;

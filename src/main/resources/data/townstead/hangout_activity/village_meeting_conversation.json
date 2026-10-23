@@ -1,0 +1,11 @@
+{
+  "schema":"townstead:hangout_activity/v2",
+  "kind":"socialize",
+  "minimum_participants":2,
+  "maximum_participants":6,
+  "duration_ticks":360,
+  "roles":{"initiator":1,"companion":5},
+  "postures":["townstead:stand"],
+  "performance":{"id":"townstead:village_meeting_conversation","channel":"social","duration_ticks":360,"priority":8,"fallback":"vanilla_gesture"},
+  "social_cues":{"conversations":true,"dialogue_interval_ticks":220}
+}

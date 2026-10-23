@@ -1,0 +1,87 @@
+{
+  "display_name": {
+    "translate": "combo_skill.townstead.quarryman"
+  },
+  "description": {
+    "translate": "combo_skill.townstead.quarryman.description"
+  },
+  "icon": "minecraft:stone_bricks",
+  "professions": {
+    "minecraft:mason": 3,
+    "minecraft:toolsmith": 3
+  },
+  "power": {
+    "type": "pheno:step_height",
+    "amount": 1.0,
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:block",
+          "y": -1,
+          "block_condition": {
+            "type": "pheno:in_tag",
+            "tag": "minecraft:base_stone_overworld"
+          }
+        },
+        {
+          "type": "pheno:block",
+          "y": -1,
+          "block_condition": {
+            "type": "pheno:in_tag",
+            "tag": "minecraft:stone_bricks"
+          }
+        },
+        {
+          "type": "pheno:block",
+          "y": -1,
+          "block_condition": {
+            "type": "pheno:block",
+            "block": "minecraft:cobblestone"
+          }
+        }
+      ]
+    }
+  },
+  "companions": {
+    "stride": {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:block",
+            "y": -1,
+            "block_condition": {
+              "type": "pheno:in_tag",
+              "tag": "minecraft:base_stone_overworld"
+            }
+          },
+          {
+            "type": "pheno:block",
+            "y": -1,
+            "block_condition": {
+              "type": "pheno:in_tag",
+              "tag": "minecraft:stone_bricks"
+            }
+          },
+          {
+            "type": "pheno:block",
+            "y": -1,
+            "block_condition": {
+              "type": "pheno:block",
+              "block": "minecraft:cobblestone"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:speed",
+        "duration": 40,
+        "amplifier": 0
+      }
+    }
+  }
+}

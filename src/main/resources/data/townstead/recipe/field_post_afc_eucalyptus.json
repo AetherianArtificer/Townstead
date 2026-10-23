@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_afc_eucalyptus"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "afc:wood/lumber/eucalyptus"
+    },
+    "L": {
+      "item": "afc:wood/log/eucalyptus"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_afc_eucalyptus",
+    "count": 1
+  }
+}

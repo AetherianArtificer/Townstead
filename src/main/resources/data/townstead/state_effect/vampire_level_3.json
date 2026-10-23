@@ -1,0 +1,46 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "mods": "vampirism",
+  "state": "townstead_state:vampire_blood",
+  "condition": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "pheno:not",
+        "condition": {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:player"
+        }
+      },
+      {
+        "type": "pheno:state",
+        "state": "townstead_state:vampire",
+        "min": 2,
+        "max": 2
+      },
+      {
+        "type": "pheno:state",
+        "state": "townstead_state:vampire_blood",
+        "min": 70
+      }
+    ]
+  },
+  "while_active": {
+    "interval": 20,
+    "do": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:add_state",
+          "state": "townstead_state:vampire",
+          "amount": 1
+        },
+        {
+          "type": "pheno:add_state",
+          "state": "townstead_state:vampire_blood",
+          "amount": -70
+        }
+      ]
+    }
+  }
+}

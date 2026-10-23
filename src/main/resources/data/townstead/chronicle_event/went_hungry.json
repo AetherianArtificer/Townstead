@@ -1,0 +1,65 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "survival.hunger",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": [
+    "live",
+    "pregen"
+  ],
+  "trigger": {
+    "type": "survival",
+    "key": "townstead:starving"
+  },
+  "reach": "village",
+  "news_value": 4.0,
+  "roles": [
+    {
+      "id": "hungry",
+      "kind": "villager",
+      "when": {
+        "type": "pheno:life_stage",
+        "stage": "adult"
+      }
+    }
+  ],
+  "witnesses": {
+    "radius": 12.0,
+    "max": 6
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.went_hungry"
+    },
+    "params": [
+      "hungry"
+    ]
+  },
+  "impact": {
+    "hungry": {
+      "mood": -6.0,
+      "memory": {
+        "valence": -0.9,
+        "strength": 2.5
+      }
+    },
+    "witness": {
+      "mood": -1.0,
+      "memory": {
+        "valence": -0.5,
+        "strength": 0.8
+      }
+    },
+    "on_learn": {
+      "memory": {
+        "valence": -0.5,
+        "strength": 1.0
+      }
+    }
+  },
+  "cooldown_days": 7,
+  "pregen": {
+    "max_per_life": 2
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tinker.well_made"
+  },
+  "icon": "minecraft:anvil",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tinker.well_made.description"
+  },
+  "cost": 1,
+  "requires": [
+    "handy"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "anvil_break_chance",
+    "operation": "set",
+    "value": 0
+  }
+}

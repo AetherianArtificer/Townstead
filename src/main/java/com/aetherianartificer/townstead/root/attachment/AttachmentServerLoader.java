@@ -38,9 +38,11 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
     private static final int MAX_GEO_BYTES = 4 * 1024 * 1024;
     private static final String DIR = "attachment";
     private static final String SLOT_DIR = "attachment_point";
+    private static final String PRESET_DIR = "physics_preset";
     private static final String TEX_DIR = "textures";
     private static final String GEO_DIR = "geo";
     private static final String BB_DIR = "bbmodel";
+    private static final String ANIM_DIR = "animations";
 
     @Override
     public void onResourceManagerReload(ResourceManager manager) {
@@ -50,13 +52,25 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
         Map<String, JsonObject> sources = new LinkedHashMap<>();
         Diagnostics diagnostics = new Diagnostics();
 
+        // Presets first: attachment chains resolve against them at parse time.
+        Map<String, JsonObject> physicsPresets = new LinkedHashMap<>();
+        manager.listResources(PRESET_DIR, rl -> rl.getPath().endsWith(".json")).forEach((file, resource) -> {
+            String id = idFrom(file.getNamespace(), file.getPath(), PRESET_DIR);
+            JsonObject json = readJson(resource);
+            if (id == null || json == null) return;
+            PhenoValidator.validateData(file, json, AttachmentSchemas.PHYSICS_PRESET, diagnostics);
+            physicsPresets.put(id, json);
+        });
+        PhysicsChains.setPresets(physicsPresets);
+
         manager.listResources(DIR, rl -> isTopLevelJson(rl.getPath())).forEach((file, resource) -> {
             String id = idFrom(file.getNamespace(), file.getPath(), DIR);
             JsonObject json = readJson(resource);
             if (id == null || json == null) return;
             PhenoValidator.validateData(file, json, AttachmentSchemas.ATTACHMENT, diagnostics);
             try {
-                AttachmentDef def = parseDef(manager, file.getNamespace(), id, json, blobs);
+                // A v2 file's Blockbench-space numbers become the internal form here; dump keeps the original.
+                AttachmentDef def = parseDef(manager, file.getNamespace(), id, AttachmentConvention.normalize(json), blobs);
                 if (def != null) {
                     defs.add(def);
                     sources.put(id, json);
@@ -71,6 +85,7 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
             JsonObject json = readJson(resource);
             if (id == null || json == null) return;
             PhenoValidator.validateData(file, json, AttachmentSchemas.ATTACHMENT_POINT, diagnostics);
+            json = AttachmentConvention.normalize(json);
             slots.add(new AttachmentPointDef(id, GsonHelper.getAsString(json, "bone", "body"),
                     readVec(json, "offset"), readTags(json),
                     readVec(json, "rotation"),
@@ -129,7 +144,22 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
             }
         });
 
-        AttachmentServerData.set(defs, slots, blobs, namedTextures, namedGeo, sources);
+        // Named datapack animations ("data/<ns>/animations/**.animation.json"): a rig's clips, referenced
+        // by the same logical id, e.g. "townstead_frogs:animations/frog.animation.json".
+        Map<String, String> namedAnimations = new LinkedHashMap<>();
+        manager.listResources(ANIM_DIR, rl -> rl.getPath().endsWith(".animation.json")).forEach((file, resource) -> {
+            byte[] bytes = readBytes(manager, file, MAX_GEO_BYTES);
+            if (bytes == null) return;
+            try {
+                String sha = sha1(bytes);
+                blobs.put(sha, new AttachmentServerData.Blob(bytes, AttachmentServerData.KIND_ANIMATION));
+                namedAnimations.put(file.toString(), sha);
+            } catch (Exception e) {
+                Townstead.LOGGER.error("Failed to hash datapack animation {}", file, e);
+            }
+        });
+
+        AttachmentServerData.set(defs, slots, blobs, namedTextures, namedGeo, namedAnimations, sources);
         PhenoDiagnostics.replace("attachment", diagnostics.all());
         int errors = diagnostics.count(Severity.ERROR);
         Townstead.LOGGER.info("Loaded {} attachment definitions, {} points, {} blobs ({} diagnostic{})",
@@ -181,6 +211,7 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
         int tintSource = switch (tintRaw) {
             case "skin" -> AttachmentDef.TINT_SKIN;
             case "hair" -> AttachmentDef.TINT_HAIR;
+            case "coat" -> AttachmentDef.TINT_COAT;
             case "eyes" -> AttachmentDef.TINT_EYES;
             case "gene" -> AttachmentDef.TINT_GENE;
             default -> AttachmentDef.TINT_FLAT;
@@ -251,7 +282,7 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
                 readVec(json, "offset"), readVec(json, "rotation"), scale, tint,
                 tintSource, tintBlend, tintStrength, tintMaskSha, emissiveSha, translucent,
                 readStrings(json, "hides_under"), whenJson,
-                morph, visibility, stages, parsePoses(json), parsePhysics(json),
+                morph, visibility, stages, parsePoses(json), parsePhysics(json, ns),
                 parseAnimations(manager, ns, id, json, blobs));
     }
 
@@ -375,40 +406,9 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
         }
     }
 
-    /** The {@code physics.chains} list: root-to-tip bone runs with spring parameters. */
-    private static List<AttachmentDef.PhysicsChain> parsePhysics(JsonObject json) {
-        if (!json.has("physics") || !json.get("physics").isJsonObject()) return List.of();
-        JsonObject physics = json.getAsJsonObject("physics");
-        if (!physics.has("chains") || !physics.get("chains").isJsonArray()) return List.of();
-        List<AttachmentDef.PhysicsChain> out = new ArrayList<>();
-        for (var element : physics.getAsJsonArray("chains")) {
-            if (!element.isJsonObject()) continue;
-            JsonObject chain = element.getAsJsonObject();
-            List<String> chainBones = readStrings(chain, "bones");
-            if (chainBones.isEmpty()) continue;
-            float[] response = {1f, 1f, 1f, 1f};
-            if (chain.has("response") && chain.get("response").isJsonObject()) {
-                JsonObject r = chain.getAsJsonObject("response");
-                response[0] = GsonHelper.getAsFloat(r, "vertical", 1f);
-                response[1] = GsonHelper.getAsFloat(r, "forward", 1f);
-                response[2] = GsonHelper.getAsFloat(r, "lateral", 1f);
-                response[3] = GsonHelper.getAsFloat(r, "turn", 1f);
-            }
-            out.add(new AttachmentDef.PhysicsChain(chainBones,
-                    GsonHelper.getAsFloat(chain, "stiffness", 0.4f),
-                    GsonHelper.getAsFloat(chain, "damping", 0.8f),
-                    GsonHelper.getAsFloat(chain, "gravity", 0.3f),
-                    GsonHelper.getAsFloat(chain, "max_angle", 60f),
-                    GsonHelper.getAsFloat(chain, "sway", 0f),
-                    GsonHelper.getAsFloat(chain, "follow", 0.55f),
-                    GsonHelper.getAsFloat(chain, "droop_angle", 40f),
-                    GsonHelper.getAsFloat(chain, "sway_speed", 1f),
-                    GsonHelper.getAsFloat(chain, "snap", 1f),
-                    response,
-                    GsonHelper.getAsInt(chain, "segments", 0),
-                    GsonHelper.getAsString(chain, "axis", "auto")));
-        }
-        return out;
+    /** The {@code physics.chains} list, resolved against the loaded presets. */
+    static List<AttachmentDef.PhysicsChain> parsePhysics(JsonObject json, String namespace) {
+        return PhysicsChains.parse(json, namespace);
     }
 
     /**

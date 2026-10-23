@@ -59,7 +59,7 @@ public final class HumanoidEyes {
     private static final int FULL_SKIN_MIN_HEIGHT = 32;
 
     /** One bearer's resolved eye set. */
-    private record Eyes(String texture, boolean glow, int row, String tint) {}
+    private record Eyes(String texture, boolean glow, int row, String tint, String visibleHalf) {}
 
     // Composited frames, keyed texture + row + frame. Deterministic keys, so a clear only costs a
     // re-bake; capped because every (set, frame) pair holds a registered texture.
@@ -74,7 +74,7 @@ public final class HumanoidEyes {
                                  int light, LivingEntity entity, boolean visible, boolean glowing) {
         Eyes eyes = resolve(entity);
         if (eyes == null) return false;
-        ResourceLocation texture = frameTexture(eyes.texture(), eyes.row(), FaceExpression.eyeFrame(entity));
+        ResourceLocation texture = frameTexture(eyes.texture(), eyes.row(), FaceExpression.eyeFrame(entity), eyes.visibleHalf());
         if (texture == null) return false;   // blob still syncing: MCA's eyes stand in for a frame
 
         RenderType layer;
@@ -121,7 +121,7 @@ public final class HumanoidEyes {
                 }
             }
             if (texture.isEmpty()) continue;
-            return new Eyes(texture, glow, gene.eyesRow(), gene.eyesTint());
+            return new Eyes(texture, glow, gene.eyesRow(), gene.eyesTint(), gene.eyesVisibleHalf());
         }
         return null;
     }
@@ -140,7 +140,7 @@ public final class HumanoidEyes {
     /** The gene ids the bearer could wear: its expressed set, else its root's grant list. */
     private static Set<String> geneIds(LivingEntity entity) {
         Set<String> expressed = RootClientStore.expressedGenes(entity);
-        if (!expressed.isEmpty()) return expressed;
+        if (RootClientStore.hasExpressionSync(entity) || !expressed.isEmpty()) return expressed;
         String rootId = RootClientStore.resolve(entity);
         if (rootId.isEmpty()) return Set.of();
         RootCatalogEntry root = RootCatalogClient.origin(rootId);
@@ -172,8 +172,8 @@ public final class HumanoidEyes {
      * A skin-format texture carrying one frame of an eye strip, baked once and cached. Null while
      * the source hasn't arrived (a datapack blob mid-sync) or can't be read.
      */
-    private static ResourceLocation frameTexture(String textureId, int row, int frame) {
-        String key = textureId + "#" + row + "#" + frame;
+    private static ResourceLocation frameTexture(String textureId, int row, int frame, String visibleHalf) {
+        String key = textureId + "#" + row + "#" + frame + "#" + visibleHalf;
         ResourceLocation cached = BAKED.get(key);
         if (cached != null) return cached;
         NativeImage source = read(textureId);
@@ -181,9 +181,16 @@ public final class HumanoidEyes {
         try {
             NativeImage baked = bake(source, row, frame);
             if (baked == null) return null;
+            // Texture-space halves: leave the skull/socket visible through the hidden half.
+            if (visibleHalf.equals("left") || visibleHalf.equals("right")) {
+                int from = visibleHalf.equals("right") ? FACE_X : FACE_X + FACE_SIZE / 2;
+                for (int y = FACE_TOP; y < Math.min(FACE_TOP + FACE_SIZE, baked.getHeight()); y++)
+                    for (int x = from; x < Math.min(from + FACE_SIZE / 2, baked.getWidth()); x++)
+                        baked.setPixelRGBA(x, y, 0);
+            }
             if (BAKED.size() > 256) BAKED.clear();
             ResourceLocation id = ResourceLocation.tryParse(
-                    Townstead.MOD_ID + ":eyes/" + sanitize(textureId) + "/r" + row + "/f" + frame);
+                    Townstead.MOD_ID + ":eyes/" + sanitize(textureId) + "/r" + row + "/f" + frame + "/" + sanitize(visibleHalf));
             if (id == null) {
                 baked.close();
                 return null;

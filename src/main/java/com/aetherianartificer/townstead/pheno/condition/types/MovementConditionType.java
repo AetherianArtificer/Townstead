@@ -35,6 +35,7 @@ public final class MovementConditionType implements ConditionType {
             case "climbing" -> ctx -> ctx.entity().onClimbable();
             case "sleeping" -> ctx -> ctx.entity().isSleeping();
             case "fall_flying" -> ctx -> ctx.entity().isFallFlying();
+            case "parachuting" -> ctx -> com.aetherianartificer.townstead.root.locomotion.ParachutePhysics.isOpen(ctx.entity());
             case "ascending" -> ctx -> ctx.entity().getDeltaMovement().y > 0.08;
             case "descending" -> ctx -> !ctx.entity().onGround() && ctx.entity().getDeltaMovement().y < -0.08;
             case "creative_flying" -> ctx -> ctx.entity() instanceof Player player && player.getAbilities().flying;

@@ -2,6 +2,7 @@
   "relaxed.dialogue.chat.butcher_request.no_livestock/1": "<happy>Pas de bétail aujourd'hui. Pas de souci, je serai là quand il y en aura.</happy>",
   "relaxed.dialogue.chat.butcher_request.no_hook/1": "<happy>Un crochet, ce serait sympa. Quand tu auras le temps.</happy>",
   "relaxed.dialogue.chat.butcher_request.no_basin/1": "<happy>Un bac, un bac. Je suis patient. Apportes-en un à l'occasion.</happy>",
+  "relaxed.dialogue.chat.butcher_request.no_blood_grate/1": "<happy>Pas de hâte. Je serai prêt dès qu'une grille à sang sera en place.</happy>",
   "relaxed.dialogue.chat.village_life.butcher_shop/1": "<happy>Le boucher prend son temps. Je respecte ça chez lui.</happy>",
   "relaxed.dialogue.chat.village_life.smokehouse/1": "<happy>Du jambon fumé, un bon siège, un après-midi tranquille. Parfait.</happy>",
   "relaxed.dialogue.chat.village_life.tannery/1": "<happy>Le tanneur travaille toujours. Pas comme moi. Heureusement, vraiment.</happy>",
@@ -87,5 +88,18 @@
   "relaxed.dialogue.chat.leatherworker_request.no_salt/1": "<happy>Du sel quand tu peux. La peau se conservera un petit moment.</happy>",
   "relaxed.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<happy>Une éponge mouillée ou un chiffon quand tu en auras un. Rien ne presse.</happy>",
   "relaxed.dialogue.chat.leatherworker_request.no_storage/1": "<happy>Le sac commence à être plein. Un coffre, quand ça t'arrange.</happy>",
-  "relaxed.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>C'est bien sorti. Ça valait l'attente.</happy>"
+  "relaxed.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>C'est bien sorti. Ça valait l'attente.</happy>",
+  "relaxed.dialogue.chat.beverage_artisan_request.no_worksite/1": "<happy>Un poste à boissons serait sympa quand tu auras le temps.</happy>",
+  "relaxed.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<happy>On est à court d'ingrédients. Réapprovisionne quand tu pourras.</happy>",
+  "relaxed.dialogue.chat.beverage_artisan_request.no_storage/1": "<happy>Le stockage est plein. Un autre coffre devrait arranger ça.</happy>",
+  "relaxed.dialogue.chat.beverage_artisan_request.unreachable/1": "<happy>Quelque chose gêne l'accès au poste. Pas d'urgence, juste pour info.</happy>",
+  "relaxed.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<happy>Je peux faire %2$s dès que les ingrédients arrivent.</happy>",
+  "relaxed.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<happy>Voilà une petite chaleur agréable.</happy>",
+  "relaxed.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<happy>Bonne boisson, bonne chaise, nulle part ailleurs où être.</happy>",
+  "relaxed.dialogue.chat.townstead_drunk.drunk_arrival/1": "<happy>La salle peut tourner si ça lui chante. Moi, je reste là.</happy>",
+  "relaxed.dialogue.chat.townstead_drunk.drunk_ambient/1": "<happy>L'histoire finira bien par trouver sa fin.</happy>",
+  "relaxed.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>Ça suffit largement. De l'eau et un endroit calme, s'il vous plaît.</sleepy>",
+  "relaxed.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>Je serai très bien ici jusqu'à ce que la salle se calme.</sleepy>",
+  "relaxed.dialogue.chat.townstead_drunk.service_refused/1": "<happy>J'ai fini pour ce soir. L'eau me paraît mieux, de toute façon.</happy>",
+  "relaxed.dialogue.chat.townstead_drunk.recovered/1": "<happy>Je me sens de nouveau stable. Tout en douceur.</happy>"
 }

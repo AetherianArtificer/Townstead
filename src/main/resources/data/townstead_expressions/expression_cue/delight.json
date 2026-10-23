@@ -1,0 +1,23 @@
+{
+  "kind": "icon",
+  "texture": "townstead_expressions:textures/expression/delight.png",
+  "duration_ticks": 40,
+  "cooldown_ticks": 100,
+  "rise": 0.38,
+  "drift": 0.025,
+  "scale": 0.72,
+  "color": "#FFFFFFFF",
+  "icon_burst": {
+    "count": 3,
+    "spread": 0.34,
+    "vertical_spread": 0.12,
+    "stagger_ticks": 5,
+    "scale_variance": 0.12
+  },
+  "particle_burst": {
+    "count": 0
+  },
+  "audience": "nearby",
+  "max_distance": 48,
+  "fallback_particle": "minecraft:happy_villager"
+}

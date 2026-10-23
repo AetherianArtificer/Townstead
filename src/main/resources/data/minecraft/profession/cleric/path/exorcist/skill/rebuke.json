@@ -1,0 +1,55 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.exorcist.rebuke"
+  },
+  "icon": "minecraft:bell",
+  "description": {
+    "translate": "skill.townstead.cleric.exorcist.rebuke.description"
+  },
+  "cost": 1,
+  "requires": [
+    "turn_undead"
+  ],
+  "skill_group": "townstead:exorcist_rite",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 360,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:entity_group",
+          "group": "undead"
+        },
+        "if_action": {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:weakness",
+              "duration": 200,
+              "amplifier": 1
+            },
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:slowness",
+              "duration": 200,
+              "amplifier": 1
+            }
+          ]
+        }
+      }
+    }
+  }
+}

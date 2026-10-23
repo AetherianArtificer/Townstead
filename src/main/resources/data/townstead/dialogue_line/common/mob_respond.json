@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "mob_respond",
+  "lines": {
+    "someone_had_to": "Someone had to.",
+    "it_was_nothing": "It was nothing.",
+    "my_legs_were_shaking_the": "My legs were shaking the whole time.",
+    "i_just_ran_honestly": "I just ran, honestly.",
+    "adrenaline_i_guess": "Adrenaline, I guess.",
+    "id_rather_not_do_it": "I'd rather not do it again.",
+    "word_travels_fast": "Word travels fast!",
+    "i_was_so_scared": "I was so scared."
+  }
+}

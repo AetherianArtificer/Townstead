@@ -1,0 +1,40 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.smokehouse.smoke_master"
+  },
+  "icon": "minecraft:smoker",
+  "description": {
+    "translate": "skill.townstead.butcher.smokehouse.smoke_master.description"
+  },
+  "cost": 1,
+  "requires": [
+    "cured_skin"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 3,
+        "where": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:block_entity"
+            },
+            {
+              "type": "pheno:in_tag",
+              "tag": "townstead:smoker_stations"
+            }
+          ]
+        }
+      },
+      "do": {
+        "type": "pheno:accelerate",
+        "ticks": 5
+      }
+    }
+  }
+}

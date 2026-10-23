@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.tidecaller.fresh_water"
+  },
+  "icon": "minecraft:potion",
+  "description": {
+    "translate": "skill.townstead.fisherman.tidecaller.fresh_water.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:tidecaller_crew",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:extinguish"
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:water_breathing",
+            "duration": 600,
+            "amplifier": 0
+          }
+        ]
+      }
+    }
+  }
+}

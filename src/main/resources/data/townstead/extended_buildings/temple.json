@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {"node_item": "minecraft:brewing_stand"},
+  "workers": ["minecraft:cleric"],
+  "spirit": {"spiritual": 7, "scholar": 2},
+  "enclosure": "required"
+}

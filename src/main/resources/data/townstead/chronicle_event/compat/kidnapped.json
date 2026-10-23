@@ -1,0 +1,62 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "crime.kidnapping",
+  "weight": 10,
+  "rarity": "rare",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "crime",
+    "key": "mcacrime:kidnapped"
+  },
+  "reach": "village",
+  "news_value": 7.0,
+  "roles": [
+    {
+      "id": "captive",
+      "kind": "villager"
+    },
+    {
+      "id": "captor",
+      "kind": "player"
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.compat.kidnapped"
+    },
+    "params": [
+      "captive",
+      "captor"
+    ]
+  },
+  "impact": {
+    "captive": {
+      "mood": -8.0,
+      "memory": {
+        "valence": -1.0,
+        "strength": 3.0
+      }
+    },
+    "witness": {
+      "mood": -2.0,
+      "memory": {
+        "valence": -0.7,
+        "strength": 1.5
+      }
+    },
+    "on_learn": {
+      "mood": -1.0,
+      "memory": {
+        "valence": -0.6,
+        "strength": 1.0
+      }
+    }
+  }
+}

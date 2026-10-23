@@ -1,0 +1,32 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.smokehouse.singe"
+  },
+  "icon": "minecraft:flint_and_steel",
+  "description": {
+    "translate": "skill.townstead.butcher.smokehouse.singe.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:smokehouse_fire",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 240,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 3,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:ignite",
+        "seconds": 3
+      }
+    }
+  }
+}

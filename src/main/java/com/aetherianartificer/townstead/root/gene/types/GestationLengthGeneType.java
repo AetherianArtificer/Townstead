@@ -18,6 +18,11 @@ import net.minecraft.util.GsonHelper;
  */
 public final class GestationLengthGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.BEING;
+    }
+
     public static final String KEY = "townstead_roots:gestation_length";
 
     private static final ResourceLocation LOCUS = DataPackLang.parseId(KEY);

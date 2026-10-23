@@ -1,0 +1,129 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.barista.rocket_fuel"
+  },
+  "icon": "minecraft:firework_rocket",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.barista.rocket_fuel.description"
+  },
+  "cost": 1,
+  "requires": [
+    "rush_hour"
+  ],
+  "skill_group": "townstead:barista_shot",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:buzz",
+      "amount": 0
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else_list",
+          "actions": [
+            {
+              "condition": {
+                "type": "pheno:resource",
+                "resource": "townstead:buzz",
+                "min": 67
+              },
+              "action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:speed",
+                    "duration": 300,
+                    "amplifier": 3
+                  },
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:jump_boost",
+                    "duration": 300,
+                    "amplifier": 2
+                  },
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:haste",
+                    "duration": 300,
+                    "amplifier": 3
+                  }
+                ]
+              }
+            },
+            {
+              "condition": {
+                "type": "pheno:resource",
+                "resource": "townstead:buzz",
+                "min": 34
+              },
+              "action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:speed",
+                    "duration": 300,
+                    "amplifier": 2
+                  },
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:jump_boost",
+                    "duration": 300,
+                    "amplifier": 1
+                  },
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:haste",
+                    "duration": 300,
+                    "amplifier": 2
+                  }
+                ]
+              }
+            }
+          ],
+          "fallback_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:speed",
+                "duration": 300,
+                "amplifier": 2
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:jump_boost",
+                "duration": 300,
+                "amplifier": 1
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:haste",
+                "duration": 300,
+                "amplifier": 2
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:change_resource",
+          "resource": "townstead:buzz",
+          "amount": 40
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.bottle.fill",
+          "volume": 0.8,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

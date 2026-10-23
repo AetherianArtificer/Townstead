@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:job/v3",
+  "mods": "vampirism",
+  "task": "townstead_work:hunter_sweep",
+  "type": "townstead:sweep",
+  "reach": 48,
+  "interval": 200,
+  "rally": true,
+  "engage": { "hostile": true, "sight": 16 },
+  "arms": { "draw": "#townstead:hunter_arms", "style": "auto" },
+  "xp": { "kill": 8 }
+}

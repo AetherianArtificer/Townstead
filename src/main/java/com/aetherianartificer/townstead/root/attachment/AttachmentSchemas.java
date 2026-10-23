@@ -19,7 +19,7 @@ public final class AttachmentSchemas {
 
     public static final NodeSchema ATTACHMENT = NodeSchema.of("townstead:attachment", NodeDomain.DATA)
             .doc("A cosmetic geometry attached to a body (tail, tusk, ears).")
-            .field(of("schema", PhenoType.STRING).doc("Schema tag: townstead:attachment/v1."))
+            .field(of("schema", PhenoType.STRING).doc("Schema tag: townstead:attachment/v2 (offsets and rotations as Blockbench shows them), or the legacy townstead:attachment/v1."))
             .field(required("geometry", PhenoType.STRING).doc("Reference to a .geo.json under attachment/geo/."))
             .field(required("texture", PhenoType.STRING).doc("Reference to a .png under attachment/textures/."))
             .field(of("target", PhenoType.OBJECT).doc("{ tag } (every matching point) or { point } (one point)."))
@@ -77,10 +77,16 @@ public final class AttachmentSchemas {
                             + "{ if: <pheno condition>, ... } entries; each entry carries { rotation, "
                             + "bones: { <bone>: { rotation } }, transition }. Evaluated client-side per frame."))
             .field(of("physics", PhenoType.OBJECT)
-                    .doc("{ chains: [ { bones (root->tip), stiffness, damping, gravity, max_angle, sway, "
-                            + "follow, droop_angle, sway_speed, snap, response: { vertical, forward, lateral, turn }, "
-                            + "segments, axis } ] } — client-simulated secondary motion driven by the bearer's "
-                            + "movement. segments > 1 with one bone slices its geometry into a bending chain."))
+                    .doc("{ chains: [ { bones (root->tip), preset, frequency, damping_ratio, gravity, inertia, "
+                            + "drag, limit, hinge, collide, rest_pitch, sway, sway_speed, scale_with_size, "
+                            + "segments, axis } ] }: each bone tip is a world-space particle that springs toward "
+                            + "the animated pose. frequency (Hz) is how fast it returns; damping_ratio below 1 "
+                            + "bounces, 1 settles; gravity 0..1 droops each bone toward world-down; inertia 0..1 is how "
+                            + "much bearer motion it feels; drag streams it back while moving; limit (degrees) "
+                            + "caps each bone's swing from its parent. Any of these six takes a number or { root, tip }. preset names a "
+                            + "physics_preset (bare ids look in this namespace, then townstead). hinge is "
+                            + "none/pitch/side. Legacy keys (stiffness, damping, max_angle, response, ...) "
+                            + "still load and convert. segments > 1 with one bone slices it into a bending chain."))
             .field(of("animations", PhenoType.OBJECT)
                     .doc("Keyframe clips from Blockbench .animation.json files "
                             + "(attachment/animations/<file>.animation.json, referenced '<file>' or '<file>#<clip>'): "
@@ -92,7 +98,7 @@ public final class AttachmentSchemas {
 
     public static final NodeSchema ATTACHMENT_POINT = NodeSchema.of("townstead:attachment_point", NodeDomain.DATA)
             .doc("A named anchor on a rig where attachments may sit.")
-            .field(of("schema", PhenoType.STRING).doc("Schema tag: townstead:attachment_point/v1."))
+            .field(of("schema", PhenoType.STRING).doc("Schema tag: townstead:attachment_point/v2 (offset and rotation as Blockbench shows them), or the legacy townstead:attachment_point/v1."))
             .field(of("bone", PhenoType.STRING))
             .field(of("offset", PhenoType.FLOAT).asList())
             .field(of("rotation", PhenoType.FLOAT).asList()
@@ -102,5 +108,21 @@ public final class AttachmentSchemas {
             .field(of("rig", PhenoType.STRING)
                     .doc("Scope to one rig id; empty = universal. A rig-scoped point overrides a same-id universal one."))
             .field(of("tags", PhenoType.STRING).asList().doc("Tags attachments target (ear, tail_root, ...)."))
+            .build();
+
+    public static final NodeSchema PHYSICS_PRESET = NodeSchema.of("townstead:physics_preset", NodeDomain.DATA)
+            .doc("Named physics feel that attachment chains start from with \"preset\". Chain keys override it.")
+            .field(of("frequency", PhenoType.ANY).doc("Hz, how fast the chain springs back. Number or { root, tip }."))
+            .field(of("damping_ratio", PhenoType.ANY).doc("Below 1 bounces, 1 settles without overshoot. Number or { root, tip }."))
+            .field(of("gravity", PhenoType.ANY).doc("Droop of each bone toward world-down, 0 none to 1 heavy. Number or { root, tip }."))
+            .field(of("inertia", PhenoType.ANY).doc("How much bearer motion the chain feels, 0..1. Number or { root, tip }."))
+            .field(of("drag", PhenoType.ANY).doc("Air resistance that streams the chain back while moving. Number or { root, tip }."))
+            .field(of("limit", PhenoType.ANY).doc("Largest swing of each bone from where its parent points, in degrees. Number or { root, tip }."))
+            .field(of("hinge", PhenoType.STRING).doc("none, pitch, or side: keeps the swing in one plane."))
+            .field(of("collide", PhenoType.STRING).asList().doc("Rig collider names the chain stays out of. Leave out to use every collider; [] for none."))
+            .field(of("rest_pitch", PhenoType.FLOAT).doc("Tilts the rest pose, in degrees (negative is down)."))
+            .field(of("sway", PhenoType.FLOAT).doc("Idle motion, in degrees."))
+            .field(of("sway_speed", PhenoType.FLOAT).doc("Multiplies the idle motion speed."))
+            .field(of("scale_with_size", PhenoType.BOOL).doc("Small bearers swing faster, big ones slower. Default true."))
             .build();
 }

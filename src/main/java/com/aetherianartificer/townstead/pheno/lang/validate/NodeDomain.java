@@ -22,6 +22,9 @@ public enum NodeDomain {
     CONDITION("condition") {
         @Override public boolean resolves(String key) { return ConditionTypes.get(key).isPresent(); }
     },
+    VALUE("value") {
+        @Override public boolean resolves(String key) { return com.aetherianartificer.townstead.pheno.value.ValueTypes.get(key).isPresent(); }
+    },
     BIENTITY_CONDITION("bi-entity condition") {
         @Override public boolean resolves(String key) { return BiEntityConditionTypes.get(key).isPresent(); }
     },

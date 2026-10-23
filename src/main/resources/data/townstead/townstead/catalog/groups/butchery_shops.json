@@ -1,6 +1,6 @@
 {
   "schema": "townstead:catalog_group/v1",
-  "label": "Butcher Shop",
+  "label": "townstead.catalog.group.butcher_shops",
   "match_prefix": "compat/butchery/butcher_shop_l",
   "layout": "tiered",
   "priority": 10

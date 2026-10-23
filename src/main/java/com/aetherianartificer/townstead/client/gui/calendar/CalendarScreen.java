@@ -6,7 +6,7 @@ import com.aetherianartificer.townstead.calendar.CalendarStampActionC2SPayload;
 import com.aetherianartificer.townstead.calendar.CalendarStampClientStore;
 import com.aetherianartificer.townstead.calendar.CalendarStampSavedData;
 import com.aetherianartificer.townstead.client.accessibility.Accessibility;
-import com.aetherianartificer.townstead.client.gui.fieldpost.FrameRenderer;
+import com.aetherianartificer.townstead.client.gui.common.FrameRenderer;
 import com.mojang.math.Axis;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -907,7 +907,7 @@ public class CalendarScreen extends Screen {
         enableVirtualScissor(g, x, y, x + w, y + h);
         for (int ty = 0; ty < h; ty += tileSize) {
             for (int tx = 0; tx < w; tx += tileSize) {
-                com.aetherianartificer.townstead.client.gui.fieldpost.CellTextures
+                com.aetherianartificer.townstead.client.gui.common.CellTextures
                         .blit(g, texture, x + tx, y + ty, tileSize);
             }
         }

@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:naming_tradition/v1",
+  "given": "mca:hungary",
+  "family": {
+    "type": "inherited",
+    "list": "townstead_naming:hungary",
+    "descent": "father"
+  },
+  "order": "family_first"
+}

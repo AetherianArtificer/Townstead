@@ -1,59 +1,28 @@
 {
-    "schema": "townstead:reaction/v2",
-    "display_name": "Dance",
-    "tags": ["social", "celebration", "dancing"],
-    "cooldown": "30s",
-    "chance": "60%",
-    "mirror_radius": 5,
-    "mirror_chance": 0.2,
-    "triggers": [
-        { "type": "context_present", "tags": ["near_music"] },
-        { "type": "gesture", "emote": "emotecraft:club_penguin_dance" },
-        { "type": "gesture", "emote": "emotecraft:kazotsky_kick" },
-        { "type": "gesture", "emote": "emotecraft:roblox_potion_dance" }
-    ],
-    "choices": [
-        {
-            "animation": {
-                "type": "emotecraft",
-                "ids": ["club_penguin_dance", "roblox_potion_dance", "kazotsky_kick"],
-                "shots": 2
-            },
-            "weight": 3,
-            "personality_weights": {
-                "playful": 3.0,
-                "upbeat": 2.0,
-                "extroverted": 1.5,
-                "gloomy": 0.1,
-                "anxious": 0.3,
-                "default": 1.0
-            },
-            "do": {
-                "type": "pheno:spawn_particles",
-                "particle": "minecraft:note",
-                "count": 6,
-                "spread": 0.5
-            }
-        },
-        {
-            "animation": {
-                "type": "emotecraft",
-                "id": "twerk",
-                "shots": 6
-            },
-            "weight": 1,
-            "personality_weights": {
-                "playful": 4.0,
-                "odd": 3.0,
-                "flirty": 2.0,
-                "default": 0.0
-            },
-            "do": {
-                "type": "pheno:spawn_particles",
-                "particle": "minecraft:note",
-                "count": 8,
-                "spread": 0.5
-            }
-        }
-    ]
+  "schema":"townstead:reaction/v3","display_name":"reaction.townstead.dance",
+  "tags":["social","celebration","dancing"],"cooldown":"30s","chance":"45%","mirror_radius":5,"mirror_chance":0.2,
+  "triggers":[
+    {"type":"context_present","tags":["near_music"]},
+    {"type":"gesture","emote":"emotecraft:club_penguin_dance"},
+    {"type":"gesture","emote":"emotecraft:kazotsky_kick"},
+    {"type":"gesture","emote":"emotecraft:roblox_potion_dance"}
+  ],
+  "choices":[
+    {
+      "weight":4,
+      "personality_weights":{"playful":3.0,"upbeat":2.0,"extroverted":1.5,"gloomy":0.15,"anxious":0.35,"default":1.0},
+      "do":{"type":"pheno:and","actions":[
+        {"type":"pheno:performance","performance":"townstead:find_the_beat","channel":"reaction","duration_ticks":80,"priority":35,"fallback":"vanilla_gesture"},
+        {"type":"pheno:expression","cue":"townstead_expressions:music"},
+        {"type":"pheno:spawn_particles","particle":"minecraft:note","count":3,"spread":0.35}
+      ]}
+    },
+    {
+      "weight":1,"personality_weights":{"playful":4.0,"odd":3.0,"upbeat":2.0,"default":0.25},
+      "do":{"type":"pheno:and","actions":[
+        {"type":"pheno:performance","performance":"townstead:reaction_cheer","channel":"reaction","duration_ticks":40,"priority":40,"fallback":"vanilla_gesture"},
+        {"type":"pheno:expression","cue":"townstead_expressions:celebration"}
+      ]}
+    }
+  ]
 }

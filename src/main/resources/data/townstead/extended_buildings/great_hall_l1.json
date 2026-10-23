@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "catalog": {
+    "node_item": "minecraft:white_banner"
+  },
+  "spirit": {
+    "martial": 3
+  },
+  "requires": [
+    { "decoration": "townstead:throne", "count": 1 },
+    { "size": { "min": 40 } }
+  ],
+  "seat": {
+    "tier": 2,
+    "functions": ["townstead:records", "townstead:audience", "townstead:homage"],
+    "actors": ["polity"],
+    "affinity": { "townstead:monarchy": 1 }
+  }
+}

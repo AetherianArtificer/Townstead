@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.trailreader.pursuit"
+  },
+  "icon": "minecraft:rabbit_foot",
+  "description": {
+    "translate": "skill.townstead.hunter.trailreader.pursuit.description"
+  },
+  "cost": 1,
+  "requires": [
+    "run_down"
+  ],
+  "skill_group": "townstead:hunter_trailreader_a",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:vigil",
+      "amount": 50
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:speed",
+          "duration": 200,
+          "amplifier": 2
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:jump_boost",
+          "duration": 200,
+          "amplifier": 1
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.horse.gallop",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

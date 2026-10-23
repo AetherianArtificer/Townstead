@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tinker.spring_boots"
+  },
+  "icon": "minecraft:slime_ball",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tinker.spring_boots.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:tinker_gadget",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:jump_boost",
+      "duration": 300,
+      "amplifier": 2
+    }
+  }
+}

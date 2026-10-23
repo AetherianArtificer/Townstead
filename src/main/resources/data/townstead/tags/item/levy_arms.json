@@ -1,0 +1,7 @@
+{
+  "values": [
+    { "id": "#minecraft:swords", "required": false },
+    { "id": "#minecraft:axes", "required": false },
+    { "id": "vampirism:pitchfork", "required": false }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.saddler.charge"
+  },
+  "icon": "minecraft:iron_sword",
+  "description": {
+    "translate": "skill.townstead.leatherworker.saddler.charge.description"
+  },
+  "cost": 1,
+  "requires": [
+    "gallop"
+  ],
+  "skill_group": "townstead:saddler_ride",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:hide",
+      "amount": 40
+    },
+    "condition": {
+      "type": "pheno:riding"
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:riding_action",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:speed",
+            "duration": 100,
+            "amplifier": 3
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 4,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:add_velocity",
+                "away_from_other": 1.4,
+                "y": 0.3
+              },
+              {
+                "type": "pheno:damage",
+                "amount": 4,
+                "source": "other"
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.horse.gallop",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

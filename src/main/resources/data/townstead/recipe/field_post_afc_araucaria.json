@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_afc_araucaria"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "afc:wood/lumber/araucaria"
+    },
+    "L": {
+      "item": "afc:wood/log/araucaria"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_afc_araucaria",
+    "count": 1
+  }
+}

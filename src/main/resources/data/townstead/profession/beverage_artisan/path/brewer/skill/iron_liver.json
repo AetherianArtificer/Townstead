@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.brewer.iron_liver"
+  },
+  "icon": "minecraft:fermented_spider_eye",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.brewer.iron_liver.description"
+  },
+  "cost": 1,
+  "requires": [
+    "cool_head"
+  ],
+  "power": {
+    "type": "pheno:effect_immunity",
+    "effects": [
+      "minecraft:poison"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "mods": "vampirism",
+  "state": "townstead_state:thrall",
+  "min_tier": "thrall",
+  "priority": 20,
+  "genes": {
+    "grant": [
+      "townstead_roots:vampire_nocturnal"
+    ]
+  }
+}

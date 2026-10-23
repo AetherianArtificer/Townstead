@@ -1,0 +1,70 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.pastry_chef.grand_finale"
+  },
+  "icon": "minecraft:nether_star",
+  "description": {
+    "translate": "skill.townstead.baker.pastry_chef.grand_finale.description"
+  },
+  "cost": 1,
+  "requires": [
+    "souffle"
+  ],
+  "skill_group": "townstead:pastry_rise",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:sugar",
+          "blocks": {
+            "radius": 4,
+            "around": "above",
+            "where": {
+              "type": "air"
+            }
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 12,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:speed",
+                "duration": 600,
+                "amplifier": 1
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:haste",
+                "duration": 600,
+                "amplifier": 1
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.bell.use",
+          "volume": 1.0,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

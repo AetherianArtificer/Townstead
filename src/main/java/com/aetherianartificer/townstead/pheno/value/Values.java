@@ -14,16 +14,16 @@ public final class Values {
 
     private Values() {}
 
+    /** A literal: the same number for an entity or a subject alike. */
     public static Value constant(double value) {
-        return ctx -> value;
+        return Value.subjectAware(ctx -> value);
     }
 
     @Nullable
     public static Value parse(@Nullable JsonElement element) {
         if (element == null) return null;
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
-            double value = element.getAsDouble();
-            return ctx -> value;
+            return constant(element.getAsDouble());
         }
         if (element.isJsonObject()) {
             JsonObject obj = element.getAsJsonObject();

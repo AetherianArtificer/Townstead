@@ -1,0 +1,8 @@
+{
+  "schema":"townstead:consumable/v2","mods":"kaleidoscope_tavern",
+  "items":["kaleidoscope_tavern:wine","kaleidoscope_tavern:carignan","kaleidoscope_tavern:honey_wine","kaleidoscope_tavern:ice_wine","kaleidoscope_tavern:luminous_bride","kaleidoscope_tavern:miners_star","kaleidoscope_tavern:mother_snow","kaleidoscope_tavern:plum_wine","kaleidoscope_tavern:polaris_sweet_white","kaleidoscope_tavern:sakura_wine","kaleidoscope_tavern:sherry","kaleidoscope_tavern:sunset_glow","kaleidoscope_tavern:vodka","kaleidoscope_tavern:whiskey"],
+  "transaction":{
+    "mode":"observe_native","accounting":"consume_one","consumers":["player","villager"],"servings":1,
+    "remainder":{"mode":"item","item":"kaleidoscope_tavern:empty_bottle","destination":"holder"}
+  }
+}

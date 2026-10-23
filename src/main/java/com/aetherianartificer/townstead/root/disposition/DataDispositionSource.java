@@ -9,7 +9,7 @@ import org.jetbrains.annotations.Nullable;
  * ({@link DispositionRelations}). Kinship is checked before enmity, so a member of a group that is
  * friendly to its own kind is never accidentally hostile to them. Abstains (null) when the viewer's
  * group declares no opinion about the other's, leaving it neutral or to a higher-priority source
- * (the future faction system).
+ * (the future faction system). Hostility between folk the world has at peace ({@link RootPeace}) abstains too.
  */
 public final class DataDispositionSource implements DispositionSource {
 
@@ -20,7 +20,7 @@ public final class DataDispositionSource implements DispositionSource {
         if (def == null) return null;
         String otherGroup = DispositionGroups.of(other);
         if (def.friendly().contains(otherGroup)) return Disposition.FRIENDLY;
-        if (def.hostile().contains(otherGroup)) return Disposition.HOSTILE;
+        if (def.hostile().contains(otherGroup)) return RootPeace.between(viewer, other) ? null : Disposition.HOSTILE;
         return null;
     }
 }

@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "ruler_reaction",
+  "lines": {
+    "careful_walls_have_ears": "Careful. Walls have ears.",
+    "youll_get_us_both_hanged": "You'll get us both hanged.",
+    "i_didnt_hear_anything": "I didn't hear anything.",
+    "hush": "Hush.",
+    "not_so_loud": "Not so loud.",
+    "really_who_told_you": { "text": "Really? Who told you?", "asks": "townstead:source_ruler" },
+    "dont_say_that_out_here": "Don't say that out here!",
+    "shh_someone_might_hear": "Shh! Someone might hear.",
+    "thats_dangerous_talk": "That's dangerous talk.",
+    "lets_pretend_this_never_happened": "Let's pretend this never happened.",
+    "where_did_you_hear_that": { "text": "Where did you hear that?", "asks": "townstead:source_ruler" },
+    "i_really_dont_want_to": "I really don't want to know.",
+    "oh_no_oh_no_dont": { "text": "Oh no, oh no. Don't tell me things like that.", "personalities": "anxious" },
+    "ooh_tell_me_more_quietly": { "text": "Ooh. Tell me more. Quietly.", "personalities": ["playful", "witty"] }
+  }
+}

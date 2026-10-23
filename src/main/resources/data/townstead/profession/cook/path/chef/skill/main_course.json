@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": { "translate": "skill.townstead.cook.chef.main_course" },
+  "icon": "minecraft:cooked_beef",
+  "description": { "translate": "skill.townstead.cook.chef.main_course.description" },
+  "cost": 1,
+  "requires": ["soup_course"],
+  "skill_group": "townstead:chef_menu",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": { "resource": "townstead:flow", "amount": 30 },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 7,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              { "type": "pheno:apply_effect", "effect": "minecraft:resistance", "duration": 240, "amplifier": 0 },
+              { "type": "pheno:apply_effect", "effect": "minecraft:absorption", "duration": 240, "amplifier": 0 }
+            ]
+          }
+        },
+        { "type": "pheno:play_sound", "sound": "minecraft:entity.player.burp", "volume": 1.0, "pitch": 0.8 }
+      ]
+    }
+  }
+}

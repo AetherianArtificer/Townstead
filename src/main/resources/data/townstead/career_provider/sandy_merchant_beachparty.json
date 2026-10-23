@@ -1,0 +1,91 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "sandy_merchant",
+  "mods": "beachparty",
+  "priority": 20,
+  "aliases": [
+    "beachparty:sandymerchant",
+    "beachparty:barkeeper"
+  ],
+  "contributes": {
+    "path": {
+      "worksites": [
+        "beachparty:palm_bar",
+        "beachparty:tiki_bar",
+        "beachparty:mini_fridge"
+      ],
+      "work": [
+        {
+          "type": "townstead_work:brew",
+          "access": "path",
+          "workstations": [
+            "beachparty:palm_bar"
+          ],
+          "recipes": [
+            "beachparty:coconut_cocktail",
+            "beachparty:sweetberries_cocktail",
+            "beachparty:cocoa_cocktail",
+            "beachparty:pumpkin_cocktail",
+            "beachparty:honey_cocktail",
+            "beachparty:melon_cocktail"
+          ],
+          "weight": 10
+        },
+        {
+          "type": "townstead_work:brew",
+          "access": "path",
+          "workstations": [
+            "beachparty:tiki_bar"
+          ],
+          "recipes": [
+            "beachparty:coconut_cocktail",
+            "beachparty:sweetberries_cocktail",
+            "beachparty:cocoa_cocktail",
+            "beachparty:pumpkin_cocktail",
+            "beachparty:honey_cocktail",
+            "beachparty:melon_cocktail",
+            "beachparty:chocolate_milkshake",
+            "beachparty:coconut_milkshake",
+            "beachparty:sweetberry_milkshake",
+            "beachparty:refreshing_drink"
+          ],
+          "weight": 10
+        },
+        {
+          "type": "townstead_work:brew",
+          "access": "path",
+          "workstations": [
+            "beachparty:mini_fridge"
+          ],
+          "recipes": [
+            "minecraft:ice",
+            "beachparty:chocolate_icecream",
+            "beachparty:coconut_icecream",
+            "beachparty:sweetberry_icecream",
+            "beachparty:icecream_chocolate",
+            "beachparty:icecream_coconut",
+            "beachparty:icecream_sweetberries",
+            "beachparty:icecream_melon",
+            "beachparty:icecream_cactus"
+          ],
+          "weight": 10
+        }
+      ]
+    },
+    "profession": {
+      "poi": [
+        {
+          "type": "townstead:job_block",
+          "block": "beachparty:palm_bar",
+          "via": "beachparty:sandymerchant"
+        },
+        {
+          "type": "townstead:job_block",
+          "block": "beachparty:tiki_bar",
+          "via": "beachparty:barkeeper"
+        }
+      ]
+    }
+  }
+}

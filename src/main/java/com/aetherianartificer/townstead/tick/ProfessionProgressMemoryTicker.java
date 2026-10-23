@@ -20,6 +20,10 @@ public final class ProfessionProgressMemoryTicker {
 
         String lastKey = memory.lastProfession();
         boolean changed = !lastKey.isBlank() && !lastKey.equals(currentKey);
+        if (changed) {
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.professionChanged(villager,
+                    canonical(lastKey), canonical(currentKey));
+        }
 
         TownsteadVillager.ProfessionMemory.Progress saved = memory.progress(currentKey);
         if (changed && isTrackable(currentKey) && saved != null) {
@@ -37,6 +41,12 @@ public final class ProfessionProgressMemoryTicker {
         }
 
         memory.setLastProfession(currentKey);
+    }
+
+    private static String canonical(String key) {
+        net.minecraft.resources.ResourceLocation id = net.minecraft.resources.ResourceLocation.tryParse(key);
+        if (id == null) return key;
+        return com.aetherianartificer.townstead.profession.def.ProfessionDefs.canonicalId(id).toString();
     }
 
     private static boolean isTrackable(String key) {

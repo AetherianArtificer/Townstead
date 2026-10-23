@@ -84,22 +84,148 @@ public record RigDefinition(
         // humanoid channel drives, how its rotation axes are remapped, and which emotes the body is even
         // willing to play (a spider can wave but should not try to Cossack-dance). Null when the rig
         // expresses emotes the plain humanoid way (the default for a humanoid body); see {@link EmoteMap}.
-        @Nullable EmoteMap emote
+        @Nullable EmoteMap emote,
+        // Keyframe clips the body plays by state (idle, walk, sleep...), from a Bedrock .animation.json
+        // named by logical id: a pack file, or another mod's own asset. Null = no clips (a vanilla model
+        // animates through its own setupAnim; a custom geometry stands still). See {@link Animation}.
+        @Nullable Animation animation,
+        // For ENTITY_LAYER: the model class to wrap the baked layer in (any mod's vanilla-style model with
+        // a ModelPart constructor), so its own setupAnim animates the body. Empty = the built-in table
+        // (vanilla non-humanoids) or the humanoid default.
+        String modelClass,
+        float cameraHeightOffset,
+        // Textures drawn over the body with the same model and UVs (a werewolf's eyes), each optionally
+        // glowing in the dark. A texture may hold a {name:N} placeholder (see StateForms).
+        List<Overlay> overlays,
+        // The body parts (bone channels: head, body, right_arm, ...) a worn MCA skin may draw on. Empty
+        // means all of them; a ghost whose legs are gone, or a thin-armed body whose arm UVs don't match
+        // a villager skin's, names only the parts the skin fits.
+        List<String> skinParts,
+        // Equipment slots this body wears but never shows: the gear still protects (a wraith guard keeps
+        // its leggings and boots on) but no armour or curio for the slot is drawn, since there is nothing
+        // there to draw it on. Empty = everything worn shows.
+        Set<EquipmentSlot> hiddenSlots,
+        // Capsules on the body's bones that attachment physics chains rest against instead of
+        // swinging through (a tail against the legs). Null = not declared: a body on the humanoid
+        // render path then uses HUMANOID_COLLIDERS, any other body none. Empty = none.
+        @Nullable List<Collider> colliders,
+        // Path swaps applied to a worn MCA skin when this body draws it ({"/normal/": "/zombie/"}): MCA's
+        // outfit list holds only ordinary clothes, and its zombies draw each one's zombie counterpart.
+        // A swap whose texture doesn't exist draws the original. Empty = drawn as worn.
+        Map<String, String> skinRemap
 ) {
+    /** A rig that draws worn skins as they are. */
+    public RigDefinition(String id, ModelType modelType, String modelRef, String modelLayer, String texture,
+                         Map<String, String> bones, ArmorType armorType, String armorInner, String armorOuter,
+                         Face face, WornAnchor back, WornAnchor head, List<Boot> boots, Hold hold, boolean hair,
+                         Map<String, PoseState> poses, @Nullable Hitbox hitbox, Set<EquipmentSlot> disabledSlots,
+                         @Nullable String cameraBone, @Nullable EmoteMap emote, @Nullable Animation animation, String modelClass,
+                         float cameraHeightOffset, List<Overlay> overlays, List<String> skinParts,
+                         Set<EquipmentSlot> hiddenSlots, List<Collider> colliders) {
+        this(id, modelType, modelRef, modelLayer, texture, bones, armorType, armorInner, armorOuter, face, back, head,
+                boots, hold, hair, poses, hitbox, disabledSlots, cameraBone, emote, animation, modelClass,
+                cameraHeightOffset, overlays, skinParts, hiddenSlots, colliders, Map.of());
+    }
+
+    /** A rig that declares no physics colliders. */
+    public RigDefinition(String id, ModelType modelType, String modelRef, String modelLayer, String texture,
+                         Map<String, String> bones, ArmorType armorType, String armorInner, String armorOuter,
+                         Face face, WornAnchor back, WornAnchor head, List<Boot> boots, Hold hold, boolean hair,
+                         Map<String, PoseState> poses, @Nullable Hitbox hitbox, Set<EquipmentSlot> disabledSlots,
+                         @Nullable String cameraBone, @Nullable EmoteMap emote, @Nullable Animation animation, String modelClass,
+                         float cameraHeightOffset, List<Overlay> overlays, List<String> skinParts,
+                         Set<EquipmentSlot> hiddenSlots) {
+        this(id, modelType, modelRef, modelLayer, texture, bones, armorType, armorInner, armorOuter, face, back, head,
+                boots, hold, hair, poses, hitbox, disabledSlots, cameraBone, emote, animation, modelClass,
+                cameraHeightOffset, overlays, skinParts, hiddenSlots, null);
+    }
+
+    /**
+     * A physics collider: a capsule on {@code bone} (a channel name or bone name) running
+     * {@code from} -> {@code to} in the bone's local space (model pixels), {@code radius} pixels
+     * thick. Equal ends make a sphere. Chains name colliders by {@code name}.
+     */
+    public record Collider(String name, String bone, float[] from, float[] to, float radius) {}
+
+    /** The vanilla humanoid body, legs, and head, sized to the 64x64 player model. */
+    public static final List<Collider> HUMANOID_COLLIDERS = List.of(
+            new Collider("body", "body", new float[]{0f, 1f, 0f}, new float[]{0f, 11f, 0f}, 3f),
+            new Collider("right_leg", "right_leg", new float[]{0f, 0f, 0f}, new float[]{0f, 11f, 0f}, 2.2f),
+            new Collider("left_leg", "left_leg", new float[]{0f, 0f, 0f}, new float[]{0f, 11f, 0f}, 2.2f),
+            new Collider("head", "head", new float[]{0f, -4f, 0f}, new float[]{0f, -4f, 0f}, 4.5f));
+
+    /** A rig that shows everything it wears. */
+    public RigDefinition(String id, ModelType modelType, String modelRef, String modelLayer, String texture,
+                         Map<String, String> bones, ArmorType armorType, String armorInner, String armorOuter,
+                         Face face, WornAnchor back, WornAnchor head, List<Boot> boots, Hold hold, boolean hair,
+                         Map<String, PoseState> poses, @Nullable Hitbox hitbox, Set<EquipmentSlot> disabledSlots,
+                         @Nullable String cameraBone, @Nullable EmoteMap emote, @Nullable Animation animation, String modelClass,
+                         float cameraHeightOffset, List<Overlay> overlays, List<String> skinParts) {
+        this(id, modelType, modelRef, modelLayer, texture, bones, armorType, armorInner, armorOuter, face, back, head,
+                boots, hold, hair, poses, hitbox, disabledSlots, cameraBone, emote, animation, modelClass,
+                cameraHeightOffset, overlays, skinParts, Set.of());
+    }
+
     public enum ModelType { ENTITY_LAYER, GEOMETRY }
+
+    /**
+     * A texture drawn over the rig's body; {@code glow} draws it full-bright, like eyes in the dark.
+     * With {@code glowVariant}, the entity's form variant of that name decides instead (0 is off).
+     * {@code tint} names a colour source: empty draws the texture as is; {@code "iris"} draws it only
+     * while the bearer expresses an iris gene, in that colour and glowing when the gene glows.
+     */
+    public record Overlay(String texture, boolean glow, String glowVariant, String tint) {}
+
+    /** A rig whose worn skins may cover every part. */
+    public RigDefinition(String id, ModelType modelType, String modelRef, String modelLayer, String texture,
+                         Map<String, String> bones, ArmorType armorType, String armorInner, String armorOuter,
+                         Face face, WornAnchor back, WornAnchor head, List<Boot> boots, Hold hold, boolean hair,
+                         Map<String, PoseState> poses, @Nullable Hitbox hitbox, Set<EquipmentSlot> disabledSlots,
+                         @Nullable String cameraBone, @Nullable EmoteMap emote, @Nullable Animation animation, String modelClass,
+                         float cameraHeightOffset, List<Overlay> overlays) {
+        this(id, modelType, modelRef, modelLayer, texture, bones, armorType, armorInner, armorOuter, face, back, head,
+                boots, hold, hair, poses, hitbox, disabledSlots, cameraBone, emote, animation, modelClass,
+                cameraHeightOffset, overlays, List.of());
+    }
+
+    /** A rig without overlays. */
+    public RigDefinition(String id, ModelType modelType, String modelRef, String modelLayer, String texture,
+                         Map<String, String> bones, ArmorType armorType, String armorInner, String armorOuter,
+                         Face face, WornAnchor back, WornAnchor head, List<Boot> boots, Hold hold, boolean hair,
+                         Map<String, PoseState> poses, @Nullable Hitbox hitbox, Set<EquipmentSlot> disabledSlots,
+                         @Nullable String cameraBone, @Nullable EmoteMap emote, @Nullable Animation animation, String modelClass,
+                         float cameraHeightOffset) {
+        this(id, modelType, modelRef, modelLayer, texture, bones, armorType, armorInner, armorOuter, face, back, head,
+                boots, hold, hair, poses, hitbox, disabledSlots, cameraBone, emote, animation, modelClass,
+                cameraHeightOffset, List.of());
+    }
 
     /**
      * The collision/interaction box a rig imposes, in blocks (width is the square footprint side).
      * {@code crouchHeight} is the box while crouching; 0 derives it from {@code height} at vanilla's
      * ratio (a player's 1.8 standing becomes 1.5), so a rig only declares it to tune the squeeze.
      */
-    public record Hitbox(float width, float height, float crouchHeight) {
+    public record Hitbox(float width, float height, float crouchHeight,
+                         float swimHeight, float eyeHeight, boolean scaleWithEntity) {
+        public Hitbox(float width, float height, float crouchHeight) {
+            this(width, height, crouchHeight, 0, 0, true);
+        }
 
-        /** Vanilla's crouch ratio (1.5 / 1.8), used when a rig declares no explicit crouch height. */
-        private static final float CROUCH_RATIO = 1.5f / 1.8f;
+        public Hitbox {
+            if (!Float.isFinite(width) || width <= 0 || !Float.isFinite(height) || height <= 0
+                    || !Float.isFinite(crouchHeight) || crouchHeight < 0
+                    || !Float.isFinite(swimHeight) || swimHeight < 0
+                    || !Float.isFinite(eyeHeight) || eyeHeight < 0) {
+                throw new IllegalArgumentException("Hitbox dimensions must be finite and positive (optional heights may be zero)");
+            }
+        }
 
         public float crouchedHeight() {
-            return crouchHeight > 0f ? crouchHeight : height * CROUCH_RATIO;
+            return Math.min(height, crouchHeight > 0 ? crouchHeight : height * (1.5f / 1.8f));
+        }
+
+        public float swimmingHeight() {
+            return Math.min(height, swimHeight > 0 ? swimHeight : .6f);
         }
     }
 
@@ -132,14 +258,22 @@ public record RigDefinition(
      * degrees (X/Y/Z). The base anchor places back-worn layers on the rig; per-item entries add a
      * delta on top of it.
      */
-    public record Adjust(float[] offset, float[] rotation) {
+    public record Adjust(float[] offset, float[] rotation, float scale, float[] scaleAxes) {
+        public Adjust(float[] offset, float[] rotation, float scale) { this(offset, rotation, scale, new float[]{1,1,1}); }
+        public Adjust(float[] offset, float[] rotation) { this(offset, rotation, 1F); }
         public static final Adjust ZERO = new Adjust(new float[]{0f, 0f, 0f}, new float[]{0f, 0f, 0f});
 
         /** This adjust plus a per-item delta (component-wise; rotation summed per axis in degrees). */
         public Adjust plus(Adjust d) {
             return new Adjust(
                     new float[]{offset[0] + d.offset[0], offset[1] + d.offset[1], offset[2] + d.offset[2]},
-                    new float[]{rotation[0] + d.rotation[0], rotation[1] + d.rotation[1], rotation[2] + d.rotation[2]});
+                    new float[]{rotation[0] + d.rotation[0], rotation[1] + d.rotation[1], rotation[2] + d.rotation[2]}, scale * d.scale, new float[]{scaleAxes[0]*d.scaleAxes[0], scaleAxes[1]*d.scaleAxes[1], scaleAxes[2]*d.scaleAxes[2]});
+        }
+
+        /** This adjust reflected across the body's midline, for the left of a pair authored on the right. */
+        public Adjust mirrored() {
+            return new Adjust(new float[]{-offset[0], offset[1], offset[2]},
+                    new float[]{rotation[0], -rotation[1], -rotation[2]}, scale, scaleAxes);
         }
     }
 
@@ -153,6 +287,8 @@ public record RigDefinition(
         /** The transform for a layer key: base plus its delta, or just base when none is declared. */
         public Adjust forItem(String key) {
             Adjust delta = items.get(key);
+            // Adapters may supply a namespaced key; a bare layer key remains the shared fallback.
+            if (delta == null && key.contains(":")) delta = items.get(key.substring(key.indexOf(':') + 1));
             return delta == null ? base : base.plus(delta);
         }
     }
@@ -264,6 +400,21 @@ public record RigDefinition(
             return channels.containsKey(channel);
         }
     }
+
+    /**
+     * The rig's keyframe clips: one animation {@code file} and an ordered list of {@code rules}. Each
+     * tick the first rule that matches picks the clip the body plays, and the body cross-fades to it
+     * over the rule's transition, so a pack lists the specific cases first (asleep, walking while
+     * holding) and a plain idle last.
+     */
+    public record Animation(String file, List<AnimationRule> rules) {}
+
+    /**
+     * One clip rule: plays {@code clip} when the entity is in {@code state} (a named pose state such as
+     * {@code moving}; empty = any) and the pheno condition {@code whenJson} holds (empty = always).
+     * {@code transitionTicks} is the cross-fade into it and {@code speed} scales its playback rate.
+     */
+    public record AnimationRule(String state, String whenJson, String clip, float transitionTicks, float speed) {}
 
     /** The animation channels every rig is addressed by; the bone map names a bone for each. */
     public static final List<String> CHANNELS =

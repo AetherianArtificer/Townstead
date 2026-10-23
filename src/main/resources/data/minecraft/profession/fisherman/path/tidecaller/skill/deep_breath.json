@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.tidecaller.deep_breath"
+  },
+  "icon": "minecraft:pufferfish",
+  "description": {
+    "translate": "skill.townstead.fisherman.tidecaller.deep_breath.description"
+  },
+  "cost": 1,
+  "requires": [
+    "webbed_feet"
+  ],
+  "power": {
+    "type": "pheno:ability",
+    "ability": "water_breathing"
+  }
+}

@@ -57,6 +57,6 @@ public final class BeamActionType implements ActionType {
     private static ParticleOptions resolveParticle(String id) {
         ResourceLocation key = ResourceLocation.tryParse(id);
         if (key == null) return null;
-        return BuiltInRegistries.PARTICLE_TYPE.get(key) instanceof ParticleOptions options ? options : null;
+        return com.aetherianartificer.townstead.pheno.particle.DataParticles.options(key);
     }
 }

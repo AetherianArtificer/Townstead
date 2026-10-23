@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.herder.keep_pace"
+  },
+  "icon": "minecraft:sugar",
+  "description": {
+    "translate": "skill.townstead.shepherd.herder.keep_pace.description"
+  },
+  "cost": 1,
+  "requires": [
+    "following"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": false,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:entity_type",
+          "tag": "townstead:livestock"
+        },
+        "if_action": {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:speed",
+          "duration": 30,
+          "amplifier": 0
+        }
+      }
+    }
+  }
+}

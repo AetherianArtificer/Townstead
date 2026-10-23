@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:dialogue_pool/v1",
+  "subjects": "ruler",
+  "requires": "realm.member",
+  "provenance": "heard",
+  "opens": "news"
+}

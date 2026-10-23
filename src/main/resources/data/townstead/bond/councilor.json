@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:bond/v2",
+  "display": { "translate": "bond.townstead.councilor" },
+  "roles": {
+    "council": {
+      "party": "faction",
+      "gives": [
+        "townstead:view_member_information",
+        "townstead:review_membership_requests",
+        "townstead:govern_faction"
+      ]
+    },
+    "councilor": {
+      "party": "person",
+      "requires": "townstead:citizenship",
+      "gives": ["townstead:service"]
+    }
+  }
+}

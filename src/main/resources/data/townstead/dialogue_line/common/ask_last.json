@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "ask_last",
+  "groups": [
+    {
+      "lines": {
+        "think_itll_last": { "text": "Think it'll last?", "asks": "townstead:last" },
+        "how_long_do_you_think": { "text": "How long do you think it'll keep up?", "asks": "townstead:last" },
+        "will_it_last_all_week": { "text": "Will it last all week?", "asks": "townstead:last" },
+        "think_itll_stay_like_this": { "text": "Think it'll stay like this?", "asks": "townstead:last" },
+        "do_you_think_itll_keep": { "text": "Do you think it'll keep up?", "asks": "townstead:last" },
+        "any_idea_how_long_this": { "text": "Any idea how long this will last?", "asks": "townstead:last" },
+        "is_it_going_to_stay": { "text": "Is it going to stay like this, you think?", "asks": "townstead:last" },
+        "think_well_get_more_of": { "text": "Think we'll get more of this?", "asks": "townstead:last" },
+        "you_think_its_going_to": { "text": "You think it's going to change soon?", "asks": "townstead:last" },
+        "will_it_be_like_this": { "text": "Will it be like this tomorrow?", "asks": "townstead:last" },
+        "how_long_can_it_keep": {
+          "text": "How long can it keep this up?",
+          "asks": "townstead:last",
+          "personalities": ["crabby", "grumpy"]
+        }
+      }
+    },
+    {
+      "state": { "stance": "+" },
+      "lines": {
+        "do_you_think_itll_last": {
+          "text": "Do you think it'll last forever? Please say yes!",
+          "asks": "townstead:last",
+          "personalities": ["upbeat", "peppy"]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema": "pheno:state_backing/v1",
+  "mods": "werewolves",
+  "state": "townstead_state:beast_form",
+  "applies_to": {
+    "type": "pheno:entity_type",
+    "entity_type": "minecraft:player"
+  },
+  "source": {
+    "type": "pheno:provider",
+    "provider": "werewolves:beast_form"
+  }
+}

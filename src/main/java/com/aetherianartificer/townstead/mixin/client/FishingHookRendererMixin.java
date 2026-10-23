@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.mixin.client;
 
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+
 import com.aetherianartificer.townstead.hunger.FishermanHookLinkStore;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -37,7 +39,7 @@ public abstract class FishingHookRendererMixin {
             PoseStack poseStack, MultiBufferSource buffer, int packedLight,
             CallbackInfo ci
     ) {
-        if (!com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI.get()) return;
+        if (!Switchboard.get(com.aetherianartificer.townstead.TownsteadConfig.DEBUG_VILLAGER_AI)) return;
         if (++townstead$diagTick % 40 != 0) return;
         com.aetherianartificer.townstead.Townstead.LOGGER.info(
                 "[BobberMixin] render fired hookId={} owner={} linkedVillagerId={}",

@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "infection_respond",
+  "groups": [
+    {
+      "lines": {
+        "ill_be_fine": "I'll be fine.",
+        "i_know_im_scared": "I know. I'm scared.",
+        "dont_tell_anyone_please": "Don't tell anyone. Please.",
+        "i_think_i_need_help": "I think I need help.",
+        "i_didnt_want_anyone_to": "I didn't want anyone to know.",
+        "its_none_of_your_business": { "text": "It's none of your business.", "personalities": ["crabby", "grumpy"] }
+      }
+    },
+    {
+      "variant": "fever",
+      "lines": {
+        "theres_no_point_now": { "text": "There's no point now.", "personalities": ["gloomy"] },
+        "it_is_the_bite_yes": "It is the bite. Yes."
+      }
+    }
+  ]
+}

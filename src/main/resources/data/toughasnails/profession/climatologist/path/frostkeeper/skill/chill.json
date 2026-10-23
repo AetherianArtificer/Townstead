@@ -1,0 +1,44 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.frostkeeper.chill"
+  },
+  "icon": "minecraft:snow_block",
+  "description": {
+    "translate": "skill.townstead.climatologist.frostkeeper.chill.description"
+  },
+  "cost": 1,
+  "requires": [
+    "powder_walker"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:front",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:environment",
+          "exposure": "snow"
+        },
+        {
+          "type": "pheno:block",
+          "y": -1,
+          "block_condition": {
+            "type": "in_tag",
+            "tag": "minecraft:snow"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:front",
+      "amount": 3
+    }
+  }
+}

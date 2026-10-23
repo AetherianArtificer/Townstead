@@ -1,0 +1,17 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:bow",
+    "minecraft:crossbow",
+    "minecraft:arrow",
+    "minecraft:spectral_arrow",
+    {"id": "#c:tools/bow", "required": false},
+    {"id": "#c:tools/bows", "required": false},
+    {"id": "#c:tools/crossbow", "required": false},
+    {"id": "#c:tools/crossbows", "required": false},
+    {"id": "#c:arrows", "required": false},
+    {"id": "#forge:tools/bows", "required": false},
+    {"id": "#forge:tools/crossbows", "required": false},
+    {"id": "#forge:arrows", "required": false}
+  ]
+}

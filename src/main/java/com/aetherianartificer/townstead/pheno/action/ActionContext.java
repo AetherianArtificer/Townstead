@@ -15,6 +15,9 @@ public final class ActionContext {
     private final LivingEntity entity;
     private final LivingEntity other;
     private final LivingEntity origin;
+    private final @Nullable com.aetherianartificer.townstead.pheno.reservation.ReservationScope reservations;
+    private final @Nullable net.minecraft.core.BlockPos focusBlock;
+    private final net.minecraft.world.item.ItemStack item;
     private boolean successful = true;
 
     public ActionContext(LivingEntity entity) {
@@ -26,9 +29,19 @@ public final class ActionContext {
     }
 
     public ActionContext(LivingEntity entity, @Nullable LivingEntity other, LivingEntity origin) {
+        this(entity, other, origin, null, null, net.minecraft.world.item.ItemStack.EMPTY);
+    }
+
+    private ActionContext(LivingEntity entity, @Nullable LivingEntity other, LivingEntity origin,
+                          @Nullable com.aetherianartificer.townstead.pheno.reservation.ReservationScope reservations,
+                          @Nullable net.minecraft.core.BlockPos focusBlock,
+                          net.minecraft.world.item.ItemStack item) {
         this.entity = entity;
         this.other = other;
         this.origin = origin;
+        this.reservations = reservations;
+        this.focusBlock = focusBlock;
+        this.item = item == null ? net.minecraft.world.item.ItemStack.EMPTY : item;
     }
 
     public LivingEntity entity() {
@@ -48,6 +61,44 @@ public final class ActionContext {
 
     public Level level() {
         return entity.level();
+    }
+
+    public @Nullable com.aetherianartificer.townstead.pheno.reservation.ReservationScope reservations() {
+        return reservations;
+    }
+
+    /**
+     * The block an event happened at (the worked block for {@code when_work}), or {@code null}.
+     * Block actions and selectors anchor here instead of at the entity when it is set.
+     */
+    public @Nullable net.minecraft.core.BlockPos focusBlock() {
+        return focusBlock;
+    }
+
+    public ActionContext withFocusBlock(@Nullable net.minecraft.core.BlockPos pos) {
+        return new ActionContext(entity, other, origin, reservations, pos, item);
+    }
+
+    /** Preserves execution-owned state while an {@code on} selector changes the focus. */
+    public ActionContext retarget(LivingEntity target, @Nullable LivingEntity counterpart) {
+        return new ActionContext(target, counterpart, origin, reservations, focusBlock, item);
+    }
+
+    public ActionContext withReservations(
+            com.aetherianartificer.townstead.pheno.reservation.ReservationScope scope) {
+        return new ActionContext(entity, other, origin, scope, focusBlock, item);
+    }
+
+    /**
+     * The item an event is about, such as a gift being handed over, or empty. It is the live
+     * stack, so an action that takes the item (a delivery) changes what its holder has.
+     */
+    public net.minecraft.world.item.ItemStack item() {
+        return item;
+    }
+
+    public ActionContext withItem(net.minecraft.world.item.ItemStack stack) {
+        return new ActionContext(entity, other, origin, reservations, focusBlock, stack);
     }
 
     /** Mark this action chain as unsuccessful (for example, no safe teleport destination). */

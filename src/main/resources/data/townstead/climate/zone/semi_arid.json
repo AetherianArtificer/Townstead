@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:climate_zone/v1",
+  "season_kind": "wet_dry",
+  "seasonal_swing_c": 5.0,
+  "peak_lag": 0.083,
+  "diurnal_range_c": 11.0,
+  "humidity": 0.3,
+  "mean_offset_c": 0.0,
+  "wet_dry": {
+    "dry_offset_c": 3.0,
+    "wet_offset_c": -1.0
+  }
+}

@@ -1,9 +1,1 @@
-{
-  "replace": false,
-  "values": [
-    {
-      "id": "farmersdelight:cutting_board",
-      "required": false
-    }
-  ]
-}
+{ "replace": false, "values": ["#townstead:kitchen/preparation"] }

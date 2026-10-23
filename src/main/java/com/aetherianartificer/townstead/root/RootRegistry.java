@@ -67,18 +67,18 @@ public final class RootRegistry {
     }
 
     /**
-     * The ancestry-fraction vector a founder of this origin is seeded with. Heritage tracks ancestry,
-     * not lineage, so a pure Moon Elf seeds {@code {elf:1}} while its "Moon Elf" name comes from the
-     * selected root/lineage.
+     * The heritage a founder of this origin is seeded with: its ancestry at 1, and its lineage at 1
+     * when the root selects one. A pure Moon Elf seeds {@code {elf:1}} by ancestry and
+     * {@code {moon_elf:1}} by lineage, so its descendants' lineage mix can be named by a heritage
+     * profile (Moon Elf × Sun Elf) even though they stay wholly Elf.
      */
     public static Heritage seedHeritage(@Nullable ResourceLocation id) {
         Root origin = resolveOrDefault(id);
         if (origin == null) return Heritage.EMPTY;
-        if (origin.ancestry() != null) return Heritage.pure(origin.ancestry());
-        if (origin.lineage() != null) {
-            Lineage lineage = LineageRegistry.byId(origin.lineage());
-            if (lineage != null && lineage.ancestry() != null) return Heritage.pure(lineage.ancestry());
-        }
+        Lineage lineage = origin.lineage() != null ? LineageRegistry.byId(origin.lineage()) : null;
+        ResourceLocation lineageId = lineage != null ? origin.lineage() : null;
+        if (origin.ancestry() != null) return Heritage.pure(origin.ancestry(), lineageId);
+        if (lineage != null && lineage.ancestry() != null) return Heritage.pure(lineage.ancestry(), lineageId);
         return Heritage.EMPTY;
     }
 
@@ -103,6 +103,30 @@ public final class RootRegistry {
             if (ancestry != null) bias = bias.mergedWith(ancestry.spawnBias());
         }
         return bias.mergedWith(origin.spawnBias());
+    }
+
+    /**
+     * The cultures a root's founders lean toward, composed most-general first: ancestry, then
+     * lineage, then the root itself, so a lineage may lean differently from its ancestry and a root
+     * may override both. Empty when nothing declares a lean, which leaves a founder open to any
+     * culture at all.
+     */
+    public static com.aetherianartificer.townstead.culture.CulturalSpawnBias effectiveCulturalSpawnBias(
+            @Nullable ResourceLocation id) {
+        Root origin = resolveOrDefault(id);
+        if (origin == null) return com.aetherianartificer.townstead.culture.CulturalSpawnBias.EMPTY;
+        com.aetherianartificer.townstead.culture.CulturalSpawnBias bias =
+                com.aetherianartificer.townstead.culture.CulturalSpawnBias.EMPTY;
+        Lineage lineage = origin.lineage() != null ? LineageRegistry.byId(origin.lineage()) : null;
+        if (lineage != null) {
+            Ancestry ancestry = AncestryRegistry.byId(lineage.ancestry());
+            if (ancestry != null) bias = bias.mergedWith(ancestry.culturalSpawnBias());
+            bias = bias.mergedWith(lineage.culturalSpawnBias());
+        } else if (origin.ancestry() != null) {
+            Ancestry ancestry = AncestryRegistry.byId(origin.ancestry());
+            if (ancestry != null) bias = bias.mergedWith(ancestry.culturalSpawnBias());
+        }
+        return bias.mergedWith(origin.culturalSpawnBias());
     }
 
     /**
@@ -157,7 +181,8 @@ public final class RootRegistry {
         Lineage lineage = origin.lineage() != null ? LineageRegistry.byId(origin.lineage()) : null;
         if (lineage != null) {
             Ancestry ancestry = AncestryRegistry.byId(lineage.ancestry());
-            if (ancestry != null) base = base.mergedWith(ancestry.genome());
+            // A lineage filed under another pack's ancestry by name only keeps its own genes.
+            if (ancestry != null && lineage.ancestryGenes()) base = base.mergedWith(ancestry.genome());
             base = base.mergedWith(lineage.genome());
         } else if (origin.ancestry() != null) {
             // Either an ancestry-based assignment profile, or a lineage-based one whose lineage

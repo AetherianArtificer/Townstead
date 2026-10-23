@@ -1,0 +1,11 @@
+{
+  "schema": "pheno:entity_state/v1",
+  "mods": "vampirism",
+  "id": "townstead_state:vampire_blood",
+  "min": 0,
+  "max": 100,
+  "initial": 0,
+  "merge": "max",
+  "persistence": "persistent",
+  "death": "keep"
+}

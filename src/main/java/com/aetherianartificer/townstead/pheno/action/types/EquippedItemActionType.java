@@ -38,7 +38,7 @@ public final class EquippedItemActionType implements ActionType {
         return ctx -> {
             ItemStack stack = ctx.entity().getItemBySlot(slot);
             if (stack.isEmpty()) return;
-            itemAction.run(new ItemActionContext(stack, ctx.entity()));
+            itemAction.run(new ItemActionContext(stack, ctx.entity(), ctx));
             ctx.entity().setItemSlot(slot, stack);
         };
     }

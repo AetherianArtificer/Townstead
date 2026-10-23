@@ -74,6 +74,23 @@ public final class RootGenes {
         return ORDERED.length;
     }
 
+    /** Read one MCA gene from a fixed-order editor snapshot; returns 0.5 for an invalid snapshot/type. */
+    public static float readSnapshot(float[] snapshot, Genetics.GeneType type) {
+        int index = indexOf(type);
+        return snapshot != null && index >= 0 && index < snapshot.length ? snapshot[index] : 0.5f;
+    }
+
+    /** Write one MCA gene in a fixed-order editor snapshot; no-op for an invalid snapshot/type. */
+    public static void writeSnapshot(float[] snapshot, Genetics.GeneType type, float value) {
+        int index = indexOf(type);
+        if (snapshot != null && index >= 0 && index < snapshot.length) snapshot[index] = value;
+    }
+
+    private static int indexOf(Genetics.GeneType type) {
+        for (int i = 0; i < ORDERED.length; i++) if (ORDERED[i] == type) return i;
+        return -1;
+    }
+
     /**
      * Write a {@link #snapshot}'s floats into a player's stored MCA data under MCA's own gene
      * keys (the keys the dummy's save would use), leaving every other key untouched; no-op on
@@ -82,7 +99,90 @@ public final class RootGenes {
     public static void writeToPlayerData(net.minecraft.nbt.CompoundTag entityData, float[] snapshot) {
         if (entityData == null || snapshot == null || snapshot.length != ORDERED.length) return;
         for (int i = 0; i < ORDERED.length; i++) {
-            entityData.putFloat(ORDERED[i].key(), snapshot[i]);
+            entityData.putFloat(playerDataKey(ORDERED[i]), snapshot[i]);
+            entityData.remove(ORDERED[i].key());     // the bare key an older build wrote, which MCA never read
+        }
+    }
+
+    /** Read a player's stored MCA floats into a {@link #snapshot}-ordered array; a missing key reads as 0.5. */
+    public static float[] readFromPlayerData(net.minecraft.nbt.CompoundTag entityData) {
+        float[] out = new float[ORDERED.length];
+        for (int i = 0; i < ORDERED.length; i++) {
+            String key = playerDataKey(ORDERED[i]);
+            if (entityData != null && !entityData.contains(key)) key = ORDERED[i].key();
+            out[i] = entityData != null && entityData.contains(key) ? entityData.getFloat(key) : 0.5f;
+        }
+        return out;
+    }
+
+    /**
+     * The key MCA saves a float gene under in a villager or player's data: its data parameter's
+     * name, {@code "Gene" + key()} on every supported MCA ({@code GeneSize}, {@code GeneWidth}...).
+     * Writing the bare {@code key()} left a player's model scaled by the old values.
+     */
+    private static String playerDataKey(Genetics.GeneType type) {
+        return "Gene" + type.key();
+    }
+
+    /**
+     * A fresh {@link #snapshot}-ordered roll, as MCA's {@code Genetics.randomize} rolls a new villager
+     * standing at {@code pos}: size and width centred, skin pigments from the biome's warmth and the
+     * height above sea level (or, for an immigrant, from anywhere), everything else uniform.
+     */
+    public static float[] rollFresh(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos,
+                                    RandomSource random) {
+        float[] out = new float[ORDERED.length];
+        for (int i = 0; i < ORDERED.length; i++) out[i] = random.nextFloat();
+        writeSnapshot(out, Genetics.SIZE, centered(random));
+        writeSnapshot(out, Genetics.WIDTH, centered(random));
+        float temp = level.getBiome(pos).value().getBaseTemperature();
+        if (random.nextFloat() < net.conczin.mca.Config.getInstance().geneticImmigrantChance) {
+            temp = random.nextFloat() * 2 - 0.5F;
+        }
+        int seaLevel = level instanceof net.minecraft.server.level.ServerLevel server
+                ? server.getChunkSource().getGenerator().getSeaLevel() : level.getSeaLevel();
+        float height = (pos.getY() - seaLevel) / 128f;
+        writeSnapshot(out, Genetics.MELANIN, net.minecraft.util.Mth.clamp(warmth(random, temp) - height * 0.2f, 0, 1));
+        writeSnapshot(out, Genetics.HEMOGLOBIN, net.minecraft.util.Mth.clamp(warmth(random, temp) * 0.5f + height * 0.5f, 0, 1));
+        return out;
+    }
+
+    private static float centered(RandomSource random) {
+        return Math.min(1, Math.max(0, (random.nextFloat() - 0.5F) * (random.nextFloat() - 0.5F) + 0.5F));
+    }
+
+    private static float warmth(RandomSource random, float temp) {
+        return (random.nextFloat() - 0.5F) * 0.35F + temp * 0.4F + 0.1F;
+    }
+
+    /**
+     * The body ranges of a mix: each float's band blended across its roots by share, a root that
+     * leaves a float free counting as the whole range, so partial ancestry widens the band.
+     */
+    public static Map<String, GeneRange> blendRanges(List<Map<String, GeneRange>> perRoot, List<Float> shares) {
+        Map<String, float[]> bands = new LinkedHashMap<>();
+        for (Map<String, GeneRange> ranges : perRoot) {
+            for (String key : ranges.keySet()) bands.putIfAbsent(key, new float[2]);
+        }
+        for (int i = 0; i < perRoot.size(); i++) {
+            float share = shares.get(i);
+            for (Map.Entry<String, float[]> band : bands.entrySet()) {
+                GeneRange r = perRoot.get(i).get(band.getKey());
+                band.getValue()[0] += share * (r != null ? r.min() : 0f);
+                band.getValue()[1] += share * (r != null ? r.max() : 1f);
+            }
+        }
+        Map<String, GeneRange> out = new LinkedHashMap<>();
+        bands.forEach((key, band) -> out.put(key, new GeneRange(band[0], band[1])));
+        return out;
+    }
+
+    /** {@link #apply} onto a {@link #snapshot}-ordered array instead of a live villager. */
+    public static void apply(float[] snapshot, Map<String, GeneRange> targetRanges, RandomSource random) {
+        if (snapshot == null || targetRanges == null) return;
+        for (Map.Entry<String, GeneRange> entry : targetRanges.entrySet()) {
+            Genetics.GeneType type = BY_KEY.get(entry.getKey());
+            if (type != null) writeSnapshot(snapshot, type, entry.getValue().sample(random));
         }
     }
 

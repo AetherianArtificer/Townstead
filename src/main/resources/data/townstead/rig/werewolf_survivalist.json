@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:rig/v1",
+  "mods": "werewolves",
+  "model": {
+    "type": "entity_layer",
+    "layer": "werewolves:werewolf_survivalist#main",
+    "class": "de.teamlapen.werewolves.client.model.WerewolfSurvivalistModel"
+  },
+  "texture": "werewolves:textures/entity/werewolf/survivalist/survivalist_{coat:11}.png",
+  "bones": {
+    "head": "head",
+    "body": "body",
+    "right_arm": "armRight",
+    "left_arm": "armLeft",
+    "right_leg": "legRight",
+    "left_leg": "legLeft"
+  },
+  "hitbox": {
+    "width": 0.8,
+    "height": 1.0
+  },
+  "hair": false,
+  "overlays": [
+    {
+      "texture": "werewolves:textures/entity/werewolf/eye/eye_{eyes:9}.png",
+      "glow": "glow"
+    }
+  ]
+}

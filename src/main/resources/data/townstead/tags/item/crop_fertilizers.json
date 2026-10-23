@@ -1,0 +1,7 @@
+{
+  "values": [
+    "minecraft:bone_meal",
+    { "id": "farm_and_charm:fertilizer", "required": false },
+    { "id": "farm_and_charm:compost", "required": false }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:conversation/v1",
+  "subjects": [
+    "townstead:ruler"
+  ],
+  "register": "intrigue",
+  "start": "t0_share_account",
+  "turns": {
+    "t0_share_account": {
+      "speaker": "initiator",
+      "move": "townstead:share_account",
+      "replies": [
+        "t1_caution"
+      ]
+    },
+    "t1_caution": {
+      "speaker": "responder",
+      "move": "townstead:caution"
+    }
+  },
+  "requires": [
+    "realm.member"
+  ]
+}

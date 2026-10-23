@@ -36,7 +36,9 @@ public record TownsteadEditorCommitPayload(
         int bioAgeDays,
         boolean hasBirthday,
         int birthMonth,
-        int birthDay
+        int birthDay,
+        boolean hasFamilyName,
+        String familyName
 //? if neoforge {
 ) implements CustomPacketPayload {
 //?} else {
@@ -60,8 +62,11 @@ public record TownsteadEditorCommitPayload(
     /*public static final ResourceLocation ID = new ResourceLocation(Townstead.MOD_ID, "editor_commit");
     *///?}
 
+    /** Bounded so a name typed into the editor can never bloat the packet. */
+    public static final int MAX_NAME_LENGTH = 128;
+
     public boolean isEmpty() {
-        return !hasHunger && !hasThirst && !hasFatigue && !hasBioAge && !hasBirthday;
+        return !hasHunger && !hasThirst && !hasFatigue && !hasBioAge && !hasBirthday && !hasFamilyName;
     }
 
     public void write(FriendlyByteBuf buf) {
@@ -90,6 +95,10 @@ public record TownsteadEditorCommitPayload(
         if (hasBirthday) {
             buf.writeVarInt(birthMonth);
             buf.writeVarInt(birthDay);
+        }
+        buf.writeBoolean(hasFamilyName);
+        if (hasFamilyName) {
+            buf.writeUtf(familyName == null ? "" : familyName, MAX_NAME_LENGTH);
         }
     }
 
@@ -130,8 +139,13 @@ public record TownsteadEditorCommitPayload(
             birthMonth = buf.readVarInt();
             birthDay = buf.readVarInt();
         }
+        boolean hasFamilyName = buf.readBoolean();
+        String familyName = "";
+        if (hasFamilyName) {
+            familyName = buf.readUtf(MAX_NAME_LENGTH);
+        }
         return new TownsteadEditorCommitPayload(villagerUuid, hasHunger, hunger, saturation, hungerExhaustion,
                 hasThirst, thirst, quenched, thirstExhaustion, hasFatigue, fatigue, hasBioAge, bioAgeDays,
-                hasBirthday, birthMonth, birthDay);
+                hasBirthday, birthMonth, birthDay, hasFamilyName, familyName);
     }
 }

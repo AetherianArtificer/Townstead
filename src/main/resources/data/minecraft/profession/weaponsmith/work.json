@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "poi": [
+    { "type": "townstead:job_block", "block": "minecraft:grindstone" },
+    { "type": "townstead:building", "type_prefix": "weaponsmith" },
+    { "type": "townstead:building", "type_prefix": "blacksmith" }
+  ],
+  "storage": { "preferred_roles": ["townstead:equipment"] },
+  "tasks": [
+    {
+      "type": "townstead_work:smelt",
+      "workstations": ["#townstead:blast_furnace_stations", "#townstead:furnace_stations"],
+      "recipes": ["#townstead:smelts/metals"],
+      "weight": 8
+    },
+    {
+      "type": "townstead_work:craft",
+      "workstations": ["minecraft:crafting_table", "minecraft:smithing_table"],
+      "recipes": ["weapon", "#townstead:crafts/weapons"],
+      "weight": 10
+    }
+  ]
+}

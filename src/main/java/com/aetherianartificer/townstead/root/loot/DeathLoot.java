@@ -1,14 +1,10 @@
 package com.aetherianartificer.townstead.root.loot;
 
-import com.aetherianartificer.townstead.root.CanonicalStage;
-import com.aetherianartificer.townstead.root.LifeCycle;
 import com.aetherianartificer.townstead.root.LifeStage;
 import com.aetherianartificer.townstead.root.LifeStageProgression;
-import com.aetherianartificer.townstead.root.RootRegistry;
 import com.aetherianartificer.townstead.root.PlayerRoot;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -54,20 +50,9 @@ public final class DeathLoot {
             return stage != null ? stage.deathLoot() : List.of();
         }
         if (entity instanceof Player player) {
-            LifeStage stage = adultStageFor(PlayerRoot.getRootId(player));
+            LifeStage stage = com.aetherianartificer.townstead.root.LifeStageProgression.playerStage(PlayerRoot.getRootId(player));
             return stage != null ? stage.deathLoot() : List.of();
         }
         return List.of();
-    }
-
-    /** A player's loot comes from its origin's adult-presenting stage (else the last stage), or null. */
-    private static LifeStage adultStageFor(String originStr) {
-        if (originStr == null || originStr.isEmpty()) return null;
-        LifeCycle cycle = RootRegistry.effectiveLifeCycle(ResourceLocation.tryParse(originStr));
-        if (cycle == null || cycle.isEmpty()) return null;
-        for (LifeStage stage : cycle.stages()) {
-            if (stage.presentsAs() == CanonicalStage.ADULT) return stage;
-        }
-        return cycle.stageAt(cycle.size() - 1);
     }
 }

@@ -1,0 +1,31 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:bell",
+    { "id": "bellsbellsbells:oak_bell", "required": false },
+    { "id": "bellsbellsbells:spruce_bell", "required": false },
+    { "id": "bellsbellsbells:birch_bell", "required": false },
+    { "id": "bellsbellsbells:jungle_bell", "required": false },
+    { "id": "bellsbellsbells:acacia_bell", "required": false },
+    { "id": "bellsbellsbells:dark_oak_bell", "required": false },
+    { "id": "bellsbellsbells:mangrove_bell", "required": false },
+    { "id": "bellsbellsbells:cherry_bell", "required": false },
+    { "id": "bellsbellsbells:bamboo_bell", "required": false },
+    { "id": "bellsbellsbells:crimson_bell", "required": false },
+    { "id": "bellsbellsbells:warped_bell", "required": false },
+    { "id": "bellsbellsbells:stone_bell", "required": false },
+    { "id": "bellsbellsbells:deepslate_bell", "required": false },
+    { "id": "bellsbellsbells:granite_bell", "required": false },
+    { "id": "bellsbellsbells:diorite_bell", "required": false },
+    { "id": "bellsbellsbells:andesite_bell", "required": false },
+    { "id": "bellsbellsbells:sandstone_bell", "required": false },
+    { "id": "bellsbellsbells:red_sandstone_bell", "required": false },
+    { "id": "bellsbellsbells:blackstone_bell", "required": false },
+    { "id": "bellsbellsbells:end_stone_bell", "required": false },
+    { "id": "bellsbellsbells:prismarine_bell", "required": false },
+    { "id": "bellsbellsbells:copper_bell", "required": false },
+    { "id": "bellsbellsbells:iron_bell", "required": false },
+    { "id": "bellsbellsbells:diamond_bell", "required": false },
+    { "id": "bellsbellsbells:netherite_bell", "required": false }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "farewell",
+  "voice": "townstead:persona/village_builder",
+  "lines": {
+    "back_to_it": "Right. Back to it.",
+    "something_needs_fixing": "Something somewhere needs fixing. I can feel it.",
+    "dont_let_me_keep_you": "Don't let me keep you. I'd keep you all day."
+  }
+}

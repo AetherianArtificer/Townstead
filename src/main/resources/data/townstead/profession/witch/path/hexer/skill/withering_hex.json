@@ -1,0 +1,44 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.hexer.withering_hex"
+  },
+  "icon": "minecraft:wither_rose",
+  "description": {
+    "translate": "skill.townstead.witch.hexer.withering_hex.description"
+  },
+  "cost": 1,
+  "requires": [
+    "malice"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 60,
+    "resource_cost": {
+      "resource": "townstead:hex",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:hex",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:for_each",
+      "in": "townstead:hexed",
+      "where": {
+        "type": "pheno:distance",
+        "max": 16
+      },
+      "do": {
+        "type": "pheno:target_action",
+        "action": {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:wither",
+          "duration": 40,
+          "amplifier": 0
+        }
+      }
+    }
+  }
+}

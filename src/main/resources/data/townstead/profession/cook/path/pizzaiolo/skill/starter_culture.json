@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.pizzaiolo.starter_culture"
+  },
+  "icon": "minecraft:campfire",
+  "description": {
+    "translate": "skill.townstead.cook.pizzaiolo.starter_culture.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:damage_modifier",
+    "damage_tag": "minecraft:is_fire",
+    "modifier": 0.5,
+    "condition": {
+      "type": "pheno:block_in_radius",
+      "radius": 4,
+      "block_condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:in_tag",
+            "tag": "townstead:kitchen/heat_sources"
+          },
+          {
+            "type": "pheno:block_state",
+            "property": "lit",
+            "value": "true",
+            "if_missing": "pass"
+          }
+        ]
+      }
+    }
+  }
+}

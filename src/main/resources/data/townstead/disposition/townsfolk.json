@@ -6,6 +6,11 @@
     "minecraft:villager",
     "minecraft:player"
   ],
-  "friendly": ["dark_elf"],
-  "hostile": ["undead"]
+  "friendly": [
+    "dark_elf"
+  ],
+  "hostile": [
+    "undead",
+    "wild_vampire"
+  ]
 }

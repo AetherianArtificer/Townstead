@@ -23,6 +23,10 @@ public final class PlayerRoot {
     private static final String LEGACY_ROOT_KEY = "originId";
     private static final String GENOTYPE_KEY = "genotype";
     private static final String GRANTED_KEY = "grantedStarting";
+    /** A player's carried heritage, when it isn't simply their root's (one who took over a descendant). */
+    private static final String HERITAGE_KEY = "heritage";
+    /** The browser mix the player was founded from; any new root or heritage drops it. */
+    private static final String MIX_KEY = "rootMix";
 
     private PlayerRoot() {}
 
@@ -59,9 +63,11 @@ public final class PlayerRoot {
     public static void setRootId(Player player, String id) {
         String value = id == null ? "" : id;
         CompoundTag tag = data(player);
-        boolean changed = !value.equals(tag.getString(ROOT_KEY));
+        boolean changed = !value.equals(tag.getString(ROOT_KEY)) || tag.contains(MIX_KEY);
         tag.putString(ROOT_KEY, value);
         if (changed) {
+            tag.remove(HERITAGE_KEY);          // a fresh founder of the new root: its own pure heritage
+            tag.remove(MIX_KEY);
             ResourceLocation rootId = ResourceLocation.tryParse(value);
             if (rootId != null) {
                 tag.put(GENOTYPE_KEY, Heredity.seedGenotype(rootId, player.getRandom()).toTag());
@@ -70,6 +76,47 @@ public final class PlayerRoot {
             }
         }
         store(player, tag);
+        // Root selection changes physical dimensions on the authoritative server too.
+        if (changed && player.getAttributes() != null) player.refreshDimensions();
+    }
+
+    /**
+     * Become {@code rootId} carrying a given genotype and heritage instead of a fresh roll: a player
+     * taking over a descendant keeps that descendant's genes and blood (a half-elf stays half-elf).
+     */
+    public static void adopt(Player player, String rootId, Genotype genotype,
+                             @org.jetbrains.annotations.Nullable Heritage heritage) {
+        CompoundTag tag = data(player);
+        tag.putString(ROOT_KEY, rootId == null ? "" : rootId);
+        tag.put(GENOTYPE_KEY, genotype.toTag());
+        if (heritage != null && !heritage.isEmpty()) tag.put(HERITAGE_KEY, heritage.toTag());
+        else tag.remove(HERITAGE_KEY);
+        tag.remove(MIX_KEY);
+        store(player, tag);
+        if (player.getAttributes() != null) player.refreshDimensions();
+    }
+
+    /** The mix the player was founded from in the root browser, or null. */
+    @org.jetbrains.annotations.Nullable
+    public static RootMix getMix(Player player) {
+        return RootMix.fromTag(data(player).getList(MIX_KEY, net.minecraft.nbt.Tag.TAG_COMPOUND));
+    }
+
+    public static void setMix(Player player, RootMix mix) {
+        CompoundTag tag = data(player);
+        tag.put(MIX_KEY, mix.toTag());
+        store(player, tag);
+    }
+
+    /** The heritage the player carries: an adopted one, else their root's own. */
+    public static Heritage getHeritage(Player player) {
+        CompoundTag tag = data(player);
+        if (tag.contains(HERITAGE_KEY)) {
+            Heritage stored = Heritage.fromTag(tag.getCompound(HERITAGE_KEY));
+            if (stored != null && !stored.isEmpty()) return stored;
+        }
+        ResourceLocation rootId = ResourceLocation.tryParse(getRootId(player));
+        return RootRegistry.seedHeritage(rootId == null ? RootRegistry.DEFAULT_ID : rootId);
     }
 
     /** The player's stored genotype (empty if none rolled yet). */
@@ -89,6 +136,22 @@ public final class PlayerRoot {
         else tag.put(GENOTYPE_KEY, genotype.toTag());
         com.aetherianartificer.townstead.pheno.power.Powers.invalidate(player);
         store(player, tag);
+    }
+
+    /**
+     * Top up the player's genotype with genes their root has gained since it was rolled (a pack
+     * update adding horns, say). Villagers get the same on load; players have no load pass, so
+     * this runs whenever their root data is sent: login and every data-pack reload. Server-side.
+     * Returns whether anything was added.
+     */
+    public static boolean fillMissingGenes(Player player) {
+        ResourceLocation rootId = ResourceLocation.tryParse(getRootId(player));
+        if (rootId == null) return false;
+        Genotype genotype = getGenotype(player);
+        if (genotype.isEmpty()) return false;
+        if (!Heredity.fillMissing(genotype, rootId, player.getRandom(), null)) return false;
+        setGenotype(player, genotype);
+        return true;
     }
 
     /**

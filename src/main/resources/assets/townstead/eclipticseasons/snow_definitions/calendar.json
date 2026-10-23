@@ -1,0 +1,8 @@
+{
+  "blocks": [
+    "townstead:calendar"
+  ],
+  "flag": 1000,
+  "mid": "townstead:snow/calendar",
+  "snow_passable": true
+}

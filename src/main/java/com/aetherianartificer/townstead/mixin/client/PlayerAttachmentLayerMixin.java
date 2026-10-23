@@ -72,6 +72,14 @@ public abstract class PlayerAttachmentLayerMixin
                                 64, 64).bakeRoot());
                 RenderLayer layer = new com.aetherianartificer.townstead.client.species.SkinOverlayLayer(
                         this, overlayModel);
+                var overFaceModel = new net.conczin.mca.client.model.PlayerEntityExtendedModel<AbstractClientPlayer>(
+                        net.minecraft.client.model.geom.builders.LayerDefinition.create(
+                                net.conczin.mca.client.model.VillagerEntityModelMCA.bodyData(
+                                        new net.minecraft.client.model.geom.builders.CubeDeformation(0.015f)),
+                                64, 64).bakeRoot());
+                RenderLayer overFace = new com.aetherianartificer.townstead.client.species.SkinOverlayLayer(
+                        this, overFaceModel, true);
+                this.layers.add(i + 1, overFace);
                 this.layers.add(i, layer);
                 com.aetherianartificer.townstead.Townstead.LOGGER.info(
                         "Skin overlay layer inserted at {} (before FaceLayer) of {} on the player renderer",

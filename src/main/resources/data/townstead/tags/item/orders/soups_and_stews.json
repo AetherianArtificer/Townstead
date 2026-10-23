@@ -1,0 +1,25 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:mushroom_stew",
+    "minecraft:beetroot_soup",
+    "minecraft:rabbit_stew",
+    { "id": "#forge:soups", "required": false },
+    { "id": "#c:soups", "required": false },
+    { "id": "#c:foods/soup", "required": false },
+    { "id": "farmersdelight:vegetable_soup", "required": false },
+    { "id": "farmersdelight:chicken_soup", "required": false },
+    { "id": "farmersdelight:pumpkin_soup", "required": false },
+    { "id": "farmersdelight:beef_stew", "required": false },
+    { "id": "farmersdelight:fish_stew", "required": false },
+    { "id": "farmersdelight:noodle_soup", "required": false },
+    { "id": "farmersdelight:bone_broth", "required": false },
+    { "id": "farm_and_charm:barley_soup", "required": false },
+    { "id": "farm_and_charm:onion_soup", "required": false },
+    { "id": "farm_and_charm:potato_soup", "required": false },
+    { "id": "farm_and_charm:simple_tomato_soup", "required": false },
+    { "id": "farm_and_charm:goulash", "required": false },
+    { "id": "farm_and_charm:corn_grits", "required": false },
+    { "id": "#c:tomato_soups", "required": false }
+  ]
+}

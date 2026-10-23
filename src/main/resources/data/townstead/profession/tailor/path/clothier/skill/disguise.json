@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.clothier.disguise"
+  },
+  "icon": "minecraft:carved_pumpkin",
+  "description": {
+    "translate": "skill.townstead.tailor.clothier.disguise.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:clothier_costume",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:wear_cosmetic",
+          "slot": "head",
+          "item": [
+            "minecraft:zombie_head",
+            "minecraft:creeper_head",
+            "minecraft:skeleton_skull",
+            "minecraft:piglin_head",
+            "minecraft:wither_skeleton_skull"
+          ],
+          "duration": 200
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.armor.equip_leather",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

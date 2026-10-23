@@ -1,0 +1,51 @@
+{
+  "schema": "townstead:hangout_activity/v2",
+  "mods": "kaleidoscope_tavern",
+  "kind": "drink",
+  "minimum_participants": 2,
+  "maximum_participants": 5,
+  "duration_ticks": 480,
+  "roles": {
+    "proposer": 1,
+    "guest": 4
+  },
+  "postures": [
+    "townstead:sit"
+  ],
+  "participant_when": {
+    "type": "pheno:life_stage",
+    "tag": "townstead_lifecycle:can_consume_alcohol"
+  },
+  "service_when": {
+    "type": "pheno:state",
+    "state": "townstead_state:drunk",
+    "min_tier": "wasted",
+    "inverted": true
+  },
+  "service": {
+    "courses": [
+      {
+        "id": "tasting_pour",
+        "kind": "drink",
+        "role": "bartender",
+        "at_ticks": 160,
+        "lease_ticks": 100,
+        "eligible_when": {
+          "type": "pheno:life_stage",
+          "tag": "townstead_lifecycle:can_consume_alcohol"
+        }
+      }
+    ]
+  },
+  "performance": {
+    "id": "townstead:tasting_notes",
+    "channel": "hospitality",
+    "duration_ticks": 480,
+    "priority": 25,
+    "fallback": "vanilla_gesture"
+  },
+  "social_cues": {
+    "conversations": true,
+    "dialogue_interval_ticks": 240
+  }
+}

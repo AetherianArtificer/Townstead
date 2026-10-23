@@ -1,0 +1,89 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.librarian.path.lorekeeper"
+  },
+  "title": {
+    "translate": "career.townstead.librarian.title.lorekeeper"
+  },
+  "color": "#8A6AA8",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:insight",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:librarian/lorekeeper/study"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:librarian/lorekeeper/exploit"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:librarian/lorekeeper/research"
+              }
+            ]
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:movement",
+                  "movement": "moving"
+                }
+              },
+              {
+                "type": "pheno:building"
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:insight",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "bestiary_undead",
+      "know_thy_enemy",
+      "study_group"
+    ],
+    [
+      "bestiary_arthropods",
+      "weak_point",
+      "recite"
+    ],
+    [
+      "study",
+      "exploit",
+      "research"
+    ],
+    [
+      "bestiary_illagers",
+      "lecture",
+      "enlighten"
+    ],
+    [
+      "compendium",
+      "final_exam",
+      "great_library"
+    ]
+  ]
+}

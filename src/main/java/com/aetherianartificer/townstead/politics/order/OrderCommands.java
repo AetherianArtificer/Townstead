@@ -1,0 +1,122 @@
+package com.aetherianartificer.townstead.politics.order;
+
+import com.aetherianartificer.townstead.commands.CommandTargets;
+import com.aetherianartificer.townstead.politics.definition.FactionKind;
+import com.aetherianartificer.townstead.politics.definition.PoliticalDefinitions;
+import com.aetherianartificer.townstead.politics.state.Faction;
+import com.aetherianartificer.townstead.politics.state.PoliticalSavedData;
+import com.aetherianartificer.townstead.politics.state.SettlementRef;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
+import net.conczin.mca.entity.VillagerEntityMCA;
+import net.conczin.mca.server.world.data.Village;
+import net.conczin.mca.server.world.data.VillageManager;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+
+/**
+ * Test commands for orders (any landless faction kind based at a town) until they arise in play:
+ * {@code /townstead order found <kind>} makes the villager you look at the head of a new order at
+ * this village and hands you what its founding gives; {@code /townstead order swear <kind>} swears
+ * the villager you look at into the order of that kind based here; {@code enlist <kind>} puts them
+ * forward to train for it; {@code ready} counts the recruit you look at as fully trained.
+ */
+public final class OrderCommands {
+    private static final SuggestionProvider<CommandSourceStack> KINDS = (context, builder) ->
+            SharedSuggestionProvider.suggest(PoliticalDefinitions.snapshot().kinds().stream()
+                    .filter(kind -> !kind.holdsLand()).map(kind -> kind.id().toString()), builder);
+
+    private OrderCommands() {}
+
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        dispatcher.register(Commands.literal("townstead").then(Commands.literal("order")
+                .requires(source -> source.hasPermission(2))
+                .then(Commands.literal("found").then(Commands.argument("kind", StringArgumentType.greedyString())
+                        .suggests(KINDS).executes(context -> found(context.getSource(), StringArgumentType.getString(context, "kind")))))
+                .then(Commands.literal("swear").then(Commands.argument("kind", StringArgumentType.greedyString())
+                        .suggests(KINDS).executes(context -> swear(context.getSource(), StringArgumentType.getString(context, "kind")))))
+                .then(Commands.literal("enlist").then(Commands.argument("kind", StringArgumentType.greedyString())
+                        .suggests(KINDS).executes(context -> enlist(context.getSource(), StringArgumentType.getString(context, "kind")))))
+                .then(Commands.literal("ready").executes(context -> ready(context.getSource())))));
+    }
+
+    private static int found(CommandSourceStack source, String rawKind) {
+        ServerPlayer player = source.getPlayer();
+        Village town = town(source);
+        if (player == null || town == null) return fail(source, "command.townstead.order.no_village");
+        FactionKind kind = kind(rawKind);
+        if (kind == null || kind.holdsLand()) return fail(source, "command.townstead.order.unknown_kind");
+        VillagerEntityMCA leader = CommandTargets.lookedAtOrNearest(player, null);
+        Faction order = Orders.found(source.getLevel(), town, kind.id(), leader == null ? null : leader.getUUID());
+        if (order == null) return fail(source, "command.townstead.order.failed");
+        Orders.giveFounding(player, kind);
+        source.sendSuccess(() -> Component.translatable("command.townstead.order.founded", order.name(), town.getName(),
+                leader == null ? Component.translatable("command.townstead.order.nobody") : leader.getName()), true);
+        return 1;
+    }
+
+    private static int swear(CommandSourceStack source, String rawKind) {
+        ServerPlayer player = source.getPlayer();
+        Village town = town(source);
+        if (player == null || town == null) return fail(source, "command.townstead.order.no_village");
+        FactionKind kind = kind(rawKind);
+        if (kind == null) return fail(source, "command.townstead.order.unknown_kind");
+        Faction order = Orders.at(PoliticalSavedData.get(source.getServer()),
+                new SettlementRef(source.getLevel().dimension().location(), town.getId()), kind.id());
+        if (order == null) return fail(source, "command.townstead.order.none_here");
+        VillagerEntityMCA villager = CommandTargets.lookedAtOrNearest(player, null);
+        if (villager == null || !Orders.swear(source.getLevel(), order, villager.getUUID())) {
+            return fail(source, "command.townstead.order.not_sworn");
+        }
+        source.sendSuccess(() -> Component.translatable("command.townstead.order.sworn", villager.getName(), order.name()), true);
+        return 1;
+    }
+
+    private static int enlist(CommandSourceStack source, String rawKind) {
+        ServerPlayer player = source.getPlayer();
+        Village town = town(source);
+        if (player == null || town == null) return fail(source, "command.townstead.order.no_village");
+        FactionKind kind = kind(rawKind);
+        if (kind == null) return fail(source, "command.townstead.order.unknown_kind");
+        Faction order = Orders.at(PoliticalSavedData.get(source.getServer()),
+                new SettlementRef(source.getLevel().dimension().location(), town.getId()), kind.id());
+        if (order == null) return fail(source, "command.townstead.order.none_here");
+        VillagerEntityMCA villager = CommandTargets.lookedAtOrNearest(player, null);
+        if (villager == null) return fail(source, "recruit.townstead.refused.nobody");
+        String refused = Recruiting.enlist(source.getLevel(), order, villager);
+        if (refused != null) return fail(source, refused);
+        source.sendSuccess(() -> Component.translatable("recruit.townstead.enlisted", villager.getName(), order.name()), true);
+        return 1;
+    }
+
+    private static int ready(CommandSourceStack source) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) return 0;
+        VillagerEntityMCA villager = CommandTargets.lookedAtOrNearest(player, null);
+        if (villager == null || !OrderRecruits.get(source.getServer()).ready(villager.getUUID(), 99)) {
+            return fail(source, "recruit.townstead.refused.not_recruit");
+        }
+        source.sendSuccess(() -> Component.translatable("recruit.townstead.ready", villager.getName()), true);
+        return 1;
+    }
+
+    private static FactionKind kind(String raw) {
+        ResourceLocation id = ResourceLocation.tryParse(raw.trim());
+        return id == null ? null : PoliticalDefinitions.snapshot().kind(id);
+    }
+
+    private static Village town(CommandSourceStack source) {
+        return VillageManager.get(source.getLevel())
+                .findNearestVillage(net.minecraft.core.BlockPos.containing(source.getPosition()), Village.MERGE_MARGIN).orElse(null);
+    }
+
+    private static int fail(CommandSourceStack source, String key) {
+        source.sendFailure(Component.translatable(key));
+        return 0;
+    }
+}

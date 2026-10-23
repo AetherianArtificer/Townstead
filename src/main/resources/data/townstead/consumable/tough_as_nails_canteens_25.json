@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": [
+    "toughasnails"
+  ],
+  "items": [
+    "toughasnails:copper_water_canteen",
+    "toughasnails:diamond_water_canteen",
+    "toughasnails:gold_water_canteen",
+    "toughasnails:iron_water_canteen",
+    "toughasnails:leather_water_canteen",
+    "toughasnails:netherite_water_canteen",
+    "toughasnails:water_canteen"
+  ],
+  "transaction": {
+    "mode": "replace_with_pheno",
+    "accounting": "consume_one",
+    "consumers": [
+      "villager"
+    ],
+    "remainder": {
+      "mode": "none"
+    }
+  },
+  "effects": {
+    "type": "pheno:if_else",
+    "condition": {
+      "type": "pheno:chance",
+      "chance": 0.25
+    },
+    "if_action": {
+      "type": "pheno:apply_effect",
+      "effect": "toughasnails:thirst",
+      "duration": 600
+    }
+  }
+}

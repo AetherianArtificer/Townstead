@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:faction_name/v1",
+  "parts": {
+    "foe": [
+      "Night",
+      "Blood",
+      "Grave",
+      "Veil",
+      "Dusk",
+      "Fang",
+      "Shade",
+      "Crypt",
+      "Hollow",
+      "Mire"
+    ],
+    "against": [
+      "bane",
+      "breakers",
+      "warden"
+    ],
+    "virtue": [
+      "Silver",
+      "Hallow",
+      "Dawn",
+      "Thorn",
+      "Ash",
+      "Ember",
+      "Iron",
+      "Stake",
+      "Raven",
+      "Candle",
+      "Rowan",
+      "Bell"
+    ],
+    "bound": [
+      "sworn",
+      "brand",
+      "guard"
+    ]
+  },
+  "patterns": {
+    "{foe}{against}": 10,
+    "{virtue}{bound}": 10
+  }
+}

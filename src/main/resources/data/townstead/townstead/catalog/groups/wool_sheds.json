@@ -1,6 +1,6 @@
 {
   "schema": "townstead:catalog_group/v1",
-  "label": "Wool Sheds",
+  "label": "townstead.catalog.group.wool_sheds",
   "match_prefix": "wool_shed",
   "layout": "grid",
   "priority": 6

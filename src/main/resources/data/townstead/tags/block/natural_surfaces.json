@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "#minecraft:ice",
+    "#minecraft:leaves",
+    "minecraft:lily_pad",
+    "minecraft:mangrove_roots",
+    "minecraft:big_dripleaf"
+  ]
+}

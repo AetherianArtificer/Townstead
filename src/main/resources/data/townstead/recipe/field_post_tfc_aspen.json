@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_tfc_aspen"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "tfc:wood/lumber/aspen"
+    },
+    "L": {
+      "item": "tfc:wood/log/aspen"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_tfc_aspen",
+    "count": 1
+  }
+}

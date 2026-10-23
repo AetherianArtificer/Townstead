@@ -1,0 +1,30 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "crime.released",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": false,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "crime",
+    "key": "mcacrime:released"
+  },
+  "reach": "village",
+  "news_value": 2.0,
+  "roles": [
+    {
+      "id": "convict",
+      "kind": "player"
+    }
+  ],
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.compat.released"
+    },
+    "params": [
+      "convict"
+    ]
+  }
+}

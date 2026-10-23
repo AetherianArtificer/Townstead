@@ -37,6 +37,7 @@ public final class SereneBridge {
     private static Method iSeasonStateGetDayDuration;
     private static Method iSeasonStateGetSubSeasonDuration;
     private static Method iSeasonStateGetCycleDuration;
+    private static Method iSeasonStateGetSeasonCycleTicks;
     private static Field seasonTimeZero;
     private static java.util.Map<String, Season> seasonByName;
 
@@ -107,6 +108,22 @@ public final class SereneBridge {
         }
     }
 
+    /** Serene's position in its cycle, 0 at the start of early spring, from its own tick count. */
+    public static java.util.OptionalDouble phase(ServerLevel level) {
+        if (level == null || !ModCompat.isLoaded(CalendarCompat.SERENE_MOD_ID) || !ensureProbe()
+                || iSeasonStateGetSeasonCycleTicks == null) return java.util.OptionalDouble.empty();
+        try {
+            Object state = seasonHelperGetState.invoke(null, level);
+            if (state == null) return java.util.OptionalDouble.empty();
+            int cycle = ((Number) iSeasonStateGetCycleDuration.invoke(state)).intValue();
+            int ticks = ((Number) iSeasonStateGetSeasonCycleTicks.invoke(state)).intValue();
+            if (cycle <= 0) return java.util.OptionalDouble.empty();
+            return java.util.OptionalDouble.of(Math.floorMod(ticks, cycle) / (double) cycle);
+        } catch (Throwable t) {
+            return java.util.OptionalDouble.empty();
+        }
+    }
+
     /**
      * Serene's configured sub-season length in days ({@code sub_season_duration}),
      * read from {@code SeasonTime.ZERO} so no level is required. Empty when
@@ -147,6 +164,8 @@ public final class SereneBridge {
             iSeasonStateGetDayDuration = iSeasonState.getMethod("getDayDuration");
             iSeasonStateGetSubSeasonDuration = iSeasonState.getMethod("getSubSeasonDuration");
             iSeasonStateGetCycleDuration = iSeasonState.getMethod("getCycleDuration");
+            try { iSeasonStateGetSeasonCycleTicks = iSeasonState.getMethod("getSeasonCycleTicks"); }
+            catch (NoSuchMethodException ignored) {}
 
             Class<?> seasonTimeCls = Class.forName("sereneseasons.season.SeasonTime");
             seasonTimeZero = seasonTimeCls.getField("ZERO");

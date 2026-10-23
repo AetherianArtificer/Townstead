@@ -1,0 +1,54 @@
+{
+  "mods": "vampirism",
+  "state": "townstead_state:vampire",
+  "resentful_chance": [
+    {
+      "min_rank": 0,
+      "chance": 0.15
+    },
+    {
+      "min_rank": 4,
+      "chance": 0.4
+    },
+    {
+      "min_rank": 8,
+      "chance": 0.65
+    },
+    {
+      "min_rank": 13,
+      "chance": 0.85
+    }
+  ],
+  "personality": {
+    "mca:crabby": 0.2,
+    "mca:greedy": 0.2,
+    "mca:gloomy": 0.2,
+    "mca:friendly": -0.2,
+    "mca:upbeat": -0.2,
+    "mca:peppy": -0.2,
+    "mca:sensitive": -0.2,
+    "mca:peaceful": -0.2
+  },
+  "hearts": {
+    "grateful": 25,
+    "resentful": -15
+  },
+  "lines": {
+    "grateful": [
+      "cure_reaction.townstead.vampire.grateful.1",
+      "cure_reaction.townstead.vampire.grateful.2",
+      "cure_reaction.townstead.vampire.grateful.3",
+      "cure_reaction.townstead.vampire.grateful.4"
+    ],
+    "resentful": [
+      "cure_reaction.townstead.vampire.resentful.1",
+      "cure_reaction.townstead.vampire.resentful.2",
+      "cure_reaction.townstead.vampire.resentful.3",
+      "cure_reaction.townstead.vampire.resentful.4"
+    ]
+  },
+  "chronicle": {
+    "grateful": "townstead:vampire_cured",
+    "resentful": "townstead:vampire_cured_unwilling"
+  }
+}

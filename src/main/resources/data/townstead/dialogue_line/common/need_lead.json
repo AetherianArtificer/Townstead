@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "need_lead",
+  "groups": [
+    {
+      "lines": {
+        "honestly": "Honestly?",
+        "ugh": "Ugh.",
+        "i_have_to_say_it": "I have to say it.",
+        "can_i_complain_for_a": "Can I complain for a second?",
+        "dont_mind_me": "Don't mind me.",
+        "oof": "Oof.",
+        "not_that_anyone_asked": { "text": "Not that anyone asked.", "personalities": "gloomy" },
+        "ugh_fine_ill_say_it": { "text": "Ugh, fine, I'll say it.", "personalities": ["crabby", "grumpy"] }
+      }
+    }
+  ]
+}

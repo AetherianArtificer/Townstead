@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.root;
 import com.aetherianartificer.townstead.root.building.BuildingSpawnPolicies;
 import com.aetherianartificer.townstead.root.building.BuildingSpawnPolicy;
 import com.aetherianartificer.townstead.root.disposition.DispositionGroups;
+import com.aetherianartificer.townstead.root.disposition.RootPeace;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Building;
@@ -117,7 +118,7 @@ public final class VillageSpawnContext {
         if (buildingPolicy != null && !buildingPolicy.allows(rootId.toString())) return false;
         if (checkDispositions && majorityGroup != null) {
             String group = DispositionGroups.ofRoot(rootId, bodyType);
-            if (DispositionGroups.clash(group, majorityGroup)) return false;
+            if (DispositionGroups.clash(group, majorityGroup) && !RootPeace.shareVillage(rootId, majorityRoot)) return false;
         }
         return true;
     }

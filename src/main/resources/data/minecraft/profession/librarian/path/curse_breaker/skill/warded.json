@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.curse_breaker.warded"
+  },
+  "icon": "minecraft:amethyst_shard",
+  "description": {
+    "translate": "skill.townstead.librarian.curse_breaker.warded.description"
+  },
+  "cost": 1,
+  "requires": [
+    "arcane_study"
+  ],
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.6,
+    "damage_type": "minecraft:magic",
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:insight",
+      "min": 50
+    }
+  }
+}

@@ -116,9 +116,15 @@ public final class CalendarClientStore {
             return LeapEngine.daysBeforeMonth(engineMonths(), leapRules, year, monthIndex);
         }
 
-        /** Absolute worldDay at the start of the given display year. */
+        /**
+         * Absolute worldDay at the start of the given display year. Today's date anchors the
+         * answer, so profiles whose year starts off the world-day grid (season-mod years, and
+         * custom calendars stretched onto them) still line up.
+         */
         public long worldDayAtYearStart(int displayYear) {
-            return LeapEngine.worldDayAtYearStart(engineMonths(), leapRules, displayYear, epochYearOffset);
+            long todayStart = LeapEngine.worldDayAtYearStart(engineMonths(), leapRules, year, epochYearOffset);
+            long shift = todayStart + (dayOfYear - 1) - worldDay;
+            return LeapEngine.worldDayAtYearStart(engineMonths(), leapRules, displayYear, epochYearOffset) - shift;
         }
 
         /**

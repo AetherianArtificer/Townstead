@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.nightward.hallowed_circle"
+  },
+  "icon": "vampirism:holy_water_bottle_enhanced",
+  "description": {
+    "translate": "skill.townstead.hunter.nightward.hallowed_circle.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sprinkle"
+  ],
+  "skill_group": "townstead:hunter_nightward_b",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:holy_water",
+          "blocks": {
+            "radius": 2
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.bottle.empty",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

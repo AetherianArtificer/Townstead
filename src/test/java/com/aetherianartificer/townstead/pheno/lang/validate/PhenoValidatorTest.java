@@ -42,6 +42,12 @@ class PhenoValidatorTest {
         assertTrue(has(diag, "$.action", "Missing required field"),
                 "active_ability without 'action' must be flagged at $.action");
     }
+    @Test
+    void numericExpressionsValidateNestedValueTypes() {
+        Diagnostics diag=validate("{'type':'pheno:attribute','attribute':'minecraft:generic.max_health',"
+                + "'condition':{'type':'pheno:value','value':{'type':'pheno:arithmetic','values':[1,{'type':'test:missing_value'}]},'compare_to':0}}");
+        assertTrue(has(diag,"$.condition.value.values[1].type","Unknown value"));
+    }
 
     @Test
     void scalarTypeMismatchIsFlaggedWithExactPath() {
@@ -86,6 +92,30 @@ class PhenoValidatorTest {
             if (!d.jsonPath().startsWith("$.resources")) continue;
             assertFalse(d.message().contains("Missing required field") || d.message().contains("Expected"),
                     "well-formed inline resource should produce no field diagnostics, got: " + d.render());
+        }
+    }
+
+    @Test
+    void invalidResourceDisplayIsLocatedInsideNamedMeter() {
+        Diagnostics diag = validate("{ 'type':'pheno:trigger', 'trigger':'press', 'key':'jump',"
+                + " 'action':{'type':'townstead_roots:heal','amount':1},"
+                + " 'resources':{ 'mana':{ 'max':100, 'display':{ 'shape':'triangle',"
+                + " 'anchor':'middle', 'segments':1, 'frame':'not an id' } } } }");
+        assertTrue(has(diag, "$.resources.mana.display.shape", "Unknown resource HUD"));
+        assertTrue(has(diag, "$.resources.mana.display.anchor", "Unknown resource HUD"));
+        assertTrue(has(diag, "$.resources.mana.display.segments", "2 to 64"));
+        assertTrue(has(diag, "$.resources.mana.display.frame", "namespaced resource id"));
+    }
+
+    @Test
+    void wellFormedResourceDisplayHasNoDisplayDiagnostics() {
+        Diagnostics diag = validate("{ 'type':'pheno:resource', 'max':100,"
+                + " 'display':{ 'shape':'ring', 'fill_mode':'segmented', 'segments':12,"
+                + " 'frame':'townstead:beveled', 'color_theme':'townstead:arcane',"
+                + " 'anchor':'bottom_center', 'visibility':'when_referenced', 'color':'#AA44FF' } }");
+        for (Diagnostic d : diag.all()) {
+            assertFalse(d.jsonPath().startsWith("$.display"),
+                    "well-formed display should produce no diagnostics, got: " + d.render());
         }
     }
 

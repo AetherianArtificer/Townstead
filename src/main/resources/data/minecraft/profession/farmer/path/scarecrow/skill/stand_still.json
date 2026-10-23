@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.scarecrow.stand_still"
+  },
+  "icon": "minecraft:jack_o_lantern",
+  "description": {
+    "translate": "skill.townstead.farmer.scarecrow.stand_still.description"
+  },
+  "cost": 1,
+  "requires": [
+    "watchful"
+  ],
+  "power": {
+    "type": "pheno:scare_mob",
+    "radius": 8,
+    "mobs": [
+      "minecraft:zombie",
+      "minecraft:husk",
+      "minecraft:drowned",
+      "minecraft:zombie_villager",
+      "minecraft:skeleton",
+      "minecraft:stray",
+      "minecraft:spider",
+      "minecraft:cave_spider",
+      "minecraft:creeper",
+      "minecraft:witch",
+      "minecraft:pillager",
+      "minecraft:vindicator"
+    ],
+    "condition": {
+      "type": "pheno:not",
+      "condition": {
+        "type": "pheno:movement",
+        "movement": "moving"
+      }
+    }
+  }
+}

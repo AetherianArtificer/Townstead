@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "poi": [
+    { "type": "townstead:job_block", "block": "minecraft:lectern" },
+    { "type": "townstead:building", "type_prefix": "library" },
+    { "type": "townstead:building", "type_prefix": "bookkeeper" }
+  ],
+  "tasks": [
+    {
+      "type": "townstead_work:craft",
+      "workstations": ["minecraft:crafting_table", "minecraft:lectern"],
+      "recipes": ["book", "#townstead:crafts/library"],
+      "weight": 10
+    }
+  ]
+}

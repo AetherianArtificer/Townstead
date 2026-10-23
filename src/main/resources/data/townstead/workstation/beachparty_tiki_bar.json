@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": "beachparty",
+  "blocks": ["beachparty:tiki_bar"],
+  "stands": [[0,0,1],[-1,0,1],[1,0,1]],
+  "stands_relative_to_facing": true,
+  "inventory": {"slots": {"outputs": [0], "ingredients": [1,2]}},
+  "shift_end": "finish"
+}

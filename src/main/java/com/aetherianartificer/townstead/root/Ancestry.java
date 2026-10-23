@@ -20,10 +20,12 @@ public record Ancestry(
         @Nullable Demonym demonym,
         @Nullable Component backstory,
         Genome genome,
-        SpawnBias spawnBias
+        SpawnBias spawnBias,
+        com.aetherianartificer.townstead.culture.CulturalSpawnBias culturalSpawnBias
 ) {
     public Ancestry {
         genome = genome == null ? Genome.EMPTY : genome;
         spawnBias = spawnBias == null ? SpawnBias.EMPTY : spawnBias;
+        culturalSpawnBias = culturalSpawnBias == null ? com.aetherianartificer.townstead.culture.CulturalSpawnBias.EMPTY : culturalSpawnBias;
     }
 }

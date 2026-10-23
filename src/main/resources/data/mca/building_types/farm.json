@@ -1,0 +1,15 @@
+{
+  "color": "ff7ea33b",
+  "visible": true,
+  "priority": 6,
+  "icon": false,
+  "iconU": 252,
+  "iconV": 212,
+  "margin": 6,
+  "mergeRange": 8,
+  "blocks": {
+    "minecraft:composter": 1,
+    "minecraft:farmland": 8,
+    "minecraft:water": 1
+  }
+}

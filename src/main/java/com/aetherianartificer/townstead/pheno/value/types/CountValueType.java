@@ -22,6 +22,12 @@ public final class CountValueType implements ValueType {
 
     @Override
     public Value parse(JsonObject json) {
+        if (json.has("of") && json.get("of").isJsonPrimitive()
+                && json.get("of").getAsJsonPrimitive().isString()) {
+            String role = json.get("of").getAsString();
+            if (role.isBlank()) return null;
+            return ctx -> ctx.blockRole(role).size();
+        }
         Selector selector = Selectors.parse(json.get("on"));
         if (selector == null) return null;
         return ctx -> selector.select(ctx).size();

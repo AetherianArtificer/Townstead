@@ -13,7 +13,9 @@ import com.google.gson.JsonPrimitive;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Walks a gene resource's behavior tree and reports any {@code "type"} that does not resolve
@@ -44,6 +46,7 @@ public final class PhenoValidator {
         }
         validateResources(root, diag);
         validateCompanions(root, diag);
+        if ("pheno:resource".equals(type)) validateResourceDisplay(root, JsonPath.ROOT, diag);
         // A variants block holds per-variant config objects (each governed by the gene's own
         // type); descend each in place. Otherwise the behavior tree starts at the root and the
         // gene's required fields are checked against its schema.
@@ -54,12 +57,12 @@ public final class PhenoValidator {
                     JsonPath path = JsonPath.ROOT.field("variants").field(e.getKey());
                     // Each variant config is parsed under the gene's own type, so check its
                     // fields and descend it against that type.
-                    checkFields(variant, type, path, diag);
+                    checkFields(variant, type, NodeDomain.GENE, path, diag);
                     descend(variant, NodeDomain.GENE, path, diag);
                 }
             }
         } else {
-            checkFields(root, type, JsonPath.ROOT, diag);
+            checkFields(root, type, NodeDomain.GENE, JsonPath.ROOT, diag);
             descend(root, NodeDomain.GENE, JsonPath.ROOT, diag);
         }
     }
@@ -90,8 +93,69 @@ public final class PhenoValidator {
                 diag.error(path.field("type"), "Unknown gene type '" + type + "'.",
                         "Check the type id and that the providing mod is loaded.");
             }
-            checkFields(entry, type, path, diag);
+            checkFields(entry, type, NodeDomain.GENE, path, diag);
+            if ("pheno:resource".equals(type)) validateResourceDisplay(entry, path, diag);
             descend(entry, NodeDomain.GENE, path, diag);
+        }
+    }
+
+    private static void validateResourceDisplay(JsonObject resource, JsonPath path, Diagnostics diag) {
+        if (!resource.has("display")) return;
+        JsonElement raw = resource.get("display");
+        JsonPath displayPath = path.field("display");
+        if (!raw.isJsonObject()) {
+            diag.error(displayPath, "Expected a resource HUD display object.",
+                    "Use { \"shape\":\"horizontal\", \"fill_mode\":\"continuous\" }.");
+            return;
+        }
+        JsonObject display = raw.getAsJsonObject();
+        checkChoice(display, "shape", displayPath, diag,
+                Set.of("horizontal", "vertical", "squircle", "ring", "circle", "circular", "radial"));
+        checkChoice(display, "fill_mode", displayPath, diag,
+                Set.of("continuous", "segmented", "segments", "pips", "separated", "separate"));
+        checkChoice(display, "pip_style", displayPath, diag,
+                Set.of("dots", "dot", "notches", "notch", "ticks", "beads", "bead", "pearls",
+                        "shards", "shard", "crystals"));
+        checkChoice(display, "visibility", displayPath, diag,
+                Set.of("when_expressed", "expressed", "when_referenced", "referenced", "consumer", "never", "hidden"));
+        checkChoice(display, "anchor", displayPath, diag,
+                Set.of("top_left", "top_center", "top_right", "bottom_left", "bottom_center", "bottom_right"));
+        for (String key : List.of("frame", "color_theme")) {
+            if (!display.has(key)) continue;
+            JsonElement value = display.get(key);
+            if (!isString(value) || ResourceLocation.tryParse(value.getAsString()) == null) {
+                diag.error(displayPath.field(key), "Expected a namespaced resource id.",
+                        "Use e.g. townstead:arcane.");
+            }
+        }
+        if (display.has("segments")) {
+            JsonElement value = display.get("segments");
+            if (!isNumber(value) || value.getAsInt() < 2 || value.getAsInt() > 64) {
+                diag.error(displayPath.field("segments"), "Segments must be an integer from 2 to 64.",
+                        "Choose a count appropriate to the meter's size.");
+            }
+        }
+        if (display.has("priority") && !isNumber(display.get("priority"))) {
+            diag.error(displayPath.field("priority"), "Expected an integer priority.", "Use e.g. 10.");
+        }
+        if (display.has("color")) {
+            JsonElement color = display.get("color");
+            if (!isString(color) || !color.getAsString().matches("#?[0-9a-fA-F]{6}")) {
+                diag.error(displayPath.field("color"), "Expected a six-digit RGB color.",
+                        "Use e.g. #3FA0FF.");
+            }
+        }
+    }
+
+    private static void checkChoice(JsonObject object, String key, JsonPath path, Diagnostics diag,
+                                    Set<String> accepted) {
+        if (!object.has(key)) return;
+        JsonElement value = object.get(key);
+        String normalized = isString(value)
+                ? value.getAsString().toLowerCase(java.util.Locale.ROOT).replace('-', '_') : "";
+        if (!accepted.contains(normalized)) {
+            diag.error(path.field(key), "Unknown resource HUD " + key + " '" + normalized + "'.",
+                    "Use one of: " + String.join(", ", accepted) + ".");
         }
     }
 
@@ -134,7 +198,7 @@ public final class PhenoValidator {
                     "Unknown " + domain.label() + " type '" + type + "'.",
                     "Check the type id and that the providing mod is loaded.");
         }
-        checkFields(obj, type, path, diag);
+        checkFields(obj, type, domain, path, diag);
         descend(obj, domain, path, diag);
     }
 
@@ -145,8 +209,10 @@ public final class PhenoValidator {
      * adds real checks without false positives on legacy content. Child-node fields are
      * validated by recursion, not here.
      */
-    private static void checkFields(JsonObject obj, String type, JsonPath path, Diagnostics diag) {
-        NodeSchema schema = NodeSchemas.get(type);
+    private static void checkFields(JsonObject obj, String type, NodeDomain domain, JsonPath path, Diagnostics diag) {
+        // One id can name nodes in several domains (pheno:and is an action, a condition and a
+        // bi-entity condition); only the schema of the domain this slot expects applies.
+        NodeSchema schema = NodeSchemas.get(type, domain);
         if (schema != null) checkFields(obj, schema, path, diag);
     }
 
@@ -250,7 +316,8 @@ public final class PhenoValidator {
     /** Follow the canonical typed child slots of an object of {@code parentDomain}. */
     private static void descend(JsonObject obj, NodeDomain parentDomain, JsonPath path, Diagnostics diag) {
         for (Map.Entry<String, JsonElement> e : obj.entrySet()) {
-            NodeDomain child = ChildSlots.childDomain(parentDomain, e.getKey());
+            NodeDomain child = ChildSlots.childDomain(parentDomain, e.getKey(),
+                    GsonHelper.getAsString(obj, "type", ""));
             if (child == null) continue;
             visit(e.getValue(), child, path.field(e.getKey()), diag);
         }

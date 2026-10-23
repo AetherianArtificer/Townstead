@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:conversation_subject/v1",
+  "source": {
+    "type": "townstead:realm_rumour"
+  },
+  "register": "intrigue",
+  "requires": [
+    "realm.member"
+  ],
+  "slots": {
+    "ruler": {
+      "type": "person",
+      "from": "realm.ruler"
+    },
+    "heir": {
+      "type": "person",
+      "from": "realm.heir"
+    }
+  }
+}

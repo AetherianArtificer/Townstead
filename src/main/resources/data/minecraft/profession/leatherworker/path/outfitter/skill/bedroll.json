@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.outfitter.bedroll"
+  },
+  "icon": "minecraft:white_bed",
+  "description": {
+    "translate": "skill.townstead.leatherworker.outfitter.bedroll.description"
+  },
+  "cost": 1,
+  "requires": [
+    "climbing_rope"
+  ],
+  "skill_group": "townstead:outfitter_kit",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:hide",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:energize",
+      "amount": 14
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "company_invite",
+  "groups": [
+    {
+      "variant": "friend",
+      "thread": "company.plans",
+      "lines": {
+        "we_should_get_a_drink": "We should get a drink sometime.",
+        "walk_with_me_tomorrow": "Walk with me tomorrow?",
+        "we_should_have_dinner_sometime": "We should have dinner sometime.",
+        "come_by_my_place_later": "Come by my place later?",
+        "lets_go_fishing_one_of": "Let's go fishing one of these days.",
+        "we_should_do_this_more": "We should do this more often.",
+        "want_to_watch_the_sunset": "Want to watch the sunset later?",
+        "lets_go_to_the_market": "Let's go to the market together tomorrow.",
+        "want_to_play_later": { "text": "Want to play later?", "stages": "child" },
+        "want_to_hang_out_later": { "text": "Want to hang out later?", "stages": "teen" },
+        "come_sit_with_me_on": { "text": "Come sit with me on my porch sometime.", "stages": "senior" },
+        "lets_have_tea_at_the": { "text": "Let's have tea at the cafe soon.", "requires": "here.building_tag:townstead:cafe" },
+        "meet_me_at_the_tavern": {
+          "text": "Meet me at the tavern tonight?",
+          "requires": "here.building_tag:townstead:tavern",
+          "stages": ["adult", "senior"]
+        }
+      }
+    },
+    {
+      "variant": "close",
+      "thread": "company.close",
+      "lines": {
+        "ive_missed_you_lets_spend": { "text": "I've missed you. Let's spend the evening together.", "requires": ["time:day"] },
+        "come_for_supper_tonight": { "text": "Come for supper tonight?", "requires": ["time:day"] },
+        "stay_a_while_with_me": "Stay a while with me later?",
+        "lets_go_for_a_long": "Let's go for a long walk, just us.",
+        "i_saved_you_a_seat": { "text": "I saved you a seat by my fire. Come by tonight.", "requires": ["time:day"] },
+        "you_me_the_sunset_tonight": {
+          "text": "You, me, the sunset. Tonight?",
+          "personalities": "flirty",
+          "stages": ["adult", "senior"],
+          "requires": ["time:day"]
+        },
+        "id_like_it_if_you": {
+          "text": "I'd like it if you walked me home later.",
+          "personalities": "flirty",
+          "stages": ["adult", "senior"]
+        },
+        "come_play_with_me_please": { "text": "Come play with me! Please?", "stages": "child" }
+      }
+    }
+  ]
+}

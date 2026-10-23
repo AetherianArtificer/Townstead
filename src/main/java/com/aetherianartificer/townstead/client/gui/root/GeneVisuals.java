@@ -29,11 +29,13 @@ final class GeneVisuals {
     private static final ResourceLocation FOOD_ICON = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/sprites/hud/food_full.png");
     private static final ResourceLocation HEART_ICON = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/sprites/hud/heart/full.png");
     private static final ResourceLocation ENERGY_ICON = ResourceLocation.fromNamespaceAndPath("townstead_icons", "energy_full.png");
+    private static final ResourceLocation CLIMATE_ICON = ResourceLocation.fromNamespaceAndPath("townstead_icons", "temperature_ok.png");
     private static final ResourceLocation STEVE_SKIN = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/entity/player/wide/steve.png");
     //?} else {
     /*private static final ResourceLocation STONE = new ResourceLocation("minecraft", "textures/block/stone.png");
     private static final ResourceLocation VANILLA_ICONS = new ResourceLocation("minecraft", "textures/gui/icons.png");
     private static final ResourceLocation ENERGY_ICON = new ResourceLocation("townstead_icons", "energy_full.png");
+    private static final ResourceLocation CLIMATE_ICON = new ResourceLocation("townstead_icons", "temperature_ok.png");
     private static final ResourceLocation STEVE_SKIN = new ResourceLocation("minecraft", "textures/entity/player/wide/steve.png");
     *///?}
 
@@ -77,7 +79,7 @@ final class GeneVisuals {
     static boolean hasCategoryIcon(String cat) {
         switch (key(cat)) {
             case "diet": case "health": case "lifespan": case "abilities":
-            case "activity": case "appearance": case "reproduction": return true;
+            case "activity": case "appearance": case "reproduction": case "climate": return true;
             case "hydration": return ThirstBridgeResolver.isActive();
             default: return false;
         }
@@ -91,20 +93,21 @@ final class GeneVisuals {
             case "lifespan":   itemIcon(g, LIFESPAN_ITEM, x, y); break;
             case "abilities":  itemIcon(g, ABILITIES_ITEM, x, y); break;
             case "reproduction": itemIcon(g, REPRODUCTION_ITEM, x, y); break;
-            case "activity":   energyIcon(g, x, y); break;
+            case "activity":   townsteadIcon(g, ENERGY_ICON, x, y); break;
+            case "climate":    townsteadIcon(g, CLIMATE_ICON, x, y); break;
             case "appearance": g.blit(STEVE_SKIN, x, y, 8, 8, 8, 8, 64, 64); break; // default-skin face
             case "hydration":  thirstIcon(g, x, y); break;
             default: break;
         }
     }
 
-    // Energy art is a 12px sprite; scale it to the 9px category-icon footprint.
-    private static void energyIcon(GuiGraphics g, int x, int y) {
+    // Townstead's HUD art is 12px; scale it to the 9px category-icon footprint.
+    private static void townsteadIcon(GuiGraphics g, ResourceLocation icon, int x, int y) {
         var pose = g.pose();
         pose.pushPose();
         pose.translate(x, y, 0);
         pose.scale(ICON_SIZE / 12.0f, ICON_SIZE / 12.0f, 1.0f);
-        g.blit(ENERGY_ICON, 0, 0, 0, 0, 12, 12, 12, 12);
+        g.blit(icon, 0, 0, 0, 0, 12, 12, 12, 12);
         pose.popPose();
     }
 

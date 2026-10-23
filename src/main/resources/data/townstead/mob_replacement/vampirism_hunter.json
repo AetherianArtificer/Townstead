@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:mob_replacement/v1",
+  "mods": "vampirism",
+  "spawn_types": [
+    "natural",
+    "spawner",
+    "event"
+  ],
+  "replaces": [
+    "vampirism:hunter"
+  ],
+  "setting": "vampirism.replaceHunterSpawns",
+  "group": "hunter",
+  "outfit": {
+    "head": [
+      "vampirism:hunter_hat_head_0",
+      "vampirism:hunter_hat_head_1"
+    ]
+  },
+  "credit_kills": true,
+  "loot": "replaced",
+  "clothing": "townstead:hunter",
+  "arms": [
+    "vampirism:stake",
+    "vampirism:basic_crossbow",
+    "vampirism:hunter_axe_normal"
+  ]
+}

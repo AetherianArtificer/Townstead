@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:wardrobe_policy/v1",
+  "scope": "villager",
+  "priority": 0,
+  "layers": {
+    "base": {
+      "select": {
+        "occasion": "festival"
+      }
+    },
+    "outerwear": {
+      "require": "preferred",
+      "select": {
+        "occasion": "festival"
+      }
+    },
+    "accessory": {
+      "require": "preferred",
+      "select": {
+        "occasion": "festival"
+      }
+    }
+  }
+}

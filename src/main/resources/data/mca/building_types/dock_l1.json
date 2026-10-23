@@ -2,11 +2,13 @@
   "color": "ff4a90b8",
   "visible": true,
   "priority": -1,
-  "icon": true,
+  "icon": false,
   "iconU": 240,
   "iconV": 188,
+  "margin": 8,
+  "mergeRange": 16,
   "blocks": {
-    "#townstead:dock_surfaces": 5,
-    "minecraft:barrel": 1
+    "minecraft:barrel": 1,
+    "#townstead:liquids": 4
   }
 }

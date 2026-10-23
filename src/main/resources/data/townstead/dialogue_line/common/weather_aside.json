@@ -1,0 +1,99 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "weather_aside",
+  "groups": [
+    {
+      "variant": "rain",
+      "stance": "+",
+      "lines": {
+        "at_least_the_crops_are": { "text": "At least the crops are happy.", "thread": "weather.crops" },
+        "the_gardens_grateful": { "text": "The garden's grateful.", "thread": "weather.crops" },
+        "good_for_the_wells_too": {
+          "text": "Good for the wells, too.",
+          "requires": "here.decoration:townstead:well",
+          "thread": "weather.crops"
+        }
+      }
+    },
+    {
+      "variant": "rain",
+      "stance": "-",
+      "lines": {
+        "i_left_my_washing_out": { "text": "I left my washing out, of course.", "opens": "complaint", "thread": "weather.wet" },
+        "the_roads_will_be_mud": { "text": "The roads will be mud for days.", "thread": "weather.wet" },
+        "my_roof_leaks_too": { "text": "My roof leaks, too.", "opens": "complaint", "thread": "weather.wet" },
+        "my_knees_ache_when_it": {
+          "text": "My knees ache when it rains.",
+          "stages": "senior",
+          "opens": "complaint",
+          "thread": "weather.cold"
+        },
+        "im_staying_inside_all_day": { "text": "I'm staying inside all day.", "thread": "weather.cozy" }
+      }
+    },
+    {
+      "variant": "thunder",
+      "stance": "-",
+      "lines": {
+        "stay_inside_tonight": { "text": "Stay inside tonight.", "thread": "weather.cozy" },
+        "the_animals_hate_it": { "text": "The animals hate it.", "thread": "weather.animals" },
+        "i_didnt_sleep_a_wink": { "text": "I didn't sleep a wink.", "opens": "complaint", "thread": "weather.cozy" },
+        "keep_away_from_the_trees": { "text": "Keep away from the trees.", "thread": "weather.storm" }
+      }
+    },
+    {
+      "variant": "thunder",
+      "stance": "+",
+      "lines": {
+        "clears_the_air_though": { "text": "Clears the air, though.", "thread": "weather.beauty" },
+        "itll_be_fresh_tomorrow": { "text": "It'll be fresh tomorrow.", "thread": "weather.beauty" }
+      }
+    },
+    {
+      "variant": "clear",
+      "stance": "+",
+      "lines": {
+        "makes_the_work_go_faster": "Makes the work go faster.",
+        "good_day_to_dry_the": { "text": "Good day to dry the washing.", "thread": "weather.wet" },
+        "i_might_have_a_picnic": { "text": "I might have a picnic.", "thread": "weather.play" },
+        "we_should_have_a_picnic": { "text": "We should have a picnic.", "opens": "invitation", "thread": "weather.play" },
+        "walk_with_me_later": { "text": "Walk with me later?", "opens": "invitation", "thread": "weather.play" },
+        "i_might_sit_by_the": { "text": "I might sit by the well later.", "requires": "here.decoration:townstead:well" },
+        "everyones_in_a_good_mood": { "text": "Everyone's in a good mood today.", "thread": "weather.beauty" }
+      }
+    },
+    {
+      "variant": "clear",
+      "stance": "-",
+      "lines": {
+        "im_roasting": { "text": "I'm roasting.", "opens": "complaint", "thread": "weather.heat" },
+        "the_sun_gives_me_a": { "text": "The sun gives me a headache.", "opens": "complaint", "thread": "weather.heat" },
+        "i_need_some_shade": { "text": "I need some shade.", "opens": "complaint", "thread": "weather.heat" }
+      }
+    },
+    {
+      "variant": "snow",
+      "stance": "+",
+      "lines": {
+        "the_quiet_is_nice": { "text": "The quiet is nice.", "thread": "weather.cozy" },
+        "perfect_for_a_warm_drink": { "text": "Perfect for a warm drink.", "thread": "weather.cozy" },
+        "i_might_build_a_snowman": { "text": "I might build a snowman.", "thread": "weather.play" },
+        "snowball_fight_later": { "text": "Snowball fight later?", "opens": "invitation", "thread": "weather.play" },
+        "help_me_build_a_snowman": { "text": "Help me build a snowman later?", "opens": "invitation", "thread": "weather.play" }
+      }
+    },
+    {
+      "variant": "snow",
+      "stance": "-",
+      "lines": {
+        "keep_your_fire_going": { "text": "Keep your fire going.", "thread": "weather.storm" },
+        "my_hands_wont_work_in": { "text": "My hands won't work in this.", "opens": "complaint", "thread": "weather.cold" },
+        "someone_will_slip_on_the": {
+          "text": "Someone will slip on the bridge, you watch.",
+          "requires": "here.building_tag:townstead:bridge",
+          "thread": "weather.wet"
+        }
+      }
+    }
+  ]
+}

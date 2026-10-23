@@ -1,0 +1,13 @@
+{
+  "type": "passive_station",
+  "block": "pizzadelight:basin",
+  "mods": "pizzadelight",
+  "adapter": "townstead:pizzadelight_basin",
+  "produces": [
+    {
+      "inputs": ["minecraft:milk_bucket", "#pizzadelight:fermenting_items"],
+      "output": "pizzadelight:cheese_block",
+      "time": 1300
+    }
+  ]
+}

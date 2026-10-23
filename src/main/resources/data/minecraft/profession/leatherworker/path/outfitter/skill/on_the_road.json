@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.outfitter.on_the_road"
+  },
+  "icon": "minecraft:leather_boots",
+  "description": {
+    "translate": "skill.townstead.leatherworker.outfitter.on_the_road.description"
+  },
+  "cost": 1,
+  "requires": [
+    "pack_mule"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:hide",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:movement",
+          "movement": "moving"
+        },
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:village",
+            "within_border": true
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:hide",
+      "amount": 3
+    }
+  }
+}

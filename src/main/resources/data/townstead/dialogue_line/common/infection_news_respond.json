@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "infection_news_respond",
+  "groups": [
+    {
+      "variant": "cured",
+      "lines": {
+        "im_just_glad_to_be": "I'm just glad to be here.",
+        "i_owe_someone_a_golden": "I owe someone a golden apple.",
+        "i_still_feel_a_bit": "I still feel a bit shaky."
+      }
+    },
+    {
+      "variant": "bitten",
+      "lines": {
+        "ill_be_fine_really": "I'll be fine. Really.",
+        "please_dont_worry_about_me": "Please don't worry about me."
+      }
+    }
+  ]
+}

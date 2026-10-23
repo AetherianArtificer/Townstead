@@ -1,0 +1,30 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.hot_hands"
+  },
+  "icon": "minecraft:campfire",
+  "description": {
+    "translate": "skill.townstead.cook.hot_hands.description"
+  },
+  "tier": 1,
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 3,
+        "where": {
+          "type": "pheno:and",
+          "conditions": [
+            { "type": "pheno:block_entity" },
+            { "type": "pheno:work_station", "profession": "townstead:cook" }
+          ]
+        }
+      },
+      "do": { "type": "pheno:accelerate", "ticks": 5 }
+    }
+  }
+}

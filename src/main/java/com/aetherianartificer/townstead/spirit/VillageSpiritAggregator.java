@@ -22,8 +22,10 @@ import java.util.Map;
  * Classification rules in order:
  * <ol>
  *   <li>No spirit at tier 1 (nobody above the first threshold) → SETTLEMENT.</li>
- *   <li>Top spirit holds ≥ 40% share → SINGLE, tier = top spirit's own tier.</li>
- *   <li>Top two each hold ≥ 25% share → BLEND, tier = max of the two tiers.</li>
+ *   <li>Top two have each reached tier 1 and each hold ≥ 25% share →
+ *       BLEND, tier = max of the two tiers.</li>
+ *   <li>Otherwise, the top spirit holds ≥ 40% share → SINGLE, tier =
+ *       top spirit's own tier.</li>
  *   <li>Otherwise → MIXED. Tier field encodes the spread level
  *       (1 Crossroads, 2 Metropolis, 3 Cosmopolis, 4 Convergence).</li>
  * </ol>
@@ -55,7 +57,7 @@ public final class VillageSpiritAggregator {
         Map<String, Integer> perSpirit = new HashMap<>();
         int total = 0;
         int contributingBuildings = 0;
-        for (Building b : village.getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!b.isComplete()) continue;
             Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(b.getType());
             if (contributions.isEmpty()) continue;
@@ -83,7 +85,7 @@ public final class VillageSpiritAggregator {
     public static Map<String, List<ContributorRow>> contributorsFor(Village village) {
         if (village == null) return Map.of();
         Map<String, Map<String, int[]>> bySpirit = new HashMap<>();
-        for (Building b : village.getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!b.isComplete()) continue;
             String type = b.getType();
             Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(type);
@@ -115,13 +117,18 @@ public final class VillageSpiritAggregator {
     /** Combined snapshot: totals + per-spirit contributors in one pass. */
     public static record Snapshot(SpiritTotals totals, Map<String, List<ContributorRow>> contributors) {}
 
+    /** Server snapshot includes decorations within the village's catalog boundary. */
+    public static Snapshot snapshotFor(net.minecraft.server.level.ServerLevel level, Village village) {
+        return DecorationSpiritContributions.addTo(snapshotFor(village), level, village);
+    }
+
     public static Snapshot snapshotFor(Village village) {
         if (village == null) return new Snapshot(SpiritTotals.empty(), Map.of());
         Map<String, Integer> perSpirit = new HashMap<>();
         Map<String, Map<String, int[]>> bySpirit = new HashMap<>();
         int total = 0;
         int contributingBuildings = 0;
-        for (Building b : village.getBuildings().values()) {
+        for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!b.isComplete()) continue;
             String type = b.getType();
             Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(type);
@@ -187,10 +194,13 @@ public final class VillageSpiritAggregator {
         double share1 = totals.total() > 0 ? top1Pts / (double) totals.total() : 0.0;
         double share2 = totals.total() > 0 ? top2Pts / (double) totals.total() : 0.0;
 
-        if (share1 >= SINGLE_DOMINANT_SHARE) {
-            return new SpiritReadout(SpiritReadout.Classification.SINGLE, top1Tier, top1, null);
-        }
-        if (top2 != null && share1 >= BLEND_SHARE && share2 >= BLEND_SHARE) {
+        // A blend is an identity shared by two independently established
+        // spirits, not merely the two largest slices. Evaluate it before
+        // single dominance: with only two meaningful spirits the leader must
+        // necessarily hold at least 50%, which previously made every such
+        // village SINGLE and left blend names unreachable.
+        if (top2 != null && top2Tier >= 1
+                && share1 >= BLEND_SHARE && share2 >= BLEND_SHARE) {
             int blendTier = Math.max(top1Tier, top2Tier);
             // Canonical pair ordering: lower registry index first, so the lang
             // key is deterministic regardless of which spirit won by points.
@@ -201,6 +211,9 @@ public final class VillageSpiritAggregator {
                 secondary = top1;
             }
             return new SpiritReadout(SpiritReadout.Classification.BLEND, blendTier, primary, secondary);
+        }
+        if (share1 >= SINGLE_DOMINANT_SHARE) {
+            return new SpiritReadout(SpiritReadout.Classification.SINGLE, top1Tier, top1, null);
         }
 
         int spread = mixedSpreadLevel(totals);

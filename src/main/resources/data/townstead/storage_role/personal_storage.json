@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:storage_role/v1",
+  "role": "personal_storage",
+  "blocks": [
+    "#townstead:storage_roles/personal"
+  ]
+}

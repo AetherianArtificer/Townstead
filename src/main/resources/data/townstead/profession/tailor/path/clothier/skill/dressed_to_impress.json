@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.clothier.dressed_to_impress"
+  },
+  "icon": "minecraft:golden_helmet",
+  "description": {
+    "translate": "skill.townstead.tailor.clothier.dressed_to_impress.description"
+  },
+  "cost": 1,
+  "requires": [
+    "fitting"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:stitch",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:stitch",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:speed",
+        "duration": 30,
+        "amplifier": 0
+      }
+    }
+  }
+}

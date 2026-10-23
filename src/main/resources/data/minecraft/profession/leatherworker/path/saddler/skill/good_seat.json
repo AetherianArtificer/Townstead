@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.saddler.good_seat"
+  },
+  "icon": "minecraft:saddle",
+  "description": {
+    "translate": "skill.townstead.leatherworker.saddler.good_seat.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.5,
+    "damage_type": "minecraft:fall",
+    "condition": {
+      "type": "pheno:riding"
+    }
+  }
+}

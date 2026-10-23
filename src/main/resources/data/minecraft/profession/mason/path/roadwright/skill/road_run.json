@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.roadwright.road_run"
+  },
+  "icon": "minecraft:feather",
+  "description": {
+    "translate": "skill.townstead.mason.roadwright.road_run.description"
+  },
+  "cost": 1,
+  "requires": [
+    "stride_out"
+  ],
+  "skill_group": "townstead:road_travel",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 200,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:add_velocity",
+      "relative": true,
+      "z": 1.6,
+      "y": 0.15
+    }
+  }
+}

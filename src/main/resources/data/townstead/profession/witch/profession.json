@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "translate": "career.townstead.witch"
+  },
+  "icon": "minecraft:glass_bottle",
+  "work_sound": "minecraft:block.brewing_stand.brew",
+  "description": {
+    "translate": "career.townstead.witch.description"
+  },
+  "skills": [
+    "iron_stomach",
+    "cackle"
+  ],
+  "unlock_model": "experiential"
+}

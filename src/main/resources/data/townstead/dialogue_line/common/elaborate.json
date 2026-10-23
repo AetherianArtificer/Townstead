@@ -1,0 +1,213 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "elaborate",
+  "groups": [
+    {
+      "subjects": "weather",
+      "variant": "rain",
+      "stance": "-",
+      "lines": {
+        "third_day_in_a_row": { "text": "Third day in a row.", "thread": "weather.duration" },
+        "the_rivers_up_already": { "text": "The river's up already.", "thread": "weather.wet" },
+        "the_chickens_are_miserable": { "text": "The chickens are miserable.", "thread": "weather.animals" },
+        "the_wells_overflowing": {
+          "text": "The well's overflowing.",
+          "requires": "here.decoration:townstead:well",
+          "thread": "weather.crops"
+        }
+      }
+    },
+    {
+      "subjects": "weather",
+      "variant": "rain",
+      "stance": "+",
+      "lines": {
+        "the_gardens_drinking_it_up": { "text": "The garden's drinking it up.", "thread": "weather.crops" },
+        "good_for_the_wheat_at": { "text": "Good for the wheat, at least.", "thread": "weather.crops" }
+      }
+    },
+    {
+      "subjects": "weather",
+      "variant": "thunder",
+      "stance": "-",
+      "lines": {
+        "the_dogs_been_hiding_all": { "text": "The dog's been hiding all day.", "thread": "weather.animals" },
+        "one_hit_the_old_oak": { "text": "One hit the old oak last year.", "thread": "weather.storm" },
+        "the_sheep_are_all_huddled": { "text": "The sheep are all huddled together.", "thread": "weather.animals" }
+      }
+    },
+    {
+      "subjects": "weather",
+      "variant": "clear",
+      "stance": "+",
+      "lines": {
+        "not_a_drop_in_a": { "text": "Not a drop in a week.", "thread": "weather.duration" },
+        "the_flowers_are_loving_it": { "text": "The flowers are loving it.", "thread": "weather.crops" },
+        "even_the_cats_are_sunbathing": { "text": "Even the cats are sunbathing.", "thread": "weather.animals" }
+      }
+    },
+    {
+      "subjects": "weather",
+      "variant": "clear",
+      "stance": "-",
+      "lines": {
+        "the_fields_are_drying_out": { "text": "The fields are drying out, though.", "thread": "weather.crops" },
+        "i_got_sunburnt_yesterday": { "text": "I got sunburnt yesterday.", "opens": "complaint", "thread": "weather.heat" }
+      }
+    },
+    {
+      "subjects": "weather",
+      "variant": "snow",
+      "stance": "-",
+      "lines": {
+        "woods_running_low_already": { "text": "Wood's running low already.", "thread": "weather.cold" },
+        "the_paths_are_buried": { "text": "The paths are buried.", "thread": "weather.wet" }
+      }
+    },
+    {
+      "subjects": "weather",
+      "variant": "snow",
+      "stance": "+",
+      "lines": {
+        "the_children_built_a_snow": {
+          "text": "The children built a snow golem by the well.",
+          "requires": "here.decoration:townstead:well",
+          "thread": "weather.play"
+        }
+      }
+    },
+    {
+      "subjects": "mob",
+      "stance": "-",
+      "lines": {
+        "third_one_this_week": "Third one this week.",
+        "the_guards_found_tracks_this": "The guards found tracks this morning.",
+        "it_knocked_over_a_fence": "It knocked over a fence.",
+        "nobodys_seen_it_since": "Nobody's seen it since.",
+        "it_left_scratch_marks_on": "It left scratch marks on a door.",
+        "its_the_second_time_this": "It's the second time this month.",
+        "the_chickens_wouldnt_stop_squawking": "The chickens wouldn't stop squawking.",
+        "it_got_away_before_anyone": "It got away before anyone could do anything.",
+        "people_are_saying_theres_a": "People are saying there's a nest nearby.",
+        "it_trampled_somebodys_crops": "It trampled somebody's crops."
+      }
+    },
+    {
+      "subjects": "event",
+      "variant": "argument",
+      "stance": "-",
+      "lines": {
+        "over_a_goat_of_all": "Over a goat, of all things.",
+        "half_the_village_stopped_to": "Half the village stopped to watch.",
+        "its_been_brewing_for_weeks": "It's been brewing for weeks.",
+        "it_was_about_a_fence": "It was about a fence, apparently.",
+        "somebody_said_something_about_somebodys": "Somebody said something about somebody's cooking.",
+        "half_the_market_stopped_to": { "text": "Half the market stopped to watch.", "requires": "here.building_tag:townstead:market" }
+      }
+    },
+    {
+      "subjects": "event",
+      "variant": "mastery",
+      "persp": { "who": "they" },
+      "stance": "+",
+      "lines": { "theyve_been_working_toward_it": "They've been working toward it for years." }
+    },
+    {
+      "subjects": "event",
+      "variant": "mastery",
+      "persp": { "who": "me" },
+      "stance": "+",
+      "lines": { "ive_been_working_toward_it": "I've been working toward it for years." }
+    },
+    {
+      "subjects": "event",
+      "variant": "mastery",
+      "stance": "+",
+      "lines": { "theres_going_to_be_a": "There's going to be a celebration." }
+    },
+    {
+      "subjects": "event",
+      "variant": "birth",
+      "stance": "+",
+      "lines": { "healthy_they_say": "Healthy, they say." }
+    },
+    {
+      "subjects": "event",
+      "variant": "birth",
+      "persp": { "who": "they" },
+      "stance": "+",
+      "lines": { "they_havent_picked_a_name": "They haven't picked a name yet." }
+    },
+    {
+      "subjects": "event",
+      "variant": "birth",
+      "persp": { "who": "me" },
+      "stance": "+",
+      "lines": { "we_havent_picked_a_name": "We haven't picked a name yet." }
+    },
+    {
+      "subjects": "event",
+      "variant": "marriage",
+      "stance": "+",
+      "lines": { "the_whole_village_is_invited": "The whole village is invited." }
+    },
+    {
+      "subjects": "event",
+      "variant": "marriage",
+      "persp": { "who": "they" },
+      "stance": "+",
+      "lines": {
+        "nobody_saw_that_coming": "Nobody saw that coming.",
+        "they_look_so_happy_together": "They look so happy together."
+      }
+    },
+    {
+      "subjects": "project",
+      "stance": "+",
+      "lines": {
+        "they_say_itll_be_done": "They say it'll be done by winter.",
+        "half_the_village_is_helping": "Half the village is helping.",
+        "its_going_to_look_great": "It's going to look great.",
+        "theyre_working_day_and_night": "They're working day and night."
+      }
+    },
+    {
+      "subjects": "project",
+      "stance": "-",
+      "lines": {
+        "they_needed_more_stone": "They needed more stone.",
+        "the_foreman_quit_last_week": "The foreman quit last week.",
+        "they_keep_changing_the_plans": "They keep changing the plans.",
+        "its_been_weeks": "It's been weeks."
+      }
+    },
+    {
+      "subjects": "quest",
+      "lines": {
+        "its_been_up_for_days": "It's been up for days.",
+        "the_rewards_gone_up_twice": "The reward's gone up twice.",
+        "two_people_tried_already": "Two people tried already.",
+        "nobody_wants_to_touch_it": "Nobody wants to touch it.",
+        "it_sounds_dangerous": "It sounds dangerous.",
+        "theyre_offering_good_emeralds": "They're offering good emeralds."
+      }
+    },
+    {
+      "subjects": "biome",
+      "stance": "+",
+      "lines": {
+        "my_grandmother_grew_up_here": { "text": "My grandmother grew up here too.", "thread": "biome.family" },
+        "best_sunsets_anywhere": { "text": "Best sunsets anywhere.", "thread": "biome.land" },
+        "the_air_is_so_clean": { "text": "The air is so clean here.", "thread": "biome.land" }
+      }
+    },
+    {
+      "subjects": "biome",
+      "stance": "-",
+      "lines": {
+        "the_winters_are_the_hard": { "text": "The winters are the hard part.", "thread": "biome.small" },
+        "it_gets_lonely_sometimes": { "text": "It gets lonely sometimes.", "opens": "complaint", "thread": "biome.small" }
+      }
+    }
+  ]
+}

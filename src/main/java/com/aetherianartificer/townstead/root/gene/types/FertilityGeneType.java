@@ -18,6 +18,14 @@ import net.minecraft.util.GsonHelper;
  */
 public final class FertilityGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.BEING;
+    }
+
+    @Override
+    public boolean conditionControlsExpression() { return true; }
+
     public static final String KEY = "townstead_roots:fertility";
 
     // All fertility genes share one locus, so they inherit as alleles of one another rather than

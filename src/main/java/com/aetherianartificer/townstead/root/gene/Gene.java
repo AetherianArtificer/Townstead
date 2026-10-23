@@ -16,23 +16,51 @@ import java.util.List;
  * variant is rolled at birth and carried on the villager. {@link #locus},
  * {@link #dominance} and {@link #weight} drive cross-gene allele resolution at a
  * shared slot (e.g. the life-cycle locus). Loaded from
- * {@code data/<ns>/gene/<path>.json}.</p>
+ * {@code data/<ns>/gene/<path>.json}. Paths may contain organizational subdirectories.</p>
  */
 public record Gene(
         ResourceLocation id,
         Component displayName,
         @Nullable Component description,
+        /**
+         * The item a UI draws for this gene, or null to fall back to its initials.
+         *
+         * <p>Optional because most genes are passive and never appear in a grid. The ones that do,
+         * actives and toggles, want a real sprite: a catalogue of identical fallbacks is no more
+         * scannable than the list it replaced.</p>
+         */
+        @Nullable ResourceLocation icon,
         String category,
         Dominance dominance,
         @Nullable ResourceLocation locus,
         int weight,
-        List<GeneVariant> variants
+        List<GeneVariant> variants,
+        /**
+         * True for a power that costs its bearer something ({@code "drawback": true}): a weakness the
+         * picker shows in red beside the root's strengths.
+         */
+        boolean drawback,
+        /** What part of the carrier this gene describes, for states that suppress a whole layer. */
+        GeneLayer layer
 ) {
+    public Gene(ResourceLocation id, Component displayName, @Nullable Component description,
+                @Nullable ResourceLocation icon, String category, Dominance dominance,
+                @Nullable ResourceLocation locus, int weight, List<GeneVariant> variants) {
+        this(id, displayName, description, icon, category, dominance, locus, weight, variants, false);
+    }
+
+    public Gene(ResourceLocation id, Component displayName, @Nullable Component description,
+                @Nullable ResourceLocation icon, String category, Dominance dominance,
+                @Nullable ResourceLocation locus, int weight, List<GeneVariant> variants, boolean drawback) {
+        this(id, displayName, description, icon, category, dominance, locus, weight, variants, drawback, GeneLayer.BODY);
+    }
+
     public Gene {
         if (variants == null || variants.isEmpty()) {
             throw new IllegalArgumentException("gene " + id + " has no variants");
         }
         variants = List.copyOf(variants);
+        if (layer == null) layer = GeneLayer.BODY;
     }
 
     /** True when this gene is a weighted pick-one (more than one variant). */

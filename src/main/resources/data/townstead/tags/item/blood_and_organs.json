@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "#townstead:blood_bottle",
+    { "id": "#butchery:organs", "required": false },
+    { "id": "butchery:bottle_of_blood", "required": false },
+    { "id": "butchery:blood_bucket", "required": false },
+    { "id": "vampirism:blood_bottle", "required": false }
+  ]
+}

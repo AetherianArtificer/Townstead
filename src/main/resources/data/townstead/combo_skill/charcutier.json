@@ -1,0 +1,26 @@
+{
+  "display_name": {
+    "translate": "combo_skill.townstead.charcutier"
+  },
+  "description": {
+    "translate": "combo_skill.townstead.charcutier.description"
+  },
+  "icon": "farmersdelight:ham",
+  "mods": "farmersdelight",
+  "professions": {
+    "townstead:cook": 2,
+    "minecraft:butcher": 2
+  },
+  "grants": [
+    {
+      "capability": "townstead:cook_xp_flat",
+      "op": "add",
+      "value": 1
+    },
+    {
+      "capability": "townstead:butcher_xp_flat",
+      "op": "add",
+      "value": 1
+    }
+  ]
+}

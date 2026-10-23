@@ -13,7 +13,7 @@ import net.minecraft.world.entity.Entity;
 public class DialogueCameraController {
     private final float originalYaw;
     private final float originalPitch;
-    private final Entity target;
+    private Entity target;
     private float currentYaw;
     private float currentPitch;
     private boolean restoring;
@@ -31,6 +31,11 @@ public class DialogueCameraController {
         this.currentYaw = originalYaw;
         this.currentPitch = originalPitch;
         this.lastTickTime = System.nanoTime();
+    }
+
+    /** Turns the camera toward someone else in the conversation, gliding like the first turn. */
+    public void setTarget(Entity target) {
+        if (target != null) this.target = target;
     }
 
     /**

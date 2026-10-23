@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:gift_reaction/v1",
+  "priority": 1000,
+  "items": [
+    "townstead:accord_letter"
+  ],
+  "response": "neutral",
+  "item": "return",
+  "action": {
+    "type": "pheno:deliver"
+  }
+}

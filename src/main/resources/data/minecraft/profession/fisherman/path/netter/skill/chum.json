@@ -1,0 +1,44 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.netter.chum"
+  },
+  "icon": "minecraft:rotten_flesh",
+  "description": {
+    "translate": "skill.townstead.fisherman.netter.chum.description"
+  },
+  "cost": 1,
+  "requires": [
+    "bait_and_switch"
+  ],
+  "skill_group": "townstead:netter_lure",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 12,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:add_velocity",
+            "away_from_other": -1.0,
+            "y": 0.25
+          },
+          {
+            "type": "pheno:set_attack_target"
+          }
+        ]
+      }
+    }
+  }
+}

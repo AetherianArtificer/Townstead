@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:recipe_projection/v1",
+  "mods": [
+    "toughasnails"
+  ],
+  "recipe_types": [
+    "toughasnails:water_purifying"
+  ],
+  "domain": "beverage.purification",
+  "fields": {
+    "inputs": {
+      "path": "input",
+      "operation": "raw",
+      "required": true
+    },
+    "output": {
+      "path": "result",
+      "operation": "item_stack_id",
+      "required": true
+    },
+    "time": {
+      "path": "getPurifyTime",
+      "operation": "integer",
+      "required": true
+    },
+    "readiness": {
+      "default": true,
+      "operation": "boolean"
+    }
+  }
+}

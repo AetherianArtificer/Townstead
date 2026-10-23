@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.layered"
+  },
+  "icon": "minecraft:leather_chestplate",
+  "description": {
+    "translate": "skill.townstead.tailor.layered.description"
+  },
+  "tier": 1,
+  "cost": 1,
+  "power": {
+    "type": "pheno:thermal_tolerance",
+    "cold": 0.7,
+    "heat": 0.7
+  }
+}

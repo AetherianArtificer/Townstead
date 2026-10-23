@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.pizzaiolo.kitchen_rhythm"
+  },
+  "icon": "minecraft:clock",
+  "description": {
+    "translate": "skill.townstead.cook.pizzaiolo.kitchen_rhythm.description"
+  },
+  "cost": 1,
+  "requires": [
+    "starter_culture"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_work",
+    "verbs": [
+      "townstead_work:cook",
+      "townstead_work:chop",
+      "townstead:pizza"
+    ],
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:haste",
+      "duration": 200,
+      "amplifier": 0
+    }
+  }
+}

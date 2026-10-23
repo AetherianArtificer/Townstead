@@ -26,6 +26,11 @@ import java.util.Locale;
  */
 public final class StartingEquipmentGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.BEING;
+    }
+
     public static final String KEY = "pheno:starting_equipment";
 
     public record Entry(ResourceLocation item, int count, @Nullable EquipmentSlot slot) {}

@@ -1,0 +1,41 @@
+{
+  "schema": "townstead:story_item/v1",
+  "base": "minecraft:written_book",
+  "name": {
+    "translate": "story_item.townstead.book_of_oaths"
+  },
+  "lore": [
+    {
+      "translate": "story_item.townstead.book_of_oaths.lore"
+    }
+  ],
+  "book": {
+    "title": {
+      "translate": "story_item.townstead.book_of_oaths.title"
+    },
+    "author": "",
+    "pages": [
+      {
+        "translate": "story_item.townstead.book_of_oaths.page1"
+      },
+      {
+        "translate": "story_item.townstead.book_of_oaths.page2"
+      },
+      {
+        "translate": "story_item.townstead.book_of_oaths.page3"
+      },
+      {
+        "translate": "story_item.townstead.book_of_oaths.page4"
+      },
+      {
+        "translate": "story_item.townstead.book_of_oaths.page5"
+      },
+      {
+        "translate": "story_item.townstead.book_of_oaths.page6"
+      },
+      {
+        "translate": "story_item.townstead.book_of_oaths.page7"
+      }
+    ]
+  }
+}

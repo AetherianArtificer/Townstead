@@ -1,0 +1,52 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.diplomat.envoys_favor"
+  },
+  "icon": "minecraft:emerald_block",
+  "description": {
+    "translate": "skill.townstead.scribe.diplomat.envoys_favor.description"
+  },
+  "cost": 1,
+  "requires": [
+    "goodwill_tour"
+  ],
+  "skill_group": "townstead:diplomat_support",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "always",
+    "resource_cost": {
+      "resource": "townstead:goodwill",
+      "amount": 40
+    },
+    "condition": {
+      "type": "pheno:entity_in_radius",
+      "radius": 8,
+      "condition": {
+        "type": "pheno:entity_type",
+        "entity_type": "minecraft:player"
+      }
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": false,
+      "target": "all",
+      "bientity_condition": {
+        "type": "pheno:target_condition",
+        "condition": {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:player"
+        }
+      },
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:hero_of_the_village",
+        "duration": 1200,
+        "amplifier": 0
+      }
+    }
+  }
+}

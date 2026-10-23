@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:consumable/v1",
+  "items": [
+    "#townstead:sugary_snacks"
+  ],
+  "effects": {
+    "type": "pheno:energize",
+    "amount": 1
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "schema": "townstead:chronicle_work_history/v1",
+  "profession": "townstead:beverage_artisan",
+  "events": ["townstead_work:brew"]
+}

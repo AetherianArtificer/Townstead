@@ -17,8 +17,8 @@ public final class StartingEquipment {
     private StartingEquipment() {}
 
     public static void grant(ServerPlayer player) {
-        for (Gene gene : Heredity.expressedGenes(PlayerRoot.getGenotype(player))) {
-            if (!(gene.instance() instanceof StartingEquipmentGeneType.Instance instance)) continue;
+        for (var gene : com.aetherianartificer.townstead.pheno.power.Powers.active(player)) {
+            if (!(gene.component() instanceof StartingEquipmentGeneType.Instance instance)) continue;
             String geneId = gene.id().toString();
             if (PlayerRoot.hasGrantedStarting(player, geneId)) continue;
             for (StartingEquipmentGeneType.Entry entry : instance.items()) {

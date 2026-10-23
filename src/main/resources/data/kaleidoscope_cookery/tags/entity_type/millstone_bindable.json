@@ -1,0 +1,9 @@
+{
+  "replace": true,
+  "values": [
+    "#townstead:work_animals",
+    "minecraft:villager",
+    "mca:male_villager",
+    "mca:female_villager"
+  ]
+}

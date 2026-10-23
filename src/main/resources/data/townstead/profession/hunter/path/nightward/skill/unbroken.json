@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.nightward.unbroken"
+  },
+  "icon": "minecraft:iron_chestplate",
+  "description": {
+    "translate": "skill.townstead.hunter.nightward.unbroken.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sentinel"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:vigil",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:time_of_day",
+          "min": 13000,
+          "max": 23000
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:vigil",
+          "min": 50
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:resistance",
+      "duration": 40,
+      "amplifier": 1
+    }
+  }
+}

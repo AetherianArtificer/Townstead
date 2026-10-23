@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:performance_mapping/v1",
+  "targets": [
+    {
+      "provider": "townstead_performance:native",
+      "performance": "townstead_performance:laugh_demure",
+      "priority": 20,
+      "personalities": [
+        "introverted",
+        "sensitive",
+        "anxious"
+      ]
+    },
+    {
+      "provider": "townstead_performance:native",
+      "performance": "townstead_performance:laugh",
+      "priority": 10
+    }
+  ]
+}

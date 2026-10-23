@@ -1,0 +1,44 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.tiller.worked_earth"
+  },
+  "icon": "minecraft:farmland",
+  "description": {
+    "translate": "skill.townstead.farmer.tiller.worked_earth.description"
+  },
+  "cost": 1,
+  "requires": [
+    "rootbound"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:grit",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:block",
+      "y": -1,
+      "block_condition": {
+        "type": "or",
+        "conditions": [
+          {
+            "type": "in_tag",
+            "tag": "minecraft:dirt"
+          },
+          {
+            "type": "block",
+            "block": "minecraft:farmland"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:grit",
+      "amount": 3
+    }
+  }
+}

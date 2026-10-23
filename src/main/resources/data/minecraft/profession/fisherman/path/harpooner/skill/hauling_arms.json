@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.harpooner.hauling_arms"
+  },
+  "icon": "minecraft:chain",
+  "description": {
+    "translate": "skill.townstead.fisherman.harpooner.hauling_arms.description"
+  },
+  "cost": 1,
+  "requires": [
+    "barbed_hook"
+  ],
+  "power": {
+    "type": "pheno:attribute",
+    "attribute": "minecraft:generic.knockback_resistance",
+    "amount": 0.5
+  }
+}

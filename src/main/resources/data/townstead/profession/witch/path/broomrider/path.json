@@ -1,0 +1,157 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.witch.path.broomrider"
+  },
+  "title": {
+    "translate": "career.townstead.witch.title.broomrider"
+  },
+  "color": "#3A2A4A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:hex",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:witch/broomrider/moonlight"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:witch/broomrider/hex_bolt"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:witch/broomrider/nightmare_flight"
+              }
+            ]
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:time_of_day",
+                "min": 13000,
+                "max": 23000
+              },
+              {
+                "type": "pheno:block",
+                "y": 0,
+                "block_condition": {
+                  "type": "exposed_to_sky"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:hex",
+        "amount": 1
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 10,
+      "resource_cost": {
+        "resource": "townstead:hex",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:movement",
+        "movement": "creative_flying"
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:hex",
+        "amount": -2
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 10,
+      "resource_cost": {
+        "resource": "townstead:hex",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:movement",
+              "movement": "grounded"
+            }
+          },
+          {
+            "type": "pheno:resource",
+            "resource": "townstead:hex",
+            "max": 0
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:slow_falling",
+        "duration": 40,
+        "amplifier": 0
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 60,
+      "condition": {
+        "type": "pheno:movement",
+        "movement": "creative_flying"
+      },
+      "action": {
+        "type": "pheno:chance",
+        "chance": 0.35,
+        "action": {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.witch.celebrate",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      }
+    }
+  ],
+  "skills": [
+    [
+      "light_as_a_feather",
+      "take_off",
+      "black_cats_luck"
+    ],
+    [
+      "night_flyer",
+      "swoop",
+      "moonlit_veil"
+    ],
+    [
+      "moonlight",
+      "hex_bolt",
+      "nightmare_flight"
+    ],
+    [
+      "broomstick",
+      "moon_dive",
+      "witching_hour"
+    ],
+    [
+      "sky_witch",
+      "wild_hunt",
+      "coven_night"
+    ]
+  ]
+}

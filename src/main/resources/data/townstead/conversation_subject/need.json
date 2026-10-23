@@ -1,0 +1,5 @@
+{
+  "schema": "townstead:conversation_subject/v1",
+  "source": { "type": "townstead:need" },
+  "register": "ambient"
+}

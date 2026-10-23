@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:disposition/v1",
+  "mods": "werewolves",
+  "members": [
+    "werewolves:human_werewolf",
+    "werewolves:werewolf_beast",
+    "werewolves:werewolf_survivalist",
+    "werewolves:alpha_werewolf",
+    "werewolves:task_master_werewolf",
+    "werewolves:werewolf_minion"
+  ],
+  "friendly": [
+    "werewolf",
+    "wild_werewolf"
+  ],
+  "hostile": [
+    "townsfolk",
+    "hunter",
+    "vampire",
+    "wild_vampire",
+    "dhampir"
+  ]
+}

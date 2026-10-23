@@ -14,10 +14,10 @@ import java.util.Map;
  * keyframe channels. Pure data + Gson, shared by the server (doctor validation) and
  * the client (playback), so it must stay free of sided imports.
  *
- * <p>Times are converted to ticks at parse (Bedrock authors in seconds), values stay
- * in the file's own convention — rotation degrees and position pixels in Bedrock
- * space, exactly what Blockbench shows — and the application side does the Java-space
- * sign flips, same contract as pose bone rotations. Keyframe values may be numbers,
+ * <p>Times are converted to ticks at parse (Bedrock authors in seconds). Rotation
+ * keyframes are read as GeckoLib and Blockbench read a Bedrock file: Y and Z are negated
+ * here, into the internal convention pose bone rotations also use, and the application
+ * side does the Java-space sign flips. Positions stay in the file's own pixels. Keyframe values may be numbers,
  * {@code [x, y, z]} arrays, or {@code pre}/{@code post} objects; Molang expressions
  * are not evaluated (the offending value reads as 0 and the parse warning names it —
  * bake expressions to keyframes in Blockbench before export).</p>
@@ -51,10 +51,16 @@ public final class AttachmentAnimation {
     public static final class Channel {
         final float[] times;      // ticks, ascending
         final float[][] values;
+        final String[] easing;
 
         Channel(float[] times, float[][] values) {
+            this(times, values, new String[times.length]);
+        }
+
+        Channel(float[] times, float[][] values, String[] easing) {
             this.times = times;
             this.values = values;
+            this.easing = easing;
         }
 
         /** The interpolated value at {@code timeTicks} (clamped to the first/last keyframe). */
@@ -65,10 +71,25 @@ public final class AttachmentAnimation {
             int i = 1;
             while (times[i] < timeTicks) i++;
             float alpha = (timeTicks - times[i - 1]) / (times[i] - times[i - 1]);
+            alpha = ease(easing[i], alpha);
             for (int a = 0; a < 3; a++) {
                 out[a] = values[i - 1][a] + (values[i][a] - values[i - 1][a]) * alpha;
             }
             return out;
+        }
+
+        private static float ease(String name, float t) {
+            if (name == null) return t;
+            return switch (name) {
+                case "easeInSine" -> 1f - (float) Math.cos(t * Math.PI / 2);
+                case "easeOutSine" -> (float) Math.sin(t * Math.PI / 2);
+                case "easeInOutSine" -> (1f - (float) Math.cos(t * Math.PI)) / 2f;
+                case "easeInCubic" -> t * t * t;
+                case "easeOutCubic" -> 1f - (float) Math.pow(1f - t, 3);
+                case "easeInOutCubic" -> t < .5f ? 4f * t * t * t : 1f - (float) Math.pow(-2f * t + 2f, 3) / 2f;
+                case "easeInOutQuad" -> t < .5f ? 2f * t * t : 1f - (float) Math.pow(-2f * t + 2f, 2) / 2f;
+                default -> t;
+            };
         }
 
         private static float[] copy(float[] from, float[] out) {
@@ -105,7 +126,7 @@ public final class AttachmentAnimation {
                     if (!bone.getValue().isJsonObject()) continue;
                     JsonObject track = bone.getValue().getAsJsonObject();
                     String where = entry.getKey() + "/" + bone.getKey();
-                    Channel rotation = channel(track.get("rotation"), 0f, where, warnings);
+                    Channel rotation = negateYz(channel(track.get("rotation"), 0f, where, warnings));
                     Channel position = channel(track.get("position"), 0f, where, warnings);
                     Channel scale = channel(track.get("scale"), 1f, where, warnings);
                     if (rotation == null && position == null && scale == null) continue;
@@ -128,6 +149,17 @@ public final class AttachmentAnimation {
         return channel.times[channel.times.length - 1];
     }
 
+    /** Rotation keyframes read as GeckoLib reads them: Y and Z negated into the internal convention. */
+    @Nullable
+    private static Channel negateYz(@Nullable Channel channel) {
+        if (channel == null) return null;
+        for (float[] value : channel.values) {
+            value[1] = -value[1];
+            value[2] = -value[2];
+        }
+        return channel;
+    }
+
     /** A channel from a Bedrock value: keyframe map, flat array, or single number. */
     @Nullable
     private static Channel channel(@Nullable JsonElement element, float defaultComponent,
@@ -135,6 +167,10 @@ public final class AttachmentAnimation {
         if (element == null) return null;
         if (element.isJsonObject()) {
             JsonObject frames = element.getAsJsonObject();
+            if (frames.has("vector") || frames.has("pre") || frames.has("post")) {
+                return new Channel(new float[]{0f}, new float[][]{vec(element, defaultComponent, where, warnings)});
+            }
+            Map<Float, String> easings = new LinkedHashMap<>();
             List<float[]> entries = new ArrayList<>(frames.size());   // (time, x, y, z)
             for (var frame : frames.entrySet()) {
                 float time;
@@ -145,16 +181,21 @@ public final class AttachmentAnimation {
                 }
                 float[] value = vec(frame.getValue(), defaultComponent, where, warnings);
                 entries.add(new float[]{time, value[0], value[1], value[2]});
+                if (frame.getValue().isJsonObject() && frame.getValue().getAsJsonObject().has("easing")) {
+                    easings.put(time, frame.getValue().getAsJsonObject().get("easing").getAsString());
+                }
             }
             if (entries.isEmpty()) return null;
             entries.sort((a, b) -> Float.compare(a[0], b[0]));
             float[] times = new float[entries.size()];
             float[][] values = new float[entries.size()][];
+            String[] easing = new String[entries.size()];
             for (int i = 0; i < entries.size(); i++) {
                 times[i] = entries.get(i)[0];
+                easing[i] = easings.get(times[i]);
                 values[i] = new float[]{entries.get(i)[1], entries.get(i)[2], entries.get(i)[3]};
             }
-            return new Channel(times, values);
+            return new Channel(times, values, easing);
         }
         // A flat value is a single keyframe held for the whole clip.
         float[] value = vec(element, defaultComponent, where, warnings);
@@ -167,7 +208,8 @@ public final class AttachmentAnimation {
         float[] out = {defaultComponent, defaultComponent, defaultComponent};
         if (element.isJsonObject()) {
             JsonObject object = element.getAsJsonObject();
-            JsonElement inner = object.has("post") ? object.get("post") : object.get("pre");
+            JsonElement inner = object.has("vector") ? object.get("vector")
+                    : object.has("post") ? object.get("post") : object.get("pre");
             return inner == null ? out : vec(inner, defaultComponent, where, warnings);
         }
         if (element.isJsonArray()) {

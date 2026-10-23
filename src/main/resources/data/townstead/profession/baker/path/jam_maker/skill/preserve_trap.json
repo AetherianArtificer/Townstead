@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.jam_maker.preserve_trap"
+  },
+  "icon": "minecraft:honey_block",
+  "description": {
+    "translate": "skill.townstead.baker.jam_maker.preserve_trap.description"
+  },
+  "cost": 1,
+  "requires": [
+    "setting_point"
+  ],
+  "skill_group": "townstead:jam_jam",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:jam",
+          "blocks": {
+            "radius": 4,
+            "where": {
+              "type": "air"
+            }
+          }
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:speed",
+          "duration": 100,
+          "amplifier": 1
+        }
+      ]
+    }
+  }
+}

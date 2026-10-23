@@ -1,0 +1,28 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:potion",
+    "minecraft:honey_bottle",
+    "minecraft:milk_bucket",
+    {
+      "id": "#townstead:brew_output",
+      "required": false
+    },
+    {
+      "id": "#townstead:bartender_cocktails",
+      "required": false
+    },
+    {
+      "id": "#townstead:compat/brewery/drinks",
+      "required": false
+    },
+    {
+      "id": "#townstead:compat/herbalbrews/drinks",
+      "required": false
+    },
+    {
+      "id": "#townstead:compat/kaleidoscope_tavern/drinks",
+      "required": false
+    }
+  ]
+}

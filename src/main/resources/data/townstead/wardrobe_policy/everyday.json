@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:wardrobe_policy/v1",
+  "scope": "villager",
+  "priority": 0,
+  "layers": {
+    "base": {
+      "set": "<culture>"
+    },
+    "outerwear": {
+      "require": "preferred",
+      "set": "<culture>"
+    },
+    "accessory": {
+      "require": "preferred",
+      "set": "<culture>"
+    }
+  }
+}

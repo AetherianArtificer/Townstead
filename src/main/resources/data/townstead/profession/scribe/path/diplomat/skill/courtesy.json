@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.diplomat.courtesy"
+  },
+  "icon": "minecraft:poppy",
+  "description": {
+    "translate": "skill.townstead.scribe.diplomat.courtesy.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "condition": {
+      "type": "pheno:interaction",
+      "interaction": "in_dialogue"
+    },
+    "action": {
+      "type": "pheno:energize",
+      "amount": 1
+    }
+  }
+}

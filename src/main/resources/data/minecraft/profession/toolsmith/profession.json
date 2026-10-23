@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "text": "Toolsmith"
+  },
+  "icon": "minecraft:iron_pickaxe",
+  "description": {
+    "text": "Keep the village equipped to build a history of toolsmithing mastery."
+  },
+  "skills": [
+    "well_kept_tools",
+    "hard_graft"
+  ],
+  "unlock_model": "experiential"
+}

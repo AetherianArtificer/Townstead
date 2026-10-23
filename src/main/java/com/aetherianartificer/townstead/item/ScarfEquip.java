@@ -9,10 +9,10 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Puts a held scarf onto a villager's head slot (vanilla's head-item render draws it), swapping out
- * whatever it wore there. Only spider-folk (the arthropod {@link EntityGroups entity group}) may wear a
- * scarf; equipping a non-arthropod is refused with an action-bar message. Server-side; the interaction
- * event reports success on both sides.
+ * Puts a held scarf onto a villager: into a free Curios slot when Curios is present, else the head slot
+ * (vanilla's head-item render draws it), swapping out whatever it wore there. Only spider-folk (the
+ * arthropod {@link EntityGroups entity group}) may wear a scarf; equipping a non-arthropod is refused
+ * with an action-bar message. Server-side; the interaction event reports success on both sides.
  */
 public final class ScarfEquip {
 
@@ -31,14 +31,24 @@ public final class ScarfEquip {
             return true; // consume the interaction, but refuse the equip
         }
 
-        ItemStack previous = villager.getItemBySlot(EquipmentSlot.HEAD);
-        ItemStack worn = stack.copy();
-        worn.setCount(1);
-        villager.setItemSlot(EquipmentSlot.HEAD, worn);
+        // With Curios the scarf takes the villager's necklace slot, as it does on a player; the head
+        // slot is the fallback for installs without it (or when every fitting slot is taken).
+        ItemStack previous = ItemStack.EMPTY;
+        if (!CuriosCompat.equipFirstFree(villager, stack)) {
+            previous = villager.getItemBySlot(EquipmentSlot.HEAD);
+            ItemStack worn = stack.copy();
+            worn.setCount(1);
+            villager.setItemSlot(EquipmentSlot.HEAD, worn);
+        }
 
         if (!player.getAbilities().instabuild) stack.shrink(1);
         if (!previous.isEmpty() && !player.addItem(previous)) player.drop(previous, false);
         return true;
+    }
+
+    /** The scarf rule as a slot predicate: anything but a scarf passes, a scarf needs spider-folk. */
+    public static boolean mayWear(LivingEntity entity, ItemStack stack) {
+        return !(stack.getItem() instanceof ScarfItem) || EntityGroups.isArthropod(entity);
     }
 
     /**

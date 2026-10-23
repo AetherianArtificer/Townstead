@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:profession/v2",
+  "mods": "vampirism",
+  "display_name": {
+    "translate": "career.townstead.hunter"
+  },
+  "icon": "vampirism:stake",
+  "work_sound": "minecraft:item.crossbow.loading_end",
+  "description": {
+    "translate": "career.townstead.hunter.description"
+  },
+  "skills": [
+    "night_watch",
+    "stand_fast"
+  ],
+  "unlock_model": "experiential"
+}

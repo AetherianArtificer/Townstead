@@ -1,0 +1,49 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "survival.loss",
+  "weight": 10,
+  "rarity": "rare",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "survival",
+    "key": "townstead:became_full_vampire"
+  },
+  "reach": "village",
+  "news_value": 6.0,
+  "roles": [
+    {
+      "id": "vampire",
+      "kind": "villager"
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.became_full_vampire"
+    },
+    "params": [
+      "vampire"
+    ]
+  },
+  "impact": {
+    "vampire": {
+      "memory": {
+        "valence": 0.0,
+        "strength": 3.0
+      }
+    },
+    "on_learn": {
+      "mood": -1.0,
+      "memory": {
+        "valence": -0.4,
+        "strength": 1.0
+      }
+    }
+  }
+}

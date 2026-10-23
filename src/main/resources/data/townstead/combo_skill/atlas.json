@@ -1,0 +1,19 @@
+{
+  "display_name": {
+    "translate": "combo_skill.townstead.atlas"
+  },
+  "description": {
+    "translate": "combo_skill.townstead.atlas.description"
+  },
+  "icon": "minecraft:filled_map",
+  "professions": {
+    "minecraft:librarian": 3,
+    "minecraft:cartographer": 3
+  },
+  "power": {
+    "type": "pheno:modifier",
+    "target": "map_fill_radius",
+    "operation": "multiply",
+    "value": 2
+  }
+}

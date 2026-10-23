@@ -1,0 +1,7 @@
+modLoader="javafml"
+loaderVersion="[1,)"
+license="GPL-3.0"
+[[mods]]
+modId="townstead_pack_check"
+version="1"
+displayName="Townstead data pack check"

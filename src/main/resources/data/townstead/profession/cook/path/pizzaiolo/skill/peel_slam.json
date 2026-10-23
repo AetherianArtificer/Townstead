@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.pizzaiolo.peel_slam"
+  },
+  "icon": "minecraft:wooden_shovel",
+  "description": {
+    "translate": "skill.townstead.cook.pizzaiolo.peel_slam.description"
+  },
+  "cost": 1,
+  "requires": [
+    "peel_vault"
+  ],
+  "skill_group": "townstead:pizzaiolo_peel",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 160,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:char",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 3,
+      "include_self": false,
+      "target": "hostile",
+      "bientity_condition": {
+        "type": "pheno:relative_rotation",
+        "max_angle": 30
+      },
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:damage",
+            "amount": 6,
+            "source": "other"
+          },
+          {
+            "type": "pheno:add_velocity",
+            "away_from_other": 1.2,
+            "y": 0.3
+          }
+        ]
+      }
+    }
+  }
+}

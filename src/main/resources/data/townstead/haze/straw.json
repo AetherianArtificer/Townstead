@@ -1,0 +1,9 @@
+{
+  "shape": "cloud",
+  "color": "#D8C07A",
+  "duration": 280,
+  "conceals": true,
+  "fog": {
+    "distance": 3.0
+  }
+}

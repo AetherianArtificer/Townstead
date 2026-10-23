@@ -1,0 +1,25 @@
+{
+  "display_name": {
+    "translate": "combo_skill.townstead.apothecary"
+  },
+  "description": {
+    "translate": "combo_skill.townstead.apothecary.description"
+  },
+  "icon": "minecraft:potion",
+  "professions": {
+    "minecraft:cleric": 3,
+    "townstead:witch": 3
+  },
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_item_use",
+    "item_condition": {
+      "type": "pheno:ingredient",
+      "item": "minecraft:potion"
+    },
+    "action": {
+      "type": "pheno:clear_effect",
+      "category": "harmful"
+    }
+  }
+}

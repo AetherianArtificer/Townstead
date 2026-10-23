@@ -1,0 +1,57 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "survival.infection",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "survival",
+    "key": "townstead:zombie_bite"
+  },
+  "reach": "village",
+  "news_value": 6.0,
+  "roles": [
+    {
+      "id": "bitten",
+      "kind": "villager"
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.zombie_bite"
+    },
+    "params": [
+      "bitten"
+    ]
+  },
+  "impact": {
+    "bitten": {
+      "mood": -8.0,
+      "memory": {
+        "valence": -1.0,
+        "strength": 3.0
+      }
+    },
+    "witness": {
+      "mood": -3.0,
+      "memory": {
+        "valence": -0.7,
+        "strength": 1.5
+      }
+    },
+    "on_learn": {
+      "mood": -1.0,
+      "memory": {
+        "valence": -0.6,
+        "strength": 1.0
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.night_watch.light_sleeper"
+  },
+  "icon": "minecraft:red_bed",
+  "description": {
+    "translate": "skill.townstead.shepherd.night_watch.light_sleeper.description"
+  },
+  "cost": 1,
+  "requires": [
+    "night_eyes"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 60,
+    "condition": {
+      "type": "pheno:time_of_day",
+      "min": 13000,
+      "max": 23000
+    },
+    "action": {
+      "type": "pheno:energize",
+      "amount": 1
+    }
+  }
+}

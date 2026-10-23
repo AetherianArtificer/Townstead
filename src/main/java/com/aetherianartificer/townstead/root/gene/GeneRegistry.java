@@ -2,19 +2,37 @@ package com.aetherianartificer.townstead.root.gene;
 
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Server-side registry of data-pack-loaded {@link Gene}s, populated by
  * {@link GeneJsonLoader} each reload. The lego catalogue races draw from.
  */
 public final class GeneRegistry {
+    private static final Logger LOGGER = LoggerFactory.getLogger("townstead/GeneRegistry");
     private static volatile Map<ResourceLocation, Gene> ENTRIES = Map.of();
+    /**
+     * Unambiguous basename aliases for genes stored in organizational subdirectories. A file at
+     * {@code gene/elf/night_vision.json} remains addressable as {@code namespace:night_vision},
+     * while its canonical Minecraft resource id is {@code namespace:elf/night_vision}.
+     */
+    private static volatile Map<ResourceLocation, ResourceLocation> ORGANIZATIONAL_ALIASES = Map.of();
+    /**
+     * Basenames several nested genes share within one namespace (every race folder holding a
+     * {@code horns.json}): no alias, and only worth a warning when something actually looks one up.
+     */
+    private static volatile Set<ResourceLocation> AMBIGUOUS_ALIASES = Set.of();
+    private static final Set<ResourceLocation> WARNED_AMBIGUOUS = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private static volatile Map<ResourceLocation, List<ResourceLocation>> COMPANIONS = Map.of();
     private static volatile long revision;
+    private static volatile Set<ResourceLocation> COMPANION_IDS = Set.of();
 
     private GeneRegistry() {}
 
@@ -22,22 +40,71 @@ public final class GeneRegistry {
                            Map<ResourceLocation, List<ResourceLocation>> companions) {
         ENTRIES = Map.copyOf(new LinkedHashMap<>(next));
         COMPANIONS = Map.copyOf(new LinkedHashMap<>(companions));
+        Set<ResourceLocation> flat = new LinkedHashSet<>();
+        for (List<ResourceLocation> ids : companions.values()) flat.addAll(ids);
+        COMPANION_IDS = Set.copyOf(flat);
+        AliasIndex aliases = buildAliases(ENTRIES.keySet(), COMPANION_IDS);
+        ORGANIZATIONAL_ALIASES = aliases.aliases();
+        // Organising genes into per-race folders with the same file names is normal, so a shared
+        // basename is only reported when a reference actually uses it (see canonicalId).
+        AMBIGUOUS_ALIASES = aliases.ambiguous();
+        WARNED_AMBIGUOUS.clear();
         revision++;
         com.aetherianartificer.townstead.pheno.power.Powers.dataReloaded();
     }
 
     @Nullable
     public static Gene byId(ResourceLocation id) {
+        ResourceLocation canonical = canonicalId(id);
+        return canonical == null ? null : ENTRIES.get(canonical);
+    }
+
+    /**
+     * Resolve a direct, organizational-short, or legacy id to the gene's canonical resource id.
+     * Returns {@code null} when no loaded gene owns the id.
+     */
+    @Nullable
+    public static ResourceLocation canonicalId(ResourceLocation id) {
         if (id == null) return null;
-        Gene direct = ENTRIES.get(id);
-        if (direct != null) return direct;
+        if (ENTRIES.containsKey(id)) return id;
+        ResourceLocation alias = ORGANIZATIONAL_ALIASES.get(id);
+        if (alias != null) return alias;
         ResourceLocation legacy = com.aetherianartificer.townstead.root.LegacyNamespace.remap(id);
-        return legacy == null ? null : ENTRIES.get(legacy);
+        if (legacy != null) {
+            if (ENTRIES.containsKey(legacy)) return legacy;
+            ResourceLocation legacyAlias = ORGANIZATIONAL_ALIASES.get(legacy);
+            if (legacyAlias != null) return legacyAlias;
+        }
+        warnIfAmbiguous(id);
+        if (legacy != null) warnIfAmbiguous(legacy);
+        return null;
+    }
+
+    /** A reference used a basename several nested genes share; say so once per reload. */
+    private static void warnIfAmbiguous(ResourceLocation id) {
+        if (AMBIGUOUS_ALIASES.contains(id) && WARNED_AMBIGUOUS.add(id)) {
+            LOGGER.warn("Gene id '{}' is ambiguous: several nested genes share that name; use the folder-qualified id", id);
+        }
     }
 
     /** The companion resource genes a gene declares inline, granted alongside it when expressed. */
     public static List<ResourceLocation> companionsOf(ResourceLocation parentId) {
-        return parentId == null ? List.of() : COMPANIONS.getOrDefault(parentId, List.of());
+        ResourceLocation canonical = canonicalId(parentId);
+        return canonical == null ? List.of() : COMPANIONS.getOrDefault(canonical, List.of());
+    }
+
+    /**
+     * True when this gene is plumbing declared inside another rather than something a player picks.
+     *
+     * <p>The reverse of {@link #companionsOf}. A companion rides its parent's expression and is
+     * authored without a name or icon of its own, so anything offering the player a list of genes
+     * has to be able to leave them out.</p>
+     */
+    public static boolean isCompanion(ResourceLocation id) {
+        if (id == null) return false;
+        if (COMPANION_IDS.contains(id)) return true;
+        ResourceLocation legacy = com.aetherianartificer.townstead.root.LegacyNamespace.remap(id);
+        return legacy != null && COMPANION_IDS.contains(legacy);
     }
 
     public static List<Gene> all() {
@@ -52,4 +119,34 @@ public final class GeneRegistry {
     public static long revision() {
         return revision;
     }
+
+    /** Build the unambiguous basename aliases; package-private for focused loader tests. */
+    static AliasIndex buildAliases(Set<ResourceLocation> ids, Set<ResourceLocation> companionIds) {
+        Map<ResourceLocation, ResourceLocation> aliases = new LinkedHashMap<>();
+        Set<ResourceLocation> ambiguous = new LinkedHashSet<>();
+        for (ResourceLocation id : ids) {
+            if (companionIds.contains(id)) continue;
+            String path = id.getPath();
+            int slash = path.lastIndexOf('/');
+            if (slash < 0 || slash == path.length() - 1) continue;
+            //? if >=1.21 {
+            ResourceLocation shortId = ResourceLocation.fromNamespaceAndPath(
+                    id.getNamespace(), path.substring(slash + 1));
+            //?} else {
+            /*ResourceLocation shortId = new ResourceLocation(
+                    id.getNamespace(), path.substring(slash + 1));
+            *///?}
+            // A real flat resource always wins over a convenience alias.
+            if (ids.contains(shortId) || ambiguous.contains(shortId)) continue;
+            ResourceLocation previous = aliases.putIfAbsent(shortId, id);
+            if (previous != null && !previous.equals(id)) {
+                aliases.remove(shortId);
+                ambiguous.add(shortId);
+            }
+        }
+        return new AliasIndex(Map.copyOf(aliases), Set.copyOf(ambiguous));
+    }
+
+    record AliasIndex(Map<ResourceLocation, ResourceLocation> aliases,
+                      Set<ResourceLocation> ambiguous) {}
 }

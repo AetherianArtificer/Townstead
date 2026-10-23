@@ -1,0 +1,106 @@
+{
+  "schema": "townstead:diet/v1",
+  "mods": "vampirism",
+  "foods": [
+    {
+      "fluid": "vampirism:blood",
+      "players_use_item": true,
+      "amount": 100,
+      "nutrition": 3,
+      "saturation": 0.4,
+      "effects": {
+        "type": "pheno:add_state",
+        "state": "townstead_state:vampire_blood",
+        "amount": 1
+      }
+    },
+    {
+      "mods": "butchery",
+      "items": [
+        "butchery:bottle_of_blood"
+      ],
+      "nutrition": 6,
+      "saturation": 0.3,
+      "remainder": "minecraft:glass_bottle",
+      "effects": {
+        "type": "pheno:add_state",
+        "state": "townstead_state:vampire_blood",
+        "amount": 2
+      }
+    },
+    {
+      "mods": "butchery",
+      "fluid": "butchery:blood",
+      "amount": 1000,
+      "nutrition": 20,
+      "saturation": 0.3,
+      "effects": {
+        "type": "pheno:add_state",
+        "state": "townstead_state:vampire_blood",
+        "amount": 10
+      }
+    },
+    {
+      "mods": "butchery",
+      "items": [
+        "butchery:heart",
+        "butchery:enderman_heart"
+      ],
+      "nutrition": 6,
+      "saturation": 0.6,
+      "effects": {
+        "type": "pheno:add_state",
+        "state": "townstead_state:vampire_blood",
+        "amount": 2
+      }
+    },
+    {
+      "mods": "butchery",
+      "items": [
+        "butchery:liver",
+        "butchery:kidney",
+        "butchery:lungs",
+        "butchery:stomach",
+        "butchery:intestines",
+        "butchery:enderman_liver",
+        "butchery:enderman_kidney",
+        "butchery:enderman_lungs",
+        "butchery:enderman_stomach",
+        "butchery:enderman_intestines"
+      ],
+      "nutrition": 3,
+      "saturation": 0.4,
+      "effects": {
+        "type": "pheno:add_state",
+        "state": "townstead_state:vampire_blood",
+        "amount": 1
+      }
+    },
+    {
+      "items": [
+        "minecraft:beef"
+      ],
+      "nutrition": 6,
+      "saturation": 0.6,
+      "effects": {
+        "type": "pheno:add_state",
+        "state": "townstead_state:vampire_blood",
+        "amount": 2
+      }
+    },
+    {
+      "items": [
+        "minecraft:mutton",
+        "minecraft:porkchop",
+        "minecraft:rabbit"
+      ],
+      "nutrition": 3,
+      "saturation": 0.4,
+      "effects": {
+        "type": "pheno:add_state",
+        "state": "townstead_state:vampire_blood",
+        "amount": 1
+      }
+    }
+  ]
+}

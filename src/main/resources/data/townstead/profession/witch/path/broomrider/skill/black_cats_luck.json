@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.broomrider.black_cats_luck"
+  },
+  "icon": "minecraft:black_dye",
+  "description": {
+    "translate": "skill.townstead.witch.broomrider.black_cats_luck.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:broom_night",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:invisibility",
+          "duration": 120,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.witch.ambient",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

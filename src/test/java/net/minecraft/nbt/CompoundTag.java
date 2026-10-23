@@ -54,7 +54,16 @@ public class CompoundTag {
         data.put(key, value);
     }
 
+    public Tag put(String key, Tag value) {
+        Object previous = data.put(key, value);
+        return previous instanceof Tag tag ? tag : null;
+    }
+
     public boolean contains(String key) {
+        return data.containsKey(key);
+    }
+
+    public boolean contains(String key, int ignoredType) {
         return data.containsKey(key);
     }
 
