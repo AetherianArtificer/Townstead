@@ -22,7 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AuthoredVampireStateTest {
     private static final List<String> EFFECTS = List.of("vampire_turning_look", "vampire_fledgling_look",
             "vampire_look", "vampire_elder_look", "vampire_fledgling_nature", "vampire_thirst",
-            "vampire_nature", "vampire_cold_body", "vampire_elder_nature");
+            "vampire_nature", "vampire_cold_body", "vampire_elder_nature", "vampire_fledgling_body",
+            "vampire_no_thirst");
     private static final List<String> LEVEL_UPS = List.of("vampire_level_2", "vampire_level_3", "vampire_level_4");
     private static final List<String> BACKINGS = List.of("vampire_villager", "vampire_sanguinare",
             "vampire_player_level", "vampire_player_lord", "vampire_blood_villager", "vampire_player_age");
@@ -90,6 +91,18 @@ class AuthoredVampireStateTest {
             StateEffect effect = StateEffect.parse(id("townstead:" + name),
                     read("/data/townstead/state_effect/" + name + ".json"));
             assertNotNull(effect.condition(), name);
+        }
+    }
+
+    @Test
+    void fledglingsFeelHalfUntilTheFullGenesTakeOver() throws Exception {
+        StateEffect fledgling = StateEffect.parse(id("townstead:vampire_fledgling_body"),
+                read("/data/townstead/state_effect/vampire_fledgling_body.json"));
+        assertEquals("fledgling", fledgling.tier());
+        for (String name : List.of("vampire_no_thirst", "vampire_cold_body")) {
+            StateEffect full = StateEffect.parse(id("townstead:" + name),
+                    read("/data/townstead/state_effect/" + name + ".json"));
+            assertEquals("vampire", full.minTier(), name);
         }
     }
 

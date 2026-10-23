@@ -21,7 +21,9 @@ import java.util.Set;
  * states it {@code excludes} cannot take hold (a thrall cannot be turned into a vampire). With
  * {@code "body": "villager"} it only takes hold on someone in MCA's own villager body, never a
  * custom rig. {@code requires} is a condition the carrier must meet to take it (a skeleton has no
- * blood to turn); a Root that declares the state {@code true} takes it anyway.
+ * blood to turn); a Root that declares the state {@code true} takes it anyway. With
+ * {@code "resident": false}, whoever is in it belongs to no village while it lasts (a newcomer, a
+ * visitor): MCA neither enrolls them nor looks for a home for them.
  */
 public record EntityStateDefinition(
         ResourceLocation id,
@@ -35,7 +37,8 @@ public record EntityStateDefinition(
         @Nullable Aspect aspect,
         java.util.Set<ResourceLocation> excludes,
         boolean villagerBody,
-        @Nullable com.aetherianartificer.townstead.pheno.condition.Condition requires) {
+        @Nullable com.aetherianartificer.townstead.pheno.condition.Condition requires,
+        boolean resident) {
 
     public static final String SCHEMA = "pheno:entity_state/v1";
 
@@ -153,7 +156,8 @@ public record EntityStateDefinition(
                 json.has("aspect") ? aspect(id, json.get("aspect")) : null,
                 excludes(json),
                 "villager".equals(GsonHelper.getAsString(json, "body", "any")),
-                requires(json));
+                requires(json),
+                GsonHelper.getAsBoolean(json, "resident", true));
     }
 
     private static @Nullable com.aetherianartificer.townstead.pheno.condition.Condition requires(JsonObject json) {

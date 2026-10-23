@@ -860,5 +860,16 @@
   "dialogue.chat.townstead_beachparty.cabana_solo/1": "Voilà qui est mieux : un siège, une brise, et rien d'urgent à faire.",
   "dialogue.chat.townstead_beachparty.cabana_solo/2": "Je garde ce tabouret jusqu'à ce que la compagnie s'améliore.",
   "dialogue.chat.townstead_beachparty.cabana_solo/3": "Si on me demande, je mène une importante recherche sur la détente.",
-  "dialogue.chat.townstead_beachparty.cabana_solo/4": "Un bar tranquille reste un bar. La vue fait un excellent travail."
+  "dialogue.chat.townstead_beachparty.cabana_solo/4": "Un bar tranquille reste un bar. La vue fait un excellent travail.",
+  "dialogue.main.newcomer_stay": "Demande de rester",
+  "dialogue.newcomer_stay.success/1": "Avec plaisir. Merci de me le demander.",
+  "dialogue.newcomer_stay.success/2": "Ici ? Oui. J'ai besoin d'un endroit pour recommencer.",
+  "dialogue.newcomer_stay.success/3": "Je crois que je vais rester. L'endroit a l'air bien.",
+  "dialogue.newcomer_stay.fail/1": "Pas encore. J'ai besoin de temps avant de m'installer quelque part.",
+  "dialogue.newcomer_stay.fail/2": "Merci, mais pas aujourd'hui.",
+  "dialogue.newcomer_stay.fail/3": "Je cherche encore mes repères. Rester quelque part, ce n'est pas encore pour moi.",
+  "dialogue.newcomer_stay.repeat/1": "Tu me l'as déjà demandé.",
+  "dialogue.newcomer_stay.repeat/2": "Je n'ai pas encore changé d'avis.",
+  "dialogue.newcomer_stay.no_space/1": "Il n'y a pas de place pour moi ici.",
+  "dialogue.newcomer_stay.no_space/2": "Je ne vois pas de lit pour moi ici."
 }

@@ -969,5 +969,16 @@
   "dialogue.chat.townstead_beachparty.cabana_solo/1": "Now this is more like it: a seat, a breeze, and nowhere urgent to be.",
   "dialogue.chat.townstead_beachparty.cabana_solo/2": "I'll hold down this stool until the company improves.",
   "dialogue.chat.townstead_beachparty.cabana_solo/3": "If anyone asks, I'm conducting important research on relaxation.",
-  "dialogue.chat.townstead_beachparty.cabana_solo/4": "A quiet bar still counts as a bar. The view is doing excellent work."
+  "dialogue.chat.townstead_beachparty.cabana_solo/4": "A quiet bar still counts as a bar. The view is doing excellent work.",
+  "dialogue.main.newcomer_stay": "Ask to stay",
+  "dialogue.newcomer_stay.success/1": "I'd like that. Thank you for asking.",
+  "dialogue.newcomer_stay.success/2": "Here? Yes. I could use somewhere to start over.",
+  "dialogue.newcomer_stay.success/3": "I think I will. It seems like a good place.",
+  "dialogue.newcomer_stay.fail/1": "Not yet. I need some time before I settle anywhere.",
+  "dialogue.newcomer_stay.fail/2": "Thank you, but not today.",
+  "dialogue.newcomer_stay.fail/3": "I'm still finding my feet. I'm not ready to stay anywhere.",
+  "dialogue.newcomer_stay.repeat/1": "You already asked me.",
+  "dialogue.newcomer_stay.repeat/2": "I haven't changed my mind yet.",
+  "dialogue.newcomer_stay.no_space/1": "There's no room for me here.",
+  "dialogue.newcomer_stay.no_space/2": "I don't see a bed for me here."
 }

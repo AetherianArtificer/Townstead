@@ -210,6 +210,10 @@ public final class TownsteadNetwork {
                 (p, buf) -> com.aetherianartificer.townstead.replace.WildCostumeS2CPayload.write(buf, p),
                 com.aetherianartificer.townstead.replace.WildCostumeS2CPayload::read,
                 com.aetherianartificer.townstead.replace.WildCostumeS2CPayload::accept);
+        registerS2C(com.aetherianartificer.townstead.villager.DrownedPersonS2CPayload.class,
+                (p, buf) -> com.aetherianartificer.townstead.villager.DrownedPersonS2CPayload.write(buf, p),
+                com.aetherianartificer.townstead.villager.DrownedPersonS2CPayload::read,
+                com.aetherianartificer.townstead.villager.DrownedPersonS2CPayload::accept);
         registerC2S(com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload.class,
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload::read,

@@ -116,6 +116,8 @@ public final class VillagerServerTickDispatcher {
                     com.aetherianartificer.townstead.pheno.state.EntityStates.tick(v)),
             new Step("villager.vampire_cure", null, (v, t) ->
                     com.aetherianartificer.townstead.compat.vampirism.VampireVillagers.tick(v)),
+            new Step("villager.non_resident", null, (v, t) ->
+                    com.aetherianartificer.townstead.villager.NonResidents.tick(v)),
             new Step("villager.wild", null, (v, t) ->
                     com.aetherianartificer.townstead.replace.MobReplacer.tick(v)),
             resident("villager.chronicle_birth", Systems.CHRONICLES, (v, t) ->

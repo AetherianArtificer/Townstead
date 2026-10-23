@@ -144,17 +144,41 @@ public final class RigSkins {
         if (!look.fits(clothes)) return null;
         // the body may draw each outfit as its own counterpart (a zombie's tattered version)
         com.aetherianartificer.townstead.root.rig.RigDefinition def = RigModels.definition(origin.rigBase());
-        if (def != null && !def.skinRemap().isEmpty()) {
-            String drawn = clothes;
-            for (var swap : def.skinRemap().entrySet()) drawn = drawn.replace(swap.getKey(), swap.getValue());
-            if (!drawn.equals(clothes)) {
-                ResourceLocation swapped = RigAssets.texture(drawn);
-                if (swapped != null && net.minecraft.client.Minecraft.getInstance().getResourceManager()
-                        .getResource(swapped).isPresent()) {
-                    return swapped;
-                }
+        // A zombified villager wears each outfit's zombie version, as MCA's zombies do, where the
+        // Root ships one for this body.
+        if (entity instanceof net.minecraft.world.entity.monster.ZombieVillager) {
+            String zombie = zombieCounterpart(clothes);
+            if (!zombie.equals(clothes)) {
+                ResourceLocation swapped = present(remapped(def, zombie));
+                if (swapped == null) swapped = present(zombie);
+                if (swapped != null) return swapped;
             }
         }
+        String drawn = remapped(def, clothes);
+        if (!drawn.equals(clothes)) {
+            ResourceLocation swapped = present(drawn);
+            if (swapped != null) return swapped;
+        }
         return RigAssets.texture(clothes);
+    }
+
+    private static String remapped(@Nullable com.aetherianartificer.townstead.root.rig.RigDefinition def, String clothes) {
+        if (def == null || def.skinRemap().isEmpty()) return clothes;
+        String drawn = clothes;
+        for (var swap : def.skinRemap().entrySet()) drawn = drawn.replace(swap.getKey(), swap.getValue());
+        return drawn;
+    }
+
+    // MCA's ClothingLayer swaps "normal" for the variant in the outfit's path.
+    private static String zombieCounterpart(String clothes) {
+        int colon = clothes.indexOf(':');
+        return clothes.substring(0, colon + 1) + clothes.substring(colon + 1).replace("normal", "zombie");
+    }
+
+    @Nullable
+    private static ResourceLocation present(String clothes) {
+        ResourceLocation texture = RigAssets.texture(clothes);
+        return texture != null && net.minecraft.client.Minecraft.getInstance().getResourceManager()
+                .getResource(texture).isPresent() ? texture : null;
     }
 }

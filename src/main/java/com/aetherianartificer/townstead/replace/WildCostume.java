@@ -1,6 +1,9 @@
 package com.aetherianartificer.townstead.replace;
 
+import com.aetherianartificer.townstead.pheno.state.EntityStates;
+import com.aetherianartificer.townstead.villager.NonResidents;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
+import com.aetherianartificer.townstead.compat.mca.McaResidency;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -13,7 +16,6 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
 import org.jetbrains.annotations.Nullable;
-import com.aetherianartificer.townstead.compat.mca.McaResidency;
 
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -128,9 +130,10 @@ public final class WildCostume {
 
     /**
      * Replaces {@code mob} with the person it shows: same look, health share, effects and place.
-     * The person is no longer wild; it seeks a home like anyone else. Null when there is none.
+     * The person is no longer wild. A settled one seeks a home like anyone else; otherwise they
+     * come back as a newcomer who belongs nowhere yet. Null when there is none.
      */
-    public static @Nullable VillagerEntityMCA convert(Mob mob) {
+    public static @Nullable VillagerEntityMCA convert(Mob mob, boolean settled) {
         if (!has(mob) || !(mob.level() instanceof ServerLevel level)) return null;
         VillagerEntityMCA person = load(level, mob.getPersistentData().getCompound(COSTUME));
         if (person == null) return null;
@@ -152,8 +155,9 @@ public final class WildCostume {
             PEOPLE.remove(mob);
         }
         level.addFreshEntityWithPassengers(person);
+        if (!settled) EntityStates.set(person, NonResidents.NEWCOMER, 1, 0, null);
         person.refreshBrain(level);
-        McaResidency.joinVillage(person);
+        if (settled) McaResidency.joinVillage(person);
         return person;
     }
 

@@ -19,6 +19,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import com.aetherianartificer.townstead.compat.mca.McaResidency;
+import com.aetherianartificer.townstead.villager.NonResidents;
 
 import java.util.List;
 import java.util.Map;
@@ -78,6 +79,7 @@ public final class Visitors {
         *///?}
         villager.getPersistentData().putString(ROLE, spec.role());
         if (!level.addFreshEntity(villager)) return null;
+        EntityStates.set(villager, NonResidents.VISITOR, 1, 0, null);
         for (Map.Entry<ResourceLocation, Double> state : spec.states().entrySet()) {
             EntityStates.set(villager, state.getKey(), state.getValue(), 0, null);
         }
@@ -106,6 +108,7 @@ public final class Visitors {
         for (VillagerEntityMCA member : party(visitor)) {
             member.getPersistentData().remove(ROLE);
             member.getPersistentData().remove(PARTY);
+            EntityStates.clear(member, NonResidents.VISITOR, null);
             McaResidency.joinVillage(member);
         }
     }

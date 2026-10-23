@@ -100,6 +100,7 @@ public final class EntityStates {
 
     /** For each state, the states whose presence excludes it. */
     private static volatile Map<ResourceLocation, java.util.Set<ResourceLocation>> excludedBy = Map.of();
+    private static volatile List<ResourceLocation> nonResident = List.of();
 
     public record Resolved(ResourceLocation state, boolean active, double amount,
                            @Nullable String tier, int tierIndex, long remaining,
@@ -111,6 +112,14 @@ public final class EntityStates {
 
     private record Sample(StateBacking backing, double amount, long remaining, long modified) {}
     private record Stored(double amount, long expiresAt, long modified) {}
+
+    /** Whether a state that keeps its carrier out of every village ({@code "resident": false}) holds. */
+    public static boolean nonResident(LivingEntity entity) {
+        for (ResourceLocation state : nonResident) {
+            if (resolve(entity, state).active()) return true;
+        }
+        return false;
+    }
 
     public static @Nullable EntityStateDefinition definition(ResourceLocation id) {
         return definitions.get(id);
@@ -129,6 +138,8 @@ public final class EntityStates {
             }
         }
         excludedBy = Map.copyOf(index);
+        nonResident = next.values().stream().filter(definition -> !definition.resident())
+                .map(EntityStateDefinition::id).toList();
         resetRuntime();
     }
 

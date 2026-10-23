@@ -68,14 +68,17 @@ public record ThermalProfile(float neutral, float band, float cold, float heat, 
         float heat = 1f;
         float offset = 0f;
         ThermalAcclimation.Limits acclimation = null;
-        boolean suppressed = false, first = true;
-        // The first gene sets the body's rest; sensitivity takes the lowest per side, offsets add,
-        // and acclimation comes from the first gene that sets it.
+        boolean suppressed = false, first = true, rested = false;
+        // The first gene that sets a rest sets the body's; sensitivity takes the lowest per side,
+        // offsets add, and acclimation comes from the first gene that sets it.
         for (ThermalToleranceGeneType.Instance gene : ExpressedGenes.instancesOf(entity, ThermalToleranceGeneType.Instance.class)) {
             if (gene.climateAny()) suppressed = true;
-            if (first) {
+            if (!rested && Float.isFinite(gene.neutral())) {
                 neutral = gene.neutral();
                 band = gene.band();
+                rested = true;
+            }
+            if (first) {
                 cold = gene.cold();
                 heat = gene.heat();
                 first = false;

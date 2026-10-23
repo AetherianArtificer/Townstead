@@ -60,7 +60,7 @@ public final class CostumeHearts {
         MobReplacement replacement = person == null ? null : MobReplacer.replacementOf(person);
         int needed = replacement == null ? DEFAULT_SETTLE : replacement.settleHearts();
         if (memories.getHearts() < needed) return;
-        VillagerEntityMCA settled = WildCostume.convert(mob);
+        VillagerEntityMCA settled = WildCostume.convert(mob, true);
         if (settled == null) return;
         player.displayClientMessage(Component.translatable("message.townstead.costume.settled",
                 settled.getDisplayName()), false);

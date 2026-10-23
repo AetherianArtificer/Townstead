@@ -33,6 +33,13 @@ public final class NamePlate {
      * @param sink    where to put the replacement, when there is one
      */
     public static void render(Entity entity, Component content, Consumer<Component> sink) {
+        // A zombie who was someone keeps their family name, drawn in the zombie's own colour.
+        if (entity instanceof net.conczin.mca.entity.ZombieVillagerEntityMCA && content != null) {
+            String drawn = content.getString();
+            String styled = NameClientStore.styled(entity.getId(), drawn, style());
+            if (!styled.isEmpty() && !styled.equals(drawn)) sink.accept(Component.literal(styled).withStyle(content.getStyle()));
+            return;
+        }
         if (!(entity instanceof VillagerEntityMCA villager)) return;
 
         // Capitals draws the nameplate when it is installed, and composes it itself from a title,

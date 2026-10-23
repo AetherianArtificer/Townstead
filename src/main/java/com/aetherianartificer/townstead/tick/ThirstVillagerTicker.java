@@ -96,7 +96,9 @@ public final class ThirstVillagerTicker {
             state.biomeModifier = bridge.exhaustionBiomeModifier(level, self.blockPosition(), state.thermal);
             state.nextBiomeModifierSampleTick = gameTime + BIOME_MODIFIER_RESAMPLE_TICKS;
         }
-        float biomeModifier = state.biomeModifier;
+        // A rate of 0 is suppressed above, so dividing by it below is safe.
+        float thirstRate = NeedSuppression.thirstRate(self);
+        float biomeModifier = state.biomeModifier * thirstRate;
 
         long elapsedTime = gameTime;
         if (state.lastGameTime < 0) state.lastGameTime = elapsedTime;
@@ -139,7 +141,7 @@ public final class ThirstVillagerTicker {
             needs.addThirstExhaustion(ThirstData.EXHAUSTION_AWAKE_BASELINE * biomeModifier * elapsedTicks);
         }
 
-        needs.addThirstExhaustion((bridge.thermalExhaustionPerTick(state.thermal) + ToughAsNailsEntityCompat.thirstExhaustion(self)) * elapsedTicks);
+        needs.addThirstExhaustion((bridge.thermalExhaustionPerTick(state.thermal) + ToughAsNailsEntityCompat.thirstExhaustion(self)) * thirstRate * elapsedTicks);
         thirstChanged |= needs.processThirstExhaustion();
         if (state.lastPassiveDrainGameTime < 0) state.lastPassiveDrainGameTime = elapsedTime;
         Activity currentActivity = currentScheduleActivity(self);
@@ -150,7 +152,7 @@ public final class ThirstVillagerTicker {
         } else {
             // Passive thirst drain only. Drinking is owned by RefuelTask now.
             int drainIterations = 0;
-            int passiveInterval = com.aetherianartificer.townstead.needs.NeedPace.interval(ThirstData.PASSIVE_DRAIN_INTERVAL);
+            int passiveInterval = Math.round(com.aetherianartificer.townstead.needs.NeedPace.interval(ThirstData.PASSIVE_DRAIN_INTERVAL) / thirstRate);
             while (elapsedTime - state.lastPassiveDrainGameTime >= passiveInterval && drainIterations < 100) {
                 state.lastPassiveDrainGameTime += passiveInterval;
                 thirstChanged |= needs.passiveThirstDrain();

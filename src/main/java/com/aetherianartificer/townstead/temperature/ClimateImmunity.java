@@ -20,8 +20,9 @@ import net.minecraft.world.effect.MobEffect;
 
 /**
  * A player whose Root has {@code "climate": "any"} holds each installed temperature mod's own
- * immunity effect, kept topped up and hidden. Townstead does not simulate player body heat, so
- * this is how the gene reaches players. When the gene goes, the effect runs out by itself. A root
+ * immunity effect, kept topped up and hidden. {@link PlayerFeelsLike} scales what the player feels,
+ * but the mod still runs the body, and only in Townstead's climate mode; the effect makes the
+ * immunity hold either way. When the gene goes, the effect runs out by itself. A root
  * that stays dry has the mod's own player wetness switched off the same way.
  */
 public final class ClimateImmunity {

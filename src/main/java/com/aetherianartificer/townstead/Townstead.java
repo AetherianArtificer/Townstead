@@ -641,22 +641,9 @@ public class Townstead {
                 com.aetherianartificer.townstead.pet.VillagerPets.onJoin(e.getEntity());
                 com.aetherianartificer.townstead.journey.Companions.onJoin(e.getEntity());
                 com.aetherianartificer.townstead.journey.Journeys.onJoin(e.getEntity());
-                if (e.getEntity() instanceof VillagerEntityMCA villager) {
-                    com.aetherianartificer.townstead.villager.TownsteadVillagerState.root(villager);
-                    com.aetherianartificer.townstead.root.trait.TraitBridge.migrate(villager);
-                    // Names settle when a villager arrives, not on a timer: this is the
-                    // first moment their household and village are resolvable, and it is
-                    // also what hands the composed name to whatever else displays it.
-                    // Both naming axes settle before the name is composed. Culture is the
-                    // sparse one and most villagers have none; the tradition is universal and
-                    // is what a surname is actually built from, so without it a villager who
-                    // predates this would publish an empty family name forever.
-                    com.aetherianartificer.townstead.culture.CultureAssignment.ensure(sl, villager);
-                    com.aetherianartificer.townstead.naming.TraditionAssignment.ensure(sl, villager);
-                    com.aetherianartificer.townstead.naming.VillagerNames.publish(villager);
-                    villager.getResidency().getHomeVillage().ifPresent(village ->
-                            com.aetherianartificer.townstead.politics.state.PoliticalVillageBootstrap
-                                    .ensure(sl, village));
+                if (e.getEntity() instanceof VillagerEntityMCA villager
+                        && !com.aetherianartificer.townstead.villager.ZombifiedVillagers.curing(sl)) {
+                    com.aetherianartificer.townstead.villager.VillagerArrival.settle(sl, villager);
                 }
             }
         });
@@ -691,6 +678,14 @@ public class Townstead {
                     && e.getTarget() instanceof net.minecraft.world.entity.Mob mob
                     && com.aetherianartificer.townstead.replace.WildCostume.has(mob)
                     && com.aetherianartificer.townstead.compat.vampirism.VampireVillagers.tryCureWild(mob, curer, e.getItemStack())) {
+                e.setCanceled(true);
+                e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
+            }
+        });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.EntityInteract e) -> {
+            if (e.getEntity() instanceof ServerPlayer curer
+                    && e.getTarget() instanceof net.minecraft.world.entity.Mob mob
+                    && com.aetherianartificer.townstead.villager.ZombifiedVillagers.tryCureDrowned(mob, curer, e.getHand())) {
                 e.setCanceled(true);
                 e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
             }
@@ -1369,22 +1364,9 @@ public class Townstead {
                 com.aetherianartificer.townstead.pet.VillagerPets.onJoin(e.getEntity());
                 com.aetherianartificer.townstead.journey.Companions.onJoin(e.getEntity());
                 com.aetherianartificer.townstead.journey.Journeys.onJoin(e.getEntity());
-                if (e.getEntity() instanceof VillagerEntityMCA villager) {
-                    com.aetherianartificer.townstead.villager.TownsteadVillagerState.root(villager);
-                    com.aetherianartificer.townstead.root.trait.TraitBridge.migrate(villager);
-                    // Names settle when a villager arrives, not on a timer: this is the
-                    // first moment their household and village are resolvable, and it is
-                    // also what hands the composed name to whatever else displays it.
-                    // Both naming axes settle before the name is composed. Culture is the
-                    // sparse one and most villagers have none; the tradition is universal and
-                    // is what a surname is actually built from, so without it a villager who
-                    // predates this would publish an empty family name forever.
-                    com.aetherianartificer.townstead.culture.CultureAssignment.ensure(sl, villager);
-                    com.aetherianartificer.townstead.naming.TraditionAssignment.ensure(sl, villager);
-                    com.aetherianartificer.townstead.naming.VillagerNames.publish(villager);
-                    villager.getResidency().getHomeVillage().ifPresent(village ->
-                            com.aetherianartificer.townstead.politics.state.PoliticalVillageBootstrap
-                                    .ensure(sl, village));
+                if (e.getEntity() instanceof VillagerEntityMCA villager
+                        && !com.aetherianartificer.townstead.villager.ZombifiedVillagers.curing(sl)) {
+                    com.aetherianartificer.townstead.villager.VillagerArrival.settle(sl, villager);
                 }
             }
         });
@@ -1412,6 +1394,14 @@ public class Townstead {
                     && e.getTarget() instanceof net.minecraft.world.entity.Mob mob
                     && com.aetherianartificer.townstead.replace.WildCostume.has(mob)
                     && com.aetherianartificer.townstead.compat.vampirism.VampireVillagers.tryCureWild(mob, curer, e.getItemStack())) {
+                e.setCanceled(true);
+                e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
+            }
+        });
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.PlayerInteractEvent.EntityInteract e) -> {
+            if (e.getEntity() instanceof ServerPlayer curer
+                    && e.getTarget() instanceof net.minecraft.world.entity.Mob mob
+                    && com.aetherianartificer.townstead.villager.ZombifiedVillagers.tryCureDrowned(mob, curer, e.getHand())) {
                 e.setCanceled(true);
                 e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
             }
@@ -3909,6 +3899,12 @@ public class Townstead {
                 (payload, context) -> context.enqueueWork(
                         () -> com.aetherianartificer.townstead.replace.WildCostumeS2CPayload.accept(payload))
         );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.villager.DrownedPersonS2CPayload.TYPE,
+                com.aetherianartificer.townstead.villager.DrownedPersonS2CPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> com.aetherianartificer.townstead.villager.DrownedPersonS2CPayload.accept(payload))
+        );
         registrar.playToServer(
                 com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload.TYPE,
                 com.aetherianartificer.townstead.spirit.VillageSpiritQueryPayload.STREAM_CODEC,
@@ -5918,8 +5914,17 @@ public class Townstead {
             com.aetherianartificer.townstead.replace.WildCostume.syncTo(sp, mob);
             return;
         }
+        if (event.getTarget() instanceof net.minecraft.world.entity.Mob zombified
+                && com.aetherianartificer.townstead.villager.ZombifiedVillagers.isZombified(zombified)) {
+            com.aetherianartificer.townstead.villager.ZombifiedVillagers.syncTo(sp, zombified);
+            return;
+        }
         if (!(event.getTarget() instanceof VillagerEntityMCA villager)) return;
+        townstead$syncVillagerTo(sp, villager);
+    }
 
+    /** Everything a player who starts seeing {@code villager} is told about them. */
+    public static void townstead$syncVillagerTo(ServerPlayer sp, VillagerEntityMCA villager) {
         com.aetherianartificer.townstead.naming.NameSyncTarget.syncToPlayer(sp, villager);
         com.aetherianartificer.townstead.replace.MobReplacer.syncWildName(sp, villager);
         com.aetherianartificer.townstead.performance.CollapsePlayback.syncToWatcher(sp, villager);

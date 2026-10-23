@@ -36,6 +36,15 @@ public final class NeedSuppression {
         return false;
     }
 
+    /** The share of normal thirst the entity feels: the product of its hydration genes' rates. */
+    public static float thirstRate(LivingEntity entity) {
+        float rate = 1f;
+        for (HydrationGeneType.Instance gene : ExpressedGenes.instancesOf(entity, HydrationGeneType.Instance.class)) {
+            rate *= gene.rate();
+        }
+        return rate;
+    }
+
     /** True for a {@code climate: any} root, which does not thermoregulate, or a stage with no needs. */
     public static boolean suppressesTemperature(LivingEntity entity) {
         if (stageHasNoNeeds(entity)) return true;

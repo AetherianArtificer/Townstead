@@ -52,6 +52,8 @@ public final class MobReplacer {
     public static boolean onFinalizeSpawn(Mob mob, ServerLevelAccessor accessor, MobSpawnType spawnType) {
         if (!MobReplacements.any() || !(accessor instanceof ServerLevel level) || mob instanceof VillagerEntityMCA
                 || WildCostume.has(mob)) return false;
+        // A villager turning into a zombie is still that person, never someone else's costume.
+        if (mob instanceof net.conczin.mca.entity.ZombieVillagerEntityMCA && spawnType == MobSpawnType.CONVERSION) return false;
         MobReplacement replacement = MobReplacements.forType(mob.getType());
         if (replacement == null || !enabled(replacement)) return false;
         if (!replacement.spawnTypes().contains(spawnType.name().toLowerCase(Locale.ROOT))) return false;

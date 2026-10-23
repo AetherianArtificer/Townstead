@@ -50,7 +50,10 @@ public abstract class VillagerFinalizeSpawnMixin {
     private void townstead$applyRootAfterInit(CallbackInfoReturnable<SpawnGroupData> cir) {
         VillagerEntityMCA self = (VillagerEntityMCA) (Object) this;
         if (!self.level().isClientSide) {
-            com.aetherianartificer.townstead.root.RootSpawnHandler.onTrueSpawn(self);
+            // A cure runs finalizeSpawn too; the person it brought back is not rolled again.
+            if (!com.aetherianartificer.townstead.villager.ZombifiedVillagers.takeRestored(self)) {
+                com.aetherianartificer.townstead.root.RootSpawnHandler.onTrueSpawn(self);
+            }
             com.aetherianartificer.townstead.naming.SpawnNaming.complete(self);
         }
     }

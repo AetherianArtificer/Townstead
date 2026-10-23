@@ -65,8 +65,8 @@ public final class PhenoSchemas {
 
         NodeSchemas.register(NodeSchema.of("pheno:thermal_tolerance", NodeDomain.GENE)
                 .doc("Resting body temperature and comfort band; cold/heat scale the ambient pull. climate:any switches the need off.")
-                .field(of("neutral", PhenoType.FLOAT).doc("Resting body temperature in Celsius (default 37.0)."))
-                .field(of("band", PhenoType.FLOAT).doc("Comfortable half-width in Celsius (default 0.5)."))
+                .field(of("neutral", PhenoType.FLOAT).doc("Resting body temperature in Celsius (default 37.0). Omit with band to leave the rest to another gene."))
+                .field(of("band", PhenoType.FLOAT).doc("Comfortable half-width in Celsius (default 0.5). Omit with neutral to leave the rest to another gene."))
                 .field(of("cold", PhenoType.FLOAT).doc("Cold sensitivity 0..2 (0 immune, 1 baseline)."))
                 .field(of("heat", PhenoType.FLOAT).doc("Heat sensitivity 0..2 (0 immune, 1 baseline)."))
                 .field(of("climate", PhenoType.STRING).doc("\"any\" disables thermoregulation entirely."))

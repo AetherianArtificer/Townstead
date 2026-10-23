@@ -31,6 +31,25 @@ public final class DisplayNames {
         return Component.literal(composed);
     }
 
+    /**
+     * The composed name for a zombie villager who was someone, in the zombie's own style. A zombie
+     * Townstead never knew keeps its name as is.
+     */
+    public static Component ofZombie(net.minecraft.world.entity.Mob zombie, Component raw) {
+        if (raw == null || COMPOSING.get()) return raw;
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.NAMING)) return raw;
+        String given = raw.getString();
+        String composed;
+        if (zombie.level().isClientSide) {
+            composed = NameClientStore.styled(zombie.getId(), given, style());
+        } else {
+            VillagerEntityMCA person = com.aetherianartificer.townstead.villager.ZombifiedVillagers.person(zombie);
+            composed = person == null ? given : apply(person, given, style());
+        }
+        if (composed.isEmpty() || composed.equals(given)) return raw;
+        return Component.literal(composed).withStyle(raw.getStyle());
+    }
+
     /** The composed name in a named style, for a surface that wants something other than the default. */
     public static String apply(VillagerEntityMCA villager, String given, NameStyle style) {
         if (villager == null || style == null || COMPOSING.get()) return given;

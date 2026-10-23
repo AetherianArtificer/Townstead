@@ -69,7 +69,11 @@ public final class TownsteadVillagerState {
     }
 
     static void saveSnapshot(VillagerEntityMCA villager, TownsteadVillager state) {
-        saveSnapshotTag(villager, state.toSnapshotTag());
+        CompoundTag snapshot = state.toSnapshotTag();
+        saveSnapshotTag(villager, snapshot);
+        // A zombified villager's stand-in records onto the zombie, which is what is saved and cured.
+        net.minecraft.world.entity.Mob zombie = ZombifiedVillagers.zombieOf(villager);
+        if (zombie != null) saveSnapshotTag(zombie, snapshot.copy());
     }
 
     private static CompoundTag loadSnapshotTag(VillagerEntityMCA villager) {
@@ -81,7 +85,7 @@ public final class TownsteadVillagerState {
         *///?}
     }
 
-    private static void saveSnapshotTag(VillagerEntityMCA villager, CompoundTag snapshot) {
+    private static void saveSnapshotTag(net.minecraft.world.entity.Entity villager, CompoundTag snapshot) {
         //? if neoforge {
         CompoundTag carrier = villager.getData(Townstead.LIFE_DATA);
         carrier.put(SNAPSHOT_KEY, snapshot);

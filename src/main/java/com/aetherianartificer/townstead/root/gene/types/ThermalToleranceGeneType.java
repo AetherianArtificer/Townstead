@@ -15,7 +15,8 @@ import java.util.List;
  * Where a root's body rests and how wide its comfort is. {@code neutral} is the resting body
  * temperature in Celsius, {@code band} the half-width of the comfortable range; the temperature
  * tiers scale off the band. {@code cold} and {@code heat} scale the two halves of the ambient pull
- * (0 immune, 1 baseline, 2 doubled). {@code "climate": "any"} switches the need off entirely, the
+ * (0 immune, 1 baseline, 2 doubled). A gene that sets neither {@code neutral} nor {@code band} leaves
+ * the body's rest to the carrier's other thermal genes. {@code "climate": "any"} switches the need off entirely, the
  * {@code diet: none} precedent. {@code comfort_offset_c} moves where comfort sits, and
  * {@code acclimation} sets the Root's own acclimation limits ({@code false} for none).
  *
@@ -49,11 +50,13 @@ public final class ThermalToleranceGeneType implements GeneType {
     @Override
     public GeneInstance parse(JsonObject json) {
         boolean any = CLIMATE_ANY.equalsIgnoreCase(GsonHelper.getAsString(json, "climate", ""));
-        float neutral = GsonHelper.getAsFloat(json, "neutral", TemperatureData.DEFAULT_NEUTRAL);
-        float band = GsonHelper.getAsFloat(json, "band", TemperatureData.DEFAULT_BAND);
+        // A gene with neither field only scales sensitivity, leaving the body's rest to another gene.
+        boolean rests = json.has("neutral") || json.has("band");
+        float neutral = rests ? GsonHelper.getAsFloat(json, "neutral", TemperatureData.DEFAULT_NEUTRAL) : Float.NaN;
+        float band = rests ? Math.max(0.1f, GsonHelper.getAsFloat(json, "band", TemperatureData.DEFAULT_BAND)) : Float.NaN;
         float cold = any ? 0f : clamp(GsonHelper.getAsFloat(json, "cold", 1f));
         float heat = any ? 0f : clamp(GsonHelper.getAsFloat(json, "heat", 1f));
-        return new Instance(neutral, Math.max(0.1f, band), cold, heat, any,
+        return new Instance(neutral, band, cold, heat, any,
                 GsonHelper.getAsFloat(json, "comfort_offset_c", 0f),
                 com.aetherianartificer.townstead.temperature.ThermalAcclimation.Limits.parse(json.get("acclimation")));
     }

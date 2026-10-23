@@ -37,6 +37,11 @@ public final class WildCostumeRender {
     /*public static void onRenderLivingPre(net.minecraftforge.client.event.RenderLivingEvent.Pre<?, ?> event) {
     *///?}
         LivingEntity mob = event.getEntity();
+        if (DrownedPersonRender.render(mob, event.getPartialTick(), event.getPoseStack(),
+                event.getMultiBufferSource(), event.getPackedLight())) {
+            event.setCanceled(true);
+            return;
+        }
         if (mob instanceof VillagerEntityMCA) return;
         WildCostumeS2CPayload look = WildCostumeS2CPayload.of(mob.getId());
         if (look == null) return;
@@ -59,12 +64,14 @@ public final class WildCostumeRender {
         WildCostumeS2CPayload.forget(event.getEntity().getId());
         com.aetherianartificer.townstead.replace.WildPlateS2CPayload.forget(event.getEntity().getId());
         PEOPLE.remove(event.getEntity().getId());
+        DrownedPersonRender.forget(event.getEntity().getId());
     }
 
     public static void clear() {
         WildCostumeS2CPayload.clear();
         com.aetherianartificer.townstead.replace.WildPlateS2CPayload.clear();
         PEOPLE.clear();
+        DrownedPersonRender.clear();
     }
 
     /** The person a costumed mob shows on this client, or null when it wears none. */
@@ -94,6 +101,15 @@ public final class WildCostumeRender {
     }
 
     private static void pose(LivingEntity mob, VillagerEntityMCA person) {
+        follow(mob, person);
+        Person known = PEOPLE.get(mob.getId());
+        ItemStack held = mob.getMainHandItem();
+        hold(person, EquipmentSlot.MAINHAND, held.isEmpty() && known != null ? known.arms() : held);
+        hold(person, EquipmentSlot.OFFHAND, mob.getOffhandItem());
+    }
+
+    /** Moves and poses {@code person} exactly as {@code mob} is this frame, so it can be drawn in its place. */
+    static void follow(LivingEntity mob, Mob person) {
         person.setPos(mob.getX(), mob.getY(), mob.getZ());
         person.xo = mob.xo;
         person.yo = mob.yo;
@@ -127,10 +143,6 @@ public final class WildCostumeRender {
         person.setOnGround(mob.onGround());
         person.setInvisible(mob.isInvisible());
         if (mob instanceof Mob m) person.setAggressive(m.isAggressive());
-        Person known = PEOPLE.get(mob.getId());
-        ItemStack held = mob.getMainHandItem();
-        hold(person, EquipmentSlot.MAINHAND, held.isEmpty() && known != null ? known.arms() : held);
-        hold(person, EquipmentSlot.OFFHAND, mob.getOffhandItem());
     }
 
     private static void hold(VillagerEntityMCA person, EquipmentSlot slot, ItemStack stack) {

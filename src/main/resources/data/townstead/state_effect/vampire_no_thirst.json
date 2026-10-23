@@ -2,8 +2,8 @@
   "schema": "pheno:state_effect/v1",
   "mods": "vampirism",
   "state": "townstead_state:vampire",
-  "min_tier": "fledgling",
-  "priority": 20,
+  "min_tier": "vampire",
+  "priority": 30,
   "genes": {
     "grant": [
       "townstead_roots:vampire_no_thirst"

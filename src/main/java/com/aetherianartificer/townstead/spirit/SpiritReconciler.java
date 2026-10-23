@@ -106,6 +106,23 @@ public final class SpiritReconciler {
                 prevTotals, prevReadout, snap.totals(), newReadout);
     }
 
+    /**
+     * Order-independent summary of the complete buildings that add spirit. MCA's automatic
+     * passes (graveyards growing tombstone by tombstone) compare it before and after to tell
+     * whether spirit needs a recount.
+     */
+    public static long contributionPrint(Village village) {
+        if (village == null) return 0L;
+        long count = 0;
+        long types = 0;
+        for (var b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
+            if (!b.isComplete() || BuildingSpiritIndex.contributionsFor(b.getType()).isEmpty()) continue;
+            count++;
+            types += b.getType().hashCode();
+        }
+        return count * 1_000_003L + types;
+    }
+
     private static void fireTierChange(ServerLevel level, Village village,
                                        SpiritReadout prev, SpiritReadout next) {
         BoundingBox bounds = villageBounds(village);
