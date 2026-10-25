@@ -82,6 +82,7 @@ public final class DataParticles {
     /** Server reload listener for {@code data/<ns>/particle/*.json}. */
     public static final class Loader extends SimpleJsonResourceReloadListener {
         private static final Gson GSON = new Gson();
+        private static final String SCHEMA = "townstead:particle/v1";
 
         public Loader() {
             super(GSON, "particle");
@@ -92,7 +93,14 @@ public final class DataParticles {
             entries = com.aetherianartificer.townstead.data.DataDocuments.resolve("particle", entries, manager);
             Map<String, String> raw = new LinkedHashMap<>();
             for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
-                if (!(entry.getValue() instanceof JsonObject json) || DataParticleDef.parse(json) == null) {
+                if (!(entry.getValue() instanceof JsonObject json)) continue;
+                try {
+                    com.aetherianartificer.townstead.data.TownsteadSchema.validate(json, SCHEMA);
+                } catch (IllegalArgumentException e) {
+                    LOGGER.warn("Skipping particle {}: {}", entry.getKey(), e.getMessage());
+                    continue;
+                }
+                if (DataParticleDef.parse(json) == null) {
                     LOGGER.warn("Skipping particle {}: it needs a \"texture\"", entry.getKey());
                     continue;
                 }

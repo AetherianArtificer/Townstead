@@ -9,7 +9,7 @@
   "mergeRange": 16,
   "blocks": {
     "minecraft:barrel": 1,
-    "#townstead:liquids": 4,
+    "#townstead:dock_liquids": 4,
     "#minecraft:fences": 12,
     "minecraft:lantern": 6
   }

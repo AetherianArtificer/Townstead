@@ -213,7 +213,8 @@ final class RitualSession {
         if (wanted == null) return;
         ItemStack held = candidate.getMainHandItem();
         if (!Blessings.accepts(held, wanted)) return;
-        offering = held.copy();
+        // Emptied before the hand is cleared, so MCA has nothing to file back into a villager's inventory.
+        offering = held.copyAndClear();
         candidate.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
     }
 

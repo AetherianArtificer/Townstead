@@ -153,6 +153,7 @@ public final class RootServerLogic {
         }
         // Reseeding may have changed the fertility gene; keep MCA's infertile trait in step.
         Fertility.syncMcaInfertileTrait(villager);
+        com.aetherianartificer.townstead.root.trait.TraitBlocks.apply(villager);
         // an outfit the new body can't wear (a Ribbit's, on a human) gives way to one it can
         if (changed) {
             ResourceLocation professionId = net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION

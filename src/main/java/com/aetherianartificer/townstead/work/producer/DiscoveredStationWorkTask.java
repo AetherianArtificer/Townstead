@@ -33,6 +33,7 @@ import com.aetherianartificer.townstead.work.station.Stations.StationSlot;
 import com.aetherianartificer.townstead.hunger.ConsumableTargetClaims;
 import com.aetherianartificer.townstead.storage.StorageSearchContext;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
+import com.aetherianartificer.townstead.villager.HandProps;
 import com.aetherianartificer.townstead.villager.ProfessionProgress;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -114,8 +115,6 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     private static final int TOOL_WORK_SWINGS = 3;
     private static final int TOOL_SWING_INTERVAL_TICKS = 6;
     private static final int MAX_TOOL_WORK_ATTEMPTS = 3;
-    private ItemStack previousBoardMainHand = ItemStack.EMPTY;
-    private ItemStack previousBoardOffHand = ItemStack.EMPTY;
     private boolean boardHandsVisible;
     private @Nullable BlockPos stickyBoardStationAnchor;
     private @Nullable ResourceLocation stickyBoardRecipeId;
@@ -1588,25 +1587,19 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
         clearBoardHands(villager);
     }
 
-    /** Save the villager's hand items (first time) then overwrite them with the board tool/input. */
+    /** Shows the board tool and input in the villager's hands, as props; the real items stay in the inventory. */
     private void setBoardHands(VillagerEntityMCA villager, ItemStack mainHand, ItemStack offHand) {
-        if (!boardHandsVisible) {
-            previousBoardMainHand = villager.getMainHandItem().copy();
-            previousBoardOffHand = villager.getOffhandItem().copy();
-            boardHandsVisible = true;
-        }
-        villager.setItemInHand(InteractionHand.MAIN_HAND, mainHand.isEmpty() ? ItemStack.EMPTY : mainHand.copy());
-        villager.setItemInHand(InteractionHand.OFF_HAND, offHand.isEmpty() ? ItemStack.EMPTY : offHand.copy());
+        boardHandsVisible = true;
+        HandProps.show(villager, InteractionHand.MAIN_HAND, mainHand);
+        HandProps.show(villager, InteractionHand.OFF_HAND, offHand);
     }
 
-    /** Restore the villager's previously-saved hand items (no-op if nothing was saved). */
+    /** Clears the board props from the villager's hands (no-op if none are shown). */
     private void clearBoardHands(VillagerEntityMCA villager) {
         if (!boardHandsVisible) return;
         villager.stopUsingItem();
-        villager.setItemInHand(InteractionHand.MAIN_HAND, previousBoardMainHand.copy());
-        villager.setItemInHand(InteractionHand.OFF_HAND, previousBoardOffHand.copy());
-        previousBoardMainHand = ItemStack.EMPTY;
-        previousBoardOffHand = ItemStack.EMPTY;
+        HandProps.clear(villager, InteractionHand.MAIN_HAND);
+        HandProps.clear(villager, InteractionHand.OFF_HAND);
         boardHandsVisible = false;
     }
 

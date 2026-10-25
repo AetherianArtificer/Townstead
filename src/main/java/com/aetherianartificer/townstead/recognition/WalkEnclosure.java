@@ -19,8 +19,8 @@ import java.util.List;
  * directly.
  *
  * <p>Movement follows a mob's own limits. It walks level, auto-steps anything up to a slab high,
- * jumps one block onto natural ground, and drops any height. It never crosses a fence, wall, gate
- * or door, and never climbs a placed block, so a row of hay is a wall while a hillside is a slope.
+ * jumps one block onto natural ground, and drops any height. It never crosses a fence, wall or
+ * gate, walks through doors, and never climbs a placed block, so a row of hay is a wall while a hillside is a slope.
  * Moves are straight only: vanilla pathing cuts a corner only when both sides of it are open, and
  * then the straight route exists too, so fences that touch at a corner still close a ring.</p>
  */
@@ -35,7 +35,7 @@ public final class WalkEnclosure {
     public static final int GROUND = 3;
     /** Any other solid block: a wall at any height, but something to stand on. */
     public static final int SOLID = 4;
-    /** Fences, walls, gates and doors: never crossed and never stood on. */
+    /** Fences, walls and gates: never crossed and never stood on. */
     public static final int BARRIER = 5;
     public static final int UNLOADED = 6;
 
@@ -51,6 +51,27 @@ public final class WalkEnclosure {
     private static final int[] ROOT_HEIGHTS = {0, -1, 1, 2};
     private static final int[] ROOT_DX = {0, 0, 0, 1, -1};
     private static final int[] ROOT_DZ = {0, -1, 1, 0, 0};
+
+    /** A mob's step height: anything this low is walked onto without a jump. */
+    private static final double STEP_HEIGHT = 0.6;
+
+    /**
+     * What a block is to a grazing animal, from the few facts about it that matter. The world
+     * adapter and the save fixtures both read blocks through this, so the order of the tests is
+     * itself under test. {@code collisionTop} is negative for a block with nothing to collide with.
+     */
+    public static int classify(boolean barrier, boolean door, boolean lava, boolean water,
+                               double collisionTop, boolean terrain) {
+        // A gate left open still walls a paddock in, so the ring is read from tags.
+        if (barrier) return BARRIER;
+        // A door is a building's way in, not a pen's wall: a room is never a paddock.
+        if (door) return OPEN;
+        if (lava) return BARRIER;
+        if (collisionTop < 0) return water ? WATER : OPEN;
+        if (collisionTop > 1.0) return BARRIER;
+        if (collisionTop <= STEP_HEIGHT) return LOW;
+        return terrain ? GROUND : SOLID;
+    }
 
     /** How the world reads to a grazing animal, one cell at a time. */
     @FunctionalInterface
@@ -99,6 +120,47 @@ public final class WalkEnclosure {
         if (here != OPEN) return false;
         int below = world.kind(x, y - 1, z);
         return below == GROUND || below == SOLID;
+    }
+
+    /**
+     * Dry standing room for a villager: firm footing and headroom, never in water. What a
+     * plaza's ground is made of, where {@link #standable} also lets an animal swim.
+     */
+    public static boolean walkable(World world, int x, int y, int z) {
+        int here = world.kind(x, y, z);
+        if (here != OPEN && here != LOW) return false;
+        if (here == OPEN) {
+            int below = world.kind(x, y - 1, z);
+            if (below != GROUND && below != SOLID) return false;
+        }
+        return world.kind(x, y + 1, z) == OPEN;
+    }
+
+    /**
+     * On how many of the four sides a fence, wall or gate stands within {@code reach}, looking
+     * straight out from the cell: what tells a pen being built from a field with a fence beside it.
+     * A solid wall ends the look on that side, so the inside of a house is surrounded by nothing.
+     */
+    public static int fencedSides(World world, int x, int y, int z, int reach) {
+        int sides = 0;
+        for (int i = 0; i < DX.length; i++) {
+            look:
+            for (int d = 1; d <= reach; d++) {
+                int lx = x + DX[i] * d;
+                int lz = z + DZ[i] * d;
+                for (int dy = -1; dy <= 1; dy++) {
+                    if (world.kind(lx, y + dy, lz) == BARRIER) {
+                        sides++;
+                        break look;
+                    }
+                }
+                int feet = world.kind(lx, y, lz);
+                int head = world.kind(lx, y + 1, lz);
+                if ((feet == SOLID || feet == GROUND || feet == UNLOADED)
+                        && (head == SOLID || head == GROUND || head == UNLOADED)) break;
+            }
+        }
+        return sides;
     }
 
     /** Standing room at or beside each seed, best candidates first. */

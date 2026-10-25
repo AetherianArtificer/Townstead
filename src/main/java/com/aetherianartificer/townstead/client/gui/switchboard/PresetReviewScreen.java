@@ -7,8 +7,15 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+import org.jetbrains.annotations.Nullable;
 
-/** Shows every value a preset would change before anything is applied. */
+import java.util.List;
+
+/**
+ * Shows every value a preset would change before anything is applied: those the preset sets, and
+ * those going back to their default because the preset leaves them out. When both appear, the
+ * player can apply all of it or only what the preset lists.
+ */
 final class PresetReviewScreen extends MenuBackgroundScreen {
     private final SwitchboardModel model;
     private final Screen home;
@@ -30,9 +37,12 @@ final class PresetReviewScreen extends MenuBackgroundScreen {
     @Override
     protected void init() {
         SettingList list = new SettingList(minecraft, width, height - 36 - 44, 44);
-        for (SwitchboardModel.Change change : preview.changes()) {
-            list.add(new SettingList.Change(change.setting(), change.from(), change.to()));
-        }
+        List<SwitchboardModel.Change> listed = preview.changes().stream().filter(SwitchboardModel.Change::listed).toList();
+        List<SwitchboardModel.Change> reset = preview.changes().stream().filter(change -> !change.listed()).toList();
+        // Headings only when both kinds appear, so an ordinary preset reads as one list.
+        boolean split = !listed.isEmpty() && !reset.isEmpty();
+        addChanges(list, split ? "townstead.switchboard.review.from_preset" : null, listed);
+        addChanges(list, split ? "townstead.switchboard.review.to_default" : null, reset);
         if (preview.changes().isEmpty()) {
             list.add(new SettingList.Header(Component.translatable("townstead.switchboard.review.none")
                     .withStyle(ChatFormatting.GRAY)));
@@ -47,14 +57,34 @@ final class PresetReviewScreen extends MenuBackgroundScreen {
         }
         addRenderableWidget(list);
 
+        if (split) {
+            addRenderableWidget(Button.builder(Component.translatable("townstead.switchboard.review.replace_all",
+                    preview.changes().size()), b -> apply(false)).bounds(width / 2 - 154, height - 28, 100, 20).build());
+            addRenderableWidget(Button.builder(Component.translatable("townstead.switchboard.review.only_listed",
+                    listed.size()), b -> apply(true)).bounds(width / 2 - 50, height - 28, 100, 20).build());
+            addRenderableWidget(Button.builder(CommonComponents.GUI_BACK, b -> onClose())
+                    .bounds(width / 2 + 54, height - 28, 100, 20).build());
+            return;
+        }
         Component apply = preview.changes().isEmpty() ? CommonComponents.GUI_DONE
                 : Component.translatable("townstead.switchboard.review.apply", preview.changes().size());
-        addRenderableWidget(Button.builder(apply, b -> {
-            if (!preview.changes().isEmpty()) model.apply(preset);
-            minecraft.setScreen(home);
-        }).bounds(width / 2 - 154, height - 28, 150, 20).build());
+        addRenderableWidget(Button.builder(apply, b -> apply(false))
+                .bounds(width / 2 - 154, height - 28, 150, 20).build());
         addRenderableWidget(Button.builder(CommonComponents.GUI_BACK, b -> onClose())
                 .bounds(width / 2 + 4, height - 28, 150, 20).build());
+    }
+
+    private static void addChanges(SettingList list, @Nullable String heading, List<SwitchboardModel.Change> changes) {
+        if (changes.isEmpty()) return;
+        if (heading != null) list.add(new SettingList.Header(Component.translatable(heading)));
+        for (SwitchboardModel.Change change : changes) {
+            list.add(new SettingList.Change(change.setting(), change.from(), change.to()));
+        }
+    }
+
+    private void apply(boolean onlyListed) {
+        if (!preview.changes().isEmpty()) model.apply(preset, onlyListed);
+        minecraft.setScreen(home);
     }
 
     @Override

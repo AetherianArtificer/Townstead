@@ -25,7 +25,6 @@ public final class VillagerServerTickDispatcher {
             com.aetherianartificer.townstead.performance.CollapsePlayback.stop(villager);
             TemperatureVillagerTicker.forget(villager.getId());
             WardrobeVillagerTicker.forget(villager.getId());
-            WorkToolTicker.forget(villager);
             EmptyContainerDropoff.forget(villager);
             com.aetherianartificer.townstead.profession.ProfessionSites.forget(villager);
             com.aetherianartificer.townstead.work.WorkActivities.forget(villager);
@@ -114,6 +113,8 @@ public final class VillagerServerTickDispatcher {
                     com.aetherianartificer.townstead.hangout.HangoutEngine.tick(v)),
             new Step("villager.pheno_state", null, (v, t) ->
                     com.aetherianartificer.townstead.pheno.state.EntityStates.tick(v)),
+            new Step("villager.cure_reaction", null, (v, t) ->
+                    com.aetherianartificer.townstead.cure.CureReactions.tick(v)),
             new Step("villager.vampire_cure", null, (v, t) ->
                     com.aetherianartificer.townstead.compat.vampirism.VampireVillagers.tick(v)),
             new Step("villager.non_resident", null, (v, t) ->

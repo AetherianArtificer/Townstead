@@ -1,1 +1,1 @@
-{"schema":"townstead:extended_building/v1","catalog":{"node_item":"minecraft:oak_leaves"},"spirit":{"natural":8,"tourism":2},"enclosure":"none"}
+{"schema":"townstead:extended_building/v1","core":"minecraft:bell","requires":[{"ground":true}],"catalog":{"node_item":"minecraft:oak_leaves"},"spirit":{"natural":8,"tourism":2},"enclosure":"none"}

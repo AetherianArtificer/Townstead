@@ -134,8 +134,10 @@ public final class FatigueVillagerTicker {
         long dayTime = level.getDayTime();
         if (state.lastFatigueDayTime < 0) state.lastFatigueDayTime = dayTime;
 
-        Chronotypes.Resolved chronotype = Chronotypes.resolve(self);
-        boolean isNocturnal = chronotype.isNocturnal();
+        // Resolving the chronotype runs full gene expression; only the interval loop reads it.
+        boolean intervalDue = dayTime - state.lastFatigueDayTime >= FatigueData.ACCUMULATION_INTERVAL;
+        Chronotypes.Resolved chronotype = intervalDue ? Chronotypes.resolve(self) : null;
+        boolean isNocturnal = chronotype != null && chronotype.isNocturnal();
         boolean inBed = self.isSleeping();
         Activity activity = currentScheduleActivity(self);
         boolean inCombat = self.getVillagerBrain().isPanicking()
@@ -146,7 +148,7 @@ public final class FatigueVillagerTicker {
         // the villager's assigned hours recovers fully, off-window naps recover
         // slowly. tick-hour 0 == 6 AM == dayTime 0, matching the sleep window + the UI.
         int tickHour = (int) (timeOfDay / 1000L);
-        boolean inSleepWindow = chronotype.isPreferredSleepHour(tickHour);
+        boolean inSleepWindow = chronotype != null && chronotype.isPreferredSleepHour(tickHour);
         float loungeRecovery = com.aetherianartificer.townstead.hangout.HangoutEngine
                 .restRecovery(self.getUUID());
 
@@ -444,7 +446,8 @@ public final class FatigueVillagerTicker {
     public static boolean keepsSleepingRough(VillagerEntityMCA self) {
         TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
         return needs.restOverrideActive() && needs.fatigue() > 0 && !needs.collapsed()
-                && self.getLastHurtByMob() == null && !self.getVillagerBrain().isPanicking();
+                && self.getLastHurtByMob() == null && !self.getVillagerBrain().isPanicking()
+                && com.aetherianartificer.townstead.pheno.state.StateForms.canSleep(self);
     }
 
     /** Drop memory-only ticker state when the dispatcher observes removal. */

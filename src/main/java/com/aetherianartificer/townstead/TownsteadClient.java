@@ -448,7 +448,9 @@ public final class TownsteadClient {
                     .bounds(width / 2 - 100, 90, 200, 20)
                     .build());
             addRenderableWidget(com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardLink.button(
-                    width / 2 - 100, 114, 200));
+                    width / 2 - 100, 114, 98));
+            addRenderableWidget(com.aetherianartificer.townstead.client.gui.credits.CreditsScreen.button(
+                    this, width / 2 + 2, 114, 98));
             addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, btn -> minecraft.setScreen(parent))
                     .bounds(width / 2 - 100, height - 28, 200, 20)
                     .build());

@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.mixin;
 import com.aetherianartificer.townstead.compat.mca.McaFloorCompat;
 import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
 import com.aetherianartificer.townstead.recognition.BuildingEnclosurePolicies;
+import com.aetherianartificer.townstead.recognition.OpenAirTypeChoice;
 import com.aetherianartificer.townstead.recognition.OptionalBuildingRecognition;
 import net.conczin.mca.network.c2s.ReportBuildingMessage;
 import net.conczin.mca.server.world.data.Village;
@@ -97,7 +98,7 @@ public abstract class ReportBuildingMessageMixin {
                 com.aetherianartificer.townstead.compat.mca.BuildingReportReconciler.reconcile(
                         level, pos, village, TOWNSTEAD$LOG);
                 player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                        "blueprint.buildingRemoved"), true);
+                        "townstead.blueprint.building_removed"), true);
                 McaFloorCompat.pushVillageResponse(player);
                 ci.cancel();
             }
@@ -125,19 +126,13 @@ public abstract class ReportBuildingMessageMixin {
                 boolean roomWillHandle = mode.allowsRoom()
                         && OptionalBuildingRecognition.roomCanHandle(manager, pos, actName);
                 if (!roomWillHandle) {
-                    OptionalBuildingRecognition.Registration registration =
-                            OptionalBuildingRecognition.register(level, candidate);
-                    if (registration != OptionalBuildingRecognition.Registration.FAILED) {
-                        // Added by hand: a removal the player made here no longer stands.
-                        com.aetherianartificer.townstead.recognition.DismissedSites.changed(level, pos);
-                        manager.findNearestVillage(player).ifPresent(v -> {
-                            com.aetherianartificer.townstead.compat.mca.BuildingReportReconciler.reconcile(
-                                    level, pos, v, TOWNSTEAD$LOG);
-                        });
-                        String message = registration == OptionalBuildingRecognition.Registration.CREATED
-                                ? "blueprint.buildingAdded" : "blueprint.scan.identical";
-                        player.displayClientMessage(net.minecraft.network.chat.Component.translatable(message), true);
-                        McaFloorCompat.pushVillageResponse(player);
+                    // Several kinds fit this ground: the player says which, as MCA asks for rooms.
+                    if (search.ties().size() > 1
+                            && OpenAirTypeChoice.ask(player, pos, search.ties(), act)) {
+                        ci.cancel();
+                        return;
+                    }
+                    if (OpenAirTypeChoice.commit(player, pos, candidate)) {
                         ci.cancel();
                         return;
                     }

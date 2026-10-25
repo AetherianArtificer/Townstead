@@ -10,26 +10,22 @@ import com.aetherianartificer.townstead.profession.def.WorkTaskTypes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.level.ServerLevel;
 
-import java.util.Map;
+import com.aetherianartificer.townstead.villager.HandProps;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 /**
  * While a villager is on a WORK shift, display their profession's tool of trade
  * in their main hand. Data-authored Job tools appear only while their Job has runnable work;
- * code-owned professions retain their own semantic display rules. The previous main-hand item
- * is stashed and restored when the shift ends, the profession changes, or no usable tool is in
- * inventory.
+ * code-owned professions retain their own semantic display rules. The tool shown is a
+ * {@link HandProps prop}: the real one stays in the inventory, and the prop is cleared when the
+ * shift ends, the profession changes, or no usable tool is in inventory.
  */
 public final class WorkToolTicker {
     private static final int CHECK_INTERVAL_TICKS = 20;
     private static final String GRIEVE_ID = "mca:grieve";
     private WorkToolTicker() {}
-
-    private static final Map<UUID, ItemStack> PREVIOUS_MAIN_HAND = new ConcurrentHashMap<>();
 
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
@@ -59,30 +55,18 @@ public final class WorkToolTicker {
         Predicate<ItemStack> matcher = stack ->
                 matchesDeclaredTool(villager, stack, actionableTasks);
 
-        ItemStack currentMain = villager.getMainHandItem();
-        UUID id = villager.getUUID();
-
-        // Fast path: already holding a matching tool and state is tracked.
-        if (matcher.test(currentMain) && PREVIOUS_MAIN_HAND.containsKey(id)) {
-            return;
-        }
+        // A matching tool MCA handed over stays as it is.
+        ItemStack held = villager.getMainHandItem();
+        if (matcher.test(held) && !HandProps.isProp(held)) return;
 
         int slot = findSlot(villager.getInventory(), matcher);
         if (slot < 0) {
             restore(villager);
             return;
         }
-
-        ItemStack tool = villager.getInventory().getItem(slot);
-        if (!PREVIOUS_MAIN_HAND.containsKey(id)) {
-            ItemStack stash = matcher.test(currentMain) ? ItemStack.EMPTY : currentMain.copy();
-            PREVIOUS_MAIN_HAND.put(id, stash);
-        }
-        villager.setItemInHand(InteractionHand.MAIN_HAND, tool.copy());
-    }
-
-    public static void forget(VillagerEntityMCA villager) {
-        PREVIOUS_MAIN_HAND.remove(villager.getUUID());
+        // A matching prop stays only while a real tool is still in the inventory.
+        if (matcher.test(held)) return;
+        HandProps.show(villager, InteractionHand.MAIN_HAND, villager.getInventory().getItem(slot));
     }
 
     /**
@@ -120,9 +104,7 @@ public final class WorkToolTicker {
     }
 
     private static void restore(VillagerEntityMCA villager) {
-        ItemStack prev = PREVIOUS_MAIN_HAND.remove(villager.getUUID());
-        if (prev == null) return;
-        villager.setItemInHand(InteractionHand.MAIN_HAND, prev);
+        HandProps.clear(villager, InteractionHand.MAIN_HAND);
     }
 
     // Matched by id: the activity constant lives in a different MCA class on each version.

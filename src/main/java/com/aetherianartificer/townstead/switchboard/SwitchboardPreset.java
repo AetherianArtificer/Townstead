@@ -46,7 +46,9 @@ public record SwitchboardPreset(String name, String description, Map<String, Jso
         }
         Map<String, JsonElement> values = new LinkedHashMap<>();
         root.getAsJsonObject("values").entrySet().forEach(e -> values.put(e.getKey(), e.getValue()));
-        String name = root.has("name") ? root.get("name").getAsString() : fallbackName;
+        // A copied share code carries no name of its own.
+        String name = root.has("name") ? root.get("name").getAsString().trim() : "";
+        if (name.isEmpty()) name = fallbackName;
         String description = root.has("description") ? root.get("description").getAsString() : "";
         return new SwitchboardPreset(name, description, values);
     }

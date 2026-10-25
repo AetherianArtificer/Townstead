@@ -1,5 +1,7 @@
 {
   "schema": "townstead:extended_building/v1",
+  "core": "beachparty:beach_parasol",
+  "requires": [{"ground": true}],
   "mods": "beachparty",
   "enclosure": "optional",
   "catalog": {"node_item": "beachparty:beach_parasol"},

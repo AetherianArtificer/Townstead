@@ -33,10 +33,20 @@ public final class RootRegistry {
 
     private static volatile Map<ResourceLocation, Root> ENTRIES = Map.of();
 
+    /** Each Root's life-cycle gene, valid for one gene revision; rig and life-stage checks read it per tick. */
+    private record CycleGenes(long geneRevision, Map<ResourceLocation, java.util.Optional<LifeCycleGeneType.Instance>> byId) {}
+    private static volatile CycleGenes cycleGenes = new CycleGenes(-1, Map.of());
+
     private RootRegistry() {}
 
     static void replaceAll(Map<ResourceLocation, Root> next) {
         ENTRIES = Map.copyOf(new LinkedHashMap<>(next));
+        compositionChanged();
+    }
+
+    /** A Root, species, lineage or ancestry reload changes every composed genome. */
+    static void compositionChanged() {
+        cycleGenes = new CycleGenes(-1, Map.of());
     }
 
     @Nullable
@@ -232,6 +242,18 @@ public final class RootRegistry {
      */
     @Nullable
     public static LifeCycleGeneType.Instance effectiveCycleGene(@Nullable ResourceLocation id) {
+        CycleGenes cache = cycleGenes;
+        long revision = GeneRegistry.revision();
+        if (cache.geneRevision() != revision) {
+            cache = new CycleGenes(revision, new java.util.concurrent.ConcurrentHashMap<>());
+            cycleGenes = cache;
+        }
+        return cache.byId().computeIfAbsent(id == null ? DEFAULT_ID : id,
+                key -> java.util.Optional.ofNullable(composeCycleGene(id))).orElse(null);
+    }
+
+    @Nullable
+    private static LifeCycleGeneType.Instance composeCycleGene(@Nullable ResourceLocation id) {
         Genome genome = effectiveGenome(id);
         Gene best = null;
         for (InheritedGene inherited : genome.genes()) {

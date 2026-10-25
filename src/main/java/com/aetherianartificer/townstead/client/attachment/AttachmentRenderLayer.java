@@ -124,7 +124,8 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                     ? null : AttachmentClient.texture(def.emissiveSha1());
             Morphs morphs = morphsFor(def, payload);
             float[] stageOffset = stage == null ? NO_OFFSET : stage.offset();
-            float scale = def.scale() * (stage == null ? 1f : stage.scale());
+            float stageScale = stage == null ? 1f : stage.scale();
+            float scale = def.scale() * stageScale;
             AttachmentPoses.Sample poseSample = AttachmentPoses.sample(entity, def, ageInTicks);
             AttachmentAnimations.Sample animSample = AttachmentAnimations.sample(entity, def, ageInTicks);
 
@@ -147,9 +148,11 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                 pose.pushPose();
                 bone.translateAndRotate(pose);
                 Matrix4f benchBone = bench == null ? null : new Matrix4f(pose.last().pose());
-                pose.translate((base[0] + def.offset()[0] + stageOffset[0]) / 16f,
-                        (base[1] + def.offset()[1] + stageOffset[1]) / 16f,
-                        (base[2] + def.offset()[2] + stageOffset[2]) / 16f);
+                // A stage shrinks the attachment about its anchor: geometry authored far from its
+                // origin (wings from an avatar's feet) would otherwise sink as it scales.
+                pose.translate((base[0] + def.offset()[0] * stageScale + stageOffset[0]) / 16f,
+                        (base[1] + def.offset()[1] * stageScale + stageOffset[1]) / 16f,
+                        (base[2] + def.offset()[2] * stageScale + stageOffset[2]) / 16f);
                 rotateZyx(pose, anchor.rotation());
                 // Def rotation and eased state poses mirror on mirror anchors so a symmetric
                 // pair sweeps and folds symmetrically.

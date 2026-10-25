@@ -55,6 +55,8 @@ public final class StateForms {
         if (form.equals(before == null ? Form.NONE : before)) return;
         // A tier that may not ride (a werewolf's beast) gets off whatever it is on.
         if (!form.ride() && entity.isPassenger()) entity.stopRiding();
+        // A tier that may not sleep gets up if it turned while asleep.
+        if (!form.sleep() && entity.isSleeping()) entity.stopSleeping();
         entity.refreshDimensions();
         send(entity, form);
     }

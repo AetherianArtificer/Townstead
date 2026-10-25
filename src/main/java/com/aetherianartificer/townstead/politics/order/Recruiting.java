@@ -110,8 +110,8 @@ public final class Recruiting {
             } else if (dark && altarHere && person.distanceToSqr(altar.pos().getCenter()) <= TRAIN_RANGE * TRAIN_RANGE) {
                 int ticks = TONIGHT.merge(entry.getKey(), INTERVAL, Integer::sum);
                 if (ticks >= TRAIN_TICKS) {
-                    recruits.trained(order.id(), entry.getKey(), night);
-                    if (entry.getValue().nights() + 1 >= recruitment.trainingNights() && person instanceof VillagerEntityMCA) {
+                    int nights = recruits.trained(order.id(), entry.getKey(), night);
+                    if (nights >= recruitment.trainingNights() && person instanceof VillagerEntityMCA) {
                         announce(level, village, Component.translatable("recruit.townstead.trained", person.getName(), order.name()));
                     }
                 }

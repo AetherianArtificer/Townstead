@@ -140,7 +140,8 @@ final class SwitchboardModel {
         return new SwitchboardPreset(name, "", values);
     }
 
-    record Change(Component setting, Component from, Component to) {}
+    /** {@code listed}: the preset sets this value; otherwise it goes back to the default. */
+    record Change(Component setting, Component from, Component to, boolean listed) {}
 
     record Preview(List<Change> changes, int unknown, int locked) {}
 
@@ -151,7 +152,7 @@ final class SwitchboardModel {
             Object before = value(key);
             Object after = valueOf(key, next);
             if (!Objects.equals(before, after)) {
-                changes.add(new Change(keyLabel(key), display(key, before), display(key, after)));
+                changes.add(new Change(keyLabel(key), display(key, before), display(key, after), listed(preset, key)));
             }
         }
         int unknown = 0;
@@ -163,10 +164,22 @@ final class SwitchboardModel {
         return new Preview(changes, unknown, lockedCount);
     }
 
-    void apply(SwitchboardPreset preset) {
+    /** Applies the preset. With {@code onlyListed}, settings the preset leaves out keep their values. */
+    void apply(SwitchboardPreset preset, boolean onlyListed) {
+        if (onlyListed) {
+            for (String key : preset.values().keySet()) {
+                if (listed(preset, key) && !isLocked(key)) set(key, Switchboard.parse(key, preset.values().get(key)));
+            }
+            return;
+        }
         Map<String, JsonElement> next = resolve(preset);
         world.clear();
         world.putAll(next);
+    }
+
+    /** Whether the preset itself sets this key, as opposed to leaving it to the default. */
+    private static boolean listed(SwitchboardPreset preset, String key) {
+        return preset.values().containsKey(key) && Switchboard.parse(key, preset.values().get(key)) != null;
     }
 
     /** The world values that make every unlocked setting match the preset, or Townstead's default. */

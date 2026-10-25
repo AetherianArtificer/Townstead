@@ -1,5 +1,5 @@
 {
-  "schema": "townstead:consumable/v1",
+  "schema": "townstead:consumable/v2",
   "mods": ["rusticdelight"],
   "items": ["rusticdelight:dark_coffee"],
   "effects": [

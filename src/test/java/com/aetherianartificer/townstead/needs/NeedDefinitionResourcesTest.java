@@ -32,7 +32,7 @@ class NeedDefinitionResourcesTest {
     @Test
     void farmAndCharmTeaIsDataDefined() throws IOException {
         JsonObject tea = resource("data/townstead/consumable/farm_and_charm_tea.json");
-        assertEquals("townstead:consumable/v1", tea.get("schema").getAsString());
+        assertEquals("townstead:consumable/v2", tea.get("schema").getAsString());
         assertTrue(tea.get("fallback").getAsBoolean());
         assertEquals("pheno:hydrate", tea.getAsJsonObject("effects").get("type").getAsString());
         assertTrue(tea.getAsJsonArray("items").size() >= 6);

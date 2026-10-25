@@ -551,6 +551,7 @@ public class Townstead {
         modBus.addListener(this::registerPayloads);
         modBus.addListener(com.aetherianartificer.townstead.politics.charter.CharterBellPoiCompat::extend);
         modBus.addListener(com.aetherianartificer.townstead.compat.farming.TfcComposterPoiCompat::extend);
+        modBus.addListener(com.aetherianartificer.townstead.profession.ScannedProfessions::extendPoiTypes);
         modBus.addListener(this::addPackFinders);
         townstead$registerKeybinds(modBus);
         townstead$registerHudOverlays(modBus);
@@ -1087,6 +1088,12 @@ public class Townstead {
                 e.setCanceled(true);
             }
         });
+        // A prop in a villager's hand is a display copy of something already counted; it never drops.
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingDropsEvent e) -> {
+            if (e.getEntity() instanceof net.conczin.mca.entity.VillagerEntityMCA) {
+                e.getDrops().removeIf(drop -> com.aetherianartificer.townstead.villager.HandProps.isProp(drop.getItem()));
+            }
+        });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingDeathEvent e) -> {
             if (com.aetherianartificer.townstead.villager.DeathGuard.survives(e.getEntity(), e.getSource())) {
                 e.setCanceled(true);
@@ -1518,6 +1525,9 @@ public class Townstead {
                 com.aetherianartificer.townstead.politics.charter.CharterBellPoiCompat.extendForge());
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
                 com.aetherianartificer.townstead.compat.farming.TfcComposterPoiCompat.extendForge());
+        // Before any level loads, so job blocks already standing in spawn chunks are indexed.
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerAboutToStartEvent e) ->
+                com.aetherianartificer.townstead.profession.ScannedProfessions.extendPoiTypesForge());
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
                 com.aetherianartificer.townstead.compat.temperature.ToughAsNailsTemperatureBridge.INSTANCE.isActive());
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
@@ -1824,6 +1834,12 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.EntityMountEvent e) -> {
             if (e.isMounting() && !com.aetherianartificer.townstead.pheno.state.StateForms.canRide(e.getEntityMounting())) {
                 e.setCanceled(true);
+            }
+        });
+        // A prop in a villager's hand is a display copy of something already counted; it never drops.
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingDropsEvent e) -> {
+            if (e.getEntity() instanceof net.conczin.mca.entity.VillagerEntityMCA) {
+                e.getDrops().removeIf(drop -> com.aetherianartificer.townstead.villager.HandProps.isProp(drop.getItem()));
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingDeathEvent e) -> {
@@ -2336,6 +2352,9 @@ public class Townstead {
             // A Root's declared states decide who can become a vampire, get drunk, and so on
             com.aetherianartificer.townstead.pheno.state.EntityStates.setEligibility(
                     com.aetherianartificer.townstead.root.RootStates::allows);
+            // A state with a cure reaction that ends on a villager is a cure
+            com.aetherianartificer.townstead.pheno.state.EntityStates.onEnd(
+                    com.aetherianartificer.townstead.cure.CureReactions::ended);
             // How entities react without factions, from data-pack group relations; the faction
             // system will register an authoritative source over this later.
             com.aetherianartificer.townstead.root.disposition.Dispositions.register(

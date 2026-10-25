@@ -115,7 +115,7 @@ class StorageResourceContractTest {
         // and the deck is recognised by standing over that liquid.
         for (int tier = 1; tier <= 3; tier++) {
             JsonObject recipe = resource("/data/mca/building_types/dock_l" + tier + ".json");
-            assertTrue(recipe.getAsJsonObject("blocks").has("#townstead:liquids"), "dock_l" + tier);
+            assertTrue(recipe.getAsJsonObject("blocks").has("#townstead:dock_liquids"), "dock_l" + tier);
             assertTrue(recipe.getAsJsonObject("blocks").keySet().stream()
                     .noneMatch(key -> key.contains("surfaces") || key.contains("planks")), "dock_l" + tier);
             JsonObject extended = resource("/data/townstead/extended_buildings/dock_l" + tier + ".json");

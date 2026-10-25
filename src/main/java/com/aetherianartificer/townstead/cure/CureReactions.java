@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.cure;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps;
 import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
+import com.aetherianartificer.townstead.replace.MobReplacer;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -15,6 +16,7 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +37,8 @@ public final class CureReactions extends SimpleJsonResourceReloadListener {
     /** Who began the cure, saved on the one being cured by {@code pheno:remember} or a cure item. */
     public static final String CURED_BY = "townstead:cured_by";
     private static final String PENDING = "townstead:cure_reaction";
+    private static final String REACTED = "townstead:cure_reacted";
+    private static final long SAME_CURE_TICKS = 200;
     private static final double RANGE = 6.0;
 
     private record Chance(double minRank, double chance) {}
@@ -99,6 +103,13 @@ public final class CureReactions extends SimpleJsonResourceReloadListener {
         villager.getPersistentData().putUUID(CURED_BY, curer.getUUID());
     }
 
+    /** Any state with a reaction that ends on a resident is a cure. Registered with {@code EntityStates.onEnd}. */
+    public static void ended(LivingEntity entity, ResourceLocation state, double formerRank) {
+        if (!(entity instanceof VillagerEntityMCA villager) || !villager.isAlive()
+                || MobReplacer.isWild(villager) || !byState.containsKey(state)) return;
+        cured(villager, state, formerRank);
+    }
+
     /**
      * {@code villager} was just cured of {@code state}, at {@code formerRank}. Rolls how they feel,
      * chronicles it, and keeps the words for whoever cured them. False when no reaction covers the state.
@@ -106,6 +117,12 @@ public final class CureReactions extends SimpleJsonResourceReloadListener {
     public static boolean cured(VillagerEntityMCA villager, ResourceLocation state, double formerRank) {
         Reaction reaction = byState.get(state);
         if (reaction == null) return false;
+        // A compat that watches the same state may report this cure again a little later.
+        CompoundTag reacted = villager.getPersistentData().getCompound(REACTED);
+        long now = villager.level().getGameTime();
+        if (reacted.contains(state.toString()) && now - reacted.getLong(state.toString()) < SAME_CURE_TICKS) return true;
+        reacted.putLong(state.toString(), now);
+        villager.getPersistentData().put(REACTED, reacted);
         double chance = 0;
         for (Chance row : reaction.resentful()) {
             if (formerRank >= row.minRank()) chance = row.chance();

@@ -13,6 +13,8 @@ import java.util.*;
 public final class RoomHeat {
     private static final Map<ServerLevel, World> WORLDS = new WeakHashMap<>();
     private static final int MAX_CELLS = 4096, MAX_ROOMS = 64;
+    /** Slots discovery leaves free, so a queried room never evicts a room discovery would refill next step. */
+    private static final int DISCOVERY_HEADROOM = 8;
     /** A failed scan waits this long before retrying; a new barrier clears waits early. */
     private static final long MISS_BACKOFF = 600;
     private RoomHeat() {}
@@ -30,6 +32,8 @@ public final class RoomHeat {
         List<String> sourceDetails = new ArrayList<>();
         List<String> controls = new ArrayList<>();
         boolean dirty, solved;
+        /** Found only by neighbor discovery, never read. Its own neighbors are not discovered, so discovery cannot chain into caves. */
+        boolean discovered;
         Map<Long, Integer> sourceCells;
         int sourceGeneration;
         Map<BlockPos, Float> localSources = new HashMap<>();
@@ -89,11 +93,11 @@ public final class RoomHeat {
     }
 
     public static OptionalDouble at(ServerLevel level, BlockPos position) {
-        return sample(level, position, false);
+        return sample(level, position, false, true);
     }
 
     public static OptionalDouble airAt(ServerLevel level, BlockPos position) {
-        return sample(level, position, true);
+        return sample(level, position, true, true);
     }
 
     /** Control requires a fresh successful solve, rather than stale saved air after a failed update. */
@@ -105,7 +109,8 @@ public final class RoomHeat {
                 && level.getGameTime()-region.lastTick <= 60 ? air : OptionalDouble.empty();
     }
 
-    private static OptionalDouble sample(ServerLevel level, BlockPos position, boolean airOnly) {
+    /** {@code query} is a read from outside RoomHeat; discovery and dirty rescans are not. */
+    private static OptionalDouble sample(ServerLevel level, BlockPos position, boolean airOnly, boolean query) {
         if (!TemperatureSettings.get().roomHeatEnabled() || !com.aetherianartificer.townstead.TownsteadConfig.temperatureActive()
                 || RoomHeatBackend.bypassed() || !level.getServer().isSameThread()) return OptionalDouble.empty();
         World world = WORLDS.computeIfAbsent(level, key -> new World());
@@ -131,7 +136,12 @@ public final class RoomHeat {
         }
         long key = pos.asLong(), now = level.getGameTime();
         Region old = world.cells.get(key);
-        if (old != null && !old.dirty) { old.lastUsed = now; return OptionalDouble.of(airOnly ? air(old, pos, 0.5) : experienced(level, old, position)); }
+        if (old != null && !old.dirty) {
+            old.lastUsed = now;
+            // A read room's neighbors join the network, so the next topology looks for them.
+            if (query && old.discovered) { old.discovered = false; world.topology = null; }
+            return OptionalDouble.of(airOnly ? air(old, pos, 0.5) : experienced(level, old, position));
+        }
         if (world.misses.getOrDefault(key, 0L) > now) return OptionalDouble.empty();
         if (world.scanTick != now) { world.scanTick = now; world.scans = 0; }
         if (world.scans++ >= 2) return OptionalDouble.empty();
@@ -190,6 +200,7 @@ public final class RoomHeat {
         }
         Region region = new Region(shape, now, initial);
         region.frontier = frontier;
+        region.discovered = !query && replaced.stream().allMatch(r -> r.discovered);
         for (var face : shape.faces()) region.boundaryKinds.put(face.outside(), kind(level, BlockPos.of(face.outside())));
         // Rebuilding geometry must not restart the thermal clock during cooking/block updates.
         if (!replaced.isEmpty()) region.lastTick = replaced.stream().mapToLong(r -> r.lastTick).min().orElse(now);
@@ -234,7 +245,7 @@ public final class RoomHeat {
         // Only a new barrier can enclose space that was open; clearing opens nothing new.
         if (!world.misses.isEmpty() && (state.getBlock() instanceof DoorBlock || state.getBlock() instanceof TrapDoorBlock
                 || !state.getCollisionShape(level, pos).isEmpty())) world.misses.clear();
-        if (world.topology != null && world.topology.watched.contains(pos.asLong())) world.topology = null;
+        if (world.topology != null && world.topology.changedBy(level, pos, state)) world.topology = null;
         Set<Region> watched = world.watchers.get(pos.asLong());
         if (watched == null) return;
         // Preserve lit/open changes, but never resurrect stored heat when a block is replaced.
@@ -262,22 +273,26 @@ public final class RoomHeat {
             long now = level.getGameTime();
             for (Region r : new ArrayList<>(world.regions)) {
                 if (r.chunkSamples.stream().anyMatch(p -> !level.isLoaded(p))) { world.remove(r); continue; }
-                if (r.dirty) at(level, BlockPos.of(r.anchor));
+                if (r.dirty) sample(level, BlockPos.of(r.anchor), false, false);
             }
             if (world.lastStep != Long.MIN_VALUE && now - world.lastStep < 20) continue;
-            // Discover connected interiors whether or not a player or villager queried them.
-            // sample() bounds scans per tick. Until resolved, an interior is insulated, not outdoors.
-            discoverNeighbors(level, world);
             double seconds = Math.min(5, world.lastStep == Long.MIN_VALUE ? 1 : Math.max(0, now-world.lastStep)/20.0)
                     * Math.min(100, TemperatureSettings.get().thermalTimeScale());
-            advanceNetwork(level, world, Math.min(500, seconds));
+            Topology topology = advanceNetwork(level, world, Math.min(500, seconds));
+            // Discover connected interiors whether or not a player or villager queried them.
+            // sample() bounds scans per tick. Until resolved, an interior is insulated, not outdoors.
+            if (topology != null) discoverNeighbors(level, world, topology);
             world.lastStep = now;
         }
     }
 
     private static double outside(ServerLevel level, ThermalRegionScan.Region shape) {
-        BlockPos anchor = BlockPos.of(Collections.min(shape.cells()));
-        int top = shape.cells().stream().mapToInt(p -> BlockPos.of(p).getY()).max().orElse(anchor.getY());
+        long anchor = Collections.min(shape.cells());
+        return outside(level, anchor, shape.cells().stream().mapToInt(p -> BlockPos.of(p).getY()).max().orElse(BlockPos.of(anchor).getY()));
+    }
+
+    private static double outside(ServerLevel level, long anchorCell, int top) {
+        BlockPos anchor = BlockPos.of(anchorCell);
         int surface = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, anchor.getX(), anchor.getZ());
         return RoomHeatBackend.outdoor(level, new BlockPos(anchor.getX(), Math.min(level.getMaxBuildHeight()-1, Math.max(surface, top + 2)), anchor.getZ()));
     }
@@ -285,30 +300,18 @@ public final class RoomHeat {
     private static final long GROUND_RESAMPLE_TICKS = 1200;
 
     /** Below the room's lowest cell, past the boundary scan, where buried faces end. */
-    private static double ground(ServerLevel level, ThermalRegionScan.Region shape) {
-        BlockPos anchor = BlockPos.of(Collections.min(shape.cells()));
-        int bottom = shape.cells().stream().mapToInt(p -> BlockPos.of(p).getY()).min().orElse(anchor.getY());
+    private static double ground(ServerLevel level, long anchorCell, int bottom) {
+        BlockPos anchor = BlockPos.of(anchorCell);
         int y = Math.max(level.getMinBuildHeight(), bottom - ThermalBoundary.MAX_DEPTH - 1);
         return RoomHeatBackend.outdoor(level, new BlockPos(anchor.getX(), y, anchor.getZ()));
     }
 
-    private static void discoverNeighbors(ServerLevel level, World world) {
-        Map<Long,ThermalRegionScan.Kind> kinds = new HashMap<>();
-        for (Region r : new ArrayList<>(world.regions)) {
-            if (r.dirty) continue;
-            for (var face : r.shape.faces()) {
-                if (r.frontier.contains(face.outside())) continue;
-                BlockPos start = BlockPos.of(face.outside()), direction = start.subtract(BlockPos.of(face.inside()));
-                for (int depth = 0; depth <= ThermalBoundary.MAX_DEPTH; depth++) {
-                    BlockPos pos = start.offset(direction.getX()*depth, direction.getY()*depth, direction.getZ()*depth);
-                    var type = kinds.computeIfAbsent(pos.asLong(), p -> kind(level,BlockPos.of(p)));
-                    if (type == ThermalRegionScan.Kind.UNLOADED || type == ThermalRegionScan.Kind.EXTERIOR) break;
-                    if (type == ThermalRegionScan.Kind.INTERIOR) {
-                        if (!world.cells.containsKey(pos.asLong()) && world.regions.size() < MAX_ROOMS) airAt(level, pos);
-                        break;
-                    }
-                }
-            }
+    /** The topology's face rays already found the interiors no room claims; scan those, not every ray again. */
+    private static void discoverNeighbors(ServerLevel level, World world, Topology t) {
+        for (long cell : t.unclaimed) {
+            if (world.regions.size() >= MAX_ROOMS - DISCOVERY_HEADROOM
+                    || world.scanTick == level.getGameTime() && world.scans >= 2) return;
+            if (!world.cells.containsKey(cell)) sample(level, BlockPos.of(cell), true, false);
         }
     }
 
@@ -333,11 +336,30 @@ public final class RoomHeat {
         final List<double[]> grounds = new ArrayList<>(); // {node, conductance, room}
         final Map<Long,Integer> solidIndex = new HashMap<>();
         final Set<PhysicalEdge> faces = new HashSet<>();
-        final Set<Long> watched = new HashSet<>();
+        /** Each ray cell's kind, or its block state where it is a barrier. */
+        final Map<Long,Object> watched = new HashMap<>();
+        /** Interior cells a face ray reached that no clean room owns. */
+        final Set<Long> unclaimed = new LinkedHashSet<>();
         int[] unresolved;
         long builtAt;
         TemperatureSettings settings;
         int nodes() { return rooms.size() + solids.size(); }
+
+        /** A block change on a ray matters only if it changes the cell's kind or how the wall carries and holds heat. */
+        boolean changedBy(ServerLevel level, BlockPos pos, BlockState state) {
+            Object before = watched.get(pos.asLong());
+            if (before == null) return false;
+            ThermalRegionScan.Kind now = kind(level, pos);
+            if (!(before instanceof BlockState old)) return before != now;
+            if (now != ThermalRegionScan.Kind.BARRIER) return true;
+            if (old == state) return false;
+            if (old.getBlock() != state.getBlock() || ThermalMaterials.material(old) != ThermalMaterials.material(state)
+                    || ThermalMaterials.openAperture(old) != ThermalMaterials.openAperture(state)
+                    || ThermalMaterials.conductance(old, settings) != ThermalMaterials.conductance(state, settings)
+                    || ThermalMaterials.surfaceCapacity(old, settings) != ThermalMaterials.surfaceCapacity(state, settings)) return true;
+            watched.put(pos.asLong(), state);
+            return false;
+        }
     }
     private static final long TOPOLOGY_TTL = 600;
     /** The wall layer that holds heat; deeper blocks only resist its flow, so a heated room warms in minutes. */
@@ -365,8 +387,12 @@ public final class RoomHeat {
                 double tail = 0;
                 for (int depth = 0; depth <= ThermalBoundary.MAX_DEPTH; depth++) {
                     BlockPos pos = start.offset(direction.getX()*depth,direction.getY()*depth,direction.getZ()*depth);
-                    t.watched.add(pos.asLong());
-                    var type = kinds.computeIfAbsent(pos.asLong(), p -> kind(level,BlockPos.of(p)));
+                    var type = kinds.get(pos.asLong());
+                    if (type == null) {
+                        type = kind(level, pos);
+                        kinds.put(pos.asLong(), type);
+                        t.watched.put(pos.asLong(), type == ThermalRegionScan.Kind.BARRIER ? level.getBlockState(pos) : type);
+                    }
                     if (type == ThermalRegionScan.Kind.UNLOADED) {
                         t.unresolved[room]++;
                         if (previousNode != room) t.grounds.add(new double[]{previousNode, 1/(previousHalfResistance+tail), room});
@@ -383,7 +409,7 @@ public final class RoomHeat {
                                 if (t.faces.add(PhysicalEdge.of(previous.asLong(),pos.asLong())))
                                     t.outsides.add(new double[]{previousNode, settings.roomOpeningConductance(), room});
                             }
-                            else if (other == null) t.unresolved[room]++;
+                            else if (other == null) { t.unresolved[room]++; if (!r.discovered) t.unclaimed.add(pos.asLong()); }
                             else if (previousNode != other && t.faces.add(PhysicalEdge.of(previous.asLong(),pos.asLong())))
                                 t.links.add(new ThermalNetwork.Link(previousNode,other,g));
                         }
@@ -432,18 +458,18 @@ public final class RoomHeat {
                 (old.outsideConductance()*old.outside()+g*reservoir)/total));
     }
 
-    private static void advanceNetwork(ServerLevel level, World world, double seconds) {
+    private static Topology advanceNetwork(ServerLevel level, World world, double seconds) {
         var settings = TemperatureSettings.get();
         var stored = RoomHeatData.get(level);
         world.valid = false;
         Topology t = topology(level, world, settings);
-        if (t == null) return;
+        if (t == null) return null;
         var states = new HashMap<Long,BlockState>();
         double[] ambients = new double[t.rooms.size()];
         List<ThermalNetwork.Node> nodes = new ArrayList<>(t.nodes());
         for (int room = 0; room < t.rooms.size(); room++) {
             Region r = t.rooms.get(room);
-            double ambient = outside(level,r.shape);
+            double ambient = outside(level,r.anchor,r.maxY);
             ambients[room] = ambient;
             r.capacity = r.shape.cells().size()*settings.roomHeatCapacity();
             r.reservoir = ambient; r.unresolved = t.unresolved[room];
@@ -464,7 +490,7 @@ public final class RoomHeat {
         for (int room = 0; room < t.rooms.size(); room++) {
             Region r = t.rooms.get(room);
             if (Double.isNaN(r.ground) || now - r.groundSampledAt >= GROUND_RESAMPLE_TICKS) {
-                double sampled = ground(level, r.shape);
+                double sampled = ground(level, r.anchor, r.minY);
                 r.ground = Double.isFinite(sampled) ? sampled : ambients[room];
                 r.groundSampledAt = now;
             }
@@ -476,24 +502,29 @@ public final class RoomHeat {
         try { result = ThermalNetwork.advance(nodes,t.links,seconds); }
         catch (IllegalStateException invalid) {
             world.status = "Thermal solve deferred: " + invalid.getMessage();
-            return;
+            return t;
         }
         for (int i = 0; i < t.solids.size(); i++)
             stored.putSolid(t.solids.get(i),t.materials.get(i),result.temperatures()[t.rooms.size()+i]);
-        for (int index = 0; index < t.rooms.size(); index++) {
+        // One pass over the links, not one per room: rooms are the first nodes.
+        int rooms = t.rooms.size();
+        double[] temperatures = result.temperatures();
+        double[] airToWalls = new double[rooms], wallTemperature = new double[rooms], wallCapacity = new double[rooms];
+        for (var link : t.links) {
+            int a = link.a(), b = link.b();
+            double g = link.conductance();
+            if (a < rooms) { airToWalls[a] += g*(temperatures[a]-temperatures[b]); wallTemperature[a] += g*temperatures[b]; wallCapacity[a] += g; }
+            if (b < rooms) { airToWalls[b] += g*(temperatures[b]-temperatures[a]); wallTemperature[b] += g*temperatures[a]; wallCapacity[b] += g; }
+        }
+        for (int index = 0; index < rooms; index++) {
             Region r = t.rooms.get(index);
-            r.temperature = result.temperatures()[index];
+            r.temperature = temperatures[index];
             r.solved = true;
-            r.wallTemperature = r.wallCapacity = r.airToWalls = 0;
             r.conductance = nodes.get(index).outsideConductance();
             r.externalLoss = r.conductance*(r.temperature-nodes.get(index).outside());
-            for (var link : t.links) {
-                int other = link.a() == index ? link.b() : link.b() == index ? link.a() : -1;
-                if (other < 0) continue;
-                r.airToWalls += link.conductance()*(r.temperature-result.temperatures()[other]);
-                r.wallTemperature += link.conductance()*result.temperatures()[other];
-                r.wallCapacity += link.conductance();
-            }
+            r.airToWalls = airToWalls[index];
+            r.wallTemperature = wallTemperature[index];
+            r.wallCapacity = wallCapacity[index];
             r.wallTemperature = r.wallCapacity > 0 ? r.wallTemperature/r.wallCapacity : r.temperature;
             stored.put(r.anchor,r.temperature);
             r.lastTick = level.getGameTime();
@@ -501,6 +532,7 @@ public final class RoomHeat {
         world.valid = true;
         world.energyError = result.errorJoules(); world.supplied = result.suppliedJoules(); world.escaped = result.escapedJoules();
         world.status = t.rooms.size()+" rooms / "+t.solids.size()+" solid or aperture nodes / "+t.links.size()+" shared links";
+        return t;
     }
 
     private static double sourcePower(ServerLevel level, Region r, Map<Long,BlockState> states) {

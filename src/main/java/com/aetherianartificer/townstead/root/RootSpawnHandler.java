@@ -61,6 +61,8 @@ public final class RootSpawnHandler {
         // Root + genotype are now resolved, so the fertility gene expresses; reflect it onto MCA's
         // infertile trait (when this MCA version defines one) before the flush below persists it.
         com.aetherianartificer.townstead.root.reproduction.Fertility.syncMcaInfertileTrait(villager);
+        // MCA rolled (or, for a bred child, inherited) its traits without the root's say.
+        com.aetherianartificer.townstead.root.trait.TraitBlocks.apply(villager);
         // Persist immediately: the root/heritage/genotype live in a data attachment that only persists
         // when the snapshot is written, and there is no reliable periodic flush before world save. Without
         // this the spawn-assigned root (and a bred child's inherited root) is dropped on reload, and
@@ -247,6 +249,7 @@ public final class RootSpawnHandler {
      */
     public static void broadcastLateInheritance(VillagerEntityMCA child) {
         com.aetherianartificer.townstead.root.reproduction.Fertility.syncMcaInfertileTrait(child);
+        com.aetherianartificer.townstead.root.trait.TraitBlocks.apply(child);
         TownsteadVillagers.flush(child);
         TownsteadVillager state = TownsteadVillagers.get(child);
         RootSyncS2CPayload rootSync = new RootSyncS2CPayload(child.getId(), state.life().rootId());

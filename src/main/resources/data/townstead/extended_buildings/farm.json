@@ -1,5 +1,7 @@
 {
   "schema": "townstead:extended_building/v1",
+  "core": "minecraft:farmland",
+  "requires": [{"patch": "minecraft:farmland", "link": 2}],
   "catalog": {"node_item": "minecraft:composter"},
   "workers": ["minecraft:farmer"],
   "spirit": {"pastoral": 8},

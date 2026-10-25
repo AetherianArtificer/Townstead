@@ -36,7 +36,9 @@ public final class SwitchboardLink {
     public static void onScreenInit(net.neoforged.neoforge.client.event.ScreenEvent.Init.Post event) {
         Screen screen = event.getScreen();
         if (screen != configScreen.get()) return;
-        event.addListener(button(screen.width / 2 - 100, screen.height - 57, 200));
+        event.addListener(button(screen.width / 2 - 100, screen.height - 57, 98));
+        event.addListener(com.aetherianartificer.townstead.client.gui.credits.CreditsScreen.button(
+                screen, screen.width / 2 + 2, screen.height - 57, 98));
     }
     //?}
 

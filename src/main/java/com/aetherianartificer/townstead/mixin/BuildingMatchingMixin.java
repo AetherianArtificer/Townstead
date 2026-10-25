@@ -2,7 +2,7 @@ package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
 import com.aetherianartificer.townstead.compat.mca.BuildingCandidatePolicy;
-import com.aetherianartificer.townstead.compat.mca.PenBedPolicy;
+import com.aetherianartificer.townstead.compat.mca.RoomFormPolicy;
 import net.conczin.mca.resources.data.BuildingType;
 import net.conczin.mca.server.world.data.Building;
 import net.minecraft.core.BlockPos;
@@ -47,34 +47,37 @@ public abstract class BuildingMatchingMixin {
                 .toList());
     }
 
-    /** A room with a bed is never a pen, whichever of MCA's matching paths asks. */
+    /** Open-air-only types are never rooms, whichever of MCA's matching paths asks. */
     @Inject(method = "getMatchingTypes", at = @At("RETURN"), cancellable = true,
             remap = false, require = 0)
-    private void townstead$noPenWithBed(CallbackInfoReturnable<List<BuildingType>> cir) {
-        List<BuildingType> filtered = PenBedPolicy.filter(cir.getReturnValue(), ((Building) (Object) this).getBlocks());
+    private void townstead$roomFormOnly(CallbackInfoReturnable<List<BuildingType>> cir) {
+        if (!((Building) (Object) this).isStrictScan()) return;
+        List<BuildingType> filtered = RoomFormPolicy.filter(cir.getReturnValue());
         if (filtered != cir.getReturnValue()) cir.setReturnValue(filtered);
     }
 
     @Inject(method = "getVisibleMatchingTypes", at = @At("RETURN"), cancellable = true,
             remap = false, require = 0)
-    private void townstead$noVisiblePenWithBed(CallbackInfoReturnable<List<BuildingType>> cir) {
-        List<BuildingType> filtered = PenBedPolicy.filter(cir.getReturnValue(), ((Building) (Object) this).getBlocks());
+    private void townstead$visibleRoomFormOnly(CallbackInfoReturnable<List<BuildingType>> cir) {
+        if (!((Building) (Object) this).isStrictScan()) return;
+        List<BuildingType> filtered = RoomFormPolicy.filter(cir.getReturnValue());
         if (filtered != cir.getReturnValue()) cir.setReturnValue(filtered);
     }
 
+    /** MCA's room scanner matches the blocks it found before any record exists. */
     @Inject(method = "matchingTypes", at = @At("RETURN"), cancellable = true,
             remap = false, require = 0)
-    private static void townstead$noPenWithBedByBlocks(Map<ResourceLocation, List<BlockPos>> blocks,
+    private static void townstead$roomFormOnlyByBlocks(Map<ResourceLocation, List<BlockPos>> blocks,
                                                        CallbackInfoReturnable<List<BuildingType>> cir) {
-        List<BuildingType> filtered = PenBedPolicy.filter(cir.getReturnValue(), blocks);
+        List<BuildingType> filtered = RoomFormPolicy.filter(cir.getReturnValue());
         if (filtered != cir.getReturnValue()) cir.setReturnValue(filtered);
     }
 
     @Inject(method = "visibleMatchingTypes", at = @At("RETURN"), cancellable = true,
             remap = false, require = 0)
-    private static void townstead$noVisiblePenWithBedByBlocks(Map<ResourceLocation, List<BlockPos>> blocks,
+    private static void townstead$visibleRoomFormOnlyByBlocks(Map<ResourceLocation, List<BlockPos>> blocks,
                                                               CallbackInfoReturnable<List<BuildingType>> cir) {
-        List<BuildingType> filtered = PenBedPolicy.filter(cir.getReturnValue(), blocks);
+        List<BuildingType> filtered = RoomFormPolicy.filter(cir.getReturnValue());
         if (filtered != cir.getReturnValue()) cir.setReturnValue(filtered);
     }
 

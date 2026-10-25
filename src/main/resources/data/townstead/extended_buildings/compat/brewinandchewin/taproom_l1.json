@@ -1,5 +1,7 @@
 {
   "schema": "townstead:extended_building/v1",
+  "core": "brewinandchewin:keg",
+  "requires": [{"ground": true}],
   "enclosure": "optional",
   "workers": ["townstead:beverage_artisan"],
   "orders": { "recipe_namespaces": ["brewinandchewin", "brewincompatdelight", "cocktailsdelight"] },

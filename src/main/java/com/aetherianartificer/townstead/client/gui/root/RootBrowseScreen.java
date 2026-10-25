@@ -65,6 +65,7 @@ public final class RootBrowseScreen extends Screen {
     private static final int HEADER_H = 20;
     private static final int HEADER_GAP = 6;
     private static final int PAD = 6;
+    private static final int SEARCH_MIN = 60;
     private static final int ROW = 12;
     private static final int TILE = 16;
     private static final int TILE_GAP = 2;
@@ -141,6 +142,7 @@ public final class RootBrowseScreen extends Screen {
     // Layout, recomputed in init. Each panel is its outer box; content sits PAD inside it.
     private int top, bottom, railX, railW, centerX, centerW, previewX, previewW, buttonsY;
     private int groupX, groupCell, modeX, modeW;
+    private boolean groupCycle;
 
     private record Hit(int x0, int y0, int x1, int y1, Runnable action) {
         boolean contains(double x, double y) {
@@ -335,11 +337,13 @@ public final class RootBrowseScreen extends Screen {
         // Over the results: search from the left edge, Group by ending on the right edge.
         groupCell = 0;
         for (GroupBy by : GroupBy.values()) groupCell = Math.max(groupCell, font.width(groupLabel(by)) + PAD * 2);
-        groupX = centerX + centerW - groupCell * GroupBy.values().length;
         int searchX = centerX + 13;
+        // Too narrow for the whole strip: one cell that cycles through the groupings.
+        groupCycle = manyPacks && centerW - 13 - PAD - SEARCH_MIN < groupCell * GroupBy.values().length;
+        groupX = centerX + centerW - groupCell * (groupCycle ? 1 : GroupBy.values().length);
         int searchRight = manyPacks ? groupX - PAD : centerX + centerW;
         String previous = search != null ? search.getValue() : state.query;
-        search = new EditBox(font, searchX + 1, GUTTER + 1, Math.max(60, searchRight - searchX - 2), HEADER_H - 2,
+        search = new EditBox(font, searchX + 1, GUTTER + 1, Math.max(20, searchRight - searchX - 2), HEADER_H - 2,
                 Component.translatable("townstead.root.browse.search"));
         // The box does not clip its hint, so a long one runs into the Group by buttons.
         search.setHint(Component.literal(GeneVisuals.truncate(font,
@@ -646,12 +650,21 @@ public final class RootBrowseScreen extends Screen {
 
     private void drawHeader(GuiGraphics g, int mouseX, int mouseY) {
         int textY = GUTTER + (HEADER_H - 8) / 2;
-        g.drawString(font, title, railX, textY, 0xFFFFFFFF, false);
         String count = view.matching() == view.total() ? Integer.toString(view.total())
                 : Component.translatable("townstead.root.browse.of", view.matching(), view.total()).getString();
-        g.drawString(font, count, railX + font.width(title) + PAD, textY, COUNT, false);
+        // Title and count stay over the rail, so they never run under the search icon.
+        String heading = GeneVisuals.truncate(font, title.getString(), railW - PAD - font.width(count));
+        g.drawString(font, heading, railX, textY, 0xFFFFFFFF, false);
+        g.drawString(font, count, railX + font.width(heading) + PAD, textY, COUNT, false);
         QuestIcons.draw(g, QuestIcons.Icon.DETAILS, centerX, GUTTER + (HEADER_H - 9) / 2);
-        if (manyPacks) {
+        if (groupCycle) {
+            GroupBy[] all = GroupBy.values();
+            segment(g, groupX, groupCell, groupLabel(state.groupBy), true, true, mouseX, mouseY, () -> {
+                state.groupBy = all[(state.groupBy.ordinal() + 1) % all.length];
+                resultScroll.offset = 0;
+                refresh();
+            });
+        } else if (manyPacks) {
             GroupBy[] all = GroupBy.values();
             for (GroupBy by : all) {
                 int x = groupX + by.ordinal() * groupCell;

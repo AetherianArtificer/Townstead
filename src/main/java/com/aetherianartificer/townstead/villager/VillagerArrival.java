@@ -11,6 +11,7 @@ public final class VillagerArrival {
     public static void settle(ServerLevel level, VillagerEntityMCA villager) {
         TownsteadVillagerState.root(villager);
         com.aetherianartificer.townstead.root.trait.TraitBridge.migrate(villager);
+        com.aetherianartificer.townstead.root.trait.TraitBlocks.apply(villager);
         // Names settle when a villager arrives, not on a timer: this is the
         // first moment their household and village are resolvable, and it is
         // also what hands the composed name to whatever else displays it.

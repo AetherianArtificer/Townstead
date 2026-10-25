@@ -425,9 +425,9 @@ public final class GeneAbilityTicker {
         for (RestrictEquipmentGeneType.Instance restrict : restricts) {
             if (restrict.condition() != null && !restrict.condition().test(ctx)) continue;
             for (EquipmentSlot slot : restrict.slots()) {
-                ItemStack stack = entity.getItemBySlot(slot);
+                if (entity.getItemBySlot(slot).isEmpty()) continue;
+                ItemStack stack = com.aetherianartificer.townstead.villager.WornItems.take(entity, slot);
                 if (stack.isEmpty()) continue;
-                entity.setItemSlot(slot, ItemStack.EMPTY);
                 if (entity instanceof Player player) {
                     if (!player.getInventory().add(stack)) player.drop(stack, false);
                 } else {

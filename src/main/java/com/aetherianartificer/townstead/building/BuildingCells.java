@@ -29,6 +29,12 @@ public final class BuildingCells {
      * whoever uses it stays in the room. Without a building, a cell right beside it.
      */
     public static @Nullable BlockPos inside(ServerLevel level, BlockPos center, int reach, RandomSource random) {
+        List<BlockPos> cells = cellsInside(level, center, reach);
+        return cells.isEmpty() ? null : cells.get(random.nextInt(cells.size()));
+    }
+
+    /** Every cell {@link #inside} picks from. Standable is not reachable: callers that walk there check. */
+    public static List<BlockPos> cellsInside(ServerLevel level, BlockPos center, int reach) {
         Building room = at(level, center);
         int within = room == null ? 2 : reach;
         List<BlockPos> cells = new ArrayList<>();
@@ -37,7 +43,7 @@ public final class BuildingCells {
             if (room != null && !room.containsPos(pos)) continue;
             if (standable(level, pos)) cells.add(pos.immutable());
         }
-        return cells.isEmpty() ? null : cells.get(random.nextInt(cells.size()));
+        return cells;
     }
 
     /** Any standing cell inside {@code building}. */

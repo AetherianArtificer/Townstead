@@ -14,6 +14,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -216,18 +217,24 @@ public final class Stations {
         return isStation(surface) || surface.is(Tags.AVOID_STANDING);
     }
 
+    /**
+     * The nearest safe stand from which {@code anchor} is within {@code reachSq}. A stand outside
+     * reach strands the worker: it arrives, fails the use-range check, and re-targets the cell it
+     * already occupies.
+     */
     public static @Nullable BlockPos findStandingPosition(ServerLevel level, VillagerEntityMCA villager,
-                                                          BlockPos anchor) {
-        BlockPos best = nearestStand(villager, preferredStands(level, anchor));
+                                                          BlockPos anchor, double reachSq) {
+        BlockPos best = nearestStand(villager, withinReach(preferredStands(level, anchor), anchor, reachSq));
         if (best != null) return best;
-        best = WorkPathing.nearestStandCandidate(level, villager, anchor, null);
+        best = nearestStand(villager,
+                withinReach(WorkPathing.standCandidatesAround(level, anchor, null), anchor, reachSq));
         if (best != null) return best;
 
         // Last resort: if the villager already stands somewhere sane within reach, stay put
         // rather than abandoning a station over a pathing quibble.
         BlockPos current = villager.blockPosition();
         double stationDist = villager.distanceToSqr(anchor.getX() + 0.5, anchor.getY() + 0.5, anchor.getZ() + 0.5);
-        if (stationDist > 9.0d) return null;
+        if (stationDist > reachSq) return null;
         BlockState below = level.getBlockState(current.below());
         if (WorkPathing.isSafeStandPosition(level, current)
                 && below.isFaceSturdy(level, current.below(), Direction.UP)
@@ -235,5 +242,14 @@ public final class Stations {
             return current.immutable();
         }
         return null;
+    }
+
+    private static List<BlockPos> withinReach(List<BlockPos> stands, BlockPos anchor, double reachSq) {
+        Vec3 center = Vec3.atCenterOf(anchor);
+        List<BlockPos> out = new ArrayList<>(stands.size());
+        for (BlockPos stand : stands) {
+            if (Vec3.atBottomCenterOf(stand).distanceToSqr(center) <= reachSq) out.add(stand);
+        }
+        return out;
     }
 }

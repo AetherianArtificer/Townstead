@@ -1,5 +1,5 @@
 {
-  "schema": "townstead:consumable/v1",
+  "schema": "townstead:consumable/v2",
   "items": [
     "#townstead:sugary_snacks"
   ],

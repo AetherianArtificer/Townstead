@@ -45,7 +45,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class VillagerConsumptionManager {
 
-    private record Pending(ItemStack item, ItemStack previousMainHand, long useAtTick,
+    private record Pending(ItemStack item, long useAtTick,
                            long finishTick, BlockPos source, boolean recreational, int sipSeed) {}
 
     private static final Map<Integer, Pending> PENDING = new ConcurrentHashMap<>();
@@ -93,13 +93,13 @@ public final class VillagerConsumptionManager {
         Pending empty = HELD_EMPTIES.get(villager.getId());
         if (pending == null && empty == null) return true;
         ItemStack expected = pending != null ? pending.item() : remainder(empty.item(), policy(empty.item()));
-        return ItemStack.matches(expected, proposed);
+        return com.aetherianartificer.townstead.villager.HandProps.shows(proposed, expected);
     }
 
     private static void returnHeldEmpty(VillagerEntityMCA villager) {
         Pending empty = HELD_EMPTIES.remove(villager.getId());
         if (empty == null) return;
-        villager.setItemInHand(InteractionHand.MAIN_HAND, empty.previousMainHand().copy());
+        com.aetherianartificer.townstead.villager.HandProps.clear(villager, InteractionHand.MAIN_HAND);
         returnRemainder(villager, empty.item(), empty.source());
     }
 
@@ -116,7 +116,7 @@ public final class VillagerConsumptionManager {
         PENDING.remove(villager.getId());
         LAST_SIP_CUE.remove(villager.getId());
         villager.stopUsingItem();
-        villager.setItemInHand(InteractionHand.MAIN_HAND, pending.previousMainHand().copy());
+        com.aetherianartificer.townstead.villager.HandProps.clear(villager, InteractionHand.MAIN_HAND);
         applyConsumption(villager, villager, pending.item(), TownsteadVillagers.get(villager).needs(), pending.source());
     }
 
@@ -133,7 +133,6 @@ public final class VillagerConsumptionManager {
         /*ItemStack oneUnit = stack.copy(); oneUnit.setCount(1);
         *///?}
         returnHeldEmpty(villager);
-        ItemStack previousMainHand = villager.getMainHandItem().copy();
         //? if >=1.21 {
         int useDuration = oneUnit.getUseDuration(villager);
         //?} else {
@@ -144,10 +143,11 @@ public final class VillagerConsumptionManager {
 
         long useAt = villager.level().getGameTime() + holdTicks;
         PENDING.put(villager.getId(),
-                new Pending(oneUnit.copy(), previousMainHand, useAt, useAt + useDuration, source,
+                new Pending(oneUnit.copy(), useAt, useAt + useDuration, source,
                         holdTicks > 0, villager.getRandom().nextInt()));
 
-        villager.setItemInHand(InteractionHand.MAIN_HAND, oneUnit);
+        // The serving in hand is a prop; the caller took the real unit, and Pending carries it.
+        com.aetherianartificer.townstead.villager.HandProps.show(villager, InteractionHand.MAIN_HAND, oneUnit);
         if (holdTicks == 0) villager.startUsingItem(InteractionHand.MAIN_HAND);
         return true;
     }
@@ -201,7 +201,7 @@ public final class VillagerConsumptionManager {
         boolean completed = villager.level().getGameTime() >= pending.finishTick();
         if (!completed) {
             // Item use was interrupted early; restart it so the villager finishes consuming.
-            villager.setItemInHand(InteractionHand.MAIN_HAND, pending.item().copy());
+            com.aetherianartificer.townstead.villager.HandProps.show(villager, InteractionHand.MAIN_HAND, pending.item());
             villager.startUsingItem(InteractionHand.MAIN_HAND);
             return false;
         }
@@ -211,16 +211,16 @@ public final class VillagerConsumptionManager {
         ItemStack empty = pending.recreational() ? remainder(pending.item(), policy(pending.item())) : ItemStack.EMPTY;
         if (!empty.isEmpty()) {
             HELD_EMPTIES.put(villager.getId(), pending);
-            villager.setItemInHand(InteractionHand.MAIN_HAND, empty);
+            com.aetherianartificer.townstead.villager.HandProps.show(villager, InteractionHand.MAIN_HAND, empty);
             return applyConsumption(villager, villager, pending.item(), needs, pending.source(), false);
         }
-        villager.setItemInHand(InteractionHand.MAIN_HAND, pending.previousMainHand().copy());
+        com.aetherianartificer.townstead.villager.HandProps.clear(villager, InteractionHand.MAIN_HAND);
         return applyConsumption(villager, villager, pending.item(), needs, pending.source());
     }
 
     private static void maintainHand(VillagerEntityMCA villager, ItemStack expected) {
-        if (!ItemStack.matches(villager.getMainHandItem(), expected)) {
-            villager.setItemInHand(InteractionHand.MAIN_HAND, expected.copy());
+        if (!com.aetherianartificer.townstead.villager.HandProps.shows(villager.getMainHandItem(), expected)) {
+            com.aetherianartificer.townstead.villager.HandProps.show(villager, InteractionHand.MAIN_HAND, expected);
         }
     }
 

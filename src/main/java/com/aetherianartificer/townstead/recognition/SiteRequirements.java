@@ -45,7 +45,12 @@ import java.util.Set;
  * <ul>
  *   <li>{@code surface_over} — a connected walkable surface with the named block (id or
  *       {@code #tag}) in the column beneath it. Names no material, so any deck counts, and
- *       natural ground never does because it rests on the bed of the liquid rather than above it.</li>
+ *       natural ground never does because it rests on the bed of the liquid rather than above it.
+ *       The deck must also meet that liquid open to the air somewhere along its edge.</li>
+ *   <li>{@code patch} — one connected patch of the named block (id or {@code #tag}), members
+ *       within {@code link} blocks of each other: the farmland of a single field.</li>
+ *   <li>{@code ground} — the ground a villager can walk around the centerpiece, on one level,
+ *       never over a fence or wall or through a room: a square's paving.</li>
  *   <li>{@code enclosed} — ground a grazing animal cannot walk out of (see {@link WalkEnclosure}).
  *       An open field is never an enclosure, and a pen on a hillside is one.</li>
  * </ul>
@@ -54,11 +59,10 @@ public final class SiteRequirements {
     /** How far an ingredient may sit from the site it belongs to, horizontally. */
     public static final int LINK = 2;
     private static final int DEFAULT_MAX_DROP = 6;
+    private static final int DEFAULT_LINK = 2;
     private static final int DEFAULT_MAX_INTERIOR = 4096;
     private static final int SEED_REACH = 2;
     private static final int MAX_CELLS = 8192;
-    /** A mob's step height: anything this low is walked onto without a jump. */
-    private static final double STEP_HEIGHT = 0.6;
     private static final TagKey<Block> NATURAL_SURFACES = TagKey.create(
             Registries.BLOCK, ResourceLocation.tryParse("townstead:natural_surfaces"));
     private static final TagKey<Block> TERRAIN = TagKey.create(
@@ -87,6 +91,7 @@ public final class SiteRequirements {
         @Nullable private WalkEnclosure.Bounds bounds;
         @Nullable private Problem problem;
         @Nullable private BlockPos found;
+        @Nullable private java.util.function.Predicate<BlockPos> excluded;
 
         public Scan(ServerLevel level) {
             this.level = level;
@@ -94,6 +99,12 @@ public final class SiteRequirements {
         }
 
         /** Walks in this scan leave a known site the moment they cross its box. */
+        /** Ground a site may not take in: the inside of a registered room. */
+        public Scan excluding(@Nullable java.util.function.Predicate<BlockPos> excluded) {
+            this.excluded = excluded;
+            return this;
+        }
+
         public Scan bounded(@Nullable WalkEnclosure.Bounds bounds) {
             this.bounds = bounds;
             return this;
@@ -122,19 +133,12 @@ public final class SiteRequirements {
             cursor.set(x, y, z);
             if (!level.isLoaded(cursor)) return WalkEnclosure.UNLOADED;
             BlockState state = level.getBlockState(cursor);
-            // A gate left open still walls a paddock in, so the ring is read from tags.
-            if (state.is(BlockTags.FENCES) || state.is(BlockTags.FENCE_GATES)
-                    || state.is(BlockTags.WALLS) || state.is(BlockTags.DOORS)) {
-                return WalkEnclosure.BARRIER;
-            }
             FluidState fluid = state.getFluidState();
-            if (fluid.is(FluidTags.LAVA)) return WalkEnclosure.BARRIER;
             VoxelShape shape = state.getCollisionShape(level, cursor);
-            if (shape.isEmpty()) return fluid.is(FluidTags.WATER) ? WalkEnclosure.WATER : WalkEnclosure.OPEN;
-            double top = shape.max(Direction.Axis.Y);
-            if (top > 1.0) return WalkEnclosure.BARRIER;
-            if (top <= STEP_HEIGHT) return WalkEnclosure.LOW;
-            return state.is(TERRAIN) ? WalkEnclosure.GROUND : WalkEnclosure.SOLID;
+            return WalkEnclosure.classify(
+                    state.is(BlockTags.FENCES) || state.is(BlockTags.FENCE_GATES) || state.is(BlockTags.WALLS),
+                    state.is(BlockTags.DOORS), fluid.is(FluidTags.LAVA), fluid.is(FluidTags.WATER),
+                    shape.isEmpty() ? -1 : shape.max(Direction.Axis.Y), state.is(TERRAIN));
         }
 
         private void note(Problem found) {
@@ -142,7 +146,7 @@ public final class SiteRequirements {
         }
     }
 
-    public sealed interface Requirement permits SurfaceOver, Enclosed {
+    public sealed interface Requirement permits SurfaceOver, Enclosed, Patch, Ground {
         /** Cells of this site; empty when the requirement is not met, null when not knowable. */
         @Nullable Set<BlockPos> cells(Scan scan, Collection<BlockPos> seeds, int radius);
     }
@@ -165,10 +169,12 @@ public final class SiteRequirements {
         public Set<BlockPos> cells(Scan scan, Collection<BlockPos> seeds, int radius) {
             ServerLevel level = scan.level;
             BlockPos origin = seeds.iterator().next();
+            SiteGeometry.DeckView view = deckView(level, this);
             Set<Long> cells = SiteGeometry.surface(packed(seeds),
-                    (x, y, z) -> isSurfaceOver(level, new BlockPos(x, y, z), this),
+                    (x, y, z) -> SiteGeometry.isDeck(view, x, y, z, maxDrop),
                     SEED_REACH, origin.getX(), origin.getZ(), radius, MAX_CELLS);
-            return cells.size() < count ? Set.of() : unpacked(cells);
+            if (cells.size() < count || !SiteGeometry.bordersOpenLiquid(view, cells, maxDrop)) return Set.of();
+            return unpacked(cells);
         }
     }
 
@@ -223,11 +229,57 @@ public final class SiteRequirements {
         return out;
     }
 
+    /** One patch of the type's own blocks: the farmland of a single field. */
+    /**
+     * The ground a villager can walk around the site's centerpiece: dry footing on one level,
+     * stepping a block up or down, never over a fence or wall, never through a room. A stall
+     * behind a house is not part of the square in front of it. The last seed is the centerpiece.
+     */
+    public record Ground() implements Requirement {
+        @Override
+        public Set<BlockPos> cells(Scan scan, Collection<BlockPos> seeds, int radius) {
+            BlockPos center = null;
+            for (BlockPos seed : seeds) center = seed;
+            BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+            java.util.function.Predicate<BlockPos> excluded = scan.excluded;
+            // From the centerpiece alone: ground near the player but cut off from it is not the site's.
+            Set<Long> cells = SiteGeometry.surface(packed(List.of(center)), (x, y, z) -> WalkEnclosure.walkable(scan, x, y, z)
+                            && (excluded == null || !excluded.test(cursor.set(x, y, z))),
+                    SEED_REACH, center.getX(), center.getZ(), radius, MAX_CELLS);
+            return unpacked(cells);
+        }
+    }
+
+    public record Patch(@Nullable TagKey<Block> tag, @Nullable ResourceLocation block, int link)
+            implements Requirement {
+        public boolean matches(BlockState state) {
+            if (tag != null) return state.is(tag);
+            return block != null && block.equals(BuiltInRegistries.BLOCK.getKey(state.getBlock()));
+        }
+
+        @Override
+        public Set<BlockPos> cells(Scan scan, Collection<BlockPos> seeds, int radius) {
+            ServerLevel level = scan.level;
+            BlockPos origin = seeds.iterator().next();
+            BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+            Set<Long> cells = SiteGeometry.patch(packed(seeds), (x, y, z) -> {
+                cursor.set(x, y, z);
+                return level.isLoaded(cursor) && matches(level.getBlockState(cursor));
+            }, SEED_REACH, link, origin.getX(), origin.getZ(), radius, MAX_CELLS);
+            return unpacked(cells);
+        }
+    }
+
     private static volatile Map<String, List<Requirement>> BY_TYPE = Map.of();
+    private static volatile Map<String, ResourceLocation> CORES = Map.of();
 
     private SiteRequirements() {}
 
-    public static void replaceAll(Map<String, List<Requirement>> next) {
+    /**
+     * {@code cores} maps a type to the recipe group its sites grow from: the bell of a square,
+     * the farmland of a farm. A tag's group is named without its {@code #}, as MCA names it.
+     */
+    public static void replaceAll(Map<String, List<Requirement>> next, Map<String, ResourceLocation> cores) {
         Map<String, List<Requirement>> stable = new LinkedHashMap<>();
         next.forEach((type, requirements) -> {
             if (type != null && requirements != null && !requirements.isEmpty()) {
@@ -235,6 +287,23 @@ public final class SiteRequirements {
             }
         });
         BY_TYPE = Map.copyOf(stable);
+        Map<String, ResourceLocation> stableCores = new LinkedHashMap<>();
+        cores.forEach((type, group) -> {
+            if (type != null && group != null) stableCores.put(type, group);
+        });
+        CORES = Map.copyOf(stableCores);
+    }
+
+    /** The recipe group the type's sites grow from, if its data names one. */
+    public static @Nullable ResourceLocation core(String buildingType) {
+        return buildingType == null ? null : CORES.get(buildingType);
+    }
+
+    /** Parses a {@code core} value: a block id or a {@code #tag}, named as a recipe group. */
+    public static ResourceLocation parseCore(String value) {
+        ResourceLocation id = ResourceLocation.tryParse(value.startsWith("#") ? value.substring(1) : value);
+        if (id == null) throw new IllegalArgumentException("invalid 'core' '" + value + "'");
+        return id;
     }
 
     public static List<Requirement> of(String buildingType) {
@@ -273,11 +342,21 @@ public final class SiteRequirements {
                 }
                 out.add(new SurfaceOver(isTag ? TagKey.create(Registries.BLOCK, id) : null,
                         isTag ? null : id, count, maxDrop));
+            } else if (json.has("patch")) {
+                String target = GsonHelper.getAsString(json, "patch");
+                boolean isTag = target.startsWith("#");
+                ResourceLocation id = ResourceLocation.tryParse(isTag ? target.substring(1) : target);
+                if (id == null) throw new IllegalArgumentException("invalid 'patch' target '" + target + "'");
+                int link = GsonHelper.getAsInt(json, "link", DEFAULT_LINK);
+                if (link < 1) throw new IllegalArgumentException("'link' must be positive");
+                out.add(new Patch(isTag ? TagKey.create(Registries.BLOCK, id) : null, isTag ? null : id, link));
+            } else if (GsonHelper.getAsBoolean(json, "ground", false)) {
+                out.add(new Ground());
             } else if (GsonHelper.getAsBoolean(json, "enclosed", false)) {
                 out.add(new Enclosed(GsonHelper.getAsInt(json, "min_interior", 4),
                         GsonHelper.getAsInt(json, "max_interior", DEFAULT_MAX_INTERIOR)));
             } else if (!BuildingChecks.isCheck(json)) {
-                throw new IllegalArgumentException("'requires' entries must declare 'surface_over', 'enclosed', "
+                throw new IllegalArgumentException("'requires' entries must declare 'surface_over', 'patch', 'ground', 'enclosed', "
                         + "'decoration', 'size', or 'height'");
             }
         }
@@ -317,16 +396,49 @@ public final class SiteRequirements {
         return new Evaluation(Verdict.SATISFIED, all, null);
     }
 
-    /** A solid block a villager could stand on, with the required block in the column beneath. */
+    /** A deck over the requirement's liquid; see {@link SiteGeometry#isDeck}. */
     public static boolean isSurfaceOver(ServerLevel level, BlockPos pos, SurfaceOver requirement) {
-        if (!level.isLoaded(pos)) return false;
-        BlockState state = level.getBlockState(pos);
-        if (state.getCollisionShape(level, pos).isEmpty() || state.is(NATURAL_SURFACES)) return false;
-        BlockPos above = pos.above();
-        if (level.getBlockState(above).isCollisionShapeFullBlock(level, above)) return false;
-        for (int dy = 1; dy <= requirement.maxDrop(); dy++) {
-            if (requirement.matches(level.getBlockState(pos.below(dy)))) return true;
-        }
-        return false;
+        return SiteGeometry.isDeck(deckView(level, requirement), pos.getX(), pos.getY(), pos.getZ(),
+                requirement.maxDrop());
+    }
+
+    /** The world as the deck rules read it. */
+    private static SiteGeometry.DeckView deckView(ServerLevel level, SurfaceOver requirement) {
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        return new SiteGeometry.DeckView() {
+            private BlockState at(int x, int y, int z) {
+                return level.getBlockState(cursor.set(x, y, z));
+            }
+
+            @Override
+            public boolean loaded(int x, int y, int z) {
+                return level.isLoaded(cursor.set(x, y, z));
+            }
+
+            @Override
+            public boolean solid(int x, int y, int z) {
+                return !at(x, y, z).getCollisionShape(level, cursor).isEmpty();
+            }
+
+            @Override
+            public boolean full(int x, int y, int z) {
+                return at(x, y, z).isCollisionShapeFullBlock(level, cursor);
+            }
+
+            @Override
+            public boolean natural(int x, int y, int z) {
+                return at(x, y, z).is(NATURAL_SURFACES);
+            }
+
+            @Override
+            public boolean liquid(int x, int y, int z) {
+                return requirement.matches(at(x, y, z));
+            }
+
+            @Override
+            public boolean fluid(int x, int y, int z) {
+                return !at(x, y, z).getFluidState().isEmpty();
+            }
+        };
     }
 }

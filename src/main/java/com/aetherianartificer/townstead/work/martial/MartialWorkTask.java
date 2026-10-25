@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.work.martial;
 
+import com.aetherianartificer.townstead.building.BuildingCells;
 import com.aetherianartificer.townstead.compat.mca.McaBuildings;
 import com.aetherianartificer.townstead.pheno.action.ActionContext;
 import com.aetherianartificer.townstead.profession.career.CareerProgression;
@@ -9,6 +10,7 @@ import com.aetherianartificer.townstead.profession.def.WorkTaskDef;
 import com.aetherianartificer.townstead.root.disposition.Disposition;
 import com.aetherianartificer.townstead.root.disposition.DispositionGroups;
 import com.aetherianartificer.townstead.root.disposition.Dispositions;
+import com.aetherianartificer.townstead.work.ReachableTargetSelector;
 import com.aetherianartificer.townstead.work.job.WorkJobDef;
 import com.aetherianartificer.townstead.work.job.WorkJobs;
 import com.google.common.collect.ImmutableMap;
@@ -43,9 +45,11 @@ import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 /**
  * Runs the martial Jobs a villager's profession declares (see {@link MartialJob}). One behavior
@@ -70,6 +74,8 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
     private static final float CHASE_SPEED = 0.7f;
     private static final int HOLD_XP_INTERVAL = 1200;
     private static final int PLACE_REACH = 6;
+    private static final int POST_ATTEMPTS = 6;
+    private static final int POST_FAILURE_TTL = 1200;
     private static final double RALLY_REACH = 8;
     private static final String ISSUED = "townstead:levy_issued";
 
@@ -397,7 +403,7 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
     private void hold(ServerLevel level, VillagerEntityMCA villager, MartialJob job, long gameTime) {
         if (post == null) {
             BlockPos found = findPlace(level, villager, job);
-            post = found == null ? null : com.aetherianartificer.townstead.building.BuildingCells.inside(level, found, 3, villager.getRandom());
+            post = found == null ? null : reachablePost(level, villager, found, 3);
             nextHoldXp = gameTime + HOLD_XP_INTERVAL;
             if (post == null) return;
         }
@@ -418,7 +424,7 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
             if (place == null) return;
         }
         if (post == null) {
-            post = com.aetherianartificer.townstead.building.BuildingCells.inside(level, place, PLACE_REACH, villager.getRandom());
+            post = reachablePost(level, villager, place, PLACE_REACH);
             if (post == null) {
                 place = null;
                 return;
@@ -436,6 +442,21 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
         post = null;
         award(villager, job.xp().drill(), gameTime, "townstead:drilled");
         if (job.drill().after() != null) job.drill().after().run(new ActionContext(villager));
+    }
+
+    /**
+     * A standing cell near {@code center} the villager can walk to. A room's box also holds cells
+     * behind its walls, and a villager sent to one stands against the wall for good.
+     */
+    private static @Nullable BlockPos reachablePost(ServerLevel level, VillagerEntityMCA villager, BlockPos center, int reach) {
+        List<ReachableTargetSelector.Candidate<BlockPos>> candidates = new ArrayList<>();
+        for (BlockPos cell : BuildingCells.cellsInside(level, center, reach)) {
+            candidates.add(new ReachableTargetSelector.Candidate<>(cell, cell));
+        }
+        Collections.shuffle(candidates, new Random(villager.getRandom().nextLong()));
+        // Equal scores keep the shuffled order, so each try is a different random cell.
+        return ReachableTargetSelector.chooseReachable(level, villager, candidates,
+                0, POST_ATTEMPTS, POST_FAILURE_TTL, candidate -> 0);
     }
 
     /** A point on the village edge, a little inside it, on the ground. */
@@ -491,8 +512,9 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
             for (int i = 0; i < inventory.getContainerSize(); i++) {
                 ItemStack stack = inventory.getItem(i);
                 if (!job.arms().matches(stack)) continue;
-                villager.setItemInHand(InteractionHand.MAIN_HAND, stack);
+                // Out of the inventory first: a hand item that is still an inventory slot is only lent.
                 inventory.setItem(i, ItemStack.EMPTY);
+                villager.setItemInHand(InteractionHand.MAIN_HAND, stack);
                 drawnSlot = i;
                 return;
             }
@@ -504,6 +526,11 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
         drawnSlot = -1;
         ItemStack held = villager.getMainHandItem();
         if (held.isEmpty()) return;
+        // Something else may have swapped a prop in meanwhile; a prop is not the drawn weapon.
+        if (com.aetherianartificer.townstead.villager.HandProps.isProp(held)) {
+            com.aetherianartificer.townstead.villager.HandProps.clear(villager, InteractionHand.MAIN_HAND);
+            return;
+        }
         villager.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
         ItemStack left = villager.getInventory().addItem(held);
         if (!left.isEmpty()) villager.spawnAtLocation(left);
@@ -519,7 +546,8 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
                             .flatMap(set -> set.stream().findFirst()).map(net.minecraft.core.Holder::value).orElse(null)
                     : BuiltInRegistries.ITEM.getOptional(levy.issue()).orElse(null);
             if (item == null || item == Items.AIR) continue;
-            villager.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(item));
+            // A prop, so the issue never stays behind as a weapon of the villager's own.
+            com.aetherianartificer.townstead.villager.HandProps.show(villager, InteractionHand.MAIN_HAND, new ItemStack(item));
             villager.getPersistentData().putString(ISSUED, BuiltInRegistries.ITEM.getKey(item).toString());
             return;
         }
@@ -532,7 +560,7 @@ public class MartialWorkTask extends Behavior<VillagerEntityMCA> {
         data.remove(ISSUED);
         ItemStack held = villager.getMainHandItem();
         if (!held.isEmpty() && issued.equals(BuiltInRegistries.ITEM.getKey(held.getItem()).toString())) {
-            villager.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+            com.aetherianartificer.townstead.villager.HandProps.clear(villager, InteractionHand.MAIN_HAND);
         }
     }
 

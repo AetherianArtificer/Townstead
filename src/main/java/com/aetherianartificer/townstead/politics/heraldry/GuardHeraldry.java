@@ -55,12 +55,17 @@ public final class GuardHeraldry {
         return entry.revision() > 0 && EmblemItems.valid(level.registryAccess(), entry.recipe()) ? entry.recipe() : null;
     }
 
-    /** Only an undecorated shield is painted, so a real one handed to a guard keeps its own design. */
+    /**
+     * Only an undecorated shield is painted, so a real one handed to a guard keeps its own design.
+     * Wear and other data do not count: on 1.20.1 every new shield already carries a damage tag.
+     */
     private static boolean plain(ItemStack stack) {
         //? if >=1.21 {
-        return stack.getComponentsPatch().isEmpty();
+        var patterns = stack.get(net.minecraft.core.component.DataComponents.BANNER_PATTERNS);
+        return (patterns == null || patterns.layers().isEmpty())
+                && stack.get(net.minecraft.core.component.DataComponents.BASE_COLOR) == null;
         //?} else {
-        /*return !stack.hasTag();
+        /*return stack.getTagElement("BlockEntityTag") == null;
         *///?}
     }
 }

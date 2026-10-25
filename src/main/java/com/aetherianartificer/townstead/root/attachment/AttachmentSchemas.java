@@ -69,7 +69,8 @@ public final class AttachmentSchemas {
                             + "threshold shape swaps like a human ear tip below elven length."))
             .field(of("stages", PhenoType.OBJECT)
                     .doc("Per-life-stage overrides keyed baby/toddler/child/teen/adult/senior: "
-                            + "{ scale, offset, geometry } — scale multiplier, extra offset, optional model swap."))
+                            + "{ scale, offset, geometry } — scale multiplier (also scales the definition offset, "
+                            + "so the attachment shrinks toward its anchor), extra offset, optional model swap."))
             .field(of("poses", PhenoType.OBJECT)
                     .doc("State poses: named-state keys (sleeping/sitting/sprinting/sneaking/swimming/"
                             + "moving/hurt/attacking/panicking/working/wearing_helmet/wearing_chestplate/"

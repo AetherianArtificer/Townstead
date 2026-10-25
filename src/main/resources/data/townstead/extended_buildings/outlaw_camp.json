@@ -1,5 +1,7 @@
 {
   "schema": "townstead:extended_building/v1",
+  "core": "minecraft:campfire",
+  "requires": [{"ground": true}],
   "catalog": {
     "node_item": "minecraft:campfire"
   },

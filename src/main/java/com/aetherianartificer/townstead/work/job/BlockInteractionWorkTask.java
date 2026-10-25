@@ -194,7 +194,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
             if (selected == null) continue;
             List<RequirementSession> planned = planRequirements(level, villager, candidate);
             if (planned == null) continue;
-            BlockPos stand = Stations.findStandingPosition(level, villager, candidate.pos());
+            BlockPos stand = Stations.findStandingPosition(level, villager, candidate.pos(), USE_RANGE_SQ);
             if (stand == null) continue;
             target = candidate;
             targetStand = stand;
@@ -209,7 +209,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
                 && !hasMatching(level, target.pos(), villager.getInventory(), interaction)) {
             supplyPull = depotPull(level, villager, target.pos(), interaction);
             if (supplyPull == null) { target = null; return; }
-            targetStand = Stations.findStandingPosition(level, villager, supplyPull.source());
+            targetStand = Stations.findStandingPosition(level, villager, supplyPull.source(), USE_RANGE_SQ);
             if (targetStand == null) { target = null; return; }
             phase = Phase.FETCH;
         }
@@ -250,7 +250,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
                 return;
             }
             supplyPull = null;
-            targetStand = Stations.findStandingPosition(level, villager, target.pos());
+            targetStand = Stations.findStandingPosition(level, villager, target.pos(), USE_RANGE_SQ);
             phase = Phase.PREPARE;
             moveForCurrentPhase(villager, gameTime);
             return;
@@ -591,7 +591,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
                                         BlockPos station, long gameTime) {
         if (targetStand == null
                 || !com.aetherianartificer.townstead.work.WorkPathing.isSafeStandPosition(level, targetStand)) {
-            targetStand = Stations.findStandingPosition(level, villager, station);
+            targetStand = Stations.findStandingPosition(level, villager, station, USE_RANGE_SQ);
         }
         if (targetStand == null) {
             target = null;

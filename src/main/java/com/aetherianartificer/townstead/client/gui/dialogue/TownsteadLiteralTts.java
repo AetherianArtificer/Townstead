@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.client.gui.dialogue;
 
 import com.aetherianartificer.townstead.client.gui.dialogue.effect.EffectTagParser;
 import com.aetherianartificer.townstead.client.tts.McaSpeechKeys;
+import com.aetherianartificer.townstead.client.tts.McaVoiceRequests;
 import net.conczin.mca.Config;
 import net.conczin.mca.client.tts.AudioCache;
 import net.conczin.mca.client.tts.ElevenlabsSpeechManager;
@@ -105,12 +106,16 @@ public final class TownsteadLiteralTts {
         float gene = villager.getGenetics().getGene(Genetics.VOICE_TONE);
         String escapedText = escapeJson(text);
 
+        if ("player2".equals(model)) {
+            PLAYER2.play(escapedText, gender, language, pitch, gene);
+            return;
+        }
+        long request = McaVoiceRequests.begin(villager);
         switch (model) {
-            case "player2" -> PLAYER2.play(escapedText, gender, language, pitch, gene);
-            case "elevenlabs" -> playElevenlabs(escapedText, gender, pitch, gene, villager);
-            case "realtime" -> playRealtime(escapedText, gender, language, pitch, gene, villager);
+            case "elevenlabs" -> playElevenlabs(escapedText, gender, pitch, gene, villager, request);
+            case "realtime" -> playRealtime(escapedText, gender, language, pitch, gene, villager, request);
             // The default server takes its text URL-encoded, so it gets the unescaped line.
-            default -> playOnline(text, gender, language, pitch, gene, villager);
+            default -> playOnline(text, gender, language, pitch, gene, villager, request);
         }
     }
 
@@ -118,7 +123,7 @@ public final class TownsteadLiteralTts {
      * Mirrors {@code OnlineSpeechManager#play} without its translatable-only gate, and keeps MCA's
      * cache path so a line MCA has already generated is reused rather than fetched twice.
      */
-    private static void playOnline(String text, String gender, String gameLang, float pitch, float gene, VillagerEntityMCA villager) {
+    private static void playOnline(String text, String gender, String gameLang, float pitch, float gene, VillagerEntityMCA villager, long request) {
         String language = OnlineLanguageMap.LANGUAGE_MAP.getOrDefault(gameLang, "");
         if (language.isEmpty()) {
             OnlineSpeechManager.languageNotSupported();
@@ -133,12 +138,12 @@ public final class TownsteadLiteralTts {
         CompletableFuture.runAsync(() -> {
             String cacheKey = language + "-" + voice + "/" + AudioCache.getHash(phrase) + ".ogg";
             if (AudioCache.cachedRetrieve(cacheKey, output -> ONLINE.downloadAudio(output, language, voice, phrase))) {
-                playCached(cacheKey, pitch, villager);
+                playCached(cacheKey, pitch, villager, request);
             }
         });
     }
 
-    private static void playRealtime(String text, String gender, String language, float pitch, float gene, VillagerEntityMCA villager) {
+    private static void playRealtime(String text, String gender, String language, float pitch, float gene, VillagerEntityMCA villager, long request) {
         CompletableFuture.runAsync(() -> {
             List<String> voices = REALTIME.getVoices(language, gender);
             if (voices == null) return;
@@ -151,12 +156,12 @@ public final class TownsteadLiteralTts {
             String voice = voices.get(tone);
             String cacheKey = cacheKey("realtime", voice, text);
             if (AudioCache.get(cacheKey, output -> REALTIME.downloadAudio(output, voice, text), true)) {
-                playCached(cacheKey, pitch, villager);
+                playCached(cacheKey, pitch, villager, request);
             }
         });
     }
 
-    private static void playElevenlabs(String text, String gender, float pitch, float gene, VillagerEntityMCA villager) {
+    private static void playElevenlabs(String text, String gender, float pitch, float gene, VillagerEntityMCA villager, long request) {
         CompletableFuture.runAsync(() -> {
             List<String> voices = gender.equals("male")
                     ? Config.getInstance().elevenlabsMaleVoices
@@ -167,18 +172,18 @@ public final class TownsteadLiteralTts {
             String voice = voices.get(tone);
             String cacheKey = cacheKey("elevenlabs", voice, text);
             if (AudioCache.get(cacheKey, output -> ELEVENLABS.downloadAudio(output, voice, text), true)) {
-                playCached(cacheKey, pitch, villager);
+                playCached(cacheKey, pitch, villager, request);
             }
         });
     }
 
-    private static void playCached(String cacheKey, float pitch, VillagerEntityMCA villager) {
+    private static void playCached(String cacheKey, float pitch, VillagerEntityMCA villager, long request) {
         //? if >=1.21 {
         ResourceLocation soundLocation = ResourceLocation.fromNamespaceAndPath("mca", "tts_cache/" + cacheKey);
         //?} else {
         /*ResourceLocation soundLocation = new ResourceLocation("mca", "tts_cache/" + cacheKey);
         *///?}
-        SpeechManager.INSTANCE.playSound(pitch, villager, soundLocation);
+        McaVoiceRequests.play(pitch, villager, soundLocation, request);
     }
 
     private static String cacheKey(String model, String voice, String text) {

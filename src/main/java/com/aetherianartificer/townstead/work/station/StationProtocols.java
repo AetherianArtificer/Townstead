@@ -348,8 +348,7 @@ public final class StationProtocols {
         ItemStack tool = harvestTool(villager, def);
         if (tool.isEmpty()) return false;
         InteractionHand hand = villager.getDominantHand();
-        ItemStack previous = villager.getItemInHand(hand).copy();
-        villager.setItemInHand(hand, tool.copyWithCount(1));
+        com.aetherianartificer.townstead.villager.HandProps.show(villager, hand, tool.copyWithCount(1));
         try {
             boolean collected = recipe == null
                     ? adapter.collectAvailable(level, villager, anchor, def)
@@ -357,7 +356,7 @@ public final class StationProtocols {
             if (collected) villager.swing(hand);
             return collected;
         } finally {
-            villager.setItemInHand(hand, previous);
+            com.aetherianartificer.townstead.villager.HandProps.clear(villager, hand);
         }
     }
 

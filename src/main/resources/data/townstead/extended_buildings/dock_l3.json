@@ -10,7 +10,7 @@
   },
   "requires": [
     {
-      "surface_over": "#townstead:liquids",
+      "surface_over": "#townstead:dock_liquids",
       "count": 48
     }
   ]

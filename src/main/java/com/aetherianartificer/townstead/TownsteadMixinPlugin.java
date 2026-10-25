@@ -158,6 +158,12 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
         if (mixinClassName.endsWith("BuildingValidateOpenAirMixin")) {
             return !isFloorV2();
         }
+        // Its targets (the enforcing processBuilding and getBlockedResult) are pre-floor-system
+        // too: v2 keeps open-air sites out of room scans by storing them apart.
+        if (mixinClassName.endsWith("VillageManagerOpenAirRoomMixin")
+                || mixinClassName.endsWith("VillageManagerCaveRoomMixin")) {
+            return !isFloorV2();
+        }
         return true;
     }
 

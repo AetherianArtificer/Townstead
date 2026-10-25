@@ -37,7 +37,13 @@ public final class LivingEquipmentContainer implements Container {
         // Armor slots show real personal items, not MCA's generated uniforms or inventory aliases.
         if (index < 4 && entity instanceof net.conczin.mca.entity.VillagerEntityMCA villager
                 && AssignedArmor.automatic(villager, SLOTS[index])) return ItemStack.EMPTY;
-        return entity.getItemBySlot(SLOTS[index]);
+        ItemStack worn = entity.getItemBySlot(SLOTS[index]);
+        // Nor does the offhand offer MCA's generated shield or a lent inventory item.
+        if (entity instanceof net.conczin.mca.entity.VillagerEntityMCA villager
+                && (com.aetherianartificer.townstead.villager.HandProps.isProp(worn)
+                || com.aetherianartificer.townstead.villager.WornItems.mcaTemporary(worn)
+                || com.aetherianartificer.townstead.villager.WornItems.lent(villager, worn))) return ItemStack.EMPTY;
+        return worn;
     }
 
     @Override
@@ -62,7 +68,8 @@ public final class LivingEquipmentContainer implements Container {
             AssignedArmor.set(villager.getPersistentData(), SLOTS[index], !stack.isEmpty());
             com.aetherianartificer.townstead.tick.TemperatureVillagerTicker.invalidateEquipment(villager);
         }
-        entity.setItemSlot(SLOTS[index], stack);
+        // The menu takes charge of the displaced item.
+        com.aetherianartificer.townstead.villager.WornItems.replace(entity, SLOTS[index], stack);
     }
 
     @Override

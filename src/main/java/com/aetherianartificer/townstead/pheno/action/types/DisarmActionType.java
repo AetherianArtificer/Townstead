@@ -28,10 +28,9 @@ public final class DisarmActionType implements ActionType {
     public Action parse(JsonObject json) {
         return ctx -> {
             if (!(ctx.entity() instanceof Mob mob) || !mob.isAlive()) return;
-            ItemStack held = mob.getMainHandItem();
-            if (held.isEmpty()) return;
-            mob.spawnAtLocation(held);
-            mob.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+            if (mob.getMainHandItem().isEmpty()) return;
+            ItemStack held = com.aetherianartificer.townstead.villager.WornItems.knockOut(mob, EquipmentSlot.MAINHAND);
+            if (!held.isEmpty()) mob.spawnAtLocation(held);
         };
     }
 }

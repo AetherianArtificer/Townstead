@@ -29,7 +29,7 @@ public final class RoomHeatData extends SavedData {
     public void putSolid(long pos, String material, double temperature) {
         if (!Double.isFinite(temperature)) return;
         solids.put(pos, new Wall(material, temperature));
-        for (var direction : NEIGHBORS)
+        if (!walls.isEmpty()) for (var direction : NEIGHBORS)
             walls.remove(new ThermalRegionScan.Face(net.minecraft.core.BlockPos.of(pos).offset(direction[0],direction[1],direction[2]).asLong(), pos));
         while (solids.size() > MAX_WALLS) solids.remove(solids.keySet().iterator().next());
         setDirty();

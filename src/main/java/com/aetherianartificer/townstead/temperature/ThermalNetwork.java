@@ -34,14 +34,18 @@ public final class ThermalNetwork {
         int steps = Math.max(1, (int) Math.ceil(seconds / 5));
         double dt = seconds / steps, escaped = 0, supplied = 0;
         double[] diagonal = new double[n], rhs = new double[n];
+        // Flat arrays keep the solver's inner loops off the record list.
+        int[] a = new int[links.size()], b = new int[links.size()];
+        double[] g = new double[links.size()];
+        for (int i = 0; i < a.length; i++) { Link link = links.get(i); a[i] = link.a; b[i] = link.b; g[i] = link.conductance; }
         for (int step = 0; step < steps; step++) {
             for (int i = 0; i < n; i++) {
                 Node node = nodes.get(i);
                 diagonal[i] = node.capacity / dt + node.outsideConductance;
                 rhs[i] = node.capacity / dt * t[i] + node.power + node.outsideConductance * node.outside;
             }
-            for (Link link : links) { diagonal[link.a] += link.conductance; diagonal[link.b] += link.conductance; }
-            solve(t, rhs, diagonal, links);
+            for (int i = 0; i < a.length; i++) { diagonal[a[i]] += g[i]; diagonal[b[i]] += g[i]; }
+            solve(t, rhs, diagonal, a, b, g);
             for (int i = 0; i < n; i++) {
                 Node node = nodes.get(i);
                 supplied += dt * node.power;
@@ -53,11 +57,11 @@ public final class ThermalNetwork {
         return new Result(t, supplied, escaped, stored);
     }
 
-    private static void multiply(double[] x, double[] out, double[] diagonal, List<Link> links) {
+    private static void multiply(double[] x, double[] out, double[] diagonal, int[] a, int[] b, double[] g) {
         for (int i = 0; i < x.length; i++) out[i] = diagonal[i] * x[i];
-        for (Link link : links) {
-            out[link.a] -= link.conductance * x[link.b];
-            out[link.b] -= link.conductance * x[link.a];
+        for (int i = 0; i < a.length; i++) {
+            out[a[i]] -= g[i] * x[b[i]];
+            out[b[i]] -= g[i] * x[a[i]];
         }
     }
     private static double dot(double[] a, double[] b) {
@@ -65,16 +69,16 @@ public final class ThermalNetwork {
         for (int i = 0; i < a.length; i++) sum += a[i] * b[i];
         return sum;
     }
-    private static void solve(double[] x, double[] rhs, double[] diagonal, List<Link> links) {
+    private static void solve(double[] x, double[] rhs, double[] diagonal, int[] a, int[] b, double[] g) {
         int n = x.length;
         double[] r = new double[n], z = new double[n], p = new double[n], ap = new double[n];
-        multiply(x, ap, diagonal, links);
+        multiply(x, ap, diagonal, a, b, g);
         for (int i = 0; i < n; i++) { r[i] = rhs[i] - ap[i]; z[i] = p[i] = r[i] / diagonal[i]; }
         double tolerance = Math.max(1e-18, dot(rhs, rhs) * 1e-24);
         double rz = dot(r, z);
         for (int iteration = 0; iteration < 512; iteration++) {
             if (dot(r, r) <= tolerance) return;
-            multiply(p, ap, diagonal, links);
+            multiply(p, ap, diagonal, a, b, g);
             double alpha = rz / dot(p, ap);
             for (int i = 0; i < n; i++) { x[i] += alpha * p[i]; r[i] -= alpha * ap[i]; z[i] = r[i] / diagonal[i]; }
             double next = dot(r, z), beta = next / rz;

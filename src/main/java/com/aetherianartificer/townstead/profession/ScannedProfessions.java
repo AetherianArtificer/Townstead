@@ -79,6 +79,8 @@ public final class ScannedProfessions {
     }
 
     private static volatile List<ScannedDef> scanned = null;
+    /** Other mods' job blocks a def names, by def id, joined to the def's POI once registration ends. */
+    private static final Map<ResourceLocation, Set<ResourceLocation>> FOREIGN_JOB_BLOCKS = new LinkedHashMap<>();
     private ScannedProfessions() {}
 
     /** Scanned profession defs, resolved lazily on first use during registration. */
@@ -168,12 +170,11 @@ public final class ScannedProfessions {
                     }
                 }
                 if (!mayClaim) {
-                    Townstead.LOGGER.info("Scanned profession {} does not claim job block {} "
-                            + "(namespace belongs to an installed mod); villagers can still use "
-                            + "it if that mod registers a POI for it", def.id(), blockId);
+                    FOREIGN_JOB_BLOCKS.computeIfAbsent(def.id(), k -> new LinkedHashSet<>()).add(blockId);
                 }
             }
-            if (!unclaimed.isEmpty()) {
+            // Registered even with no states of its own, so the foreign blocks have a type to join.
+            if (!unclaimed.isEmpty() || FOREIGN_JOB_BLOCKS.containsKey(def.id())) {
                 try {
                     sink.accept(def.id(), new PoiType(Set.copyOf(unclaimed), 1, 1));
                 } catch (Exception error) {
@@ -186,6 +187,43 @@ public final class ScannedProfessions {
                                 .map(key -> key.location().toString()).sorted().toList());
             }
         }
+    }
+
+    /**
+     * Joins other mods' job blocks to their def's POI once every mod has registered its own POIs.
+     * Only states still unowned join: a mod that made its block a job site keeps it.
+     */
+    //? if neoforge {
+    public static void extendPoiTypes(net.neoforged.neoforge.common.world.poi.ExtendPoiTypesEvent event) {
+        FOREIGN_JOB_BLOCKS.forEach((defId, blocks) -> {
+            ResourceKey<PoiType> key = ResourceKey.create(Registries.POINT_OF_INTEREST_TYPE, defId);
+            if (!BuiltInRegistries.POINT_OF_INTEREST_TYPE.containsKey(key)) return;
+            Set<BlockState> states = unownedStates(blocks);
+            if (!states.isEmpty()) event.addStatesToPoi(key, states);
+        });
+    }
+    //?} else {
+    /*public static void extendPoiTypesForge() {
+        java.util.Map<BlockState, PoiType> map =
+                net.minecraftforge.registries.GameData.getBlockStatePointOfInterestTypeMap();
+        FOREIGN_JOB_BLOCKS.forEach((defId, blocks) -> {
+            PoiType poi = net.minecraftforge.registries.ForgeRegistries.POI_TYPES.getValue(defId);
+            if (poi == null) return;
+            for (BlockState state : unownedStates(blocks)) map.putIfAbsent(state, poi);
+        });
+    }
+    *///?}
+
+    private static Set<BlockState> unownedStates(Set<ResourceLocation> blocks) {
+        Set<BlockState> states = new LinkedHashSet<>();
+        for (ResourceLocation blockId : blocks) {
+            Block block = BuiltInRegistries.BLOCK.getOptional(blockId).orElse(null);
+            if (block == null) continue;
+            for (BlockState state : block.getStateDefinition().getPossibleStates()) {
+                if (existingPoiKeys(state).isEmpty()) states.add(state);
+            }
+        }
+        return states;
     }
 
     /**
@@ -240,10 +278,11 @@ public final class ScannedProfessions {
      */
     static Predicate<Holder<PoiType>> jobSitePredicate(ScannedDef def) {
         if (def.jobBlocks().isEmpty()) return PoiType.NONE;
-        return holder -> holder != null && matchesAuthoredBlock(def.jobBlocks(),
+        // The def's own type counts by id too: on Forge, joined foreign blocks never enter its state set.
+        return holder -> holder != null && (holder.is(def.id()) || matchesAuthoredBlock(def.jobBlocks(),
                 holder.value().matchingStates().stream()
                         .map(state -> BuiltInRegistries.BLOCK.getKey(state.getBlock()))
-                        .toList());
+                        .toList()));
     }
 
     static boolean matchesAuthoredBlock(Set<ResourceLocation> authored,

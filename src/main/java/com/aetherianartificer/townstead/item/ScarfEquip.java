@@ -35,10 +35,9 @@ public final class ScarfEquip {
         // slot is the fallback for installs without it (or when every fitting slot is taken).
         ItemStack previous = ItemStack.EMPTY;
         if (!CuriosCompat.equipFirstFree(villager, stack)) {
-            previous = villager.getItemBySlot(EquipmentSlot.HEAD);
             ItemStack worn = stack.copy();
             worn.setCount(1);
-            villager.setItemSlot(EquipmentSlot.HEAD, worn);
+            previous = com.aetherianartificer.townstead.villager.WornItems.replace(villager, EquipmentSlot.HEAD, worn);
         }
 
         if (!player.getAbilities().instabuild) stack.shrink(1);
@@ -63,12 +62,11 @@ public final class ScarfEquip {
         if (EntityGroups.isArthropod(entity)) return false;
 
         // Setting the slot empty re-fires the change with an empty stack, which this method ignores.
-        entity.setItemSlot(EquipmentSlot.HEAD, ItemStack.EMPTY);
-        ItemStack returned = to.copy();
+        ItemStack returned = com.aetherianartificer.townstead.villager.WornItems.take(entity, EquipmentSlot.HEAD);
         if (entity instanceof Player player) {
             player.displayClientMessage(Component.translatable(DENY_KEY), true);
-            if (!player.addItem(returned)) player.drop(returned, false);
-        } else {
+            if (!returned.isEmpty() && !player.addItem(returned)) player.drop(returned, false);
+        } else if (!returned.isEmpty()) {
             entity.spawnAtLocation(returned);
         }
         return true;

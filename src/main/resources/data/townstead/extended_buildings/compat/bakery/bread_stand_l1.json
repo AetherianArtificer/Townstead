@@ -1,5 +1,7 @@
 {
   "schema": "townstead:extended_building/v1",
+  "core": "bakery:tray",
+  "requires": [{"ground": true}],
   "enclosure": "optional",
   "workers": [
     "townstead:baker"

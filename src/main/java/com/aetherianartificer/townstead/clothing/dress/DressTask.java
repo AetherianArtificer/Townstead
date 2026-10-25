@@ -296,7 +296,8 @@ public class DressTask extends Behavior<VillagerEntityMCA> {
             if (ThermalDressing.bound(worn)) return ItemStack.EMPTY;
             for (EquipmentSlot slot : new EquipmentSlot[] {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
                 if (villager.getItemBySlot(slot) == worn) {
-                    removed[0] = worn.copy();
+                    // Emptied before the slot is cleared, so MCA has nothing to file back into the inventory.
+                    removed[0] = worn.copyAndClear();
                     villager.setItemSlot(slot, ItemStack.EMPTY);
                     return removed[0];
                 }

@@ -73,12 +73,11 @@ public final class RigEquipment {
         if (def == null || !def.disabledSlots().contains(slot)) return false;
 
         // Setting the slot empty re-fires the change with an empty stack, which the to.isEmpty() guard skips.
-        entity.setItemSlot(slot, ItemStack.EMPTY);
-        ItemStack returned = to.copy();
+        ItemStack returned = com.aetherianartificer.townstead.villager.WornItems.take(entity, slot);
         if (entity instanceof Player player) {
             player.displayClientMessage(Component.translatable(DENY_KEY), true);
-            if (!player.addItem(returned)) player.drop(returned, false);
-        } else {
+            if (!returned.isEmpty() && !player.addItem(returned)) player.drop(returned, false);
+        } else if (!returned.isEmpty()) {
             entity.spawnAtLocation(returned);
         }
         return true;

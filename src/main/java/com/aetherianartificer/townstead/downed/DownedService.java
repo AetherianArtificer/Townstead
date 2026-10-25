@@ -11,6 +11,7 @@ import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -72,8 +73,9 @@ public final class DownedService {
         if (source != null && source.is(DamageTypes.GENERIC_KILL)) return false;
         boolean unreachable = source != null && (source.is(DamageTypes.FELL_OUT_OF_WORLD) || source.is(DamageTypeTags.IS_FIRE));
         villager.setHealth(1f);
-        if (unreachable) rescue(villager);
+        // Down first: a rescue to another dimension copies the villager, downed state included.
         down(villager);
+        if (unreachable) rescue(villager);
         return true;
     }
 
@@ -133,6 +135,7 @@ public final class DownedService {
             if (villager.getY() < villager.level().getMinBuildHeight() || villager.isInLava()
                     || villager.isEyeInFluid(FluidTags.WATER) && !villager.canBreatheUnderwater()) {
                 rescue(villager);
+                if (villager.isRemoved()) continue;
             }
             if (!CollapsePlayback.active(villager)) pose(villager);
             villager.getNavigation().stop();
@@ -163,21 +166,43 @@ public final class DownedService {
         CollapsePlayback.start(villager, CollapseMotion.CHANNEL, (int) Math.max(20, Math.min(left, Integer.MAX_VALUE)), 1000);
     }
 
-    /** Moves a villager to their home village, else the nearest village, on solid ground. */
+    /**
+     * Moves a villager to their home village, else the nearest village, on solid ground. The home may
+     * be in another dimension (a resident who fell into a Nether lava lake goes back to the Overworld).
+     */
     private static void rescue(VillagerEntityMCA villager) {
-        if (!(villager.level() instanceof ServerLevel level)) return;
-        Optional<Village> village = villager.getResidency().getHomeVillage();
-        if (village.isEmpty()) village = VillageManager.get(level).findNearestVillage(villager.blockPosition(), 4096);
+        if (!(villager.level() instanceof ServerLevel here)) return;
+        ServerLevel level = here;
+        Optional<Village> village;
+        // MCA looks the home village up in the level the villager stands in, so go by the home's own dimension.
+        Optional<GlobalPos> home = villager.getResidency().getHome();
+        ServerLevel homeLevel = home.map(pos -> here.getServer().getLevel(pos.dimension())).orElse(null);
+        if (homeLevel != null) {
+            level = homeLevel;
+            village = VillageManager.get(level).findNearestVillage(home.get().pos(), Village.BORDER_MARGIN);
+        } else {
+            village = villager.getResidency().getHomeVillage()
+                    .filter(found -> found.getResidentsUUIDs().anyMatch(villager.getUUID()::equals));
+            if (village.isEmpty()) village = VillageManager.get(level).findNearestVillage(villager.blockPosition(), 4096);
+        }
         BlockPos target;
         if (village.isPresent()) {
             Vec3i center = village.get().getCenter();
             target = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(center.getX(), 0, center.getZ()));
+        } else if (homeLevel != null) {
+            target = home.get().pos().above();
         } else {
-            target = level.getSharedSpawnPos();
+            level = here.getServer().overworld();
+            target = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, level.getSharedSpawnPos());
         }
         villager.fallDistance = 0f;
         villager.clearFire();
-        villager.teleportTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5);
+        if (level == here) {
+            villager.teleportTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5);
+        } else {
+            villager.teleportTo(level, target.getX() + 0.5, target.getY(), target.getZ() + 0.5,
+                    Collections.emptySet(), villager.getYRot(), villager.getXRot());
+        }
     }
 
     private static long recoveryTicks(VillagerEntityMCA villager) {

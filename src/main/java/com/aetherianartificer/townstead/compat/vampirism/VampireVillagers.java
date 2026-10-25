@@ -170,7 +170,6 @@ public final class VampireVillagers {
     /** Looks after vampire villagers: rank, garlic, aging, night shift, and an old-style cure in progress. */
     public static void tick(VillagerEntityMCA villager) {
         if (EntityStates.definition(STATE) != null) VampireChronicles.observeRank(villager);
-        com.aetherianartificer.townstead.cure.CureReactions.tick(villager);
         if (EntityStates.definition(STATE) != null) VampireGarlic.tick(villager);
         if (villager.tickCount % 100 == 0) nightShift(villager);
         DhampirAging.tick(villager);

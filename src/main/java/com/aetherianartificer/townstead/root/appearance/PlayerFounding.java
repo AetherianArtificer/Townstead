@@ -38,6 +38,8 @@ public final class PlayerFounding {
                 net.conczin.mca.entity.ai.relationship.Gender.byId(entityData.getInt("Gender")), "minecraft:none",
                 player.getUUID().getMostSignificantBits()).ifPresent(skin -> entityData.putString("Clothes", skin));
 
+        com.aetherianartificer.townstead.root.trait.TraitBlocks.applyTo(entityData, rootId);
+
         // getEntityData is a copy on the 1.21.1 line; store the edit or only the broadcast sees it.
         data.setEntityData(entityData);
         data.setEntityDataSet(true);

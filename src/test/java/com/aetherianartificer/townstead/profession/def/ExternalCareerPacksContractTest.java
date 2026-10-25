@@ -416,8 +416,14 @@ class ExternalCareerPacksContractTest {
     private static Path packsRoot() {
         String configured = System.getenv("TOWNSTEAD_PACKS_ROOT");
         if (configured != null && !configured.isBlank()) return Path.of(configured).toAbsolutePath().normalize();
-        return Path.of(System.getProperty("user.dir"), "..", "TownsteadPacks", "careers")
-                .toAbsolutePath().normalize();
+        // Tests run from a version subproject (versions/<mc>-<loader>), not the checkout root, so
+        // look for the sibling repository beside each ancestor.
+        Path start = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        for (Path dir = start; dir != null; dir = dir.getParent()) {
+            Path careers = dir.resolveSibling("TownsteadPacks").resolve("careers");
+            if (Files.isDirectory(careers)) return careers;
+        }
+        return start.resolveSibling("TownsteadPacks").resolve("careers");
     }
 
     private static boolean hasSegment(Path path, String segment) {

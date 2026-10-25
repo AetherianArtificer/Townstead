@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.compat.mca.BuildingReportReconciler;
 import com.aetherianartificer.townstead.client.catalog.CatalogDataLoader;
+import com.aetherianartificer.townstead.recognition.OpenAirTypeChoice;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
@@ -37,12 +38,16 @@ public abstract class ConfirmBuildingPolymorphMessageMixin {
     //?} else if forge {
     /*@Inject(method = "receive", at = @At("HEAD"), cancellable = true, remap = false, require = 0)
     *///?}
-    private void townstead$rejectSupersededChoice(ServerPlayer player, CallbackInfo ci) {
+    private void townstead$handleChoice(ServerPlayer player, CallbackInfo ci) {
         String chosenType = townstead$chosenType();
-        if (!CatalogDataLoader.isActiveSupersededBuildingType(chosenType)) return;
-        player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                "blueprint.scan.invalid_type"), true);
-        ci.cancel();
+        if (CatalogDataLoader.isActiveSupersededBuildingType(chosenType)) {
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                    "blueprint.scan.invalid_type"), true);
+            ci.cancel();
+            return;
+        }
+        // An open-air choice Townstead asked for; MCA would answer it with a room scan.
+        if (OpenAirTypeChoice.confirm(player, townstead$source(), chosenType)) ci.cancel();
     }
 
     //? if neoforge {
@@ -69,7 +74,10 @@ public abstract class ConfirmBuildingPolymorphMessageMixin {
         try {
             var field = getClass().getDeclaredField("source");
             field.setAccessible(true);
-            return field.get(this) instanceof BlockPos pos ? pos : null;
+            // The 1.20.1 backport stores the position packed into a long.
+            Object value = field.get(this);
+            if (value instanceof Long packed) return BlockPos.of(packed);
+            return value instanceof BlockPos pos ? pos : null;
         } catch (ReflectiveOperationException e) {
             TOWNSTEAD$LOG.warn("Could not read polymorph confirmation source; skipping building reconcile", e);
             return null;

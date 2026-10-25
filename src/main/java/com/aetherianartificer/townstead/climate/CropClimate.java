@@ -47,6 +47,8 @@ public final class CropClimate {
     public static Verdict temperatureVerdict(ServerLevel level, BlockPos pos, BlockState crop, int daysAhead) {
         // Without temperature, crops grow as vanilla and any season mod say.
         if (!com.aetherianartificer.townstead.TownsteadConfig.temperatureActive()) return Verdict.GROWS;
+        // TFC crops carry their own climate ranges, which TFC applies to growth and the farmer to sowing.
+        if (com.aetherianartificer.townstead.compat.farming.TfcCropCompat.isTfcCrop(crop.getBlock())) return Verdict.GROWS;
         var range = TemperatureSettings.get().cropClasses().get(cropClass(crop));
         if (range == null) return Verdict.GROWS;
         return judge(growingCelsius(level, pos, daysAhead), range.min(), range.max());

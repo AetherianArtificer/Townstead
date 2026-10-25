@@ -6,7 +6,7 @@
   "spirit": {
     "pastoral": 6
   },
-  "enclosure": "optional",
+  "enclosure": "none",
   "requires": [
     {
       "enclosed": true,

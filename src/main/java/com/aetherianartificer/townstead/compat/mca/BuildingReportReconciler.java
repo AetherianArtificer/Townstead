@@ -46,13 +46,16 @@ public final class BuildingReportReconciler {
 
     public static List<BuildingChecks.Failure> reconcile(ServerLevel level, BlockPos source, Village village, Logger log) {
         com.aetherianartificer.townstead.politics.state.PoliticalVillageBootstrap.ensure(level, village);
+        // Floor-system v2 never validates external buildings, so demolished landings/pens
+        // are cleaned up here, at report time with the village's chunks loaded.
+        com.aetherianartificer.townstead.village.VillageSanitizer.sweepDemolishedSynthetics(level, village);
+        // Before anything reads them: a record that still has some of its blocks may no longer
+        // be the building it says it is.
+        com.aetherianartificer.townstead.recognition.OptionalBuildingRecognition.recheckVillage(level, village);
         List<BuildingChecks.Failure> failures = BuildingTierReconciler.reconcileVillage(village, level);
         DockLocationIndex.rebuildVillage(level, village);
         BuildingRecognitionTracker.reconcile(level, village);
         SpiritReconciler.reconcileVillage(level, village);
-        // Floor-system v2 never validates external buildings, so demolished landings/pens
-        // are cleaned up here, at report time with the village's chunks loaded.
-        com.aetherianartificer.townstead.village.VillageSanitizer.sweepDemolishedSynthetics(level, village);
         // A rescan is exactly when a room's shape may have changed, so it is where a worksite's
         // remembered extent stops being trustworthy. Without this the only correction is the
         // freshness backstop, which is a bound on being wrong rather than a way of being right.

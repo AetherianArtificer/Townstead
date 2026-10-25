@@ -8,7 +8,6 @@ import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** Adapts JEP's vanilla-villager framing to MCA's player-shaped preview renderer. */
@@ -16,16 +15,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(targets = "com.mrbysco.justenoughprofessions.RenderHelper", remap = false)
 public final class JepRenderHelperMixin {
 
-    private static final int MCA_VERTICAL_OFFSET = 12;
-
-    @ModifyVariable(
+    /**
+     * JEP lifts the model by the villager's vehicle attachment point. Vanilla villagers report
+     * zero there, so JEP's y is the feet line; MCA's value has changed between versions, so pin
+     * it to zero rather than compensating with a fixed offset.
+     */
+    @ModifyArg(
             method = "renderVillager",
-            at = @At("HEAD"),
-            argsOnly = true,
-            ordinal = 1,
+            at = @At(value = "INVOKE",
+                    target = "Lcom/mojang/blaze3d/vertex/PoseStack;translate(DDD)V"),
+            index = 1,
             require = 0)
-    private static int townstead$lowerMcaPreview(int y) {
-        return y + MCA_VERTICAL_OFFSET;
+    private static double townstead$standOnJepBaseline(double y) {
+        return 0.0;
     }
 
     /**

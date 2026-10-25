@@ -162,6 +162,11 @@ public final class TfcCropCompat implements FarmerCropCompat {
         }
     }
 
+    /** A TFC crop, whose own climate ranges decide where it grows. */
+    public static boolean isTfcCrop(@Nullable Block block) {
+        return is(tfcCrop, block);
+    }
+
     @Nullable
     private static Block placedBlock(ItemStack stack) {
         return stack.getItem() instanceof BlockItem item ? item.getBlock() : null;

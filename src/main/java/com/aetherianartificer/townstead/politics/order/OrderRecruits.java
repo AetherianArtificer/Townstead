@@ -45,12 +45,14 @@ public final class OrderRecruits extends SavedData {
         return true;
     }
 
-    public void trained(ResourceLocation order, UUID person, long night) {
+    /** Counts {@code night} for {@code person}; returns their new night count, or -1 if it was already counted. */
+    public int trained(ResourceLocation order, UUID person, long night) {
         Map<UUID, Recruit> map = recruits.get(order);
         Recruit recruit = map == null ? null : map.get(person);
-        if (recruit == null || recruit.lastNight() == night) return;
+        if (recruit == null || recruit.lastNight() == night) return -1;
         map.put(person, new Recruit(recruit.nights() + 1, night));
         setDirty();
+        return recruit.nights() + 1;
     }
 
     /** Counts {@code person} as fully trained; for testing. */

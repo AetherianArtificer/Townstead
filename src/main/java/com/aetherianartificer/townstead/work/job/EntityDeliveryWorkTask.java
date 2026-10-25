@@ -72,7 +72,6 @@ public class EntityDeliveryWorkTask extends Behavior<VillagerEntityMCA> {
     private long lastPathTick;
     private long nextActionTick;
     private long nextPlaceTick;
-    private ItemStack previousMainHand = ItemStack.EMPTY;
     private boolean equippedJobItem;
 
     public EntityDeliveryWorkTask() {
@@ -294,9 +293,7 @@ public class EntityDeliveryWorkTask extends Behavior<VillagerEntityMCA> {
             }
         }
         if (itemSlot < 0) return;
-        ItemStack current = villager.getMainHandItem();
-        previousMainHand = current.isEmpty() ? ItemStack.EMPTY : current.copy();
-        villager.setItemInHand(InteractionHand.MAIN_HAND, inv.getItem(itemSlot).copy());
+        com.aetherianartificer.townstead.villager.HandProps.show(villager, InteractionHand.MAIN_HAND, inv.getItem(itemSlot));
         equippedJobItem = true;
     }
 
@@ -322,8 +319,7 @@ public class EntityDeliveryWorkTask extends Behavior<VillagerEntityMCA> {
 
     private void restorePreviousHand(VillagerEntityMCA villager) {
         if (!equippedJobItem) return;
-        villager.setItemInHand(InteractionHand.MAIN_HAND, previousMainHand);
-        previousMainHand = ItemStack.EMPTY;
+        com.aetherianartificer.townstead.villager.HandProps.clear(villager, InteractionHand.MAIN_HAND);
         equippedJobItem = false;
     }
 

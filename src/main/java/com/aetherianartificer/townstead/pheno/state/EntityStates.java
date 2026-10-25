@@ -52,7 +52,19 @@ public final class EntityStates {
     // Who may hold which state (Roots register their declarations); everyone by default.
     private static volatile java.util.function.BiPredicate<LivingEntity, ResourceLocation> eligibility = (e, s) -> true;
 
+    /** Told when a state an entity held ends, with the amount it had just before. */
+    @FunctionalInterface
+    public interface EndListener {
+        void ended(LivingEntity entity, ResourceLocation state, double formerAmount);
+    }
+
+    private static final List<EndListener> END_LISTENERS = new java.util.concurrent.CopyOnWriteArrayList<>();
+
     private EntityStates() {}
+
+    public static void onEnd(EndListener listener) {
+        if (listener != null) END_LISTENERS.add(listener);
+    }
 
     public static void setEligibility(java.util.function.BiPredicate<LivingEntity, ResourceLocation> rule) {
         eligibility = rule == null ? (e, s) -> true : rule;
@@ -391,6 +403,10 @@ public final class EntityStates {
                 }
                 runPeriodic(entity, effect, current, now);
             }
+            // A state only hidden by a body or exclusion that no longer allows it has not ended.
+            if (before.active() && !current.active() && eligible(entity, definition.id())) {
+                for (EndListener listener : END_LISTENERS) listener.ended(entity, definition.id(), before.amount());
+            }
             previous.put(definition.id(), current);
         }
         StateForms.update(entity);
@@ -606,8 +622,10 @@ public final class EntityStates {
 
     private static boolean resourceAvailable(LivingEntity entity, @Nullable ResourceLocation resource) {
         if (resource == null) return false;
-        return Powers.active(entity).stream().anyMatch(power -> power.id().equals(resource)
-                && power.component() instanceof ResourceGeneType.Instance);
+        for (var power : Powers.active(entity)) {
+            if (power.id().equals(resource) && power.component() instanceof ResourceGeneType.Instance) return true;
+        }
+        return false;
     }
 
     private static long safeAdd(long left, long right) {
