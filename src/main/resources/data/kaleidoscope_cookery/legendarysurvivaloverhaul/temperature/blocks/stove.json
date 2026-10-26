@@ -1,0 +1,14 @@
+[
+  {
+    "temperature": 6.0,
+    "properties": {
+      "lit": "true"
+    }
+  },
+  {
+    "temperature": 0.0,
+    "properties": {
+      "lit": "false"
+    }
+  }
+]

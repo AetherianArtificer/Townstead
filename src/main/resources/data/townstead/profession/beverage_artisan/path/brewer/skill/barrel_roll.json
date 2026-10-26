@@ -1,0 +1,66 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.brewer.barrel_roll"
+  },
+  "icon": "minecraft:oak_log",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.brewer.barrel_roll.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tap_the_keg"
+  ],
+  "skill_group": "townstead:brewer_spill",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:add_velocity",
+          "relative": true,
+          "z": 1.6,
+          "y": 0.15
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 3,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:add_velocity",
+            "away_from_other": 1.0,
+            "y": 0.3
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 4,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:haze",
+            "kind": "townstead:ale",
+            "blocks": {
+              "radius": 0
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.barrel.open",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

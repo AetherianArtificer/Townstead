@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": [
+    "toughasnails"
+  ],
+  "items": [
+    "toughasnails:dirty_water_bottle"
+  ],
+  "transaction": {
+    "mode": "replace_with_pheno",
+    "accounting": "consume_one",
+    "consumers": [
+      "villager"
+    ],
+    "remainder": {
+      "mode": "item",
+      "item": "minecraft:glass_bottle",
+      "destination": "storage"
+    }
+  },
+  "effects": {
+    "type": "pheno:if_else",
+    "condition": {
+      "type": "pheno:chance",
+      "chance": 0.75
+    },
+    "if_action": {
+      "type": "pheno:apply_effect",
+      "effect": "toughasnails:thirst",
+      "duration": 600
+    }
+  }
+}

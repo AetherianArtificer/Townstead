@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.slayer.hunters_fury"
+  },
+  "icon": "minecraft:blaze_powder",
+  "description": {
+    "translate": "skill.townstead.hunter.slayer.hunters_fury.description"
+  },
+  "cost": 1,
+  "requires": [
+    "silver_arc"
+  ],
+  "skill_group": "townstead:hunter_slayer_b",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:vigil",
+      "amount": 75
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:strength",
+          "duration": 200,
+          "amplifier": 1
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:speed",
+          "duration": 200,
+          "amplifier": 1
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.ravager.roar",
+          "volume": 0.6,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

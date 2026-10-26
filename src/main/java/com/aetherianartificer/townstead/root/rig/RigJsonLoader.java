@@ -34,12 +34,15 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
     @Override
     protected void apply(Map<ResourceLocation, JsonElement> entries, ResourceManager resourceManager,
                          ProfilerFiller profiler) {
+        entries = com.aetherianartificer.townstead.data.DataDocuments.resolve("rig", entries, resourceManager);
         Map<String, RigDefinition> parsed = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {
             ResourceLocation file = entry.getKey();
             String id = file.getNamespace() + ":" + file.getPath();
             try {
-                parsed.put(id, parse(id, GsonHelper.convertToJsonObject(entry.getValue(), file.toString())));
+                JsonObject obj = GsonHelper.convertToJsonObject(entry.getValue(), file.toString());
+                if (!com.aetherianartificer.townstead.data.ModGate.allows(obj)) continue;
+                parsed.put(id, parse(id, obj));
             } catch (Exception ex) {
                 LOGGER.warn("Failed to parse rig {}: {}", file, ex.getMessage());
             }
@@ -177,11 +180,21 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
             float h = GsonHelper.getAsFloat(hb, "height", 2.0f);
             // Optional crouch box; 0 (absent) derives it from height at vanilla's ratio.
             float ch = GsonHelper.getAsFloat(hb, "crouch_height", 0f);
-            if (w > 0f && h > 0f) hitbox = new RigDefinition.Hitbox(w, h, Math.max(0f, ch));
+            hitbox = new RigDefinition.Hitbox(w, h, ch,
+                    GsonHelper.getAsFloat(hb, "swim_height", 0f),
+                    GsonHelper.getAsFloat(hb, "eye_height", 0f),
+                    GsonHelper.getAsBoolean(hb, "scale_with_entity", true));
         }
 
         // Equipment slots this body refuses: { "equipment": { "disabled": ["head","chest", ...] } }.
-        java.util.Set<net.minecraft.world.entity.EquipmentSlot> disabledSlots = parseDisabledSlots(obj);
+        java.util.Set<net.minecraft.world.entity.EquipmentSlot> disabledSlots = parseSlots(obj, "disabled");
+        java.util.Set<net.minecraft.world.entity.EquipmentSlot> hiddenSlots = parseSlots(obj, "hidden");
+        java.util.Map<String, String> skinRemap = new java.util.LinkedHashMap<>();
+        if (obj.has("skin_remap") && obj.get("skin_remap").isJsonObject()) {
+            for (var e : obj.getAsJsonObject("skin_remap").entrySet()) {
+                if (e.getValue().isJsonPrimitive()) skinRemap.put(e.getKey(), e.getValue().getAsString());
+            }
+        }
 
         // First-person camera anchor: { "camera": { "bone": "head" } }. The eye height is derived from
         // that bone client-side; absent = keep the height-proportional default.
@@ -194,7 +207,86 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
         // emotes it will play at all. Absent = the rig expresses emotes the plain humanoid way.
         RigDefinition.EmoteMap emote = parseEmote(obj);
 
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, disabledSlots, cameraBone, emote);
+        RigDefinition.Animation animation = parseAnimation(obj);
+
+        String modelClass = geometry ? "" : GsonHelper.getAsString(model, "class", "");
+
+        float cameraOffset = obj.has("camera") && obj.get("camera").isJsonObject()
+                ? GsonHelper.getAsFloat(obj.getAsJsonObject("camera"), "height_offset", 0f) : 0f;
+        java.util.List<RigDefinition.Overlay> overlays = new java.util.ArrayList<>();
+        if (obj.has("overlays") && obj.get("overlays").isJsonArray()) {
+            for (JsonElement e : obj.getAsJsonArray("overlays")) {
+                if (!e.isJsonObject()) continue;
+                JsonObject o = e.getAsJsonObject();
+                String tex = GsonHelper.getAsString(o, "texture", "");
+                if (tex.isEmpty()) continue;
+                // "glow": true or false, or the name of a form variant that decides it per entity.
+                boolean glow = o.has("glow") && o.get("glow").isJsonPrimitive() && o.getAsJsonPrimitive("glow").isBoolean()
+                        && o.get("glow").getAsBoolean();
+                String glowVariant = o.has("glow") && o.get("glow").isJsonPrimitive() && o.getAsJsonPrimitive("glow").isString()
+                        ? o.get("glow").getAsString() : "";
+                overlays.add(new RigDefinition.Overlay(tex, glow, glowVariant, GsonHelper.getAsString(o, "tint", "")));
+            }
+        }
+        // "skin_parts": the bone channels a worn MCA skin may draw on (absent = all).
+        java.util.List<String> skinParts = new java.util.ArrayList<>();
+        if (obj.has("skin_parts") && obj.get("skin_parts").isJsonArray()) {
+            for (JsonElement e : obj.getAsJsonArray("skin_parts")) {
+                if (e.isJsonPrimitive()) skinParts.add(e.getAsString());
+            }
+        }
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, disabledSlots, cameraBone, emote, animation, modelClass, cameraOffset, java.util.List.copyOf(overlays), java.util.List.copyOf(skinParts), hiddenSlots, parseColliders(obj), java.util.Map.copyOf(skinRemap));
+    }
+
+    /**
+     * {@code "colliders": [ { "name": "tail_guard", "bone": "body", "from": [0,2,2], "to": [0,10,2],
+     * "radius": 3 } ]}: capsules attachment physics rests against. {@code name} defaults to the bone;
+     * {@code to} defaults to {@code from} (a sphere). Null when the rig declares none.
+     */
+    private static java.util.List<RigDefinition.Collider> parseColliders(JsonObject obj) {
+        if (!obj.has("colliders") || !obj.get("colliders").isJsonArray()) return null;
+        java.util.List<RigDefinition.Collider> out = new java.util.ArrayList<>();
+        for (JsonElement e : obj.getAsJsonArray("colliders")) {
+            if (!e.isJsonObject()) continue;
+            JsonObject c = e.getAsJsonObject();
+            String bone = GsonHelper.getAsString(c, "bone", "");
+            float radius = GsonHelper.getAsFloat(c, "radius", 0f);
+            if (bone.isEmpty() || !(radius > 0f)) continue;
+            float[] from = vec(c, "from", 3, new float[]{0f, 0f, 0f});
+            out.add(new RigDefinition.Collider(GsonHelper.getAsString(c, "name", bone), bone,
+                    from, vec(c, "to", 3, from), radius));
+        }
+        return java.util.List.copyOf(out);
+    }
+
+    /**
+     * Keyframe clips by state:
+     * {@code "animation": { "file": "ns:animations/x.animation.json", "transition": 4,
+     * "clips": [ { "state": "moving", "when": {...}, "clip": "walk", "speed": 1 }, { "clip": "idle" } ] }}.
+     * Rules are kept in order; the first match plays.
+     */
+    private static RigDefinition.Animation parseAnimation(JsonObject obj) {
+        if (!obj.has("animation") || !obj.get("animation").isJsonObject()) return null;
+        JsonObject anim = obj.getAsJsonObject("animation");
+        String file = GsonHelper.getAsString(anim, "file", "");
+        if (file.isEmpty()) return null;
+        float transition = GsonHelper.getAsFloat(anim, "transition", 4f);
+        java.util.List<RigDefinition.AnimationRule> rules = new java.util.ArrayList<>();
+        if (anim.has("clips") && anim.get("clips").isJsonArray()) {
+            for (JsonElement e : anim.getAsJsonArray("clips")) {
+                if (!e.isJsonObject()) continue;
+                JsonObject rule = e.getAsJsonObject();
+                String clip = GsonHelper.getAsString(rule, "clip", "");
+                if (clip.isEmpty()) continue;
+                rules.add(new RigDefinition.AnimationRule(
+                        GsonHelper.getAsString(rule, "state", ""),
+                        rule.has("when") ? rule.get("when").toString() : "",
+                        clip,
+                        GsonHelper.getAsFloat(rule, "transition", transition),
+                        GsonHelper.getAsFloat(rule, "speed", 1f)));
+            }
+        }
+        return rules.isEmpty() ? null : new RigDefinition.Animation(file, java.util.List.copyOf(rules));
     }
 
     /**
@@ -348,13 +440,14 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
     }
 
     /** Parse {@code equipment.disabled} into a set of vanilla equipment slots (unknown names skipped). */
-    private static java.util.Set<net.minecraft.world.entity.EquipmentSlot> parseDisabledSlots(JsonObject obj) {
+    /** {@code equipment.<key>}: a list of vanilla slot names (disabled: refused; hidden: worn, not drawn). */
+    private static java.util.Set<net.minecraft.world.entity.EquipmentSlot> parseSlots(JsonObject obj, String key) {
         if (!obj.has("equipment") || !obj.get("equipment").isJsonObject()) return java.util.Set.of();
         JsonObject equipment = obj.getAsJsonObject("equipment");
-        if (!equipment.has("disabled") || !equipment.get("disabled").isJsonArray()) return java.util.Set.of();
+        if (!equipment.has(key) || !equipment.get(key).isJsonArray()) return java.util.Set.of();
         java.util.EnumSet<net.minecraft.world.entity.EquipmentSlot> slots =
                 java.util.EnumSet.noneOf(net.minecraft.world.entity.EquipmentSlot.class);
-        for (JsonElement e : equipment.getAsJsonArray("disabled")) {
+        for (JsonElement e : equipment.getAsJsonArray(key)) {
             if (!e.isJsonPrimitive()) continue;
             try {
                 slots.add(net.minecraft.world.entity.EquipmentSlot.byName(
@@ -394,7 +487,9 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
     private static RigDefinition.Adjust adjust(JsonObject obj) {
         return new RigDefinition.Adjust(
                 vec(obj, "offset", 3, new float[]{0f, 0f, 0f}),
-                vec(obj, "rotation", 3, new float[]{0f, 0f, 0f}));
+                vec(obj, "rotation", 3, new float[]{0f, 0f, 0f}),
+                GsonHelper.getAsFloat(obj, "scale", 1F),
+                vec(obj, "scale_axes", 3, new float[]{1f, 1f, 1f}));
     }
 
     /** Parse a worn-anchor ({@code base} offset/rotation + per-item-id {@code items} deltas) under {@code key}. */

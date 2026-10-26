@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    {"id":"#c:benches","required":false},
+    {"id":"#forge:benches","required":false},
+    {"id":"brewery:bench","required":false}
+  ]
+}

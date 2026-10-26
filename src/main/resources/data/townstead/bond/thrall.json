@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:bond/v2",
+  "display": {
+    "translate": "bond.townstead.thrall"
+  },
+  "roles": {
+    "master": {
+      "party": "person"
+    },
+    "thrall": {
+      "party": "person",
+      "max": 1
+    }
+  }
+}

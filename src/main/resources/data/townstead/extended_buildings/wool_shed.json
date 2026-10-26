@@ -3,6 +3,7 @@
   "catalog": {
     "node_item": "minecraft:loom"
   },
+  "storage_roles": ["townstead:textiles"],
   "spirit": {
     "pastoral": 5,
     "industrious": 1

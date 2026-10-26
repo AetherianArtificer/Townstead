@@ -56,7 +56,8 @@ public final class VariantConditionType implements ConditionType {
     }
 
     private static boolean matchesServer(LivingEntity entity, ResourceLocation geneId, Set<String> wanted) {
-        for (Allele allele : Heredity.expressedAlleles(ExpressedGenes.genotypeOf(entity))) {
+        for (Allele allele : com.aetherianartificer.townstead.root.gene.AspectOverlay.apply(entity,
+                Heredity.expressedAlleles(ExpressedGenes.genotypeOf(entity)))) {
             if (geneId.equals(allele.geneId())) {
                 String raw = allele.variantId() == null ? "" : allele.variantId();
                 return wanted.contains(AllelePayload.parse(raw).variant());

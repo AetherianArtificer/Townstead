@@ -1,0 +1,53 @@
+{
+  "display_name": {
+    "translate": "combo_skill.townstead.armory"
+  },
+  "description": {
+    "translate": "combo_skill.townstead.armory.description"
+  },
+  "icon": "minecraft:arrow",
+  "professions": {
+    "minecraft:fletcher": 3,
+    "minecraft:weaponsmith": 3
+  },
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:ingredient",
+            "tag": "minecraft:swords"
+          },
+          {
+            "type": "pheno:ingredient",
+            "tag": "minecraft:axes"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:set_state",
+      "state": "townstead_state:readied",
+      "amount": 1,
+      "duration": 100
+    }
+  },
+  "companions": {
+    "arrows": {
+      "type": "pheno:modifier",
+      "target": "projectile_damage",
+      "operation": "multiply",
+      "value": 1.5,
+      "condition": {
+        "type": "pheno:state",
+        "state": "townstead_state:readied",
+        "min": 1
+      }
+    }
+  }
+}

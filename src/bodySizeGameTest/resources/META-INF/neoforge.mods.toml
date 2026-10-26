@@ -1,0 +1,7 @@
+modLoader="javafml"
+loaderVersion="[1,)"
+license="All Rights Reserved"
+[[mods]]
+modId="townstead_size_tests"
+version="1"
+displayName="Townstead physical sizing tests"

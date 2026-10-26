@@ -1,0 +1,98 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "providers_required": true,
+  "name": {
+    "translate": "career.townstead.beverage_artisan.path.winemaker"
+  },
+  "title": {
+    "translate": "career.townstead.beverage_artisan.title.winemaker"
+  },
+  "color": "#6A2A4A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:vintage",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/winemaker/aeration"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/winemaker/vine_snare"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/winemaker/decant"
+              }
+            ]
+          },
+          {
+            "type": "pheno:block_in_radius",
+            "radius": 6,
+            "block_condition": {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:block",
+                  "block": "vinery:fermentation_barrel"
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:barrel"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:vintage",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "vine_walker",
+      "grape_stomp",
+      "pairing"
+    ],
+    [
+      "sun_kissed",
+      "crush",
+      "wine_flight"
+    ],
+    [
+      "aeration",
+      "vine_snare",
+      "decant"
+    ],
+    [
+      "bouquet",
+      "trellis_ring",
+      "cellar_selection"
+    ],
+    [
+      "estate",
+      "harvest_stomp",
+      "vertical_tasting"
+    ]
+  ],
+  "worksites": [],
+  "storage": {
+    "preferred_roles": [
+      "townstead:wine"
+    ]
+  }
+}

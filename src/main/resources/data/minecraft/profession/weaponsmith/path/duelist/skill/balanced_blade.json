@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.duelist.balanced_blade"
+  },
+  "icon": "minecraft:iron_sword",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.duelist.balanced_blade.description"
+  },
+  "cost": 1,
+  "requires": [
+    "parry"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "anvil_prior_work",
+    "operation": "set",
+    "value": 0,
+    "item_condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:ingredient",
+          "tag": "minecraft:swords"
+        },
+        {
+          "type": "pheno:ingredient",
+          "tag": "minecraft:axes"
+        }
+      ]
+    }
+  }
+}

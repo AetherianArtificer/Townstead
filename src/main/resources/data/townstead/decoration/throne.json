@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:decoration/v1",
+  "spirits": { "martial": 1 },
+  "anchor": ["#townstead_hangouts:seats"],
+  "radius": 2,
+  "requires": {
+    "#minecraft:banners": 2,
+    "#minecraft:wool_carpets": 3
+  },
+  "icon": "minecraft:golden_helmet"
+}

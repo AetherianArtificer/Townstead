@@ -55,6 +55,9 @@ public final class RigCamera {
         if (bone == null || bone.isEmpty()) return Float.NaN;
         ModelPart part = RigModels.cameraBone(rigBase, bone);
         if (part == null) return null;
-        return Mth.clamp(BASELINE - part.y / 16f, 0.1f, 3.0f);
+        // A nested geometry bone's y is parent-relative; compose it through its parents.
+        float[] composed = RigModels.boneRestPose(rigBase, bone);
+        float y = composed != null ? composed[1] : part.y;
+        return Mth.clamp(BASELINE - y / 16f + def.cameraHeightOffset() / 16f, 0.1f, 3.0f);
     }
 }

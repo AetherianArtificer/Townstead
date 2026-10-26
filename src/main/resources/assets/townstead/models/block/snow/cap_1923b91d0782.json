@@ -1,0 +1,168 @@
+{
+  "textures": {
+    "snow": "minecraft:block/snow",
+    "particle": "minecraft:block/snow"
+  },
+  "elements": [
+    {
+      "from": [
+        2,
+        0.765,
+        2
+      ],
+      "to": [
+        14,
+        1.15,
+        14
+      ],
+      "faces": {
+        "up": {
+          "texture": "#snow"
+        },
+        "down": {
+          "texture": "#snow"
+        },
+        "north": {
+          "texture": "#snow"
+        },
+        "south": {
+          "texture": "#snow"
+        },
+        "east": {
+          "texture": "#snow"
+        },
+        "west": {
+          "texture": "#snow"
+        }
+      }
+    },
+    {
+      "from": [
+        2,
+        1.265,
+        2
+      ],
+      "to": [
+        14,
+        1.65,
+        3
+      ],
+      "faces": {
+        "up": {
+          "texture": "#snow"
+        },
+        "down": {
+          "texture": "#snow"
+        },
+        "north": {
+          "texture": "#snow"
+        },
+        "south": {
+          "texture": "#snow"
+        },
+        "east": {
+          "texture": "#snow"
+        },
+        "west": {
+          "texture": "#snow"
+        }
+      }
+    },
+    {
+      "from": [
+        2,
+        1.265,
+        13
+      ],
+      "to": [
+        14,
+        1.65,
+        14
+      ],
+      "faces": {
+        "up": {
+          "texture": "#snow"
+        },
+        "down": {
+          "texture": "#snow"
+        },
+        "north": {
+          "texture": "#snow"
+        },
+        "south": {
+          "texture": "#snow"
+        },
+        "east": {
+          "texture": "#snow"
+        },
+        "west": {
+          "texture": "#snow"
+        }
+      }
+    },
+    {
+      "from": [
+        2,
+        1.265,
+        3
+      ],
+      "to": [
+        3,
+        1.65,
+        13
+      ],
+      "faces": {
+        "up": {
+          "texture": "#snow"
+        },
+        "down": {
+          "texture": "#snow"
+        },
+        "north": {
+          "texture": "#snow"
+        },
+        "south": {
+          "texture": "#snow"
+        },
+        "east": {
+          "texture": "#snow"
+        },
+        "west": {
+          "texture": "#snow"
+        }
+      }
+    },
+    {
+      "from": [
+        13,
+        1.265,
+        3
+      ],
+      "to": [
+        14,
+        1.65,
+        13
+      ],
+      "faces": {
+        "up": {
+          "texture": "#snow"
+        },
+        "down": {
+          "texture": "#snow"
+        },
+        "north": {
+          "texture": "#snow"
+        },
+        "south": {
+          "texture": "#snow"
+        },
+        "east": {
+          "texture": "#snow"
+        },
+        "west": {
+          "texture": "#snow"
+        }
+      }
+    }
+  ]
+}

@@ -17,10 +17,19 @@ import net.minecraft.util.GsonHelper;
  * it via {@code villager.getTraits().addTrait} with this gene's occurrence as the
  * probability ({@code force}/{@code delta} ≥ 1.0 = guaranteed).</p>
  *
+ * <p>{@code "block": true} rules the trait out instead (delta -1): it is never granted, and
+ * {@code TraitBlocks} removes it wherever MCA would give it (spawn roll, birth, root change).</p>
+ *
  * <p>JSON: {@code { "type":"townstead_roots:trait_occurrence", "trait":"dwarfism",
- * "force":true }} or {@code { ..., "trait":"albinism", "delta":0.25 }}</p>
+ * "force":true }}, {@code { ..., "trait":"albinism", "delta":0.25 }} or
+ * {@code { ..., "trait":"dwarfism", "block":true }}</p>
  */
 public final class TraitOccurrenceGeneType implements GeneType {
+
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.HABITS;
+    }
 
     public static final String KEY = "townstead_roots:trait_occurrence";
 
@@ -30,6 +39,9 @@ public final class TraitOccurrenceGeneType implements GeneType {
 
         @Override
         public GeneDisplay display() { return GeneDisplay.influence(trait, delta); }
+
+        /** Whether this gene rules its trait out rather than granting it. */
+        public boolean blocks() { return delta <= -1f; }
     }
 
     @Override
@@ -39,8 +51,8 @@ public final class TraitOccurrenceGeneType implements GeneType {
     public GeneInstance parse(JsonObject json) {
         String trait = GsonHelper.getAsString(json, "trait", "");
         if (trait.isBlank()) return null;
-        float delta = GsonHelper.getAsBoolean(json, "force", false)
-                ? 1.0f
+        float delta = GsonHelper.getAsBoolean(json, "block", false) ? -1.0f
+                : GsonHelper.getAsBoolean(json, "force", false) ? 1.0f
                 : GsonHelper.getAsFloat(json, "delta", 0f);
         return new Instance(trait, delta);
         // Townstead traits apply at spawn (RootSpawnHandler); MCA-trait biasing is still TODO.

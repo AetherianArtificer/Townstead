@@ -1,0 +1,18 @@
+{
+  "blocks": [
+    "townstead:field_post",
+    "townstead:field_post_spruce",
+    "townstead:field_post_birch",
+    "townstead:field_post_jungle",
+    "townstead:field_post_acacia",
+    "townstead:field_post_dark_oak",
+    "townstead:field_post_mangrove",
+    "townstead:field_post_cherry",
+    "townstead:field_post_bamboo",
+    "townstead:field_post_crimson",
+    "townstead:field_post_warped"
+  ],
+  "flag": 1000,
+  "mid": "townstead:snow/townstead_blocks",
+  "snow_passable": true
+}

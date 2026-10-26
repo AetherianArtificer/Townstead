@@ -1,0 +1,57 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "work.vocation",
+  "weight": 9,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "survival",
+    "key": "townstead:oath_sworn"
+  },
+  "reach": "village",
+  "news_value": 5.0,
+  "roles": [
+    {
+      "id": "sworn",
+      "kind": "villager"
+    }
+  ],
+  "witnesses": {
+    "radius": 12.0,
+    "max": 8
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.oath_sworn"
+    },
+    "params": [
+      "sworn",
+      "order"
+    ]
+  },
+  "impact": {
+    "sworn": {
+      "mood": 4.0,
+      "memory": {
+        "valence": 0.8,
+        "strength": 2.0
+      }
+    },
+    "witness": {
+      "mood": 1.0,
+      "memory": {
+        "valence": 0.4,
+        "strength": 1.0
+      }
+    },
+    "on_learn": {
+      "memory": {
+        "valence": 0.2,
+        "strength": 0.5
+      }
+    }
+  }
+}

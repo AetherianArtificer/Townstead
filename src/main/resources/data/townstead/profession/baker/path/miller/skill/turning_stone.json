@@ -1,0 +1,44 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.miller.turning_stone"
+  },
+  "icon": "kaleidoscope_cookery:millstone",
+  "description": {
+    "translate": "skill.townstead.baker.miller.turning_stone.description"
+  },
+  "cost": 1,
+  "requires": [
+    "vermin_keeper"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:block_in_radius",
+      "radius": 6,
+      "block_condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:block",
+            "block": "kaleidoscope_cookery:millstone"
+          },
+          {
+            "type": "pheno:block",
+            "block": "minecraft:hay_block"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:proof",
+      "amount": 3
+    }
+  }
+}

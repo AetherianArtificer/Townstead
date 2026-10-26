@@ -26,6 +26,8 @@ public final class AttachmentServerData {
     // Named datapack geometry: logical id ("ns:geo/...") -> SHA-1 of the .geo.json, so a custom-geometry
     // rig model ships over the same blob sync (twin of namedTextures).
     private static volatile Map<String, String> namedGeo = Map.of();
+    // Named datapack animations: logical id ("ns:animations/...") -> SHA-1, so a rig's clips ship too.
+    private static volatile Map<String, String> namedAnimations = Map.of();
     // The authored JSON of each definition (by id), kept so the live-adjust command can dump a
     // file-ready def (the synced view replaces geometry/texture refs with hashes).
     private static volatile Map<String, com.google.gson.JsonObject> sources = Map.of();
@@ -34,12 +36,14 @@ public final class AttachmentServerData {
 
     public static void set(List<AttachmentDef> defs, List<AttachmentPointDef> slotDefs, Map<String, Blob> blobStore,
                            Map<String, String> textureIds, Map<String, String> geoIds,
+                           Map<String, String> animationIds,
                            Map<String, com.google.gson.JsonObject> sourceJson) {
         definitions = List.copyOf(defs);
         slots = List.copyOf(slotDefs);
         blobs = Map.copyOf(blobStore);
         namedTextures = Map.copyOf(textureIds);
         namedGeo = Map.copyOf(geoIds);
+        namedAnimations = Map.copyOf(animationIds);
         sources = Map.copyOf(sourceJson);
     }
 
@@ -76,5 +80,10 @@ public final class AttachmentServerData {
     /** Named datapack geometry (logical id -> SHA-1), shipped in the manifest. */
     public static Map<String, String> namedGeo() {
         return namedGeo;
+    }
+
+    /** Named datapack animations (logical id -> SHA-1), shipped in the manifest. */
+    public static Map<String, String> namedAnimations() {
+        return namedAnimations;
     }
 }

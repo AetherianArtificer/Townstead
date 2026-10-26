@@ -1,0 +1,37 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "mods": "vampirism",
+  "state": "townstead_state:vampire",
+  "min_tier": "elder",
+  "priority": 40,
+  "condition": {
+    "type": "pheno:or",
+    "conditions": [
+      {
+        "type": "pheno:embodied"
+      },
+      {
+        "type": "pheno:not",
+        "condition": {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:player"
+        }
+      },
+      {
+        "type": "pheno:not",
+        "condition": {
+          "type": "pheno:rig",
+          "rig": "none"
+        }
+      }
+    ]
+  },
+  "genes": {
+    "grant": [
+      "townstead_roots:vampire_glowing_eyes"
+    ],
+    "suppress": [
+      "townstead_roots:vampire_eyes"
+    ]
+  }
+}

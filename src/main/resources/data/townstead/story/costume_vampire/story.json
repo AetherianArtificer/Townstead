@@ -1,0 +1,67 @@
+{
+  "schema": "townstead:story/v1",
+  "requires_mods": [
+    "vampirism"
+  ],
+  "attach": {
+    "when": {
+      "type": "pheno:costumed",
+      "group": "wild_vampire"
+    }
+  },
+  "conditions": {
+    "friendly": {
+      "type": "pheno:regards",
+      "is": "friendly"
+    },
+    "night": {
+      "type": "pheno:time_of_day",
+      "min": 13000,
+      "max": 23000
+    },
+    "voice_bright": {
+      "type": "pheno:personality",
+      "personality": [
+        "mca:upbeat",
+        "mca:peppy",
+        "mca:extroverted",
+        "mca:playful"
+      ]
+    },
+    "voice_sharp": {
+      "type": "pheno:personality",
+      "personality": [
+        "mca:crabby",
+        "mca:greedy"
+      ]
+    },
+    "voice_nervous": {
+      "type": "pheno:personality",
+      "personality": [
+        "mca:gloomy",
+        "mca:anxious",
+        "mca:sensitive"
+      ]
+    },
+    "voice_quiet": {
+      "type": "pheno:personality",
+      "personality": [
+        "mca:introverted",
+        "mca:peaceful",
+        "mca:relaxed"
+      ]
+    },
+    "voice_flirty": {
+      "type": "pheno:personality",
+      "personality": [
+        "mca:flirty"
+      ]
+    },
+    "voice_odd": {
+      "type": "pheno:personality",
+      "personality": [
+        "mca:odd"
+      ]
+    }
+  }
+}

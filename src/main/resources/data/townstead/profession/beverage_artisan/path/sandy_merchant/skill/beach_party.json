@@ -1,0 +1,249 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.beach_party"
+  },
+  "icon": "minecraft:firework_rocket",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.beach_party.description"
+  },
+  "cost": 1,
+  "requires": [
+    "conga_line"
+  ],
+  "skill_group": "townstead:sandy_party",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:tan",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:delay",
+              "ticks": 0,
+              "action": {
+                "type": "pheno:area_of_effect",
+                "radius": 14,
+                "include_self": false,
+                "target": "hostile",
+                "action": {
+                  "type": "pheno:choice",
+                  "actions": [
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "x": 0.5,
+                        "y": 0.1
+                      }
+                    },
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "x": -0.5,
+                        "y": 0.1
+                      }
+                    },
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "z": 0.5,
+                        "y": 0.1
+                      }
+                    },
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "z": -0.5,
+                        "y": 0.1
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "pheno:delay",
+              "ticks": 8,
+              "action": {
+                "type": "pheno:area_of_effect",
+                "radius": 14,
+                "include_self": false,
+                "target": "hostile",
+                "action": {
+                  "type": "pheno:choice",
+                  "actions": [
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "x": 0.5,
+                        "y": 0.1
+                      }
+                    },
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "x": -0.5,
+                        "y": 0.1
+                      }
+                    },
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "z": 0.5,
+                        "y": 0.1
+                      }
+                    },
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "z": -0.5,
+                        "y": 0.1
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "pheno:delay",
+              "ticks": 16,
+              "action": {
+                "type": "pheno:area_of_effect",
+                "radius": 14,
+                "include_self": false,
+                "target": "hostile",
+                "action": {
+                  "type": "pheno:choice",
+                  "actions": [
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "x": 0.5,
+                        "y": 0.1
+                      }
+                    },
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "x": -0.5,
+                        "y": 0.1
+                      }
+                    },
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "z": 0.5,
+                        "y": 0.1
+                      }
+                    },
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "z": -0.5,
+                        "y": 0.1
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "pheno:delay",
+              "ticks": 24,
+              "action": {
+                "type": "pheno:area_of_effect",
+                "radius": 14,
+                "include_self": false,
+                "target": "hostile",
+                "action": {
+                  "type": "pheno:choice",
+                  "actions": [
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "x": 0.5,
+                        "y": 0.1
+                      }
+                    },
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "x": -0.5,
+                        "y": 0.1
+                      }
+                    },
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "z": 0.5,
+                        "y": 0.1
+                      }
+                    },
+                    {
+                      "action": {
+                        "type": "pheno:add_velocity",
+                        "z": -0.5,
+                        "y": 0.1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 14,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:nausea",
+            "duration": 200,
+            "amplifier": 0
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 14,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:strength",
+            "duration": 600,
+            "amplifier": 1
+          }
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:firework",
+          "count": 40,
+          "spread": 2.0
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.note_block.bit",
+          "volume": 1.0,
+          "pitch": 1.2
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.bell.use",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

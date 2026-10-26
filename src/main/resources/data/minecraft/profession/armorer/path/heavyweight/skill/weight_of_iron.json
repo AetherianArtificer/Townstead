@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.heavyweight.weight_of_iron"
+  },
+  "icon": "minecraft:iron_block",
+  "description": {
+    "translate": "skill.townstead.armorer.heavyweight.weight_of_iron.description"
+  },
+  "cost": 1,
+  "requires": [
+    "iron_hide"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:temper",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:movement",
+          "movement": "moving"
+        },
+        {
+          "type": "pheno:entity_in_radius",
+          "radius": 8,
+          "condition": {
+            "type": "pheno:hostile"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:temper",
+      "amount": 3
+    }
+  }
+}

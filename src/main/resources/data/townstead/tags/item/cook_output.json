@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "#c:foods", "required": false },
+    { "id": "#forge:foods", "required": false }
+  ]
+}

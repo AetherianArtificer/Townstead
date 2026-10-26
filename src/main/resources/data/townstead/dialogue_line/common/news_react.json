@@ -1,0 +1,91 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "news_react",
+  "groups": [
+    {
+      "state": { "stance": "+" },
+      "lines": {
+        "oh_thats_wonderful": "Oh, that's wonderful!",
+        "really_thats_great": "Really? That's great.",
+        "how_lovely": "How lovely.",
+        "finally": "Finally!",
+        "oh_good_for_them": "Oh, good for them!",
+        "oh_im_so_happy_for": "Oh, I'm so happy for them!",
+        "no_way_thats_great": "No way! That's great!",
+        "aw_thats_nice": "Aw, that's nice.",
+        "wow": "Wow!",
+        "thats_amazing": "That's amazing!",
+        "oh_how_nice": "Oh, how nice.",
+        "really_oh_i_love_that": "Really? Oh, I love that.",
+        "thats_great_news": "That's great news!",
+        "about_time": "About time!",
+        "oh_that_makes_me_happy": "Oh, that makes me happy.",
+        "yay": "Yay!"
+      }
+    },
+    {
+      "state": { "stance": "-" },
+      "lines": {
+        "thats_awful": "That's awful.",
+        "oh_no": "Oh no.",
+        "thats_a_shame": "That's a shame.",
+        "what_a_mess": "What a mess.",
+        "oh_dear": "Oh dear.",
+        "yikes": "Yikes.",
+        "thats_terrible": "That's terrible.",
+        "oh_thats_not_good": "Oh, that's not good.",
+        "ugh_really": "Ugh, really?",
+        "oh_no_poor_them": "Oh no, poor them.",
+        "thats_so_sad": "That's so sad.",
+        "oh_how_awful": "Oh, how awful.",
+        "oof": "Oof.",
+        "thats_rough": "That's rough.",
+        "oh_i_hate_hearing_that": "Oh, I hate hearing that.",
+        "what_really": "What? Really?"
+      }
+    },
+    { "lines": {"huh_well_whatever": {"text": "Huh. Well, whatever.", "personalities": ["crabby", "grumpy"]}} },
+    {
+      "state": { "stance": "+" },
+      "lines": { "oh_thats_the_best": {"text": "Oh, that's the BEST!", "personalities": ["upbeat", "peppy"]} }
+    },
+    {
+      "state": { "stance": "-" },
+      "lines": {
+        "of_course_things_always_go": { "text": "Of course. Things always go wrong.", "personalities": "gloomy" },
+        "ooh_scandalous": { "text": "Ooh, scandalous!", "personalities": ["playful", "witty"] }
+      }
+    },
+    {
+      "state": { "variant": "marriage" },
+      "lines": { "ooh_how_romantic": {"text": "Ooh, how romantic!", "personalities": "flirty"} }
+    },
+    {
+      "state": { "stance": "-" },
+      "lines": { "oh_how_sad_poor_things": {"text": "Oh, how sad. Poor things.", "personalities": "sensitive"} }
+    },
+    {
+      "lines": {
+        "wow_2": { "text": "Wow!", "stages": "child" },
+        "whoa": { "text": "Whoa!", "stages": "child" },
+        "huh_cool": { "text": "Huh. Cool.", "stages": "teen" }
+      }
+    },
+    { "state": {"stance": "+"}, "lines": {"oh_bless_them": {"text": "Oh, bless them.", "stages": "senior"}} },
+    {
+      "provenance": "shared",
+      "weight": 3,
+      "lines": {
+        "i_know_i_heard_this": "I know! I heard this morning.",
+        "old_news_but_yes": "Old news, but yes!",
+        "i_heard_isnt_it_something": "I heard. Isn't it something?",
+        "yes_everyones_talking_about_it": "Yes, everyone's talking about it.",
+        "i_know_i_was_there": "I know, I was there.",
+        "ha_i_heard_before_you": { "text": "Ha! I heard before you did.", "personalities": ["playful", "witty"] },
+        "yes_yes_everyone_knows": { "text": "Yes, yes. Everyone knows.", "personalities": ["crabby", "grumpy"] },
+        "i_know_isnt_it_wonderful": { "text": "I know! Isn't it wonderful?", "valence": "positive" },
+        "i_heard_awful_isnt_it": { "text": "I heard. Awful, isn't it?", "valence": "negative" }
+      }
+    }
+  ]
+}

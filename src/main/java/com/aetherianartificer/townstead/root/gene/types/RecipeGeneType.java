@@ -21,6 +21,11 @@ import net.minecraft.world.item.Item;
  */
 public final class RecipeGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.BEING;
+    }
+
     public static final String KEY = "pheno:recipe";
 
     public record Instance(Item result) implements GeneInstance {

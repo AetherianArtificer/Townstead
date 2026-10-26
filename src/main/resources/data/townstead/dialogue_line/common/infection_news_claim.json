@@ -1,0 +1,55 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "infection_news_claim",
+  "groups": [
+    {
+      "persp": { "who": "they" },
+      "variant": "bitten",
+      "lines": {
+        "who_got_bitten_by_a": "{who} got bitten by a zombie.",
+        "who_was_bitten_last_night": "{who} was bitten last night.",
+        "who_has_a_zombie_bite": "{who} has a zombie bite. Keep an eye on them.",
+        "they_say_who_was_bitten": "They say {who} was bitten. Nobody knows how bad."
+      }
+    },
+    {
+      "persp": { "who": "you" },
+      "variant": "bitten",
+      "lines": { "i_heard_you_were_bitten": "I heard you were bitten. Are you all right?" }
+    },
+    {
+      "persp": { "who": "they" },
+      "variant": "turned",
+      "lines": {
+        "who_turned_into_one_of": "{who} turned. Into one of them.",
+        "we_lost_who_the_bite": "We lost {who}. The bite took them.",
+        "who_is_a_zombie_now": "{who} is a zombie now. I can't believe it."
+      }
+    },
+    {
+      "persp": { "who": "they" },
+      "variant": "cured",
+      "lines": {
+        "who_is_cured": "{who} is cured!",
+        "someone_got_a_golden_apple": "Someone got a golden apple to {who} just in time.",
+        "who_is_back_to_normal": "{who} is back to normal. It's a miracle."
+      }
+    },
+    {
+      "persp": { "who": "you" },
+      "variant": "cured",
+      "lines": {
+        "i_heard_youre_cured_thank": "I heard you're cured! Thank goodness.",
+        "you_look_so_much_better": "You look so much better. I heard you were cured!"
+      }
+    },
+    {
+      "persp": { "who": "me" },
+      "variant": "cured",
+      "lines": {
+        "im_cured_i_really_thought": "I'm cured! I really thought that was the end.",
+        "i_got_better_someone_found": "I got better. Someone found me a cure."
+      }
+    }
+  ]
+}

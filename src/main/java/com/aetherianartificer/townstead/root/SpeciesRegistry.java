@@ -19,6 +19,7 @@ public final class SpeciesRegistry {
 
     static void replaceAll(Map<ResourceLocation, Species> next) {
         ENTRIES = Map.copyOf(new LinkedHashMap<>(next));
+        RootRegistry.compositionChanged();
     }
 
     @Nullable

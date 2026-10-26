@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:conversation/v1",
+  "subjects": ["townstead:need"],
+  "register": "ambient",
+  "start": "t0_complain",
+  "turns": {
+    "t0_complain": { "speaker": "initiator", "move": "townstead:open_subject", "replies": ["t1_console"] },
+    "t1_console": { "speaker": "responder", "move": "townstead:console" }
+  },
+  "associated": ["townstead:weather", "townstead:venue"]
+}

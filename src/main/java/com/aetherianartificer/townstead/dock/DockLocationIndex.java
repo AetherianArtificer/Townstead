@@ -27,7 +27,7 @@ public final class DockLocationIndex {
     public static void rebuildVillage(ServerLevel level, Village village) {
         if (level == null || village == null) return;
         List<Dock> docks = new ArrayList<>();
-        for (Building building : village.getBuildings().values()) {
+        for (Building building : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             Dock dock = dockFromBuilding(building);
             if (dock != null) docks.add(dock);
         }
@@ -89,7 +89,7 @@ public final class DockLocationIndex {
                 Math.max(p0.getX(), p1.getX()),
                 Math.max(p0.getY(), p1.getY()),
                 Math.max(p0.getZ(), p1.getZ()));
-        return new Dock(bounds, Math.max(1, building.getSize()), tier);
+        return new Dock(bounds, Math.max(1, com.aetherianartificer.townstead.compat.mca.McaBuildings.size(building)), tier);
     }
 
     private static int tierOf(String type) {

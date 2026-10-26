@@ -29,7 +29,7 @@ public final class RidingActionType implements ActionType {
         if (inner == null) return null;
         return ctx -> {
             if (ctx.entity().getVehicle() instanceof LivingEntity vehicle) {
-                inner.run(new ActionContext(vehicle, ctx.entity()));
+                inner.run(ctx.retarget(vehicle, ctx.entity()));
             }
         };
     }

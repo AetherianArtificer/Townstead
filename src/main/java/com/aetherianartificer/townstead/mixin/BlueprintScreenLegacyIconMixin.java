@@ -1,33 +1,61 @@
 package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.compat.BuildingIconSwap;
+import com.aetherianartificer.townstead.compat.BuildingIconResolver;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import net.conczin.mca.resources.data.BuildingType;
 import net.conczin.mca.client.gui.BlueprintScreen;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Legacy (pre-floor-system) MCA choke point for building icons. On MCA 7.7.x the
- * atlas blit still lives in {@code BlueprintScreen.drawBuildingIcon}; we swap in a
- * {@code townsteadNodeItem} there when the icon's {@code (u, v)} slot maps to one.
+ * Legacy (pre-floor-system) MCA map integration. Townstead building definitions
+ * stay in footprint mode; this overlays their sidecar item at the footprint's
+ * center without reserving fake MCA atlas coordinates.
  *
- * <p>The newer floor-system MCA removed this method, so this mixin is applied
- * only when the runtime lacks the new API (see {@code TownsteadMixinPlugin});
- * on new MCA, {@link WidgetUtilsBuildingIconMixin} and
- * {@link BlueprintMapRendererIconMixin} take over instead. The injector targets
- * the method by name (no {@code @Shadow}) so this class still compiles against
- * the newer MCA jar, where {@code drawBuildingIcon} no longer exists.
+ * <p>The newer floor-system MCA moves this work into
+ * {@link BlueprintMapRendererIconMixin}. The plugin applies exactly one of the
+ * two integrations for the running MCA generation.
  */
 @Mixin(BlueprintScreen.class)
 public abstract class BlueprintScreenLegacyIconMixin {
-    @Inject(method = "drawBuildingIcon", remap = false, at = @At("HEAD"), cancellable = true)
-    private void townstead$swapBuildingIcon(GuiGraphics context, ResourceLocation texture,
-            int x, int y, int u, int v, CallbackInfo ci) {
-        if (BuildingIconSwap.render(context, x, y, u, v)) {
-            ci.cancel();
+    @Unique
+    private static final ThreadLocal<BuildingType> townstead$footprintIcon = new ThreadLocal<>();
+
+    @WrapOperation(
+            method = "renderMap",
+            at = @At(value = "INVOKE",
+                    target = "Lnet/conczin/mca/resources/data/BuildingType;isIcon()Z"),
+            require = 1,
+            remap = false
+    )
+    private boolean townstead$captureFootprintIcon(BuildingType type, Operation<Boolean> original) {
+        townstead$footprintIcon.remove();
+        if (type.visible() && BuildingIconResolver.nodeItemForType(type.name()).isPresent()) {
+            townstead$footprintIcon.set(type);
+            return false;
         }
+        return original.call(type);
+    }
+
+    @WrapOperation(
+            method = "renderMap",
+            at = @At(value = "INVOKE",
+                    target = "Lnet/conczin/mca/client/gui/widget/WidgetUtils;drawRectangle(Lnet/minecraft/client/gui/GuiGraphics;IIIII)V",
+                    ordinal = 1),
+            require = 1,
+            remap = false
+    )
+    private void townstead$drawFootprintAndItem(GuiGraphics context,
+            int minX, int minZ, int maxX, int maxZ, int color, Operation<Void> original) {
+        original.call(context, minX, minZ, maxX, maxZ, color);
+        BuildingType type = townstead$footprintIcon.get();
+        townstead$footprintIcon.remove();
+        if (type == null) return;
+        BuildingIconSwap.render(context, (minX + maxX) / 2, (minZ + maxZ) / 2,
+                type.name());
     }
 }

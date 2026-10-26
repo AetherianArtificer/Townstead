@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.chef.honed_edge"
+  },
+  "icon": "farmersdelight:iron_knife",
+  "description": {
+    "translate": "skill.townstead.cook.chef.honed_edge.description"
+  },
+  "cost": 1,
+  "requires": ["kitchen_pace"],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "durability_loss",
+    "operation": "set",
+    "value": 0,
+    "item_condition": { "type": "pheno:ingredient", "tag": "townstead:kitchen_knives" },
+    "condition": {
+      "type": "pheno:block_in_radius",
+      "radius": 2,
+      "block_condition": {
+        "type": "pheno:work_station",
+        "profession": "townstead:cook",
+        "task": "townstead_work:chop"
+      }
+    }
+  }
+}

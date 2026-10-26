@@ -1,0 +1,312 @@
+{
+  "schema": "townstead:climate_derivation/v1",
+  "rules": [
+    {
+      "step": "provider",
+      "any_tags": [
+        "eclipticseasons:rain/monsoonal"
+      ],
+      "zone": "townstead:semi_arid"
+    },
+    {
+      "step": "provider",
+      "any_tags": [
+        "eclipticseasons:rain/arid",
+        "eclipticseasons:rain/rainless",
+        "eclipticseasons:rain/droughty"
+      ],
+      "zone": "townstead:arid"
+    },
+    {
+      "step": "provider",
+      "any_tags": [
+        "eclipticseasons:rain/rainy"
+      ],
+      "zone": "townstead:tropical_humid"
+    },
+    {
+      "step": "provider",
+      "any_tags": [
+        "eclipticseasons:rain/soft"
+      ],
+      "zone": "townstead:maritime"
+    },
+    {
+      "step": "provider",
+      "all_tags": [
+        "eclipticseasons:rain/seasonal/cold",
+        "c:is_icy"
+      ],
+      "zone": "townstead:polar"
+    },
+    {
+      "step": "provider",
+      "any_tags": [
+        "eclipticseasons:rain/seasonal/cold"
+      ],
+      "zone": "townstead:subarctic"
+    },
+    {
+      "step": "provider",
+      "any_tags": [
+        "eclipticseasons:rain/seasonal/hot"
+      ],
+      "zone": "townstead:semi_arid"
+    },
+    {
+      "step": "provider",
+      "any_tags": [
+        "eclipticseasons:rain/seasonal"
+      ],
+      "zone": "townstead:temperate"
+    },
+    {
+      "step": "provider",
+      "any_tags": [
+        "sereneseasons:tropical_biomes"
+      ],
+      "min_downfall": 0.8,
+      "zone": "townstead:tropical_humid"
+    },
+    {
+      "step": "provider",
+      "any_tags": [
+        "sereneseasons:tropical_biomes"
+      ],
+      "max_downfall": 0.2,
+      "zone": "townstead:arid"
+    },
+    {
+      "step": "provider",
+      "any_tags": [
+        "sereneseasons:tropical_biomes"
+      ],
+      "zone": "townstead:semi_arid"
+    },
+    {
+      "step": "conventional",
+      "any_tags": [
+        "minecraft:is_nether",
+        "minecraft:is_end"
+      ],
+      "zone": "none"
+    },
+    {
+      "step": "conventional",
+      "any_tags": [
+        "c:is_cave",
+        "c:is_underground",
+        "forge:is_cave",
+        "forge:is_underground"
+      ],
+      "zone": "townstead:subterranean"
+    },
+    {
+      "step": "conventional",
+      "any_tags": [
+        "c:is_mountain/peak",
+        "c:is_mountain/slope",
+        "forge:is_peak",
+        "forge:is_slope"
+      ],
+      "zone": "townstead:alpine"
+    },
+    {
+      "step": "conventional",
+      "any_tags": [
+        "c:is_icy",
+        "c:is_snowy",
+        "c:is_snowy_plains",
+        "forge:is_snowy",
+        "c:is_aquatic_icy"
+      ],
+      "zone": "townstead:polar"
+    },
+    {
+      "step": "conventional",
+      "any_tags": [
+        "c:is_desert",
+        "forge:is_desert",
+        "minecraft:is_badlands",
+        "c:is_badlands"
+      ],
+      "zone": "townstead:arid"
+    },
+    {
+      "step": "conventional",
+      "any_tags": [
+        "minecraft:is_jungle",
+        "c:is_jungle",
+        "c:is_tree/jungle"
+      ],
+      "zone": "townstead:tropical_humid"
+    },
+    {
+      "step": "conventional",
+      "any_tags": [
+        "minecraft:is_savanna",
+        "c:is_savanna",
+        "c:is_tree/savanna"
+      ],
+      "zone": "townstead:semi_arid"
+    },
+    {
+      "step": "conventional",
+      "any_tags": [
+        "minecraft:is_taiga",
+        "c:is_taiga",
+        "c:is_tree/coniferous",
+        "forge:is_coniferous"
+      ],
+      "zone": "townstead:subarctic"
+    },
+    {
+      "step": "conventional",
+      "any_tags": [
+        "minecraft:is_ocean",
+        "minecraft:is_river",
+        "minecraft:is_beach",
+        "c:is_aquatic",
+        "c:is_swamp",
+        "forge:is_swamp",
+        "forge:is_water"
+      ],
+      "zone": "townstead:maritime"
+    },
+    {
+      "step": "conventional",
+      "any_tags": [
+        "minecraft:is_mountain"
+      ],
+      "zone": "townstead:alpine"
+    },
+    {
+      "step": "conventional",
+      "all_tags": [
+        "c:is_hot/overworld",
+        "c:is_dry/overworld"
+      ],
+      "zone": "townstead:arid"
+    },
+    {
+      "step": "conventional",
+      "all_tags": [
+        "forge:is_hot/overworld",
+        "forge:is_dry/overworld"
+      ],
+      "zone": "townstead:arid"
+    },
+    {
+      "step": "conventional",
+      "all_tags": [
+        "c:is_hot/overworld",
+        "c:is_wet/overworld"
+      ],
+      "zone": "townstead:tropical_humid"
+    },
+    {
+      "step": "conventional",
+      "all_tags": [
+        "forge:is_hot/overworld",
+        "forge:is_wet/overworld"
+      ],
+      "zone": "townstead:tropical_humid"
+    },
+    {
+      "step": "conventional",
+      "any_tags": [
+        "c:is_hot/overworld",
+        "forge:is_hot/overworld"
+      ],
+      "zone": "townstead:semi_arid"
+    },
+    {
+      "step": "conventional",
+      "any_tags": [
+        "c:is_cold/overworld",
+        "forge:is_cold/overworld"
+      ],
+      "zone": "townstead:subarctic"
+    },
+    {
+      "step": "conventional",
+      "any_tags": [
+        "c:is_temperate/overworld"
+      ],
+      "zone": "townstead:temperate"
+    },
+    {
+      "step": "keyword",
+      "keyword": "mediterranean",
+      "zone": "townstead:mediterranean"
+    },
+    {
+      "step": "keyword",
+      "keyword": "tundra",
+      "zone": "townstead:polar"
+    },
+    {
+      "step": "keyword",
+      "keyword": "glacier",
+      "zone": "townstead:polar"
+    },
+    {
+      "step": "keyword",
+      "keyword": "rainforest",
+      "zone": "townstead:tropical_humid"
+    },
+    {
+      "step": "keyword",
+      "keyword": "boreal",
+      "zone": "townstead:subarctic"
+    },
+    {
+      "step": "keyword",
+      "keyword": "steppe",
+      "zone": "townstead:continental"
+    },
+    {
+      "step": "keyword",
+      "keyword": "prairie",
+      "zone": "townstead:continental"
+    },
+    {
+      "step": "keyword",
+      "keyword": "dune",
+      "zone": "townstead:arid"
+    },
+    {
+      "step": "climate",
+      "max_temperature": 0.15,
+      "zone": "townstead:polar"
+    },
+    {
+      "step": "climate",
+      "max_temperature": 0.4,
+      "zone": "townstead:subarctic"
+    },
+    {
+      "step": "climate",
+      "min_temperature": 1.0,
+      "max_downfall": 0.2,
+      "zone": "townstead:arid"
+    },
+    {
+      "step": "climate",
+      "min_temperature": 0.9,
+      "min_downfall": 0.8,
+      "zone": "townstead:tropical_humid"
+    },
+    {
+      "step": "climate",
+      "min_temperature": 0.9,
+      "zone": "townstead:semi_arid"
+    },
+    {
+      "step": "climate",
+      "min_downfall": 0.85,
+      "zone": "townstead:maritime"
+    }
+  ],
+  "fallback": "townstead:temperate"
+}

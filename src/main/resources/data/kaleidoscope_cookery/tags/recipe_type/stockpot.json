@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "kaleidoscope_cookery:stockpot",
+      "required": false
+    },
+    {
+      "id": "kaleidoscope_cookery:flex_stockpot",
+      "required": false
+    }
+  ]
+}

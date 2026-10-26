@@ -21,4 +21,12 @@ public final class TownsteadSchema {
             throw new IllegalArgumentException("Expected schema '" + expected + "', got '" + actual + "'");
         }
     }
+
+    /** Validates a document whose format requires an explicit schema version. */
+    public static void validateRequired(JsonObject document, String expected) {
+        if (document == null || !document.has("schema")) {
+            throw new IllegalArgumentException("'schema' is required and must be '" + expected + "'");
+        }
+        validate(document, expected);
+    }
 }

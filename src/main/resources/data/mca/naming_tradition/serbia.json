@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:naming_tradition/v1",
+  "given": "mca:serbia",
+  "family": {
+    "type": "inherited",
+    "list": "townstead_naming:serbia",
+    "descent": "father"
+  }
+}

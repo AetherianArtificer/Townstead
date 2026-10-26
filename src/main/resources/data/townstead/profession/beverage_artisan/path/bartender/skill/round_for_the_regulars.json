@@ -1,0 +1,64 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.bartender.round_for_the_regulars"
+  },
+  "icon": "minecraft:honey_bottle",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.bartender.round_for_the_regulars.description"
+  },
+  "cost": 1,
+  "requires": [
+    "on_the_house"
+  ],
+  "skill_group": "townstead:bartender_regulars",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "always",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:for_each",
+          "in": "townstead:regulars",
+          "where": {
+            "type": "pheno:distance",
+            "max": 24
+          },
+          "do": {
+            "type": "pheno:target_action",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:speed",
+                  "duration": 600,
+                  "amplifier": 0
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:haste",
+                  "duration": 600,
+                  "amplifier": 0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.glass.hit",
+          "volume": 1.0,
+          "pitch": 1.6
+        }
+      ]
+    }
+  }
+}

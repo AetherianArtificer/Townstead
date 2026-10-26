@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "pheno:thermal_tolerance",
+  "display_name": {
+    "translate": "gene.townstead_roots.vampire_thermal"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.vampire_thermal.desc"
+  },
+  "category": "Climate",
+  "locus": "pheno:thermal_tolerance",
+  "climate": "any"
+}

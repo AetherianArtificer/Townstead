@@ -1,5 +1,6 @@
 {
   "schema": "townstead:extended_building/v1",
+  "catalog": {"node_item": "minecraft:lectern"},
   "spirit": {
     "scholar": 5
   }

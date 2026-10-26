@@ -1,7 +1,7 @@
 package com.aetherianartificer.townstead.hunger;
 
-import com.aetherianartificer.townstead.ai.work.WorkPathing;
-import com.aetherianartificer.townstead.dock.DockScanner;
+import com.aetherianartificer.townstead.work.WorkPathing;
+import com.aetherianartificer.townstead.recognition.SiteRequirements;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.core.BlockPos;
@@ -24,9 +24,11 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Scans around a barrel anchor for fishable water source blocks, each paired with
  * a precomputed safe stand position. Results are cached per (dim, anchor, radius)
- * with a short TTL, matching the ButcherWorkIndex cadence pattern.
+ * with a short TTL, matching the other worksite spatial indexes.
  */
 public final class FishingWaterIndex {
+    private static final SiteRequirements.SurfaceOver DECK_OVER_WATER = new SiteRequirements.SurfaceOver(
+            null, net.minecraft.resources.ResourceLocation.tryParse("minecraft:water"), 1, 6);
     private static final long SNAPSHOT_TTL_TICKS = 60L;
     /** Longer TTL when the scan found nothing — cuts re-scan cost in waterless areas. */
     private static final long SNAPSHOT_EMPTY_TTL_TICKS = 200L;
@@ -156,7 +158,7 @@ public final class FishingWaterIndex {
     ) {
         BlockPos best = null;
         double bestDist = Double.MAX_VALUE;
-        int[] verticalChoices = {-1, 0, 1, 2, 3};
+        int[] verticalChoices = {1, 2, 3};
         for (int dx = -2; dx <= 2; dx++) {
             for (int dz = -2; dz <= 2; dz++) {
                 if (dx == 0 && dz == 0) continue;
@@ -166,13 +168,10 @@ public final class FishingWaterIndex {
                     BlockPos stand = waterPos.offset(dx, yOffset, dz);
                     if (!insideBounds(standBounds, stand)) continue;
                     if (!WorkPathing.isSafeStandPosition(level, stand)) continue;
-                    // Dock bounds include a one-block margin around the planks
-                    // (so decorations next to the deck count toward tier
-                    // checks), which means a stand position one block off the
-                    // deck on shore terrain still passes the bounds check. Pin
-                    // the fisherman to the actual deck by requiring the block
-                    // under their feet to be a recognized dock surface.
-                    if (!DockScanner.isDockSurface(level.getBlockState(stand.below()))) continue;
+                    // Dock bounds take in the furniture around the deck, so a stand
+                    // position on shore terrain still passes the bounds check. Pin the
+                    // fisherman to the deck itself: a surface with water beneath it.
+                    if (!SiteRequirements.isSurfaceOver(level, stand.below(), DECK_OVER_WATER)) continue;
                     double dist = villager.distanceToSqr(
                             stand.getX() + 0.5,
                             stand.getY() + 0.5,
@@ -240,12 +239,7 @@ public final class FishingWaterIndex {
         for (BlockPos pos : BlockPos.betweenClosed(
                 anchor.offset(-horizontalRadius, -verticalRadiusDown, -horizontalRadius),
                 anchor.offset(horizontalRadius, verticalRadiusUp, horizontalRadius))) {
-            BlockState state = level.getBlockState(pos);
-            if (!state.getFluidState().isSource()) continue;
-            if (!state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) continue;
-            BlockPos above = pos.above();
-            BlockState aboveState = level.getBlockState(above);
-            if (!aboveState.isAir() && !aboveState.getCollisionShape(level, above).isEmpty()) continue;
+            if (!isOpenSurfaceWater(level, pos)) continue;
             BlockPos immutable = pos.immutable();
             candidates.add(immutable);
             candidateByKey.put(immutable.asLong(), immutable);
@@ -296,10 +290,30 @@ public final class FishingWaterIndex {
         return new WaterSnapshot(List.copyOf(spots), gameTime + ttl);
     }
 
+    /**
+     * Source water whose top face is open: no block and no more water above. Water under
+     * more water (a pond floor) or under a solid block (a cave pocket) cannot take a cast.
+     */
+    public static boolean isOpenSurfaceWater(net.minecraft.world.level.BlockGetter level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        if (!state.getFluidState().isSource()) return false;
+        if (!state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) return false;
+        BlockPos above = pos.above();
+        BlockState aboveState = level.getBlockState(above);
+        if (!aboveState.getFluidState().isEmpty()) return false;
+        return aboveState.isAir() || aboveState.getCollisionShape(level, above).isEmpty();
+    }
+
+    /** A stand below the water surface can only reach it through a wall or a bank. */
+    private static boolean standsAboveWater(BlockPos stand, BlockPos waterPos) {
+        return stand.getY() > waterPos.getY();
+    }
+
     private static @Nullable BlockPos findStandFor(ServerLevel level, BlockPos waterPos) {
-        List<BlockPos> candidates = WorkPathing.standCandidatesAround(level, waterPos, null);
-        if (candidates.isEmpty()) return null;
-        return candidates.get(0);
+        for (BlockPos candidate : WorkPathing.standCandidatesAround(level, waterPos, null)) {
+            if (standsAboveWater(candidate, waterPos)) return candidate;
+        }
+        return null;
     }
 
     private record WaterSearchKey(String dimensionId, long anchorKey, int horizontalRadius, int verticalRadiusDown, int verticalRadiusUp) {}

@@ -1,0 +1,32 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "reputation.tier",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "reputation",
+    "key": "mcareputation:tier_changed"
+  },
+  "reach": "village",
+  "news_value": 3.0,
+  "roles": [
+    {
+      "id": "player",
+      "kind": "player"
+    }
+  ],
+  "cooldown_days": 1,
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.compat.standing_rose"
+    },
+    "params": [
+      "player",
+      "new_tier"
+    ]
+  }
+}

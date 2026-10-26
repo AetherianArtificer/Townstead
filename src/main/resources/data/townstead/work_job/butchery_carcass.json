@@ -1,0 +1,632 @@
+{
+  "schema": "townstead:job/v3",
+  "mods": [
+    "butchery"
+  ],
+  "task": "townstead_work:butcher",
+  "type": "townstead:block_interaction",
+  "target": {
+    "blocks": [
+      "#butchery:carcass",
+      "#butchery:drained_carcass"
+    ],
+    "interactions": [
+      {
+        "item": "#townstead:butcher_cleavers",
+        "condition": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:in_tag",
+              "tag": "butchery:carcass"
+            },
+            {
+              "type": "pheno:in_tag",
+              "tag": "butchery:drained_carcass",
+              "inverted": true
+            },
+            {
+              "type": "pheno:block_data",
+              "key": "townstead_drainReadyTick",
+              "exists": true
+            },
+            {
+              "type": "pheno:value",
+              "value": {
+                "type": "pheno:block_data",
+                "key": "townstead_drainReadyTick"
+              },
+              "comparison": "<=",
+              "compare_to": {
+                "type": "pheno:game_time"
+              }
+            },
+            {
+              "type": "pheno:block_chain",
+              "direction": "down",
+              "max": 9,
+              "through": {
+                "type": "pheno:constant",
+                "value": true
+              },
+              "end": {
+                "type": "pheno:block",
+                "block": "butchery:blood_grate"
+              }
+            }
+          ]
+        },
+        "action": [
+          {
+            "type": "pheno:set_block",
+            "block": {
+              "from": "block",
+              "pattern": "butchery:(.+_carcass)",
+              "replace": "butchery:drained_$1"
+            },
+            "properties": {
+              "blockstate": "1"
+            },
+            "copy_properties": [
+              "facing"
+            ]
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "isBleeding",
+            "value": false
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "isDrained",
+            "value": true
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "townstead_drainReadyTick",
+            "operation": "remove"
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "#townstead:butcher_cleavers",
+        "condition": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:in_tag",
+              "tag": "butchery:carcass"
+            },
+            {
+              "type": "pheno:in_tag",
+              "tag": "butchery:drained_carcass",
+              "inverted": true
+            },
+            {
+              "type": "pheno:block_data",
+              "key": "townstead_drainReadyTick",
+              "exists": false
+            },
+            {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:block_data",
+                  "key": "isBleeding",
+                  "exists": false
+                },
+                {
+                  "type": "pheno:block_data",
+                  "key": "isBleeding",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "type": "pheno:block_chain",
+              "direction": "down",
+              "max": 9,
+              "through": {
+                "type": "pheno:constant",
+                "value": true
+              },
+              "end": {
+                "type": "pheno:block",
+                "block": "butchery:blood_grate"
+              }
+            },
+            {
+              "type": "pheno:config",
+              "file": "Butchery.toml",
+              "path": [
+                "General",
+                "Instant Bleeding"
+              ],
+              "equals": false,
+              "default": false
+            }
+          ]
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:entity.player.attack.sweep",
+            "volume": 0.4
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.hit",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "isBleeding",
+            "value": true
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "townstead_drainReadyTick",
+            "value": {
+              "type": "pheno:arithmetic",
+              "operation": "add",
+              "values": [
+                {
+                  "type": "pheno:game_time"
+                },
+                900
+              ]
+            }
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "#townstead:butcher_cleavers",
+        "condition": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:in_tag",
+              "tag": "butchery:carcass"
+            },
+            {
+              "type": "pheno:in_tag",
+              "tag": "butchery:drained_carcass",
+              "inverted": true
+            },
+            {
+              "type": "pheno:block_data",
+              "key": "townstead_drainReadyTick",
+              "exists": false
+            },
+            {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:block_data",
+                  "key": "isBleeding",
+                  "exists": false
+                },
+                {
+                  "type": "pheno:block_data",
+                  "key": "isBleeding",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "type": "pheno:block_chain",
+              "direction": "down",
+              "max": 9,
+              "through": {
+                "type": "pheno:constant",
+                "value": true
+              },
+              "end": {
+                "type": "pheno:block",
+                "block": "butchery:blood_grate"
+              }
+            },
+            {
+              "type": "pheno:config",
+              "file": "Butchery.toml",
+              "path": [
+                "General",
+                "Instant Bleeding"
+              ],
+              "equals": true,
+              "default": false
+            }
+          ]
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:entity.player.attack.sweep",
+            "volume": 0.4
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.hit",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "isBleeding",
+            "value": true
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          },
+          {
+            "type": "pheno:set_block",
+            "block": {
+              "from": "block",
+              "pattern": "butchery:(.+_carcass)",
+              "replace": "butchery:drained_$1"
+            },
+            "properties": {
+              "blockstate": "1"
+            },
+            "copy_properties": [
+              "facing"
+            ]
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "isBleeding",
+            "value": false
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "isDrained",
+            "value": true
+          },
+          {
+            "type": "pheno:change_block_data",
+            "key": "townstead_drainReadyTick",
+            "operation": "remove"
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "#townstead:butcher_cleavers",
+        "condition": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:in_tag",
+              "tag": "butchery:drained_carcass"
+            },
+            {
+              "type": "pheno:block_state",
+              "property": "blockstate",
+              "value": "1"
+            }
+          ]
+        },
+        "action": [
+          {
+            "type": "pheno:level_event",
+            "event": 2001,
+            "data": "block"
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:item.axe.strip",
+            "volume": 0.4
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.step",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": {
+              "from": "block",
+              "pattern": "butchery:drained_(.+)_carcass",
+              "replace": "butchery:blocks/$1_head_drop"
+            }
+          },
+          {
+            "type": "pheno:modify_block_state",
+            "property": "blockstate",
+            "value": "2"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "#townstead:butcher_skinning_knives",
+        "condition": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:in_tag",
+              "tag": "butchery:drained_carcass"
+            },
+            {
+              "type": "pheno:block_state",
+              "property": "blockstate",
+              "value": "2"
+            }
+          ]
+        },
+        "action": [
+          {
+            "type": "pheno:level_event",
+            "event": 2001,
+            "data": "block"
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:item.axe.strip",
+            "volume": 0.4
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.step",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": {
+              "from": "block",
+              "pattern": "butchery:drained_(.+)_carcass",
+              "replace": "butchery:blocks/$1_skin_drop"
+            }
+          },
+          {
+            "type": "pheno:modify_block_state",
+            "property": "blockstate",
+            "value": "3"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 2
+      },
+      {
+        "item": "#townstead:butcher_cleavers",
+        "condition": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:in_tag",
+              "tag": "butchery:drained_carcass"
+            },
+            {
+              "type": "pheno:block_state",
+              "property": "blockstate",
+              "value": "3"
+            }
+          ]
+        },
+        "action": [
+          {
+            "type": "pheno:level_event",
+            "event": 2001,
+            "data": "block"
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:item.axe.strip",
+            "volume": 0.4
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.step",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": {
+              "from": "block",
+              "pattern": "butchery:drained_(.+)_carcass",
+              "replace": "butchery:blocks/$1_cut_1_drop"
+            }
+          },
+          {
+            "type": "pheno:if_else",
+            "if": {
+              "type": "pheno:config",
+              "file": "Butchery.toml",
+              "path": [
+                "General",
+                "Organs"
+              ],
+              "equals": true,
+              "default": true
+            },
+            "then": {
+              "type": "pheno:loot_table",
+              "table": "butchery:blocks/organs_drop_1"
+            }
+          },
+          {
+            "type": "pheno:modify_block_state",
+            "property": "blockstate",
+            "value": "4"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 3
+      },
+      {
+        "item": "#townstead:butcher_cleavers",
+        "condition": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:in_tag",
+              "tag": "butchery:drained_carcass"
+            },
+            {
+              "type": "pheno:block_state",
+              "property": "blockstate",
+              "value": "4"
+            }
+          ]
+        },
+        "action": [
+          {
+            "type": "pheno:level_event",
+            "event": 2001,
+            "data": "block"
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:item.axe.strip",
+            "volume": 0.4
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.step",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": {
+              "from": "block",
+              "pattern": "butchery:drained_(.+)_carcass",
+              "replace": "butchery:blocks/$1_cut_2_drop"
+            }
+          },
+          {
+            "type": "pheno:if_else",
+            "if": {
+              "type": "pheno:config",
+              "file": "Butchery.toml",
+              "path": [
+                "General",
+                "Organs"
+              ],
+              "equals": true,
+              "default": true
+            },
+            "then": {
+              "type": "pheno:loot_table",
+              "table": "butchery:blocks/organs_drop_2"
+            }
+          },
+          {
+            "type": "pheno:modify_block_state",
+            "property": "blockstate",
+            "value": "5"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 3
+      },
+      {
+        "item": "#townstead:butcher_cleavers",
+        "condition": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:in_tag",
+              "tag": "butchery:drained_carcass"
+            },
+            {
+              "type": "pheno:block_state",
+              "property": "blockstate",
+              "value": "5"
+            }
+          ]
+        },
+        "action": [
+          {
+            "type": "pheno:level_event",
+            "event": 2001,
+            "data": "block"
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:item.axe.strip",
+            "volume": 0.4
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.honey_block.step",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:loot_table",
+            "table": {
+              "from": "block",
+              "pattern": "butchery:drained_(.+)_carcass",
+              "replace": "butchery:blocks/$1_cut_3_drop"
+            }
+          },
+          {
+            "type": "pheno:if_else",
+            "if": {
+              "type": "pheno:config",
+              "file": "Butchery.toml",
+              "path": [
+                "General",
+                "Organs"
+              ],
+              "equals": true,
+              "default": true
+            },
+            "then": {
+              "type": "pheno:loot_table",
+              "table": "butchery:blocks/organs_drop_3"
+            }
+          },
+          {
+            "type": "pheno:set_block",
+            "block": "minecraft:air"
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:damage",
+              "amount": 1
+            }
+          }
+        ],
+        "xp": 3
+      }
+    ]
+  }
+}

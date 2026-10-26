@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:relationship_scenario/v1",
+  "id": "townstead:admired_rival",
+  "people": ["mara", "orin"],
+  "changes": [
+    { "operation": "contest_loss", "from": "mara", "toward": "orin", "quality": "townstead:affection", "amount": -25, "day": 2, "half_life_days": 90 },
+    { "operation": "contest_skill", "from": "mara", "toward": "orin", "quality": "townstead:respect", "amount": 55, "day": 2, "half_life_days": 0 },
+    { "operation": "contest_loss", "from": "mara", "toward": "orin", "quality": "townstead:resentment", "amount": 20, "day": 2, "half_life_days": 45 },
+    { "operation": "friendly_regard", "from": "orin", "toward": "mara", "quality": "townstead:affection", "amount": 18, "day": 3, "half_life_days": 120 }
+  ],
+  "checks": [
+    { "from": "mara", "toward": "orin", "quality": "townstead:affection", "day": 2, "max": -20 },
+    { "from": "mara", "toward": "orin", "quality": "townstead:respect", "day": 200, "min": 50 },
+    { "from": "orin", "toward": "mara", "quality": "townstead:affection", "day": 3, "min": 15 }
+  ]
+}

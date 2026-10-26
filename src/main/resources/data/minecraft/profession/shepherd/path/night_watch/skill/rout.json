@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.night_watch.rout"
+  },
+  "icon": "minecraft:iron_sword",
+  "description": {
+    "translate": "skill.townstead.shepherd.night_watch.rout.description"
+  },
+  "cost": 1,
+  "requires": [
+    "crook_and_lantern"
+  ],
+  "skill_group": "townstead:watch_alarm",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:flock",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 12,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:add_velocity",
+            "away_from_other": 1.6,
+            "y": 0.3
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:weakness",
+            "duration": 300,
+            "amplifier": 0
+          }
+        ]
+      }
+    }
+  }
+}

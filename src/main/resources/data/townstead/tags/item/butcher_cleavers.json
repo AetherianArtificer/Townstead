@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "#c:cleaver", "required": false },
+    { "id": "#forge:cleaver", "required": false }
+  ]
+}

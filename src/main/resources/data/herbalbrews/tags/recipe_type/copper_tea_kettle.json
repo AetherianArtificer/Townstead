@@ -1,0 +1,6 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "herbalbrews:kettle_brewing", "required": false }
+  ]
+}

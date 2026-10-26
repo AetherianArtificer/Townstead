@@ -1,0 +1,56 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.confessor.sanctuary"
+  },
+  "icon": "minecraft:respawn_anchor",
+  "description": {
+    "translate": "skill.townstead.cleric.confessor.sanctuary.description"
+  },
+  "cost": 1,
+  "requires": [
+    "last_rites"
+  ],
+  "skill_group": "townstead:confessor_stand",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:faith",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 14,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:health",
+          "max": 0.3,
+          "relative": true
+        },
+        "if_action": {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:resistance",
+              "duration": 100,
+              "amplifier": 3
+            },
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:absorption",
+              "duration": 400,
+              "amplifier": 1
+            }
+          ]
+        }
+      }
+    }
+  }
+}

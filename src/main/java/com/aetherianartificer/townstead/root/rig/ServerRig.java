@@ -32,6 +32,33 @@ public final class ServerRig {
     /** The rig id for this entity (life-stage override / species rig), or null. */
     public static String rigIdFor(LivingEntity entity) {
         if (entity instanceof VillagerEntityMCA villager) {
+            String form = com.aetherianartificer.townstead.pheno.state.StateForms.rig(villager);
+            if (form != null) return form;
+            LifeStage stage = LifeStageProgression.currentStage(villager);
+            if (stage != null && stage.rig() != null && !stage.rig().isEmpty()) return stage.rig();
+            return speciesRig(TownsteadVillagers.get(villager).life().rootId());
+        }
+        if (entity instanceof Player player) {
+            // a form a state puts on (a werewolf's beast) is the body while it lasts, for players too
+            String form = com.aetherianartificer.townstead.pheno.state.StateForms.rig(player);
+            if (form != null) return form;
+            return speciesRig(PlayerRoot.getRootId(player));
+        }
+        return null;
+    }
+
+    /**
+     * Whether this entity's own body is MCA's villager body rather than a custom rig: its life stage's
+     * rig, else its species'. A form a state puts on for a while (a werewolf's beast form) is not its
+     * body, so wearing one doesn't make the state that set it ineligible (which would undo the form).
+     */
+    public static boolean hasVillagerBody(LivingEntity entity) {
+        return isVillagerBody(bodyRigIdFor(entity));
+    }
+
+    /** The rig of the entity's own body, ignoring any state form it wears for now. */
+    private static String bodyRigIdFor(LivingEntity entity) {
+        if (entity instanceof VillagerEntityMCA villager) {
             LifeStage stage = LifeStageProgression.currentStage(villager);
             if (stage != null && stage.rig() != null && !stage.rig().isEmpty()) return stage.rig();
             return speciesRig(TownsteadVillagers.get(villager).life().rootId());
@@ -40,6 +67,16 @@ public final class ServerRig {
             return speciesRig(PlayerRoot.getRootId(player));
         }
         return null;
+    }
+
+    /** Whether people of this Root wear MCA's own villager body rather than a custom rig. */
+    public static boolean hasVillagerBody(ResourceLocation rootId) {
+        return isVillagerBody(rootId == null ? null : speciesRig(rootId.toString()));
+    }
+
+    // Species that keep MCA's body name it as mca:villager rather than leaving it empty.
+    private static boolean isVillagerBody(String rig) {
+        return rig == null || rig.isEmpty() || rig.equals(com.aetherianartificer.townstead.root.Rig.VILLAGER.base());
     }
 
     private static String speciesRig(String rootIdRaw) {

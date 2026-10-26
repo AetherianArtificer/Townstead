@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_afc_cypress"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "afc:wood/lumber/cypress"
+    },
+    "L": {
+      "item": "afc:wood/log/cypress"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_afc_cypress",
+    "count": 1
+  }
+}

@@ -13,8 +13,15 @@ import java.util.*;
 public final class DialogueMenuOrganizer {
     private DialogueMenuOrganizer() {}
 
-    /** A choice entry that either sends a dialogue answer or opens a sub-menu. */
-    public record HubEntry(String displayKey, String mcaAnswer, String subMenuId) {
+    /**
+     * A choice entry that either sends a dialogue answer or opens a sub-menu. {@code label}, when
+     * set, is shown as written instead of translating {@code displayKey}.
+     */
+    public record HubEntry(String displayKey, String mcaAnswer, String subMenuId, Component label) {
+        public HubEntry(String displayKey, String mcaAnswer, String subMenuId) {
+            this(displayKey, mcaAnswer, subMenuId, null);
+        }
+
         /** Leaf entry — clicking sends the MCA answer. */
         static HubEntry leaf(String displayKey, String mcaAnswer) {
             return new HubEntry(displayKey, mcaAnswer, null);
@@ -28,7 +35,7 @@ public final class DialogueMenuOrganizer {
         boolean isLeaf() { return mcaAnswer != null; }
 
         Component displayText() {
-            return Component.translatable(displayKey);
+            return label != null ? label : Component.translatable(displayKey);
         }
     }
 

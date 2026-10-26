@@ -1,0 +1,56 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.herder.bellwether"
+  },
+  "icon": "minecraft:bell",
+  "description": {
+    "translate": "skill.townstead.shepherd.herder.bellwether.description"
+  },
+  "cost": 1,
+  "requires": [
+    "fold"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:flock",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:flock",
+      "min": 75
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 16,
+      "include_self": false,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:entity_type",
+          "tag": "townstead:livestock"
+        },
+        "if_action": {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:add_velocity",
+              "away_from_other": -0.25,
+              "y": 0.0
+            },
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:resistance",
+              "duration": 30,
+              "amplifier": 0
+            }
+          ]
+        }
+      }
+    }
+  }
+}

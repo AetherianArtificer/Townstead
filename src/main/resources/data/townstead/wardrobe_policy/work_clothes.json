@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:wardrobe_policy/v1",
+  "scope": "villager",
+  "priority": 0,
+  "layers": {
+    "base": {
+      "require": "none"
+    },
+    "outerwear": {
+      "require": "none",
+      "select": {
+        "thermal": "warm"
+      }
+    }
+  }
+}

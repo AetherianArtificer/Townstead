@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "vampire_life_claim",
+  "groups": [
+    {
+      "lines": {
+        "the_sun_was_cruel_today": "The sun was cruel today. I waited in the cellar until it set.",
+        "i_miss_breakfast": "I miss breakfast. The taste of it, anyway.",
+        "the_nights_feel_short": "The nights feel so short in summer.",
+        "i_hear_every_heartbeat": "The village is so loud at night. Every little sound.",
+        "no_mirror_in_my_house": "I took the mirror down. I didn't like what it didn't show."
+      }
+    }
+  ]
+}

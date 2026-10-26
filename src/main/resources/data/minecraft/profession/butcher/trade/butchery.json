@@ -1,0 +1,132 @@
+{
+  "schema": "townstead:profession_trade/v1",
+  "mods": "butchery",
+  "2": [
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 3,
+      "result": "butchery:raw_ribeye_steak",
+      "max_uses": 12,
+      "villager_xp": 5
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 3,
+      "result": "butchery:raw_sirloin_steak",
+      "max_uses": 12,
+      "villager_xp": 5
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 3,
+      "result": "butchery:raw_pork_belly",
+      "max_uses": 12,
+      "villager_xp": 5
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 3,
+      "result": "butchery:raw_lamb_sirloin",
+      "max_uses": 12,
+      "villager_xp": 5
+    }
+  ],
+  "3": [
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 4,
+      "result": "butchery:raw_sausage",
+      "max_uses": 10,
+      "villager_xp": 10
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 6,
+      "result": "butchery:cooked_sausage",
+      "max_uses": 10,
+      "villager_xp": 10
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 3,
+      "result": "butchery:raw_beef_mince",
+      "result_count": 2,
+      "max_uses": 12,
+      "villager_xp": 10
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 5,
+      "result": "butchery:cow_skin",
+      "max_uses": 8,
+      "villager_xp": 10
+    }
+  ],
+  "4": [
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 6,
+      "result": "butchery:cooked_ribeye_steak",
+      "max_uses": 8,
+      "villager_xp": 15
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 6,
+      "result": "butchery:cooked_pork_belly",
+      "max_uses": 8,
+      "villager_xp": 15
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 6,
+      "result": "butchery:cooked_lamb_loin",
+      "max_uses": 8,
+      "villager_xp": 15
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 8,
+      "result": "butchery:cooked_heart",
+      "max_uses": 6,
+      "villager_xp": 15
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 8,
+      "result": "butchery:cooked_liver",
+      "max_uses": 6,
+      "villager_xp": 15
+    }
+  ],
+  "5": [
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 12,
+      "result": "butchery:cooked_ham",
+      "max_uses": 6,
+      "villager_xp": 30
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 10,
+      "result": "butchery:cooked_blood_sausage",
+      "max_uses": 6,
+      "villager_xp": 30
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 10,
+      "result": "butchery:cooked_sirloin_steak",
+      "max_uses": 6,
+      "villager_xp": 30
+    },
+    {
+      "cost": "minecraft:emerald",
+      "cost_count": 12,
+      "result": "butchery:cooked_leg_of_lamb",
+      "max_uses": 6,
+      "villager_xp": 30
+    }
+  ]
+}

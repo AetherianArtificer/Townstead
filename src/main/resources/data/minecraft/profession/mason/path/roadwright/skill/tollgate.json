@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.roadwright.tollgate"
+  },
+  "icon": "minecraft:oak_fence_gate",
+  "description": {
+    "translate": "skill.townstead.mason.roadwright.tollgate.description"
+  },
+  "cost": 1,
+  "requires": [
+    "road_crew"
+  ],
+  "skill_group": "townstead:road_crew",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 360,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:slowness",
+        "duration": 160,
+        "amplifier": 1
+      }
+    }
+  }
+}

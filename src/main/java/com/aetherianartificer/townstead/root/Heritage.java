@@ -15,32 +15,72 @@ import java.util.Map;
  * blends its parents (½/½), so a human × dwarf child is {human:.5, dwarf:.5} and
  * its child with a human is {human:.75, dwarf:.25}.
  *
+ * <p>Alongside it runs the lineage composition: lineage id to the share of the
+ * villager descended from that lineage, so a Fire Drake × Ice Drake child is
+ * {draconic:1} by ancestry and {fire_drake:.5, ice_drake:.5} by lineage, which a
+ * heritage profile can name (a Steam Drake). Lineage shares blend ½/½ like
+ * ancestry but are not normalized: forebears seeded without a lineage simply
+ * contribute none, so the shares can sum below 1.</p>
+ *
  * <p>This is the "23andMe" identity that drives the displayed race name via the
  * {@link HeritageRegistry}; the {@link Root} a founder is seeded from only sets
  * the initial vector.</p>
  */
-public record Heritage(Map<ResourceLocation, Float> fractions) {
+public record Heritage(Map<ResourceLocation, Float> fractions, Map<ResourceLocation, Float> lineages) {
 
-    public static final Heritage EMPTY = new Heritage(Map.of());
+    public static final Heritage EMPTY = new Heritage(Map.of(), Map.of());
 
     /** Fractions below this are treated as absent (drops float drift to zero). */
     private static final float EPSILON = 0.001f;
 
+    /** NBT key of the lineage shares; '#' can't start an id, so ancestry keys never collide with it. */
+    private static final String LINEAGES_TAG = "#lineages";
+
     public Heritage {
         fractions = normalize(fractions);
+        lineages = clean(lineages);
+    }
+
+    /** An ancestry-only composition (no lineage shares). */
+    public Heritage(Map<ResourceLocation, Float> fractions) {
+        this(fractions, Map.of());
     }
 
     public static Heritage pure(@Nullable ResourceLocation ancestry) {
-        if (ancestry == null) return EMPTY;
-        return new Heritage(Map.of(ancestry, 1.0f));
+        return pure(ancestry, null);
     }
 
-    /** An even blend of two parents (the child of M and F is ½M + ½F). */
+    /** A purebred of {@code ancestry}, descended wholly from {@code lineage} when one is given. */
+    public static Heritage pure(@Nullable ResourceLocation ancestry, @Nullable ResourceLocation lineage) {
+        if (ancestry == null) return EMPTY;
+        return new Heritage(Map.of(ancestry, 1.0f), lineage == null ? Map.of() : Map.of(lineage, 1.0f));
+    }
+
+    /** An even blend of two parents (the child of M and F is ½M + ½F), by ancestry and by lineage. */
     public static Heritage blend(Heritage mother, Heritage father) {
         Map<ResourceLocation, Float> sum = new LinkedHashMap<>();
-        if (mother != null) mother.fractions.forEach((k, v) -> sum.merge(k, v * 0.5f, Float::sum));
-        if (father != null) father.fractions.forEach((k, v) -> sum.merge(k, v * 0.5f, Float::sum));
-        return new Heritage(sum);
+        Map<ResourceLocation, Float> lines = new LinkedHashMap<>();
+        if (mother != null) {
+            mother.fractions.forEach((k, v) -> sum.merge(k, v * 0.5f, Float::sum));
+            mother.lineages.forEach((k, v) -> lines.merge(k, v * 0.5f, Float::sum));
+        }
+        if (father != null) {
+            father.fractions.forEach((k, v) -> sum.merge(k, v * 0.5f, Float::sum));
+            father.lineages.forEach((k, v) -> lines.merge(k, v * 0.5f, Float::sum));
+        }
+        return new Heritage(sum, lines);
+    }
+
+    /**
+     * This heritage with {@code seed}'s lineage shares filled in, when it carries none and is the
+     * same pure ancestry the seed is. Heals saves from before lineage shares existed; a mixed or
+     * already-lineaged heritage is returned unchanged, since its lineages can't be reconstructed.
+     */
+    public Heritage withLineagesFrom(Heritage seed) {
+        if (!lineages.isEmpty() || seed == null || seed.lineages.isEmpty()) return this;
+        ResourceLocation ancestry = dominant();
+        if (ancestry == null || fractionOf(ancestry) < 0.999f || !ancestry.equals(seed.dominant())) return this;
+        return new Heritage(fractions, seed.lineages);
     }
 
     public boolean isEmpty() {
@@ -49,6 +89,16 @@ public record Heritage(Map<ResourceLocation, Float> fractions) {
 
     public float fractionOf(ResourceLocation ancestry) {
         return fractions.getOrDefault(ancestry, 0f);
+    }
+
+    /** The share of this villager descended from {@code lineage} (0 when none). */
+    public float lineageFractionOf(ResourceLocation lineage) {
+        return lineages.getOrDefault(lineage, 0f);
+    }
+
+    /** Lineages by descending share. */
+    public List<ResourceLocation> rankedLineages() {
+        return new ArrayList<>(lineages.keySet());   // clean() keeps them sorted
     }
 
     /** The largest-share ancestry, or null when empty. */
@@ -77,17 +127,43 @@ public record Heritage(Map<ResourceLocation, Float> fractions) {
     public CompoundTag toTag() {
         CompoundTag tag = new CompoundTag();
         fractions.forEach((k, v) -> tag.putFloat(k.toString(), v));
+        if (!lineages.isEmpty()) {
+            CompoundTag lines = new CompoundTag();
+            lineages.forEach((k, v) -> lines.putFloat(k.toString(), v));
+            tag.put(LINEAGES_TAG, lines);
+        }
         return tag;
     }
 
     public static Heritage fromTag(@Nullable CompoundTag tag) {
         if (tag == null || tag.isEmpty()) return EMPTY;
         Map<ResourceLocation, Float> out = new LinkedHashMap<>();
+        Map<ResourceLocation, Float> lines = new LinkedHashMap<>();
         for (String key : tag.getAllKeys()) {
+            if (key.equals(LINEAGES_TAG)) {
+                CompoundTag nested = tag.getCompound(key);
+                for (String lineage : nested.getAllKeys()) {
+                    ResourceLocation id = ResourceLocation.tryParse(lineage);
+                    if (id != null) lines.put(id, nested.getFloat(lineage));
+                }
+                continue;
+            }
             ResourceLocation id = ResourceLocation.tryParse(key);
             if (id != null) out.put(id, tag.getFloat(key));
         }
-        return new Heritage(out);
+        return new Heritage(out, lines);
+    }
+
+    /** Lineage shares: drift dropped, each capped at 1, sorted by descending share; not normalized. */
+    private static Map<ResourceLocation, Float> clean(Map<ResourceLocation, Float> raw) {
+        if (raw == null || raw.isEmpty()) return Map.of();
+        List<Map.Entry<ResourceLocation, Float>> entries = new ArrayList<>(raw.entrySet());
+        entries.sort((a, b) -> Float.compare(b.getValue(), a.getValue()));
+        Map<ResourceLocation, Float> out = new LinkedHashMap<>();
+        for (Map.Entry<ResourceLocation, Float> e : entries) {
+            if (e.getValue() >= EPSILON) out.put(e.getKey(), Math.min(1f, e.getValue()));
+        }
+        return java.util.Collections.unmodifiableMap(out);
     }
 
     private static Map<ResourceLocation, Float> normalize(Map<ResourceLocation, Float> raw) {

@@ -25,6 +25,12 @@ import java.util.Locale;
  * <p>JSON: {@code { "type":"pheno:active_ability", "cooldown":200,
  * "slot":1, "ai_trigger":"when_hurt",
  * "action":{ "type":"pheno:heal", "amount":6 } }}</p>
+ *
+ * <p>{@code windup} delays the action: a number of ticks, or {@code { "ticks":10, "slow":0.7,
+ * "interruptible":true, "action":{...}, "on_interrupt":{...} }} where {@code slow} is the movement
+ * speed kept while winding up, {@code action} runs as the wind-up starts and an interruptible
+ * wind-up is cancelled by taking damage. The cooldown starts on the press; an interrupted
+ * wind-up gives it back and charges nothing.</p>
  */
 public final class ActiveAbilityGeneType implements GeneType {
 
@@ -48,7 +54,14 @@ public final class ActiveAbilityGeneType implements GeneType {
 
     public record Instance(Action action, int cooldownTicks, @Nullable Condition condition,
                            int slot, AiTrigger aiTrigger,
-                           @Nullable ResourceLocation costResource, int costAmount) implements GeneInstance {
+                           @Nullable ResourceLocation costResource, int costAmount,
+                           com.aetherianartificer.townstead.pheno.combat.Casts.@Nullable Windup windup)
+            implements GeneInstance, com.aetherianartificer.townstead.root.ability.ResourceConsumer {
+        public Instance(Action action, int cooldownTicks, @Nullable Condition condition, int slot,
+                        AiTrigger aiTrigger, @Nullable ResourceLocation costResource, int costAmount) {
+            this(action, cooldownTicks, condition, slot, aiTrigger, costResource, costAmount, null);
+        }
+
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
     }
@@ -73,6 +86,31 @@ public final class ActiveAbilityGeneType implements GeneType {
             costResource = DataPackLang.parseId(GsonHelper.getAsString(cost, "resource", ""));
             costAmount = GsonHelper.getAsInt(cost, "amount", 0);
         }
-        return new Instance(action, cooldown, condition, slot, aiTrigger, costResource, costAmount);
+        com.aetherianartificer.townstead.pheno.combat.Casts.Windup windup = null;
+        if (json.has("windup")) {
+            windup = parseWindup(json.get("windup"));
+            if (windup == null) return null;
+        }
+        return new Instance(action, cooldown, condition, slot, aiTrigger, costResource, costAmount, windup);
+    }
+
+    private static com.aetherianartificer.townstead.pheno.combat.Casts.@Nullable Windup parseWindup(
+            com.google.gson.JsonElement raw) {
+        if (raw.isJsonPrimitive()) {
+            int ticks = raw.getAsInt();
+            return ticks > 0 ? new com.aetherianartificer.townstead.pheno.combat.Casts.Windup(
+                    ticks, 1f, false, null, null) : null;
+        }
+        if (!raw.isJsonObject()) return null;
+        JsonObject json = raw.getAsJsonObject();
+        int ticks = GsonHelper.getAsInt(json, "ticks", 0);
+        if (ticks <= 0) return null;
+        float slow = Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(json, "slow", 1f)));
+        boolean interruptible = GsonHelper.getAsBoolean(json, "interruptible", false);
+        Action onStart = json.has("action") ? Actions.parse(json.get("action")) : null;
+        Action onInterrupt = json.has("on_interrupt") ? Actions.parse(json.get("on_interrupt")) : null;
+        if ((json.has("action") && onStart == null) || (json.has("on_interrupt") && onInterrupt == null)) return null;
+        return new com.aetherianartificer.townstead.pheno.combat.Casts.Windup(
+                ticks, slow, interruptible, onStart, onInterrupt);
     }
 }

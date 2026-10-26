@@ -14,6 +14,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(VillagerEntityBaseModelMCA.class)
 public abstract class VillagerEntityBaseModelMcaAnimationMixin<T extends LivingEntity & VillagerLike<T>> {
     //? if neoforge {
+    @Inject(method = "setupAnim", remap = false, at = @At("HEAD"))
+    //?} else {
+    /*@Inject(method = "m_6973_", remap = false, at = @At("HEAD"))
+    *///?}
+    private void townstead$restoreWearableFit(T entity, float swing, float amount, float age,
+                                              float yaw, float pitch, CallbackInfo ci) {
+        com.aetherianartificer.townstead.client.species.RigWearables.restoreHostScales(
+                (net.minecraft.client.model.HumanoidModel<?>) (Object) this);
+    }
+
+    //? if neoforge {
     @Inject(method = "setupAnim", remap = false, at = @At("TAIL"))
     //?} else {
     /*@Inject(method = "m_6973_", remap = false, at = @At("TAIL"))

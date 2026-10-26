@@ -1,0 +1,73 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.nightward.sunburst"
+  },
+  "icon": "minecraft:glowstone_dust",
+  "description": {
+    "translate": "skill.townstead.hunter.nightward.sunburst.description"
+  },
+  "cost": 1,
+  "requires": [
+    "rebuke"
+  ],
+  "skill_group": "townstead:hunter_nightward_a",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:vigil",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 8,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:entity_group",
+                  "group": "undead"
+                },
+                {
+                  "type": "pheno:state",
+                  "state": "townstead_state:vampire"
+                }
+              ]
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:ignite",
+                  "seconds": 5
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:blindness",
+                  "duration": 60,
+                  "amplifier": 0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.beacon.activate",
+          "volume": 1.0,
+          "pitch": 1.6
+        }
+      ]
+    }
+  }
+}

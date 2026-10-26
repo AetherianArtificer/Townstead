@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:reaction/v3",
+  "display_name": "reaction.townstead.witness_harm",
+  "tags": ["social", "emotional", "danger", "witness"],
+  "cooldown": "60s",
+  "chance": "28%",
+  "conditions": {"required_tags": ["victim_person"]},
+  "triggers": [
+    {"type": "damage", "role": "witness", "min_amount": 3}
+  ],
+  "choices": [
+    {
+      "weight": 3,
+      "personality_weights": {"sensitive": 2.0, "anxious": 1.6, "peaceful": 1.5, "default": 1.0},
+      "do": {
+        "type": "pheno:and",
+        "actions": [
+          {"type": "pheno:performance", "performance": "townstead:reaction_startled", "channel": "reaction", "duration_ticks": 30, "priority": 75, "fallback": "stand"},
+          {"type": "pheno:expression", "cue": "townstead_expressions:worry"},
+          {
+            "type": "pheno:social_outcome",
+            "source": "townstead:witnessed_harm",
+            "actor_memory": "townstead_social:witnessed_harm",
+            "other_memory": "townstead_social:was_seen_hurt"
+          }
+        ]
+      }
+    },
+    {
+      "weight": 1,
+      "personality_weights": {"extroverted": 1.6, "upbeat": 1.5, "friendly": 1.3, "default": 1.0},
+      "do": {
+        "type": "pheno:and",
+        "actions": [
+          {"type": "pheno:performance", "performance": "townstead:reaction_nod", "channel": "reaction", "duration_ticks": 18, "priority": 70, "fallback": "vanilla_gesture"},
+          {"type": "pheno:expression", "cue": "townstead_expressions:approval"},
+          {
+            "type": "pheno:social_outcome",
+            "source": "townstead:witnessed_harm",
+            "actor_memory": "townstead_social:witnessed_harm",
+            "other_memory": "townstead_social:was_seen_hurt"
+          }
+        ]
+      }
+    }
+  ]
+}

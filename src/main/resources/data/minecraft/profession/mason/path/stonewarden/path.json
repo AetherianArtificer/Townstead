@@ -1,0 +1,89 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.mason.path.stonewarden"
+  },
+  "title": {
+    "translate": "career.townstead.mason.title.stonewarden"
+  },
+  "color": "#8A8A7A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:mortar",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:mason/stonewarden/keystone"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:mason/stonewarden/sanctuary_walls"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:mason/stonewarden/rockslide"
+              }
+            ]
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:building"
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 12,
+                "condition": {
+                  "type": "pheno:hostile"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:mortar",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "solid_ground",
+      "bolt_the_door",
+      "loose_stones"
+    ],
+    [
+      "load_bearing",
+      "hold_the_house",
+      "scree"
+    ],
+    [
+      "keystone",
+      "sanctuary_walls",
+      "rockslide"
+    ],
+    [
+      "safe_house",
+      "garrison",
+      "quarry_floor"
+    ],
+    [
+      "citadel",
+      "unbroken_walls",
+      "avalanche"
+    ]
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.harpooner.cast_off"
+  },
+  "icon": "minecraft:string",
+  "description": {
+    "translate": "skill.townstead.fisherman.harpooner.cast_off.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:harpooner_line",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 200,
+    "slot": 2,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:add_velocity",
+          "relative": true,
+          "z": 1.6,
+          "y": 0.6
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.fishing_bobber.retrieve",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

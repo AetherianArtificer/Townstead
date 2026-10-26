@@ -1,0 +1,34 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.honer.sharpen_arms"
+  },
+  "icon": "minecraft:grindstone",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.honer.sharpen_arms.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:honer_forge",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:strength",
+        "duration": 400,
+        "amplifier": 0
+      }
+    }
+  }
+}

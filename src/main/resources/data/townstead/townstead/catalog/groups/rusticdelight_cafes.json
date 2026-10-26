@@ -1,6 +1,6 @@
 {
   "schema": "townstead:catalog_group/v1",
-  "label": "Rustic Delight",
+  "label": "townstead.catalog.group.rustic_delight_cafes",
   "match_prefix": "compat/rusticdelight/cafe_l",
   "layout": "tiered",
   "priority": 10

@@ -1,0 +1,56 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "survival.loss",
+  "weight": 10,
+  "rarity": "rare",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "survival",
+    "key": "townstead:turned_zombie"
+  },
+  "reach": "village",
+  "news_value": 9.0,
+  "roles": [
+    {
+      "id": "turned",
+      "kind": "villager"
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.turned_zombie"
+    },
+    "params": [
+      "turned"
+    ]
+  },
+  "impact": {
+    "turned": {
+      "memory": {
+        "valence": -1.0,
+        "strength": 4.0
+      }
+    },
+    "witness": {
+      "mood": -6.0,
+      "memory": {
+        "valence": -1.0,
+        "strength": 3.0
+      }
+    },
+    "on_learn": {
+      "mood": -3.0,
+      "memory": {
+        "valence": -0.9,
+        "strength": 2.0
+      }
+    }
+  }
+}

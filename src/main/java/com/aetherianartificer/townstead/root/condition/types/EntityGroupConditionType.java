@@ -10,8 +10,8 @@ import java.util.Locale;
 
 /**
  * True when the entity belongs to the given creature {@code group} (Apoli's
- * {@code entity_group}): {@code undead}, {@code arthropod}, etc., as resolved by
- * {@link EntityGroups}.
+ * {@code entity_group}): {@code undead}, {@code arthropod}, etc. An entity-group gene wins;
+ * without one, the vanilla group of the entity's type applies, so a zombie is undead.
  *
  * <p>JSON: {@code { "type":"pheno:entity_group", "group":"undead" }}</p>
  */
@@ -28,6 +28,6 @@ public final class EntityGroupConditionType implements ConditionType {
     public Condition parse(JsonObject json) {
         String group = GsonHelper.getAsString(json, "group", "").toLowerCase(Locale.ROOT);
         if (group.isEmpty()) return null;
-        return ctx -> EntityGroups.of(ctx.entity()).name().toLowerCase(Locale.ROOT).equals(group);
+        return ctx -> EntityGroups.expressed(ctx.entity()).name().toLowerCase(Locale.ROOT).equals(group);
     }
 }

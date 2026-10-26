@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.hospitality"
+  },
+  "icon": "minecraft:honey_bottle",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.hospitality.description"
+  },
+  "tier": 2,
+  "cost": 1,
+  "requires": [
+    "taste_test"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 25
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:energize",
+        "amount": 6
+      }
+    }
+  }
+}

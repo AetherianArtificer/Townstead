@@ -1,0 +1,34 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": ["bakery"],
+  "blocks": ["bakery:baker_station"],
+  "shift_end": "finish",
+  "ready": {
+    "type": "pheno:offset",
+    "y": 1,
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:air", "inverted": true },
+        { "type": "pheno:block", "block": "bakery:blank_cake", "inverted": true }
+      ]
+    }
+  },
+  "behavior": [
+    {
+      "type": "pheno:use_block",
+      "item": "supply",
+      "supply": "bakery:cake_dough"
+    },
+    {
+      "type": "pheno:offset",
+      "y": 1,
+      "block_action": { "type": "pheno:use_block", "item": "ingredient", "all": true }
+    }
+  ],
+  "collect": {
+    "type": "pheno:offset",
+    "y": 1,
+    "block_action": { "type": "pheno:use_block", "item": "empty" }
+  }
+}

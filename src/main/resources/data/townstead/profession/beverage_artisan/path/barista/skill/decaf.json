@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.barista.decaf"
+  },
+  "icon": "minecraft:milk_bucket",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.barista.decaf.description"
+  },
+  "cost": 1,
+  "requires": [
+    "jitters"
+  ],
+  "skill_group": "townstead:barista_grind",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 2,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:buzz",
+      "amount": 0
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:change_resource",
+          "resource": "townstead:buzz",
+          "operation": "set",
+          "amount": 0
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 200,
+          "amplifier": 0
+        }
+      ]
+    }
+  }
+}

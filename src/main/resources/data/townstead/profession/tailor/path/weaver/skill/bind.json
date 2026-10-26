@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.weaver.bind"
+  },
+  "icon": "minecraft:string",
+  "description": {
+    "translate": "skill.townstead.tailor.weaver.bind.description"
+  },
+  "cost": 1,
+  "requires": [
+    "reel_of_thread"
+  ],
+  "skill_group": "townstead:weaver_bind",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:slowness",
+      "duration": 100,
+      "amplifier": 4,
+      "on": {
+        "type": "pheno:ray",
+        "distance": 10
+      }
+    }
+  }
+}

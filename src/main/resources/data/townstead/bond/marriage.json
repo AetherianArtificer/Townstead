@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:bond/v2",
+  "display": { "translate": "bond.townstead.marriage" },
+  "roles": {
+    "spouse": { "party": "person", "max": 1 }
+  },
+  "source": "mca:marriage"
+}

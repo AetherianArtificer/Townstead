@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "#forge:blood_bottle", "required": false },
+    { "id": "#c:blood_bottle", "required": false }
+  ]
+}

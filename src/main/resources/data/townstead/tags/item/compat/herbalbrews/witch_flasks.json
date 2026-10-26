@@ -1,0 +1,6 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "herbalbrews:flask", "required": false }
+  ]
+}

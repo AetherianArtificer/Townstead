@@ -20,6 +20,52 @@ public final class RigEquipment {
 
     private RigEquipment() {}
 
+    /**
+     * Whether this entity's body takes gear in {@code slot} at all. Asked up front (an inventory slot
+     * refusing the item, a villager not dressing a slot) so the backstop below is a last resort.
+     * Either side: the client reads the synced rig.
+     */
+    public static boolean allows(LivingEntity entity, EquipmentSlot slot) {
+        if (entity == null) return true;
+        RigDefinition def = entity.level().isClientSide ? ClientRig.defFor(entity) : ServerRig.defFor(entity);
+        return def == null || !def.disabledSlots().contains(slot);
+    }
+
+    /**
+     * Whether this entity's body wears but doesn't show gear in {@code slot} (a ghost's legs and feet).
+     * Render-side: the client reads the synced rig.
+     */
+    public static boolean hides(LivingEntity entity, EquipmentSlot slot) {
+        if (entity == null) return false;
+        RigDefinition def = entity.level().isClientSide ? ClientRig.defFor(entity) : ServerRig.defFor(entity);
+        return def != null && def.hiddenSlots().contains(slot);
+    }
+
+    /** The equipment slot a Curios slot type sits on, by its usual names, or null for one with no slot. */
+    public static @org.jetbrains.annotations.Nullable EquipmentSlot curioBodySlot(String curioSlot) {
+        if (curioSlot == null) return null;
+        return switch (curioSlot.toLowerCase(java.util.Locale.ROOT)) {
+            case "feet", "boots", "shoes", "anklet", "ankle" -> EquipmentSlot.FEET;
+            case "legs", "pants", "leggings" -> EquipmentSlot.LEGS;
+            default -> null;
+        };
+    }
+
+    /** Whether a curio in {@code curioSlot} goes undrawn on this body (it sits on a part the body hides). */
+    public static boolean hidesCurio(LivingEntity entity, String curioSlot) {
+        EquipmentSlot slot = curioBodySlot(curioSlot);
+        return slot != null && hides(entity, slot);
+    }
+
+    /** Client-only rig access, isolated so dedicated servers never load it. */
+    private static final class ClientRig {
+        static RigDefinition defFor(LivingEntity entity) {
+            String base = com.aetherianartificer.townstead.client.species.RigModels.rigBaseFor(entity);
+            return base == null || base.isEmpty() ? null
+                    : com.aetherianartificer.townstead.client.species.RigModels.definition(base);
+        }
+    }
+
     /** Strips gear placed in a slot this entity's rig disables. Returns true if it removed something. */
     public static boolean enforce(LivingEntity entity, EquipmentSlot slot, ItemStack to) {
         if (entity.level().isClientSide || to.isEmpty()) return false;
@@ -27,12 +73,11 @@ public final class RigEquipment {
         if (def == null || !def.disabledSlots().contains(slot)) return false;
 
         // Setting the slot empty re-fires the change with an empty stack, which the to.isEmpty() guard skips.
-        entity.setItemSlot(slot, ItemStack.EMPTY);
-        ItemStack returned = to.copy();
+        ItemStack returned = com.aetherianartificer.townstead.villager.WornItems.take(entity, slot);
         if (entity instanceof Player player) {
             player.displayClientMessage(Component.translatable(DENY_KEY), true);
-            if (!player.addItem(returned)) player.drop(returned, false);
-        } else {
+            if (!returned.isEmpty() && !player.addItem(returned)) player.drop(returned, false);
+        } else if (!returned.isEmpty()) {
             entity.spawnAtLocation(returned);
         }
         return true;

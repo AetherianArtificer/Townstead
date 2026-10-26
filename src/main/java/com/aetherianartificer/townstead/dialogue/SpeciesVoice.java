@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.dialogue;
 
 import com.aetherianartificer.townstead.data.DataPackLang;
+import com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat;
 import com.aetherianartificer.townstead.root.Root;
 import com.aetherianartificer.townstead.root.RootRegistry;
 import com.aetherianartificer.townstead.root.personality.PersonalityDef;
@@ -8,6 +9,8 @@ import com.aetherianartificer.townstead.root.personality.PersonalityResolver;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.conczin.mca.entity.ai.DialogueType;
+import net.conczin.mca.entity.ai.relationship.Personality;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
@@ -37,25 +40,42 @@ public final class SpeciesVoice {
     /** A species/origin-tree line for this phrase, or {@code null} to fall through to MCA's own. */
     public static MutableComponent line(VillagerEntityMCA villager, Player target, String phraseId, Object[] params) {
         if (phraseId == null || phraseId.isEmpty()) return null;
-        for (String voice : voiceChain(villager)) {
-            List<String> variants = variants(PREFIX + voice + "." + phraseId);
+        for (String voice : voiceChain(villager, target)) {
+            String base = PREFIX + voice + "." + phraseId;
+            String exact = DataPackLang.find(base, locale(target));
+            if (exact != null) return format(exact, target, params);
+            List<String> variants = variants(base, locale(target));
             if (!variants.isEmpty()) {
                 return format(variants.get(villager.getRandom().nextInt(variants.size())), target, params);
             }
+        }
+        // A data-only profession pack may define the selected phrase directly. This is checked
+        // after every voice tier so a personality or Root can still replace it.
+        String direct = DataPackLang.find(phraseId, locale(target));
+        if (direct != null) return format(direct, target, params);
+        List<String> directVariants = variants(phraseId, locale(target));
+        if (!directVariants.isEmpty()) {
+            return format(directVariants.get(villager.getRandom().nextInt(directVariants.size())), target, params);
         }
         return null;
     }
 
     /**
-     * Voice namespaces most specific first: the custom personality, then origin, lineage, ancestry,
-     * species. A custom personality's own lines beat the species voice per phrase; a bare base-enum
-     * personality contributes no tier (it falls straight through to the species voice).
+     * Voice namespaces most specific first: the Persona, the custom personality, its MCA base personality,
+     * then origin, lineage, ancestry, and species. Including the base personality makes built-in
+     * and addon-registered personalities extensible from data-pack language sidecars too; when no
+     * sidecar line exists, MCA's resource-pack personality resolver remains the final fallback.
      */
-    private static List<String> voiceChain(VillagerEntityMCA villager) {
+    private static List<String> voiceChain(VillagerEntityMCA villager, Player target) {
         TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
         List<String> out = new ArrayList<>();
-        PersonalityDef personality = PersonalityResolver.def(life.personalityId());
-        if (personality != null) addFlat(out, personality.id());
+        addFlat(out, com.aetherianartificer.townstead.persona.PersonaVoice.of(villager));
+        if (!suppressPersonalityVoice(villager, target)) {
+            PersonalityDef personality = PersonalityResolver.def(life.personalityId());
+            if (personality != null) addFlat(out, personality.id());
+            addFlat(out, DataPackLang.parseId(McaPersonalityCompat.id(
+                    villager.getVillagerBrain().getPersonality())));
+        }
         ResourceLocation oid = DataPackLang.parseId(life.rootId());
         if (oid == null) return out;
         addFlat(out, oid);
@@ -68,6 +88,18 @@ public final class SpeciesVoice {
         return out;
     }
 
+    /**
+     * Parity with MCA's dialogue resolver: a flirty villager talking to the player who is its
+     * parent must not use flirty lines. MCA skips its personality prefix for the player-child
+     * dialogue types; the same rule applies to the personality voice tiers here.
+     */
+    private static boolean suppressPersonalityVoice(VillagerEntityMCA villager, Player target) {
+        if (target == null || villager.getVillagerBrain().getPersonality() != Personality.FLIRTY) return false;
+        DialogueType type = villager.getDialogueType(target);
+        return type == DialogueType.TODDLERP || type == DialogueType.CHILDP
+                || type == DialogueType.TEENP || type == DialogueType.ADULTP;
+    }
+
     private static void addFlat(List<String> out, ResourceLocation id) {
         if (id == null) return;
         String flat = id.getNamespace() + "." + id.getPath();
@@ -75,14 +107,25 @@ public final class SpeciesVoice {
     }
 
     /** Contiguous 1-based variants for a phrase key ({@code base/1}, {@code base/2}, ...). */
-    private static List<String> variants(String base) {
+    private static List<String> variants(String base, String locale) {
         List<String> out = new ArrayList<>();
         for (int i = 1; i <= MAX_VARIANTS; i++) {
-            String v = DataPackLang.find(base + "/" + i, "en_us");
+            String v = DataPackLang.find(base + "/" + i, locale);
             if (v == null) break;
             out.add(v);
         }
         return out;
+    }
+
+    private static String locale(Player player) {
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            //? if >=1.21 {
+            return serverPlayer.clientInformation().language();
+            //?} else {
+            /*return serverPlayer.getLanguage();
+            *///?}
+        }
+        return "en_us";
     }
 
     /** Substitute {@code %1$s} = player name (and any extra params) the way MCA's getTranslatable does. */

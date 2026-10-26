@@ -1,0 +1,45 @@
+{
+  "shape": "layer",
+  "color": "#C99A3A",
+  "duration": 240,
+  "texture": "townstead:haze/ale",
+  "inside": {
+    "interval": 10,
+    "condition": {
+      "type": "pheno:hostile"
+    },
+    "action": {
+      "type": "pheno:choice",
+      "actions": [
+        {
+          "action": {
+            "type": "pheno:add_velocity",
+            "x": 0.5,
+            "y": 0.1
+          }
+        },
+        {
+          "action": {
+            "type": "pheno:add_velocity",
+            "x": -0.5,
+            "y": 0.1
+          }
+        },
+        {
+          "action": {
+            "type": "pheno:add_velocity",
+            "z": 0.5,
+            "y": 0.1
+          }
+        },
+        {
+          "action": {
+            "type": "pheno:add_velocity",
+            "z": -0.5,
+            "y": 0.1
+          }
+        }
+      ]
+    }
+  }
+}

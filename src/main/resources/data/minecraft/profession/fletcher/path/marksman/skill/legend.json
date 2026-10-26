@@ -1,0 +1,66 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.marksman.legend"
+  },
+  "icon": "minecraft:bow",
+  "description": {
+    "translate": "skill.townstead.fletcher.marksman.legend.description"
+  },
+  "cost": 1,
+  "requires": [
+    "hawkeye"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:draw",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "or",
+            "conditions": [
+              {
+                "type": "ingredient",
+                "item": "minecraft:bow"
+              },
+              {
+                "type": "ingredient",
+                "item": "minecraft:crossbow"
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:draw",
+          "min": 75
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 30,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:speed",
+          "duration": 30,
+          "amplifier": 0
+        }
+      ]
+    }
+  }
+}

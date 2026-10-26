@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:job/v3",
+  "task": "townstead_work:levy",
+  "type": "townstead:patrol",
+  "levy": {
+    "share": 0.34,
+    "who": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:life_stage", "stage": "adult" },
+        { "type": "pheno:not", "condition": { "type": "pheno:life_stage", "stage": "senior" } }
+      ]
+    },
+    "issue": "#townstead:levy_issue"
+  },
+  "engage": { "hostile": true, "sight": 12, "chase": 12 },
+  "arms": { "draw": "#townstead:levy_arms", "style": "melee" },
+  "xp": { "post": 0, "kill": 0 }
+}

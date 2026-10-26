@@ -47,8 +47,20 @@ public final class LogicConditionType implements ConditionType {
             children.add(child);
         }
         if (children.isEmpty()) return Conditions.ALWAYS;
-        return mode == Mode.AND
-                ? ctx -> children.stream().allMatch(c -> c.test(ctx))
-                : ctx -> children.stream().anyMatch(c -> c.test(ctx));
+        // A composite can answer about a subject only if every part of it can.
+        boolean supportsSubject = children.stream().allMatch(Condition::supportsSubject);
+        boolean all = mode == Mode.AND;
+        return new Condition() {
+            @Override
+            public boolean test(com.aetherianartificer.townstead.pheno.condition.ConditionContext ctx) {
+                return all ? children.stream().allMatch(c -> c.test(ctx))
+                        : children.stream().anyMatch(c -> c.test(ctx));
+            }
+
+            @Override
+            public boolean supportsSubject() {
+                return supportsSubject;
+            }
+        };
     }
 }

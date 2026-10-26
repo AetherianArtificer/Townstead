@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "barista",
+  "mods": "toughasnails",
+  "priority": 35,
+  "contributes": {
+    "path": {
+      "worksites": [
+        "minecraft:crafting_table",
+        "toughasnails:water_purifier",
+        "farmersdelight:skillet"
+      ]
+    },
+    "profession": {
+      "tasks": [
+        {
+          "type": "townstead_work:craft",
+          "workstations": [
+            "minecraft:crafting_table"
+          ],
+          "recipes": [
+            "#townstead:compat/toughasnails/juices"
+          ],
+          "weight": 10
+        },
+        {
+          "type": "townstead_work:brew",
+          "workstations": [
+            "farmersdelight:skillet",
+            "farmersdelight:stove",
+            "#minecraft:campfires"
+          ],
+          "recipes": [
+            "townstead:purification",
+            "toughasnails:purified_water_bottle"
+          ],
+          "weight": 10
+        },
+        {
+          "type": "townstead_work:brew",
+          "workstations": [
+            "toughasnails:water_purifier"
+          ],
+          "weight": 10
+        }
+      ]
+    }
+  }
+}

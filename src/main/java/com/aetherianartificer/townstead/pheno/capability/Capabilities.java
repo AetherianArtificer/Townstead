@@ -27,7 +27,13 @@ public final class Capabilities {
     }
 
     public static List<CapabilityContribution> collect(LivingEntity entity) {
-        CapabilityCollector collector = new CapabilityCollector();
+        return collect(entity, null);
+    }
+
+    /** Contributions for a mechanic acting on {@code subject}; item-scoped sources test it. */
+    public static List<CapabilityContribution> collect(LivingEntity entity,
+                                                       @org.jetbrains.annotations.Nullable net.minecraft.world.item.ItemStack subject) {
+        CapabilityCollector collector = new CapabilityCollector(subject);
         for (CapabilitySource source : SOURCES) {
             source.contribute(entity, collector);
         }
@@ -46,7 +52,14 @@ public final class Capabilities {
      * undiscriminated one). Resolution is per-event, not per-tick, so the collect cost is fine.
      */
     public static double applyToBase(LivingEntity entity, double base, CapabilityKey... keys) {
-        List<CapabilityContribution> all = collect(entity);
+        return applyToBase(entity, null, base, keys);
+    }
+
+    /** {@link #applyToBase} for a mechanic acting on {@code subject} (see {@link CapabilityCollector#subjectItem}). */
+    public static double applyToBase(LivingEntity entity,
+                                     @org.jetbrains.annotations.Nullable net.minecraft.world.item.ItemStack subject,
+                                     double base, CapabilityKey... keys) {
+        List<CapabilityContribution> all = collect(entity, subject);
         if (all.isEmpty()) return base;
         Set<CapabilityKey> want = new HashSet<>(Arrays.asList(keys));
         List<CapabilityContribution> matching = new ArrayList<>();

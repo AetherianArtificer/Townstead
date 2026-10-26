@@ -15,7 +15,6 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -35,7 +34,7 @@ import java.util.List;
  *       loaded definition and re-broadcast the manifest, so placement and physics
  *       feel update on every rendered villager instantly (no redeploy). Lasts until
  *       the next reload. {@code physics <chain|all> <param> <value>} covers every
- *       spring parameter including the four response channels.</li>
+ *       knob; {@code <knob>.root} or {@code <knob>.tip} sets one end of a ramp.</li>
  *   <li>{@code dump <id>} — the definition as file-ready JSON with the live
  *       adjustments folded in; click the message to copy it.</li>
  * </ul>
@@ -47,19 +46,22 @@ public final class AttachmentDoctorCommand {
     private static final SuggestionProvider<CommandSourceStack> IDS = (c, b) -> {
         List<String> ids = new ArrayList<>();
         for (AttachmentDef def : AttachmentServerData.definitions()) ids.add(def.id());
-        return SharedSuggestionProvider.suggest(ids, b);
+        return QuotedSuggestions.suggest(ids, b);
     };
 
     private static final SuggestionProvider<CommandSourceStack> BONES = (c, b) ->
-            SharedSuggestionProvider.suggest(
+            QuotedSuggestions.suggest(
                     List.of("head", "body", "left_arm", "right_arm", "left_leg", "right_leg"), b);
 
+    // Each knob sets root and tip together; ".root"/".tip" sets one end of the ramp.
     private static final List<String> PHYSICS_PARAMS = List.of(
-            "stiffness", "damping", "gravity", "max_angle", "sway", "follow", "droop_angle", "sway_speed",
-            "snap", "response_vertical", "response_forward", "response_lateral", "response_turn");
+            "frequency", "frequency.root", "frequency.tip", "damping_ratio", "damping_ratio.root",
+            "damping_ratio.tip", "gravity", "gravity.root", "gravity.tip", "inertia", "inertia.root",
+            "inertia.tip", "drag", "drag.root", "drag.tip", "limit", "limit.root", "limit.tip",
+            "rest_pitch", "sway", "sway_speed");
 
     private static final SuggestionProvider<CommandSourceStack> PARAMS = (c, b) ->
-            SharedSuggestionProvider.suggest(PHYSICS_PARAMS, b);
+            QuotedSuggestions.suggest(PHYSICS_PARAMS, b);
 
     private static final SuggestionProvider<CommandSourceStack> CHAINS = (c, b) -> {
         List<String> options = new ArrayList<>(List.of("all"));
@@ -67,7 +69,7 @@ public final class AttachmentDoctorCommand {
             AttachmentDef def = find(StringArgumentType.getString(c, "id"));
             if (def != null) for (int i = 0; i < def.physics().size(); i++) options.add(String.valueOf(i));
         } catch (Exception ignored) {}
-        return SharedSuggestionProvider.suggest(options, b);
+        return QuotedSuggestions.suggest(options, b);
     };
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext ctx) {
@@ -103,12 +105,12 @@ public final class AttachmentDoctorCommand {
     private static int dumpGeo(CommandSourceStack source, String id) {
         AttachmentDef def = find(id);
         if (def == null) {
-            source.sendFailure(Component.literal("No attachment '" + id + "' is loaded."));
+            source.sendFailure(Component.translatable("townstead.command.attachment.not_loaded", id));
             return 0;
         }
         AttachmentServerData.Blob blob = AttachmentServerData.blob(def.geoSha1());
         if (blob == null) {
-            source.sendFailure(Component.literal("No geometry blob for " + id));
+            source.sendFailure(Component.translatable("townstead.command.attachment.no_geometry", id));
             return 0;
         }
         try {
@@ -117,10 +119,10 @@ public final class AttachmentDoctorCommand {
             java.nio.file.Files.createDirectories(path.getParent());
             java.nio.file.Files.write(path, blob.bytes());
             String where = path.toAbsolutePath().toString();
-            source.sendSuccess(() -> Component.literal("Wrote " + where), false);
+            source.sendSuccess(() -> Component.translatable("townstead.command.attachment.wrote", where), false);
             return 1;
         } catch (Exception e) {
-            source.sendFailure(Component.literal("Dump failed: " + e));
+            source.sendFailure(Component.translatable("townstead.command.attachment.dump_failed", e.toString()));
             return 0;
         }
     }
@@ -147,17 +149,16 @@ public final class AttachmentDoctorCommand {
         String id = StringArgumentType.getString(c, "id");
         AttachmentDef current = find(id);
         if (current == null) {
-            c.getSource().sendFailure(Component.literal("No attachment '" + id + "' is loaded."));
+            c.getSource().sendFailure(Component.translatable("townstead.command.attachment.not_loaded", id));
             return 0;
         }
         AttachmentDef updated = edit.apply(current);
         AttachmentServerData.replaceDefinition(updated);
         c.getSource().getServer().getPlayerList().getPlayers().forEach(AttachmentSync::sendManifest);
-        c.getSource().sendSuccess(() -> Component.literal(id + " -> offset ["
-                + fmt(updated.offset()[0]) + ", " + fmt(updated.offset()[1]) + ", " + fmt(updated.offset()[2])
-                + "], rotation [" + fmt(updated.rotation()[0]) + ", " + fmt(updated.rotation()[1]) + ", "
-                + fmt(updated.rotation()[2]) + "], scale " + fmt(updated.scale()) + ", bone " + updated.bone()
-                + " (live until reload; '/townstead attachment dump " + id + "' for the JSON)"), false);
+        c.getSource().sendSuccess(() -> Component.translatable("townstead.command.attachment.adjusted",
+                id, fmt(fileOffset(updated)[0]), fmt(fileOffset(updated)[1]), fmt(fileOffset(updated)[2]),
+                fmt(fileRotation(updated)[0]), fmt(fileRotation(updated)[1]), fmt(fileRotation(updated)[2]),
+                fmt(updated.scale()), updated.bone()), false);
         return 1;
     }
 
@@ -169,16 +170,16 @@ public final class AttachmentDoctorCommand {
         float value = FloatArgumentType.getFloat(c, "value");
         AttachmentDef current = find(id);
         if (current == null) {
-            c.getSource().sendFailure(Component.literal("No attachment '" + id + "' is loaded."));
+            c.getSource().sendFailure(Component.translatable("townstead.command.attachment.not_loaded", id));
             return 0;
         }
         if (current.physics().isEmpty()) {
-            c.getSource().sendFailure(Component.literal(id + " has no physics chains."));
+            c.getSource().sendFailure(Component.translatable("townstead.command.attachment.no_physics", id));
             return 0;
         }
         if (!PHYSICS_PARAMS.contains(param)) {
-            c.getSource().sendFailure(Component.literal(
-                    "Unknown parameter '" + param + "' (known: " + String.join(", ", PHYSICS_PARAMS) + ")"));
+            c.getSource().sendFailure(Component.translatable("townstead.command.attachment.physics.unknown_parameter",
+                    param, String.join(", ", PHYSICS_PARAMS)));
             return 0;
         }
         int index = -1;
@@ -186,12 +187,14 @@ public final class AttachmentDoctorCommand {
             try {
                 index = Integer.parseInt(chainSel);
             } catch (NumberFormatException e) {
-                c.getSource().sendFailure(Component.literal("Chain must be 'all' or a chain index."));
+                c.getSource().sendFailure(Component.translatable(
+                        "townstead.command.attachment.physics.invalid_chain"));
                 return 0;
             }
             if (index < 0 || index >= current.physics().size()) {
-                c.getSource().sendFailure(Component.literal(
-                        "Chain index " + index + " out of range (0.." + (current.physics().size() - 1) + ")."));
+                c.getSource().sendFailure(Component.translatable(
+                        "townstead.command.attachment.physics.chain_out_of_range",
+                        index, current.physics().size() - 1));
                 return 0;
             }
         }
@@ -206,45 +209,57 @@ public final class AttachmentDoctorCommand {
                 current.stages(), current.poses(), chains, current.animations());
         AttachmentServerData.replaceDefinition(updated);
         c.getSource().getServer().getPlayerList().getPlayers().forEach(AttachmentSync::sendManifest);
-        c.getSource().sendSuccess(() -> Component.literal(id + " physics[" + chainSel + "] " + param + " = "
-                + fmt(value) + " (live until reload; '/townstead attachment dump " + id + "' for the JSON)"), false);
+        c.getSource().sendSuccess(() -> Component.translatable(
+                "townstead.command.attachment.physics.adjusted", id, chainSel, param, fmt(value)), false);
         return 1;
     }
 
     private static AttachmentDef.PhysicsChain chainWith(AttachmentDef.PhysicsChain chain, String param, float value) {
-        float stiffness = chain.stiffness(), damping = chain.damping(), gravity = chain.gravity();
-        float maxAngle = chain.maxAngle(), sway = chain.sway(), follow = chain.follow();
-        float droopAngle = chain.droopAngle(), swaySpeed = chain.swaySpeed(), snap = chain.snap();
-        float[] response = java.util.Arrays.copyOf(chain.response(), 4);
-        switch (param) {
-            case "stiffness" -> stiffness = value;
-            case "damping" -> damping = value;
-            case "gravity" -> gravity = value;
-            case "max_angle" -> maxAngle = value;
-            case "sway" -> sway = value;
-            case "follow" -> follow = value;
-            case "droop_angle" -> droopAngle = value;
-            case "sway_speed" -> swaySpeed = value;
-            case "snap" -> snap = value;
-            case "response_vertical" -> response[0] = value;
-            case "response_forward" -> response[1] = value;
-            case "response_lateral" -> response[2] = value;
-            case "response_turn" -> response[3] = value;
+        String name = param;
+        String end = "";
+        int dot = param.indexOf('.');
+        if (dot >= 0) {
+            name = param.substring(0, dot);
+            end = param.substring(dot + 1);
         }
-        return new AttachmentDef.PhysicsChain(chain.bones(), stiffness, damping, gravity, maxAngle, sway,
-                follow, droopAngle, swaySpeed, snap, response, chain.segments(), chain.axis());
+        AttachmentDef.Knob frequency = chain.frequency(), dampingRatio = chain.dampingRatio();
+        AttachmentDef.Knob gravity = chain.gravity(), inertia = chain.inertia();
+        AttachmentDef.Knob drag = chain.drag(), limit = chain.limit();
+        float restPitch = chain.restPitch(), sway = chain.sway(), swaySpeed = chain.swaySpeed();
+        switch (name) {
+            case "frequency" -> frequency = ramp(frequency, end, value);
+            case "damping_ratio" -> dampingRatio = ramp(dampingRatio, end, value);
+            case "gravity" -> gravity = ramp(gravity, end, value);
+            case "inertia" -> inertia = ramp(inertia, end, value);
+            case "drag" -> drag = ramp(drag, end, value);
+            case "limit" -> limit = ramp(limit, end, value);
+            case "rest_pitch" -> restPitch = value;
+            case "sway" -> sway = value;
+            case "sway_speed" -> swaySpeed = value;
+        }
+        return new AttachmentDef.PhysicsChain(chain.bones(), chain.preset(), frequency, dampingRatio, gravity,
+                inertia, drag, limit, chain.hinge(), chain.collide(), restPitch, sway, swaySpeed,
+                chain.scaleWithSize(), chain.segments(), chain.axis(), chain.notes());
+    }
+
+    private static AttachmentDef.Knob ramp(AttachmentDef.Knob knob, String end, float value) {
+        return switch (end) {
+            case "root" -> new AttachmentDef.Knob(value, knob.tip());
+            case "tip" -> new AttachmentDef.Knob(knob.root(), value);
+            default -> AttachmentDef.Knob.of(value);
+        };
     }
 
     private static int dump(CommandSourceStack source, String id) {
         AttachmentDef def = find(id);
         if (def == null) {
-            source.sendFailure(Component.literal("No attachment '" + id + "' is loaded."));
+            source.sendFailure(Component.translatable("townstead.command.attachment.not_loaded", id));
             return 0;
         }
         JsonObject source0 = AttachmentServerData.sourceJson(id);
         JsonObject json = source0 == null ? new JsonObject() : source0.deepCopy();
-        json.add("offset", vecJson(def.offset()));
-        json.add("rotation", vecJson(def.rotation()));
+        json.add("offset", vecJson(fileOffset(def)));
+        json.add("rotation", vecJson(fileRotation(def)));
         json.addProperty("scale", def.scale());
         json.addProperty("bone", def.bone());
         if (!def.physics().isEmpty()) json.add("physics", physicsJson(def.physics()));
@@ -252,7 +267,7 @@ public final class AttachmentDoctorCommand {
         source.sendSuccess(() -> Component.literal(pretty).withStyle(Style.EMPTY
                 .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, pretty))
                 .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                        Component.literal("Click to copy")))), false);
+                        Component.translatable("townstead.command.attachment.copy")))), false);
         return 1;
     }
 
@@ -262,16 +277,16 @@ public final class AttachmentDoctorCommand {
         int defs = AttachmentServerData.definitions().size();
         int slots = AttachmentServerData.slots().size();
         if (problems.isEmpty()) {
-            source.sendSuccess(() -> Component.literal(
-                    "Attachments healthy: " + defs + " definition(s), " + slots + " point(s), no problems found."),
+            source.sendSuccess(() -> Component.translatable(
+                    "townstead.command.attachment.healthy", defs, slots),
                     false);
             return 1;
         }
-        source.sendSuccess(() -> Component.literal(
-                "Attachment doctor: " + defs + " definition(s), " + slots + " point(s), "
-                        + problems.size() + " problem(s):"), false);
+        source.sendSuccess(() -> Component.translatable(
+                "townstead.command.attachment.problems", defs, slots, problems.size()), false);
         for (String problem : problems) {
-            source.sendSuccess(() -> Component.literal(" - " + problem), false);
+            source.sendSuccess(() -> Component.translatable(
+                    "townstead.command.attachment.problem", problem), false);
         }
         return 0;
     }
@@ -293,42 +308,39 @@ public final class AttachmentDoctorCommand {
                 d.offset(), d.rotation(), d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
     }
 
+    /** Whether this attachment's file reads in Blockbench space (v2), so commands speak its numbers. */
+    private static boolean blockbench(String id) {
+        return com.aetherianartificer.townstead.root.attachment.AttachmentConvention.isBlockbench(
+                AttachmentServerData.sourceJson(id));
+    }
+
+    private static float[] fileOffset(AttachmentDef d) {
+        return blockbench(d.id()) ? com.aetherianartificer.townstead.root.attachment.AttachmentConvention.offset(d.offset()) : d.offset();
+    }
+
+    private static float[] fileRotation(AttachmentDef d) {
+        return blockbench(d.id()) ? com.aetherianartificer.townstead.root.attachment.AttachmentConvention.rotation(d.rotation()) : d.rotation();
+    }
+
     private static AttachmentDef adjustOffset(AttachmentDef d, float x, float y, float z) {
+        float[] offset = new float[]{x, y, z};
+        if (blockbench(d.id())) offset = com.aetherianartificer.townstead.root.attachment.AttachmentConvention.offset(offset);
         return new AttachmentDef(d.id(), d.geoSha1(), d.textureSha1(), d.targetTag(), d.targetPoint(), d.bone(),
-                new float[]{x, y, z}, d.rotation(), d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
+                offset, d.rotation(), d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
     }
 
     private static AttachmentDef adjustRotation(AttachmentDef d, float x, float y, float z) {
+        float[] rotation = new float[]{x, y, z};
+        if (blockbench(d.id())) rotation = com.aetherianartificer.townstead.root.attachment.AttachmentConvention.rotation(rotation);
         return new AttachmentDef(d.id(), d.geoSha1(), d.textureSha1(), d.targetTag(), d.targetPoint(), d.bone(),
-                d.offset(), new float[]{x, y, z}, d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
+                d.offset(), rotation, d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
     }
 
     /** The chains as file-ready {@code physics} JSON, so dump round-trips live tuning. */
     private static JsonObject physicsJson(List<AttachmentDef.PhysicsChain> physics) {
         JsonArray chains = new JsonArray();
         for (AttachmentDef.PhysicsChain chain : physics) {
-            JsonObject out = new JsonObject();
-            JsonArray bones = new JsonArray();
-            for (String bone : chain.bones()) bones.add(bone);
-            out.add("bones", bones);
-            out.addProperty("stiffness", chain.stiffness());
-            out.addProperty("damping", chain.damping());
-            out.addProperty("gravity", chain.gravity());
-            out.addProperty("max_angle", chain.maxAngle());
-            out.addProperty("sway", chain.sway());
-            out.addProperty("follow", chain.follow());
-            out.addProperty("droop_angle", chain.droopAngle());
-            out.addProperty("sway_speed", chain.swaySpeed());
-            out.addProperty("snap", chain.snap());
-            JsonObject response = new JsonObject();
-            response.addProperty("vertical", chain.response()[0]);
-            response.addProperty("forward", chain.response()[1]);
-            response.addProperty("lateral", chain.response()[2]);
-            response.addProperty("turn", chain.response()[3]);
-            out.add("response", response);
-            if (chain.segments() > 0) out.addProperty("segments", chain.segments());
-            if (!chain.axis().equals("auto")) out.addProperty("axis", chain.axis());
-            chains.add(out);
+            chains.add(com.aetherianartificer.townstead.root.attachment.PhysicsChains.toJson(chain));
         }
         JsonObject json = new JsonObject();
         json.add("chains", chains);

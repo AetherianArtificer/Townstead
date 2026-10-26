@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:workstation/v1",
+  "mods": "accents",
+  "type": "craft_surface",
+  "work_task": "townstead_work:craft",
+  "blocks": ["accents:sewing_station"],
+  "recipe_type": "accents:sewing",
+  "cook_time": 60,
+  "orderable": "all"
+}

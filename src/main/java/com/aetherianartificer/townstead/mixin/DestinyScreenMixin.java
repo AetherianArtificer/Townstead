@@ -29,6 +29,31 @@ public abstract class DestinyScreenMixin extends Screen {
 
     @Inject(method = "getPages", remap = false, at = @At("RETURN"), cancellable = true)
     private void townstead$appendRootsPage(CallbackInfoReturnable<String[]> cir) {
-        cir.setReturnValue(RootPicker.insertRootsPage(cir.getReturnValue()));
+        String[] pages = cir.getReturnValue();
+        if (townstead$rootChoiceAllowed()) pages = RootPicker.insertRootsPage(pages);
+        if (townstead$aspectStartAllowed()) {
+            pages = com.aetherianartificer.townstead.client.gui.aspect.AspectPage.insertPage(pages, "origins");
+        }
+        cir.setReturnValue(pages);
+    }
+
+    private static boolean townstead$aspectStartAllowed() {
+        if (!com.aetherianartificer.townstead.client.gui.aspect.AspectPage.available()) return false;
+        try {
+            return com.aetherianartificer.townstead.switchboard.Switchboard.get(
+                    com.aetherianartificer.townstead.TownsteadConfig.ALLOW_ASPECT_START);
+        } catch (IllegalStateException e) {
+            return true;
+        }
+    }
+
+    private static boolean townstead$rootChoiceAllowed() {
+        try {
+            return com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.ROOTS)
+                    && com.aetherianartificer.townstead.switchboard.Switchboard.get(
+                    com.aetherianartificer.townstead.TownsteadConfig.ALLOW_ROOT_CHOICE_IN_DESTINY);
+        } catch (IllegalStateException e) {
+            return true;
+        }
     }
 }

@@ -33,7 +33,13 @@ public final class FluidHeightConditionType implements ConditionType {
         double min = GsonHelper.getAsDouble(json, "min", -Double.MAX_VALUE);
         double max = GsonHelper.getAsDouble(json, "max", Double.MAX_VALUE);
         return ctx -> {
-            double height = ctx.entity().getFluidHeight(tag);
+            double height;
+            if (ctx.probing()) {
+                var fluid = ctx.level().getFluidState(ctx.pos());
+                height = fluid.is(tag) ? fluid.getHeight(ctx.level(), ctx.pos()) : 0;
+            } else {
+                height = ctx.entity().getFluidHeight(tag);
+            }
             return height >= min && height <= max;
         };
     }

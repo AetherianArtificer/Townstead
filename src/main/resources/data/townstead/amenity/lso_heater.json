@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:amenity/v1",
+  "mods": ["legendarysurvivaloverhaul"],
+  "kind": "hearth",
+  "blocks": ["legendarysurvivaloverhaul:heater"],
+  "requires": {"type": "pheno:block_state", "property": "lit", "value": "true"}
+}

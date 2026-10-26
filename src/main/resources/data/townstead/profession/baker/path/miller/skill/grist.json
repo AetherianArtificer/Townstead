@@ -1,0 +1,86 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.miller.grist"
+  },
+  "icon": "minecraft:wheat",
+  "description": {
+    "translate": "skill.townstead.baker.miller.grist.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sails"
+  ],
+  "skill_group": "townstead:miller_wind",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 6000,
+    "slot": 2,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 3,
+        "where": {
+          "type": "and",
+          "conditions": [
+            {
+              "type": "block",
+              "block": "minecraft:wheat"
+            },
+            {
+              "type": "or",
+              "conditions": [
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "0"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "1"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "2"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "3"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "4"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "5"
+                },
+                {
+                  "type": "block_state",
+                  "property": "age",
+                  "value": "6"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "do": {
+        "type": "pheno:modify_block_state",
+        "property": "age",
+        "operation": "add",
+        "amount": 1
+      }
+    }
+  }
+}

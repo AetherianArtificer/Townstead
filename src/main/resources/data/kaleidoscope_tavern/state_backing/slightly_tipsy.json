@@ -1,0 +1,13 @@
+{
+  "schema": "pheno:state_backing/v1",
+  "mods": "kaleidoscope_tavern",
+  "state": "townstead_state:drunk",
+  "applies_to": { "type": "pheno:entity_type", "entity_type": "minecraft:player" },
+  "source": {
+    "type": "pheno:status_effect",
+    "effect": "kaleidoscope_tavern:slightly_tipsy",
+    "presence_value": 20
+  },
+  "read_priority": 80,
+  "writable": false
+}

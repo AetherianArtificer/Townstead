@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.stand_fast"
+  },
+  "icon": "minecraft:shield",
+  "description": {
+    "translate": "skill.townstead.hunter.stand_fast.description"
+  },
+  "tier": 2,
+  "cost": 1,
+  "requires": [
+    "night_watch"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 200,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.armor.equip_iron",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

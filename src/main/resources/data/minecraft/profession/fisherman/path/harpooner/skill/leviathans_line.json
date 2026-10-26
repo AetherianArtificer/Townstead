@@ -1,0 +1,80 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.harpooner.leviathans_line"
+  },
+  "icon": "minecraft:nautilus_shell",
+  "description": {
+    "translate": "skill.townstead.fisherman.harpooner.leviathans_line.description"
+  },
+  "cost": 1,
+  "requires": [
+    "trawl"
+  ],
+  "skill_group": "townstead:harpooner_hook",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 16,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:add_velocity",
+                "away_from_other": -1.6,
+                "y": 0.25
+              },
+              {
+                "type": "pheno:damage",
+                "amount": 4,
+                "source": "other"
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:slowness",
+                "duration": 100,
+                "amplifier": 1
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.fishing_bobber.retrieve",
+          "volume": 1.0,
+          "pitch": 0.8
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:entity.generic.splash",
+              "volume": 1.0,
+              "pitch": 1.0
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:splash",
+              "count": 20,
+              "spread": 1.2
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

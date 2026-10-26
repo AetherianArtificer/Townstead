@@ -1,0 +1,64 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.tidecaller.riptide"
+  },
+  "icon": "minecraft:trident",
+  "description": {
+    "translate": "skill.townstead.fisherman.tidecaller.riptide.description"
+  },
+  "cost": 1,
+  "requires": [
+    "whirlpool"
+  ],
+  "skill_group": "townstead:tidecaller_current",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:add_velocity",
+          "relative": true,
+          "z": 2.0,
+          "y": 0.3
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 3,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:damage",
+            "amount": 4,
+            "source": "other"
+          }
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:entity.generic.splash",
+              "volume": 1.0,
+              "pitch": 1.0
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:splash",
+              "count": 20,
+              "spread": 1.2
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

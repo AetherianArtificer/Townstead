@@ -25,6 +25,7 @@ public final class GeneDamageHandler {
     /** The amount after applying every matching damage-modifier gene (0 = fully blocked). */
     public static float modify(LivingEntity victim, DamageSource source, float amount) {
         if (victim.level().isClientSide) return amount;
+        if (com.aetherianartificer.townstead.root.locomotion.Locomotion.shieldsFrom(victim, source)) return 0f;
         float result = amount;
         List<DamageModifierGeneType.Instance> genes =
                 ExpressedGenes.instancesOf(victim, DamageModifierGeneType.Instance.class);
@@ -59,11 +60,13 @@ public final class GeneDamageHandler {
                 for (AttackModifierGeneType.Instance gene : dealt) {
                     if (gene.condition() != null && !gene.condition().test(attackerCtx)) continue;
                     if (gene.bientityCondition() != null && !gene.bientityCondition().test(attacker, victim)) continue;
+                    if (gene.damageCondition() != null && !gene.damageCondition().test(source, amount)) continue;
                     result *= gene.modifier();
                 }
             }
         }
-        return Math.max(0f, result);
+        // Wards spare what is left after every multiplier, so they protect a fixed amount of health.
+        return com.aetherianartificer.townstead.pheno.combat.Wards.absorb(victim, source, Math.max(0f, result));
     }
 
     private static boolean matches(DamageSource source, DamageModifierGeneType.Instance gene) {

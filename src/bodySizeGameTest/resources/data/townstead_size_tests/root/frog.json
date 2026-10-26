@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:root/v1",
+  "display_name": "Sizing test frog",
+  "species": "townstead_size_tests:frog",
+  "spawn_bias": {
+    "default": 0
+  }
+}

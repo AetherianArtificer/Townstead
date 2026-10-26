@@ -4,6 +4,8 @@ import com.aetherianartificer.townstead.pheno.action.Action;
 import com.aetherianartificer.townstead.pheno.action.ActionContext;
 import com.aetherianartificer.townstead.pheno.action.ActionType;
 import com.aetherianartificer.townstead.pheno.action.Actions;
+import com.aetherianartificer.townstead.pheno.condition.bientity.BiEntityCondition;
+import com.aetherianartificer.townstead.pheno.condition.bientity.BiEntityConditions;
 import com.google.gson.JsonObject;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.entity.LivingEntity;
@@ -15,7 +17,15 @@ import net.minecraft.world.entity.LivingEntity;
  * with the actor as {@code other()}. A one-shot nova (pair with a trigger), distinct
  * from the periodic {@code aura} gene.
  *
+ * <p>{@code target} provides the common {@code all}, {@code hostile}, and
+ * {@code non_hostile} groups. {@code bientity_condition} can narrow that group further and is
+ * evaluated with the actor against each candidate, for example to produce a forward cone.</p>
+ *
+ * <p>{@code limit} picks that many of the matching entities at random instead of all of them, and
+ * fails when none match.</p>
+ *
  * <p>JSON: {@code { "type":"pheno:area_of_effect", "radius":4,
+ * "target":"hostile", "bientity_condition":{ "type":"pheno:relative_rotation", "max_angle":60 },
  * "action":{ "type":"pheno:damage", "amount":4 } }}</p>
  */
 public final class AreaOfEffectActionType implements ActionType {
@@ -31,15 +41,37 @@ public final class AreaOfEffectActionType implements ActionType {
     public Action parse(JsonObject json) {
         double radius = Math.max(0, GsonHelper.getAsDouble(json, "radius", 4));
         boolean includeSelf = GsonHelper.getAsBoolean(json, "include_self", false);
+        int limit = GsonHelper.getAsInt(json, "limit", 0);
+        String targetMode = switch (GsonHelper.getAsString(json, "target", "all")
+                .toLowerCase(java.util.Locale.ROOT)) {
+            case "hostile" -> "hostile";
+            case "non_hostile" -> "non_hostile";
+            default -> "all";
+        };
+        BiEntityCondition filter = json.has("bientity_condition")
+                ? BiEntityConditions.parse(json.get("bientity_condition")) : null;
         Action inner = Actions.parse(json.get("action"));
         if (inner == null) return null;
         return ctx -> {
             LivingEntity self = ctx.entity();
+            java.util.List<LivingEntity> hits = new java.util.ArrayList<>();
             for (LivingEntity target : self.level().getEntitiesOfClass(LivingEntity.class,
                     self.getBoundingBox().inflate(radius))) {
                 if (target == self && !includeSelf) continue;
-                inner.run(new ActionContext(target, self));
+                if (!targetMode.equals("all")) {
+                    boolean hostile = com.aetherianartificer.townstead.root.disposition.Hostility.toward(self, target);
+                    if (targetMode.equals("hostile") != hostile) continue;
+                }
+                // The actor is always the first argument, so "hostile" reads as "hostile to me".
+                if (filter != null && !filter.test(self, target)) continue;
+                hits.add(target);
             }
+            if (limit > 0 && hits.size() > limit) {
+                for (int i = hits.size() - 1; i > 0; i--) java.util.Collections.swap(hits, i, self.getRandom().nextInt(i + 1));
+                hits = hits.subList(0, limit);
+            }
+            if (limit > 0 && hits.isEmpty()) ctx.fail();
+            for (LivingEntity target : hits) inner.run(ctx.retarget(target, self));
         };
     }
 }

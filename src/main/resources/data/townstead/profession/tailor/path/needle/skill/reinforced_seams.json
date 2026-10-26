@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.needle.reinforced_seams"
+  },
+  "icon": "minecraft:chain",
+  "description": {
+    "translate": "skill.townstead.tailor.needle.reinforced_seams.description"
+  },
+  "cost": 1,
+  "requires": [
+    "darn"
+  ],
+  "skill_group": "townstead:needle_mend",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stitch",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:resistance",
+            "duration": 600,
+            "amplifier": 0
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:absorption",
+            "duration": 600,
+            "amplifier": 0
+          }
+        ]
+      }
+    }
+  }
+}

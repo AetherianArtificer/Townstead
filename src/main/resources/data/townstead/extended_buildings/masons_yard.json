@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "core": "minecraft:scaffolding",
+  "requires": [{"ground": true}],
+  "enclosure": "none",
+  "storage_roles": ["townstead:materials"],
+  "catalog": {
+    "node_item": "minecraft:scaffolding"
+  },
+  "spirit": {
+    "industrious": 5
+  }
+}

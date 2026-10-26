@@ -1,0 +1,82 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "mods": "vampirism",
+  "name": {
+    "translate": "career.townstead.hunter.path.nightward"
+  },
+  "title": {
+    "translate": "career.townstead.hunter.title.nightward"
+  },
+  "color": "#D9B44A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:vigil",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:hunter/nightward/sentinel"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:hunter/nightward/rebuke"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:hunter/nightward/incense_line"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 12,
+            "condition": {
+              "type": "pheno:hostile"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:vigil",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "home_ground",
+      "garlic_ward",
+      "sprinkle"
+    ],
+    [
+      "planted",
+      "garlic_cloud",
+      "hallowed_circle"
+    ],
+    [
+      "sentinel",
+      "rebuke",
+      "incense_line"
+    ],
+    [
+      "unbroken",
+      "sunburst",
+      "sanctuary"
+    ],
+    [
+      "last_watch",
+      "false_dawn",
+      "hold_the_line"
+    ]
+  ]
+}

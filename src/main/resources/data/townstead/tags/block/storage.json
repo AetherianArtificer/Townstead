@@ -1,0 +1,19 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:chest",
+    "minecraft:trapped_chest",
+    "minecraft:barrel",
+    "minecraft:decorated_pot",
+    "#minecraft:shulker_boxes",
+    { "id": "#c:chests", "required": false },
+    { "id": "#c:barrels", "required": false },
+    { "id": "#c:shulker_boxes", "required": false },
+    { "id": "#forge:chests", "required": false },
+    { "id": "#forge:barrels", "required": false },
+    { "id": "#forge:shulker_boxes", "required": false },
+    { "id": "#farmersdelight:cabinets", "required": false },
+    "#townstead:compat/integrated_storage",
+    "#townstead:compat/storage_mods"
+  ]
+}

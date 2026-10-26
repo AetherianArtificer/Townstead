@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:climate_biome/v1",
+  "mean_c": 6.3,
+  "coldest_month_c": -3.0,
+  "warmest_month_c": 17.6,
+  "daily_range_c": 8.0,
+  "typical_y": 70
+}

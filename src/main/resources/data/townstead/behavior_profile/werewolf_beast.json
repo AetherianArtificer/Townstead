@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:behavior_profile/v1",
+  "mods": "werewolves",
+  "while_state": "townstead_state:beast_form",
+  "behaviors": [
+    {
+      "type": "pheno:hunt",
+      "radius": 20,
+      "monsters": true
+    }
+  ]
+}

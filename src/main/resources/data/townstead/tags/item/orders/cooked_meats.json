@@ -1,0 +1,33 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:cooked_beef",
+    "minecraft:cooked_porkchop",
+    "minecraft:cooked_mutton",
+    "minecraft:cooked_chicken",
+    "minecraft:cooked_rabbit",
+    {
+      "id": "#forge:cooked_meat",
+      "required": false
+    },
+    {
+      "id": "#c:cooked_meat",
+      "required": false
+    },
+    {
+      "id": "#forge:cooked_meats",
+      "required": false
+    },
+    {
+      "id": "#c:cooked_meats",
+      "required": false
+    },
+    { "id": "farm_and_charm:baked_lamb_ham", "required": false },
+    { "id": "farm_and_charm:roasted_chicken", "required": false },
+    { "id": "farm_and_charm:stuffed_chicken", "required": false },
+    { "id": "farm_and_charm:stuffed_rabbit", "required": false },
+    { "id": "farm_and_charm:lamb_ham", "required": false },
+    { "id": "farm_and_charm:bacon", "required": false },
+    { "id": "farm_and_charm:chicken_parts", "required": false }
+  ]
+}

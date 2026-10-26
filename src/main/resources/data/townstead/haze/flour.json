@@ -1,0 +1,10 @@
+{
+  "shape": "cloud",
+  "color": "#EDE6D6",
+  "duration": 300,
+  "conceals": true,
+  "fog": {
+    "distance": 2.5
+  },
+  "particle": "minecraft:white_ash"
+}

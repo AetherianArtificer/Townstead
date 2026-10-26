@@ -61,9 +61,9 @@ public final class RigSkinTone {
         if (rootId.isEmpty()) return null;
         RootCatalogEntry origin = RootCatalogClient.origin(rootId);
         if (origin == null) return null;
-        for (RootCatalogEntry.Inherited inherited : origin.inheritedGenes()) {
-            GeneCatalogEntry gene = RootCatalogClient.gene(inherited.geneId());
-            if (gene == null) continue;
+        for (String geneId : RootClientStore.appearanceGenes(entity)) {
+            GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
+            if (gene == null || !gene.isSkinTone()) continue;
             for (GeneCatalogEntry.Variant variant : gene.variants()) {
                 if (variant.tint() >= 0) return gene;
             }
@@ -89,7 +89,7 @@ public final class RigSkinTone {
             for (int i = 0; i < Math.max(1, variant.weight()); i++) pool.add(variant.tint());
         }
         if (pool.isEmpty()) return -1;
-        return pool.get(Math.floorMod(entity.getUUID().hashCode(), pool.size()));
+        return pool.get(Math.floorMod(RootClientStore.variantSeed(entity), pool.size()));
     }
 
     /**

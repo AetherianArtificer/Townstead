@@ -1,0 +1,29 @@
+{
+  "shape": "cross",
+  "color": "#F0ECF8",
+  "duration": 400,
+  "texture": "townstead:haze/silk",
+  "inside": {
+    "interval": 5,
+    "condition": {
+      "type": "pheno:hostile"
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:slowness",
+          "duration": 20,
+          "amplifier": 3
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:weakness",
+          "duration": 20,
+          "amplifier": 0
+        }
+      ]
+    }
+  }
+}

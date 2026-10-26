@@ -1,0 +1,59 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "world.celebration",
+  "weight": 8,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": [
+    "live",
+    "pregen"
+  ],
+  "trigger": {
+    "type": "game",
+    "key": "minecraft:jukebox_play"
+  },
+  "reach": "village",
+  "news_value": 1.0,
+  "roles": [
+    {
+      "id": "listener",
+      "kind": "villager",
+      "when": {
+        "type": "pheno:life_stage",
+        "stage": "adult"
+      },
+      "involvement": "witness"
+    }
+  ],
+  "witnesses": {
+    "radius": 12.0,
+    "max": 6
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.music_played"
+    },
+    "params": [
+      "listener"
+    ]
+  },
+  "impact": {
+    "listener": {
+      "mood": 3.0,
+      "memory": {
+        "valence": 0.7,
+        "strength": 1.0
+      }
+    },
+    "on_learn": {
+      "memory": {
+        "valence": 0.3,
+        "strength": 0.5
+      }
+    }
+  },
+  "cooldown_days": 7,
+  "pregen": {
+    "max_per_life": 3
+  }
+}

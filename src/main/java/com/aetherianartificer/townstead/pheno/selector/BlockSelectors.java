@@ -29,6 +29,11 @@ public final class BlockSelectors {
     @Nullable
     public static BlockSelector parse(@Nullable JsonElement element) {
         if (element == null) return null;
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+            String role = element.getAsString();
+            if (role.isBlank()) return null;
+            return ctx -> ctx.blockRole(role);
+        }
         Region region = Spatial.parse(element);
         if (region != null) {
             BlockCondition where = null;

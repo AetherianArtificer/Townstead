@@ -1,0 +1,32 @@
+[
+  {
+    "id": "townstead:skins/clothing/persona/village_builder/mill.png",
+    "gender": "neutral",
+    "exclude": true
+  },
+  {
+    "id": "townstead:skins/clothing/persona/village_builder/mine.png",
+    "gender": "neutral",
+    "exclude": true
+  },
+  {
+    "id": "townstead:skins/clothing/persona/village_builder/harbor.png",
+    "gender": "neutral",
+    "exclude": true
+  },
+  {
+    "id": "townstead:skins/clothing/persona/village_builder/roads.png",
+    "gender": "neutral",
+    "exclude": true
+  },
+  {
+    "id": "townstead:skins/clothing/persona/village_builder/forest.png",
+    "gender": "neutral",
+    "exclude": true
+  },
+  {
+    "id": "townstead:skins/clothing/persona/village_builder/well.png",
+    "gender": "neutral",
+    "exclude": true
+  }
+]

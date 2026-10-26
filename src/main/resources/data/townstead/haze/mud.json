@@ -1,0 +1,18 @@
+{
+  "shape": "layer",
+  "color": "#5A4430",
+  "duration": 300,
+  "texture": "townstead:haze/mud",
+  "inside": {
+    "interval": 5,
+    "condition": {
+      "type": "pheno:hostile"
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:slowness",
+      "duration": 20,
+      "amplifier": 2
+    }
+  }
+}

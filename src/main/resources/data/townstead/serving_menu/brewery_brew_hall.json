@@ -1,0 +1,27 @@
+{
+  "schema": "townstead:serving_menu/v1",
+  "mods": "brewery",
+  "buildings": [
+    "compat/brewery/brew_hall_l1",
+    "compat/brewery/brew_hall_l2",
+    "compat/brewery/brew_hall_l3"
+  ],
+  "products": [
+    "brewery:beer_wheat",
+    "brewery:beer_hops",
+    "brewery:beer_barley",
+    "brewery:beer_oat",
+    "brewery:beer_nettle",
+    "brewery:beer_haley",
+    "brewery:whiskey_ak",
+    "brewery:whiskey_cristelwalker",
+    "brewery:whiskey_smokey_reverie",
+    "brewery:whiskey_maggoallan",
+    "brewery:whiskey_lilitusinglemalt",
+    "brewery:whiskey_jojannik",
+    "brewery:whiskey_jamesons_malt",
+    "brewery:whiskey_highland_hearth",
+    "brewery:whiskey_carrasconlabel",
+    "brewery:dark_brew"
+  ]
+}

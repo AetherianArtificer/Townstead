@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.weaver.tapestry"
+  },
+  "icon": "minecraft:loom",
+  "description": {
+    "translate": "skill.townstead.tailor.weaver.tapestry.description"
+  },
+  "cost": 1,
+  "requires": [
+    "web_of_silk"
+  ],
+  "skill_group": "townstead:weaver_silk",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stitch",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:haze",
+      "kind": "townstead:silk",
+      "blocks": {
+        "radius": 5,
+        "where": {
+          "type": "air"
+        }
+      }
+    }
+  }
+}

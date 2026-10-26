@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:naming_tradition/v1",
+  "given": "mca:israel",
+  "family": {
+    "type": "inherited",
+    "list": "townstead_naming:israel",
+    "descent": "father"
+  }
+}

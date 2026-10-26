@@ -1,0 +1,12 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "mods": "vampirism",
+  "state": "townstead_state:dhampir",
+  "min_tier": "dhampir",
+  "priority": 20,
+  "genes": {
+    "grant": [
+      "townstead_roots:dhampir_kin"
+    ]
+  }
+}

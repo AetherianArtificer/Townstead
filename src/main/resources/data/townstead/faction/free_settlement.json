@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:faction/v1",
+  "display": {
+    "name": {
+      "translate": "faction.townstead.free_settlement"
+    },
+    "description": {
+      "translate": "faction.townstead.free_settlement.description"
+    }
+  },
+  "tags": [
+    "townstead:political"
+  ],
+  "holds_land": true,
+  "membership": {
+    "bond": "townstead:citizenship",
+    "admission": "townstead:residence"
+  }
+}

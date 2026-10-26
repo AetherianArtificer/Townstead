@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.pilgrim.caravan"
+  },
+  "icon": "minecraft:chest_minecart",
+  "description": {
+    "translate": "skill.townstead.cleric.pilgrim.caravan.description"
+  },
+  "cost": 1,
+  "requires": [
+    "wellspring"
+  ],
+  "skill_group": "townstead:pilgrim_provision",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "always",
+    "resource_cost": {
+      "resource": "townstead:faith",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 10,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:speed",
+            "duration": 1200,
+            "amplifier": 0
+          },
+          {
+            "type": "pheno:hydrate",
+            "immediate": 4,
+            "lasting": 2
+          }
+        ]
+      }
+    }
+  }
+}

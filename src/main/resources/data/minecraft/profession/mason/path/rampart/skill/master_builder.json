@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.rampart.master_builder"
+  },
+  "icon": "minecraft:bricks",
+  "description": {
+    "translate": "skill.townstead.mason.rampart.master_builder.description"
+  },
+  "cost": 1,
+  "requires": [
+    "battlements"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:mortar",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:mortar",
+          "min": 75
+        },
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:movement",
+            "movement": "moving"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:resistance",
+      "duration": 30,
+      "amplifier": 1
+    }
+  }
+}

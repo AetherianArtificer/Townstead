@@ -1,0 +1,79 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.field_mender.mend_the_line"
+  },
+  "icon": "minecraft:iron_ingot",
+  "description": {
+    "translate": "skill.townstead.armorer.field_mender.mend_the_line.description"
+  },
+  "cost": 1,
+  "requires": [
+    "field_repair"
+  ],
+  "skill_group": "townstead:mender_repair",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 6,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "head",
+                "item_action": {
+                  "type": "pheno:damage",
+                  "amount": -12
+                }
+              },
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "chest",
+                "item_action": {
+                  "type": "pheno:damage",
+                  "amount": -12
+                }
+              },
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "legs",
+                "item_action": {
+                  "type": "pheno:damage",
+                  "amount": -12
+                }
+              },
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "feet",
+                "item_action": {
+                  "type": "pheno:damage",
+                  "amount": -12
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.anvil.use",
+          "volume": 0.7,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

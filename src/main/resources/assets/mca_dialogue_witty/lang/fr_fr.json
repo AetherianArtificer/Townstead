@@ -3,6 +3,7 @@
   "witty.dialogue.chat.butcher_request.no_livestock/2": "<happy>Je découperais bien, mais le marché du bétail est, disons, à zéro.</happy>",
   "witty.dialogue.chat.butcher_request.no_hook/1": "<happy>Une boucherie sans crochet, c'est juste une salle à manger très dramatique.</happy>",
   "witty.dialogue.chat.butcher_request.no_basin/1": "<happy>Pas de bac ? J'espère que tu aimes éponger, parce que moi, certainement pas.</happy>",
+  "witty.dialogue.chat.butcher_request.no_blood_grate/1": "<happy>Sans grille à sang, le sol devient le prochain poste sur l'ordre de travail.</happy>",
   "witty.dialogue.chat.village_life.butcher_shop/1": "<happy>La boucherie. Là où les forts survivent, et où le reste finit en dîner.</happy>",
   "witty.dialogue.chat.village_life.slaughterhouse/1": "<happy>L'abattoir : des protéines locales accompagnées d'une dose d'angoisse existentielle.</happy>",
   "witty.dialogue.chat.village_life.smokehouse/1": "<happy>Le fumoir est la preuve que certaines des meilleures idées impliquent de mettre lentement le feu à de la viande.</happy>",
@@ -152,5 +153,18 @@
   "witty.dialogue.chat.leatherworker_request.no_salt/1": "<happy>Une peau sans sel, c'est une peau avec de l'ambition. Hélas, l'ambition n'est pas du cuir.</happy>",
   "witty.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<happy>Je tirerais bien de l'eau d'une pierre, mais une éponge mouillée serait considérablement plus facile.</happy>",
   "witty.dialogue.chat.leatherworker_request.no_storage/1": "<happy>Je suis, techniquement, un coffre de cuir ambulant. Non techniquement, je suis fatigué.</happy>",
-  "witty.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Du cuir. Il a pris son temps. La plupart des bonnes choses le font.</happy>"
+  "witty.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Du cuir. Il a pris son temps. La plupart des bonnes choses le font.</happy>",
+  "witty.dialogue.chat.townstead_drunk.tipsy_arrival/1": "Une rasade mesurée. La mesure était optimiste, mais la rasade était juste.",
+  "witty.dialogue.chat.townstead_drunk.tipsy_ambient/1": "Je me ménage. Certes, le rythme a perdu sa carte.",
+  "witty.dialogue.chat.townstead_drunk.drunk_arrival/1": "Je suis arrivé debout, ce qui est la moitié importante du voyage.",
+  "witty.dialogue.chat.townstead_drunk.drunk_ambient/1": "Mon argument reste impeccable. Son chemin vers le but est simplement pittoresque.",
+  "witty.dialogue.chat.townstead_drunk.wasted_arrival/1": "De l'eau, une chaise, et moins d'opinions de la part du sol, s'il vous plaît.",
+  "witty.dialogue.chat.townstead_drunk.wasted_ambient/1": "J'ai trouvé un arrangement avec la gravité. Elle obtient ce qu'elle veut.",
+  "witty.dialogue.chat.townstead_drunk.service_refused/1": "Laissons la parole à l'eau. Ma tasse a assez déposé de motions.",
+  "witty.dialogue.chat.townstead_drunk.recovered/1": "La lucidité revient, avec une facture détaillée.",
+  "witty.dialogue.chat.beverage_artisan_request.no_worksite/1": "Un artisan de boissons sans poste est surtout un artisan de l'attente.",
+  "witty.dialogue.chat.beverage_artisan_request.no_ingredients/1": "Les étagères ont atteint une pureté remarquable : pas un ingrédient en vue.",
+  "witty.dialogue.chat.beverage_artisan_request.no_storage/1": "Les boissons sont finies. Le stockage, malheureusement, l'est aussi.",
+  "witty.dialogue.chat.beverage_artisan_request.unreachable/1": "Mon poste est accessible en théorie, ce qui n'est pas très utile.",
+  "witty.dialogue.chat.beverage_artisan_request.no_ingredients_item": "%2$s demande des ingrédients, malgré mes plus vives objections."
 }

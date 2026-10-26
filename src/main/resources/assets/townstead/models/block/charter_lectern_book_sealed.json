@@ -1,0 +1,423 @@
+{
+  "credit": "Townstead",
+  "ambientocclusion": false,
+  "textures": {
+    "book": "townstead:block/charter_book",
+    "particle": "townstead:block/charter_book"
+  },
+  "elements": [
+    {
+      "name": "cover",
+      "from": [
+        1.5,
+        16,
+        4.5
+      ],
+      "to": [
+        14.5,
+        16.5,
+        14.5
+      ],
+      "rotation": {
+        "angle": -22.5,
+        "axis": "x",
+        "origin": [
+          8,
+          8,
+          8
+        ]
+      },
+      "faces": {
+        "up": {
+          "uv": [
+            0.0,
+            0.0,
+            8.0,
+            8.0
+          ],
+          "texture": "#book"
+        },
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            8.0,
+            0.5
+          ],
+          "texture": "#book"
+        },
+        "south": {
+          "uv": [
+            0.0,
+            0.0,
+            8.0,
+            0.5
+          ],
+          "texture": "#book"
+        },
+        "east": {
+          "uv": [
+            0.0,
+            0.0,
+            8.0,
+            0.5
+          ],
+          "texture": "#book"
+        },
+        "west": {
+          "uv": [
+            0.0,
+            0.0,
+            8.0,
+            0.5
+          ],
+          "texture": "#book"
+        }
+      }
+    },
+    {
+      "name": "left_pages",
+      "from": [
+        2,
+        16.5,
+        5
+      ],
+      "to": [
+        7.85,
+        17.5,
+        14
+      ],
+      "rotation": {
+        "angle": -22.5,
+        "axis": "x",
+        "origin": [
+          8,
+          8,
+          8
+        ]
+      },
+      "faces": {
+        "up": {
+          "uv": [
+            8.0,
+            0.0,
+            13.5,
+            8.0
+          ],
+          "texture": "#book",
+          "rotation": 180
+        },
+        "north": {
+          "uv": [
+            14.0,
+            0.0,
+            16.0,
+            1.0
+          ],
+          "texture": "#book"
+        },
+        "south": {
+          "uv": [
+            14.0,
+            0.0,
+            16.0,
+            1.0
+          ],
+          "texture": "#book"
+        },
+        "east": {
+          "uv": [
+            14.0,
+            0.0,
+            16.0,
+            1.0
+          ],
+          "texture": "#book"
+        },
+        "west": {
+          "uv": [
+            14.0,
+            0.0,
+            16.0,
+            1.0
+          ],
+          "texture": "#book"
+        }
+      }
+    },
+    {
+      "name": "right_pages",
+      "from": [
+        8.15,
+        16.5,
+        5
+      ],
+      "to": [
+        14,
+        17.5,
+        14
+      ],
+      "rotation": {
+        "angle": -22.5,
+        "axis": "x",
+        "origin": [
+          8,
+          8,
+          8
+        ]
+      },
+      "faces": {
+        "up": {
+          "uv": [
+            8.0,
+            8.0,
+            13.5,
+            16.0
+          ],
+          "texture": "#book",
+          "rotation": 180
+        },
+        "north": {
+          "uv": [
+            14.0,
+            0.0,
+            16.0,
+            1.0
+          ],
+          "texture": "#book"
+        },
+        "south": {
+          "uv": [
+            14.0,
+            0.0,
+            16.0,
+            1.0
+          ],
+          "texture": "#book"
+        },
+        "east": {
+          "uv": [
+            14.0,
+            0.0,
+            16.0,
+            1.0
+          ],
+          "texture": "#book"
+        },
+        "west": {
+          "uv": [
+            14.0,
+            0.0,
+            16.0,
+            1.0
+          ],
+          "texture": "#book"
+        }
+      }
+    },
+    {
+      "name": "gutter",
+      "from": [
+        7.85,
+        16.5,
+        5
+      ],
+      "to": [
+        8.15,
+        17.2,
+        14
+      ],
+      "rotation": {
+        "angle": -22.5,
+        "axis": "x",
+        "origin": [
+          8,
+          8,
+          8
+        ]
+      },
+      "faces": {
+        "up": {
+          "uv": [
+            4.0,
+            8.0,
+            5.0,
+            9.0
+          ],
+          "texture": "#book"
+        },
+        "north": {
+          "uv": [
+            4.0,
+            8.0,
+            5.0,
+            9.0
+          ],
+          "texture": "#book"
+        },
+        "south": {
+          "uv": [
+            4.0,
+            8.0,
+            5.0,
+            9.0
+          ],
+          "texture": "#book"
+        }
+      }
+    },
+    {
+      "name": "ribbon_lying",
+      "from": [
+        12,
+        16,
+        3
+      ],
+      "to": [
+        13,
+        16.1,
+        4.5
+      ],
+      "rotation": {
+        "angle": -22.5,
+        "axis": "x",
+        "origin": [
+          8,
+          8,
+          8
+        ]
+      },
+      "faces": {
+        "up": {
+          "uv": [
+            0.0,
+            8.0,
+            1.0,
+            9.5
+          ],
+          "texture": "#book"
+        }
+      }
+    },
+    {
+      "name": "ribbon_hanging",
+      "from": [
+        12,
+        13,
+        2.9
+      ],
+      "to": [
+        13,
+        16.1,
+        3
+      ],
+      "rotation": {
+        "angle": -22.5,
+        "axis": "x",
+        "origin": [
+          8,
+          8,
+          8
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            9.0,
+            1.0,
+            12.0
+          ],
+          "texture": "#book"
+        },
+        "east": {
+          "uv": [
+            0.0,
+            9.0,
+            0.5,
+            12.0
+          ],
+          "texture": "#book"
+        },
+        "west": {
+          "uv": [
+            0.0,
+            9.0,
+            0.5,
+            12.0
+          ],
+          "texture": "#book"
+        }
+      }
+    },
+    {
+      "name": "seal",
+      "from": [
+        3.5,
+        17.5,
+        6
+      ],
+      "to": [
+        5.5,
+        17.8,
+        8
+      ],
+      "rotation": {
+        "angle": -22.5,
+        "axis": "x",
+        "origin": [
+          8,
+          8,
+          8
+        ]
+      },
+      "faces": {
+        "up": {
+          "uv": [
+            1.0,
+            8.0,
+            4.0,
+            11.0
+          ],
+          "texture": "#book"
+        },
+        "north": {
+          "uv": [
+            1.0,
+            9.0,
+            4.0,
+            9.5
+          ],
+          "texture": "#book"
+        },
+        "south": {
+          "uv": [
+            1.0,
+            9.0,
+            4.0,
+            9.5
+          ],
+          "texture": "#book"
+        },
+        "east": {
+          "uv": [
+            1.0,
+            9.0,
+            4.0,
+            9.5
+          ],
+          "texture": "#book"
+        },
+        "west": {
+          "uv": [
+            1.0,
+            9.0,
+            4.0,
+            9.5
+          ],
+          "texture": "#book"
+        }
+      }
+    }
+  ]
+}

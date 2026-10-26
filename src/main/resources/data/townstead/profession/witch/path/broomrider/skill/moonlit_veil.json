@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.broomrider.moonlit_veil"
+  },
+  "icon": "minecraft:glass_pane",
+  "description": {
+    "translate": "skill.townstead.witch.broomrider.moonlit_veil.description"
+  },
+  "cost": 1,
+  "requires": [
+    "black_cats_luck"
+  ],
+  "skill_group": "townstead:broom_night",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:night_vision",
+            "duration": 200,
+            "amplifier": 0
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:invisibility",
+            "duration": 200,
+            "amplifier": 0
+          }
+        ]
+      }
+    }
+  }
+}

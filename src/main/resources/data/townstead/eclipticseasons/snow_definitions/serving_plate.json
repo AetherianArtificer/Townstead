@@ -1,0 +1,8 @@
+{
+  "blocks": [
+    "townstead:serving_plate"
+  ],
+  "flag": 1000,
+  "mid": "townstead:snow/serving_plate",
+  "snow_passable": true
+}

@@ -1,0 +1,91 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.climatologist.path.frostkeeper"
+  },
+  "title": {
+    "translate": "career.townstead.climatologist.title.frostkeeper"
+  },
+  "color": "#9ACDE8",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:front",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:climatologist/frostkeeper/chill"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:climatologist/frostkeeper/flash_freeze"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:climatologist/frostkeeper/ice_wall"
+              }
+            ]
+          },
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:environment",
+                "exposure": "snow"
+              },
+              {
+                "type": "pheno:block",
+                "y": -1,
+                "block_condition": {
+                  "type": "in_tag",
+                  "tag": "minecraft:snow"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:front",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "cold_blooded",
+      "cold_snap",
+      "frost_armor"
+    ],
+    [
+      "powder_walker",
+      "hoarfrost",
+      "ice_skin"
+    ],
+    [
+      "chill",
+      "flash_freeze",
+      "ice_wall"
+    ],
+    [
+      "frostbite",
+      "blizzard",
+      "ice_ring"
+    ],
+    [
+      "winters_heart",
+      "deep_winter",
+      "glacier"
+    ]
+  ]
+}

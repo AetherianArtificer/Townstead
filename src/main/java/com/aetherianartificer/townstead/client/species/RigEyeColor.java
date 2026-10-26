@@ -21,8 +21,8 @@ public final class RigEyeColor {
         RootCatalogEntry origin = RootCatalogClient.origin(RootClientStore.resolve(entity));
         if (origin == null) return -1;
         GeneCatalogEntry colorGene = null;
-        for (RootCatalogEntry.Inherited inherited : origin.inheritedGenes()) {
-            GeneCatalogEntry gene = RootCatalogClient.gene(inherited.geneId());
+        for (String geneId : RootClientStore.appearanceGenes(entity)) {
+            GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
             if (gene != null && gene.isEyeColor()) {
                 colorGene = gene;
                 break;
@@ -42,7 +42,7 @@ public final class RigEyeColor {
         if (variant == null) {
             // The same stable pre-sync fallback the face overlay uses, so they agree.
             variant = colorGene.variants().get(
-                    Math.floorMod(entity.getUUID().hashCode(), colorGene.variants().size()));
+                    Math.floorMod(RootClientStore.variantSeed(entity), colorGene.variants().size()));
         }
         return variant.tint() >= 0 ? variant.tint() : -1;
     }

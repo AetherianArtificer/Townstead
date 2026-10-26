@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "weather_open",
+  "lines": {
+    "look_at_this": "Look at this.",
+    "well": "Well.",
+    "would_you_look_at_that": "Would you look at that sky.",
+    "some_weather_huh": "Some weather, huh?",
+    "wow": "Wow.",
+    "oh_look": "Oh, look.",
+    "phew": "Phew.",
+    "have_you_been_outside": "Have you been outside?"
+  }
+}

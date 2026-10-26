@@ -1,0 +1,36 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "politics.proclamation",
+  "weight": 1,
+  "rarity": "rare",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "reach": "world",
+  "news_value": 6.0,
+  "roles": [
+    {
+      "id": "leader",
+      "kind": "player"
+    },
+    {
+      "id": "faction",
+      "kind": "concept"
+    },
+    {
+      "id": "settlement",
+      "kind": "village"
+    }
+  ],
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.faction_welcomed"
+    },
+    "params": [
+      "leader",
+      "group",
+      "faction"
+    ]
+  }
+}

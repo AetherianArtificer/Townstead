@@ -1,0 +1,57 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.estate"
+  },
+  "icon": "minecraft:oak_door",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.estate.description"
+  },
+  "cost": 1,
+  "requires": [
+    "bouquet"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:vintage",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:vintage",
+      "min": 75
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 10,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:environment",
+          "exposure": "sun"
+        },
+        "if_action": {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:resistance",
+              "duration": 30,
+              "amplifier": 0
+            },
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:haste",
+              "duration": 30,
+              "amplifier": 0
+            }
+          ]
+        }
+      }
+    }
+  }
+}

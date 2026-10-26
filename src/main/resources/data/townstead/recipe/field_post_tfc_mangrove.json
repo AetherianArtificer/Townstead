@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_tfc_mangrove"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "tfc:wood/lumber/mangrove"
+    },
+    "L": {
+      "item": "tfc:wood/log/mangrove"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_tfc_mangrove",
+    "count": 1
+  }
+}

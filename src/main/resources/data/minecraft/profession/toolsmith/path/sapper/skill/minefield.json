@@ -1,0 +1,68 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.sapper.minefield"
+  },
+  "icon": "minecraft:tnt",
+  "description": {
+    "translate": "skill.townstead.toolsmith.sapper.minefield.description"
+  },
+  "cost": 1,
+  "requires": [
+    "blast_shield"
+  ],
+  "skill_group": "townstead:sapper_trap",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:knack",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 12,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:delay",
+            "ticks": 20,
+            "action": {
+              "type": "pheno:explode",
+              "power": 1.2,
+              "fire": false,
+              "destroy": false
+            }
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 12,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:delay",
+            "ticks": 40,
+            "action": {
+              "type": "pheno:explode",
+              "power": 1.2,
+              "fire": false,
+              "destroy": false
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.tnt.primed",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

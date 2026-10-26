@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.stormcaller.clear_skies"
+  },
+  "icon": "minecraft:sunflower",
+  "description": {
+    "translate": "skill.townstead.climatologist.stormcaller.clear_skies.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:storm_weather",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 12000,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:execute_command",
+          "command": "weather clear 6000"
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.elytra.flying",
+          "volume": 0.4,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

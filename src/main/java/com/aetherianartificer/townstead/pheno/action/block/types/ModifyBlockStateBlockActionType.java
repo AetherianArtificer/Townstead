@@ -30,14 +30,27 @@ public final class ModifyBlockStateBlockActionType implements BlockActionType {
         String propName = GsonHelper.getAsString(json, "property", "");
         if (propName.isEmpty()) return null;
         boolean cycle = "cycle".equalsIgnoreCase(GsonHelper.getAsString(json, "operation", ""));
+        boolean add = "add".equalsIgnoreCase(GsonHelper.getAsString(json, "operation", ""));
+        int amount = GsonHelper.getAsInt(json, "amount", 0);
         String value = GsonHelper.getAsString(json, "value", "");
         return ctx -> {
             BlockState state = ctx.level().getBlockState(ctx.pos());
             Property<?> property = state.getBlock().getStateDefinition().getProperty(propName);
             if (property == null) return;
-            BlockState updated = cycle ? state.cycle(property) : withValue(state, property, value);
+            BlockState updated = cycle ? state.cycle(property)
+                    : add ? add(state, property, amount) : withValue(state, property, value);
             if (updated != state) ctx.level().setBlock(ctx.pos(), updated, 3);
         };
+    }
+
+    @SuppressWarnings("unchecked")
+    private static BlockState add(BlockState state, Property<?> property, int amount) {
+        if (!(property instanceof net.minecraft.world.level.block.state.properties.IntegerProperty integer)) {
+            return state;
+        }
+        int current = state.getValue(integer);
+        int next = current + amount;
+        return integer.getPossibleValues().contains(next) ? state.setValue(integer, next) : state;
     }
 
     private static <T extends Comparable<T>> BlockState withValue(BlockState state, Property<T> property, String raw) {

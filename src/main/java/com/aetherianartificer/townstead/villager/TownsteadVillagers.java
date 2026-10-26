@@ -26,6 +26,12 @@ public final class TownsteadVillagers {
         return state;
     }
 
+    /** Drops what is held in memory for this villager and reads their state from the entity again. */
+    public static TownsteadVillager reload(VillagerEntityMCA villager) {
+        STATES.remove(villager.getUUID());
+        return get(villager);
+    }
+
     public static void putSnapshot(UUID villagerId, CompoundTag snapshot) {
         TownsteadVillager state = STATES.computeIfAbsent(villagerId, TownsteadVillager::new);
         state.loadSnapshotTag(snapshot);

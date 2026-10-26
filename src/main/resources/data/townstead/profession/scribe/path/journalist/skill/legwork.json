@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.journalist.legwork"
+  },
+  "icon": "minecraft:sugar",
+  "description": {
+    "translate": "skill.townstead.scribe.journalist.legwork.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:journalist_alert",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 200,
+      "amplifier": 1
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "of": "entity",
+  "max": 12,
+  "on_full": "evict_oldest",
+  "forget_after": 72000
+}

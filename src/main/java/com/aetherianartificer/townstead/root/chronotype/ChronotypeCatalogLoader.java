@@ -38,6 +38,7 @@ public final class ChronotypeCatalogLoader extends SimpleJsonResourceReloadListe
     @Override
     protected void apply(Map<ResourceLocation, JsonElement> entries, ResourceManager resourceManager,
                          ProfilerFiller profiler) {
+        entries = com.aetherianartificer.townstead.data.DataDocuments.resolve("chronotype", entries, resourceManager);
         Map<String, String> lang = DataPackLang.loadLangIndex(resourceManager);
         Map<String, ChronotypeCatalog.Entry> parsed = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, JsonElement> entry : entries.entrySet()) {

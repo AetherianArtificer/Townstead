@@ -1,0 +1,44 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.trailreader.no_escape"
+  },
+  "icon": "minecraft:compass",
+  "description": {
+    "translate": "skill.townstead.hunter.trailreader.no_escape.description"
+  },
+  "cost": 1,
+  "requires": [
+    "blood_trail"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "resource_cost": {
+      "resource": "townstead:vigil",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:vigil",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:for_each",
+      "in": "townstead:marked",
+      "where": {
+        "type": "pheno:distance",
+        "max": 24
+      },
+      "do": {
+        "type": "pheno:target_action",
+        "action": {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:slowness",
+          "duration": 60,
+          "amplifier": 0
+        }
+      }
+    }
+  }
+}

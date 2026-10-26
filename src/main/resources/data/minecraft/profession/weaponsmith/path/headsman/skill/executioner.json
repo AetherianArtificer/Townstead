@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.headsman.executioner"
+  },
+  "icon": "minecraft:diamond_axe",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.headsman.executioner.description"
+  },
+  "cost": 1,
+  "requires": [
+    "smell_blood"
+  ],
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 2.0,
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:edge",
+      "min": 50
+    },
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:health",
+        "max": 0.3,
+        "relative": true
+      }
+    }
+  }
+}

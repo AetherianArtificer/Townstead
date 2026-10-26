@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "#forge:raw_meat", "required": false },
+    { "id": "#c:raw_meat", "required": false },
+    { "id": "#forge:raw_meats", "required": false },
+    { "id": "#c:raw_meats", "required": false }
+  ]
+}

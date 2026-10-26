@@ -1,0 +1,79 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.witch.path.hexer"
+  },
+  "title": {
+    "translate": "career.townstead.witch.title.hexer"
+  },
+  "color": "#6A2A6A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:hex",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:witch/hexer/malice"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:witch/hexer/mass_hex"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:witch/hexer/blight"
+              }
+            ]
+          },
+          {
+            "type": "pheno:collection_size",
+            "collection": "townstead:hexed",
+            "min": 1
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:hex",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "evil_eye",
+      "hex",
+      "twinge"
+    ],
+    [
+      "lingering_curse",
+      "jinx",
+      "hobble"
+    ],
+    [
+      "malice",
+      "mass_hex",
+      "blight"
+    ],
+    [
+      "withering_hex",
+      "curse_of_frailty",
+      "hexblast"
+    ],
+    [
+      "doom",
+      "covens_curse",
+      "reckoning"
+    ]
+  ]
+}

@@ -38,8 +38,12 @@ public abstract class VillagerAttachmentLayerMixin<T extends Mob & VillagerLike<
     private void townstead$addAttachmentLayer(Mob villager, PoseStack matrices, float tickDelta, CallbackInfo ci) {
         if (townstead$attachmentLayerAdded) return;
         townstead$attachmentLayerAdded = true;
+        // First in the stack, so every layer that copies MCA's model pose sees adult proportions.
+        this.layers.add(0, new com.aetherianartificer.townstead.client.species.AdultProportionsLayer<>(this));
         this.addLayer(new AttachmentRenderLayer<>(this));
         this.addLayer(new WornItemLayer<>(this));
+        com.aetherianartificer.townstead.compat.curios.CuriosClientCompat.addLayer(this);
+        com.aetherianartificer.townstead.compat.curios.GraftedWearableLayers.addAll(this);
         townstead$insertSkinOverlayLayer();
     }
 
@@ -57,8 +61,16 @@ public abstract class VillagerAttachmentLayerMixin<T extends Mob & VillagerLike<
                                 new net.minecraft.client.model.geom.builders.CubeDeformation(0.005f)),
                         64, 64).bakeRoot());
         var layer = new com.aetherianartificer.townstead.client.species.SkinOverlayLayer<>(this, overlayModel);
+        // Over-face overlays (vampire eyes) sit on a shell just outside MCA's face shell (0.01).
+        VillagerEntityModelMCA<T> overFaceModel = new VillagerEntityModelMCA<>(
+                net.minecraft.client.model.geom.builders.LayerDefinition.create(
+                        VillagerEntityModelMCA.bodyData(
+                                new net.minecraft.client.model.geom.builders.CubeDeformation(0.015f)),
+                        64, 64).bakeRoot());
+        var overFace = new com.aetherianartificer.townstead.client.species.SkinOverlayLayer<>(this, overFaceModel, true);
         for (int i = 0; i < this.layers.size(); i++) {
             if (this.layers.get(i) instanceof net.conczin.mca.client.render.layer.FaceLayer) {
+                this.layers.add(i + 1, overFace);
                 this.layers.add(i, layer);
                 com.aetherianartificer.townstead.Townstead.LOGGER.info(
                         "Skin overlay layer inserted at {} (before FaceLayer) of {}", i, this.layers.size());

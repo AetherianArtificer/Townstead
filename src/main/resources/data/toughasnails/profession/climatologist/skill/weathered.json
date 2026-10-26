@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.weathered"
+  },
+  "icon": "minecraft:leather_helmet",
+  "description": {
+    "translate": "skill.townstead.climatologist.weathered.description"
+  },
+  "tier": 1,
+  "cost": 1,
+  "power": {
+    "type": "pheno:thermal_tolerance",
+    "cold": 0.5,
+    "heat": 0.5
+  }
+}

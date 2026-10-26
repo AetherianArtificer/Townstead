@@ -77,12 +77,10 @@ public final class EmoteReflection {
 
     /**
      * True when {@code io.github.kosmx.bendylib.ModelPartAccessor} is reachable on the classpath.
-     * On 1.21.1's player-animation-lib 1.1+, bendylib is bundled and bend is implemented via real
-     * mesh deformation. On 1.20.1's player-animation-lib 1.0.x, bendylib is NOT on the classpath
-     * (despite {@code BendHelper.bend} still referencing it via stale bytecode) — calling
-     * {@code IBendHelper.INSTANCE.bend} would NoClassDefFoundError. We probe at resolve time and
-     * silently no-op bend when bendylib isn't available; users on 1.20.1 install bendy-lib
-     * separately for proper bend.
+     * player-animation-lib's {@code BendHelper} bends through bendylib on every version but ships
+     * without it: on 1.21.1, Emotecraft 2.4 nests bendy-lib 5.x as a jar-in-jar; on 1.20.1, bendy-lib
+     * is a separate install. Without it, {@code IBendHelper.INSTANCE.bend} would NoClassDefFoundError,
+     * so we probe at resolve time and silently no-op bend when bendylib isn't there.
      */
     static boolean bendylibAvailable;
 
@@ -93,7 +91,7 @@ public final class EmoteReflection {
         return ok;
     }
 
-    /** True when real mesh-deformation bend is available (1.21.1). False on 1.20.1 — see field doc. */
+    /** True when real mesh-deformation bend is available: bendylib is present. See field doc. */
     public static synchronized boolean isBendylibAvailable() {
         if (!attempted) tryResolve();
         return bendylibAvailable;
@@ -282,9 +280,8 @@ public final class EmoteReflection {
                 clientConfigFastMenuEmotes = null;
             }
 
-            // Probe for bendylib's ModelPartAccessor. Present on 1.21.1's
-            // player-animation-lib 1.1+ (bundled), and in standalone bendy-lib
-            // on 1.20.1 when installed.
+            // Probe for bendylib's ModelPartAccessor: nested in Emotecraft 2.4 on
+            // 1.21.1, and standalone bendy-lib on 1.20.1 when installed.
             try {
                 Class.forName("io.github.kosmx.bendylib.ModelPartAccessor");
                 bendylibAvailable = true;

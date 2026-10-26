@@ -1,0 +1,44 @@
+{
+  "schema": "townstead:consumable/v2",
+  "mods": ["brewinandchewin", "cocktailsdelight"],
+  "items": [
+    "cocktailsdelight:vodka_tonic",
+    "cocktailsdelight:mojito",
+    "cocktailsdelight:pina_colada",
+    "cocktailsdelight:whiskey_sour"
+  ],
+  "requires": {
+    "type": "pheno:or",
+    "conditions": [
+      { "type": "pheno:life_stage", "stage": "adult" },
+      {
+        "type": "pheno:and",
+        "conditions": [
+          { "type": "pheno:life_stage", "stage": "teen" },
+          {
+            "type": "pheno:config",
+            "scope": "server",
+            "file": "townstead-server.toml",
+            "path": ["needs", "teensMayDrinkAlcohol"],
+            "equals": true,
+            "default": false
+          }
+        ]
+      }
+    ]
+  },
+  "effects": {
+    "type": "pheno:add_state",
+    "state": "townstead_state:drunk",
+    "amount": 20,
+    "duration": 1200,
+    "source": "townstead:cocktail_serving"
+  },
+  "transaction": {
+    "mode": "replace_with_pheno",
+    "accounting": "consume_one",
+    "consumers": ["villager"],
+    "remainder": { "mode": "none", "destination": "source" },
+    "effect_admission": { "default": "deny", "allow": ["attribute"] }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.outfitter.canteen"
+  },
+  "icon": "minecraft:potion",
+  "description": {
+    "translate": "skill.townstead.leatherworker.outfitter.canteen.description"
+  },
+  "cost": 1,
+  "requires": [
+    "bedroll"
+  ],
+  "skill_group": "townstead:outfitter_kit",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:hide",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:hydrate",
+        "immediate": 8,
+        "lasting": 4
+      }
+    }
+  }
+}

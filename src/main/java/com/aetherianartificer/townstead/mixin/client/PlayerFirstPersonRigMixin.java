@@ -1,6 +1,8 @@
 package com.aetherianartificer.townstead.mixin.client;
 
+import com.aetherianartificer.townstead.client.species.HandFade;
 import com.aetherianartificer.townstead.client.species.RigModels;
+import com.aetherianartificer.townstead.client.species.RigSkins;
 import com.aetherianartificer.townstead.client.species.RigSkinTone;
 import com.aetherianartificer.townstead.root.Hold;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -48,6 +50,7 @@ public abstract class PlayerFirstPersonRigMixin {
     *///?}
     private void townstead$overlayRightHand(PoseStack pose, MultiBufferSource buffers, int light,
                                             AbstractClientPlayer player, CallbackInfo ci) {
+        if (com.aetherianartificer.townstead.client.species.SkinOverlayLayer.consumeFirstPersonArmPainted()) return;
         if (!RigModels.isAlternate(RigModels.rigBaseFor(player))) {
             //? if neoforge {
             PlayerModel<AbstractClientPlayer> renderedModel =
@@ -77,6 +80,7 @@ public abstract class PlayerFirstPersonRigMixin {
     *///?}
     private void townstead$overlayLeftHand(PoseStack pose, MultiBufferSource buffers, int light,
                                            AbstractClientPlayer player, CallbackInfo ci) {
+        if (com.aetherianartificer.townstead.client.species.SkinOverlayLayer.consumeFirstPersonArmPainted()) return;
         if (!RigModels.isAlternate(RigModels.rigBaseFor(player))) {
             //? if neoforge {
             PlayerModel<AbstractClientPlayer> renderedModel =
@@ -94,9 +98,12 @@ public abstract class PlayerFirstPersonRigMixin {
                                                   AbstractClientPlayer player, boolean left) {
         String rigBase = RigModels.rigBaseFor(player);
         if (!RigModels.isAlternate(rigBase)) return false;
+        // Faded like the third-person rig body; fully faded draws nothing, as the body does.
+        float fade = HandFade.alpha(player);
+        if (fade <= 0f) return true;
         // A non-humanoid rig has no humanoid arm; stand in the front-leg bone the species grips with.
         if (RigModels.isGeneric(rigBase)) {
-            return townstead$renderGenericArm(pose, buffers, light, player, left, rigBase);
+            return townstead$renderGenericArm(pose, buffers, light, player, left, rigBase, fade);
         }
         HumanoidModel<LivingEntity> model = RigModels.model(rigBase);
         ResourceLocation texture = RigModels.texture(rigBase);
@@ -106,15 +113,9 @@ public abstract class PlayerFirstPersonRigMixin {
         model.setupAnim(player, 0f, 0f, 0f, 0f, 0f);
         ModelPart arm = left ? model.leftArm : model.rightArm;
         arm.xRot = 0f;
-        int tone = RigSkinTone.forEntity(player);
-        VertexConsumer buffer = buffers.getBuffer(model.renderType(texture));
-        //? if neoforge {
-        arm.render(pose, buffer, light, OverlayTexture.NO_OVERLAY, tone);
-        //?} else {
-        /*arm.render(pose, buffer, light, OverlayTexture.NO_OVERLAY,
-                ((tone >> 16) & 0xFF) / 255f, ((tone >> 8) & 0xFF) / 255f, (tone & 0xFF) / 255f,
-                ((tone >>> 24) & 0xFF) / 255f);
-        *///?}
+        townstead$renderPart(arm, model, texture, pose, buffers, light, player, fade);
+        RigSkins.renderPart(player, model, arm, left ? "left_arm" : "right_arm", pose, buffers, light, fade);
+        if (fade >= 1f) RigModels.renderOverlays(rigBase, player, arm, pose, buffers, light);
         return true;
     }
 
@@ -125,7 +126,8 @@ public abstract class PlayerFirstPersonRigMixin {
      * nudge to seat the leg into view is dialed via the hold grip, same surface as the third-person grip.
      */
     private static boolean townstead$renderGenericArm(PoseStack pose, MultiBufferSource buffers, int light,
-                                                      AbstractClientPlayer player, boolean left, String rigBase) {
+                                                      AbstractClientPlayer player, boolean left, String rigBase,
+                                                      float fade) {
         Hold.Grip grip = townstead$sideGrip(player, left);
         if (grip == null) return false;
         EntityModel<LivingEntity> model = RigModels.genericModel(rigBase);
@@ -135,26 +137,41 @@ public abstract class PlayerFirstPersonRigMixin {
         model.young = player.isBaby();
         model.riding = false;
         model.setupAnim(player, 0f, 0f, 0f, 0f, 0f);
-        ModelPart bone = RigModels.bakedBone(rigBase, grip.bone());
+        ModelPart[] armPath = model instanceof net.minecraft.client.model.HierarchicalModel<?> hierarchy
+                ? RigModels.bonePath(hierarchy.root(), grip.bone()) : null;
+        ModelPart bone = armPath == null ? null : armPath[armPath.length - 1];
         if (bone == null) return false;
         // Seat the leg into the first-person view: the authored first-person rotation orients it, then
         // the offset slides it into the corner. Both default to zero (leg drawn at the raw hand frame).
+        pose.pushPose();
         float[] rot = grip.fpRotation();
         if (rot[0] != 0f) pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(rot[0]));
         if (rot[1] != 0f) pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(rot[1]));
         if (rot[2] != 0f) pose.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(rot[2]));
         float[] off = grip.fpOffset();
         pose.translate(off[0] / 16f, off[1] / 16f, off[2] / 16f);
+        townstead$renderPart(bone, model, texture, pose, buffers, light, player, fade);
+        if (fade >= 1f) RigModels.renderOverlays(rigBase, player, bone, pose, buffers, light);
+        pose.popPose();
+        return true;
+    }
+
+    /** One rig part in the bearer's skin tone, translucent while it fades (the cutout type ignores alpha). */
+    private static void townstead$renderPart(ModelPart part, EntityModel<LivingEntity> model, ResourceLocation texture,
+                                             PoseStack pose, MultiBufferSource buffers, int light,
+                                             AbstractClientPlayer player, float fade) {
         int tone = RigSkinTone.forEntity(player);
-        VertexConsumer buffer = buffers.getBuffer(model.renderType(texture));
+        VertexConsumer buffer = buffers.getBuffer(fade < 1f
+                ? net.minecraft.client.renderer.RenderType.entityTranslucent(texture)
+                : model.renderType(texture));
+        tone = HandFade.color(tone, fade);
         //? if neoforge {
-        bone.render(pose, buffer, light, OverlayTexture.NO_OVERLAY, tone);
+        part.render(pose, buffer, light, OverlayTexture.NO_OVERLAY, tone);
         //?} else {
-        /*bone.render(pose, buffer, light, OverlayTexture.NO_OVERLAY,
+        /*part.render(pose, buffer, light, OverlayTexture.NO_OVERLAY,
                 ((tone >> 16) & 0xFF) / 255f, ((tone >> 8) & 0xFF) / 255f, (tone & 0xFF) / 255f,
                 ((tone >>> 24) & 0xFF) / 255f);
         *///?}
-        return true;
     }
 
     /** The grip whose bone name marks this physical side (the leg that stands in for this first-person hand). */

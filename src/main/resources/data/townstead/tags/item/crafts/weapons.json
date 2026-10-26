@@ -1,0 +1,25 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:wooden_sword",
+    "minecraft:stone_sword",
+    "minecraft:iron_sword",
+    "minecraft:golden_sword",
+    "minecraft:diamond_sword",
+    "minecraft:netherite_sword",
+    "minecraft:wooden_axe",
+    "minecraft:stone_axe",
+    "minecraft:iron_axe",
+    "minecraft:golden_axe",
+    "minecraft:diamond_axe",
+    "minecraft:netherite_axe",
+    {"id": "#minecraft:swords", "required": false},
+    {"id": "#minecraft:axes", "required": false},
+    {"id": "#forge:tools/swords", "required": false},
+    {"id": "#forge:tools/axes", "required": false},
+    {"id": "#c:swords", "required": false},
+    {"id": "#c:axes", "required": false},
+    {"id": "#c:tools/swords", "required": false},
+    {"id": "#c:tools/axes", "required": false}
+  ]
+}

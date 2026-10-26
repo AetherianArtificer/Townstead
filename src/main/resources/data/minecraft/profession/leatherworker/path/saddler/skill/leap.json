@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.saddler.leap"
+  },
+  "icon": "minecraft:rabbit_foot",
+  "description": {
+    "translate": "skill.townstead.leatherworker.saddler.leap.description"
+  },
+  "cost": 1,
+  "requires": [
+    "spur"
+  ],
+  "skill_group": "townstead:saddler_ride",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "condition": {
+      "type": "pheno:riding"
+    },
+    "action": {
+      "type": "pheno:riding_action",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:jump_boost",
+        "duration": 200,
+        "amplifier": 2
+      }
+    }
+  }
+}

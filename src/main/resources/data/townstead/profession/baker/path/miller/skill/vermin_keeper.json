@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.miller.vermin_keeper"
+  },
+  "icon": "minecraft:string",
+  "description": {
+    "translate": "skill.townstead.baker.miller.vermin_keeper.description"
+  },
+  "cost": 1,
+  "requires": [
+    "millstone_shoulders"
+  ],
+  "power": {
+    "type": "pheno:scare_mob",
+    "radius": 8,
+    "mobs": [
+      "minecraft:silverfish",
+      "minecraft:endermite",
+      "minecraft:spider",
+      "minecraft:cave_spider"
+    ]
+  }
+}

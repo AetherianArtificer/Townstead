@@ -1,0 +1,8 @@
+{
+  "parent": "townstead:block/field_post_template",
+  "textures": {
+    "log": "tfc:block/wood/log/chestnut",
+    "log_top": "tfc:block/wood/log_top/chestnut",
+    "planks": "tfc:block/wood/planks/chestnut"
+  }
+}

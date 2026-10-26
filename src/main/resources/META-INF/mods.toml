@@ -34,7 +34,8 @@ side = "BOTH"
 [[dependencies.townstead]]
 modId = "mca"
 mandatory = true
-versionRange = "[7.6.0,)"
+# Published installs support exactly this MCA release, plus the snapshot used to build/test it.
+versionRange = "[${mca_development_version}],[${mca_version}]"
 ordering = "AFTER"
 side = "BOTH"
 
@@ -46,13 +47,6 @@ ordering = "NONE"
 side = "CLIENT"
 
 [[dependencies.townstead]]
-modId = "patchouli"
-mandatory = true
-versionRange = "[1.20.1-85,)"
-ordering = "AFTER"
-side = "BOTH"
-
-[[dependencies.townstead]]
 modId = "travelerstitles"
 mandatory = false
 versionRange = "[0,)"
@@ -62,7 +56,14 @@ side = "CLIENT"
 [[dependencies.townstead]]
 modId = "butchery"
 mandatory = false
-versionRange = "[4.8,)"
+versionRange = "[4.9,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.townstead]]
+modId = "curios"
+mandatory = false
+versionRange = "[0,)"
 ordering = "AFTER"
 side = "BOTH"
 

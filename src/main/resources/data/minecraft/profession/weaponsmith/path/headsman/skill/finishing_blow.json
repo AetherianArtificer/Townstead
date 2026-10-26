@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.headsman.finishing_blow"
+  },
+  "icon": "minecraft:iron_axe",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.headsman.finishing_blow.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 1.5,
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:health",
+        "max": 0.3,
+        "relative": true
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "greeting",
+  "voice": "townstead:persona/village_builder",
+  "lines": {
+    "there_you_are_other": "There you are, {other}.",
+    "oh_good_other": "Oh, good. {other}. I was hoping I'd see you.",
+    "morning_other": "{other}! Walk with me. I'm counting things again.",
+    "hey_you_busy": "Hey. You busy? I'm always busy. It's fine."
+  }
+}

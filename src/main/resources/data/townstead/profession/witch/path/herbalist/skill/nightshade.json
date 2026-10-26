@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.herbalist.nightshade"
+  },
+  "icon": "minecraft:sweet_berries",
+  "description": {
+    "translate": "skill.townstead.witch.herbalist.nightshade.description"
+  },
+  "cost": 1,
+  "requires": [
+    "toxic_cloud"
+  ],
+  "skill_group": "townstead:herbalist_poison",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:hex",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:poison",
+          "duration": 200,
+          "amplifier": 1
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:weakness",
+          "duration": 200,
+          "amplifier": 0
+        }
+      ],
+      "on": {
+        "type": "pheno:ray",
+        "distance": 12
+      }
+    }
+  }
+}

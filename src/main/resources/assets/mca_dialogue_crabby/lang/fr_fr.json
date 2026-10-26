@@ -2,6 +2,7 @@
   "crabby.dialogue.chat.butcher_request.no_livestock/1": "<angry>Apporte-moi plutôt de quoi travailler au lieu de me faire perdre mon temps.</angry>",
   "crabby.dialogue.chat.butcher_request.no_hook/1": "<angry>Un crochet. C'est si compliqué que ça d'en installer un ?</angry>",
   "crabby.dialogue.chat.butcher_request.no_basin/1": "<angry>Je ne saigne pas une carcasse sans bac. Débrouille-toi.</angry>",
+  "crabby.dialogue.chat.butcher_request.no_blood_grate/1": "<angry>Je ne saigne pas une carcasse sans grille à sang. C'est comme ça qu'on finit à frotter le sol.</angry>",
   "crabby.dialogue.chat.village_life.butcher_shop/1": "<angry>La file chez le boucher est toujours trop longue. Jamais à l'heure.</angry>",
   "crabby.dialogue.chat.village_life.slaughterhouse/1": "<angry>Le boucan de l'abattoir à l'aube. Tous les jours. Je déteste ça.</angry>",
   "crabby.dialogue.chat.village_life.tannery/1": "<angry>L'odeur de la tannerie gâche ma promenade matinale. Déplace-la ailleurs.</angry>",
@@ -126,5 +127,18 @@
   "crabby.dialogue.chat.leatherworker_request.no_salt/1": "<angry>Pas de sel. Brillant. Laissons pourrir, j'imagine.</angry>",
   "crabby.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<angry>Éponge mouillée. Chiffon mouillé. Choisis. N'importe quoi. S'il te plaît.</angry>",
   "crabby.dialogue.chat.leatherworker_request.no_storage/1": "<angry>Mon sac est plein. Où ce cuir est-il censé aller, dans mon chapeau ?</angry>",
-  "crabby.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Bon. Du cuir. C'est pas trop tôt.</happy>"
+  "crabby.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Bon. Du cuir. C'est pas trop tôt.</happy>",
+  "crabby.dialogue.chat.beverage_artisan_request.no_worksite/1": "<angry>Pas de poste à boissons. Je dois brasser par terre, peut-être ?</angry>",
+  "crabby.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<angry>Encore des étagères vides. Génial. Apportez des ingrédients.</angry>",
+  "crabby.dialogue.chat.beverage_artisan_request.no_storage/1": "<angry>Pas de place pour les boissons prêtes. Personne n'a prévu quoi que ce soit ?</angry>",
+  "crabby.dialogue.chat.beverage_artisan_request.unreachable/1": "<angry>Quelque chose bloque mon poste. Déplacez-le.</angry>",
+  "crabby.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<angry>Je pourrais faire %2$s si quelqu'un avait pensé aux ingrédients.</angry>",
+  "crabby.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<angry>C'est une boisson correcte. Arrête de me fixer.</angry>",
+  "crabby.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<angry>Je me ménage. Occupe-toi de ta tasse.</angry>",
+  "crabby.dialogue.chat.townstead_drunk.drunk_arrival/1": "<angry>La salle est de travers. Quelqu'un devrait arranger ça.</angry>",
+  "crabby.dialogue.chat.townstead_drunk.drunk_ambient/1": "<angry>J'avais un excellent argument avant que vous interrompiez la table.</angry>",
+  "crabby.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>Assez. De l'eau, et moins de bruit.</sleepy>",
+  "crabby.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>Si le sol arrêtait de bouger, je me lèverais.</sleepy>",
+  "crabby.dialogue.chat.townstead_drunk.service_refused/1": "<angry>J'ai dit non. Apportez de l'eau et laissez la cruche.</angry>",
+  "crabby.dialogue.chat.townstead_drunk.recovered/1": "<angry>J'ai mal à la tête. Silence.</angry>"
 }

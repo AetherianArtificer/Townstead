@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.pathfinder.second_wind"
+  },
+  "icon": "minecraft:sugar",
+  "description": {
+    "translate": "skill.townstead.cartographer.pathfinder.second_wind.description"
+  },
+  "cost": 1,
+  "requires": [
+    "mile_marker"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 60,
+    "resource_cost": {
+      "resource": "townstead:bearing",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:bearing",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:energize",
+      "amount": 2
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "shape": "cloud",
+  "color": "#DDEEFF",
+  "duration": 260,
+  "fog": {
+    "distance": 5.0
+  },
+  "particle": "minecraft:snowflake",
+  "inside": {
+    "interval": 10,
+    "condition": {
+      "type": "pheno:hostile"
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:freeze",
+          "amount": 30
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:slowness",
+          "duration": 20,
+          "amplifier": 1
+        }
+      ]
+    }
+  }
+}

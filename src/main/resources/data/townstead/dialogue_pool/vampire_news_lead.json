@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:dialogue_pool/v1",
+  "mods": "vampirism",
+  "act": "filler",
+  "subjects": "vampire_news",
+  "empty": 3
+}

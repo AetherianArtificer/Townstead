@@ -31,6 +31,14 @@ public abstract class LivingEntityPhasingMixin {
     /*@Inject(method = "m_8107_", at = @At("TAIL"), remap = false)
     *///?}
     private void townstead$phasingPost(CallbackInfo ci) {
-        Phasing.postTick((net.minecraft.world.entity.LivingEntity) (Object) this);
+        net.minecraft.world.entity.LivingEntity self = (net.minecraft.world.entity.LivingEntity) (Object) this;
+        Phasing.postTick(self);
+        // Drift floats the local player; villagers drift through their pilot instead.
+        if (self.level().isClientSide && self instanceof net.minecraft.world.entity.player.Player) {
+            com.aetherianartificer.townstead.client.root.ClientDrift.afterTravel(self);
+        }
+        // Fish-style players swim freely under water; villagers swim through their pilot.
+        com.aetherianartificer.townstead.root.locomotion.SwimPhysics.afterTravel(self);
+        com.aetherianartificer.townstead.root.locomotion.ParachutePhysics.afterTravel(self);
     }
 }

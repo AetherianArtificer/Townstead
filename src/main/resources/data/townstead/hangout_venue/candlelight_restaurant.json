@@ -1,0 +1,10 @@
+{
+  "schema":"townstead:hangout_venue/v2","mods":["candlelight","farm_and_charm"],
+  "buildings":["compat/candlelight/restaurant_l1","compat/candlelight/restaurant_l2","compat/candlelight/restaurant_l3"],
+  "capacity":8,"activities":["townstead:candlelight_dinner","townstead:candlelight_after_dinner"],
+  "tags":["townstead_hangouts:refined","townstead_hangouts:quiet","townstead_hangouts:intimate","townstead_hangouts:food","townstead_hangouts:drink"],
+  "amenities":["seating","food","drink","conversation","place_setting","dinner_bell"],
+  "staff_roles": {
+    "server": {"type":"pheno:profession","profession":"townstead:cook"}
+  }
+}

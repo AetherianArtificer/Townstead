@@ -18,6 +18,7 @@ public final class LineageRegistry {
 
     static void replaceAll(Map<ResourceLocation, Lineage> next) {
         ENTRIES = Map.copyOf(new LinkedHashMap<>(next));
+        RootRegistry.compositionChanged();
     }
 
     @Nullable

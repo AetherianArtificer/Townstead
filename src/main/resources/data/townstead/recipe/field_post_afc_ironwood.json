@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_afc_ironwood"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "afc:wood/lumber/ironwood"
+    },
+    "L": {
+      "item": "afc:wood/log/ironwood"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_afc_ironwood",
+    "count": 1
+  }
+}

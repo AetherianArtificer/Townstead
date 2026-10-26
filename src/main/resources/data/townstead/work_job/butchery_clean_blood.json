@@ -1,0 +1,77 @@
+{
+  "schema": "townstead:job/v3",
+  "mods": [
+    "butchery"
+  ],
+  "task": "townstead_work:clean",
+  "type": "townstead:block_interaction",
+  "target": {
+    "block": "butchery:blood_puddle",
+    "interactions": [
+      {
+        "item": "butchery:sponge",
+        "item_condition": {
+          "type": "pheno:data",
+          "key": "spongeWetness",
+          "min": 1,
+          "default": 0
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:entity.fishing_bobber.splash",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:destroy",
+            "drop_item": false
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:change_data",
+              "key": "spongeWetness",
+              "operation": "add",
+              "value": -1,
+              "min": 0,
+              "max": 10
+            }
+          }
+        ],
+        "xp": 1
+      },
+      {
+        "item": "butchery:rag",
+        "item_condition": {
+          "type": "pheno:data",
+          "key": "ragWetness",
+          "min": 1,
+          "default": 0
+        },
+        "action": [
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:entity.fishing_bobber.splash",
+            "volume": 0.3
+          },
+          {
+            "type": "pheno:destroy",
+            "drop_item": false
+          },
+          {
+            "type": "pheno:item_action",
+            "action": {
+              "type": "pheno:change_data",
+              "key": "ragWetness",
+              "operation": "add",
+              "value": -1,
+              "min": 0,
+              "max": 10
+            }
+          }
+        ],
+        "xp": 1
+      }
+    ]
+  }
+}

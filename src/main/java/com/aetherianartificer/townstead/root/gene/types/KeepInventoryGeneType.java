@@ -13,6 +13,11 @@ import com.google.gson.JsonObject;
  */
 public final class KeepInventoryGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.BEING;
+    }
+
     public static final String KEY = "pheno:keep_inventory";
 
     public record Instance() implements GeneInstance {

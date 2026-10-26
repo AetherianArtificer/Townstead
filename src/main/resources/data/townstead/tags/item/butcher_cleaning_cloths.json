@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "butchery:sponge", "required": false },
+    { "id": "butchery:rag", "required": false }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "react_anecdote",
+  "groups": [
+    {
+      "state": { "form": "story" },
+      "lines": {
+        "i_didnt_know_that": "I didn't know that.",
+        "that_must_have_been_something": "That must have been something.",
+        "wow_really": "Wow, really?",
+        "huh_i_had_no_idea": "Huh. I had no idea.",
+        "no_way": "No way!",
+        "thats_quite_a_story": "That's quite a story.",
+        "oh_wow": "Oh, wow.",
+        "i_believe_it": "I believe it.",
+        "what_a_thing_to_happen": "What a thing to happen.",
+        "oh_i_remember_hearing_about": "Oh, I remember hearing about that.",
+        "oh_my": "Oh my.",
+        "thats_something_else": "That's something else.",
+        "goodness": "Goodness.",
+        "seriously": "Seriously?",
+        "oh_thats_a_good_story": "Oh, that's a good story.",
+        "wow_id_never_have_guessed": "Wow. I'd never have guessed.",
+        "really": { "text": "Really?", "asks": "townstead:more" },
+        "and_then_what_happened": { "text": "And then what happened?", "asks": "townstead:more" },
+        "wait_is_that_true": { "text": "Wait, is that true?", "asks": "townstead:more" },
+        "youre_making_that_up": { "text": "You're making that up.", "asks": "townstead:more" }
+      }
+    },
+    {
+      "state": { "form": "story", "tone": "funny" },
+      "lines": {
+        "ha_i_can_picture_it": "Ha! I can picture it.",
+        "ha_classic": "Ha! Classic.",
+        "thats_hilarious": "That's hilarious!",
+        "pfft_you_didnt": "Pfft! You didn't!",
+        "id_have_paid_to_see": "I'd have paid to see that!"
+      }
+    },
+    {
+      "state": { "form": "story", "stance": "-" },
+      "lines": {
+        "that_sounds_scary": "That sounds scary.",
+        "oh_thats_awful": "Oh, that's awful.",
+        "im_glad_youre_okay": "I'm glad you're okay."
+      }
+    },
+    {
+      "state": { "form": "story", "stance": "+" },
+      "lines": {
+        "that_sounds_lovely": "That sounds lovely.",
+        "oh_how_nice": "Oh, how nice.",
+        "what_a_nice_memory": "What a nice memory."
+      }
+    },
+    {
+      "state": { "form": "general" },
+      "lines": {
+        "sounds_about_right": "Sounds about right.",
+        "isnt_that_the_way": "Isn't that the way.",
+        "every_time": "Every time.",
+        "of_course": "Of course.",
+        "thats_how_it_goes": "That's how it goes.",
+        "always_the_way": "Always the way.",
+        "figures": "Figures.",
+        "isnt_it_always": "Isn't it always?",
+        "yep_every_single_time": "Yep, every single time.",
+        "thats_so_true": "That's so true.",
+        "never_fails": "Never fails.",
+        "aint_that_the_truth": "Ain't that the truth."
+      }
+    },
+    { "lines": {"hmph_figures": {"text": "Hmph. Figures.", "personalities": ["crabby", "grumpy"]}} },
+    {
+      "state": { "form": "story" },
+      "lines": { "oh_i_love_that": {"text": "Oh, I love that!", "personalities": ["upbeat", "peppy"]} }
+    },
+    {
+      "lines": { "thats_sad_like_most_things": {"text": "That's sad. Like most things.", "personalities": "gloomy"} }
+    },
+    {
+      "state": { "form": "story" },
+      "lines": { "wow_tell_me_more": {"text": "Wow! Tell me more!", "stages": "child"} }
+    },
+    {
+      "lines": {
+        "huh_okay": { "text": "Huh. Okay.", "stages": "teen" },
+        "ah_that_takes_me_back": { "text": "Ah, that takes me back.", "stages": "senior" }
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "poi": [
+    { "type": "townstead:job_block", "block": "minecraft:brewing_stand" },
+    { "type": "townstead:building", "type_prefix": "infirmary" }
+  ],
+  "storage": { "preferred_roles": ["townstead:medical"] },
+  "tasks": [
+    {
+      "type": "townstead_work:brew_potion",
+      "workstations": ["minecraft:brewing_stand"],
+      "recipes": [
+        "minecraft:potion",
+        "minecraft:splash_potion",
+        "minecraft:lingering_potion"
+      ],
+      "weight": 10
+    }
+  ]
+}

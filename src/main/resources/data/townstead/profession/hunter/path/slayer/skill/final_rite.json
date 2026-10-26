@@ -1,0 +1,62 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.slayer.final_rite"
+  },
+  "icon": "vampirism:stake",
+  "description": {
+    "translate": "skill.townstead.hunter.slayer.final_rite.description"
+  },
+  "cost": 1,
+  "requires": [
+    "executioner"
+  ],
+  "skill_group": "townstead:hunter_slayer_a",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:vigil",
+      "amount": 90
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:damage",
+              "amount": 16,
+              "source": "other"
+            },
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:weakness",
+              "duration": 100,
+              "amplifier": 1
+            },
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:slowness",
+              "duration": 100,
+              "amplifier": 1
+            }
+          ],
+          "on": {
+            "type": "pheno:ray",
+            "distance": 4
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.bell.use",
+          "volume": 1.0,
+          "pitch": 0.6
+        }
+      ]
+    }
+  }
+}

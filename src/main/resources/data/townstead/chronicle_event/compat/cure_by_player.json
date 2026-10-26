@@ -1,0 +1,62 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "service.cure",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "reputation",
+    "key": "mcareputation:villager_cured"
+  },
+  "reach": "village",
+  "news_value": 5.0,
+  "roles": [
+    {
+      "id": "healer",
+      "kind": "player"
+    },
+    {
+      "id": "cured",
+      "kind": "villager"
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.compat.cure_by_player"
+    },
+    "params": [
+      "healer",
+      "cured"
+    ]
+  },
+  "impact": {
+    "cured": {
+      "mood": 8.0,
+      "memory": {
+        "valence": 1.0,
+        "strength": 3.0
+      }
+    },
+    "witness": {
+      "mood": 2.0,
+      "memory": {
+        "valence": 0.7,
+        "strength": 1.2
+      }
+    },
+    "on_learn": {
+      "mood": 1.0,
+      "memory": {
+        "valence": 0.6,
+        "strength": 0.8
+      }
+    }
+  }
+}

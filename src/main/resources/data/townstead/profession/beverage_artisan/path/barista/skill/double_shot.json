@@ -1,0 +1,129 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.barista.double_shot"
+  },
+  "icon": "minecraft:glowstone_dust",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.barista.double_shot.description"
+  },
+  "cost": 1,
+  "requires": [
+    "espresso_shot"
+  ],
+  "skill_group": "townstead:barista_shot",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:buzz",
+      "amount": 0
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else_list",
+          "actions": [
+            {
+              "condition": {
+                "type": "pheno:resource",
+                "resource": "townstead:buzz",
+                "min": 67
+              },
+              "action": {
+                "type": "pheno:area_of_effect",
+                "radius": 4,
+                "include_self": true,
+                "target": "non_hostile",
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:speed",
+                      "duration": 200,
+                      "amplifier": 2
+                    },
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:haste",
+                      "duration": 200,
+                      "amplifier": 2
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "condition": {
+                "type": "pheno:resource",
+                "resource": "townstead:buzz",
+                "min": 34
+              },
+              "action": {
+                "type": "pheno:area_of_effect",
+                "radius": 4,
+                "include_self": true,
+                "target": "non_hostile",
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:speed",
+                      "duration": 200,
+                      "amplifier": 1
+                    },
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:haste",
+                      "duration": 200,
+                      "amplifier": 1
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "fallback_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 4,
+            "include_self": true,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:speed",
+                  "duration": 200,
+                  "amplifier": 0
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:haste",
+                  "duration": 200,
+                  "amplifier": 0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "pheno:change_resource",
+          "resource": "townstead:buzz",
+          "amount": 35
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.bottle.fill",
+          "volume": 0.8,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

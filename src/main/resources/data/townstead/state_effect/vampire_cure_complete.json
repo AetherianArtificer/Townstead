@@ -1,0 +1,26 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "mods": "vampirism",
+  "state": "townstead_state:vampire_cure",
+  "priority": 50,
+  "on_exit": [
+    {
+      "type": "pheno:clear_state",
+      "state": "townstead_state:vampire"
+    },
+    {
+      "type": "pheno:clear_state",
+      "state": "townstead_state:vampire_blood"
+    },
+    {
+      "type": "pheno:play_sound",
+      "sound": "minecraft:entity.zombie_villager.converted"
+    },
+    {
+      "type": "pheno:spawn_particles",
+      "particle": "minecraft:happy_villager",
+      "count": 12,
+      "spread": 0.6
+    }
+  ]
+}

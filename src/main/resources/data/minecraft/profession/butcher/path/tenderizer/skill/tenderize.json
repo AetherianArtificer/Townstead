@@ -1,0 +1,53 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.tenderizer.tenderize"
+  },
+  "icon": "minecraft:iron_ingot",
+  "description": {
+    "translate": "skill.townstead.butcher.tenderizer.tenderize.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:tenderizer_blow",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 240,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:damage",
+              "amount": 3,
+              "source": "other"
+            },
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:weakness",
+              "duration": 200,
+              "amplifier": 1
+            }
+          ],
+          "on": {
+            "type": "pheno:ray",
+            "distance": 4
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.anvil.land",
+          "volume": 0.5,
+          "pitch": 0.7
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "schema":"townstead:recipe_projection/v1",
+  "mods":"kaleidoscope_tavern",
+  "recipe_types":["kaleidoscope_tavern:pressing_tub"],
+  "domain":"brewing.physical_pressing",
+  "fields":{
+    "inputs":{"path":"getIngredient","operation":"list","required":true},
+    "output_fluid":{"path":"getFluid","operation":"fluid_id","required":true},
+    "fluid_amount":{"path":"getFluidAmount","operation":"integer","required":true},
+    "readiness":{"default":true,"operation":"boolean"}
+  }
+}

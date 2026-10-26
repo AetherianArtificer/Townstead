@@ -1,0 +1,16 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "townstead_roots:skin_tone",
+  "display_name": {
+    "translate": "gene.townstead_roots.vampire_deep_pallor"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.vampire_deep_pallor.desc"
+  },
+  "category": "Appearance",
+  "locus": "townstead_roots:skin",
+  "tint": "#B4B0BE",
+  "blend": "screen",
+  "strength": 1.0
+}

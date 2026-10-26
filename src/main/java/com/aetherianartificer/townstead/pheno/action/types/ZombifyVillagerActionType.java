@@ -8,8 +8,8 @@ import net.minecraft.world.entity.Mob;
 
 /**
  * Turns the entity into a zombie villager (Apugli's {@code zombify_villager}). Apugli only handled
- * vanilla villagers; this works on any {@code Mob}, so an MCA villager zombifies too (it becomes a
- * vanilla zombie villager, since that is the only zombie-villager type that exists).
+ * vanilla villagers; this works on any {@code Mob}, so an MCA villager zombifies too (it becomes an
+ * MCA zombie villager and keeps who they were). A villager immune to infection is not turned.
  *
  * <p>JSON: {@code { "type":"pheno:zombify_villager" }}</p>
  */

@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": { "translate": "skill.townstead.cook.chef.kitchen_pace" },
+  "icon": "farmersdelight:cooking_pot",
+  "description": { "translate": "skill.townstead.cook.chef.kitchen_pace.description" },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 60,
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        { "type": "pheno:building", "building_prefix": "compat/farmersdelight/kitchen_l" },
+        {
+          "type": "pheno:block_in_radius",
+          "radius": 8,
+          "block_condition": {
+            "type": "pheno:and",
+            "conditions": [
+              { "type": "pheno:in_tag", "tag": "townstead:kitchen/heat_sources" },
+              { "type": "pheno:block_state", "property": "lit", "value": "true", "if_missing": "pass" }
+            ]
+          }
+        }
+      ]
+    },
+    "action": { "type": "pheno:heal", "amount": 1.0 }
+  }
+}

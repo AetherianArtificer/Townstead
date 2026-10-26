@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": { "translate": "skill.townstead.cook.chef.precision_cut" },
+  "icon": "farmersdelight:diamond_knife",
+  "description": { "translate": "skill.townstead.cook.chef.precision_cut.description" },
+  "cost": 1,
+  "requires": ["chefs_knife"],
+  "skill_group": "townstead:chef_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 180,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": { "resource": "townstead:stamina", "amount": 30 },
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": { "type": "pheno:ingredient", "tag": "townstead:kitchen_knives" }
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 3.0,
+          "target": "hostile",
+          "bientity_condition": { "type": "pheno:relative_rotation", "max_angle": 25 },
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              { "type": "pheno:damage", "source": "other", "amount": 9.0 },
+              { "type": "pheno:apply_effect", "effect": "minecraft:weakness", "duration": 100, "amplifier": 0 }
+            ]
+          }
+        },
+        { "type": "pheno:swing_hand", "hand": "mainhand" },
+        { "type": "pheno:play_sound", "sound": "minecraft:entity.player.attack.crit", "volume": 1.0, "pitch": 0.8 },
+        { "type": "pheno:spawn_particles", "particle": "minecraft:crit", "count": 18, "spread": 0.4, "speed": 0.08 }
+      ]
+    }
+  }
+}

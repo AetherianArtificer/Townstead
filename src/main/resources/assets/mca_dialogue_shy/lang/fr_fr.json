@@ -2,6 +2,7 @@
   "shy.dialogue.chat.butcher_request.no_livestock/1": "<nervous>Euh... je ne v-vois aucune bête... c'est correct de le dire ?</nervous>",
   "shy.dialogue.chat.butcher_request.no_hook/1": "<nervous>On pourrait, euh, peut-être, avoir un c-crochet ? S'il te plaît ?</nervous>",
   "shy.dialogue.chat.butcher_request.no_basin/1": "<nervous>Un b-bac, ce serait bien... si ce n'est p-pas dérangeant...</nervous>",
+  "shy.dialogue.chat.butcher_request.no_blood_grate/1": "<nervous>Une g-grille à sang serait bien… si ça ne d-dérange pas…</nervous>",
   "shy.dialogue.chat.village_life.butcher_shop/1": "<nervous>Le boucher est... bruyant. J'y vais tôt, quand c'est calme.</nervous>",
   "shy.dialogue.chat.village_life.slaughterhouse/1": "<scared>L'abattoir me fait un peu peur. D-désolé.</scared>",
   "shy.dialogue.chat.village_life.smokehouse/1": "<happy>Le fumoir est b-bien. L'odeur est... douce.</happy>",
@@ -149,5 +150,18 @@
   "shy.dialogue.chat.leatherworker_request.no_salt/1": "<nervous>D-désolé, il me faudrait du sel ? Pour la peau. Juste un peu.</nervous>",
   "shy.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<nervous>Euh, une é-éponge mouillée ? Ou un chiffon ? L'un ou l'autre, si ce n'est pas trop demander...</nervous>",
   "shy.dialogue.chat.leatherworker_request.no_storage/1": "<nervous>Mon s-sac est p-plein... il pourrait y avoir un coffre quelque part ? S'il te plaît ?</nervous>",
-  "shy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Oh... oh, c'est séché. Le c-cuir est vraiment beau...</happy>"
+  "shy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Oh... oh, c'est séché. Le c-cuir est vraiment beau...</happy>",
+  "shy.dialogue.chat.townstead_drunk.tipsy_arrival/1": "Je vais peut-être rester un peu plus longtemps… si ça ne dérange personne.",
+  "shy.dialogue.chat.townstead_drunk.tipsy_ambient/1": "J-je crois que je parle plus que d'habitude. Pardon.",
+  "shy.dialogue.chat.townstead_drunk.drunk_arrival/1": "Oh… tout le monde m'a vu trébucher ?",
+  "shy.dialogue.chat.townstead_drunk.drunk_ambient/1": "Je racontais cette histoire à voix haute ? Oh. Je suppose que oui.",
+  "shy.dialogue.chat.townstead_drunk.wasted_arrival/1": "Je pourrais avoir de l'eau… et un endroit calme, s'il vous plaît ?",
+  "shy.dialogue.chat.townstead_drunk.wasted_ambient/1": "J-je vais m'en remettre. J'ai juste besoin de rester assis sans bouger.",
+  "shy.dialogue.chat.townstead_drunk.service_refused/1": "De l'eau, s'il vous plaît. Et peut-être un endroit un peu plus calme.",
+  "shy.dialogue.chat.townstead_drunk.recovered/1": "Je me sens de nouveau moi-même. Quel soulagement.",
+  "shy.dialogue.chat.beverage_artisan_request.no_worksite/1": "Euh… on pourrait avoir un poste à boissons ? Si ce n'est pas trop de dérangement.",
+  "shy.dialogue.chat.beverage_artisan_request.no_ingredients/1": "Il n'y a plus d'ingrédients. D-désolé, quelqu'un pourrait les remplacer ?",
+  "shy.dialogue.chat.beverage_artisan_request.no_storage/1": "Il n'y a plus de place. Peut-être… un autre coffre ?",
+  "shy.dialogue.chat.beverage_artisan_request.unreachable/1": "Je n'arrive pas à atteindre mon poste. Q-quelqu'un pourrait dégager le passage ?",
+  "shy.dialogue.chat.beverage_artisan_request.no_ingredients_item": "Je pourrais faire %2$s, mais… il nous manque les ingrédients."
 }

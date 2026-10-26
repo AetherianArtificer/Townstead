@@ -1,19 +1,16 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
+import com.aetherianartificer.townstead.compat.mca.McaChoreTools;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.Chore;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.BoneMealItem;
-import net.minecraft.world.item.HoeItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.BlockItem;
-//? if >=1.21 {
-import net.minecraft.core.component.DataComponents;
-//?}
-import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.StemBlock;
 //? if neoforge {
@@ -31,16 +28,17 @@ public final class WorkSupplyManager {
     private WorkSupplyManager() {}
 
     public static void restockForCurrentJob(ServerLevel level, VillagerEntityMCA villager, Chore job) {
-        if (!TownsteadConfig.ENABLE_CONTAINER_SOURCING.get()) return;
+        if (!Switchboard.get(TownsteadConfig.ENABLE_CONTAINER_SOURCING)) return;
         if (job == null || job == Chore.NONE) return;
-        boolean isFarmer = villager.getVillagerData().getProfession() == VillagerProfession.FARMER;
+        boolean isFarmer = com.aetherianartificer.townstead.work.WorkTaskDeclarations.permitsTask(
+                villager, com.aetherianartificer.townstead.profession.def.WorkTaskTypes.HARVEST);
 
         SimpleContainer inv = villager.getInventory();
-        Class<?> toolType = job.getToolType();
-        boolean hasTool = toolType == null || contains(inv, stack -> toolType.isInstance(stack.getItem()));
-        if (!hasTool && toolType != null) {
+        Predicate<ItemStack> toolMatcher = McaChoreTools.toolMatcher(job);
+        boolean hasTool = toolMatcher == null || contains(inv, toolMatcher);
+        if (!hasTool) {
             NearbyItemSources.pullSingleToInventory(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
-                    stack -> toolType.isInstance(stack.getItem()),
+                    toolMatcher,
                     stack -> 1);
         }
 
@@ -58,28 +56,29 @@ public final class WorkSupplyManager {
                         stack -> stack.getItem() instanceof BoneMealItem,
                         stack -> stack.getCount());
             }
-            if (toolType == null && !contains(inv, stack -> stack.getItem() instanceof HoeItem)) {
+            if (toolMatcher == null && !contains(inv, com.aetherianartificer.townstead.farming.Farmland::isHoe)) {
                 NearbyItemSources.pullSingleToInventory(level, villager, SEARCH_RADIUS, VERTICAL_RADIUS,
-                        stack -> stack.getItem() instanceof HoeItem,
+                        com.aetherianartificer.townstead.farming.Farmland::isHoe,
                         stack -> 1);
             }
 
-            if (TownsteadConfig.ENABLE_HARVEST_OUTPUT_STORAGE.get() && villager.tickCount % 40 == 0) {
-                offloadHarvestOutput(level, villager, toolType);
+            if (Switchboard.get(TownsteadConfig.ENABLE_HARVEST_OUTPUT_STORAGE) && villager.tickCount % 40 == 0) {
+                offloadHarvestOutput(level, villager, toolMatcher);
             }
         }
     }
 
-    private static void offloadHarvestOutput(ServerLevel level, VillagerEntityMCA villager, Class<?> requiredToolType) {
+    private static void offloadHarvestOutput(ServerLevel level, VillagerEntityMCA villager,
+                                             Predicate<ItemStack> requiredTool) {
         SimpleContainer inv = villager.getInventory();
-        int reserveFoodSlot = findBestFoodSlot(inv);
+        int reserveFoodSlot = findBestFoodSlot(villager, inv);
 
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (stack.isEmpty()) continue;
             if (i == reserveFoodSlot) continue;
-            if (requiredToolType != null && requiredToolType.isInstance(stack.getItem())) continue;
-            if (stack.getItem() instanceof HoeItem) continue;
+            if (requiredTool != null && requiredTool.test(stack)) continue;
+            if (com.aetherianartificer.townstead.farming.Farmland.isHoe(stack)) continue;
             if (stack.getItem() instanceof BoneMealItem) continue;
             if (isPlantableSeed(stack)) continue;
 
@@ -103,25 +102,15 @@ public final class WorkSupplyManager {
         return blockItem.getBlock() instanceof CropBlock || blockItem.getBlock() instanceof StemBlock;
     }
 
-    private static int findBestFoodSlot(SimpleContainer inv) {
+    private static int findBestFoodSlot(VillagerEntityMCA villager, SimpleContainer inv) {
         int bestSlot = -1;
-        int bestNutrition = -1;
+        int bestNutrition = 0;
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
-            //? if >=1.21 {
-            FoodProperties food = stack.get(DataComponents.FOOD);
-            //?} else {
-            /*FoodProperties food = stack.getFoodProperties(null);
-            *///?}
-            //? if >=1.21 {
-            if (food == null || food.nutrition() <= 0) continue;
-            if (food.nutrition() > bestNutrition) {
-                bestNutrition = food.nutrition();
-            //?} else {
-            /*if (food == null || food.getNutrition() <= 0) continue;
-            if (food.getNutrition() > bestNutrition) {
-                bestNutrition = food.getNutrition();
-            *///?}
+            if (!FoodSafety.isSafeNutritiousFood(stack, villager)) continue;
+            int nutrition = FoodSafety.nutritionFor(villager, stack);
+            if (nutrition > bestNutrition) {
+                bestNutrition = nutrition;
                 bestSlot = i;
             }
         }

@@ -34,9 +34,16 @@ import java.util.Set;
  * MCA's {@code FaceLayer} on a shell dilated between the skin and face layers.
  */
 public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>> extends VillagerLayer<T, M> {
+    // A second instance sits after MCA's FaceLayer for overlays declared {@code "layer":"over_face"}.
+    private final boolean overFace;
 
     public SkinOverlayLayer(RenderLayerParent<T, M> renderer, M model) {
+        this(renderer, model, false);
+    }
+
+    public SkinOverlayLayer(RenderLayerParent<T, M> renderer, M model, boolean overFace) {
         super(renderer, model);
+        this.overFace = overFace;
     }
 
     @Override
@@ -48,13 +55,34 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
     public void renderFinal(PoseStack transform, MultiBufferSource provider, int light, T entity,
                             float tickDelta, boolean visible, boolean glowing) {
         int overlay = LivingEntityRenderer.getOverlayCoords(entity, 0);
+        // Fade with the body under it (pheno:opacity, invisibility), so marks don't float solid on a ghost.
+        float fade = InvisFade.alpha(entity, tickDelta);
         for (String geneId : orderedOverlayGenes(entity)) {
             GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
-            ResourceLocation texture = resolveTexture(textureFor(entity, gene));
-            if (texture == null) continue;
-            int color = resolveTint(entity, gene.skinOverlayTint());
-            draw(transform, provider, light, overlay, texture, color, visible, glowing);
+            if (gene.skinOverlayOverFace() != overFace) continue;
+            Material material = materialFor(entity, gene);
+            if (material == null) continue;
+            if (gene.skinOverlayGlow()) {
+                if (visible) drawGlow(transform, provider, material.texture(), material.color());
+                continue;
+            }
+            draw(transform, provider, light, overlay, material.texture(),
+                    HandFade.color(0xFF000000 | (material.color() & 0xFFFFFF), fade), visible, glowing);
         }
+    }
+
+    /** Emissive, full-bright pass (glowing eyes), the same render type vanilla uses for spider eyes. */
+    private void drawGlow(PoseStack transform, MultiBufferSource provider, ResourceLocation texture, int color) {
+        com.mojang.blaze3d.vertex.VertexConsumer buffer = provider.getBuffer(RenderType.eyes(texture));
+        int fullBright = 0xF000F0;
+        //? if neoforge {
+        model.renderToBuffer(transform, buffer, fullBright, OverlayTexture.NO_OVERLAY, 0xFF000000 | (color & 0xFFFFFF));
+        //?} else {
+        /*float r = ((color >> 16) & 0xFF) / 255f;
+        float g = ((color >> 8) & 0xFF) / 255f;
+        float b = (color & 0xFF) / 255f;
+        model.renderToBuffer(transform, buffer, fullBright, OverlayTexture.NO_OVERLAY, r, g, b, 1f);
+        *///?}
     }
 
     // Drawn by hand (the shipped MCA jars have no renderModel helper); only the
@@ -66,19 +94,19 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
         if (layer == null) return;
         com.mojang.blaze3d.vertex.VertexConsumer buffer = provider.getBuffer(layer);
         //? if neoforge {
-        model.renderToBuffer(transform, buffer, light, overlayCoords, 0xFF000000 | (color & 0xFFFFFF));
+        model.renderToBuffer(transform, buffer, light, overlayCoords, color);
         //?} else {
         /*float r = ((color >> 16) & 0xFF) / 255f;
         float g = ((color >> 8) & 0xFF) / 255f;
         float b = (color & 0xFF) / 255f;
-        model.renderToBuffer(transform, buffer, light, overlayCoords, r, g, b, 1f);
+        model.renderToBuffer(transform, buffer, light, overlayCoords, r, g, b, ((color >>> 24) & 0xFF) / 255f);
         *///?}
     }
 
     /** The gene ids the entity could paint from: its expressed set, else its origin's grant list. */
     private static Set<String> overlayGenes(LivingEntity entity) {
         Set<String> expressed = RootClientStore.expressedGenes(entity);
-        if (!expressed.isEmpty()) return expressed;
+        if (RootClientStore.hasExpressionSync(entity) || !expressed.isEmpty()) return expressed;
         String rootId = RootClientStore.resolve(entity);
         if (rootId.isEmpty()) return Set.of();
         RootCatalogEntry origin = RootCatalogClient.origin(rootId);
@@ -126,6 +154,33 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
         return synced != null ? synced : DataPackLang.parseId(id);
     }
 
+    private record Material(ResourceLocation texture, int color) {}
+
+    /** Use vertex multiply for the default fast path; bake every richer blend through SkinBlend. */
+    private static Material materialFor(LivingEntity entity, GeneCatalogEntry gene) {
+        String textureId = textureFor(entity, gene);
+        ResourceLocation texture = resolveTexture(textureId);
+        if (texture == null) return null;
+        int dx = gene.skinOverlayOffsetX();
+        int dy = gene.skinOverlayOffsetY();
+        if (dx != 0 || dy != 0) {
+            ResourceLocation shifted = com.aetherianartificer.townstead.client.skin.ShiftedTextures.get(textureId, texture, dx, dy);
+            if (shifted == null) return null;
+            // A shifted overlay keeps vertex tinting; baked blends apply to unshifted art only.
+            return new Material(shifted, resolveTint(entity, gene.skinOverlayTint()));
+        }
+        int color = resolveTint(entity, gene.skinOverlayTint());
+        int blend = gene.skinOverlayTintBlend();
+        float strength = gene.skinOverlayTintStrength();
+        if (blend != 0 || strength < 1f) {
+            int packed = com.aetherianartificer.townstead.client.skin.SkinBlend.pack(
+                    color & 0xFFFFFF, blend, strength);
+            ResourceLocation baked = AttachmentClient.blendedNamedTexture(textureId, packed);
+            if (baked != null) return new Material(baked, 0xFFFFFFFF);
+        }
+        return new Material(texture, color);
+    }
+
     /** The overlay's ARGB tint: flat hex, the bearer's skin tone, their hair colour, or white. */
     private static int resolveTint(LivingEntity entity, String spec) {
         if (spec == null || spec.isEmpty()) return 0xFFFFFFFF;
@@ -144,6 +199,20 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
         };
     }
 
+    // Set when the overlay was already painted on MCA's own visible arm this hand pass, so the
+    // vanilla-arm fallback doesn't paint a second copy on the renderer's animation arm.
+    private static boolean firstPersonArmPainted;
+
+    public static void markFirstPersonArmPainted() {
+        firstPersonArmPainted = true;
+    }
+
+    public static boolean consumeFirstPersonArmPainted() {
+        boolean painted = firstPersonArmPainted;
+        firstPersonArmPainted = false;
+        return painted;
+    }
+
     /**
      * Paint the same expressed overlay textures onto Minecraft's separate first-person hand pass.
      * Entity render layers are not invoked by {@code PlayerRenderer.renderRightHand/renderLeftHand},
@@ -159,49 +228,37 @@ public class SkinOverlayLayer<T extends LivingEntity, M extends HumanoidModel<T>
         renderFirstPersonPart(pose, buffers, light, player, arm);
     }
 
-    /** Paint overlays on an already-posed arm supplied by MCA's own 1.20.1 custom-arm pass. */
+    /**
+     * Paint overlays on an already-posed arm supplied by MCA's own custom-arm pass. Drawn like the
+     * third-person body: faded by the bearer's opacity, glow overlays full-bright.
+     */
     public static void renderFirstPersonPart(PoseStack pose, MultiBufferSource buffers, int light,
                                              AbstractClientPlayer player, ModelPart arm) {
+        float fade = HandFade.alpha(player);
+        if (fade <= 0f) return;
         int layerIndex = 0;
         for (String geneId : orderedOverlayGenes(player)) {
             GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
-            ResourceLocation texture = resolveTexture(textureFor(player, gene));
-            if (texture == null) continue;
-            int color = resolveTint(player, gene.skinOverlayTint());
-            com.mojang.blaze3d.vertex.VertexConsumer buffer =
-                    buffers.getBuffer(RenderType.entityTranslucent(texture));
-
-            // Expand around the already-animated arm's own pivot. This keeps Fresh Player's exact
-            // rotation/translation while moving the overlay a fraction of a texel off the base
-            // surface. Each additional overlay is slightly farther out to preserve stack order.
-            float xScale = arm.xScale;
-            float yScale = arm.yScale;
-            float zScale = arm.zScale;
+            Material material = materialFor(player, gene);
+            if (material == null) continue;
+            boolean glow = gene.skinOverlayGlow();
+            // Lifted off the arm along each face's normal, each overlay a little farther out to keep
+            // stack order. Scaling around the pivot left faces near it coplanar with the arm, and
+            // those z-fight once the hand is translucent.
+            com.mojang.blaze3d.vertex.VertexConsumer buffer = ShellOffset.wrap(buffers.getBuffer(glow
+                    ? RenderType.eyes(material.texture())
+                    : RenderType.entityTranslucent(material.texture())),
+                    ShellOffset.CLOTHING * 0.25f * ++layerIndex);
+            int drawLight = glow ? 0xF000F0 : light;
+            int color = glow ? 0xFF000000 | (material.color() & 0xFFFFFF)
+                    : HandFade.color(0xFF000000 | (material.color() & 0xFFFFFF), fade);
             //? if neoforge {
-            float shell = 1.0025f + layerIndex++ * 0.001f;
+            arm.render(pose, buffer, drawLight, OverlayTexture.NO_OVERLAY, color);
             //?} else {
-            /*// MCA 7.6 supplies its own custom arm geometry. It needs only a minimal depth
-            // separation; the 1.21 expansion visibly bloats the outer hand edges here.
-            float shell = 1.0005f + layerIndex++ * 0.00025f;
+            /*arm.render(pose, buffer, drawLight, OverlayTexture.NO_OVERLAY,
+                    ((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f,
+                    (color & 0xFF) / 255f, ((color >>> 24) & 0xFF) / 255f);
             *///?}
-            arm.xScale *= shell;
-            arm.yScale *= shell;
-            arm.zScale *= shell;
-            try {
-                //? if neoforge {
-                arm.render(pose, buffer, light, OverlayTexture.NO_OVERLAY,
-                        0xFF000000 | (color & 0xFFFFFF));
-                //?} else {
-                /*arm.render(pose, buffer, light, OverlayTexture.NO_OVERLAY,
-                        ((color >> 16) & 0xFF) / 255f,
-                        ((color >> 8) & 0xFF) / 255f,
-                        (color & 0xFF) / 255f, 1f);
-                *///?}
-            } finally {
-                arm.xScale = xScale;
-                arm.yScale = yScale;
-                arm.zScale = zScale;
-            }
         }
     }
 }

@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "werewolves",
+  "type": "pheno:action_over_time",
+  "display_name": { "translate": "gene.townstead_roots.werewolf_wolfsbane" },
+  "description": { "translate": "gene.townstead_roots.werewolf_wolfsbane.desc" },
+  "category": "Abilities",
+  "interval": 20,
+  "condition": {
+    "type": "pheno:value",
+    "value": { "type": "pheno:provider", "provider": "werewolves:wolfsbane" },
+    "comparison": ">=",
+    "compare_to": 1
+  },
+  "action": {
+    "type": "pheno:apply_effect",
+    "effect": "werewolves:wolfsbane",
+    "duration": 60
+  },
+  "avoid": { "search_radius": 16, "edge_distance": 4 }
+}

@@ -1,0 +1,319 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "bridge",
+  "groups": [
+    {
+      "lines": {
+        "anyway": "Anyway.",
+        "on_another_note": "On another note.",
+        "oh_before_i_forget": "Oh! Before I forget.",
+        "something_else": "Something else.",
+        "changing_the_subject": "Changing the subject.",
+        "oh_and": "Oh, and.",
+        "while_i_have_you": "While I have you.",
+        "oh_that_reminds_me": "Oh, that reminds me.",
+        "by_the_way": "By the way.",
+        "oh_hey_also": { "text": "Oh, hey, also.", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "oh_another_thing": "Oh! Another thing.",
+        "also": "Also.",
+        "anyway_enough_of_that": { "text": "Anyway, enough of that.", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "so_anyway": "So, anyway.",
+        "oh_i_almost_forgot": "Oh, I almost forgot!",
+        "and_another_thing": "And another thing.",
+        "oh_right": "Oh, right!",
+        "totally_different_subject_but": { "text": "Totally different subject, but.", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "oh_i_meant_to_tell": "Oh! I meant to tell you.",
+        "okay_so": "Okay, so.",
+        "hmm_what_else": "Hmm. What else?",
+        "oh_you_know_what": { "text": "Oh, you know what?", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "oh_and_guess_what": { "text": "Oh, and guess what.", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "wait_i_have_something_else": "Wait, I have something else.",
+        "can_i_tell_you_something": "Can I tell you something?",
+        "oh_speaking_of_nothing": { "text": "Oh, speaking of nothing.", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "right_different_thing": "Right, different thing.",
+        "let_me_think_oh": { "text": "Let me think. Oh!", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "moving_on": { "text": "Moving on!", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "oh_and_one_more_thing": "Oh, and one more thing.",
+        "you_know_what_else": { "text": "You know what else?", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "before_i_forget_again": "Before I forget again.",
+        "oh_thats_right": "Oh! That's right.",
+        "huh_that_reminds_me_of": "Huh. That reminds me of something.",
+        "actually_you_know_what": "Actually, you know what?",
+        "oh_and_this_is_important": "Oh, and this is important.",
+        "heres_something": { "text": "Here's something.", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "speaking_of_other_things": "Speaking of other things.",
+        "oh_oh_i_know": { "text": "Oh! Oh! I know!", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "hey_so": "Hey, so.",
+        "real_quick_though": { "text": "Real quick, though.", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "totally_unrelated": { "text": "Totally unrelated.", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "so_get_this": { "text": "So, get this.", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "on_a_different_note": "On a different note.",
+        "not_to_change_the_subject": "Not to change the subject, but.",
+        "anyhow": "Anyhow.",
+        "hmm_what_was_i_going": { "text": "Hmm, what was I going to say? Oh!", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "oh_before_you_go": "Oh, before you go.",
+        "right_so": "Right, so."
+      }
+    },
+    {
+      "state": { "assoc": true },
+      "lines": {
+        "speaking_of_which": "Speaking of which.",
+        "funny_you_mention_it": { "text": "Funny you mention it.", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "that_reminds_me": "That reminds me.",
+        "on_that_note": "On that note.",
+        "oh_that_makes_me_think": "Oh, that makes me think.",
+        "actually_on_that_subject": "Actually, on that subject.",
+        "which_reminds_me": { "text": "Which reminds me!", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "along_those_lines": "Along those lines.",
+        "oh_related": { "text": "Oh, related!", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "thats_funny_because": { "text": "That's funny, because.", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "well_speaking_of_that": "Well, speaking of that.",
+        "same_kind_of_thing_actually": { "text": "Same kind of thing, actually.", "registers": ["!grief"], "state": {"after": "!grief"} }
+      }
+    },
+    {
+      "state": { "stance": "-" },
+      "lines": {
+        "anyway_enough_gloom": { "text": "Anyway, enough gloom.", "registers": ["!grief"] },
+        "lets_talk_about_something_nicer": { "text": "Let's talk about something nicer.", "registers": ["!grief"] },
+        "okay_thats_depressing_moving_on": { "text": "Okay, that's depressing. Moving on.", "registers": ["!grief"] },
+        "ugh_anyway": { "text": "Ugh, anyway.", "registers": ["!grief"] },
+        "enough_of_that": { "text": "Enough of that.", "registers": ["!grief"] },
+        "lets_not_dwell_on_it": { "text": "Let's not dwell on it.", "registers": ["!grief"] },
+        "moving_on_before_i_get": { "text": "Moving on, before I get sad.", "registers": ["!grief"] }
+      }
+    },
+    {
+      "subjects": "event",
+      "lines": {
+        "did_you_hear_the_news": "Did you hear the news?",
+        "oh_ive_got_news": "Oh, I've got news!",
+        "have_you_heard": "Have you heard?"
+      }
+    },
+    { "subjects": "event", "valence": "positive", "lines": {"oh_youll_love_this": "Oh, you'll love this."} },
+    {
+      "subjects": "event",
+      "lines": {
+        "speaking_of_people": "Speaking of people.",
+        "guess_what_i_heard": "Guess what I heard.",
+        "okay_i_have_gossip": "Okay, I have gossip.",
+        "oh_and_theres_gossip": "Oh, and there's gossip.",
+        "you_didnt_hear_this_from": "You didn't hear this from me.",
+        "so_i_heard_something": "So I heard something.",
+        "oh_the_news": "Oh! The news!",
+        "can_i_tell_you_something_2": "Can I tell you something juicy?",
+        "oh_you_havent_heard": "Oh, you haven't heard?",
+        "i_have_to_tell_someone": "I have to tell someone.",
+        "okay_this_is_big": "Okay, this is big.",
+        "so_big_news": "So. Big news.",
+        "you_wont_believe_what_i": "You won't believe what I heard.",
+        "oh_and_you_know_what": "Oh, and you know what happened?",
+        "heres_the_latest": "Here's the latest.",
+        "okay_so_gossip": "Okay, so, gossip."
+      }
+    },
+    {
+      "subjects": "mob",
+      "lines": {
+        "oh_and_be_careful_out": "Oh, and be careful out there.",
+        "did_you_hear_about_last": "Did you hear about last night?",
+        "somethings_been_prowling_around": "Something's been prowling around.",
+        "so_about_last_night": "So, about last night.",
+        "you_should_know_this": "You should know this.",
+        "okay_a_little_scary_thing": "Okay, a little scary thing.",
+        "keep_your_door_locked_by": "Keep your door locked, by the way.",
+        "oh_something_happened_last_night": "Oh! Something happened last night.",
+        "speaking_of_danger": "Speaking of danger.",
+        "youll_want_to_hear_this": "You'll want to hear this."
+      }
+    },
+    {
+      "subjects": "weather",
+      "lines": {
+        "have_you_looked_outside": "Have you looked outside?",
+        "look_at_that_sky_though": "Look at that sky, though.",
+        "what_a_day_out_there": "What a day out there.",
+        "can_we_talk_about_the": "Can we talk about the weather?",
+        "oh_and_the_weather": "Oh, and the weather!",
+        "have_you_been_outside_today": "Have you been outside today?",
+        "speaking_of_the_sky": "Speaking of the sky.",
+        "did_you_notice_the_weather": "Did you notice the weather?"
+      }
+    },
+    {
+      "subjects": "biome",
+      "lines": {
+        "you_know_what_i_love": "You know what I love about here?",
+        "honestly_look_around": "Honestly, look around.",
+        "can_i_say_something_about": "Can I say something about this place?",
+        "living_out_here_though": "Living out here, though.",
+        "you_ever_think_about_this": "You ever think about this place?",
+        "i_was_thinking_about_home": "I was thinking about home."
+      }
+    },
+    {
+      "subjects": "quest",
+      "lines": {
+        "have_you_seen_the_job": { "text": "Have you seen the job board?", "requires": "here.building_tag:townstead:quest_board" },
+        "oh_theres_a_job_going": { "text": "Oh, there's a job going.", "requires": "here.building_tag:townstead:quest_board" },
+        "speaking_of_work": { "text": "Speaking of work.", "requires": "here.building_tag:townstead:quest_board" },
+        "oh_the_board_has_something": { "text": "Oh, the board has something new.", "requires": "here.building_tag:townstead:quest_board" },
+        "someone_needs_help_by_the": { "text": "Someone needs help, by the way.", "requires": "here.building_tag:townstead:quest_board" },
+        "have_you_checked_the_board": { "text": "Have you checked the board lately?", "requires": "here.building_tag:townstead:quest_board" },
+        "oh_work_for_the_brave": { "text": "Oh! Work for the brave.", "requires": "here.building_tag:townstead:quest_board" },
+        "theres_a_job_nobody_wants": { "text": "There's a job nobody wants.", "requires": "here.building_tag:townstead:quest_board" }
+      }
+    },
+    {
+      "subjects": "project",
+      "lines": {
+        "have_you_seen_the_building": "Have you seen the building work?",
+        "speaking_of_the_village": "Speaking of the village.",
+        "oh_and_the_new_building": "Oh, and the new building!",
+        "about_the_building_work": "About the building work.",
+        "have_you_been_by_the": "Have you been by the construction?",
+        "the_village_is_changing_you": "The village is changing, you know.",
+        "oh_the_project": "Oh, the project!",
+        "so_the_building_work": "So, the building work.",
+        "something_about_the_village": "Something about the village."
+      }
+    },
+    {
+      "subjects": "joke",
+      "lines": {
+        "oh_wait_i_have_a": "Oh, wait, I have a joke.",
+        "want_to_hear_a_joke": "Want to hear a joke?",
+        "okay_i_need_to_tell": "Okay, I need to tell you a joke.",
+        "heres_something_silly": "Here's something silly.",
+        "youll_like_this_one": "You'll like this one.",
+        "let_me_cheer_you_up": "Let me cheer you up.",
+        "oh_a_joke": "Oh! A joke!",
+        "okay_okay_listen_to_this": "Okay, okay, listen to this.",
+        "i_heard_a_good_one": "I heard a good one."
+      }
+    },
+    {
+      "subjects": "ruler",
+      "lines": {
+        "can_i_tell_you_something_3": "Can I tell you something quietly?",
+        "come_here_a_second": "Come here a second.",
+        "keep_your_voice_down_but": "Keep your voice down, but.",
+        "between_you_and_me": "Between you and me.",
+        "this_stays_between_us_okay": "This stays between us, okay?"
+      }
+    },
+    {
+      "subjects": "venue",
+      "lines": {
+        "this_place_is_nice_isnt": "This place is nice, isn't it?",
+        "i_love_it_here": "I love it here.",
+        "look_at_this_place": "Look at this place.",
+        "isnt_this_nice": "Isn't this nice?"
+      }
+    },
+    {
+      "lines": {
+        "ugh_fine_something_else": {
+          "text": "Ugh. Fine. Something else.",
+          "personalities": ["crabby", "grumpy"],
+          "registers": ["!grief"],
+          "state": { "after": "!grief" }
+        },
+        "ooh_ooh_another_thing": {
+          "text": "Ooh! Ooh! Another thing!",
+          "personalities": ["upbeat", "peppy"],
+          "registers": ["!grief"],
+          "state": { "after": "!grief" }
+        },
+        "not_that_it_matters_but": {
+          "text": "Not that it matters, but.",
+          "personalities": "gloomy",
+          "registers": ["!grief"],
+          "state": { "after": "!grief" }
+        },
+        "okay_plot_twist": {
+          "text": "Okay, plot twist.",
+          "personalities": ["playful", "witty"],
+          "registers": ["!grief"],
+          "state": { "after": "!grief" }
+        },
+        "oh_and_darling": {
+          "text": "Oh, and, darling.",
+          "personalities": "flirty",
+          "registers": ["!grief"],
+          "state": { "after": "!grief" }
+        },
+        "speaking_of_money": {
+          "text": "Speaking of money.",
+          "personalities": "greedy",
+          "registers": ["!grief"],
+          "state": { "after": "!grief" }
+        },
+        "speaking_of_turnips_not_really": {
+          "text": "Speaking of turnips. Not really.",
+          "personalities": "odd",
+          "registers": ["!grief"],
+          "state": { "after": "!grief" }
+        },
+        "um_also": { "text": "Um. Also.", "personalities": ["introverted", "shy"] },
+        "oh_and_also": {
+          "text": "Oh! And! Also!",
+          "personalities": ["extroverted", "confident"],
+          "registers": ["!grief"],
+          "state": { "after": "!grief" }
+        },
+        "anyway_whatever": {
+          "text": "Anyway... whatever.",
+          "personalities": ["relaxed", "lazy"],
+          "registers": ["!grief"],
+          "state": { "after": "!grief" }
+        },
+        "oh_i_just_remembered_something": { "text": "Oh! I just remembered something worrying.", "personalities": "anxious" },
+        "lets_think_of_something_calm": {
+          "text": "Let's think of something calm.",
+          "personalities": "peaceful",
+          "registers": ["!grief"],
+          "state": { "after": "!grief" }
+        },
+        "can_i_share_something_with": { "text": "Can I share something with you?", "personalities": "sensitive" },
+        "oh_friend_i_have_to": { "text": "Oh, friend, I have to tell you.", "personalities": "friendly" },
+        "oh_other_thing": { "text": "Oh! Other thing!", "stages": "child", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "guess_what_else": { "text": "Guess what else!", "stages": "child", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "oh_oh_and": { "text": "Oh! Oh! And!", "stages": "child", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "anyway_whatever_2": { "text": "Anyway, whatever.", "stages": "teen", "registers": ["!grief"], "state": {"after": "!grief"} },
+        "in_my_day_wed_have": {
+          "text": "In my day, we'd have... never mind. Anyway.",
+          "stages": "senior",
+          "registers": ["!grief"],
+          "state": { "after": "!grief" }
+        }
+      }
+    },
+    {
+      "state": { "mood": "tense" },
+      "lines": {
+        "tense_moving_on": "Anyway. Moving on.",
+        "tense_other_thing": "Let's talk about something else.",
+        "tense_never_mind": "Never mind that."
+      }
+    },
+    {
+      "registers": "grief",
+      "lines": {
+        "i_have_to_tell_you_something": "I have to tell you something.",
+        "this_is_serious_though": "This is serious, though.",
+        "something_has_been_on_my": "Something has been on my mind."
+      }
+    },
+    {
+      "state": { "after": "grief" },
+      "lines": {
+        "life_goes_on_i_suppose": "Life goes on, I suppose.",
+        "lets_hope_it_turns_out": "Let's hope it turns out all right.",
+        "anyway_i_cant_think_about": "Anyway. I can't think about that any more."
+      }
+    }
+  ]
+}

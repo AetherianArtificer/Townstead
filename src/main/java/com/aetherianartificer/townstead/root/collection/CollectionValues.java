@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.root.collection;
 
+
 import com.aetherianartificer.townstead.root.gene.Gene;
 import com.aetherianartificer.townstead.root.gene.GeneRegistry;
 import com.aetherianartificer.townstead.root.gene.types.CollectionGeneType;
@@ -322,8 +323,14 @@ public final class CollectionValues {
     }
 
     @Nullable
+    /**
+     * A collection's config, from the gene that declares it or, failing that, from
+     * a gene-less {@code data/<ns>/collection/} declaration. Storage is the same
+     * either way; only where the config was written differs.
+     */
     private static CollectionGeneType.Instance instanceOf(ResourceLocation id) {
         Gene gene = GeneRegistry.byId(id);
-        return gene != null && gene.instance() instanceof CollectionGeneType.Instance i ? i : null;
+        if (gene != null && gene.instance() instanceof CollectionGeneType.Instance i) return i;
+        return CollectionDefs.byId(id);
     }
 }

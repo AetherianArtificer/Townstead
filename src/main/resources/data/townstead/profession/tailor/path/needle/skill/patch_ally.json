@@ -1,0 +1,44 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.needle.patch_ally"
+  },
+  "icon": "minecraft:white_wool",
+  "description": {
+    "translate": "skill.townstead.tailor.needle.patch_ally.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sew_up"
+  ],
+  "skill_group": "townstead:needle_mend",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:if_else",
+      "condition": {
+        "type": "pheno:not",
+        "condition": {
+          "type": "pheno:hostile"
+        }
+      },
+      "if_action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:absorption",
+        "duration": 600,
+        "amplifier": 1
+      },
+      "on": {
+        "type": "pheno:ray",
+        "distance": 6
+      }
+    }
+  }
+}

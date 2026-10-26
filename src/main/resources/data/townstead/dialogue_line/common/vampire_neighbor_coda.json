@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "vampire_neighbor_coda",
+  "groups": [
+    {
+      "variant": "welcomed",
+      "lines": {
+        "everyone_has_their_ways": "Everyone has their ways."
+      }
+    },
+    {
+      "variant": "wary",
+      "lines": {
+        "just_be_careful": "Just be careful."
+      }
+    }
+  ]
+}

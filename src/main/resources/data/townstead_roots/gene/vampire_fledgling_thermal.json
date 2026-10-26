@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "pheno:thermal_tolerance",
+  "display_name": {
+    "translate": "gene.townstead_roots.vampire_fledgling_thermal"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.vampire_fledgling_thermal.desc"
+  },
+  "category": "Climate",
+  "locus": "townstead_roots:vampire_fledgling_thermal",
+  "cold": 0.5,
+  "heat": 0.5
+}

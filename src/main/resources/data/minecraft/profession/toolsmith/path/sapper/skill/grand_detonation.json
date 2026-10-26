@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.sapper.grand_detonation"
+  },
+  "icon": "minecraft:end_crystal",
+  "description": {
+    "translate": "skill.townstead.toolsmith.sapper.grand_detonation.description"
+  },
+  "cost": 1,
+  "requires": [
+    "chain_reaction"
+  ],
+  "skill_group": "townstead:sapper_charge",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:knack",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:delay",
+          "ticks": 40,
+          "action": {
+            "type": "pheno:explode",
+            "power": 4.0,
+            "fire": false,
+            "destroy": false
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 16
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.tnt.primed",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

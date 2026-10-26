@@ -1,0 +1,11 @@
+{
+  "schema":"townstead:recipe_projection/v1",
+  "mods":"kaleidoscope_tavern",
+  "recipe_types":["kaleidoscope_tavern:shaker"],
+  "domain":"hospitality.mixology",
+  "fields":{
+    "inputs":{"path":"ingredients","operation":"list","required":true},
+    "output":{"path":"result","operation":"item_stack_id","required":true},
+    "readiness":{"default":true,"operation":"boolean"}
+  }
+}

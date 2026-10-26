@@ -1,0 +1,62 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.pilgrim.pilgrimage"
+  },
+  "icon": "minecraft:compass",
+  "description": {
+    "translate": "skill.townstead.cleric.pilgrim.pilgrimage.description"
+  },
+  "cost": 1,
+  "requires": [
+    "caravan"
+  ],
+  "skill_group": "townstead:pilgrim_provision",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "always",
+    "resource_cost": {
+      "resource": "townstead:faith",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 16,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:speed",
+                "duration": 1200,
+                "amplifier": 1
+              },
+              {
+                "type": "pheno:hydrate",
+                "immediate": 20,
+                "lasting": 20
+              },
+              {
+                "type": "pheno:energize",
+                "amount": 20
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.beacon.activate",
+          "volume": 0.6,
+          "pitch": 1.6
+        }
+      ]
+    }
+  }
+}

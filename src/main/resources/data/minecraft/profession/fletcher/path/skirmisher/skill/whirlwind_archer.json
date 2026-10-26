@@ -1,0 +1,173 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.skirmisher.whirlwind_archer"
+  },
+  "icon": "minecraft:crossbow",
+  "description": {
+    "translate": "skill.townstead.fletcher.skirmisher.whirlwind_archer.description"
+  },
+  "cost": 1,
+  "requires": [
+    "shoot_and_scoot"
+  ],
+  "skill_group": "townstead:skirmisher_move",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:draw",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:add_velocity",
+          "relative": true,
+          "z": -1.4,
+          "y": 0.4
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:delay",
+              "ticks": 0,
+              "action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:fire_projectile",
+                        "entity": "minecraft:arrow",
+                        "speed": 2.5,
+                        "inaccuracy": 6.0
+                      },
+                      {
+                        "type": "pheno:fire_projectile",
+                        "entity": "minecraft:arrow",
+                        "speed": 2.5,
+                        "inaccuracy": 6.0
+                      },
+                      {
+                        "type": "pheno:fire_projectile",
+                        "entity": "minecraft:arrow",
+                        "speed": 2.5,
+                        "inaccuracy": 6.0
+                      },
+                      {
+                        "type": "pheno:fire_projectile",
+                        "entity": "minecraft:arrow",
+                        "speed": 2.5,
+                        "inaccuracy": 6.0
+                      }
+                    ]
+                  },
+                  {
+                    "type": "pheno:play_sound",
+                    "sound": "minecraft:entity.arrow.shoot",
+                    "volume": 1.0,
+                    "pitch": 1.0
+                  }
+                ]
+              }
+            },
+            {
+              "type": "pheno:delay",
+              "ticks": 8,
+              "action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:fire_projectile",
+                        "entity": "minecraft:arrow",
+                        "speed": 2.5,
+                        "inaccuracy": 6.0
+                      },
+                      {
+                        "type": "pheno:fire_projectile",
+                        "entity": "minecraft:arrow",
+                        "speed": 2.5,
+                        "inaccuracy": 6.0
+                      },
+                      {
+                        "type": "pheno:fire_projectile",
+                        "entity": "minecraft:arrow",
+                        "speed": 2.5,
+                        "inaccuracy": 6.0
+                      },
+                      {
+                        "type": "pheno:fire_projectile",
+                        "entity": "minecraft:arrow",
+                        "speed": 2.5,
+                        "inaccuracy": 6.0
+                      }
+                    ]
+                  },
+                  {
+                    "type": "pheno:play_sound",
+                    "sound": "minecraft:entity.arrow.shoot",
+                    "volume": 1.0,
+                    "pitch": 1.0
+                  }
+                ]
+              }
+            },
+            {
+              "type": "pheno:delay",
+              "ticks": 16,
+              "action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:fire_projectile",
+                        "entity": "minecraft:arrow",
+                        "speed": 2.5,
+                        "inaccuracy": 6.0
+                      },
+                      {
+                        "type": "pheno:fire_projectile",
+                        "entity": "minecraft:arrow",
+                        "speed": 2.5,
+                        "inaccuracy": 6.0
+                      },
+                      {
+                        "type": "pheno:fire_projectile",
+                        "entity": "minecraft:arrow",
+                        "speed": 2.5,
+                        "inaccuracy": 6.0
+                      },
+                      {
+                        "type": "pheno:fire_projectile",
+                        "entity": "minecraft:arrow",
+                        "speed": 2.5,
+                        "inaccuracy": 6.0
+                      }
+                    ]
+                  },
+                  {
+                    "type": "pheno:play_sound",
+                    "sound": "minecraft:entity.arrow.shoot",
+                    "volume": 1.0,
+                    "pitch": 1.0
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

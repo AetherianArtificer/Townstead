@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:conversation_subject/v1",
+  "mods": "vampirism",
+  "source": {
+    "type": "townstead:general"
+  },
+  "register": "ambient",
+  "content_tags": [
+    "vampires"
+  ],
+  "when": {
+    "type": "pheno:state",
+    "state": "townstead_state:thrall"
+  }
+}

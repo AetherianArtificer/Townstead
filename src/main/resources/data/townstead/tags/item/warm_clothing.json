@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:leather_helmet",
+    "minecraft:leather_chestplate",
+    "minecraft:leather_leggings",
+    "minecraft:leather_boots",
+    { "id": "cold_sweat:goat_fur_helmet", "required": false },
+    { "id": "cold_sweat:goat_fur_chestplate", "required": false },
+    { "id": "cold_sweat:goat_fur_leggings", "required": false },
+    { "id": "cold_sweat:goat_fur_boots", "required": false }
+  ]
+}

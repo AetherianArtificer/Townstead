@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:chronicle_work_history/v1",
+  "profession": "minecraft:butcher",
+  "per_year": {
+    "townstead:butchery_carcass": 90,
+    "townstead:butchery_slaughter": 45,
+    "townstead:butchery_clean_blood": 60,
+    "townstead:butchery_rewet_cloth": 30,
+    "townstead_work:smoke": 60
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "schema": "townstead:amenity/v1",
+  "mods": [
+    "toughasnails"
+  ],
+  "blocks": [
+    "toughasnails:rain_collector"
+  ],
+  "requires": {
+    "type": "pheno:or",
+    "conditions": [
+      {
+        "type": "pheno:block_state",
+        "property": "level",
+        "value": "1"
+      },
+      {
+        "type": "pheno:block_state",
+        "property": "level",
+        "value": "2"
+      },
+      {
+        "type": "pheno:block_state",
+        "property": "level",
+        "value": "3"
+      }
+    ]
+  },
+  "behavior": {
+    "type": "pheno:modify_block_state",
+    "property": "level",
+    "operation": "add",
+    "amount": -1
+  },
+  "effect": {
+    "type": "pheno:hydrate",
+    "immediate": 5,
+    "lasting": 8
+  }
+}

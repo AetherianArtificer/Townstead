@@ -29,4 +29,16 @@ public abstract class CapeLayerWearableMixin {
                                       CallbackInfo ci) {
         RigWearables.applyItem(player, "cape");
     }
+
+    //? if neoforge {
+    @Inject(method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/client/player/AbstractClientPlayer;FFFFFF)V", at = @At("RETURN"), require = 0)
+    //?} else {
+    /*@Inject(method = "m_6494_(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/client/player/AbstractClientPlayer;FFFFFF)V", remap = false, at = @At("RETURN"), require = 0)
+    *///?}
+    private void townstead$anchorCapeRestore(PoseStack pose, MultiBufferSource buffers, int light,
+                                      AbstractClientPlayer player, float limbSwing, float limbSwingAmount,
+                                      float partialTick, float ageInTicks, float netHeadYaw, float headPitch,
+                                      CallbackInfo ci) {
+        RigWearables.applyItem(player, "");
+    }
 }

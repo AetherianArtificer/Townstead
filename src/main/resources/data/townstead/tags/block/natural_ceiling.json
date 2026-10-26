@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "#townstead:terrain",
+    {"id": "#townstead:thermal/terrain", "required": false}
+  ]
+}

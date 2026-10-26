@@ -16,12 +16,34 @@ public final class LifeStageResolver {
 
     public record Resolved(int stageIndex, LifeStage stage, float deltaInStage) {}
 
+    /** Whether villagers may reach senior stages. A world setting, read through here to keep this class pure. */
+    private static java.util.function.BooleanSupplier seniorsAllowed = () -> true;
+
+    public static void setSeniorsAllowed(java.util.function.BooleanSupplier allowed) {
+        seniorsAllowed = allowed == null ? () -> true : allowed;
+    }
+
     /**
      * Resolve the stage for {@code daysAlive = currentWorldDay - birthWorldDay}.
      * Returns null if data is incoherent (empty cycle, length mismatch).
      */
     @Nullable
     public static Resolved resolve(LifeCycle cycle, int[] stageDays, long birthWorldDay, long currentWorldDay) {
+        Resolved resolved = resolveRaw(cycle, stageDays, birthWorldDay, currentWorldDay);
+        return resolved == null || seniorsAllowed.getAsBoolean() ? resolved : withoutSenior(cycle, resolved);
+    }
+
+    /** With seniors off, a villager past adulthood stays at the last stage before the senior ones. */
+    static Resolved withoutSenior(LifeCycle cycle, Resolved resolved) {
+        if (resolved.stage().presentsAs() != CanonicalStage.SENIOR) return resolved;
+        for (int i = resolved.stageIndex() - 1; i >= 0; i--) {
+            if (cycle.stageAt(i).presentsAs() != CanonicalStage.SENIOR) return new Resolved(i, cycle.stageAt(i), 1f);
+        }
+        return resolved;
+    }
+
+    @Nullable
+    private static Resolved resolveRaw(LifeCycle cycle, int[] stageDays, long birthWorldDay, long currentWorldDay) {
         if (cycle == null || cycle.isEmpty()) return null;
         if (stageDays == null || stageDays.length != cycle.size()) return null;
         long daysAlive = Math.max(0L, currentWorldDay - birthWorldDay);
