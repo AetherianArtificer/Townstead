@@ -342,6 +342,44 @@ public final class LifeStageProgression {
         syncMcaAgeToStage(villager);
     }
 
+    /**
+     * MCA's golden-apple growth: advance a pre-adult villager by a quarter of its current stage
+     * (at least one day), never past the first day of adulthood. Returns false when Townstead has no
+     * stage data for the villager, so the caller can fall back to MCA's own age bump.
+     */
+    public static boolean advanceQuarterStage(VillagerEntityMCA villager) {
+        if (villager == null) return false;
+        MinecraftServer server = villager.level().getServer();
+        if (server == null) return false;
+        TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
+        if (!life.hasBirth() || !life.hasStageDays()) return false;
+        LifeCycle cycle = resolveCycle(life);
+        if (cycle == null || cycle.isEmpty() || life.stageDaysLength() != cycle.size()) return false;
+
+        int adultIndex = -1;
+        for (int i = 0; i < cycle.size(); i++) {
+            CanonicalStage c = cycle.stageAt(i).presentsAs();
+            if (c == CanonicalStage.ADULT || c == CanonicalStage.SENIOR) {
+                adultIndex = i;
+                break;
+            }
+        }
+        if (adultIndex < 0) return false;
+
+        int[] days = life.stageDays();
+        long today = TownsteadCalendar.lifeDay(server);
+        long alive = agingDisplayDayView(villager, life, today) - life.birthWorldDay();
+        LifeStageResolver.Resolved resolved = LifeStageResolver.resolve(cycle, days, life.birthWorldDay(),
+                life.birthWorldDay() + alive);
+        if (resolved == null) return false;
+        if (resolved.stageIndex() >= adultIndex) return true;
+
+        long step = Math.max(1L, Math.round(Math.max(0, days[resolved.stageIndex()]) / 4.0));
+        long target = Math.min(alive + step, LifeStageResolver.cumulativeDaysBefore(days, adultIndex));
+        applyManualAgeEdit(villager, today - target);
+        return true;
+    }
+
     @Nullable
     private static CanonicalStage commitStageFromBirth(VillagerEntityMCA villager, TownsteadVillager.Life life, long today) {
         if (life == null || !life.hasBirth() || !life.hasStageDays()) return null;

@@ -19,9 +19,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class VillagerHeadProportionMixin<T extends LivingEntity & VillagerLike<T>> {
 
     //? if neoforge {
-    @Inject(method = "setupAnim", remap = false, at = @At("TAIL"), require = 1)
+    @Inject(method = "setupAnim", remap = false, at = @At("TAIL"), expect = 1)
     //?} else {
-    /*@Inject(method = "m_6973_", remap = false, at = @At("TAIL"), require = 1)
+    /*@Inject(method = "m_6973_", remap = false, at = @At("TAIL"), expect = 1)
     *///?}
     private void townstead$proportionParts(T entity, float limbAngle, float limbDistance,
             float animationProgress, float headYaw, float headPitch, CallbackInfo ci) {

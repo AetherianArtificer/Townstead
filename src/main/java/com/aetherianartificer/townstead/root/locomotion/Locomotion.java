@@ -91,7 +91,10 @@ public final class Locomotion {
     /** Runs the pilot after vanilla travel; drops modes the body can no longer be in. */
     public static void tick(Mob mob) {
         State state = state(mob);
-        if (state == null) return;
+        if (state == null) {
+            PilotGravity.releaseOrphaned(mob);
+            return;
+        }
         BlockPos live = liveTarget(mob);
         if (live != null) state.destination = live;
         if (mob.isPassenger() || mob.isSleeping() || mob.isDeadOrDying()) {

@@ -51,7 +51,7 @@ public class BlueprintMapRendererIconMixin {
                     value = "INVOKE",
                     target = "Lnet/conczin/mca/resources/data/BuildingType;isIcon()Z"
             ),
-            require = 1,
+            expect = 1,
             remap = false
     )
     private static boolean townstead$captureExternalFootprintIcon(
@@ -76,7 +76,7 @@ public class BlueprintMapRendererIconMixin {
                     value = "INVOKE",
                     target = "Lnet/conczin/mca/client/gui/BlueprintMapRenderer;renderRoomRegion(Lnet/minecraft/client/gui/GuiGraphics;IIIIIZZ)V"
             ),
-            require = 1,
+            expect = 1,
             remap = false
     )
     private static void townstead$renderExternalFootprintIcon(
@@ -124,7 +124,7 @@ public class BlueprintMapRendererIconMixin {
                     value = "INVOKE",
                     target = "Lnet/conczin/mca/client/gui/BlueprintMapRenderer;drawScaledBuildingIcon(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/resources/ResourceLocation;DDIIF)V"
             ),
-            require = 1,
+            expect = 1,
             remap = false
     )
     private static void townstead$renderRoomItemIcon(

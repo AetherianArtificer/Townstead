@@ -32,14 +32,17 @@ public final class RecipeGates {
             //? if >=1.21 {
             List<net.minecraft.world.item.crafting.RecipeHolder<?>> off = new ArrayList<>();
             for (var holder : townsteadRecipes(player.server)) {
-                if (!ContentGates.enabled(result(player.server, holder))) off.add(holder);
+                if (player.getRecipeBook().contains(holder)
+                        && !ContentGates.enabled(result(player.server, holder))) off.add(holder);
             }
             //?} else {
             /*List<net.minecraft.world.item.crafting.Recipe<?>> off = new ArrayList<>();
             for (var recipe : townsteadRecipes(player.server)) {
-                if (!ContentGates.enabled(result(player.server, recipe))) off.add(recipe);
+                if (player.getRecipeBook().contains(recipe)
+                        && !ContentGates.enabled(result(player.server, recipe))) off.add(recipe);
             }
             *///?}
+            // Vanilla sends a remove packet even when nothing was known, and every one rebuilds recipe viewers.
             if (!off.isEmpty()) player.resetRecipes(off);
         } catch (RuntimeException e) {
             Townstead.LOGGER.debug("[Switchboard] Recipe book sync failed for {}", player.getName().getString(), e);

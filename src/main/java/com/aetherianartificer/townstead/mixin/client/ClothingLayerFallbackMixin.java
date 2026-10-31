@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(ClothingLayer.class)
 public abstract class ClothingLayerFallbackMixin<T extends LivingEntity, M extends HumanoidModel<T>> {
 
-    @Inject(method = "getSkin", remap = false, at = @At("HEAD"), require = 1)
+    @Inject(method = "getSkin", remap = false, at = @At("HEAD"), expect = 1)
     private void townstead$avoidMissingClothingTexture(T entity,
             CallbackInfoReturnable<ResourceLocation> cir) {
         if (CommonVillagerModel.getVillager(entity) instanceof VillagerEntityMCA villager) {

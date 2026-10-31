@@ -29,7 +29,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value = PlayerRenderer.class, priority = 900)
 public abstract class McaPlayerArmOverlayMixin {
 
-    @Inject(method = "mca$renderCustomArm", at = @At("HEAD"), remap = false, require = 1)
+    @Inject(method = "mca$renderCustomArm", at = @At("HEAD"), remap = false, expect = 1)
     private void townstead$beginFade(PoseStack pose, MultiBufferSource buffers, int light,
                                      AbstractClientPlayer player, ModelPart arm,
                                      ModelPart sleeve, VillagerLayer<?, ?> layer,
@@ -37,7 +37,7 @@ public abstract class McaPlayerArmOverlayMixin {
         HandFade.begin(player);
     }
 
-    @WrapOperation(method = "mca$renderCustomArm", remap = false, require = 1,
+    @WrapOperation(method = "mca$renderCustomArm", remap = false, expect = 1,
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/client/renderer/RenderType;m_110458_(Lnet/minecraft/resources/ResourceLocation;)Lnet/minecraft/client/renderer/RenderType;",
                     remap = false))
@@ -45,7 +45,7 @@ public abstract class McaPlayerArmOverlayMixin {
         return HandFade.type(original.call(texture), texture);
     }
 
-    @ModifyArg(method = "mca$renderCustomArm", remap = false, require = 1,
+    @ModifyArg(method = "mca$renderCustomArm", remap = false, expect = 1,
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/client/model/geom/ModelPart;m_104306_(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;IIFFFF)V",
                     remap = false),
@@ -54,7 +54,7 @@ public abstract class McaPlayerArmOverlayMixin {
         return alpha * HandFade.current();
     }
 
-    @Inject(method = "mca$renderCustomArm", at = @At("RETURN"), remap = false, require = 1)
+    @Inject(method = "mca$renderCustomArm", at = @At("RETURN"), remap = false, expect = 1)
     private void townstead$overlayMcaSkinArm(PoseStack pose, MultiBufferSource buffers, int light,
                                              AbstractClientPlayer player, ModelPart arm,
                                              ModelPart sleeve, VillagerLayer<?, ?> layer,

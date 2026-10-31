@@ -21,7 +21,7 @@ import top.theillusivec4.curios.api.client.ICurioRenderer;
 public abstract class CuriosRigFitMixin {
     @WrapOperation(method = "*", at = @At(value = "INVOKE", target =
             "Ltop/theillusivec4/curios/api/client/ICurioRenderer;render(Lnet/minecraft/world/item/ItemStack;Ltop/theillusivec4/curios/api/SlotContext;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/entity/RenderLayerParent;Lnet/minecraft/client/renderer/MultiBufferSource;IFFFFFF)V"),
-            remap = false, require = 1)
+            remap = false, expect = 1)
     private void townstead$fitRegisteredCurio(ICurioRenderer renderer, ItemStack stack, SlotContext slot,
             PoseStack pose, RenderLayerParent<?, ?> parent, MultiBufferSource buffers, int light,
             float swing, float amount, float partial, float age, float yaw, float pitch, Operation<Void> original) {

@@ -10,6 +10,7 @@ import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 
@@ -52,6 +53,7 @@ public abstract class JigsawPlacerVillageLimitsMixin {
         return VillageLayouts.arrange(shuffled, JigsawPlacerVillageLimitsMixin::template, placed);
     }
 
+    @Unique
     private static @Nullable ResourceLocation template(StructurePoolElement element) {
         if (!(element instanceof SinglePoolElement single)) return null;
         return ((SinglePoolElementAccessor) single).townstead$template().left().orElse(null);

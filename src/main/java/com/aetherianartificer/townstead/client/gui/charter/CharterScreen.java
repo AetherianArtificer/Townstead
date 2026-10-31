@@ -151,7 +151,7 @@ public final class CharterScreen extends BookScreen {
         int x = x(p), w = w(p), y = y(p);
         runningHead(p, tr("running_head", snapshot.settlement()), false);
         var civicRows = b.civic();
-        int below = SECTION + HEADING + ROW;
+        int below = SECTION + HEADING + ROW + ROW;
         Component welcomed = welcomedNames(b);
         if (welcomed != null) below += ROW;
         Component allies = allyNames(b);
@@ -172,6 +172,8 @@ public final class CharterScreen extends BookScreen {
         y = centredDetail(b.proclaimed().component(), x, y, w, title.proclamation());
         y += SECTION;
         y = heading(tr("articles"), x, y, w);
+        // The Charter's title is the faction's name; the village it holds keeps its own.
+        y = row(tr("row.settlement"), Component.literal(snapshot.settlement()), x, y, w, INK, null);
         y = row(tr("row.form"), snapshot.form().component(), x, y, w, INK, null);
         var civic = b.civic();
         if (civic != null && civic.controlsGovernment()) {
@@ -712,7 +714,7 @@ public final class CharterScreen extends BookScreen {
         for (var welcome : b.welcomes()) {
             entries.add(new DropMenu.Entry(welcome.name().component(), () -> {
                 menu = null;
-                draft("welcome", welcome.id(), welcome.welcomed() ? "0" : "1");
+                if (!welcome.fixed()) draft("welcome", welcome.id(), welcome.welcomed() ? "0" : "1");
             }, false, welcome.welcomed(), 0));
         }
         menu = menuAbove(tr("picker.welcome"), entries, anchor);

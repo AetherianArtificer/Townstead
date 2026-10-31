@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(VillagerLayer.class)
 public abstract class VillagerBodyLayerSuppressMixin {
 
-    @Inject(method = "render", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, remap = false, expect = 1)
     private void townstead$suppressForAltRig(PoseStack transform, MultiBufferSource provider, int light,
                                              LivingEntity villager, float limbAngle, float limbDistance,
                                              float tickDelta, float animationProgress, float headYaw,

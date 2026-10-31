@@ -35,18 +35,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class PlayerFirstPersonRigMixin {
 
     //? if neoforge {
-    @Inject(method = "renderRightHand", at = @At("HEAD"), cancellable = true, require = 1)
+    @Inject(method = "renderRightHand", at = @At("HEAD"), cancellable = true, expect = 1)
     //?} else {
-    /*@Inject(method = "m_117770_", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
+    /*@Inject(method = "m_117770_", at = @At("HEAD"), cancellable = true, remap = false, expect = 1)
     *///?}
     private void townstead$rigRightHand(PoseStack pose, MultiBufferSource buffers, int light, AbstractClientPlayer player, CallbackInfo ci) {
         if (townstead$renderRigArm(pose, buffers, light, player, false)) ci.cancel();
     }
 
     //? if neoforge {
-    @Inject(method = "renderRightHand", at = @At("RETURN"), require = 1)
+    @Inject(method = "renderRightHand", at = @At("RETURN"), expect = 1)
     //?} else {
-    /*@Inject(method = "m_117770_", at = @At("RETURN"), remap = false, require = 1)
+    /*@Inject(method = "m_117770_", at = @At("RETURN"), remap = false, expect = 1)
     *///?}
     private void townstead$overlayRightHand(PoseStack pose, MultiBufferSource buffers, int light,
                                             AbstractClientPlayer player, CallbackInfo ci) {
@@ -65,18 +65,18 @@ public abstract class PlayerFirstPersonRigMixin {
     }
 
     //? if neoforge {
-    @Inject(method = "renderLeftHand", at = @At("HEAD"), cancellable = true, require = 1)
+    @Inject(method = "renderLeftHand", at = @At("HEAD"), cancellable = true, expect = 1)
     //?} else {
-    /*@Inject(method = "m_117813_", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
+    /*@Inject(method = "m_117813_", at = @At("HEAD"), cancellable = true, remap = false, expect = 1)
     *///?}
     private void townstead$rigLeftHand(PoseStack pose, MultiBufferSource buffers, int light, AbstractClientPlayer player, CallbackInfo ci) {
         if (townstead$renderRigArm(pose, buffers, light, player, true)) ci.cancel();
     }
 
     //? if neoforge {
-    @Inject(method = "renderLeftHand", at = @At("RETURN"), require = 1)
+    @Inject(method = "renderLeftHand", at = @At("RETURN"), expect = 1)
     //?} else {
-    /*@Inject(method = "m_117813_", at = @At("RETURN"), remap = false, require = 1)
+    /*@Inject(method = "m_117813_", at = @At("RETURN"), remap = false, expect = 1)
     *///?}
     private void townstead$overlayLeftHand(PoseStack pose, MultiBufferSource buffers, int light,
                                            AbstractClientPlayer player, CallbackInfo ci) {

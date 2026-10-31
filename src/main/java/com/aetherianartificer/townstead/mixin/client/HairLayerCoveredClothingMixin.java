@@ -25,7 +25,7 @@ public abstract class HairLayerCoveredClothingMixin<T extends LivingEntity, M ex
         super(parent, model);
     }
 
-    @Inject(method = "renderFinal", remap = false, at = @At("HEAD"), require = 1)
+    @Inject(method = "renderFinal", remap = false, at = @At("HEAD"), expect = 1)
     private void townstead$applyClothingHairCoverage(PoseStack poseStack,
                                                       MultiBufferSource buffers,
                                                       int packedLight,

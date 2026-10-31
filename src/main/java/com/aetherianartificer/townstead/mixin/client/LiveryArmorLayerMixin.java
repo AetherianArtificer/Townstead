@@ -14,7 +14,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Redirect;
 //? if neoforge {
 import net.minecraft.world.item.ArmorMaterial;
 //?} else {
@@ -33,21 +32,23 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class LiveryArmorLayerMixin {
 
     //? if neoforge {
-    @Redirect(method = "renderArmorPiece(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/EquipmentSlot;ILnet/minecraft/client/model/HumanoidModel;FFFFFF)V",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getItemBySlot(Lnet/minecraft/world/entity/EquipmentSlot;)Lnet/minecraft/world/item/ItemStack;"), require = 1)
-    private ItemStack townstead$liveryStack(LivingEntity entity, EquipmentSlot slot) {
-        return LiveryRender.displayStack(entity, slot, entity.getItemBySlot(slot));
+    // WrapOperation, not Redirect: armor mods hook these same calls, and a second Redirect fails to apply.
+    @WrapOperation(method = "renderArmorPiece(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/EquipmentSlot;ILnet/minecraft/client/model/HumanoidModel;FFFFFF)V",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getItemBySlot(Lnet/minecraft/world/entity/EquipmentSlot;)Lnet/minecraft/world/item/ItemStack;"), expect = 1)
+    private ItemStack townstead$liveryStack(LivingEntity entity, EquipmentSlot slot, Operation<ItemStack> original) {
+        return LiveryRender.displayStack(entity, slot, original.call(entity, slot));
     }
 
-    @Redirect(method = "renderArmorPiece(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/EquipmentSlot;ILnet/minecraft/client/model/HumanoidModel;FFFFFF)V",
-            at = @At(value = "INVOKE", target = "Lnet/neoforged/neoforge/client/ClientHooks;getArmorTexture(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ArmorMaterial$Layer;ZLnet/minecraft/world/entity/EquipmentSlot;)Lnet/minecraft/resources/ResourceLocation;", remap = false), require = 1)
-    private ResourceLocation townstead$liveryTexture(Entity entity, ItemStack stack, ArmorMaterial.Layer layer, boolean inner, EquipmentSlot slot) {
-        return LiveryRender.texture(entity, net.neoforged.neoforge.client.ClientHooks.getArmorTexture(entity, stack, layer, inner, slot));
+    @WrapOperation(method = "renderArmorPiece(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/EquipmentSlot;ILnet/minecraft/client/model/HumanoidModel;FFFFFF)V",
+            at = @At(value = "INVOKE", target = "Lnet/neoforged/neoforge/client/ClientHooks;getArmorTexture(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ArmorMaterial$Layer;ZLnet/minecraft/world/entity/EquipmentSlot;)Lnet/minecraft/resources/ResourceLocation;", remap = false), expect = 1)
+    private ResourceLocation townstead$liveryTexture(Entity entity, ItemStack stack, ArmorMaterial.Layer layer, boolean inner, EquipmentSlot slot,
+                                                     Operation<ResourceLocation> original) {
+        return LiveryRender.texture(entity, original.call(entity, stack, layer, inner, slot));
     }
 
     @WrapOperation(method = "renderArmorPiece(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/EquipmentSlot;ILnet/minecraft/client/model/HumanoidModel;FFFFFF)V",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/layers/HumanoidArmorLayer;renderModel(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/client/model/Model;ILnet/minecraft/resources/ResourceLocation;)V"),
-            require = 1)
+            expect = 1)
     private void townstead$liveryDraw(HumanoidArmorLayer<?, ?, ?> layer, PoseStack pose, MultiBufferSource buffers,
                                       int light, Model model, int colour, ResourceLocation texture, Operation<Void> original) {
         original.call(layer, pose, buffers, light, model, LiveryRender.tint(colour), texture);
@@ -56,13 +57,13 @@ public abstract class LiveryArmorLayerMixin {
         }
     }
     //?} else {
-    /*@Redirect(method = "m_117118_(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/EquipmentSlot;ILnet/minecraft/client/model/HumanoidModel;)V",
-            remap = false, at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;m_6844_(Lnet/minecraft/world/entity/EquipmentSlot;)Lnet/minecraft/world/item/ItemStack;"), require = 1)
-    private ItemStack townstead$liveryStack(LivingEntity entity, EquipmentSlot slot) {
-        return LiveryRender.displayStack(entity, slot, entity.getItemBySlot(slot));
+    /*@WrapOperation(method = "m_117118_(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/EquipmentSlot;ILnet/minecraft/client/model/HumanoidModel;)V",
+            remap = false, at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;m_6844_(Lnet/minecraft/world/entity/EquipmentSlot;)Lnet/minecraft/world/item/ItemStack;"), expect = 1)
+    private ItemStack townstead$liveryStack(LivingEntity entity, EquipmentSlot slot, Operation<ItemStack> original) {
+        return LiveryRender.displayStack(entity, slot, original.call(entity, slot));
     }
 
-    @Inject(method = "getArmorResource", remap = false, at = @At("RETURN"), cancellable = true, require = 1)
+    @Inject(method = "getArmorResource", remap = false, at = @At("RETURN"), cancellable = true, expect = 1)
     private void townstead$liveryTexture(Entity entity, ItemStack stack, EquipmentSlot slot, String type,
                                          CallbackInfoReturnable<ResourceLocation> cir) {
         cir.setReturnValue(LiveryRender.texture(entity, cir.getReturnValue()));
@@ -71,7 +72,7 @@ public abstract class LiveryArmorLayerMixin {
     // WrapOperation, not ModifyArgs: Forge's module classloader cannot load ModifyArgs' synthetic Args classes.
     @WrapOperation(method = "m_117118_(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/EquipmentSlot;ILnet/minecraft/client/model/HumanoidModel;)V",
             remap = false, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/layers/HumanoidArmorLayer;renderModel(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/world/item/ArmorItem;Lnet/minecraft/client/model/Model;ZFFFLnet/minecraft/resources/ResourceLocation;)V"),
-            require = 1)
+            expect = 1)
     private void townstead$liveryTint(HumanoidArmorLayer<?, ?, ?> layer, PoseStack pose, MultiBufferSource buffers,
                                       int light, ArmorItem item, Model model, boolean glint,
                                       float r, float g, float b, ResourceLocation texture, Operation<Void> original) {

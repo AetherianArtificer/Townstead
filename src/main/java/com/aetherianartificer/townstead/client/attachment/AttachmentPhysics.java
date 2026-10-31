@@ -477,7 +477,8 @@ public final class AttachmentPhysics {
                     aim.mul(CARRY).add(V.set(restDir).mul(1f - CARRY)).normalize();
                     prevPitchAxis[i].lerp(pitchAxis[i], u, stepAxis);
                     if (stepAxis.lengthSquared() > 1e-8f) stepAxis.normalize();
-                    if (chain.sway() != 0f) {
+                    // rotateAxis divides by the axis length, so a degenerate axis would poison the chain.
+                    if (chain.sway() != 0f && stepAxis.lengthSquared() > 1e-8f) {
                         float sway = chain.sway() * Mth.DEG_TO_RAD;
                         float jointPhase = phase + i * 0.8f;
                         Q.identity().rotateAxis(sway * Mth.sin(time * 1.4f * chain.swaySpeed() + jointPhase),
@@ -527,6 +528,18 @@ public final class AttachmentPhysics {
                 }
                 for (int i = 0; i < n; i++) lastTail[i].set(stepTail[i]);
             }
+            // A NaN never decays out of the sim and renders the bone and everything below it
+            // invisible, so a chain that blew up snaps back to its pose instead.
+            for (int i = 0; i < n; i++) {
+                if (!pos[i].isFinite() || !vel[i].isFinite() || !finite(dev[i]) || !finite(prevDev[i])) {
+                    settle();
+                    return;
+                }
+            }
+        }
+
+        private static boolean finite(Quaternionf q) {
+            return Float.isFinite(q.x) && Float.isFinite(q.y) && Float.isFinite(q.z) && Float.isFinite(q.w);
         }
 
         /** Holds the segment at its length, inside its hinge plane, and within its limit of the aim. */
@@ -581,6 +594,9 @@ public final class AttachmentPhysics {
             if (clamped) {
                 Vector3f perp = C2.set(dir).sub(C3.set(aim).mul(cos));
                 if (perp.lengthSquared() < 1e-10f) perp.set(pitchAxis).cross(aim);
+                if (perp.lengthSquared() < 1e-10f) {
+                    perp.set(Math.abs(aim.y) < 0.9f ? DOWN : C3.set(1f, 0f, 0f)).cross(aim);
+                }
                 perp.normalize();
                 dir.set(aim).mul(Mth.cos(limit)).add(perp.mul(Mth.sin(limit)));
             }

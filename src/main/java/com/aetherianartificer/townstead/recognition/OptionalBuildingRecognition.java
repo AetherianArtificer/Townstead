@@ -129,6 +129,16 @@ public final class OptionalBuildingRecognition {
     private record TypeEntry(String name, BuildingType type, int reach, @Nullable ResourceLocation core) {}
     private record RoomBounds(Village village, Building room) {}
 
+    /** One pass's rooms. Every seed asks about the same blocks, so each answer is kept for the pass. */
+    private static final class Rooms {
+        private final List<RoomBounds> bounds = new ArrayList<>();
+        private final Map<Long, Boolean> inside = new HashMap<>();
+
+        void add(Village village, Building room) {
+            bounds.add(new RoomBounds(village, room));
+        }
+    }
+
     private OptionalBuildingRecognition() {}
 
     /**
@@ -167,7 +177,7 @@ public final class OptionalBuildingRecognition {
                 Math.max(center.getZ() - box.minZ(), box.maxZ() - center.getZ()));
         int radius = Math.min(160, Math.max(48, villageReach + Math.max(24, maxReach)));
         List<List<MatchedBlock>> visible = sweep(level, center, radius, types);
-        List<RoomBounds> rooms = registeredRooms(level, center);
+        Rooms rooms = registeredRooms(level, center);
         SiteRequirements.Scan scan = new SiteRequirements.Scan(level);
         Set<String> attempted = new HashSet<>();
         List<Candidate> found = new ArrayList<>();
@@ -218,10 +228,10 @@ public final class OptionalBuildingRecognition {
         if (level == null || village == null) return new RecheckResult(0, 0);
         List<TypeEntry> types = openAirTypes();
         if (types.isEmpty()) return new RecheckResult(0, 0);
-        List<RoomBounds> rooms = new ArrayList<>();
+        Rooms rooms = new Rooms();
         for (Building building : McaBuildings.all(village)) {
             if (!McaBuildings.isOpenAirRecord(level, village, building)) {
-                rooms.add(new RoomBounds(village, building));
+                rooms.add(village, building);
             }
         }
         SiteRequirements.Scan scan = new SiteRequirements.Scan(level);
@@ -293,7 +303,7 @@ public final class OptionalBuildingRecognition {
      */
     private static @Nullable Candidate recognizeAgain(ServerLevel level, SiteRequirements.Scan scan,
                                                       Building building, List<TypeEntry> family,
-                                                      List<RoomBounds> rooms) {
+                                                      Rooms rooms) {
         BlockPos min = building.getPos0();
         BlockPos max = building.getPos1();
         BlockPos center = building.getCenter();
@@ -406,7 +416,7 @@ public final class OptionalBuildingRecognition {
         int maxReach = types.stream().mapToInt(TypeEntry::reach).max().orElse(DEFAULT_REACH);
 
         List<List<MatchedBlock>> visible = sweep(level, origin, DISCOVERY_RADIUS + maxReach, types);
-        List<RoomBounds> rooms = registeredRooms(level, origin);
+        Rooms rooms = registeredRooms(level, origin);
         SiteRequirements.Scan scan = new SiteRequirements.Scan(level);
         List<Candidate> matches = new ArrayList<>();
         SiteRequirements.Problem[] problem = new SiteRequirements.Problem[1];
@@ -742,20 +752,24 @@ public final class OptionalBuildingRecognition {
     }
 
     /** Rooms keep what is inside them; an open-air site never claims furniture through a wall. */
-    private static List<RoomBounds> registeredRooms(ServerLevel level, BlockPos origin) {
-        List<RoomBounds> rooms = new ArrayList<>();
+    private static Rooms registeredRooms(ServerLevel level, BlockPos origin) {
+        Rooms rooms = new Rooms();
         Optional<Village> village = VillageManager.get(level)
                 .findNearestVillage(origin, Math.max(Village.MERGE_MARGIN, Village.PLAYER_BORDER_MARGIN));
         if (village.isEmpty()) return rooms;
         for (Building building : McaBuildings.all(village.get())) {
             if (!McaBuildings.isOpenAirRecord(level, village.get(), building)) {
-                rooms.add(new RoomBounds(village.get(), building));
+                rooms.add(village.get(), building);
             }
         }
         return rooms;
     }
 
-    private static boolean insideRoom(ServerLevel level, List<RoomBounds> rooms, BlockPos pos) {
+    private static boolean insideRoom(ServerLevel level, Rooms rooms, BlockPos pos) {
+        return rooms.inside.computeIfAbsent(pos.asLong(), ignored -> insideAnyRoom(level, rooms.bounds, pos));
+    }
+
+    private static boolean insideAnyRoom(ServerLevel level, List<RoomBounds> rooms, BlockPos pos) {
         for (RoomBounds entry : rooms) {
             BlockPos min = entry.room().getPos0();
             BlockPos max = entry.room().getPos1();
@@ -768,7 +782,7 @@ public final class OptionalBuildingRecognition {
     }
 
     private static Candidate assemble(ServerLevel level, SiteRequirements.Scan scan, BlockPos origin,
-                                      TypeEntry entry, List<MatchedBlock> visible, List<RoomBounds> rooms,
+                                      TypeEntry entry, List<MatchedBlock> visible, Rooms rooms,
                                       java.util.function.Consumer<SiteRequirements.Problem> problems) {
         if (visible.isEmpty()) return null;
         BuildingType type = entry.type();

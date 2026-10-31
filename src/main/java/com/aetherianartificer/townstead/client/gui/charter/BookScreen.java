@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.client.gui.charter;
 import com.aetherianartificer.townstead.client.gui.common.BookRenderer;
 import com.aetherianartificer.townstead.client.gui.common.Controls;
 import com.aetherianartificer.townstead.client.gui.common.FrameRenderer;
+import com.aetherianartificer.townstead.client.gui.common.MenuPanel;
 import com.aetherianartificer.townstead.client.gui.common.Palette;
 import com.aetherianartificer.townstead.client.gui.common.UiScissor;
 import net.minecraft.client.gui.GuiGraphics;
@@ -341,8 +342,11 @@ abstract class BookScreen extends Screen {
         return new DropMenu(font, heading, entries, anchor, true, anchor.y() - top - EDGE, viewW());
     }
 
+    /** A menu opening below {@code anchor}, or above it when a row low on the page leaves too little room. */
     protected DropMenu menuBelow(@Nullable Component heading, List<DropMenu.Entry> entries, Controls.Rect anchor) {
-        return new DropMenu(font, heading, entries, anchor, false, barY - anchor.bottom() - 4, viewW());
+        int below = barY - anchor.bottom() - 4, above = anchor.y() - top - EDGE;
+        boolean up = MenuPanel.fit(below, heading != null) < entries.size() && above > below;
+        return new DropMenu(font, heading, entries, anchor, up, up ? above : below, viewW());
     }
 
     // ── Rendering ──

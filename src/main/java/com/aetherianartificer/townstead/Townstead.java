@@ -2349,6 +2349,7 @@ public class Townstead {
             // Readings other mods own, observable through pheno:provider state backings
             com.aetherianartificer.townstead.compat.vampirism.VampirismStateProviders.register();
             com.aetherianartificer.townstead.compat.vampirism.VampireTotemWelcome.register();
+            com.aetherianartificer.townstead.politics.relations.MajorityWelcome.register();
             // A Root's declared states decide who can become a vampire, get drunk, and so on
             com.aetherianartificer.townstead.pheno.state.EntityStates.setEligibility(
                     com.aetherianartificer.townstead.root.RootStates::allows);

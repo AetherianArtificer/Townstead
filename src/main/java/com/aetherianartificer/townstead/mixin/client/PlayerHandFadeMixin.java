@@ -28,9 +28,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class PlayerHandFadeMixin {
 
     //? if neoforge {
-    @Inject(method = "renderHand", at = @At("HEAD"), require = 1)
+    @Inject(method = "renderHand", at = @At("HEAD"), expect = 1)
     //?} else {
-    /*@Inject(method = "m_117775_", at = @At("HEAD"), remap = false, require = 1)
+    /*@Inject(method = "m_117775_", at = @At("HEAD"), remap = false, expect = 1)
     *///?}
     private void townstead$beginFade(PoseStack pose, MultiBufferSource buffers, int light,
                                      AbstractClientPlayer player, ModelPart arm, ModelPart sleeve,
@@ -39,9 +39,9 @@ public abstract class PlayerHandFadeMixin {
     }
 
     //? if neoforge {
-    @Inject(method = "renderHand", at = @At("RETURN"), require = 1)
+    @Inject(method = "renderHand", at = @At("RETURN"), expect = 1)
     //?} else {
-    /*@Inject(method = "m_117775_", at = @At("RETURN"), remap = false, require = 1)
+    /*@Inject(method = "m_117775_", at = @At("RETURN"), remap = false, expect = 1)
     *///?}
     private void townstead$endFade(PoseStack pose, MultiBufferSource buffers, int light,
                                    AbstractClientPlayer player, ModelPart arm, ModelPart sleeve,
@@ -50,11 +50,11 @@ public abstract class PlayerHandFadeMixin {
     }
 
     //? if neoforge {
-    @WrapOperation(method = "renderHand", require = 1,
+    @WrapOperation(method = "renderHand", expect = 1,
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/client/renderer/RenderType;entitySolid(Lnet/minecraft/resources/ResourceLocation;)Lnet/minecraft/client/renderer/RenderType;"))
     //?} else {
-    /*@WrapOperation(method = "m_117775_", remap = false, require = 1,
+    /*@WrapOperation(method = "m_117775_", remap = false, expect = 1,
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/client/renderer/RenderType;m_110446_(Lnet/minecraft/resources/ResourceLocation;)Lnet/minecraft/client/renderer/RenderType;",
                     remap = false))
@@ -64,11 +64,11 @@ public abstract class PlayerHandFadeMixin {
     }
 
     //? if neoforge {
-    @WrapOperation(method = "renderHand", require = 1,
+    @WrapOperation(method = "renderHand", expect = 1,
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/client/model/geom/ModelPart;render(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;II)V"))
     //?} else {
-    /*@WrapOperation(method = "m_117775_", remap = false, require = 1,
+    /*@WrapOperation(method = "m_117775_", remap = false, expect = 1,
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/client/model/geom/ModelPart;m_104301_(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;II)V",
                     remap = false))

@@ -129,6 +129,18 @@ public final class WildCostume {
     }
 
     /**
+     * Some mods add a mob to the world before finishing its spawn (Vampirism's totems, tents and
+     * raids), so players already see it bare. Sends the look to everyone in tracking range.
+     */
+    public static void syncIfTracked(Mob mob) {
+        if (!(mob.level() instanceof ServerLevel level) || level.getEntity(mob.getId()) != mob) return;
+        double range = mob.getType().clientTrackingRange() * 16.0;
+        for (ServerPlayer player : level.players()) {
+            if (player.distanceToSqr(mob) <= range * range) syncTo(player, mob);
+        }
+    }
+
+    /**
      * Replaces {@code mob} with the person it shows: same look, health share, effects and place.
      * The person is no longer wild. A settled one seeks a home like anyone else; otherwise they
      * come back as a newcomer who belongs nowhere yet. Null when there is none.

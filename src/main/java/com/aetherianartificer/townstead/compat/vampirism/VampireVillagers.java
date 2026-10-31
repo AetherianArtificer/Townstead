@@ -51,6 +51,33 @@ public final class VampireVillagers {
         return vampire;
     }
 
+    private static final Map<LivingEntity, Long> WELCOMED_CACHE = new WeakHashMap<>();
+    private static final long WELCOMED_TICKS = 100;
+
+    /**
+     * A vampire villager who lives in a village whose faction welcomes vampires: a neighbor to
+     * hunters, not quarry. Rechecked every few seconds, since target scans ask constantly.
+     */
+    public static boolean isWelcomedResident(LivingEntity entity) {
+        if (!(entity instanceof VillagerEntityMCA villager) || entity.getServer() == null) return false;
+        long now = entity.level().getGameTime();
+        synchronized (WELCOMED_CACHE) {
+            Long cached = WELCOMED_CACHE.get(entity);
+            if (cached != null && now - (cached >> 1) < WELCOMED_TICKS) return (cached & 1L) != 0;
+        }
+        boolean welcomed = villager.getResidency().getHomeVillage().map(village -> {
+            var faction = com.aetherianartificer.townstead.politics.state.PoliticalSavedData.get(entity.getServer())
+                    .faction(new com.aetherianartificer.townstead.politics.state.SettlementRef(
+                            entity.level().dimension().location(), village.getId()));
+            return faction != null && faction.active() && com.aetherianartificer.townstead.politics.relations.FactionRelations
+                    .welcomes(entity.getServer(), faction.id()).contains("vampire");
+        }).orElse(false);
+        synchronized (WELCOMED_CACHE) {
+            WELCOMED_CACHE.put(entity, (now << 1) | (welcomed ? 1L : 0L));
+        }
+        return welcomed;
+    }
+
     /** Whether Sanguinare may take this villager: its Root allows vampirism and it is not one yet. */
     public static boolean canTurn(LivingEntity entity) {
         return entity instanceof VillagerEntityMCA && EntityStates.definition(STATE) != null

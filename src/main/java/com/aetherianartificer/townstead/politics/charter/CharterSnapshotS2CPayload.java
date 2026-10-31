@@ -156,10 +156,13 @@ public record CharterSnapshotS2CPayload(BlockPos lectern, BlockPos bell, int sta
         static Accord read(FriendlyByteBuf b) { return new Accord(b.readUtf(256), Text.read(b), b.readBoolean()); }
     }
 
-    /** A group the faction may declare welcome, and whether it does now. */
-    public record Welcome(String id, Text name, boolean welcomed) {
-        void write(FriendlyByteBuf b) { b.writeUtf(id, 256); name.write(b); b.writeBoolean(welcomed); }
-        static Welcome read(FriendlyByteBuf b) { return new Welcome(b.readUtf(256), Text.read(b), b.readBoolean()); }
+    /**
+     * A group the faction may declare welcome, and whether it does now. {@code fixed} means it is
+     * welcome by something other than the charter (a vampire-held totem), so no amendment changes it.
+     */
+    public record Welcome(String id, Text name, boolean welcomed, boolean fixed) {
+        void write(FriendlyByteBuf b) { b.writeUtf(id, 256); name.write(b); b.writeBoolean(welcomed); b.writeBoolean(fixed); }
+        static Welcome read(FriendlyByteBuf b) { return new Welcome(b.readUtf(256), Text.read(b), b.readBoolean(), b.readBoolean()); }
     }
 
     /** The Seat of Power row: the building, a line of detail, and whether this lectern can propose moving it here. */

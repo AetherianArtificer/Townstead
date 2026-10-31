@@ -5,7 +5,12 @@
     { "type": "townstead:building", "type_prefixes": [
       "compat/toughasnails/climate_fuel_store", "compat.toughasnails.climate_fuel_store",
       "compat/toughasnails/climate_icehouse", "compat.toughasnails.climate_icehouse"
-    ] }
+    ] },
+    { "type": "townstead:job_block", "block": "cold_sweat:hearth_bottom", "sites_per_worker": 8 },
+    { "type": "townstead:job_block", "block": "cold_sweat:boiler", "sites_per_worker": 8 },
+    { "type": "townstead:job_block", "block": "cold_sweat:icebox", "sites_per_worker": 8 },
+    { "type": "townstead:job_block", "block": "legendarysurvivaloverhaul:heater", "sites_per_worker": 8 },
+    { "type": "townstead:job_block", "block": "legendarysurvivaloverhaul:cooler", "sites_per_worker": 8 }
   ],
   "tasks": [
     {

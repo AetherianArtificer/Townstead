@@ -32,7 +32,7 @@ public abstract class VillagerSpeciesRigLayerMixin<T extends Mob & VillagerLike<
         super(ctx, model, shadowRadius);
     }
 
-    @Inject(method = "scale", at = @At("HEAD"), remap = false, require = 1)
+    @Inject(method = "scale", at = @At("HEAD"), remap = false, expect = 1)
     private void townstead$addRigLayer(Mob villager, PoseStack matrices, float tickDelta, CallbackInfo ci) {
         if (townstead$rigLayerAdded) return;
         townstead$rigLayerAdded = true;

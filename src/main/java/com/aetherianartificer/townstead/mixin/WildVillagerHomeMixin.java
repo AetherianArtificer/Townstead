@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(value = VillagerEntityMCA.class, remap = false)
 public abstract class WildVillagerHomeMixin {
-    @Inject(method = "requiresHome", at = @At("RETURN"), cancellable = true, require = 1)
+    @Inject(method = "requiresHome", at = @At("RETURN"), cancellable = true, expect = 1)
     private void townstead$wildHasNoHome(CallbackInfoReturnable<Boolean> cir) {
         if (!cir.getReturnValueZ()) return;
         VillagerEntityMCA self = (VillagerEntityMCA) (Object) this;
@@ -33,9 +33,9 @@ public abstract class WildVillagerHomeMixin {
 
     // The brain is built before the save is read, so a wild villager rebuilds it once its tag is known.
     //? if neoforge {
-    @Inject(method = "readAdditionalSaveData", at = @At("TAIL"), require = 1)
+    @Inject(method = "readAdditionalSaveData", at = @At("TAIL"), expect = 1)
     //?} else {
-    /*@Inject(method = "m_7378_", at = @At("TAIL"), require = 1)
+    /*@Inject(method = "m_7378_", at = @At("TAIL"), expect = 1)
     *///?}
     private void townstead$wildBrainAfterLoad(CompoundTag nbt, CallbackInfo ci) {
         VillagerEntityMCA self = (VillagerEntityMCA) (Object) this;

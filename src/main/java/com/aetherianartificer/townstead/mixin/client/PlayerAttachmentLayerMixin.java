@@ -52,7 +52,7 @@ public abstract class PlayerAttachmentLayerMixin
             at = @At("HEAD"))
     //?} else {
     /*@Inject(method = "m_7546_(Lnet/minecraft/client/player/AbstractClientPlayer;Lcom/mojang/blaze3d/vertex/PoseStack;F)V",
-            at = @At("HEAD"), remap = false, require = 1)
+            at = @At("HEAD"), remap = false, expect = 1)
     *///?}
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void townstead$insertSkinOverlay(AbstractClientPlayer player, PoseStack matrices, float f,

@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -88,6 +89,7 @@ public abstract class VillagerLayerBendMixin<T extends LivingEntity, M extends H
         }
     }
 
+    @Unique
     private static void applyStoredBend(LivingEntity entity, String partName, Object part) {
         if (part == null) return;
         BendStateRegistry.State state = BendStateRegistry.get(entity.getUUID(), partName);

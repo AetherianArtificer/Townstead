@@ -90,6 +90,8 @@ public final class TownsteadClient {
             NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onFogColor);
             NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.gui.switchboard.SwitchboardLink::onScreenInit);
             NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.gui.rebirth.RebirthDeathButton::onScreenInit);
+            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.gui.ScreenInputEvents::onScroll);
+            NeoForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.gui.ScreenInputEvents::onKey);
             com.aetherianartificer.townstead.switchboard.Switchboard.onChange(() -> net.minecraft.client.Minecraft.getInstance()
                     .execute(com.aetherianartificer.townstead.client.root.CreativeTabRefresh::refreshTownsteadTab));
             hooksRegistered = true;
@@ -144,6 +146,8 @@ public final class TownsteadClient {
             MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onRenderFog);
             MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.haze.HazeView::onFogColor);
             MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.gui.rebirth.RebirthDeathButton::onScreenInit);
+            MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.gui.ScreenInputEvents::onScroll);
+            MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.gui.ScreenInputEvents::onKey);
             com.aetherianartificer.townstead.switchboard.Switchboard.onChange(() -> net.minecraft.client.Minecraft.getInstance()
                     .execute(com.aetherianartificer.townstead.client.root.CreativeTabRefresh::refreshTownsteadTab));
             hooksRegistered = true;

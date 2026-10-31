@@ -90,6 +90,8 @@
   "gene.townstead_roots.vampire_no_bearing.desc": "Cette personne ne peut pas porter d'enfant.",
   "gene.townstead_roots.vampire_no_thirst": "Pas de soif d'eau",
   "gene.townstead_roots.vampire_no_thirst.desc": "Boit du sang au lieu de l'eau.",
+  "gene.townstead_roots.vampire_infection_immune": "Immunisé contre l'infection",
+  "gene.townstead_roots.vampire_infection_immune.desc": "Les morsures de zombie ne peuvent pas les transformer.",
   "gene.townstead_roots.dhampir_kin": "Parenté dhampire",
   "gene.townstead_roots.dhampir_kin.desc": "À moitié du sang qui fait un vampire. Les vampires sauvages sont des ennemis, mais les vampires installés ont d'abord droit à un mot."
 }

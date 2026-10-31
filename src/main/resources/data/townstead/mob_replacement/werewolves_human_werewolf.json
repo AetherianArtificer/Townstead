@@ -4,7 +4,8 @@
   "spawn_types": [
     "natural",
     "spawner",
-    "event"
+    "event",
+    "spawn_egg"
   ],
   "replaces": [
     "werewolves:human_werewolf"

@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.rebirth;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.aspect.AspectPicks;
 import com.aetherianartificer.townstead.chronicle.emit.ChronicleEmitter;
 import com.aetherianartificer.townstead.chronicle.store.ChronicleSavedData;
 import com.aetherianartificer.townstead.chronicle.template.ChronicleEventTemplate.TriggerKey;
@@ -186,6 +187,8 @@ public final class Rebirth {
         if (Relearning.capture(player, memorial, oldName)) leaveJournal(player, memorial, oldName, journalAt);
         StandingService.forget(server, id);
         CharterMemberships.endAll(server, id);
+        // Vampirism keeps a faction through death; the new life starts without the old one's aspect.
+        AspectPicks.become(player, null, 0, false);
         PlayerLives.get(server).endLife(id,
                 new PlayerLives.Life(memorial, oldName, level.getGameTime(), lastEvent), newName);
         syncNames(player);

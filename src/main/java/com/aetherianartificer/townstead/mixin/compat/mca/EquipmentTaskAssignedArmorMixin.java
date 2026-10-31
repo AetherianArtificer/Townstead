@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.mixin.compat.mca;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.aetherianartificer.townstead.inventory.AssignedArmor;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.brain.tasks.EquipmentTask;
@@ -12,7 +14,6 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.function.Predicate;
@@ -25,15 +26,16 @@ public abstract class EquipmentTaskAssignedArmorMixin {
 
     // Both selecting combat armor and clearing it after duty must honor the same ownership rule.
     //? if neoforge {
-    @Redirect(method = {"start", "equipBestArmor"}, remap = false, at = @At(value = "INVOKE",
-            target = "Lnet/conczin/mca/entity/VillagerEntityMCA;setItemSlot(Lnet/minecraft/world/entity/EquipmentSlot;Lnet/minecraft/world/item/ItemStack;)V"), require = 1)
+    @WrapOperation(method = {"start", "equipBestArmor"}, remap = false, at = @At(value = "INVOKE",
+            target = "Lnet/conczin/mca/entity/VillagerEntityMCA;setItemSlot(Lnet/minecraft/world/entity/EquipmentSlot;Lnet/minecraft/world/item/ItemStack;)V"), expect = 1)
     //?} else {
-    /*@Redirect(method = {"start", "equipBestArmor"}, remap = false, at = @At(value = "INVOKE",
-            target = "Lnet/conczin/mca/entity/VillagerEntityMCA;m_8061_(Lnet/minecraft/world/entity/EquipmentSlot;Lnet/minecraft/world/item/ItemStack;)V"), require = 1)
+    /*@WrapOperation(method = {"start", "equipBestArmor"}, remap = false, at = @At(value = "INVOKE",
+            target = "Lnet/conczin/mca/entity/VillagerEntityMCA;m_8061_(Lnet/minecraft/world/entity/EquipmentSlot;Lnet/minecraft/world/item/ItemStack;)V"), expect = 1)
     *///?}
-    private void townstead$keepAssignedArmor(VillagerEntityMCA villager, EquipmentSlot slot, ItemStack stack) {
+    private void townstead$keepAssignedArmor(VillagerEntityMCA villager, EquipmentSlot slot, ItemStack stack,
+                                             Operation<Void> original) {
         // The standard-issue shield is conjured here too, so this is where it takes the villager's arms.
-        if (!AssignedArmor.protects(villager, slot)) villager.setItemSlot(slot,
+        if (!AssignedArmor.protects(villager, slot)) original.call(villager, slot,
                 com.aetherianartificer.townstead.politics.heraldry.GuardHeraldry.dress(villager, stack));
     }
 

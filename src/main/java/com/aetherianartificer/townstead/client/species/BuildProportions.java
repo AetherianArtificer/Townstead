@@ -82,6 +82,7 @@ public final class BuildProportions {
         scalePart(model.leftLeg, proportions, "legs", xz0, y0, bulk);
         scalePart(model.body, proportions, "body", xz0, y0, bulk);
         attachLimbs(model);
+        groundFeet(model);
 
         // Hidden features (prevent_feature_render): zero the listed groups after proportions.
         com.aetherianartificer.townstead.client.root.HideFeatures.hide(
@@ -108,6 +109,7 @@ public final class BuildProportions {
     private static final float ARM_INNER = 1.0f;
     private static final float TORSO_HALF = 4.0f;
     private static final float LEG_PIVOT = 1.9f;
+    private static final float LEG_LENGTH = 12.0f;
 
     /**
      * Each part scales about its own pivot, so a narrowed torso pulls in from its sides while a
@@ -121,39 +123,53 @@ public final class BuildProportions {
     private static void attachLimbs(HumanoidModel<?> model) {
         // vanilla setupAnim sets the arm pivots (±5, or swung round by an attack) every frame, so
         // scaling them here never compounds
-        float arm = Math.min(ARM_PIVOT, TORSO_HALF * model.body.xScale + ARM_INNER * model.rightArm.xScale) / ARM_PIVOT;
+        float torso = PartPreScale.totalX(model.body);
+        float arm = Math.min(ARM_PIVOT, TORSO_HALF * torso + ARM_INNER * PartPreScale.totalX(model.rightArm)) / ARM_PIVOT;
         model.rightArm.x *= arm;
         model.rightArm.z *= arm;
-        arm = Math.min(ARM_PIVOT, TORSO_HALF * model.body.xScale + ARM_INNER * model.leftArm.xScale) / ARM_PIVOT;
+        arm = Math.min(ARM_PIVOT, TORSO_HALF * torso + ARM_INNER * PartPreScale.totalX(model.leftArm)) / ARM_PIVOT;
         model.leftArm.x *= arm;
         model.leftArm.z *= arm;
         // nothing else moves a leg pivot sideways, so these are set outright (and put back by reset())
-        model.rightLeg.x = -LEG_PIVOT * model.rightLeg.xScale;
-        model.leftLeg.x = LEG_PIVOT * model.leftLeg.xScale;
+        model.rightLeg.x = -LEG_PIVOT * PartPreScale.totalX(model.rightLeg);
+        model.leftLeg.x = LEG_PIVOT * PartPreScale.totalX(model.leftLeg);
+    }
+
+    /**
+     * Legs scale about the hip, so a longer leg pushes the feet below the ground line and a shorter
+     * one lifts them off it. Shift every part by the difference to keep the feet on the ground.
+     * Vanilla setupAnim sets each part's y every frame, so the shift never compounds.
+     */
+    private static void groundFeet(HumanoidModel<?> model) {
+        float lift = LEG_LENGTH * (PartPreScale.totalY(model.rightLeg) - 1f);
+        if (Math.abs(lift) < 1.0e-4f) return;
+        for (ModelPart part : new ModelPart[]{model.head, model.hat, model.rightArm, model.leftArm,
+                model.rightLeg, model.leftLeg, model.body}) {
+            part.y -= lift;
+        }
     }
 
     /**
      * Set {@code part}'s scale: when the gene lists this group, the de-squash {@code (xz0,y0)} times
      * the part's per-axis factors (clamped); otherwise reset to {@code (1,1,1)} so the part keeps
      * MCA's squash. Per-axis factors stylize without stretching — thick arms that aren't longer,
-     * a torso that's deep but not tall.
+     * a torso that's deep but not tall. The de-squash goes in before the part's rotation, since
+     * MCA's squash is in the body's frame; the factors after it, in the part's own.
      */
     private static void scalePart(ModelPart part, @Nullable GeneCatalogEntry proportions,
                                   String group, float xz0, float y0, float bulk) {
-        float x = 1.0f;
-        float y = 1.0f;
-        float z = 1.0f;
-        if (proportions != null) {
-            float[] factor = proportions.proportionScale(group, bulk);
-            if (factor != null) {
-                x = Math.max(0.4f, Math.min(2.5f, xz0 * factor[0]));
-                y = Math.max(0.4f, Math.min(2.5f, y0 * factor[1]));
-                z = Math.max(0.4f, Math.min(2.5f, xz0 * factor[2]));
-            }
+        float[] factor = proportions == null ? null : proportions.proportionScale(group, bulk);
+        if (factor == null) {
+            PartPreScale.set(part, 1f, 1f, 1f);
+            part.xScale = 1f;
+            part.yScale = 1f;
+            part.zScale = 1f;
+            return;
         }
-        part.xScale = x;
-        part.yScale = y;
-        part.zScale = z;
+        PartPreScale.set(part, xz0, y0, xz0);
+        part.xScale = Math.max(0.4f, Math.min(2.5f, xz0 * factor[0])) / xz0;
+        part.yScale = Math.max(0.4f, Math.min(2.5f, y0 * factor[1])) / y0;
+        part.zScale = Math.max(0.4f, Math.min(2.5f, xz0 * factor[2])) / xz0;
     }
 
     /** The proportions gene on the entity's applied origin (synced catalog), or {@code null}. */

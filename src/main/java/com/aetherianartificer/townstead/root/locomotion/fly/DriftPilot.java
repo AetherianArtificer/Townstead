@@ -6,6 +6,7 @@ import com.aetherianartificer.townstead.root.locomotion.FlightStyle;
 import com.aetherianartificer.townstead.root.locomotion.Locomotion;
 import com.aetherianartificer.townstead.root.locomotion.MovementMode;
 import com.aetherianartificer.townstead.root.locomotion.Pilot;
+import com.aetherianartificer.townstead.root.locomotion.PilotGravity;
 import com.aetherianartificer.townstead.root.locomotion.TripCost;
 import com.aetherianartificer.townstead.root.locomotion.plan.AirRoutePlanner;
 import net.minecraft.core.BlockPos;
@@ -31,7 +32,6 @@ public final class DriftPilot implements Pilot {
     private static final double OWN_ROUTE_SHIFT_SQR = 9.0;
 
     private final FlightProfile profile;
-    private final boolean ownsGravity;
     private final Doors doors = new Doors();
     @Nullable private RouteFollower ownRoute;
     @Nullable private BlockPos ownRouteFor;
@@ -39,9 +39,8 @@ public final class DriftPilot implements Pilot {
 
     public DriftPilot(Mob mob, FlightProfile profile) {
         this.profile = profile;
-        this.ownsGravity = !mob.isNoGravity();
         this.age = mob.getId();
-        mob.setNoGravity(true);
+        PilotGravity.hold(mob);
     }
 
     /** Puts drift bearers into drift mode; called every tick for villagers, works once a second. */
@@ -61,7 +60,7 @@ public final class DriftPilot implements Pilot {
             FlightProfile now = FlightProfile.of(mob);
             if (now == null || now.style() != FlightStyle.DRIFT) return false;
         }
-        if (!mob.isNoGravity()) mob.setNoGravity(true);
+        PilotGravity.hold(mob);
         if (age % OWN_ROUTE_EVERY == 0) reviewOwnRoute(mob);
         Vec3 pos = mob.position();
         Vec3 target = null;
@@ -100,12 +99,14 @@ public final class DriftPilot implements Pilot {
             doors.closeBehind(mob);
         }
         mob.resetFallDistance();
+        // MCA's navigation only advances its path on the ground; the float is too low for the airborne fallback.
+        mob.setOnGround(true);
         return true;
     }
 
     @Override
     public void stop(Mob mob) {
-        if (ownsGravity) mob.setNoGravity(false);
+        PilotGravity.release(mob);
         doors.closeAll(mob);
         mob.resetFallDistance();
     }

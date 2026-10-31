@@ -104,11 +104,19 @@ class PoiHierarchySchemaTest {
         assertEquals(false, com.aetherianartificer.townstead.data.ModGate.evaluate(gate, "toughasnails"::equals));
         assertEquals(false, com.aetherianartificer.townstead.data.ModGate.evaluate(gate, ignored -> false));
         ProfessionDef def = load("/data/townstead/profession/climatologist/profession.json", "townstead:climatologist");
-        assertEquals(1, def.jobSites().size());
+        assertEquals(6, def.jobSites().size());
         var depot = (JobSiteProvider.Building) def.jobSites().get(0);
         assertTrue(depot.matches("compat/toughasnails/climate_fuel_store"));
         assertTrue(depot.matches("compat/toughasnails/climate_icehouse"));
         assertFalse(depot.matches("house"));
+        java.util.Set<String> stations = new java.util.HashSet<>();
+        for (var provider : def.jobSites().subList(1, 6)) {
+            var station = (JobSiteProvider.JobBlock) provider;
+            assertEquals(8, station.sitesPerWorker());
+            station.blocks().forEach(block -> stations.add(block.toString()));
+        }
+        assertEquals(java.util.Set.of("cold_sweat:hearth_bottom", "cold_sweat:boiler", "cold_sweat:icebox",
+                "legendarysurvivaloverhaul:heater", "legendarysurvivaloverhaul:cooler"), stations);
         assertTrue(readResource("/data/townstead/profession/climatologist/work.json").get("register_profession").getAsBoolean());
     }
 

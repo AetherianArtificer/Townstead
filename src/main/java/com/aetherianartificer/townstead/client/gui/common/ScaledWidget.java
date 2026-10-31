@@ -35,4 +35,12 @@ public final class ScaledWidget extends AbstractWidget {
         g.enableScissor((int) Math.ceil(x * scale), (int) Math.ceil(y * scale),
                 (int) Math.floor(right * scale), (int) Math.floor(bottom * scale));
     }
+
+    /** Tooltip inside a scaled pose: clamp to the virtual screen, or vanilla shoves it onto other content. */
+    public static void tooltip(GuiGraphics g, net.minecraft.client.gui.Font font,
+                               java.util.List<net.minecraft.network.chat.Component> lines, float scale, int mx, int my) {
+        g.renderTooltip(font, lines.stream().map(net.minecraft.network.chat.Component::getVisualOrderText).toList(),
+                (sw, sh, x, y, w, h) -> net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner.INSTANCE
+                        .positionTooltip((int) (sw / scale), (int) (sh / scale), x, y, w, h), mx, my);
+    }
 }

@@ -77,6 +77,7 @@ public final class VillagerServerTickDispatcher {
             resident("villager.container_dropoff", null, (v, t) -> EmptyContainerDropoff.tick(v)),
             resident("villager.profession_memory", Systems.CAREERS, (v, t) -> ProfessionProgressMemoryTicker.tick(v)),
             resident("villager.guard_rest", Systems.WORK, (v, t) -> GuardRestEnforcerTicker.tick(v)),
+            resident("villager.guard_leash", Systems.WORK, (v, t) -> GuardLeash.tick(v)),
             resident("villager.work_tool", Systems.WORK, (v, t) -> WorkToolTicker.tick(v)),
             resident("villager.work_feedback", Systems.WORK, (v, t) ->
                     com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.tick(v)),

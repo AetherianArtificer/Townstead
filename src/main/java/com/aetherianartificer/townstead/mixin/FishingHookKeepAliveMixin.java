@@ -7,7 +7,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
@@ -122,25 +123,25 @@ public abstract class FishingHookKeepAliveMixin {
     }
 
     //? if neoforge {
-    @Redirect(
+    @WrapOperation(
             method = "recreateFromPacket",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/projectile/FishingHook;kill()V")
     )
     //?} else {
-    /*@Redirect(
+    /*@WrapOperation(
             method = "m_141965_",
             remap = false,
             require = 0,
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/projectile/FishingHook;m_6074_()V")
     )
     *///?}
-    private void townstead$suppressClientKillOnSpawn(FishingHook self) {
+    private void townstead$suppressClientKillOnSpawn(FishingHook self, Operation<Void> original) {
         // no-op: we'll render the bobber ourselves via FishingHookRendererMixin
         // and fish-line rendering via FishermanLineRenderer.
     }
 
     //? if neoforge {
-    @Redirect(
+    @WrapOperation(
             method = "tick",
             at = @At(
                     value = "INVOKE",
@@ -149,7 +150,7 @@ public abstract class FishingHookKeepAliveMixin {
             )
     )
     //?} else {
-    /*@Redirect(
+    /*@WrapOperation(
             method = "m_8119_",
             remap = false,
             require = 0,
@@ -160,7 +161,7 @@ public abstract class FishingHookKeepAliveMixin {
             )
     )
     *///?}
-    private void townstead$suppressClientDiscardOnNullOwner(FishingHook self) {
+    private void townstead$suppressClientDiscardOnNullOwner(FishingHook self, Operation<Void> original) {
         // The first discard() call in tick() corresponds to the
         // "if (player == null) discard();" path. Preserve it on the server
         // where a legitimately orphaned hook should clean itself up, but
@@ -168,12 +169,12 @@ public abstract class FishingHookKeepAliveMixin {
         // always "null-owner" client-side and would otherwise vanish each
         // tick right after the server spawns them.
         if (!self.level().isClientSide) {
-            self.discard();
+            original.call(self);
             return;
         }
         if (FishermanHookLinkStore.villagerFor(self.getId()) == null) {
             // Not one of ours — still a foreign orphan, let vanilla clean up.
-            self.discard();
+            original.call(self);
         }
     }
 }

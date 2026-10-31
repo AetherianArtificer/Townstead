@@ -107,6 +107,11 @@ public final class FactionRelations {
         return result;
     }
 
+    /** The groups this faction welcomes itself, by declaration or otherwise, without its allies'. */
+    public static Set<String> ownWelcomes(MinecraftServer server, Faction faction) {
+        return own(server, faction);
+    }
+
     private static Set<String> own(MinecraftServer server, Faction faction) {
         Set<String> out = new LinkedHashSet<>();
         for (WelcomeSource source : WELCOMES) out.addAll(source.welcomes(server, faction));

@@ -26,7 +26,7 @@ import java.util.OptionalInt;
 public abstract class SkinLayerTintMixin<T extends LivingEntity, M extends HumanoidModel<T>> {
 
     //? if neoforge {
-    @Inject(method = "getColor", remap = false, at = @At("RETURN"), cancellable = true, require = 1)
+    @Inject(method = "getColor", remap = false, at = @At("RETURN"), cancellable = true, expect = 1)
     private void townstead$tintSkin(T entity, float partialTick, CallbackInfoReturnable<Integer> cir) {
         OptionalInt tint = SkinTintRegistry.resolve(entity);
         if (tint.isPresent()) {
@@ -40,7 +40,7 @@ public abstract class SkinLayerTintMixin<T extends LivingEntity, M extends Human
                 entity.getId(), cir.getReturnValue() & 0xFFFFFF);
     }
     //?} else {
-    /*@Inject(method = "getColor", remap = false, at = @At("RETURN"), cancellable = true, require = 1)
+    /*@Inject(method = "getColor", remap = false, at = @At("RETURN"), cancellable = true, expect = 1)
     private void townstead$tintSkin(T entity, float partialTick, CallbackInfoReturnable<float[]> cir) {
         OptionalInt tint = SkinTintRegistry.resolve(entity);
         if (tint.isPresent()) {

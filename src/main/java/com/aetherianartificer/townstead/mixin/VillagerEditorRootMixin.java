@@ -47,10 +47,8 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -2042,19 +2040,20 @@ public abstract class VillagerEditorRootMixin extends Screen {
     // InventoryScreen call); the old-editor MCA (1.20.1) has no renderPreviewEntity, so
     // require = 0 skips it there.
     //? if neoforge {
-    @ModifyArgs(method = "renderPreviewEntity", remap = false, require = 0,
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "renderPreviewEntity", remap = false, require = 0,
             at = @At(value = "INVOKE",
-                    target = "Lnet/conczin/mca/client/gui/PreviewEntityAnimation;renderEntityInInventory"))
-    private void townstead$zoomPreview(Args args) {
+                    target = "Lnet/conczin/mca/client/gui/PreviewEntityAnimation;renderEntityInInventory(Lnet/minecraft/client/gui/GuiGraphics;FFFLorg/joml/Vector3f;Lorg/joml/Quaternionf;Lorg/joml/Quaternionf;Lnet/minecraft/world/entity/LivingEntity;)V"))
+    private void townstead$zoomPreview(GuiGraphics graphics, float x, float y, float scale, org.joml.Vector3f translate,
+                                       org.joml.Quaternionf pose, org.joml.Quaternionf camera,
+                                       net.minecraft.world.entity.LivingEntity entity,
+                                       com.llamalad7.mixinextras.injector.wrapoperation.Operation<Void> original) {
         float zoom = com.aetherianartificer.townstead.client.gui.character.EditorPreviewFocus.zoomNow();
         float height = com.aetherianartificer.townstead.client.gui.character.EditorPreviewFocus.heightNow();
-        if (Math.abs(zoom - 1f) < 0.01f && Math.abs(height - 0.5f) < 0.01f) return;
-        if (args.size() != 8) return;
-        if (!(args.get(7) instanceof net.minecraft.world.entity.LivingEntity entity)) return;
-        if (!(args.get(3) instanceof Float scale)) return;
-        if (!(args.get(4) instanceof org.joml.Vector3f)) return;
-        args.set(3, scale * zoom);
-        args.set(4, new org.joml.Vector3f(0f, entity.getBbHeight() * height, 0f));
+        if (Math.abs(zoom - 1f) >= 0.01f || Math.abs(height - 0.5f) >= 0.01f) {
+            scale *= zoom;
+            translate = new org.joml.Vector3f(0f, entity.getBbHeight() * height, 0f);
+        }
+        original.call(graphics, x, y, scale, translate, pose, camera, entity);
     }
     //?}
 

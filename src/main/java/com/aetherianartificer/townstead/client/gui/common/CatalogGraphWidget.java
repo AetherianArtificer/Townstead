@@ -126,7 +126,7 @@ public final class CatalogGraphWidget extends AbstractWidget {
                     .withStyle(style -> style.withColor(0xA5C9A8)));
             if (!hovered.match()) tip.add(Component.translatable("townstead.catalog.context")
                     .withStyle(style -> style.withColor(0xAAAAAA)));
-            g.renderComponentTooltip(font, tip, mx, my);
+            ScaledWidget.tooltip(g, font, tip, uiScale, mx, my);
         }
     }
     private CatalogGraphLayout.Node nodeAt(double mx, double my) {

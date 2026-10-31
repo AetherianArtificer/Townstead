@@ -59,7 +59,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Mixin(BlueprintScreen.class)
-public abstract class BlueprintScreenMixin extends Screen {
+public abstract class BlueprintScreenMixin extends Screen implements com.aetherianartificer.townstead.client.gui.ScreenInputHooks {
     @Shadow(remap = false)
     private String page;
 
@@ -312,31 +312,19 @@ public abstract class BlueprintScreenMixin extends Screen {
     // BlueprintMapRendererIconMixin on the floor-system API and
     // BlueprintScreenLegacyIconMixin on 1.20.1. Neither path depends on MCA atlas UVs.
 
-    //? if neoforge {
+    // Scroll and keys arrive through screen events (ScreenInputEvents) before the screen sees them.
+    // An override here would replace MCA's own mouseScrolled, or lose to another mod's override.
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        if (townstead$dispatchScroll(mouseX, mouseY, verticalAmount))
-            return true;
-        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+    public boolean townstead$screenScrolled(double mouseX, double mouseY, double delta) {
+        return townstead$dispatchScroll(mouseX, mouseY, delta);
     }
-    //?} else {
-    /*@Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (townstead$dispatchScroll(mouseX, mouseY, delta))
-            return true;
-        return super.mouseScrolled(mouseX, mouseY, delta);
-    }
-    *///?}
 
-    // BlueprintScreen inherits keyPressed from Screen, so it is overridden here rather than injected;
-    // Mixin merges this override into BlueprintScreen.
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean townstead$screenKeyPressed(int keyCode, int scanCode, int modifiers) {
         CallbackInfoReturnable<Boolean> cir = new CallbackInfoReturnable<>("keyPressed", true);
         townstead$catalogKeyScroll(keyCode, scanCode, modifiers, cir);
         if (!cir.isCancelled()) townstead$spiritKeyPressed(keyCode, scanCode, modifiers, cir);
-        if (cir.isCancelled()) return cir.getReturnValueZ();
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return cir.isCancelled();
     }
 
     @Unique

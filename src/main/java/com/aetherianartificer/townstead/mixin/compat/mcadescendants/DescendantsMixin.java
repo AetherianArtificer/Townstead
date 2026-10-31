@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.mixin.compat.mcadescendants;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge;
 import net.minecraft.server.level.ServerPlayer;
@@ -9,7 +11,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
@@ -70,16 +71,18 @@ public abstract class DescendantsMixin {
     }
 
     //? if neoforge {
-    @Redirect(method = {"onLivingDeath", "onPlayerRespawn"}, require = 0, at = @At(value = "INVOKE",
+    @WrapOperation(method = {"onLivingDeath", "onPlayerRespawn"}, require = 0, at = @At(value = "INVOKE",
             target = "Lnet/neoforged/neoforge/common/ModConfigSpec$ConfigValue;get()Ljava/lang/Object;"))
-    private static Object townstead$handOffGate(net.neoforged.neoforge.common.ModConfigSpec.ConfigValue<?> value) {
-        return DescendantsBridge.gateValue(value, value.get());
+    private static Object townstead$handOffGate(net.neoforged.neoforge.common.ModConfigSpec.ConfigValue<?> value,
+                                               Operation<Object> original) {
+        return DescendantsBridge.gateValue(value, original.call(value));
     }
     //?} else {
-    /*@Redirect(method = {"onLivingDeath", "onPlayerRespawn"}, require = 0, at = @At(value = "INVOKE",
+    /*@WrapOperation(method = {"onLivingDeath", "onPlayerRespawn"}, require = 0, at = @At(value = "INVOKE",
             target = "Lnet/minecraftforge/common/ForgeConfigSpec$ConfigValue;get()Ljava/lang/Object;"))
-    private static Object townstead$handOffGate(net.minecraftforge.common.ForgeConfigSpec.ConfigValue<?> value) {
-        return DescendantsBridge.gateValue(value, value.get());
+    private static Object townstead$handOffGate(net.minecraftforge.common.ForgeConfigSpec.ConfigValue<?> value,
+                                               Operation<Object> original) {
+        return DescendantsBridge.gateValue(value, original.call(value));
     }
     *///?}
 }

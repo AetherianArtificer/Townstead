@@ -15,8 +15,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import net.minecraft.core.HolderLookup;
 //?}
 
-/** Persists and synchronizes the virtual charter presentation on an ordinary lectern. */
-@Mixin(LecternBlockEntity.class)
+/**
+ * Persists and synchronizes the virtual charter presentation on an ordinary lectern. Below the
+ * default priority so another mod's update-packet overrides replace ours instead of being skipped;
+ * those send the saved data, which carries the charter state and emblem written here.
+ */
+@Mixin(value = LecternBlockEntity.class, priority = 900)
 public abstract class LecternBlockEntityCharterMixin implements CharterLecternAccess {
     @Unique private static final String TOWNSTEAD_CHARTER_STATE = "TownsteadCharterState";
     @Unique private int townstead$charterState;
@@ -41,8 +45,18 @@ public abstract class LecternBlockEntityCharterMixin implements CharterLecternAc
     /*@Inject(method = "m_183515_", remap = false, at = @At("TAIL"))
     private void townstead$saveCharter(CompoundTag tag, CallbackInfo ci) {
     *///?}
-        if (townstead$charterState != NONE) tag.putInt(TOWNSTEAD_CHARTER_STATE, townstead$charterState);
+        if (townstead$charterState != NONE) {
+            tag.putInt(TOWNSTEAD_CHARTER_STATE, townstead$charterState);
+            townstead$refreshEmblem();
+        }
         tag.putString("TownsteadEmblem", townstead$emblem);
+    }
+
+    @Unique
+    private void townstead$refreshEmblem() {
+        var lectern = (LecternBlockEntity) (Object) this;
+        if (lectern.getLevel() instanceof net.minecraft.server.level.ServerLevel level)
+            townstead$setEmblem(com.aetherianartificer.townstead.politics.heraldry.HeraldryService.clothRecipe(level, lectern.getBlockPos()));
     }
 
     //? if >=1.21 {
@@ -77,9 +91,7 @@ public abstract class LecternBlockEntityCharterMixin implements CharterLecternAc
 
     @Unique
     private CompoundTag townstead$updateTag() {
-        var lectern = (LecternBlockEntity) (Object) this;
-        if (lectern.getLevel() instanceof net.minecraft.server.level.ServerLevel level)
-            townstead$setEmblem(com.aetherianartificer.townstead.politics.heraldry.HeraldryService.clothRecipe(level, lectern.getBlockPos()));
+        townstead$refreshEmblem();
         CompoundTag tag = new CompoundTag();
         tag.putString("TownsteadEmblem", townstead$emblem);
         if (townstead$charterState != NONE) tag.putInt(TOWNSTEAD_CHARTER_STATE, townstead$charterState);

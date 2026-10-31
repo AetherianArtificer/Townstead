@@ -415,7 +415,7 @@ public final class CharterBellService {
                 draftView(player, politics, faction),
                 civic,
                 liveryStyles(politics, faction),
-                external ? List.of() : welcomes(politics, faction),
+                external ? List.of() : welcomes(player.server, politics, faction),
                 external ? List.of() : accords(level, politics, faction, village));
         return new CharterSnapshotS2CPayload(lectern, bell, intact ? CharterSnapshotS2CPayload.FOUNDED : CharterSnapshotS2CPayload.REPAIR,
                 editable, message, CivicProviders.revision(player, civic), village.getName(), faction.name(), text(form),
@@ -582,11 +582,15 @@ public final class CharterBellService {
                 .map(v -> Math.sqrt(new net.minecraft.core.BlockPos(v.getCenter()).distSqr(from))).orElse(Double.MAX_VALUE);
     }
 
-    private static List<CharterSnapshotS2CPayload.Welcome> welcomes(PoliticalSavedData politics, Faction faction) {
+    private static List<CharterSnapshotS2CPayload.Welcome> welcomes(net.minecraft.server.MinecraftServer server,
+                                                                    PoliticalSavedData politics, Faction faction) {
         java.util.Set<String> current = politics.welcomes(faction.id());
+        java.util.Set<String> given = com.aetherianartificer.townstead.politics.relations.FactionRelations.ownWelcomes(server, faction);
         List<CharterSnapshotS2CPayload.Welcome> out = new java.util.ArrayList<>();
-        com.aetherianartificer.townstead.root.disposition.DispositionRelations.welcomable().forEach((group, name) ->
-                out.add(new CharterSnapshotS2CPayload.Welcome(group, text(name), current.contains(group))));
+        com.aetherianartificer.townstead.root.disposition.DispositionRelations.welcomable().forEach((group, name) -> {
+            boolean fixed = given.contains(group) && !current.contains(group);
+            out.add(new CharterSnapshotS2CPayload.Welcome(group, text(name), current.contains(group) || fixed, fixed));
+        });
         return out;
     }
 

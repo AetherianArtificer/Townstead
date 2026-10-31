@@ -49,7 +49,8 @@ public final class FtbQuestsProvider implements QuestProvider {
         ClassLoader loader = getClass().getClassLoader();
         Class<?> clientType = Class.forName(CLIENT_FILE, false, loader);
         Class<?> questType = Class.forName(QUEST, false, loader);
-        Object file = ReflectiveAccess.callStatic(clientType, "getInstance");
+        // 2001.x has no getInstance(); the static field exists on both lines.
+        Object file = ReflectiveAccess.field(clientType, "INSTANCE");
         Object teamData = ReflectiveAccess.field(file, "selfTeamData");
         List<QuestEntry> result = new ArrayList<>();
         for (Object quest : ReflectiveAccess.list(ReflectiveAccess.call(file, "collect", questType))) {

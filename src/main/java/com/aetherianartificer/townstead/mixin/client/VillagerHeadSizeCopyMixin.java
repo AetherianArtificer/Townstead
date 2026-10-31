@@ -22,9 +22,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class VillagerHeadSizeCopyMixin<T extends LivingEntity & VillagerLike<T>> {
 
     //? if neoforge {
-    @Inject(method = "copyPropertiesTo", remap = false, at = @At("TAIL"), require = 1)
+    @Inject(method = "copyPropertiesTo", remap = false, at = @At("TAIL"), expect = 1)
     //?} else {
-    /*@Inject(method = "m_102872_", remap = false, at = @At("TAIL"), require = 1)
+    /*@Inject(method = "m_102872_", remap = false, at = @At("TAIL"), expect = 1)
     *///?}
     private void townstead$copyHeadSize(HumanoidModel<T> target, CallbackInfo ci) {
         if (target instanceof CommonVillagerModel) return;

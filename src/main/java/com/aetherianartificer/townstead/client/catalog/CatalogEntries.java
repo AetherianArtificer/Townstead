@@ -69,16 +69,18 @@ public final class CatalogEntries {
             if (tier > 0 && match.isPresent() && "tiered".equals(match.get().layout())) family = match.get().id();
             String group = match.map(CatalogDataLoader.GroupDef::id).orElse(
                     !family.isEmpty() ? family : id.startsWith("compat/") ? id.split("/")[1] : "core");
+            Map<String, String> mods = new LinkedHashMap<>();
+            for (String provider : ModCompat.loadedCompatProviders(id)) mods.put(provider, ModDisplayNameResolver.displayName(provider));
+            String modName = String.join(" + ", mods.values().stream().distinct().toList());
+            String compatMod = ModCompat.extractCompatModId(id);
             String fallback = group.endsWith("_l") ? humanize(group.substring(0, group.length() - 2)) : humanize(group);
+            if (group.equals(compatMod)) fallback = modName.isEmpty() ? ModDisplayNameResolver.displayName(compatMod) : modName;
             String groupLabel = match.map(g -> translated(g.label(), g.label())).orElse(
                     group.equals("core") ? translated("townstead.catalog.group.core", "Core") : fallback);
             Map<String, Integer> spirits = BuildingSpiritIndex.contributionsFor(id);
             String spiritNames = String.join(" ", spirits.keySet().stream().map(s ->
                     translated("townstead.spirit." + s, humanize(s))).toList());
             String name = translated("buildingType." + id, humanize(id));
-            Map<String, String> mods = new LinkedHashMap<>();
-            for (String provider : ModCompat.loadedCompatProviders(id)) mods.put(provider, ModDisplayNameResolver.displayName(provider));
-            String modName = String.join(" + ", mods.values().stream().distinct().toList());
             var entry = new CatalogGraphLayout.Entry(id, name, group, groupLabel, family, tier,
                     spirits.keySet(), recognized.contains(id), CatalogDataLoader.isHangout(id),
                     BuildingPinClientStore.isPinned(id), spiritNames + " " + String.join(" ", spirits.keySet()), mods);

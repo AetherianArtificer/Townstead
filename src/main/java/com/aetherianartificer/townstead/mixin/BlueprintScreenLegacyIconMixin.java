@@ -29,7 +29,7 @@ public abstract class BlueprintScreenLegacyIconMixin {
             method = "renderMap",
             at = @At(value = "INVOKE",
                     target = "Lnet/conczin/mca/resources/data/BuildingType;isIcon()Z"),
-            require = 1,
+            expect = 1,
             remap = false
     )
     private boolean townstead$captureFootprintIcon(BuildingType type, Operation<Boolean> original) {
@@ -46,7 +46,7 @@ public abstract class BlueprintScreenLegacyIconMixin {
             at = @At(value = "INVOKE",
                     target = "Lnet/conczin/mca/client/gui/widget/WidgetUtils;drawRectangle(Lnet/minecraft/client/gui/GuiGraphics;IIIII)V",
                     ordinal = 1),
-            require = 1,
+            expect = 1,
             remap = false
     )
     private void townstead$drawFootprintAndItem(GuiGraphics context,

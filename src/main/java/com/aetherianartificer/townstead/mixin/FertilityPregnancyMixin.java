@@ -7,6 +7,7 @@ import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -79,6 +80,7 @@ public abstract class FertilityPregnancyMixin {
         return false;
     }
 
+    @Unique
     private VillagerEntityMCA partner() {
         if (mother == null) return null;
         return mother.getRelationships().getPartner()

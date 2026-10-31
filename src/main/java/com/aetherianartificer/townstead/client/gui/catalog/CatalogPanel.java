@@ -283,7 +283,7 @@ public final class CatalogPanel {
                 Component hint = widget == directionButton ? tr(state().order().descending ? "descending" : "ascending")
                         : widget == previousVariant ? tr("previous_variant") : widget == nextVariant ? tr("next_variant")
                         : widget.getMessage().getString().equals("×") ? tr("clear") : widget.getMessage();
-                g.renderTooltip(font, hint, mx, my);
+                ScaledWidget.tooltip(g, font, List.of(hint), uiScale, mx, my);
                 break;
             }
         }

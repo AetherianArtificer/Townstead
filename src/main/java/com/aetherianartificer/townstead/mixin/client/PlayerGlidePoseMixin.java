@@ -22,9 +22,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class PlayerGlidePoseMixin<T extends LivingEntity> {
 
     //? if neoforge {
-    @Inject(method = "setupAnim", remap = false, at = @At("TAIL"), require = 1)
+    @Inject(method = "setupAnim", remap = false, at = @At("TAIL"), expect = 1)
     //?} else {
-    /*@Inject(method = "m_6973_", remap = false, at = @At("TAIL"), require = 1)
+    /*@Inject(method = "m_6973_", remap = false, at = @At("TAIL"), expect = 1)
     *///?}
     private void townstead$glidePose(T entity, float limbAngle, float limbDistance,
             float animationProgress, float headYaw, float headPitch, CallbackInfo ci) {

@@ -45,6 +45,7 @@ public final class RigEquipment {
     public static @org.jetbrains.annotations.Nullable EquipmentSlot curioBodySlot(String curioSlot) {
         if (curioSlot == null) return null;
         return switch (curioSlot.toLowerCase(java.util.Locale.ROOT)) {
+            case "head", "hat" -> EquipmentSlot.HEAD;
             case "feet", "boots", "shoes", "anklet", "ankle" -> EquipmentSlot.FEET;
             case "legs", "pants", "leggings" -> EquipmentSlot.LEGS;
             default -> null;

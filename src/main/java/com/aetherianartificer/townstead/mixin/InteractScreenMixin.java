@@ -39,10 +39,11 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -52,43 +53,43 @@ import java.util.List;
 public abstract class InteractScreenMixin extends Screen implements com.aetherianartificer.townstead.client.persona.PersonaMenuClient.VillagerScreen {
     // Icons live in the townstead_icons namespace (assets/townstead_icons/*.png).
     //? if >=1.21 {
-    private static final ResourceLocation HUNGER_FULL = ResourceLocation.fromNamespaceAndPath("townstead_icons", "hunger_full.png");
-    private static final ResourceLocation HUNGER_HALF = ResourceLocation.fromNamespaceAndPath("townstead_icons", "hunger_half.png");
-    private static final ResourceLocation HUNGER_LOW = ResourceLocation.fromNamespaceAndPath("townstead_icons", "hunger_low.png");
+    @Unique private static final ResourceLocation HUNGER_FULL = ResourceLocation.fromNamespaceAndPath("townstead_icons", "hunger_full.png");
+    @Unique private static final ResourceLocation HUNGER_HALF = ResourceLocation.fromNamespaceAndPath("townstead_icons", "hunger_half.png");
+    @Unique private static final ResourceLocation HUNGER_LOW = ResourceLocation.fromNamespaceAndPath("townstead_icons", "hunger_low.png");
     //?} else {
-    /*private static final ResourceLocation HUNGER_FULL = new ResourceLocation("townstead_icons", "hunger_full.png");
-    private static final ResourceLocation HUNGER_HALF = new ResourceLocation("townstead_icons", "hunger_half.png");
-    private static final ResourceLocation HUNGER_LOW = new ResourceLocation("townstead_icons", "hunger_low.png");
+    /*@Unique private static final ResourceLocation HUNGER_FULL = new ResourceLocation("townstead_icons", "hunger_full.png");
+    @Unique private static final ResourceLocation HUNGER_HALF = new ResourceLocation("townstead_icons", "hunger_half.png");
+    @Unique private static final ResourceLocation HUNGER_LOW = new ResourceLocation("townstead_icons", "hunger_low.png");
     *///?}
-    private static final int HUNGER_ICON_X = 70;
-    private static final int HUNGER_ICON_Y = 121;
-    private static final int HUNGER_ICON_SIZE = 24;
-    private static final int THIRST_ICON_X = 70;
-    private static final int THIRST_ICON_Y = 145;
-    private static final int THIRST_ICON_SIZE = 24;
-    private static final float THIRST_ICON_SCALE = 16.0f / 9.0f;
-    private static final int FATIGUE_ICON_X = 70;
-    private static final int FATIGUE_ICON_Y = 170;
-    private static final int FATIGUE_ICON_SIZE = 24;
-    private static final int TEMPERATURE_ICON_X = 70;
-    private static final int TEMPERATURE_ICON_Y = 194;
-    private static final int TEMPERATURE_ICON_SIZE = 24;
-    private static final int TEMPERATURE_ICON_PX = 20;
+    @Unique private static final int HUNGER_ICON_X = 70;
+    @Unique private static final int HUNGER_ICON_Y = 121;
+    @Unique private static final int HUNGER_ICON_SIZE = 24;
+    @Unique private static final int THIRST_ICON_X = 70;
+    @Unique private static final int THIRST_ICON_Y = 145;
+    @Unique private static final int THIRST_ICON_SIZE = 24;
+    @Unique private static final float THIRST_ICON_SCALE = 16.0f / 9.0f;
+    @Unique private static final int FATIGUE_ICON_X = 70;
+    @Unique private static final int FATIGUE_ICON_Y = 170;
+    @Unique private static final int FATIGUE_ICON_SIZE = 24;
+    @Unique private static final int TEMPERATURE_ICON_X = 70;
+    @Unique private static final int TEMPERATURE_ICON_Y = 194;
+    @Unique private static final int TEMPERATURE_ICON_SIZE = 24;
+    @Unique private static final int TEMPERATURE_ICON_PX = 20;
     // The icon art is a glyph-tight 12px sprite; render it at 24px so it fills the same
     // footprint as MCA's own status icons (16px sprites drawn at 1.5x = 24px). 12 -> 24
     // is a clean 2x.
-    private static final int NEED_ICON_TEX = 12;
-    private static final int NEED_ICON_PX = 24;
-    private static final int HUNGER_ICON_PX = 20;
-    private static final int ENERGY_ICON_PX = 18;
+    @Unique private static final int NEED_ICON_TEX = 12;
+    @Unique private static final int NEED_ICON_PX = 24;
+    @Unique private static final int HUNGER_ICON_PX = 20;
+    @Unique private static final int ENERGY_ICON_PX = 18;
     //? if >=1.21 {
-    private static final ResourceLocation ENERGY_FULL = ResourceLocation.fromNamespaceAndPath("townstead_icons", "energy_full.png");
-    private static final ResourceLocation ENERGY_HALF = ResourceLocation.fromNamespaceAndPath("townstead_icons", "energy_half.png");
-    private static final ResourceLocation ENERGY_LOW = ResourceLocation.fromNamespaceAndPath("townstead_icons", "energy_low.png");
+    @Unique private static final ResourceLocation ENERGY_FULL = ResourceLocation.fromNamespaceAndPath("townstead_icons", "energy_full.png");
+    @Unique private static final ResourceLocation ENERGY_HALF = ResourceLocation.fromNamespaceAndPath("townstead_icons", "energy_half.png");
+    @Unique private static final ResourceLocation ENERGY_LOW = ResourceLocation.fromNamespaceAndPath("townstead_icons", "energy_low.png");
     //?} else {
-    /*private static final ResourceLocation ENERGY_FULL = new ResourceLocation("townstead_icons", "energy_full.png");
-    private static final ResourceLocation ENERGY_HALF = new ResourceLocation("townstead_icons", "energy_half.png");
-    private static final ResourceLocation ENERGY_LOW = new ResourceLocation("townstead_icons", "energy_low.png");
+    /*@Unique private static final ResourceLocation ENERGY_FULL = new ResourceLocation("townstead_icons", "energy_full.png");
+    @Unique private static final ResourceLocation ENERGY_HALF = new ResourceLocation("townstead_icons", "energy_half.png");
+    @Unique private static final ResourceLocation ENERGY_LOW = new ResourceLocation("townstead_icons", "energy_low.png");
     *///?}
 
     @Shadow(remap = false) @Final private VillagerLike<?> villager;
@@ -233,7 +234,7 @@ public abstract class InteractScreenMixin extends Screen implements com.aetheria
         }
     }
 
-    @Redirect(
+    @WrapOperation(
             method = "drawTextPopups",
             remap = false,
             at = @At(
@@ -241,8 +242,8 @@ public abstract class InteractScreenMixin extends Screen implements com.aetheria
                     target = "Lnet/conczin/mca/entity/VillagerLike;getProfessionText()Lnet/minecraft/network/chat/MutableComponent;"
             )
     )
-    private MutableComponent townstead$professionWithTier(VillagerLike<?> villagerLike) {
-        MutableComponent base = villagerLike.getProfessionText().copy();
+    private MutableComponent townstead$professionWithTier(VillagerLike<?> villagerLike, Operation<MutableComponent> original) {
+        MutableComponent base = original.call(villagerLike).copy();
         if (!(villagerLike.asEntity() instanceof VillagerEntityMCA mca)) return base;
         int tier = HungerClientStore.getCareerTier(mca.getId());
         if (tier <= 0) return base;
@@ -255,35 +256,37 @@ public abstract class InteractScreenMixin extends Screen implements com.aetheria
     // Show a custom (data-pack) personality's name/description instead of the base MCA enum it reskins,
     // resolved server-side and carried on the life sync. Personality.getName/getDescription are MCA
     // methods (no remap), so one target covers both stonecutter versions.
-    @Redirect(method = "drawTextPopups", remap = false,
+    @WrapOperation(method = "drawTextPopups", remap = false,
             at = @At(value = "INVOKE",
                     target = "Lnet/conczin/mca/entity/ai/relationship/Personality;getName()Lnet/minecraft/network/chat/Component;"))
-    private Component townstead$personalityName(net.conczin.mca.entity.ai.relationship.Personality personality) {
+    private Component townstead$personalityName(net.conczin.mca.entity.ai.relationship.Personality personality,
+                                                Operation<Component> original) {
         com.aetherianartificer.townstead.calendar.LifeClientStore.Snapshot life =
                 com.aetherianartificer.townstead.calendar.LifeClientStore.get(villager.asEntity().getId());
         return life != null && life.hasCustomPersonality()
                 ? Component.literal(life.personalityName())
-                : personality.getName();
+                : original.call(personality);
     }
 
-    @Redirect(method = "drawTextPopups", remap = false,
+    @WrapOperation(method = "drawTextPopups", remap = false,
             at = @At(value = "INVOKE",
                     target = "Lnet/conczin/mca/entity/ai/relationship/Personality;getDescription()Lnet/minecraft/network/chat/Component;"))
-    private Component townstead$personalityDescription(net.conczin.mca.entity.ai.relationship.Personality personality) {
+    private Component townstead$personalityDescription(net.conczin.mca.entity.ai.relationship.Personality personality,
+                                                       Operation<Component> original) {
         com.aetherianartificer.townstead.calendar.LifeClientStore.Snapshot life =
                 com.aetherianartificer.townstead.calendar.LifeClientStore.get(villager.asEntity().getId());
         return life != null && life.personalityDesc() != null && !life.personalityDesc().isEmpty()
                 ? Component.literal(life.personalityDesc())
-                : personality.getDescription();
+                : original.call(personality);
     }
 
     // Show the data-pack life stage's label (e.g. "Egg") instead of MCA's canonical AgeState name
     // (e.g. "Toddler") for a villager at a custom stage. AgeState.getName is an MCA method (no remap),
     // so one target covers both stonecutter versions; only the baby branch of drawTextPopups calls it.
-    @Redirect(method = "drawTextPopups", remap = false,
+    @WrapOperation(method = "drawTextPopups", remap = false,
             at = @At(value = "INVOKE",
                     target = "Lnet/conczin/mca/entity/ai/relationship/AgeState;getName()Lnet/minecraft/network/chat/Component;"))
-    private Component townstead$stageName(net.conczin.mca.entity.ai.relationship.AgeState ageState) {
+    private Component townstead$stageName(net.conczin.mca.entity.ai.relationship.AgeState ageState, Operation<Component> original) {
         com.aetherianartificer.townstead.calendar.LifeClientStore.Snapshot life =
                 com.aetherianartificer.townstead.calendar.LifeClientStore.get(villager.asEntity().getId());
         if (life != null) {
@@ -293,7 +296,7 @@ public abstract class InteractScreenMixin extends Screen implements com.aetheria
                 if (label != null && !label.getString().isEmpty()) return label;
             }
         }
-        return ageState.getName();
+        return original.call(ageState);
     }
 
     @Inject(method = "drawTextPopups", remap = false, at = @At("TAIL"))
@@ -357,7 +360,7 @@ public abstract class InteractScreenMixin extends Screen implements com.aetheria
         }
     }
 
-    private static final int TRAITS_Y = 30 + 17 * 4; // 98
+    @Unique private static final int TRAITS_Y = 30 + 17 * 4; // 98
 
     //? if >=1.21 {
     @ModifyArg(method = "drawTextPopups", remap = false,

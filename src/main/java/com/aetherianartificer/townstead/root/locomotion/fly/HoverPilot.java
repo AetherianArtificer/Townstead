@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.root.locomotion.fly;
 import com.aetherianartificer.townstead.root.locomotion.FlightProfile;
 import com.aetherianartificer.townstead.root.locomotion.Locomotion;
 import com.aetherianartificer.townstead.root.locomotion.Pilot;
+import com.aetherianartificer.townstead.root.locomotion.PilotGravity;
 import com.aetherianartificer.townstead.root.locomotion.plan.AirRoute;
 import com.aetherianartificer.townstead.root.locomotion.plan.AirRoutePlanner;
 import com.aetherianartificer.townstead.root.locomotion.plan.AirSpace;
@@ -29,7 +30,6 @@ public final class HoverPilot implements Pilot {
     private static final int STUCK_LIMIT = 20;
 
     private final FlightProfile profile;
-    private final boolean ownsGravity;
     private final Doors doors = new Doors();
     @Nullable private RouteFollower follower;
     @Nullable private BlockPos plannedFor;
@@ -41,16 +41,15 @@ public final class HoverPilot implements Pilot {
     public HoverPilot(Mob mob, FlightProfile profile, @Nullable AirRoute route, @Nullable BlockPos destination) {
         this.profile = profile;
         this.plannedFor = destination;
-        this.ownsGravity = !mob.isNoGravity();
         this.space = new AirSpace(mob.level(), mob.getBbWidth(), mob.getBbHeight());
         this.follower = route == null ? null : new RouteFollower(route.waypoints());
-        mob.setNoGravity(true);
+        PilotGravity.hold(mob);
     }
 
     @Override
     public boolean tick(Mob mob) {
         age++;
-        if (!mob.isNoGravity()) mob.setNoGravity(true);
+        PilotGravity.hold(mob);
         if (follower == null) return sinkToGround(mob);
         if (age % 40 == 0) space = new AirSpace(mob.level(), mob.getBbWidth(), mob.getBbHeight());
         if (age % REPLAN_EVERY == 0) maybeReplan(mob);
@@ -91,7 +90,7 @@ public final class HoverPilot implements Pilot {
 
     @Override
     public void stop(Mob mob) {
-        if (ownsGravity) mob.setNoGravity(false);
+        PilotGravity.release(mob);
         doors.closeAll(mob);
         mob.resetFallDistance();
     }

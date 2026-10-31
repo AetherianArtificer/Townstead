@@ -32,48 +32,48 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class VillagerSoundMixin {
 
     //? if neoforge {
-    @Inject(method = "getAmbientSound", at = @At("HEAD"), cancellable = true, require = 1)
+    @Inject(method = "getAmbientSound", at = @At("HEAD"), cancellable = true, expect = 1)
     //?} else {
-    /*@Inject(method = "m_7515_", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
+    /*@Inject(method = "m_7515_", at = @At("HEAD"), cancellable = true, remap = false, expect = 1)
     *///?}
     private void townstead$ambient(CallbackInfoReturnable<SoundEvent> cir) { townstead$voice(Slot.AMBIENT, cir); }
 
     //? if neoforge {
-    @Inject(method = "getHurtSound", at = @At("HEAD"), cancellable = true, require = 1)
+    @Inject(method = "getHurtSound", at = @At("HEAD"), cancellable = true, expect = 1)
     //?} else {
-    /*@Inject(method = "m_7975_", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
+    /*@Inject(method = "m_7975_", at = @At("HEAD"), cancellable = true, remap = false, expect = 1)
     *///?}
     private void townstead$hurt(DamageSource source, CallbackInfoReturnable<SoundEvent> cir) { townstead$voice(Slot.HURT, cir); }
 
     //? if neoforge {
-    @Inject(method = "getDeathSound", at = @At("HEAD"), cancellable = true, require = 1)
+    @Inject(method = "getDeathSound", at = @At("HEAD"), cancellable = true, expect = 1)
     //?} else {
-    /*@Inject(method = "m_5592_", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
+    /*@Inject(method = "m_5592_", at = @At("HEAD"), cancellable = true, remap = false, expect = 1)
     *///?}
     private void townstead$death(CallbackInfoReturnable<SoundEvent> cir) { townstead$voice(Slot.DEATH, cir); }
 
     //? if neoforge {
-    @Inject(method = "getNotifyTradeSound", at = @At("HEAD"), cancellable = true, require = 1)
+    @Inject(method = "getNotifyTradeSound", at = @At("HEAD"), cancellable = true, expect = 1)
     //?} else {
-    /*@Inject(method = "m_7596_", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
+    /*@Inject(method = "m_7596_", at = @At("HEAD"), cancellable = true, remap = false, expect = 1)
     *///?}
     private void townstead$yes(CallbackInfoReturnable<SoundEvent> cir) { townstead$voice(Slot.YES, cir); }
 
-    @Inject(method = "getNoSound", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
+    @Inject(method = "getNoSound", at = @At("HEAD"), cancellable = true, remap = false, expect = 1)
     private void townstead$no(CallbackInfoReturnable<SoundEvent> cir) { townstead$voice(Slot.NO, cir); }
 
-    @Inject(method = "getSurprisedSound", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
+    @Inject(method = "getSurprisedSound", at = @At("HEAD"), cancellable = true, remap = false, expect = 1)
     private void townstead$surprise(CallbackInfoReturnable<SoundEvent> cir) { townstead$voice(Slot.SURPRISE, cir); }
 
-    @Inject(method = "playWelcomeSound", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
+    @Inject(method = "playWelcomeSound", at = @At("HEAD"), cancellable = true, remap = false, expect = 1)
     private void townstead$greet(CallbackInfo ci) {
         if (CustomSounds.handleCustom((LivingEntity) (Object) this, Slot.GREET)) ci.cancel();
     }
 
     //? if neoforge {
-    @Inject(method = "playCelebrateSound", at = @At("HEAD"), cancellable = true, require = 1)
+    @Inject(method = "playCelebrateSound", at = @At("HEAD"), cancellable = true, expect = 1)
     //?} else {
-    /*@Inject(method = "m_35310_", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
+    /*@Inject(method = "m_35310_", at = @At("HEAD"), cancellable = true, remap = false, expect = 1)
     *///?}
     private void townstead$celebrate(CallbackInfo ci) {
         if (CustomSounds.handleCustom((LivingEntity) (Object) this, Slot.CELEBRATE)) ci.cancel();

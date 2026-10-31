@@ -32,6 +32,13 @@ import java.util.Optional;
  */
 public final class EmfAnimationSourceAdapter implements AnimationSourceAdapter {
     private static final String ID = "emf";
+    // 1.20.1 MCA does not animate its models through EMF, so a Root without providers still
+    // takes the player CEM here. 1.21.1 MCA does it natively.
+    //? if neoforge {
+    private static final List<String> DEFAULT_CHAIN = List.of();
+    //?} else {
+    /*private static final List<String> DEFAULT_CHAIN = List.of("minecraft:player");
+    *///?}
     private final ZombieAnimationSourceAdapter vanillaZombie = new ZombieAnimationSourceAdapter();
 
     // CEM programs cached per resolved file, since the resolved identity now varies per entity.
@@ -60,8 +67,9 @@ public final class EmfAnimationSourceAdapter implements AnimationSourceAdapter {
     public List<AnimationTransform> collectTransforms(AnimationSourceContext context) {
         var entity = context.entity();
         var form = GeneAnimations.active(entity);
+        List<String> providers = RigModels.animations(entity).providers();
         List<String> chain = GeneAnimations.providerChain(form == null ? null : form.targetId(),
-                RigModels.animations(entity).providers(), GeneAnimations.usesHumanoidStatePose(entity));
+                providers.isEmpty() ? DEFAULT_CHAIN : providers, GeneAnimations.usesHumanoidStatePose(entity));
         boolean emfAvailable = isEmfLoaded();
         return resolveTransforms(chain, identity -> {
             if (!emfAvailable) return List.of();

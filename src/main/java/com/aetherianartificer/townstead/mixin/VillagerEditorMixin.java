@@ -47,7 +47,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(VillagerEditorScreen.class)
-public abstract class VillagerEditorMixin extends Screen {
+public abstract class VillagerEditorMixin extends Screen implements com.aetherianartificer.townstead.client.gui.ScreenInputHooks {
 
     @Shadow(remap = false) protected String page;
     @Shadow(remap = false) @Final protected VillagerEntityMCA villager;
@@ -582,11 +582,10 @@ public abstract class VillagerEditorMixin extends Screen {
         return Component.translatable("townstead.life_stage.editor_slider", stage);
     }
 
-    // VillagerEditorScreen inherits removed() from Screen, so it is overridden here rather than
-    // injected; Mixin merges this override into the editor (and Destiny, which extends it).
+    // Called from Screen.removed() (ScreenRemovedHookMixin) for the editor and Destiny, which extends
+    // it; an override merged here would lose to, or replace, another mod's.
     @Override
-    public void removed() {
-        super.removed();
+    public void townstead$screenRemoved() {
         // Opening the root browser takes the editor off screen, but the browser draws its model.
         if (com.aetherianartificer.townstead.client.gui.root.RootBrowseScreen.isOver((Screen) (Object) this)) return;
         // So does MCA's skin library, which comes back here on close. The next screen is only set

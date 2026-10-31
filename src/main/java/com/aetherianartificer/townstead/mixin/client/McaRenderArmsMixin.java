@@ -22,7 +22,7 @@ import java.util.UUID;
 @Mixin(MCAClient.class)
 public abstract class McaRenderArmsMixin {
 
-    @Inject(method = "renderArms", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
+    @Inject(method = "renderArms", at = @At("HEAD"), cancellable = true, remap = false, expect = 1)
     private static void townstead$skipForAltRig(UUID uuid, String key, CallbackInfoReturnable<Boolean> cir) {
         Level level = Minecraft.getInstance().level;
         if (level == null) return;

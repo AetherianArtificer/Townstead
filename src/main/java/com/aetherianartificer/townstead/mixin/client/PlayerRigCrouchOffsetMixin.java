@@ -14,10 +14,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class PlayerRigCrouchOffsetMixin {
     //? if neoforge {
     @Inject(method = "getRenderOffset(Lnet/minecraft/client/player/AbstractClientPlayer;F)Lnet/minecraft/world/phys/Vec3;",
-            at = @At("RETURN"), cancellable = true, require = 1)
+            at = @At("RETURN"), cancellable = true, expect = 1)
     //?} else {
     /*@Inject(method = "m_7860_(Lnet/minecraft/client/player/AbstractClientPlayer;F)Lnet/minecraft/world/phys/Vec3;",
-            remap = false, at = @At("RETURN"), cancellable = true, require = 1)
+            remap = false, at = @At("RETURN"), cancellable = true, expect = 1)
     *///?}
     private void townstead$keepRigFeetGrounded(AbstractClientPlayer player, float partial,
                                                CallbackInfoReturnable<Vec3> cir) {

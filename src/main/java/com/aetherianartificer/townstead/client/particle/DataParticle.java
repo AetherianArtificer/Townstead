@@ -7,16 +7,19 @@ import com.aetherianartificer.townstead.pheno.particle.DataParticleDef;
 import com.aetherianartificer.townstead.pheno.particle.DataParticleOptions;
 import com.aetherianartificer.townstead.pheno.particle.DataParticleTypes;
 import com.aetherianartificer.townstead.pheno.particle.DataParticles;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Camera;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleProvider;
 import net.minecraft.client.particle.ParticleRenderType;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
+import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
@@ -36,8 +39,7 @@ import net.minecraftforge.fml.common.Mod;
 
 /**
  * One data-pack particle. Its sprite is a synced data-pack texture rather than an atlas sprite, so
- * it draws itself through an entity render type bound to that texture (the {@code CUSTOM} particle
- * path vanilla uses for item pickups) instead of the particle sheet.
+ * each texture gets its own particle sheet ({@link Sheet}) that binds it in place of the atlas.
  */
 //? if neoforge {
 @EventBusSubscriber(modid = Townstead.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
@@ -105,15 +107,8 @@ public final class DataParticle extends Particle {
     }
 
     @Override
-    public void render(VertexConsumer ignored, Camera camera, float partialTicks) {
+    public void render(VertexConsumer vc, Camera camera, float partialTicks) {
         if (alpha <= 0.003f) return;
-        // Resolved per frame: a particle spawned before its synced texture arrives picks it up.
-        ResourceLocation synced = AttachmentClient.namedTexture(def.texture());
-        ResourceLocation texture = synced != null ? synced : DataPackLang.parseId(def.texture());
-        if (texture == null) return;
-        MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
-        RenderType type = def.glow() ? RenderType.entityTranslucentEmissive(texture) : RenderType.entityTranslucent(texture);
-        VertexConsumer vc = buffers.getBuffer(type);
         Vec3 cam = camera.getPosition();
         float px = (float) (Mth.lerp(partialTicks, xo, x) - cam.x());
         float py = (float) (Mth.lerp(partialTicks, yo, y) - cam.y());
@@ -128,24 +123,71 @@ public final class DataParticle extends Particle {
         vertex(vc, rotation, px, py, pz, -1, 1, 1f, v0, light);
         vertex(vc, rotation, px, py, pz, 1, 1, 0f, v0, light);
         vertex(vc, rotation, px, py, pz, 1, -1, 0f, v1, light);
-        buffers.endBatch(type);
     }
 
     private void vertex(VertexConsumer vc, Quaternionf rotation, float px, float py, float pz,
                         float cx, float cy, float u, float v, int light) {
         Vector3f corner = new Vector3f(cx, cy, 0).rotate(rotation).mul(size).add(px, py, pz);
         //? if >=1.21 {
-        vc.addVertex(corner.x(), corner.y(), corner.z()).setColor(rCol, gCol, bCol, alpha).setUv(u, v)
-                .setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(0f, 1f, 0f);
+        vc.addVertex(corner.x(), corner.y(), corner.z()).setUv(u, v).setColor(rCol, gCol, bCol, alpha).setLight(light);
         //?} else {
-        /*vc.vertex(corner.x(), corner.y(), corner.z()).color(rCol, gCol, bCol, alpha).uv(u, v)
-                .overlayCoords(OverlayTexture.NO_OVERLAY).uv2(light).normal(0f, 1f, 0f).endVertex();
+        /*vc.vertex(corner.x(), corner.y(), corner.z()).uv(u, v).color(rCol, gCol, bCol, alpha).uv2(light).endVertex();
         *///?}
     }
 
     @Override
     public ParticleRenderType getRenderType() {
-        return ParticleRenderType.CUSTOM;
+        return SHEETS.computeIfAbsent(def.texture(), Sheet::new);
+    }
+
+    private static final java.util.Map<String, ParticleRenderType> SHEETS = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * A translucent particle sheet bound to one data-pack texture. Drawing into the particle pass's
+     * own buffer keeps these particles in world space under every renderer, the way atlas particles
+     * are; drawing through an entity render type mid-pass left them fixed on screen where a
+     * renderer had replaced the pass's view matrix.
+     */
+    private record Sheet(String textureRef) implements ParticleRenderType {
+
+        private void bind() {
+            // Resolved per frame: a particle spawned before its synced texture arrives picks it up.
+            ResourceLocation synced = AttachmentClient.namedTexture(textureRef);
+            ResourceLocation texture = synced != null ? synced : DataPackLang.parseId(textureRef);
+            RenderSystem.depthMask(true);
+            RenderSystem.setShaderTexture(0, texture != null ? texture : MissingTextureAtlasSprite.getLocation());
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
+        }
+
+        //? if >=1.21 {
+        @Override
+        public BufferBuilder begin(Tesselator tesselator, TextureManager textures) {
+            bind();
+            return tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.PARTICLE);
+        }
+
+        @Override
+        public boolean isTranslucent() {
+            return true;
+        }
+        //?} else {
+        /*@Override
+        public void begin(BufferBuilder builder, TextureManager textures) {
+            bind();
+            builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.PARTICLE);
+        }
+
+        @Override
+        public void end(Tesselator tesselator) {
+            tesselator.end();
+        }
+        *///?}
+
+        @Override
+        public String toString() {
+            return "TOWNSTEAD_DATA_PARTICLE[" + textureRef + "]";
+        }
     }
 
     /** Builds a particle from its synced definition; an unknown id draws nothing. */

@@ -39,8 +39,10 @@ public abstract class FactionPredicateMixin {
             Object thisFaction = fields[0].get(this);
             Object otherFaction = fields[1].get(this);
             boolean nonPlayer = fields[2].getBoolean(this);
+            // A vampire living in a town that welcomes vampires is left to that town.
             cir.setReturnValue(nonPlayer && !vampire.equals(thisFaction)
-                    && (otherFaction == null || vampire.equals(otherFaction)));
+                    && (otherFaction == null || vampire.equals(otherFaction))
+                    && !VampireVillagers.isWelcomedResident(input));
         } catch (Throwable ignored) {
             // A reshaped predicate keeps Vampirism's own answer.
         }

@@ -16,11 +16,13 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * A settlement whose Vampirism totem the vampires control welcomes vampires. When hunters take the
- * totem back, the welcome goes with it; a faction's own declaration is untouched. Reflection only.
+ * A settlement whose Vampirism totem the vampires control welcomes vampires; one the werewolves
+ * control welcomes werewolves. When the totem is taken, the welcome goes with it; a faction's own
+ * declaration is untouched. Reflection only.
  */
 public final class VampireTotemWelcome implements FactionRelations.WelcomeSource {
     private static final Set<String> VAMPIRE = Set.of("vampire");
+    private static final Set<String> WEREWOLF = Set.of("werewolf");
     private static volatile boolean resolved;
     private static volatile Method totemNearPos;
     private static volatile Method controllingFaction;
@@ -35,10 +37,16 @@ public final class VampireTotemWelcome implements FactionRelations.WelcomeSource
     public Set<String> welcomes(MinecraftServer server, Faction faction) {
         Object vampires = VampireVillagers.vampireFaction();
         if (vampires == null || !resolve()) return Set.of();
+        Object werewolves = com.aetherianartificer.townstead.compat.ModCompat.isLoaded("werewolves")
+                ? com.aetherianartificer.townstead.compat.werewolves.WerewolfVillagers.werewolfFaction() : null;
         for (SettlementRef settlement : faction.settlements()) {
             ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION, settlement.dimension()));
             Village village = level == null ? null : VillageManager.get(level).getOrEmpty(settlement.villageId()).orElse(null);
-            if (village != null && vampires.equals(controller(level, new BlockPos(village.getCenter())))) return VAMPIRE;
+            if (village == null) continue;
+            Object controller = controller(level, new BlockPos(village.getCenter()));
+            if (controller == null) continue;
+            if (vampires.equals(controller)) return VAMPIRE;
+            if (controller.equals(werewolves)) return WEREWOLF;
         }
         return Set.of();
     }

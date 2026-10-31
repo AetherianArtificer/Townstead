@@ -48,7 +48,7 @@ public class GetVillageResponseSlimPayloadMixin {
                     ordinal = 0
             ),
             index = 1,
-            require = 1,
+            expect = 1,
             remap = false
     )
     private static Object townstead$slimVillageSnapshot(Object value) {
@@ -74,7 +74,7 @@ public class GetVillageResponseSlimPayloadMixin {
                     target = "Lnet/conczin/mca/network/NbtDataMessage;<init>(Lnet/minecraft/nbt/CompoundTag;)V"
             ),
             index = 0,
-            require = 1,
+            expect = 1,
             remap = false
     )
     private static CompoundTag townstead$slimVillageSnapshot(CompoundTag value) {

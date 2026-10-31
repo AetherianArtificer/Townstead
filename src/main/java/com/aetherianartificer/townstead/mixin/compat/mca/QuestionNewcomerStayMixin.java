@@ -17,7 +17,7 @@ import java.util.Set;
 @Mixin(value = Question.class, remap = false)
 public abstract class QuestionNewcomerStayMixin {
     @WrapOperation(method = "getValidAnswers", at = @At(value = "INVOKE",
-            target = "Lnet/conczin/mca/resources/data/dialogue/Answer;isValidForConstraint(Ljava/util/Set;)Z"), require = 1)
+            target = "Lnet/conczin/mca/resources/data/dialogue/Answer;isValidForConstraint(Ljava/util/Set;)Z"), expect = 1)
     private boolean townstead$newcomerStay(Answer answer, Set<Constraint> constraints, Operation<Boolean> original,
                                            @Local(argsOnly = true) VillagerEntityMCA villager) {
         return NonResidents.offers(answer.getName(), villager) && original.call(answer, constraints);

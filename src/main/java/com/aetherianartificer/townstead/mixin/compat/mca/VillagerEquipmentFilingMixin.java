@@ -10,7 +10,6 @@ import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
@@ -23,13 +22,13 @@ public abstract class VillagerEquipmentFilingMixin {
     // A save holds only real worn items (never props or lent items), so there is nothing to rebuild:
     // player-assigned armor, dressed clothing and starting gear stay worn.
     //? if neoforge {
-    @Redirect(method = "readAdditionalSaveData", at = @At(value = "INVOKE",
+    @WrapOperation(method = "readAdditionalSaveData", at = @At(value = "INVOKE",
             target = "Lnet/conczin/mca/entity/VillagerEntityMCA;clearEquipment()V"), require = 0)
     //?} else {
-    /*@Redirect(method = "m_7378_", at = @At(value = "INVOKE",
+    /*@WrapOperation(method = "m_7378_", at = @At(value = "INVOKE",
             target = "Lnet/conczin/mca/entity/VillagerEntityMCA;clearEquipment()V"), require = 0)
     *///?}
-    private void townstead$keepWornEquipment(VillagerEntityMCA self) {
+    private void townstead$keepWornEquipment(VillagerEntityMCA self, Operation<Void> original) {
     }
 
     // WornItems hands the displaced item to its caller, so MCA must not file it as well.

@@ -45,7 +45,8 @@ class CharterWireTest {
                 List.of(new CharterSnapshotS2CPayload.StyleOption("pack:plate", literal("Plate"),
                         new com.aetherianartificer.townstead.livery.LiveryView(net.minecraft.resources.ResourceLocation.tryParse("pack:plate"), true, 0x8A1C1C, 0xC9A227,
                                 java.util.Set.of("minecraft:iron"), java.util.Map.of("chest", new com.aetherianartificer.townstead.livery.LiveryView.Trim("minecraft:ward", "minecraft:gold"))))),
-                List.of(new CharterSnapshotS2CPayload.Welcome("vampire", literal("Vampires"), true)),
+                List.of(new CharterSnapshotS2CPayload.Welcome("vampire", literal("Vampires"), true, false),
+                        new CharterSnapshotS2CPayload.Welcome("werewolf", literal("Werewolves"), true, true)),
                 List.of(new CharterSnapshotS2CPayload.Accord("test:court", literal("Night Court"), true)));
         var original = new CharterSnapshotS2CPayload(BlockPos.ZERO, new BlockPos(0, 1, 1), CharterSnapshotS2CPayload.FOUNDED, false,
                 "", 42, "Settlement", "Faction", text, literal(""), literal("Founding tradition"),
@@ -70,6 +71,8 @@ class CharterWireTest {
             assertTrue(decoded.book().liveryStyles().get(0).view().trims().get("chest").pattern().equals("minecraft:ward"), "A style lost its trims");
             assertTrue(decoded.book().draft().signers().get(0).date().fallback().equals("Autumn 3"), "A seal lost its date");
             assertTrue(decoded.book().draft().signers().get(0).seal().device().equals("townstead:key"), "A seal lost its device");
+            assertTrue(!decoded.book().welcomes().get(0).fixed() && decoded.book().welcomes().get(1).fixed(),
+                    "A welcome's fixed flag changed");
         } finally { buf.release(); }
     }
 

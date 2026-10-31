@@ -30,14 +30,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value = PlayerRenderer.class, priority = 1100)
 public abstract class McaPlayerArmLayerOverlayMixin {
 
-    @WrapOperation(method = "mca$renderArmLayer", remap = false, require = 1,
+    @WrapOperation(method = "mca$renderArmLayer", remap = false, expect = 1,
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/client/renderer/RenderType;entityCutoutNoCull(Lnet/minecraft/resources/ResourceLocation;)Lnet/minecraft/client/renderer/RenderType;"))
     private RenderType townstead$fadeArmType(ResourceLocation texture, Operation<RenderType> original) {
         return HandFade.type(original.call(texture), texture);
     }
 
-    @ModifyArg(method = "mca$renderArmLayer", remap = false, require = 1,
+    @ModifyArg(method = "mca$renderArmLayer", remap = false, expect = 1,
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/client/model/geom/ModelPart;render(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;III)V"),
             index = 4)
@@ -45,7 +45,7 @@ public abstract class McaPlayerArmLayerOverlayMixin {
         return HandFade.color(color, HandFade.current());
     }
 
-    @Inject(method = "mca$renderArmLayer", at = @At("RETURN"), remap = false, require = 1)
+    @Inject(method = "mca$renderArmLayer", at = @At("RETURN"), remap = false, expect = 1)
     private void townstead$overlayMcaSkinArm(PoseStack pose, MultiBufferSource buffers, int light,
                                              AbstractClientPlayer player,
                                              VillagerLayer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> layer,

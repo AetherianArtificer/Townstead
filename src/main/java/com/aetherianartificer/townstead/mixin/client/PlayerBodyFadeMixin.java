@@ -75,7 +75,7 @@ public abstract class PlayerBodyFadeMixin<T extends LivingEntity, M extends Enti
     @ModifyArg(method = "render(Lnet/minecraft/world/entity/LivingEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/client/model/EntityModel;renderToBuffer(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;III)V"),
-            index = 4, require = 1)
+            index = 4, expect = 1)
     private int townstead$fadeBodyAlpha(int color) {
         float fade = townstead$fade.get();
         if (fade < 0f || fade >= 1f) return color;
@@ -86,7 +86,7 @@ public abstract class PlayerBodyFadeMixin<T extends LivingEntity, M extends Enti
     /*@ModifyArg(method = "m_7392_(Lnet/minecraft/world/entity/LivingEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/client/model/EntityModel;m_7695_(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;IIFFFF)V"),
-            index = 7, require = 1)
+            index = 7, expect = 1)
     private float townstead$fadeBodyAlpha(float alpha) {
         float fade = townstead$fade.get();
         return fade < 0f || fade >= 1f ? alpha : alpha * fade;

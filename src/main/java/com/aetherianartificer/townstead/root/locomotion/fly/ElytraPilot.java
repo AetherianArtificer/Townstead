@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.root.locomotion.fly;
 import com.aetherianartificer.townstead.root.locomotion.FlightProfile;
 import com.aetherianartificer.townstead.root.locomotion.Locomotion;
 import com.aetherianartificer.townstead.root.locomotion.Pilot;
+import com.aetherianartificer.townstead.root.locomotion.PilotGravity;
 import com.aetherianartificer.townstead.root.locomotion.plan.AirRoute;
 import com.aetherianartificer.townstead.root.locomotion.plan.AirRoutePlanner;
 import com.aetherianartificer.townstead.root.locomotion.plan.AirSpace;
@@ -74,7 +75,6 @@ public final class ElytraPilot implements Pilot {
     private double approachSpeed = Double.NaN;
     private float pitch;
     private float yaw;
-    private boolean flareOwnsGravity;
     private double flareFrom;
     private double flareSpeed;
 
@@ -110,7 +110,7 @@ public final class ElytraPilot implements Pilot {
 
     @Override
     public void stop(Mob mob) {
-        releaseGravity(mob);
+        PilotGravity.release(mob);
         mob.resetFallDistance();
         wings.fold(mob);
     }
@@ -184,8 +184,7 @@ public final class ElytraPilot implements Pilot {
      */
     private void beginFlare(Mob mob, Vec3 pos) {
         ((com.aetherianartificer.townstead.root.ability.FallFlightBridge) mob).townstead$setFallFlying(false);
-        flareOwnsGravity = !mob.isNoGravity();
-        mob.setNoGravity(true);
+        PilotGravity.hold(mob);
         flareFrom = Math.max(1.0, pos.distanceTo(follower.end()));
         flareSpeed = Mth.clamp(mob.getDeltaMovement().length(), FLARE_MIN_SPEED, FLARE_MAX_SPEED);
         enter(Phase.FLARE);
@@ -203,7 +202,7 @@ public final class ElytraPilot implements Pilot {
         double speed = Math.max(0.05, flareSpeed * Math.sqrt(d / flareFrom));
         Vec3 desired = to.scale(Math.min(speed, d * 0.5) / d);
         if (!space.bodyFree(pos.add(desired.scale(2.0)), 0.0) || phaseTicks > FLARE_TICKS) {
-            releaseGravity(mob);
+            PilotGravity.release(mob);
             enter(Phase.DROP);
             return true;
         }
@@ -219,12 +218,6 @@ public final class ElytraPilot implements Pilot {
         pitch = 0f;
         mob.setXRot(0f);
         return true;
-    }
-
-    private void releaseGravity(Mob mob) {
-        if (!flareOwnsGravity) return;
-        flareOwnsGravity = false;
-        mob.setNoGravity(false);
     }
 
     /** Folded: fall the last bit, drifting onto the spot. Harmless while the pilot still has the body. */

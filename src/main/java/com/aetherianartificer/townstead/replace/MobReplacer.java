@@ -96,6 +96,7 @@ public final class MobReplacer {
         String own = WildCostume.ownName(mob);
         if (own != null) com.aetherianartificer.townstead.naming.Naming.adopt(villager, own);
         WildCostume.dress(mob, villager);
+        WildCostume.syncIfTracked(mob);
         return false;
     }
 

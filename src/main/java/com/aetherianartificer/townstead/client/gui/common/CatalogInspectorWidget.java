@@ -155,7 +155,7 @@ public final class CatalogInspectorWidget extends AbstractWidget {
     }
     /** Render after the inspector's scissor and child controls, so hover text stays readable. */
     public void renderTooltip(GuiGraphics g, int mx, int my) {
-        if (!spiritTooltip.isEmpty()) g.renderComponentTooltip(font, spiritTooltip, mx, my);
+        if (!spiritTooltip.isEmpty()) ScaledWidget.tooltip(g, font, spiritTooltip, uiScale, mx, my);
     }
     @Override public boolean mouseClicked(double mx, double my, int button) {
         draggingScrollbar = false;
