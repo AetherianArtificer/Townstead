@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:contract/v1",
+  "mods": "vampirism",
+  "giver": {
+    "pool": "townstead:hunter_lodge"
+  },
+  "title": {
+    "translate": "contract.townstead.hunter.garlic.title"
+  },
+  "about": {
+    "translate": "contract.townstead.hunter.garlic.about"
+  },
+  "weight": 2,
+  "offer_group": "supplies",
+  "difficulty": "easy",
+  "time_limit_days": 4,
+  "when": {
+    "type": "pheno:faction_bond",
+    "kind": "townstead:oath"
+  },
+  "template": {
+    "variables": {
+      "count": {
+        "kind": "int",
+        "min": 16,
+        "max": 32
+      }
+    }
+  },
+  "objectives": [
+    {
+      "type": "townstead:item_delivery",
+      "count": "{count}",
+      "tag": "townstead:garlic",
+      "text": {
+        "translate": "contract.townstead.hunter.garlic.goal",
+        "with": [
+          "{count}"
+        ]
+      }
+    }
+  ],
+  "rewards": [
+    {
+      "type": "townstead:currency"
+    }
+  ]
+}

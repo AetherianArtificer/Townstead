@@ -1,11 +1,13 @@
 package com.aetherianartificer.townstead.compat.farmandcharm;
 
 import com.aetherianartificer.townstead.compat.ModCompat;
+import com.aetherianartificer.townstead.compat.farming.ClimbingCropRope;
 import com.aetherianartificer.townstead.compat.farming.FarmerCropCompat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -104,6 +106,38 @@ public final class FarmAndCharmCropCompat implements FarmerCropCompat {
             drops.add(new ItemStack(product, count));
         });
         return drops;
+    }
+
+    /** Rope-supported tomatoes climb several blocks; every segment belongs to the cell below. */
+    @Override
+    public boolean isColumnBlock(BlockState state) {
+        ResourceLocation key = state.getBlock().builtInRegistryHolder().key().location();
+        return ModCompat.matchesLoadedModPath(key, MOD_ID, "tomato_crop")
+                || ModCompat.matchesLoadedModPath(key, MOD_ID, "tomato_crop_body");
+    }
+
+    @Override
+    public Item columnProduct(BlockState state) {
+        if (!isColumnBlock(state)) return null;
+        //? if >=1.21 {
+        ResourceLocation productId = ResourceLocation.fromNamespaceAndPath(MOD_ID, "tomato");
+        //?} else {
+        /*ResourceLocation productId = new ResourceLocation(MOD_ID, "tomato");
+        *///?}
+        return BuiltInRegistries.ITEM.getOptional(productId).orElse(null);
+    }
+
+    @Override
+    public boolean needsRope(ServerLevel level, BlockPos pos, BlockState state) {
+        return isColumnBlock(state) && ClimbingCropRope.needsRope(level, pos, state);
+    }
+
+    @Override
+    public boolean isRope(ItemStack stack) { return ClimbingCropRope.isRope(stack); }
+
+    @Override
+    public boolean applyRope(ServerLevel level, BlockPos pos, BlockState state) {
+        return isColumnBlock(state) && ClimbingCropRope.applyRope(level, pos, state);
     }
 
     @Override

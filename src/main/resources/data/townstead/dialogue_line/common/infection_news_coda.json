@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "infection_news_coda",
+  "groups": [
+    {
+      "variant": "bitten",
+      "lines": { "i_hope_someone_finds_a": "I hope someone finds a golden apple.", "poor_thing_bitten": "Poor thing." }
+    },
+    {
+      "variant": "turned",
+      "lines": {
+        "lock_your_doors_just_in": "Lock your doors, just in case.",
+        "they_were_always_so_kind": "They were always so kind."
+      }
+    },
+    { "variant": "cured", "lines": {"golden_apples_are_worth_every": "Golden apples are worth every emerald."} }
+  ]
+}

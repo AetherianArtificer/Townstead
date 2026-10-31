@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "werewolves",
+  "type": "pheno:disposition_group",
+  "display_name": {
+    "translate": "gene.townstead_roots.werewolf_kin"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.werewolf_kin.desc"
+  },
+  "category": "Abilities",
+  "group": "werewolf"
+}

@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "dialogue": {
+    "translate": "dialogue.chat.fisherman_request.no_rod"
+  },
+  "variants": 6
+}

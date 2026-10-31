@@ -1,0 +1,8 @@
+{
+  "schema":"townstead:hangout_venue/v2",
+  "buildings":["market"],
+  "capacity":8,
+  "activities":["townstead:village_meeting_conversation"],
+  "tags":["townstead_hangouts:lively","townstead_hangouts:social","townstead_hangouts:communal","townstead_hangouts:outdoors"],
+  "amenities":["conversation","market"]
+}

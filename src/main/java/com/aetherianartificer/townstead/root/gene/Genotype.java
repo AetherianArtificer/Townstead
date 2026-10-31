@@ -21,8 +21,28 @@ import java.util.Map;
 public final class Genotype {
 
     private final Map<ResourceLocation, Allele[]> loci = new LinkedHashMap<>();
+    /** Counts changes, so a cached expression can tell it is out of date. */
+    private int revision;
+    /**
+     * Settles expression ties between two equally strong alleles for this individual (see
+     * {@code Heredity.express}). 0 means none: a genotype from before seeds keeps id order.
+     */
+    private long seed;
+
+    /** NBT key of the seed; '#' can't start a locus id, so it never collides with one. */
+    private static final String SEED_TAG = "#seed";
 
     public Genotype() {}
+
+    public long seed() {
+        return seed;
+    }
+
+    /** Give this genotype its own expression seed (any non-zero value; 0 is read as "none"). */
+    public void setSeed(long seed) {
+        this.seed = seed == 0L ? 1L : seed;
+        revision++;
+    }
 
     public boolean isEmpty() {
         return loci.isEmpty();
@@ -47,11 +67,16 @@ public final class Genotype {
         if (locus == null) return;
         loci.put(LegacyNamespace.canonical(locus),
                 new Allele[]{a == null ? Allele.WILD : a, b == null ? Allele.WILD : b});
+        revision++;
     }
 
     /** Drop a locus entirely (a stale slot being relocated during migration). */
     public void remove(ResourceLocation locus) {
-        if (locus != null) loci.remove(LegacyNamespace.canonical(locus));
+        if (locus != null && loci.remove(LegacyNamespace.canonical(locus)) != null) revision++;
+    }
+
+    public int revision() {
+        return revision;
     }
 
     public List<ResourceLocation> loci() {
@@ -69,13 +94,16 @@ public final class Genotype {
             list.add(StringTag.valueOf(pair[1].encode()));
             tag.put(locus.toString(), list);
         });
+        if (seed != 0L) tag.putLong(SEED_TAG, seed);
         return tag;
     }
 
     public static Genotype fromTag(CompoundTag tag) {
         Genotype out = new Genotype();
         if (tag == null) return out;
+        if (tag.contains(SEED_TAG)) out.seed = tag.getLong(SEED_TAG);
         for (String key : tag.getAllKeys()) {
+            if (key.equals(SEED_TAG)) continue;
             ResourceLocation locus = ResourceLocation.tryParse(key);
             if (locus == null) continue;
             if (tag.get(key) instanceof ListTag list) {
@@ -96,6 +124,7 @@ public final class Genotype {
     public Genotype copy() {
         Genotype out = new Genotype();
         loci.forEach((locus, pair) -> out.set(locus, pair[0], pair[1]));
+        out.seed = seed;
         return out;
     }
 }

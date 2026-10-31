@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.heatwarden.firebrand"
+  },
+  "icon": "minecraft:blaze_rod",
+  "description": {
+    "translate": "skill.townstead.climatologist.heatwarden.firebrand.description"
+  },
+  "cost": 1,
+  "requires": [
+    "heat_wave"
+  ],
+  "skill_group": "townstead:heat_fire",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:front",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:ignite",
+          "seconds": 8
+        },
+        {
+          "type": "pheno:damage",
+          "amount": 4,
+          "source": "other"
+        }
+      ],
+      "on": {
+        "type": "pheno:ray",
+        "distance": 16
+      }
+    }
+  }
+}

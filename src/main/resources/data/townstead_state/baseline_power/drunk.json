@@ -1,0 +1,11 @@
+{
+  "type": "pheno:resource",
+  "min": 0,
+  "max": 100,
+  "start": 0,
+  "regen": 0,
+  "regen_interval": 20,
+  "color": "#8B4D86",
+  "persist_on_death": false,
+  "display": { "visibility": "never" }
+}

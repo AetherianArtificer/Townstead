@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.saddler.spur"
+  },
+  "icon": "minecraft:iron_nugget",
+  "description": {
+    "translate": "skill.townstead.leatherworker.saddler.spur.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:saddler_ride",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "condition": {
+      "type": "pheno:riding"
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:riding_action",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:speed",
+            "duration": 200,
+            "amplifier": 1
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.horse.gallop",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

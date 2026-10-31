@@ -1,0 +1,41 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.tanner.hard_stitched"
+  },
+  "icon": "minecraft:leather_chestplate",
+  "description": {
+    "translate": "skill.townstead.leatherworker.tanner.hard_stitched.description"
+  },
+  "cost": 1,
+  "requires": [
+    "supple_hide"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "anvil_material_repair",
+    "operation": "set",
+    "value": 0.5,
+    "item_condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:ingredient",
+          "item": "minecraft:leather_helmet"
+        },
+        {
+          "type": "pheno:ingredient",
+          "item": "minecraft:leather_chestplate"
+        },
+        {
+          "type": "pheno:ingredient",
+          "item": "minecraft:leather_leggings"
+        },
+        {
+          "type": "pheno:ingredient",
+          "item": "minecraft:leather_boots"
+        }
+      ]
+    }
+  }
+}

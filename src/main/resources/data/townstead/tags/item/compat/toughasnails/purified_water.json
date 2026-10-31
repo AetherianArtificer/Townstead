@@ -1,0 +1,37 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "toughasnails:purified_water_bottle",
+      "required": false
+    },
+    {
+      "id": "toughasnails:purified_water_canteen",
+      "required": false
+    },
+    {
+      "id": "toughasnails:leather_purified_water_canteen",
+      "required": false
+    },
+    {
+      "id": "toughasnails:copper_purified_water_canteen",
+      "required": false
+    },
+    {
+      "id": "toughasnails:iron_purified_water_canteen",
+      "required": false
+    },
+    {
+      "id": "toughasnails:gold_purified_water_canteen",
+      "required": false
+    },
+    {
+      "id": "toughasnails:diamond_purified_water_canteen",
+      "required": false
+    },
+    {
+      "id": "toughasnails:netherite_purified_water_canteen",
+      "required": false
+    }
+  ]
+}

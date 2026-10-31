@@ -1,0 +1,76 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.headsman.mass_execution"
+  },
+  "icon": "minecraft:netherite_axe",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.headsman.mass_execution.description"
+  },
+  "cost": 1,
+  "requires": [
+    "execute"
+  ],
+  "skill_group": "townstead:headsman_axe",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:edge",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 5,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:damage",
+                "amount": 4,
+                "source": "other"
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:health",
+                  "max": 0.3,
+                  "relative": true
+                },
+                "if_action": {
+                  "type": "pheno:damage",
+                  "amount": 16,
+                  "source": "other"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:entity.player.attack.sweep",
+              "volume": 1.0,
+              "pitch": 0.9
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:sweep_attack",
+              "count": 6,
+              "spread": 1.2
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

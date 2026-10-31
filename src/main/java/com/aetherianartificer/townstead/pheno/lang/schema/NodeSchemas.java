@@ -15,11 +15,20 @@ import java.util.Map;
 public final class NodeSchemas {
 
     private static final Map<String, NodeSchema> SCHEMAS = new LinkedHashMap<>();
+    /** The same schemas keyed by domain too, since one type id can name nodes in several domains. */
+    private static final Map<String, NodeSchema> BY_DOMAIN = new LinkedHashMap<>();
 
     private NodeSchemas() {}
 
     public static void register(NodeSchema schema) {
         SCHEMAS.put(schema.typeKey(), schema);
+        BY_DOMAIN.put(schema.domain() + "|" + schema.typeKey(), schema);
+    }
+
+    /** The schema for {@code typeKey} in {@code domain}; null when that domain declares none. */
+    @Nullable
+    public static NodeSchema get(String typeKey, com.aetherianartificer.townstead.pheno.lang.validate.NodeDomain domain) {
+        return BY_DOMAIN.get(domain + "|" + typeKey);
     }
 
     @Nullable

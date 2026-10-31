@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "biome_aside",
+  "groups": [
+    {
+      "stance": "+",
+      "lines": {
+        "it_grows_on_you": { "text": "It grows on you.", "thread": "biome.home" },
+        "best_place_there_is": { "text": "Best place there is.", "thread": "biome.home" },
+        "i_wouldnt_trade_it": { "text": "I wouldn't trade it.", "thread": "biome.home" },
+        "its_home": { "text": "It's home.", "thread": "biome.home" },
+        "couldnt_imagine_living_anywhere_else": { "text": "Couldn't imagine living anywhere else.", "thread": "biome.home" }
+      }
+    },
+    {
+      "stance": "-",
+      "lines": {
+        "maybe_one_day_well_see": { "text": "Maybe one day we'll see.", "thread": "biome.elsewhere" },
+        "we_should_go_see_whats": {
+          "text": "We should go see what's out there one day.",
+          "opens": "invitation",
+          "thread": "biome.elsewhere"
+        },
+        "same_sky_every_day": { "text": "Same sky every day.", "thread": "biome.small" },
+        "it_could_be_bigger": { "text": "It could be bigger.", "thread": "biome.elsewhere" }
+      }
+    },
+    {
+      "stance": "0",
+      "lines": {
+        "it_does": { "text": "It does.", "thread": "biome.home" },
+        "it_is_what_it_is": { "text": "It is what it is.", "thread": "biome.home" },
+        "cant_argue_with_that": { "text": "Can't argue with that.", "thread": "biome.home" }
+      }
+    }
+  ]
+}

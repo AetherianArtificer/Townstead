@@ -1,0 +1,1 @@
+{"schema":"townstead:reaction/v3","display_name":"reaction.townstead.hunger_notice","tags":["need","hunger"],"cooldown":"120s","chance":"35%","triggers":[{"type":"context_enter","tags":["hungry"]}],"do":{"type":"pheno:expression","cue":"townstead_expressions:hunger"}}

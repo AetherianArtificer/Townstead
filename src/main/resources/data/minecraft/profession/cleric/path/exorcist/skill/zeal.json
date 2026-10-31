@@ -1,0 +1,35 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.exorcist.zeal"
+  },
+  "icon": "minecraft:blaze_powder",
+  "description": {
+    "translate": "skill.townstead.cleric.exorcist.zeal.description"
+  },
+  "cost": 1,
+  "requires": [
+    "smite"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:faith",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:entity_in_radius",
+      "radius": 10,
+      "condition": {
+        "type": "pheno:entity_group",
+        "group": "undead"
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:faith",
+      "amount": 3
+    }
+  }
+}

@@ -1,7 +1,8 @@
 {
   "schema": "townstead:extended_building/v1",
+  "catalog": {"node_item": "minecraft:cauldron"},
   "spirit": {
     "industrious": 5,
-    "martial": 2
+    "pastoral": 2
   }
 }

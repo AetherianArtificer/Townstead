@@ -1,0 +1,19 @@
+{
+  "kind": "icon",
+  "duration_ticks": 55,
+  "cooldown_ticks": 100,
+  "rise": 0.24,
+  "drift": 0.025,
+  "scale": 0.8,
+  "color": "#FFFFFFFF",
+  "audience": "nearby",
+  "max_distance": 36,
+  "fallback_particle": "minecraft:heart",
+  "texture": "minecraft:textures/particle/heart.png",
+  "particle_burst": {
+    "count": 0
+  },
+  "icon_burst": {
+    "count": 1
+  }
+}

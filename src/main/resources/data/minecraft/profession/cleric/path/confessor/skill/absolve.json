@@ -1,0 +1,86 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.confessor.absolve"
+  },
+  "icon": "minecraft:potion",
+  "description": {
+    "translate": "skill.townstead.cleric.confessor.absolve.description"
+  },
+  "cost": 1,
+  "requires": [
+    "cleanse"
+  ],
+  "skill_group": "townstead:confessor_cleanse",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 360,
+    "slot": 1,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:clear_effect",
+                "effect": "minecraft:poison"
+              },
+              {
+                "type": "pheno:clear_effect",
+                "effect": "minecraft:wither"
+              },
+              {
+                "type": "pheno:clear_effect",
+                "effect": "minecraft:hunger"
+              },
+              {
+                "type": "pheno:clear_effect",
+                "effect": "minecraft:weakness"
+              },
+              {
+                "type": "pheno:clear_effect",
+                "effect": "minecraft:slowness"
+              },
+              {
+                "type": "pheno:clear_effect",
+                "effect": "minecraft:nausea"
+              },
+              {
+                "type": "pheno:clear_effect",
+                "effect": "minecraft:blindness"
+              },
+              {
+                "type": "pheno:clear_effect",
+                "effect": "minecraft:mining_fatigue"
+              },
+              {
+                "type": "pheno:clear_effect",
+                "effect": "minecraft:darkness"
+              }
+            ]
+          },
+          {
+            "type": "pheno:extinguish"
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:resistance",
+            "duration": 100,
+            "amplifier": 0
+          }
+        ]
+      }
+    }
+  }
+}

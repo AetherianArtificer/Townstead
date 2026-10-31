@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:storage_role/v1",
+  "mods": "farmersdelight",
+  "role": "tools",
+  "blocks": [
+    "farmersdelight:cutting_board"
+  ]
+}

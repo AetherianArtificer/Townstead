@@ -1,0 +1,32 @@
+{
+  "schema": "townstead:profession_feedback_rule/v1",
+  "mods": "butchery",
+  "trigger": "periodic",
+  "priority": 40,
+  "when": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "townstead:worksite",
+        "scope": "village",
+        "buildings": ["*"],
+        "block_condition": {
+          "type": "pheno:and",
+          "conditions": [
+            { "type": "pheno:block", "block": "butchery:skin_rack" },
+            { "type": "pheno:block_state", "property": "blockstate", "value": "0" }
+          ]
+        }
+      },
+      {
+        "type": "pheno:inventory",
+        "item_condition": { "type": "pheno:ingredient", "tag": "butchery:skins" },
+        "inverted": true
+      }
+    ]
+  },
+  "dialogue": {
+    "translate": "dialogue.chat.leatherworker_request.no_hide"
+  },
+  "variants": 3
+}

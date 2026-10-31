@@ -1,0 +1,69 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.brewer.sour_mash"
+  },
+  "icon": "minecraft:spider_eye",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.brewer.sour_mash.description"
+  },
+  "cost": 1,
+  "requires": [
+    "cask_strength"
+  ],
+  "skill_group": "townstead:brewer_ferment",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:ferment",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 8,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:weakness",
+            "duration": 200,
+            "amplifier": 0
+          }
+        },
+        {
+          "type": "pheno:delay",
+          "ticks": 200,
+          "action": {
+            "type": "pheno:area_of_effect",
+            "radius": 10,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:poison",
+                  "duration": 160,
+                  "amplifier": 1
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:slowness",
+                  "duration": 160,
+                  "amplifier": 1
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

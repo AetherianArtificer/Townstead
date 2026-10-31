@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.sunscreen"
+  },
+  "icon": "minecraft:milk_bucket",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.sunscreen.description"
+  },
+  "cost": 1,
+  "requires": [
+    "happy_hour"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:tan",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:tan",
+          "min": 50
+        },
+        {
+          "type": "pheno:environment",
+          "exposure": "sun"
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:fire_resistance",
+      "duration": 30,
+      "amplifier": 0
+    }
+  }
+}

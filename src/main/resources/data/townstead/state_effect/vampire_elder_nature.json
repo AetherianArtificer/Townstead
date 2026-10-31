@@ -1,0 +1,24 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "mods": "vampirism",
+  "state": "townstead_state:vampire",
+  "min_tier": "elder",
+  "priority": 40,
+  "condition": {
+    "type": "pheno:not",
+    "condition": {
+      "type": "pheno:entity_type",
+      "entity_type": "minecraft:player"
+    }
+  },
+  "genes": {
+    "suppress": [
+      "townstead_roots:vampire_sun_burn"
+    ],
+    "grant": [
+      "townstead_roots:vampire_sun_weakness",
+      "townstead_roots:vampire_fire_frailty",
+      "townstead_roots:vampire_elder_vigor"
+    ]
+  }
+}

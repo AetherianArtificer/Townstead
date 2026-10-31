@@ -34,6 +34,7 @@ public final class GenericEmoteApplier {
         // shared cached model after the emote ends or onto the next entity sharing this rig. Clear it on
         // every bend-enabled bone up front, before any early-out, then re-apply below while active.
         clearBends(root, map);
+        applyNative(entity, root, map, partialTick);
 
         UUID uuid = entity.getUUID();
         EmotePlayback playback = EmotePlaybackRegistry.get(uuid);
@@ -71,27 +72,72 @@ public final class GenericEmoteApplier {
         }
     }
 
-    private static void applyChannel(ModelPart root, RigDefinition.EmoteChannel ch,
+    static void applyChannel(ModelPart root, RigDefinition.EmoteChannel ch,
                                      EmoteSampler.BonePose pose, float blend) {
+        applyChannel(root, ch, pose, blend, true);
+    }
+
+    static void applyChannel(ModelPart root, RigDefinition.EmoteChannel ch,
+                             EmoteSampler.BonePose pose, float blend, boolean rotationAuthored) {
         applyOne(root, ch.bone(), ch.mode(), ch.axisPerm(), ch.axisSign(), ch.gain(), ch.euler(),
-                ch.clampMin(), ch.clampMax(), ch.translation(), pose, blend);
+                ch.clampMin(), ch.clampMax(), ch.translation(), pose, blend, rotationAuthored);
         // Segment bend rides only the primary bone (the leg/abdomen that flexes), scaled by bendGain.
-        if (ch.bend() && pose.hasBend() && root.hasChild(ch.bone())) {
-            EmoteReflection.applyBend(root.getChild(ch.bone()), pose.bendDirection(),
+        if (ch.bend() && pose.hasBend() && bone(root, ch.bone()) != null) {
+            EmoteReflection.applyBend(bone(root, ch.bone()), pose.bendDirection(),
                     blend * ch.bendGain() * pose.bend());
         }
         // Fan-out followers always ADD (they ride the primary's motion) with their own gain.
         for (RigDefinition.EmoteFan fan : ch.also()) {
             applyOne(root, fan.bone(), RigDefinition.EmoteMode.ADDITIVE, ch.axisPerm(), ch.axisSign(),
-                    fan.gain(), ch.euler(), ch.clampMin(), ch.clampMax(), false, pose, blend);
+                    fan.gain(), ch.euler(), ch.clampMin(), ch.clampMax(), false, pose, blend, rotationAuthored);
+        }
+    }
+
+    private static void applyNative(LivingEntity entity, ModelPart root, RigDefinition.EmoteMap map,
+                                    float partial) {
+        long now = entity.level().getGameTime();
+        var active = new java.util.ArrayList<>(com.aetherianartificer.townstead.client.animation.nativeclip.NativePlaybackRegistry
+                .forEntity(entity.getId(), now).values());
+        active.sort(java.util.Comparator.comparingInt(com.aetherianartificer.townstead.client.animation.nativeclip.NativePlaybackRegistry.Playback::priority));
+        boolean collapse = com.aetherianartificer.townstead.client.animation.nativeclip.NativePlaybackRegistry.hasCollapse(entity.getId(), now);
+        for (var playback : active) {
+            if (now < playback.startedAt()) continue;
+            if (collapse && !com.aetherianartificer.townstead.performance.CollapseMotion.isGround(playback.clip().toString())) continue;
+            String name = playback.clip().getPath();
+            boolean mounted = entity.isPassenger();
+            if (mounted && name.equals("relaxed_lean")) continue;
+            if ((name.equals("sip") || name.equals("toast")) && (entity.getMainHandItem().isEmpty()
+                    || entity.getMainHandItem().getUseAnimation() != net.minecraft.world.item.UseAnim.DRINK)) continue;
+            float elapsed = playback.elapsed(now, partial);
+            float remaining = playback.expiresAt() - now - partial;
+            var bedrock = com.aetherianartificer.townstead.client.animation.nativeclip.NativeClipRegistry.getBedrock(playback.clip()).orElse(null);
+            if (bedrock != null) {
+                float legs = mounted ? 1F : com.aetherianartificer.townstead.client.animation.nativeclip.NativeLocomotionPolicy
+                        .lowerBodyWeight(playback.clip(), entity.walkAnimation.speed(partial));
+                GenericNativePose.apply(root, map, bedrock, elapsed, remaining, legs, mounted,
+                        name.equals("tap_foot") || name.equals("stool_sit") || name.startsWith("recline"));
+                continue;
+            }
+            var clip = com.aetherianartificer.townstead.client.animation.nativeclip.NativeClipRegistry.get(playback.clip()).orElse(null);
+            if (clip == null || elapsed < 0 || (clip.loopType() != ParsedEmote.LoopType.LOOP && elapsed >= clip.stopTick())) continue;
+            float time = clip.loopType() == ParsedEmote.LoopType.LOOP ? elapsed % Math.max(1, clip.stopTick()) : elapsed;
+            float tail = clip.loopType() == ParsedEmote.LoopType.LOOP ? remaining : Math.min(remaining, clip.stopTick() - elapsed);
+            float weight = Mth.clamp(Math.min(elapsed / 4F, tail / 6F), 0F, 1F);
+            for (var entry : clip.bones().entrySet()) {
+                String channel = EmoteBoneMapping.mapTargets(entry.getKey()).primary();
+                if (channel == null || (mounted && channel.equals("body"))) continue;
+                var remap = map.channels().get(channel);
+                if (remap != null && entry.getValue().hasAnyKeyframes())
+                    applyChannel(root, remap, EmoteSampler.samplePose(entry.getValue(), time, clip.easingBefore()), weight);
+            }
         }
     }
 
     /** Zero the bend on every bend-enabled channel bone, clearing any value left from a prior frame/entity. */
     private static void clearBends(ModelPart root, RigDefinition.EmoteMap map) {
         for (RigDefinition.EmoteChannel ch : map.channels().values()) {
-            if (ch.bend() && root.hasChild(ch.bone())) {
-                EmoteReflection.applyBend(root.getChild(ch.bone()), 0F, 0F);
+            if (ch.bend() && bone(root, ch.bone()) != null) {
+                EmoteReflection.applyBend(bone(root, ch.bone()), 0F, 0F);
             }
         }
     }
@@ -99,9 +145,9 @@ public final class GenericEmoteApplier {
     private static void applyOne(ModelPart root, String boneName, RigDefinition.EmoteMode mode,
                                  int[] perm, float[] sign, float[] gain, float[] euler,
                                  float[] clampMin, float[] clampMax, boolean translation,
-                                 EmoteSampler.BonePose pose, float blend) {
-        if (boneName == null || boneName.isEmpty() || !root.hasChild(boneName)) return;
-        ModelPart part = root.getChild(boneName);
+                                 EmoteSampler.BonePose pose, float blend, boolean rotationAuthored) {
+        ModelPart part = bone(root, boneName);
+        if (part == null) return;
 
         float[] src = {pose.xRot(), pose.yRot(), pose.zRot()};
         float[] out = new float[3];
@@ -109,11 +155,11 @@ public final class GenericEmoteApplier {
             out[i] = Mth.clamp(sign[i] * gain[i] * src[perm[i]] + euler[i], clampMin[i], clampMax[i]);
         }
 
-        if (mode == RigDefinition.EmoteMode.ADDITIVE) {
+        if (rotationAuthored && mode == RigDefinition.EmoteMode.ADDITIVE) {
             part.xRot += blend * out[0];
             part.yRot += blend * out[1];
             part.zRot += blend * out[2];
-        } else {
+        } else if (rotationAuthored) {
             part.xRot = Mth.lerp(blend, part.xRot, out[0]);
             part.yRot = Mth.lerp(blend, part.yRot, out[1]);
             part.zRot = Mth.lerp(blend, part.zRot, out[2]);
@@ -167,5 +213,11 @@ public final class GenericEmoteApplier {
         if (elapsed < 0F) return 0F;
         if (elapsed > stop) return -1F;
         return elapsed;
+    }
+
+    /** A rig bone by name, nested geometry bones included. */
+    private static ModelPart bone(ModelPart root, String name) {
+        ModelPart[] path = com.aetherianartificer.townstead.client.species.RigModels.bonePath(root, name);
+        return path == null ? null : path[path.length - 1];
     }
 }

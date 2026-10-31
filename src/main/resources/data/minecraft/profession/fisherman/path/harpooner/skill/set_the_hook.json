@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.harpooner.set_the_hook"
+  },
+  "icon": "minecraft:fishing_rod",
+  "description": {
+    "translate": "skill.townstead.fisherman.harpooner.set_the_hook.description"
+  },
+  "cost": 1,
+  "requires": [
+    "taut_line"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "fishing_lure",
+    "operation": "add",
+    "value": 1
+  }
+}

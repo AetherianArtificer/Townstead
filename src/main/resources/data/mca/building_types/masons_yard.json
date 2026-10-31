@@ -1,0 +1,16 @@
+{
+  "color": "ff9e8863",
+  "visible": true,
+  "priority": 2,
+  "margin": 8,
+  "mergeRange": 7,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 212,
+  "noBeds": true,
+  "blocks": {
+    "minecraft:scaffolding": 2,
+    "#townstead:storage": 4,
+    "#townstead:masonry_materials": 4
+  }
+}

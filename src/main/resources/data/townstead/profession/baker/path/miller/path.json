@@ -1,0 +1,97 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "mods": [
+    "kaleidoscope_cookery"
+  ],
+  "name": {
+    "translate": "career.townstead.baker.path.miller"
+  },
+  "title": {
+    "translate": "career.townstead.baker.title.miller"
+  },
+  "color": "#B8A27A",
+  "worksites": [
+    "kaleidoscope_cookery:millstone"
+  ],
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:proof",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:baker/miller/turning_stone"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:baker/miller/dust_storm"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:baker/miller/windmill"
+              }
+            ]
+          },
+          {
+            "type": "pheno:block_in_radius",
+            "radius": 6,
+            "block_condition": {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:block",
+                  "block": "kaleidoscope_cookery:millstone"
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:hay_block"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:proof",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "millstone_shoulders",
+      "sack_burst",
+      "sails"
+    ],
+    [
+      "vermin_keeper",
+      "flour_cloud",
+      "grist"
+    ],
+    [
+      "turning_stone",
+      "dust_storm",
+      "windmill"
+    ],
+    [
+      "threshing_floor",
+      "chaff",
+      "gale_force"
+    ],
+    [
+      "millers_stride",
+      "whiteout",
+      "millrace"
+    ]
+  ]
+}

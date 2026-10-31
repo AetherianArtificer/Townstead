@@ -1,0 +1,55 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.harpooner.gaff"
+  },
+  "icon": "minecraft:iron_sword",
+  "description": {
+    "translate": "skill.townstead.fisherman.harpooner.gaff.description"
+  },
+  "cost": 1,
+  "requires": [
+    "snag"
+  ],
+  "skill_group": "townstead:harpooner_hook",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:add_velocity",
+              "away_from_other": -1.6,
+              "y": 0.25
+            },
+            {
+              "type": "pheno:damage",
+              "amount": 6,
+              "source": "other"
+            }
+          ],
+          "on": {
+            "type": "pheno:ray",
+            "distance": 12
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.fishing_bobber.retrieve",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.client.attachment.geo;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -31,6 +32,14 @@ public final class AttachmentGeo {
     AttachmentGeo(List<Bone> roots, Map<String, Bone> byName) {
         this.roots = roots;
         this.byName = byName;
+        for (Bone root : roots) linkParents(root);
+    }
+
+    private static void linkParents(Bone bone) {
+        for (Bone child : bone.children) {
+            child.parent = bone;
+            linkParents(child);
+        }
     }
 
     /** The bone with this authored name at any depth, or null. */
@@ -95,8 +104,12 @@ public final class AttachmentGeo {
         public float xOff, yOff, zOff;        // pose translation (model px, Java space); animation position channel
         public float xScale = 1f, yScale = 1f, zScale = 1f;
         public boolean visible = true;
+        /** Physics result: replaces the Euler pose rotation for this draw when set. */
+        public Quaternionf physicsRotation;
         final List<Cube> cubes;
         final List<Bone> children;
+        Bone parent;
+        private float[] tip;
 
         Bone(String name, float x, float y, float z, float xRot, float yRot, float zRot,
              List<Cube> cubes, List<Bone> children) {
@@ -111,11 +124,83 @@ public final class AttachmentGeo {
             this.children = children;
         }
 
+        public Bone parent() {
+            return parent;
+        }
+
+        /** The pose rotation as a quaternion (Euler fields, ZYX). */
+        public Quaternionf poseRotation(Quaternionf dest) {
+            return dest.rotationZYX(zRot, yRot, xRot);
+        }
+
+        /** Multiplies this bone's local transform (pivot, rotation, scale) onto {@code m}, as render does. */
+        public Matrix4f applyLocal(Matrix4f m, Quaternionf rotation) {
+            return m.translate((x + xOff) / 16f, (y + yOff) / 16f, (z + zOff) / 16f)
+                    .rotate(rotation).scale(xScale, yScale, zScale);
+        }
+
+        /** Pivot of this bone in its parent's space, in blocks. */
+        public Vector3f pivot(Vector3f dest) {
+            return dest.set((x + xOff) / 16f, (y + yOff) / 16f, (z + zOff) / 16f);
+        }
+
+        /**
+         * Where this bone's own geometry ends, in its local space (blocks): along the
+         * direction to its vertex centroid, as far as the farthest vertex reaches. Null
+         * when the bone has no geometry to measure.
+         */
+        public float[] tip() {
+            if (tip != null) return tip.length == 0 ? null : tip;
+            Vector3f dir = new Vector3f();
+            int count = 0;
+            for (Cube cube : cubes) {
+                for (Polygon polygon : cube.polygons) {
+                    for (Vertex v : polygon.vertices) {
+                        dir.add(v.x, v.y, v.z);
+                        count++;
+                    }
+                }
+            }
+            if (count > 0) dir.div(count);
+            if (dir.lengthSquared() < 0.01f) {
+                // Geometry centred on the pivot: aim at the farthest vertex instead.
+                float best = -1f;
+                for (Cube cube : cubes) {
+                    for (Polygon polygon : cube.polygons) {
+                        for (Vertex v : polygon.vertices) {
+                            float d = v.x * v.x + v.y * v.y + v.z * v.z;
+                            if (d > best) {
+                                best = d;
+                                dir.set(v.x, v.y, v.z);
+                            }
+                        }
+                    }
+                }
+            }
+            if (dir.lengthSquared() < 1e-6f) {
+                tip = new float[0];
+                return null;
+            }
+            dir.normalize();
+            float reach = 0f;
+            for (Cube cube : cubes) {
+                for (Polygon polygon : cube.polygons) {
+                    for (Vertex v : polygon.vertices) {
+                        reach = Math.max(reach, v.x * dir.x + v.y * dir.y + v.z * dir.z);
+                    }
+                }
+            }
+            tip = new float[]{dir.x * reach / 16f, dir.y * reach / 16f, dir.z * reach / 16f};
+            return tip;
+        }
+
         void render(PoseStack pose, VertexConsumer buffer, int light, int overlay, int argb) {
             if (!visible) return;
             pose.pushPose();
             pose.translate((x + xOff) / 16f, (y + yOff) / 16f, (z + zOff) / 16f);
-            if (xRot != 0f || yRot != 0f || zRot != 0f) {
+            if (physicsRotation != null) {
+                pose.mulPose(physicsRotation);
+            } else if (xRot != 0f || yRot != 0f || zRot != 0f) {
                 pose.mulPose(new Quaternionf().rotationZYX(zRot, yRot, xRot));
             }
             if (xScale != 1f || yScale != 1f || zScale != 1f) {

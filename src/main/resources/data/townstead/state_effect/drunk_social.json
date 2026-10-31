@@ -1,0 +1,24 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "state": "townstead_state:drunk",
+  "tier": "drunk",
+  "priority": 30,
+  "on_enter": [
+    { "type": "pheno:speak", "pool": "dialogue.chat.townstead_drunk.drunk_arrival", "variants": 4 },
+    { "type": "pheno:performance", "performance": "townstead:find_the_beat", "channel": "state", "duration_ticks": 80, "priority": 30, "fallback": "vanilla_gesture" }
+  ],
+  "on_tier_change": { "type": "pheno:performance", "performance": "townstead:find_the_beat", "channel": "state", "duration_ticks": 80, "priority": 30, "fallback": "vanilla_gesture" },
+  "while_active": {
+    "interval": 180,
+    "chance": 0.42,
+    "do": {
+      "type": "pheno:choice",
+      "actions": [
+        { "weight": 4, "action": { "type": "pheno:performance", "performance": "townstead:big_tavern_story", "channel": "social", "duration_ticks": 100, "priority": 20, "fallback": "vanilla_gesture" } },
+        { "weight": 3, "action": { "type": "pheno:speak", "pool": "dialogue.chat.townstead_drunk.drunk_ambient", "variants": 4 } },
+        { "weight": 2, "action": { "type": "pheno:wander", "horizontal": 3, "vertical": 1, "speed": 0.3 } }
+      ]
+    }
+  },
+  "on_exit": { "type": "pheno:speak", "pool": "dialogue.chat.townstead_drunk.recovered", "variants": 4 }
+}

@@ -16,13 +16,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * full run cycle plays mid-air. Legs straight, arms swept slightly back; the wear
  * layers (sleeves/pants) re-copy afterwards because vanilla copies them before TAIL.
  */
-@Mixin(PlayerEntityExtendedModel.class)
+// Apply this base pose before the default-priority animation bridge's TAIL hook,
+// so the selected EMF provider can replace it rather than being overwritten by it.
+@Mixin(value = PlayerEntityExtendedModel.class, priority = 1100)
 public abstract class PlayerGlidePoseMixin<T extends LivingEntity> {
 
     //? if neoforge {
-    @Inject(method = "setupAnim", remap = false, at = @At("TAIL"), require = 1)
+    @Inject(method = "setupAnim", remap = false, at = @At("TAIL"), expect = 1)
     //?} else {
-    /*@Inject(method = "m_6973_", remap = false, at = @At("TAIL"), require = 1)
+    /*@Inject(method = "m_6973_", remap = false, at = @At("TAIL"), expect = 1)
     *///?}
     private void townstead$glidePose(T entity, float limbAngle, float limbDistance,
             float animationProgress, float headYaw, float headPitch, CallbackInfo ci) {

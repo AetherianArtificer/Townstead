@@ -1,0 +1,8 @@
+{
+  "blocks": [
+    "townstead:room_thermometer"
+  ],
+  "flag": 1000,
+  "mid": "townstead:snow/room_thermometer",
+  "snow_passable": true
+}

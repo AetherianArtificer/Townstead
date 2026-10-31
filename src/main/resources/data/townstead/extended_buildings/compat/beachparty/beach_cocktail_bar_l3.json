@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "core": "#townstead:compat/beachparty/bar_counter",
+  "requires": [{"ground": true}],
+  "mods": "beachparty",
+  "enclosure": "optional",
+  "workers": ["townstead:beverage_artisan"],
+  "orders": {"recipe_namespaces": ["beachparty"]},
+  "catalog": {"node_item": "beachparty:radio"},
+  "spirit": {
+    "commercial": 11,
+    "tourism": 9,
+    "nautical": 5
+  }
+}

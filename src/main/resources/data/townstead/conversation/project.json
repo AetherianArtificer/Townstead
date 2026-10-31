@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:conversation/v1",
+  "subjects": [
+    "townstead:project"
+  ],
+  "register": "civic",
+  "start": "t0_share_account",
+  "turns": {
+    "t0_share_account": {
+      "speaker": "initiator",
+      "move": "townstead:share_account",
+      "replies": [
+        "t1_agree",
+        "t1_disagree"
+      ]
+    },
+    "t1_agree": {
+      "speaker": "responder",
+      "move": "townstead:agree",
+      "weight": 2
+    },
+    "t1_disagree": {
+      "speaker": "responder",
+      "move": "townstead:disagree",
+      "personality_weights": {
+        "crabby": 3,
+        "default": 1
+      }
+    }
+  },
+  "associated": [
+    "townstead:ruler",
+    "townstead:weather"
+  ],
+  "expansions": {
+    "moves": [
+      "townstead:elaborate",
+      "townstead:opinion_ask",
+      "townstead:anecdote"
+    ],
+    "max": 2
+  }
+}

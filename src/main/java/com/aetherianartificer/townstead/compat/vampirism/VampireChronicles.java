@@ -1,0 +1,98 @@
+package com.aetherianartificer.townstead.compat.vampirism;
+
+import com.aetherianartificer.townstead.chronicle.emit.ChronicleTapKeys;
+import com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps;
+import com.aetherianartificer.townstead.pheno.state.EntityStates;
+import com.aetherianartificer.townstead.replace.MobReplacer;
+import com.aetherianartificer.townstead.root.disposition.DispositionGroups;
+import net.conczin.mca.entity.VillagerEntityMCA;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.LivingEntity;
+
+import java.util.Map;
+
+/** The vampire moments worth remembering: a bite nobody asked for, a full turning, a hunter's kill. */
+public final class VampireChronicles {
+    private static final String RANK_SEEN = "townstead:vampire_rank_seen";
+    private static final int FULL_VAMPIRE = 4;
+
+    private VampireChronicles() {}
+
+    /** A villager was drunk from without consent. Willing bites between spouses or a thrall stay private. */
+    public static void bitten(VillagerEntityMCA biter, LivingEntity prey, boolean willing) {
+        if (willing || !(prey instanceof VillagerEntityMCA)) return;
+        if (biter.level() instanceof net.minecraft.server.level.ServerLevel level) {
+            com.aetherianartificer.townstead.chronicle.Chronicles.addCounter(level.getServer(), biter.getUUID(), BIT_UNWILLING, 1);
+        }
+        ChronicleTaps.survival(prey, ChronicleTapKeys.VAMPIRE_BITE, Map.of("biter", biter.getName().getString()));
+    }
+
+    /**
+     * Notes the moment a resident vampire's blood carries them to a full vampire, and the moment one is
+     * cured. The first look only records where they stand, so vampires who arrived already turned are
+     * not announced.
+     */
+    public static void observeRank(VillagerEntityMCA villager) {
+        if (villager.tickCount % 100 != 0 || MobReplacer.isWild(villager)) return;
+        EntityStates.Resolved state = EntityStates.resolve(villager, VampireVillagers.STATE);
+        int level = state.active() ? (int) Math.floor(state.amount()) : 0;
+        var data = villager.getPersistentData();
+        boolean seen = data.contains(RANK_SEEN);
+        int before = data.getInt(RANK_SEEN);
+        if (seen && before == level) return;
+        data.putInt(RANK_SEEN, level);
+        if (seen && before < FULL_VAMPIRE && level >= FULL_VAMPIRE) {
+            ChronicleTaps.survival(villager, ChronicleTapKeys.BECAME_FULL_VAMPIRE, Map.of());
+        }
+        // However it happened, a vampire who is a vampire no more has been cured.
+        if (seen && before >= 1 && level == 0) cured(villager, before);
+    }
+
+    /** A cure, chronicled as wanted or not by the cure reaction; plain when no reaction is loaded. */
+    static void cured(VillagerEntityMCA villager, double formerRank) {
+        if (!com.aetherianartificer.townstead.cure.CureReactions.cured(villager, VampireVillagers.STATE, formerRank)) {
+            ChronicleTaps.survival(villager, ChronicleTapKeys.VAMPIRE_CURED, Map.of());
+        }
+    }
+
+    /** Chronicle counter on a vampire for every bite nobody agreed to. */
+    public static final String BIT_UNWILLING = "townstead:bit_unwilling";
+
+    /** Chronicle counter on the killer of a vampire. */
+    public static final String SLEW_VAMPIRE = "townstead:slew_vampire";
+
+    /** Chronicle counter on each player close by when a werewolf puts down a vampire. */
+    public static final String SAW_WEREWOLF_KILL = "townstead:saw_werewolf_kill";
+
+    /** How close a player has to be to count as having seen it. */
+    private static final double SAW_RANGE = 64;
+
+    /**
+     * Counts the kill for whoever put down a vampire. For a vampire villager, resident or wild,
+     * killed by a hunter (a hunter mob, a dhampir, or a player in the hunters), also chronicles it.
+     */
+    public static void onDeath(LivingEntity victim, DamageSource source) {
+        if (!(source.getEntity() instanceof LivingEntity killer)) return;
+        String victimGroup = DispositionGroups.of(victim);
+        // Whoever puts down a vampire keeps count of it, villager or player; stories read the count.
+        if ("vampire".equals(victimGroup) || "wild_vampire".equals(victimGroup)) {
+            if (killer.level() instanceof net.minecraft.server.level.ServerLevel level) {
+                com.aetherianartificer.townstead.chronicle.Chronicles.addCounter(level.getServer(), killer.getUUID(), SLEW_VAMPIRE, 1);
+            }
+            String killerKind = DispositionGroups.of(killer);
+            if (("werewolf".equals(killerKind) || "wild_werewolf".equals(killerKind))
+                    && killer.level() instanceof net.minecraft.server.level.ServerLevel level) {
+                for (net.minecraft.server.level.ServerPlayer player : level.players()) {
+                    if (player.distanceToSqr(victim) <= SAW_RANGE * SAW_RANGE) {
+                        com.aetherianartificer.townstead.chronicle.Chronicles.addCounter(level.getServer(), player.getUUID(), SAW_WEREWOLF_KILL, 1);
+                    }
+                }
+            }
+        }
+        if (!(victim instanceof VillagerEntityMCA villager) || !VampireVillagers.isVampire(villager)) return;
+        String killerGroup = DispositionGroups.of(killer);
+        boolean hunter = "hunter".equals(killerGroup) || "dhampir".equals(killerGroup) || VampirismStateProviders.isHunter(killer);
+        if (!hunter) return;
+        ChronicleTaps.survival(villager, ChronicleTapKeys.HUNTER_SLEW_VAMPIRE, Map.of("hunter", killer.getName().getString()));
+    }
+}

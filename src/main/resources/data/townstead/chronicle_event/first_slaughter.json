@@ -1,0 +1,68 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "work.butchery",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": [
+    "live",
+    "pregen"
+  ],
+  "trigger": {
+    "type": "work",
+    "key": "townstead:butchery_slaughter"
+  },
+  "reach": "village",
+  "news_value": 4.0,
+  "roles": [
+    {
+      "id": "butcher",
+      "kind": "villager",
+      "when": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:profession",
+            "profession": "minecraft:butcher"
+          },
+          {
+            "type": "pheno:chronicle_count",
+            "key": "townstead:butchery_slaughter",
+            "at_least": 1,
+            "at_most": 1
+          }
+        ]
+      }
+    }
+  ],
+  "witnesses": {
+    "radius": 12.0,
+    "max": 6
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.first_slaughter"
+    },
+    "params": [
+      "butcher"
+    ]
+  },
+  "impact": {
+    "butcher": {
+      "mood": -2.0,
+      "memory": {
+        "valence": -0.4,
+        "strength": 2.5
+      }
+    },
+    "on_learn": {
+      "memory": {
+        "valence": -0.2,
+        "strength": 0.6
+      }
+    }
+  },
+  "pregen": {
+    "max_per_life": 1
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.needle.quick_cuts"
+  },
+  "icon": "minecraft:shears",
+  "description": {
+    "translate": "skill.townstead.tailor.needle.quick_cuts.description"
+  },
+  "cost": 1,
+  "requires": [
+    "needlepoint"
+  ],
+  "skill_group": "townstead:needle_cut",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:delay",
+              "ticks": 0,
+              "action": {
+                "type": "pheno:damage",
+                "amount": 3,
+                "source": "other"
+              }
+            },
+            {
+              "type": "pheno:delay",
+              "ticks": 5,
+              "action": {
+                "type": "pheno:damage",
+                "amount": 3,
+                "source": "other"
+              }
+            },
+            {
+              "type": "pheno:delay",
+              "ticks": 10,
+              "action": {
+                "type": "pheno:damage",
+                "amount": 3,
+                "source": "other"
+              }
+            }
+          ],
+          "on": {
+            "type": "pheno:ray",
+            "distance": 4
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.sheep.shear",
+          "volume": 1.0,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "townstead:block/room_ownership_tag_wall" },
+    "facing=east":  { "model": "townstead:block/room_ownership_tag_wall", "y": 90 },
+    "facing=south": { "model": "townstead:block/room_ownership_tag_wall", "y": 180 },
+    "facing=west":  { "model": "townstead:block/room_ownership_tag_wall", "y": 270 }
+  }
+}

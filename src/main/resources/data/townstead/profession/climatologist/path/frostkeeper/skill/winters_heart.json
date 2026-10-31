@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.frostkeeper.winters_heart"
+  },
+  "icon": "minecraft:blue_ice",
+  "description": {
+    "translate": "skill.townstead.climatologist.frostkeeper.winters_heart.description"
+  },
+  "cost": 1,
+  "requires": [
+    "frostbite"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:front",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:front",
+      "min": 75
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:freeze",
+        "amount": 20
+      }
+    }
+  }
+}

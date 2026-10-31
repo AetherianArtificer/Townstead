@@ -1,0 +1,25 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.lorekeeper.bestiary_illagers"
+  },
+  "icon": "minecraft:crossbow",
+  "description": {
+    "translate": "skill.townstead.librarian.lorekeeper.bestiary_illagers.description"
+  },
+  "cost": 1,
+  "requires": [
+    "study"
+  ],
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 1.25,
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:entity_group",
+        "group": "illager"
+      }
+    }
+  }
+}

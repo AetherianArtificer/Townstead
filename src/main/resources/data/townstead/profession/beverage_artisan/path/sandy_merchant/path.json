@@ -1,0 +1,84 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "providers_required": true,
+  "name": {
+    "translate": "career.townstead.beverage_artisan.path.sandy_merchant"
+  },
+  "title": {
+    "translate": "career.townstead.beverage_artisan.title.sandy_merchant"
+  },
+  "color": "#E8C06A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:tan",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/sandy_merchant/happy_hour"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/sandy_merchant/frozen_daiquiri"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/sandy_merchant/luau"
+              }
+            ]
+          },
+          {
+            "type": "pheno:block_in_radius",
+            "radius": 6,
+            "block_condition": {
+              "type": "pheno:block",
+              "block": "beachparty:palm_bar"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:tan",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "sun_lover",
+      "mocktail",
+      "beach_ball"
+    ],
+    [
+      "sea_breeze",
+      "tropical_punch",
+      "limbo"
+    ],
+    [
+      "happy_hour",
+      "frozen_daiquiri",
+      "luau"
+    ],
+    [
+      "sunscreen",
+      "coconut_bomb",
+      "conga_line"
+    ],
+    [
+      "endless_summer",
+      "signature_cocktail",
+      "beach_party"
+    ]
+  ],
+  "worksites": []
+}

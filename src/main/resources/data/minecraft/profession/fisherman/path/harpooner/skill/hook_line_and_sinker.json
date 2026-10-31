@@ -1,0 +1,62 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.harpooner.hook_line_and_sinker"
+  },
+  "icon": "minecraft:anvil",
+  "description": {
+    "translate": "skill.townstead.fisherman.harpooner.hook_line_and_sinker.description"
+  },
+  "cost": 1,
+  "requires": [
+    "man_overboard"
+  ],
+  "skill_group": "townstead:harpooner_line",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:add_velocity",
+              "away_from_other": -1.6,
+              "y": 0.25
+            },
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:slowness",
+              "duration": 160,
+              "amplifier": 4
+            },
+            {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:weakness",
+              "duration": 160,
+              "amplifier": 1
+            }
+          ],
+          "on": {
+            "type": "pheno:ray",
+            "distance": 12
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.fishing_bobber.retrieve",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

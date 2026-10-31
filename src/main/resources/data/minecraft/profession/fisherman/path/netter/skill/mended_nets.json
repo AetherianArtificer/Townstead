@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.netter.mended_nets"
+  },
+  "icon": "minecraft:string",
+  "description": {
+    "translate": "skill.townstead.fisherman.netter.mended_nets.description"
+  },
+  "cost": 1,
+  "requires": [
+    "full_net"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "fishing_luck",
+    "operation": "add",
+    "value": 1
+  }
+}

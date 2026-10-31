@@ -1,8 +1,9 @@
 {
-  "grumpy.dialogue.chat.butcher_request.no_livestock/1": "<angry>Je ne peux pas découper du vide, %1$s. Amène du bétail ici.</angry>",
+  "grumpy.dialogue.chat.butcher_request.no_livestock/1": "<angry>Je ne peux pas découper du vide. Le travail attendra qu'il y ait du bétail dans l'enclos.</angry>",
   "grumpy.dialogue.chat.butcher_request.no_livestock/2": "<angry>Pas de bêtes. Pas de travail. Débrouille-toi.</angry>",
   "grumpy.dialogue.chat.butcher_request.no_hook/1": "<angry>Tu as oublié le crochet. Encore. Incroyable.</angry>",
   "grumpy.dialogue.chat.butcher_request.no_basin/1": "<angry>Un bac. Ça fait des semaines que je le réclame. Des semaines.</angry>",
+  "grumpy.dialogue.chat.butcher_request.no_blood_grate/1": "<angry>Toujours pas de grille à sang. Encore un travail bloqué par du matériel manquant.</angry>",
   "grumpy.dialogue.chat.village_life.slaughterhouse/1": "<angry>L'abattoir est trop près de chez moi. Je le soulèverai à la prochaine réunion.</angry>",
   "grumpy.dialogue.chat.village_life.tannery/1": "<angry>L'odeur de la tannerie s'incruste dans les vêtements. Inutile.</angry>",
   "grumpy.dialogue.chat.village_life.butcher_shop/1": "<angry>Le boucher m'a encore fait payer trop cher. Je n'y retourne pas avant un moment.</angry>",
@@ -127,5 +128,18 @@
   "grumpy.dialogue.chat.leatherworker_request.no_salt/1": "<angry>Du sel. Le truc blanc granuleux. Même toi tu peux sûrement en trouver.</angry>",
   "grumpy.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<angry>Une éponge mouillée. Ou un chiffon mouillé. L'un ou l'autre. Je ne fais pas le difficile. J'ai juste les mains vides.</angry>",
   "grumpy.dialogue.chat.leatherworker_request.no_storage/1": "<angry>Mon sac est plein de cuir. Où est-ce censé aller ? Dans tes poches ?</angry>",
-  "grumpy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<angry>Fini. Du cuir. N'y touche pas avec des doigts collants.</angry>"
+  "grumpy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<angry>Fini. Du cuir. N'y touche pas avec des doigts collants.</angry>",
+  "grumpy.dialogue.chat.townstead_drunk.tipsy_arrival/1": "La boisson est correcte. N'en faites pas une fête.",
+  "grumpy.dialogue.chat.townstead_drunk.tipsy_ambient/1": "Je m'amuse. Tranquillement. Ne gâchez pas ça.",
+  "grumpy.dialogue.chat.townstead_drunk.drunk_arrival/1": "Le sol a bougé en premier. Je l'ai vu.",
+  "grumpy.dialogue.chat.townstead_drunk.drunk_ambient/1": "Je sais exactement ce que je voulais dire. Ce sont les mots qui font des difficultés.",
+  "grumpy.dialogue.chat.townstead_drunk.wasted_arrival/1": "Ça suffit. De l'eau, une chaise, et du silence.",
+  "grumpy.dialogue.chat.townstead_drunk.wasted_ambient/1": "Arrêtez de me demander si ça va. Apportez de l'eau.",
+  "grumpy.dialogue.chat.townstead_drunk.service_refused/1": "Non. De l'eau. Je ne devrais pas être le seul raisonnable ici.",
+  "grumpy.dialogue.chat.townstead_drunk.recovered/1": "Matin tranquille. Que ça le reste.",
+  "grumpy.dialogue.chat.beverage_artisan_request.no_worksite/1": "Pas de poste, pas de boissons. Ça ne devrait pas avoir besoin d'explications.",
+  "grumpy.dialogue.chat.beverage_artisan_request.no_ingredients/1": "Les étagères sont vides. Encore. Apportez des ingrédients.",
+  "grumpy.dialogue.chat.beverage_artisan_request.no_storage/1": "Les boissons prêtes ont besoin de stockage. De préférence avant qu'elles couvrent le sol.",
+  "grumpy.dialogue.chat.beverage_artisan_request.unreachable/1": "Mon poste est bloqué. Dégagez le chemin.",
+  "grumpy.dialogue.chat.beverage_artisan_request.no_ingredients_item": "Je pourrais faire %2$s si quelqu'un fournissait les ingrédients."
 }

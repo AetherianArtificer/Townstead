@@ -52,11 +52,11 @@ public final class PowersDiagnosticCommand {
         } catch (Throwable t) {
             model = "(unreadable: " + t.getClass().getSimpleName() + ")";
         }
-        out.append("PlayerModel raw: ").append(model).append("  [gene effects require VILLAGER = ")
+        out.append("PlayerModel raw: ").append(model).append("  [wall climbing requires VILLAGER = ")
                 .append(net.conczin.mca.entity.VillagerLike.PlayerModel.VILLAGER.ordinal()).append("]\n");
 
         var powers = Powers.active(player);
-        out.append("Active powers (after model gate): ").append(powers.size()).append('\n');
+        out.append("Active powers: ").append(powers.size()).append('\n');
         for (Power power : powers) {
             out.append("  ").append(power.id()).append("  (")
                     .append(power.component().getClass().getSimpleName()).append(')');

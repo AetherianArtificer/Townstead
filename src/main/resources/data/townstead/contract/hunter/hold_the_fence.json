@@ -1,0 +1,66 @@
+{
+  "schema": "townstead:contract/v1",
+  "mods": "vampirism",
+  "giver": {
+    "pool": "townstead:hunter_lodge"
+  },
+  "title": {
+    "translate": "contract.townstead.hunter.hold_the_fence.title"
+  },
+  "about": {
+    "translate": "contract.townstead.hunter.hold_the_fence.about"
+  },
+  "weight": 2,
+  "offer_group": "hunt",
+  "difficulty": "hard",
+  "time_limit_days": 1,
+  "when": {
+    "type": "pheno:and",
+    "conditions": [
+      {
+        "type": "pheno:faction_bond",
+        "kind": "townstead:oath"
+      },
+      {
+        "type": "pheno:time_of_day",
+        "min": 13000,
+        "max": 22000
+      }
+    ]
+  },
+  "template": {
+    "variables": {
+      "count": {
+        "kind": "int",
+        "min": 3,
+        "max": 4
+      }
+    }
+  },
+  "on_accept": {
+    "type": "pheno:spawn_at_edge",
+    "entity_type": "vampirism:vampire",
+    "count": "{count}"
+  },
+  "objectives": [
+    {
+      "type": "townstead:kill_entity",
+      "group": [
+        "vampire",
+        "wild_vampire"
+      ],
+      "count": "{count}",
+      "text": {
+        "translate": "contract.townstead.hunter.hold_the_fence.goal",
+        "with": [
+          "{count}"
+        ]
+      }
+    }
+  ],
+  "rewards": [
+    {
+      "type": "townstead:currency"
+    }
+  ]
+}

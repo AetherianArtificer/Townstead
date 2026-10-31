@@ -1,0 +1,5 @@
+{
+  "color": "ffe6b84f", "visible": true, "priority": 14, "icon": false, "iconU": 240, "iconV": 213,
+  "margin": 5, "mergeRange": 14,
+  "blocks": {"minecraft:bell": 1, "#townstead:village_market_canopies": 5}
+}

@@ -29,6 +29,10 @@ public final class DispositionReactions {
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
         if ((villager.level().getGameTime() + villager.getId()) % INTERVAL != 0) return;
+        // A hunter picks its own fights; fleeing would undo them.
+        if (com.aetherianartificer.townstead.replace.behavior.BehaviorProfiles.behavior(villager,
+                com.aetherianartificer.townstead.replace.behavior.BehaviorTypes.HUNT,
+                com.aetherianartificer.townstead.replace.behavior.BehaviorTypes.Hunt.class) != null) return;
         LivingEntity threat = nearestHostile(villager);
         if (threat == null) return;
         if (isArmed(villager)) {

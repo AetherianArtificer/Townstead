@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:disposition/v1",
+  "mods": "vampirism",
+  "welcome": {
+    "translate": "disposition.townstead.dhampir"
+  },
+  "hostile": [
+    "wild_vampire"
+  ]
+}

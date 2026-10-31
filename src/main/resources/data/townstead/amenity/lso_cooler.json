@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:amenity/v1",
+  "mods": ["legendarysurvivaloverhaul"],
+  "kind": "cool_spot",
+  "blocks": ["legendarysurvivaloverhaul:cooler"],
+  "requires": {"type": "pheno:block_state", "property": "lit", "value": "true"}
+}

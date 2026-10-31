@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:conversation_subject/v1",
+  "source": {
+    "type": "townstead:project"
+  },
+  "register": "civic",
+  "slots": {
+    "project": {
+      "type": "place",
+      "from": "project.name"
+    }
+  }
+}

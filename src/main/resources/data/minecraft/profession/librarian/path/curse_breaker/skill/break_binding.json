@@ -1,0 +1,83 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.curse_breaker.break_binding"
+  },
+  "icon": "minecraft:shears",
+  "description": {
+    "translate": "skill.townstead.librarian.curse_breaker.break_binding.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:curse_uncurse",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:hostile"
+            }
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "head",
+                "item_action": {
+                  "type": "pheno:remove_enchantment",
+                  "enchantment": "minecraft:binding_curse"
+                }
+              },
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "chest",
+                "item_action": {
+                  "type": "pheno:remove_enchantment",
+                  "enchantment": "minecraft:binding_curse"
+                }
+              },
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "legs",
+                "item_action": {
+                  "type": "pheno:remove_enchantment",
+                  "enchantment": "minecraft:binding_curse"
+                }
+              },
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "feet",
+                "item_action": {
+                  "type": "pheno:remove_enchantment",
+                  "enchantment": "minecraft:binding_curse"
+                }
+              }
+            ]
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 8
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.book.page_turn",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

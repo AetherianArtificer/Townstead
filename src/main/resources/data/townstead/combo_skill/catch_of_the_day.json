@@ -1,0 +1,38 @@
+{
+  "display_name": {
+    "translate": "combo_skill.townstead.catch_of_the_day"
+  },
+  "description": {
+    "translate": "combo_skill.townstead.catch_of_the_day.description"
+  },
+  "icon": "minecraft:cooked_cod",
+  "professions": {
+    "minecraft:fisherman": 3,
+    "townstead:cook": 3
+  },
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_item_use",
+    "item_condition": {
+      "type": "pheno:ingredient",
+      "tag": "minecraft:fishes"
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:dolphins_grace",
+          "duration": 600,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:water_breathing",
+          "duration": 600,
+          "amplifier": 0
+        }
+      ]
+    }
+  }
+}

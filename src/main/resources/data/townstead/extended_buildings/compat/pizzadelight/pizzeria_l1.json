@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "core": "pizzadelight:pizza_station",
+  "requires": [{"ground": true}],
+  "enclosure": "optional",
+  "workers": ["townstead:cook"],
+  "orders": { "recipe_namespaces": ["pizzadelight"] },
+  "catalog": { "node_item": "pizzadelight:pizza_station" },
+  "spirit": { "commercial": 5, "industrious": 2 }
+}

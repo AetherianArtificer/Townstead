@@ -1,0 +1,72 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.night_watch.warden_of_the_fold"
+  },
+  "icon": "minecraft:jack_o_lantern",
+  "description": {
+    "translate": "skill.townstead.shepherd.night_watch.warden_of_the_fold.description"
+  },
+  "cost": 1,
+  "requires": [
+    "nightfall_ambush"
+  ],
+  "skill_group": "townstead:watch_stakeout",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:flock",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 16,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:blindness",
+                "duration": 200,
+                "amplifier": 0
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:weakness",
+                "duration": 200,
+                "amplifier": 1
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 16,
+          "include_self": false,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:entity_type",
+              "tag": "townstead:livestock"
+            },
+            "if_action": {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:resistance",
+              "duration": 600,
+              "amplifier": 0
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:gene/v2",
+  "type": "pheno:active_ability",
+  "display_name": {
+    "translate": "gene.townstead_ribbits.spring_legs"
+  },
+  "description": {
+    "translate": "gene.townstead_ribbits.spring_legs.desc"
+  },
+  "category": "Abilities",
+  "cooldown": 80,
+  "ai_trigger": "when_threatened",
+  "action": {
+    "type": "pheno:leap",
+    "upward_velocity": 0.7,
+    "forward_velocity": 0.18
+  },
+  "icon": "minecraft:rabbit_foot"
+}

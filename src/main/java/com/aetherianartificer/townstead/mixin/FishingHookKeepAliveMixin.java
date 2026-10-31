@@ -7,7 +7,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
@@ -27,9 +28,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * behavior is preserved (the FakePlayer is a real ServerPlayer so null
  * owners server-side remain legitimately orphaned and still despawn).
  *
- * The redirects are compiled with {@code remap = false} on Forge 1.20.1
- * because that target has no mixin refmap in this project; the project uses
- * official names there, so the named method targets still line up.
+ * Forge 1.20.1 ships no refmap, so its targets are SRG with {@code remap = false}:
+ * {@code m_6453_} lerpTo, {@code m_8119_} tick, {@code m_141965_} recreateFromPacket,
+ * {@code m_6074_} kill, {@code m_146870_} discard.
  */
 @Mixin(FishingHook.class)
 public abstract class FishingHookKeepAliveMixin {
@@ -55,7 +56,7 @@ public abstract class FishingHookKeepAliveMixin {
     //? if neoforge {
     @Inject(method = "lerpTo", at = @At("HEAD"), cancellable = true)
     //?} else {
-    /*@Inject(method = "lerpTo(DDDFFIZ)V", remap = false, require = 0, at = @At("HEAD"), cancellable = true)
+    /*@Inject(method = "m_6453_(DDDFFIZ)V", remap = false, require = 0, at = @At("HEAD"), cancellable = true)
     *///?}
     private void townstead$lerpToForLinkedHooks(
             double x, double y, double z, float yaw, float pitch, int lerpSteps,
@@ -89,7 +90,7 @@ public abstract class FishingHookKeepAliveMixin {
     //? if neoforge {
     @Inject(method = "tick", at = @At("HEAD"))
     //?} else {
-    /*@Inject(method = "tick", remap = false, require = 0, at = @At("HEAD"))
+    /*@Inject(method = "m_8119_", remap = false, require = 0, at = @At("HEAD"))
     *///?}
     private void townstead$tickClientLerp(CallbackInfo ci) {
         try {
@@ -122,25 +123,25 @@ public abstract class FishingHookKeepAliveMixin {
     }
 
     //? if neoforge {
-    @Redirect(
+    @WrapOperation(
             method = "recreateFromPacket",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/projectile/FishingHook;kill()V")
     )
     //?} else {
-    /*@Redirect(
-            method = "recreateFromPacket",
+    /*@WrapOperation(
+            method = "m_141965_",
             remap = false,
             require = 0,
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/projectile/FishingHook;kill()V")
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/projectile/FishingHook;m_6074_()V")
     )
     *///?}
-    private void townstead$suppressClientKillOnSpawn(FishingHook self) {
+    private void townstead$suppressClientKillOnSpawn(FishingHook self, Operation<Void> original) {
         // no-op: we'll render the bobber ourselves via FishingHookRendererMixin
         // and fish-line rendering via FishermanLineRenderer.
     }
 
     //? if neoforge {
-    @Redirect(
+    @WrapOperation(
             method = "tick",
             at = @At(
                     value = "INVOKE",
@@ -149,18 +150,18 @@ public abstract class FishingHookKeepAliveMixin {
             )
     )
     //?} else {
-    /*@Redirect(
-            method = "tick",
+    /*@WrapOperation(
+            method = "m_8119_",
             remap = false,
             require = 0,
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/world/entity/projectile/FishingHook;discard()V",
+                    target = "Lnet/minecraft/world/entity/projectile/FishingHook;m_146870_()V",
                     ordinal = 0
             )
     )
     *///?}
-    private void townstead$suppressClientDiscardOnNullOwner(FishingHook self) {
+    private void townstead$suppressClientDiscardOnNullOwner(FishingHook self, Operation<Void> original) {
         // The first discard() call in tick() corresponds to the
         // "if (player == null) discard();" path. Preserve it on the server
         // where a legitimately orphaned hook should clean itself up, but
@@ -168,12 +169,12 @@ public abstract class FishingHookKeepAliveMixin {
         // always "null-owner" client-side and would otherwise vanish each
         // tick right after the server spawns them.
         if (!self.level().isClientSide) {
-            self.discard();
+            original.call(self);
             return;
         }
         if (FishermanHookLinkStore.villagerFor(self.getId()) == null) {
             // Not one of ours — still a foreign orphan, let vanilla clean up.
-            self.discard();
+            original.call(self);
         }
     }
 }

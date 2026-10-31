@@ -20,6 +20,9 @@ import org.jetbrains.annotations.Nullable;
  * victim is known - so positional gates like relative_rotation work. Multiplying the
  * event amount also avoids the i-frame swallow a second {@code hurt()} would hit.
  *
+ * <p>An optional {@code damage_condition} limits it to matching damage, such as
+ * {@code { "type":"pheno:magic" }} for a bonus to spells and potions only.</p>
+ *
  * <p>JSON: {@code { "type":"pheno:attack_modifier", "modifier":1.5,
  * "bientity_condition":{ "type":"pheno:relative_rotation",
  *                        "reference":"target", "inverted":true } }}</p>
@@ -30,8 +33,13 @@ public final class AttackModifierGeneType implements GeneType {
 
     public record Instance(float modifier,
                            @Nullable Condition condition,
-                           @Nullable BiEntityCondition bientityCondition)
+                           @Nullable BiEntityCondition bientityCondition,
+                           com.aetherianartificer.townstead.pheno.condition.damage.@Nullable DamageCondition damageCondition)
             implements GeneInstance {
+        public Instance(float modifier, @Nullable Condition condition, @Nullable BiEntityCondition bientityCondition) {
+            this(modifier, condition, bientityCondition, null);
+        }
+
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
     }
@@ -50,6 +58,10 @@ public final class AttackModifierGeneType implements GeneType {
                 ? BiEntityConditions.parse(json.get("bientity_condition"))
                 : null;
         if (json.has("bientity_condition") && bientityCondition == null) return null;
-        return new Instance(modifier, condition, bientityCondition);
+        var damageCondition = json.has("damage_condition")
+                ? com.aetherianartificer.townstead.pheno.condition.damage.DamageConditions.parse(json.get("damage_condition"))
+                : null;
+        if (json.has("damage_condition") && damageCondition == null) return null;
+        return new Instance(modifier, condition, bientityCondition, damageCondition);
     }
 }

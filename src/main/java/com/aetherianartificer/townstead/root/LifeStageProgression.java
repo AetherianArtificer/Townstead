@@ -94,7 +94,8 @@ public final class LifeStageProgression {
 
     private static boolean freezesAging(@Nullable VillagerEntityMCA villager, TownsteadVillager.Life life) {
         return freezesAging(life) || (villager != null
-                && com.aetherianartificer.townstead.root.trait.TraitEffects.isImmortal(villager));
+                && (com.aetherianartificer.townstead.root.trait.TraitEffects.isImmortal(villager)
+                || expressesAgeless(villager)));
     }
 
     /**
@@ -197,6 +198,16 @@ public final class LifeStageProgression {
         return cycle != null && cycle.ageless(); // intrinsic to the species' life cycle
     }
 
+    /** {@link #isAgeless(TownsteadVillager.Life)}, plus an expressed ageless gene (granted by a state). */
+    public static boolean isAgeless(VillagerEntityMCA villager, TownsteadVillager.Life life) {
+        return isAgeless(life) || expressesAgeless(villager);
+    }
+
+    private static boolean expressesAgeless(VillagerEntityMCA villager) {
+        return !ExpressedGenes.instancesOf(villager,
+                com.aetherianartificer.townstead.root.gene.types.AgelessGeneType.Instance.class).isEmpty();
+    }
+
     /**
      * Operational immortality: the potion/gene flag ({@link TownsteadVillager.Life#immortal}) or a
      * config-driven MCA trait conferring it. Immortal villagers are frozen in time like the ageless
@@ -209,7 +220,7 @@ public final class LifeStageProgression {
 
     /** Whether this villager's life stage is held fixed, by immortality or by an ageless life cycle. */
     private static boolean isStageFrozen(VillagerEntityMCA villager, TownsteadVillager.Life life) {
-        return isImmortal(villager, life) || isAgeless(life);
+        return isImmortal(villager, life) || isAgeless(villager, life);
     }
 
     /**
@@ -331,6 +342,44 @@ public final class LifeStageProgression {
         syncMcaAgeToStage(villager);
     }
 
+    /**
+     * MCA's golden-apple growth: advance a pre-adult villager by a quarter of its current stage
+     * (at least one day), never past the first day of adulthood. Returns false when Townstead has no
+     * stage data for the villager, so the caller can fall back to MCA's own age bump.
+     */
+    public static boolean advanceQuarterStage(VillagerEntityMCA villager) {
+        if (villager == null) return false;
+        MinecraftServer server = villager.level().getServer();
+        if (server == null) return false;
+        TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
+        if (!life.hasBirth() || !life.hasStageDays()) return false;
+        LifeCycle cycle = resolveCycle(life);
+        if (cycle == null || cycle.isEmpty() || life.stageDaysLength() != cycle.size()) return false;
+
+        int adultIndex = -1;
+        for (int i = 0; i < cycle.size(); i++) {
+            CanonicalStage c = cycle.stageAt(i).presentsAs();
+            if (c == CanonicalStage.ADULT || c == CanonicalStage.SENIOR) {
+                adultIndex = i;
+                break;
+            }
+        }
+        if (adultIndex < 0) return false;
+
+        int[] days = life.stageDays();
+        long today = TownsteadCalendar.lifeDay(server);
+        long alive = agingDisplayDayView(villager, life, today) - life.birthWorldDay();
+        LifeStageResolver.Resolved resolved = LifeStageResolver.resolve(cycle, days, life.birthWorldDay(),
+                life.birthWorldDay() + alive);
+        if (resolved == null) return false;
+        if (resolved.stageIndex() >= adultIndex) return true;
+
+        long step = Math.max(1L, Math.round(Math.max(0, days[resolved.stageIndex()]) / 4.0));
+        long target = Math.min(alive + step, LifeStageResolver.cumulativeDaysBefore(days, adultIndex));
+        applyManualAgeEdit(villager, today - target);
+        return true;
+    }
+
     @Nullable
     private static CanonicalStage commitStageFromBirth(VillagerEntityMCA villager, TownsteadVillager.Life life, long today) {
         if (life == null || !life.hasBirth() || !life.hasStageDays()) return null;
@@ -352,8 +401,9 @@ public final class LifeStageProgression {
     }
 
     /**
-     * Fabricate a birth life-day that places a villager mid-way through the stage
-     * matching {@code state}, using their rolled {@code stageDays}. Replaces the
+     * Fabricate a birth life-day that places a villager inside the stage matching
+     * {@code state}, at a per-villager position, using their rolled {@code stageDays}
+     * (a fixed mid-stage point gave every spawned adult the same apparent age). Replaces the
      * old human-decade heuristic, which would land spawned adults past death now
      * that a whole cycle spans only a few game-years. Returns "today" if the
      * cycle/stageDays aren't ready (caller still marks a birth so display works).
@@ -374,8 +424,18 @@ public final class LifeStageProgression {
         }
         int[] days = life.stageDays();
         long before = LifeStageResolver.cumulativeDaysBefore(days, index);
-        long within = Math.max(1, days[index]) / 2L; // mid-stage → a stable, sensible starting age
+        long within = (long) (Math.max(1, days[index]) * fabricatedStageFraction(villager));
         return today - (before + within);
+    }
+
+    /**
+     * Position within the fabricated stage, 0.05..0.85. Seeded by UUID so a re-fabrication
+     * lands on the same age, and kept off both edges so nobody spawns a day from a transition.
+     */
+    private static float fabricatedStageFraction(VillagerEntityMCA villager) {
+        java.util.UUID id = villager.getUUID();
+        java.util.Random rng = new java.util.Random(id.getMostSignificantBits() ^ id.getLeastSignificantBits());
+        return 0.05f + rng.nextFloat() * 0.80f;
     }
 
     private static void commit(TownsteadVillager.Life life, LifeStageResolver.Resolved resolved) {
@@ -417,7 +477,12 @@ public final class LifeStageProgression {
         if (resolved == null) return false;
 
         boolean wasSenior = life.isSenior();
+        String stageBefore = life.currentStageId();
         commit(life, resolved);
+        if (!stageBefore.equals(life.currentStageId())) {
+            com.aetherianartificer.townstead.api.impl.v1.ApiEvents.lifeStageChanged(villager, stageBefore,
+                    life.currentStageId(), life.isSenior());
+        }
         boolean seniorChanged = wasSenior != life.isSenior();
         if (seniorChanged) {
             if (life.isSenior()) SeniorEffects.applySenior(villager);
@@ -589,7 +654,8 @@ public final class LifeStageProgression {
             for (Entity entity : level.getAllEntities()) {
                 if (!(entity instanceof VillagerEntityMCA villager)) continue;
                 TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
-                if (!life.isSenior()) continue;
+                // Seniors for the hair lerp; the young so client day counts (Jade growth line) stay current.
+                if (!life.isSenior() && villager.getAgeState() == AgeState.ADULT) continue;
                 VillagerLifeSyncPayload payload = Townstead.townstead$lifeSync(villager);
                 if (payload == null) continue;
                 //? if neoforge {
@@ -610,5 +676,20 @@ public final class LifeStageProgression {
             case TEEN -> CanonicalStage.TEEN;
             case ADULT, UNASSIGNED -> CanonicalStage.ADULT;
         };
+    }
+
+    /**
+     * The stage a player of {@code rootId} lives as: the root's adult-presenting stage, else its last.
+     * Players don't age through a cycle; they're always the grown form. Null without a cycle.
+     */
+    public static com.aetherianartificer.townstead.root.@org.jetbrains.annotations.Nullable LifeStage playerStage(String rootId) {
+        if (rootId == null || rootId.isEmpty()) return null;
+        var cycle = com.aetherianartificer.townstead.root.RootRegistry.effectiveLifeCycle(
+                net.minecraft.resources.ResourceLocation.tryParse(rootId));
+        if (cycle == null || cycle.isEmpty()) return null;
+        for (var stage : cycle.stages()) {
+            if (stage.presentsAs() == com.aetherianartificer.townstead.root.CanonicalStage.ADULT) return stage;
+        }
+        return cycle.stageAt(cycle.size() - 1);
     }
 }

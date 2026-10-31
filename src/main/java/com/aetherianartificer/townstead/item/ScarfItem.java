@@ -25,6 +25,12 @@ public class ScarfItem extends Item implements Equipable, Wearable
         *///?}
 {
     private static final ResourceLocation GEO = rl("geo/scarf.geo.json");
+
+    /** Whether the loaded content has spider-folk at all; without them the scarf has no wearer. */
+    public static boolean anyoneCanWear() {
+        return com.aetherianartificer.townstead.root.PresentEntityGroups.present(
+                com.aetherianartificer.townstead.root.gene.types.EntityGroupGeneType.Group.ARTHROPOD);
+    }
     private static final ResourceLocation TEXTURE = rl("textures/entity/scarf.png");
 
     private static ResourceLocation rl(String path) {

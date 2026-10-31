@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.exorcist.undying_faith"
+  },
+  "icon": "minecraft:golden_apple",
+  "description": {
+    "translate": "skill.townstead.cleric.exorcist.undying_faith.description"
+  },
+  "cost": 1,
+  "requires": [
+    "zeal"
+  ],
+  "power": {
+    "type": "pheno:effect_immunity",
+    "effects": [
+      "minecraft:hunger",
+      "minecraft:poison"
+    ]
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.sapper.blasting_cap"
+  },
+  "icon": "minecraft:tnt",
+  "description": {
+    "translate": "skill.townstead.toolsmith.sapper.blasting_cap.description"
+  },
+  "cost": 1,
+  "requires": [
+    "shaped_charge"
+  ],
+  "skill_group": "townstead:sapper_charge",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:knack",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:delay",
+          "ticks": 0,
+          "action": {
+            "type": "pheno:explode",
+            "power": 2.5,
+            "fire": false,
+            "destroy": false
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 16
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.tnt.primed",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

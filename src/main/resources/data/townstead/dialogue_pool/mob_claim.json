@@ -1,0 +1,6 @@
+{
+  "schema": "townstead:dialogue_pool/v1",
+  "introduces": true,
+  "subjects": "mob",
+  "opens": "news"
+}

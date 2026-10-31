@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "townstead_roots:infection_immune",
+  "display_name": {
+    "translate": "gene.townstead_roots.vampire_infection_immune"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.vampire_infection_immune.desc"
+  },
+  "category": "Health"
+}

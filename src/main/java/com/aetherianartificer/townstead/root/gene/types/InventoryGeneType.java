@@ -17,6 +17,11 @@ import net.minecraft.util.GsonHelper;
  */
 public final class InventoryGeneType implements GeneType {
 
+    @Override
+    public com.aetherianartificer.townstead.root.gene.GeneLayer layer() {
+        return com.aetherianartificer.townstead.root.gene.GeneLayer.BEING;
+    }
+
     public static final String KEY = "pheno:inventory";
 
     public record Instance(int size, int slot, boolean dropOnDeath) implements GeneInstance {

@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.netter.full_net"
+  },
+  "icon": "minecraft:barrel",
+  "description": {
+    "translate": "skill.townstead.fisherman.netter.full_net.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tangle"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:entity_in_radius",
+      "radius": 8,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:hostile"
+          },
+          {
+            "type": "pheno:status_effect",
+            "effect": "minecraft:slowness"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:tide",
+      "amount": 3
+    }
+  }
+}

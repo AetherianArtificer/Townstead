@@ -19,9 +19,9 @@ import net.minecraft.nbt.Tag;
  *
  * <p><b>Role now.</b> Defense-in-depth. The actual payload bloat that once tripped
  * the 2 MiB {@link net.minecraft.nbt.NbtAccounter} cap came from ordinary houses
- * recording their walls, because Townstead's dock/pen requirement tags promoted
- * generic blocks to globally trackable; that is fixed at the source by
- * {@code BuildingTypeSyntheticBlockMixin}. Townstead's own synthetic buildings
+ * recording their walls, because Townstead's dock requirement tags promoted
+ * generic blocks to globally trackable; that is fixed at the source, since docks no
+ * longer list their deck material as an ingredient. Townstead's own synthetic buildings
  * already cap their seeded {@code blocks2} at 8 positions per block id. This
  * truncation remains as a ceiling for legacy save data that still carries
  * contaminated building block maps until MCA re-scans those buildings.

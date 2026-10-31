@@ -24,10 +24,14 @@ public final class RootCatalog {
 
     public record Snapshot(List<RootCatalogEntry> origins, List<GeneCatalogEntry> genes,
                            List<TraitCatalogEntry> traits,
-                           List<com.aetherianartificer.townstead.root.rig.RigDefinition> rigs) {}
+                           List<com.aetherianartificer.townstead.root.rig.RigDefinition> rigs,
+                           List<String> entityGroups,
+                           List<RootLook> looks,
+                           List<RootBrowseEntry> browse) {}
 
     public static Snapshot build() {
         List<RootCatalogEntry> origins = new ArrayList<>();
+        List<RootBrowseEntry> browse = new ArrayList<>();
         Map<ResourceLocation, GeneCatalogEntry> genes = new LinkedHashMap<>();
         List<TraitCatalogEntry> traits = new ArrayList<>();
         for (com.aetherianartificer.townstead.root.trait.DataTrait t
@@ -44,7 +48,8 @@ public final class RootCatalog {
             String singular = singC.getString();
             String plural = plurC.getString();
             Component backstory = RootRegistry.resolveBackstory(origin);
-            Species spc = SpeciesRegistry.byId(origin.species());
+            // A root may name no species and follow its ancestry's (or lineage's), so resolve it.
+            Species spc = SpeciesRegistry.byId(RootRegistry.effectiveSpecies(origin.id()));
             Ancestry anc = AncestryRegistry.byId(origin.ancestry());
             Lineage lin = LineageRegistry.byId(origin.lineage());
 
@@ -67,6 +72,9 @@ public final class RootCatalog {
                 ranges.add(new RootCatalogEntry.GeneRangeView(r.getKey(), r.getValue().min(), r.getValue().max()));
             }
 
+            com.aetherianartificer.townstead.root.appearance.HairSettings hair =
+                    com.aetherianartificer.townstead.root.appearance.HairResolver.resolve(
+                            origin.id(), RootRegistry.seedHeritage(origin.id()));
             origins.add(new RootCatalogEntry(
                     origin.id().toString(), name, singular, plural,
                     backstory != null ? backstory.getString() : "",
@@ -80,9 +88,12 @@ public final class RootCatalog {
                     spc != null ? spc.rig().scale() : Rig.VILLAGER.scale(),
                     spc != null ? spc.animations() : Animations.DEFAULT,
                     spc == null || spc.breasts(),
+                    hair.enabled(), hair.colorRanges(), hair.colors(), hair.gradients(),
                     stageRigsFor(origin.id()),
                     spc != null ? spc.characterEditor() : null,
-                    RootBlocklist.isBlocked(origin.id())));
+                    RootRules.isOff(origin.id()),
+                    RootRules.playersChoose(origin.id())));
+            browse.add(RootBrowse.entry(origin));
         }
         // Every registered gene gets a catalog entry, not just origin-wired ones: a gene
         // granted outright (/townstead gene grant, or a pack gene awaiting wiring) still
@@ -91,7 +102,31 @@ public final class RootCatalog {
             genes.computeIfAbsent(gene.id(), RootCatalog::toGeneEntry);
         }
         return new Snapshot(origins, new ArrayList<>(genes.values()), traits,
-                com.aetherianartificer.townstead.root.rig.RigRegistry.all());
+                com.aetherianartificer.townstead.root.rig.RigRegistry.all(),
+                PresentEntityGroups.keysFromRegistries(), looks(), browse);
+    }
+
+    /** Outfits and fitted skins per root; roots with neither are left out. */
+    private static List<RootLook> looks() {
+        List<RootLook> out = new ArrayList<>();
+        for (Root root : RootRegistry.all()) {
+            List<com.aetherianartificer.townstead.root.outfit.RootOutfits.Outfit> outfits =
+                    com.aetherianartificer.townstead.root.outfit.RootOutfits.resolve(root.id());
+            List<String> skins = new ArrayList<>();
+            ResourceLocation speciesId = RootRegistry.effectiveSpecies(root.id());
+            Species species = speciesId == null ? null : SpeciesRegistry.byId(speciesId);
+            boolean mcaBody = species == null || species.rig() == null || Rig.VILLAGER.base().equals(species.rig().base());
+            if (!mcaBody) {
+                for (com.aetherianartificer.townstead.clothing.ClothingEntry entry
+                        : com.aetherianartificer.townstead.clothing.BodyClothingResolver.fitted(root.id(), null)) {
+                    if (entry.skin() != null && !skins.contains(entry.skin())) skins.add(entry.skin());
+                }
+            }
+            if (!outfits.isEmpty() || !skins.isEmpty()) {
+                out.add(new RootLook(root.id().toString(), List.copyOf(outfits), List.copyOf(skins)));
+            }
+        }
+        return out;
     }
 
     /**
@@ -127,7 +162,9 @@ public final class RootCatalog {
                         v.id(), v.displayName().getString(), v.weight(), keyOf(v.displayName()),
                         variantTint(v.instance()), variantTexture(v.instance()), variantGlow(v.instance()),
                         variantAttachment(v.instance()), channelEntries(v.instance()),
-                        paletteEntries(v.instance())));
+                        paletteEntries(v.instance()),
+                        v.instance() instanceof com.aetherianartificer.townstead.root.gene.types.SkinToneGeneType.Instance st ? st.blend() : 0,
+                        v.instance() instanceof com.aetherianartificer.townstead.root.gene.types.SkinToneGeneType.Instance st ? st.strength() : 1f));
             }
         }
         List<GeneCatalogEntry.Channel> channels = channelEntries(gene.instance());
@@ -167,7 +204,7 @@ public final class RootCatalog {
     private static String targetIdOf(Gene gene, GeneDisplay display) {
         if (display.targetId().isEmpty()
                 && gene.instance() instanceof com.aetherianartificer.townstead.root.gene.types.EyesGeneType.Instance eyes) {
-            return GeneDisplay.eyes("", eyes.glow(), eyes.row(), eyes.tint()).targetId();
+            return GeneDisplay.eyes("", eyes.glow(), eyes.row(), eyes.tint(), eyes.visibleHalf()).targetId();
         }
         if (display.targetId().isEmpty()
                 && gene.instance() instanceof com.aetherianartificer.townstead.root.gene.types.SkinOverlayGeneType.Instance overlay) {
@@ -203,6 +240,9 @@ public final class RootCatalog {
 
     /** An instance's heritable-tint preset colours for the catalog (empty when none). */
     private static List<Integer> paletteEntries(com.aetherianartificer.townstead.root.gene.GeneInstance instance) {
+        // An iris variant's right-eye colour rides in the palette (mismatched eyes).
+        if (instance instanceof com.aetherianartificer.townstead.root.gene.types.IrisGeneType.Instance iris)
+            return iris.tintRight() >= 0 ? List.of(iris.tintRight()) : List.of();
         return instance instanceof com.aetherianartificer.townstead.root.gene.types.AttachmentGeneType.Instance att
                 ? att.palette() : List.of();
     }
@@ -228,6 +268,7 @@ public final class RootCatalog {
     private static int variantTint(com.aetherianartificer.townstead.root.gene.GeneInstance instance) {
         if (instance instanceof com.aetherianartificer.townstead.root.gene.types.SkinToneGeneType.Instance st) return st.tint();
         if (instance instanceof com.aetherianartificer.townstead.root.gene.types.EyeColorGeneType.Instance ec) return ec.tint();
+        if (instance instanceof com.aetherianartificer.townstead.root.gene.types.IrisGeneType.Instance iris) return iris.tint();
         return -1;
     }
 
@@ -241,6 +282,7 @@ public final class RootCatalog {
 
     /** Whether an eyes variant is emissive (glowing). */
     private static boolean variantGlow(com.aetherianartificer.townstead.root.gene.GeneInstance instance) {
+        if (instance instanceof com.aetherianartificer.townstead.root.gene.types.IrisGeneType.Instance iris) return iris.glow();
         return instance instanceof com.aetherianartificer.townstead.root.gene.types.EyesGeneType.Instance e && e.glow();
     }
 
@@ -251,12 +293,19 @@ public final class RootCatalog {
         if (instance instanceof com.aetherianartificer.townstead.root.gene.types.EyeColorGeneType.Instance) return "eye_color";
         // This synced slot also preserves the concrete render kind of a generic VARIANTS gene.
         if (instance instanceof com.aetherianartificer.townstead.root.gene.types.SkinOverlayGeneType.Instance) return "skin_overlay";
+        if (instance instanceof com.aetherianartificer.townstead.root.gene.types.SkinToneGeneType.Instance) return "skin_tone";
+        if (instance instanceof com.aetherianartificer.townstead.root.gene.types.IrisGeneType.Instance iris)
+            return iris.editable() ? "iris_seed" : iris.glow() ? "iris_glow" : "iris";
         return "";
     }
 
     /** Translate key of a Component when it is a {@code translatable}, else "" (literal). */
     private static String keyOf(Component c) {
-        if (c != null && c.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents tc) {
+        // A key alone cannot carry arguments: a qualified name ("%s %s" with "Runic", "High Elf")
+        // re-translated from its bare key on the client reads "%s %s". Ship no key for those, so
+        // the client shows the name as resolved here.
+        if (c != null && c.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents tc
+                && tc.getArgs().length == 0) {
             return tc.getKey();
         }
         return "";

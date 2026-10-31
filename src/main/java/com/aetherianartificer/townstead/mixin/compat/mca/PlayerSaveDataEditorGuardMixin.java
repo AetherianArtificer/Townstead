@@ -31,8 +31,9 @@ public abstract class PlayerSaveDataEditorGuardMixin {
         // Gender: first meaningful value across both lines' keys, falling back to the
         // previously stored snapshot, then the family-tree node; mirrored onto every key
         // so whichever one this MCA build reads sees it. 0 = UNASSIGNED on all lines.
-        int gender = townstead$gender(entityData);
-        if (gender == 0 && stored != null) gender = townstead$gender(stored);
+        int storedGender = stored == null ? 0 : townstead$gender(stored);
+        int gender = townstead$editedGender(entityData, storedGender);
+        if (gender == 0) gender = storedGender;
         if (gender == 0) {
             gender = ((PlayerSaveData) (Object) this).getFamilyEntry().gender().ordinal();
         }
@@ -54,6 +55,22 @@ public abstract class PlayerSaveDataEditorGuardMixin {
         // The 1.21.1 line ships a FULL dummy save; its throwaway UUID has no business in
         // the player's snapshot.
         entityData.remove("UUID");
+    }
+
+    /**
+     * The editor's new gender lands in a different key per MCA build (nested {@code MCAData.Gender}
+     * on some, top-level {@code Gender} on others), and MCA merges it over the stored snapshot, so
+     * the other keys keep the old value. Any key that differs from the stored gender is the edit;
+     * reading in a fixed order instead picks the stale key on some builds and locks the player
+     * to their first gender.
+     */
+    @org.spongepowered.asm.mixin.Unique
+    private static int townstead$editedGender(CompoundTag nbt, int storedGender) {
+        int nested = nbt.contains("MCAData", 10) ? nbt.getCompound("MCAData").getInt("Gender") : 0;
+        for (int g : new int[]{nested, nbt.getInt("Gender"), nbt.getInt("gender")}) {
+            if (g != 0 && g != storedGender) return g;
+        }
+        return townstead$gender(nbt);
     }
 
     @org.spongepowered.asm.mixin.Unique

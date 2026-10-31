@@ -1,0 +1,44 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:beef",
+    "minecraft:porkchop",
+    "minecraft:mutton",
+    "minecraft:chicken",
+    "minecraft:rabbit",
+    "minecraft:cod",
+    "minecraft:salmon",
+    {
+      "id": "#butchery:raw_meats",
+      "required": false
+    },
+    {
+      "id": "#c:raw_meat",
+      "required": false
+    },
+    {
+      "id": "#c:raw_meats",
+      "required": false
+    },
+    {
+      "id": "#forge:raw_meat",
+      "required": false
+    },
+    {
+      "id": "#forge:raw_meats",
+      "required": false
+    },
+    {
+      "id": "butchery:raw_sausage",
+      "required": false
+    },
+    {
+      "id": "butchery:raw_blood_sausage",
+      "required": false
+    },
+    {
+      "id": "farmersdelight:minced_beef",
+      "required": false
+    }
+  ]
+}

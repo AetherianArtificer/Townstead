@@ -66,7 +66,7 @@ public final class TownsteadCalendar {
         int d = Math.max(1, Math.min(day, maxDay));
         return LeapEngine.worldDayAtYearStart(months, rules, displayYear, epochYearOffset(server))
                 + LeapEngine.daysBeforeMonth(months, rules, displayYear, m)
-                + (d - 1);
+                + (d - 1) - CalendarStretch.shift(server, profile);
     }
 
     public static void setEpochYearOffset(MinecraftServer server, int offset) {
@@ -252,6 +252,12 @@ public final class TownsteadCalendar {
 
     @Nullable
     public static CalendarProfile activeProfile(MinecraftServer server) {
+        return CalendarStretch.apply(server, chosenProfile(server));
+    }
+
+    /** The profile picked by override, config or auto-detection, before stretching onto a season year. */
+    @Nullable
+    private static CalendarProfile chosenProfile(MinecraftServer server) {
         WorldCalendarSavedData data = WorldCalendarSavedData.get(server);
         ResourceLocation override = data.activeProfileOverride();
         if (override != null) {

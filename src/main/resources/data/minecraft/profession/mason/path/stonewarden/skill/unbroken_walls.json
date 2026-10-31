@@ -1,0 +1,65 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.stonewarden.unbroken_walls"
+  },
+  "icon": "minecraft:obsidian",
+  "description": {
+    "translate": "skill.townstead.mason.stonewarden.unbroken_walls.description"
+  },
+  "cost": 1,
+  "requires": [
+    "garrison"
+  ],
+  "skill_group": "townstead:stonewarden_ward",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 1200,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:mortar",
+      "amount": 60
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 24,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:building"
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:resistance",
+                  "duration": 600,
+                  "amplifier": 2
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:absorption",
+                  "duration": 600,
+                  "amplifier": 1
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.bell.use",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

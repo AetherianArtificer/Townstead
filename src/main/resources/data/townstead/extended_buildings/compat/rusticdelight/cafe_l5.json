@@ -5,6 +5,7 @@
   },
   "spirit": {
     "commercial": 25,
-    "pastoral": 12
-  }
+    "tourism": 12
+  },
+  "talk": { "tags": ["townstead:cafe"] }
 }

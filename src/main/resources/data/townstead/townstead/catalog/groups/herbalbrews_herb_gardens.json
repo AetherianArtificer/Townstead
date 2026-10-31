@@ -1,0 +1,7 @@
+{
+  "schema": "townstead:catalog_group/v1",
+  "label": "townstead.catalog.group.herb_gardens",
+  "match_prefix": "compat/herbalbrews/herb_garden_l",
+  "layout": "tiered",
+  "priority": 10
+}

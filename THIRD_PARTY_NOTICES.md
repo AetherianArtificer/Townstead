@@ -1,0 +1,21 @@
+# Third-party notices
+
+Townstead's fallback hydration values for the Let's Do mod family were adapted from
+**[Let's Do Addon] Compat** by Ninjdai, licensed under GPL-3.0:
+
+- https://www.curseforge.com/minecraft/mc-mods/lets-do-addon-compat
+- https://github.com/Ninjdai1/letsdo-addon-compat
+
+The values are expressed independently through Townstead's data-driven consumable schema.
+Townstead defers to an installed thirst mod's own values whenever they exist.
+
+Townstead embeds **H2 MVStore** as its Chronicles persistence engine. H2 MVStore
+is distributed under the Mozilla Public License 2.0 or Eclipse Public License 1.0:
+
+- https://h2database.com/
+- https://github.com/h2database/h2database
+
+Townstead embeds **blade-ink** (runtime and compiler) to run Ink stories. blade-ink is
+distributed under the Apache License 2.0:
+
+- https://github.com/bladecoder/blade-ink

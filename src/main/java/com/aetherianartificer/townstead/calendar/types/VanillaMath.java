@@ -27,10 +27,16 @@ public class VanillaMath implements CalendarType {
     public CalendarDate compute(MinecraftServer server, CalendarProfile profile, long worldDay, int epochYearOffset) {
         if (profile.months().isEmpty()) return CalendarDate.UNKNOWN;
         int dpw = profile.daysPerWeek();
+        // A stretched profile starts its year where the season mod's year starts.
+        long day = worldDay + com.aetherianartificer.townstead.calendar.CalendarStretch.shift(server, profile);
         LeapEngine.Split split = LeapEngine.splitWorldDay(profile.months(), profile.leapRules(),
-                worldDay, epochYearOffset);
+                day, epochYearOffset);
         int dayOfWeek = (int) Math.floorMod(worldDay, (long) dpw);
+        // A custom profile only labels days; a season mod still decides today's season.
+        com.aetherianartificer.townstead.calendar.Season season = server != null
+                && worldDay == com.aetherianartificer.townstead.calendar.WorldCalendarSavedData.get(server).worldDayCounter()
+                ? com.aetherianartificer.townstead.calendar.SeasonClock.season(server) : null;
         return new CalendarDate(split.year(), split.monthIndex(), split.dayOfMonth(),
-                dayOfWeek, split.dayOfYear(), null);
+                dayOfWeek, split.dayOfYear(), season);
     }
 }

@@ -51,6 +51,14 @@ public final class Chronotypes {
     }
 
     public static Resolved resolve(VillagerEntityMCA villager) {
+        // Expressed alleles include a state's grant, which replaces the carried chronotype at the locus.
+        if (!villager.level().isClientSide) {
+            for (com.aetherianartificer.townstead.root.gene.Allele allele
+                    : com.aetherianartificer.townstead.root.gene.GeneExpression.activeAlleles(villager)) {
+                Gene gene = allele.geneId() == null ? null : GeneRegistry.byId(allele.geneId());
+                if (gene != null && isChronotype(gene)) return fromGene(gene, allele.variantId());
+            }
+        }
         Map<String, String> carried = TownsteadVillagers.get(villager).life().carriedVariants();
         for (Map.Entry<String, String> e : carried.entrySet()) {
             Gene gene = geneById(e.getKey());

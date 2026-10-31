@@ -1,0 +1,22 @@
+{
+  "schema": "townstead:profession/v2",
+  "mods": {
+    "any": [
+      "legendarysurvivaloverhaul",
+      "cold_sweat"
+    ],
+    "not": "toughasnails"
+  },
+  "display_name": {
+    "translate": "career.townstead.climatologist"
+  },
+  "description": {
+    "translate": "career.townstead.climatologist.description"
+  },
+  "icon": "minecraft:campfire",
+  "skills": [
+    "weathered",
+    "barometer"
+  ],
+  "unlock_model": "experiential"
+}

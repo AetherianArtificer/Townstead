@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:profession/v2",
+  "display_name": {
+    "translate": "career.townstead.baker"
+  },
+  "icon": "minecraft:bread",
+  "description": {
+    "translate": "career.townstead.baker.description"
+  },
+  "clothing": [
+    "townstead:baker",
+    "mca:baker"
+  ],
+  "skills": [
+    "early_riser",
+    "flour_toss"
+  ],
+  "unlock_model": "experiential"
+}

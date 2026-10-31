@@ -30,7 +30,7 @@ public final class PassengerActionType implements ActionType {
         if (inner == null) return null;
         return ctx -> {
             for (Entity passenger : ctx.entity().getPassengers()) {
-                if (passenger instanceof LivingEntity living) inner.run(new ActionContext(living, ctx.entity()));
+                if (passenger instanceof LivingEntity living) inner.run(ctx.retarget(living, ctx.entity()));
             }
         };
     }

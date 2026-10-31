@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.bulwark.shield_line"
+  },
+  "icon": "minecraft:shield",
+  "description": {
+    "translate": "skill.townstead.armorer.bulwark.shield_line.description"
+  },
+  "cost": 1,
+  "requires": [
+    "cover"
+  ],
+  "skill_group": "townstead:bulwark_cover",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:resistance",
+        "duration": 300,
+        "amplifier": 0
+      }
+    }
+  }
+}

@@ -2,6 +2,7 @@
   "flirty.dialogue.chat.butcher_request.no_livestock/1": "<flirty>Une boutique vide, c'est une tragédie, mon beau. Apporte-moi de quoi travailler.</flirty>",
   "flirty.dialogue.chat.butcher_request.no_hook/1": "<flirty>Un crochet, et je te rendrai fier. Tu peux bien gérer ça, non ?</flirty>",
   "flirty.dialogue.chat.butcher_request.no_basin/1": "<flirty>Un bac ferait couler tout ça bien mieux, mon cœur.</flirty>",
+  "flirty.dialogue.chat.butcher_request.no_blood_grate/1": "<flirty>Une grille à sang ferait tout couler tellement mieux, mon cœur.</flirty>",
   "flirty.dialogue.chat.village_life.butcher_shop/1": "<flirty>Le boucher est beau gosse. Je dis ça comme ça. Tu devrais peut-être te présenter.</flirty>",
   "flirty.dialogue.chat.village_life.smokehouse/1": "<flirty>Du jambon fumé, des chandelles, bonne compagnie. Juste une idée.</flirty>",
   "flirty.dialogue.chat.village_life.tannery/1": "<flirty>Ce tanneur fait le cuir le plus doux. J'en connais quelques usages.</flirty>",
@@ -128,5 +129,18 @@
   "flirty.dialogue.chat.leatherworker_request.no_salt/1": "<flirty>Du sel, mon cher. Juste une pincée et la magie commence.</flirty>",
   "flirty.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<flirty>Une éponge humide, mon cœur. La peau en a positivement envie.</flirty>",
   "flirty.dialogue.chat.leatherworker_request.no_storage/1": "<flirty>Mon sac déborde, mon cher. Trouve-moi un endroit où ranger tout ce cuir.</flirty>",
-  "flirty.dialogue.chat.leatherworker_flavor.leather_cured/1": "<flirty>Regarde ce cuir, chéri. Doux comme un baiser.</flirty>"
+  "flirty.dialogue.chat.leatherworker_flavor.leather_cured/1": "<flirty>Regarde ce cuir, chéri. Doux comme un baiser.</flirty>",
+  "flirty.dialogue.chat.beverage_artisan_request.no_worksite/1": "<flirty>Construis-moi un joli poste à boissons, mon chou, et je ferai en sorte que ça vaille le détour.</flirty>",
+  "flirty.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<flirty>Mes étagères sont vides, mon cœur. Apporte-moi quelque chose de tentant pour travailler.</flirty>",
+  "flirty.dialogue.chat.beverage_artisan_request.no_storage/1": "<flirty>Ces boissons ont besoin d'un endroit où attendre de la compagnie, mon chou.</flirty>",
+  "flirty.dialogue.chat.beverage_artisan_request.unreachable/1": "<flirty>Quelque chose m'empêche d'atteindre mon poste. Tu me dégages un passage, mon amour ?</flirty>",
+  "flirty.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<flirty>J'adorerais te faire %2$s, si j'avais les ingrédients.</flirty>",
+  "flirty.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<flirty>Oh, tout le monde est particulièrement charmant ce soir.</flirty>",
+  "flirty.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<flirty>Approche, mon chou. Je te promets que l'histoire s'améliore.</flirty>",
+  "flirty.dialogue.chat.townstead_drunk.drunk_arrival/1": "<flirty>Je comptais me faire désirer, mais marcher est déjà assez difficile.</flirty>",
+  "flirty.dialogue.chat.townstead_drunk.drunk_ambient/1": "<flirty>La salle tourne, ou c'est toi qui me fais tourner la tête ?</flirty>",
+  "flirty.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>De l'eau, s'il te plaît, et un bras solide jusqu'à la chaise la plus proche.</sleepy>",
+  "flirty.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>Reste près de moi, mon cœur. Le sol et moi ne nous parlons plus.</sleepy>",
+  "flirty.dialogue.chat.townstead_drunk.service_refused/1": "<flirty>Plus pour moi, mon chou. L'eau peut avoir mon attention, maintenant.</flirty>",
+  "flirty.dialogue.chat.townstead_drunk.recovered/1": "<happy>Me voilà. Toujours charmant, heureusement.</happy>"
 }

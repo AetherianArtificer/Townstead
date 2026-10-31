@@ -40,6 +40,14 @@ public final class ShiftScheduleApplier {
      */
     public static void apply(VillagerEntityMCA villager) {
         if (villager.getBrain() == null) return;
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.SHIFTS)) {
+            // Hand the day back to MCA: rebuilding the brain restores its own schedule.
+            if (villager.getBrain().getSchedule() instanceof TownsteadSchedule
+                    && villager.level() instanceof net.minecraft.server.level.ServerLevel level) {
+                villager.refreshBrain(level);
+            }
+            return;
+        }
 
         TownsteadVillager.ScheduleState schedule = TownsteadVillagers.get(villager).schedule();
         int[] resolved = resolveTodayShifts(villager, schedule);

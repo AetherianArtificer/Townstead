@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "townstead_roots:iris",
+  "display_name": {
+    "translate": "gene.townstead_roots.vampire_eyes"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.vampire_eyes.desc"
+  },
+  "category": "Appearance",
+  "tint": "#C4121E"
+}

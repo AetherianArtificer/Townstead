@@ -1,0 +1,30 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.tidecaller.weather_eye"
+  },
+  "icon": "minecraft:nautilus_shell",
+  "description": {
+    "translate": "skill.townstead.fisherman.tidecaller.weather_eye.description"
+  },
+  "cost": 1,
+  "requires": [
+    "swell"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "fishing_lure",
+    "operation": "add",
+    "value": 1,
+    "condition": { "type": "pheno:environment", "weather": ["rain", "thunder"] }
+  },
+  "companions": {
+    "luck": {
+      "type": "pheno:modifier",
+      "target": "fishing_luck",
+      "operation": "add",
+      "value": 1,
+      "condition": { "type": "pheno:environment", "weather": ["rain", "thunder"] }
+    }
+  }
+}

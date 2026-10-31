@@ -2,6 +2,7 @@
   "playful.dialogue.chat.butcher_request.no_livestock/1": "<happy>Pas de bêtes ! Quoi, on tient une boucherie pour de faux ? Haha, hilarant.</happy>",
   "playful.dialogue.chat.butcher_request.no_hook/1": "<happy>Pas de crochet ! Je pourrais faire une petite danse, mais ça n'aiderait pas. N'empêche, une danse !</happy>",
   "playful.dialogue.chat.butcher_request.no_basin/1": "<happy>Un bac ? S'il te plaît ? Je dirai même s'il te plaît-s'il te plaît. Regarde, je le dis !</happy>",
+  "playful.dialogue.chat.butcher_request.no_blood_grate/1": "<happy>Une grille à sang ? S'il te plaît ? Je dirai même s'il-te-plaît-plaît. Regarde, je le dis !</happy>",
   "playful.dialogue.chat.village_life.butcher_shop/1": "<excited>Notre boucher fait ce petit sifflement rigolo quand il travaille. Écoute donc un de ces jours !</excited>",
   "playful.dialogue.chat.village_life.slaughterhouse/1": "<happy>Je mets les gamins au défi de passer en courant devant l'abattoir la nuit. Un classique.</happy>",
   "playful.dialogue.chat.village_life.smokehouse/1": "<excited>Fumoir ! Fumoir ! Le plus beau mot dans n'importe quelle langue !</excited>",
@@ -124,5 +125,18 @@
   "playful.dialogue.chat.leatherworker_request.no_salt/1": "<happy>Pas de sel. J'ai essayé les larmes. La peau est restée de marbre.</happy>",
   "playful.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<happy>Je lécherais la peau si ça pouvait aider. Ça n'aiderait pas. Une éponge mouillée, s'il te plaît.</happy>",
   "playful.dialogue.chat.leatherworker_request.no_storage/1": "<happy>Mon sac est du cuir jusqu'au fond, %1$s. Comme un oignon. Un oignon plus tannique.</happy>",
-  "playful.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Séché ! C'est moi. Je l'ai séché. Avec mes mains et plusieurs temps d'attente.</happy>"
+  "playful.dialogue.chat.leatherworker_flavor.leather_cured/1": "<happy>Séché ! C'est moi. Je l'ai séché. Avec mes mains et plusieurs temps d'attente.</happy>",
+  "playful.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<happy>La salle est deux fois plus charmante et un seul de nous a changé.</happy>",
+  "playful.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<happy>Ma tasse est à moitié pleine, mon sens de l'orientation aussi.</happy>",
+  "playful.dialogue.chat.townstead_drunk.drunk_arrival/1": "<excited>Qui a appris cette danse au sol ? Je veux des leçons !</excited>",
+  "playful.dialogue.chat.townstead_drunk.drunk_ambient/1": "<excited>Cette histoire a trois fins. Je compte bien les découvrir toutes.</excited>",
+  "playful.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>Nouveau jeu : trouver l'eau, puis me trouver une chaise.</sleepy>",
+  "playful.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>Je joue à la statue jusqu'à ce que la salle arrête de tourner.</sleepy>",
+  "playful.dialogue.chat.townstead_drunk.service_refused/1": "<happy>Ma tasse prend sa retraite invaincue. L'eau peut prendre la prochaine tournée.</happy>",
+  "playful.dialogue.chat.townstead_drunk.recovered/1": "<happy>Bonne nouvelle : j'ai survécu à mes propres excellentes décisions.</happy>",
+  "playful.dialogue.chat.beverage_artisan_request.no_worksite/1": "<happy>Construis-moi un poste à boissons et je fais faire des tours aux tasses !</happy>",
+  "playful.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<happy>Les étagères jouent à cache-cache avec les ingrédients. Elles ont gagné !</happy>",
+  "playful.dialogue.chat.beverage_artisan_request.no_storage/1": "<happy>Des boissons partout ! Il nous faut un coffre avant qu'elles fondent un village !</happy>",
+  "playful.dialogue.chat.beverage_artisan_request.unreachable/1": "<happy>Mon poste s'est inventé un parcours d'obstacles. Tu dégages le passage compliqué ?</happy>",
+  "playful.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<happy>%2$s est prêt dans mon imagination. Il ne manque plus que les ingrédients !</happy>"
 }

@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.outfitter.pack_mule"
+  },
+  "icon": "minecraft:barrel",
+  "description": {
+    "translate": "skill.townstead.leatherworker.outfitter.pack_mule.description"
+  },
+  "cost": 1,
+  "requires": [
+    "satchel"
+  ],
+  "power": {
+    "type": "pheno:effect_immunity",
+    "effects": [
+      "minecraft:slowness"
+    ]
+  }
+}

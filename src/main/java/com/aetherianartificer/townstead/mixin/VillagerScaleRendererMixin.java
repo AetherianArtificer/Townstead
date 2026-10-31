@@ -22,7 +22,7 @@ public abstract class VillagerScaleRendererMixin {
 
     // MCA's override narrows the param to Mob, so it keeps the name `scale` on both
     // branches (only the synthetic LivingEntity bridge becomes m_7546_ on Forge).
-    @Inject(method = "scale", at = @At("HEAD"), remap = false, require = 1)
+    @Inject(method = "scale", at = @At("HEAD"), remap = false, expect = 1)
     private void townstead$applyStageScale(Mob villager, PoseStack matrices, float tickDelta, CallbackInfo ci) {
         float f = LifeStageScale.forVillager(villager);
         if (f != 1f) matrices.scale(f, f, f);

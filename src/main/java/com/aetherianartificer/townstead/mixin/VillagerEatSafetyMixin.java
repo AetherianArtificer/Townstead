@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.mixin;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.hunger.FoodSafety;
 import com.aetherianartificer.townstead.hunger.VillagerConsumptionManager;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -65,11 +66,11 @@ public abstract class VillagerEatSafetyMixin {
     private void townstead$handleVillagerEat(ItemStack stack, CallbackInfoReturnable<ItemStack> cir) {
         LivingEntity self = (LivingEntity) (Object) this;
         if (!(self instanceof Villager)) return;
-        if (!FoodSafety.isSafeToEat(stack)) {
+        if (!FoodSafety.isSafeToEat(stack, self)) {
             // Unsafe food reached the eat stage — refuse. Return the unmodified
             // stack so the item stays in the villager's inventory (they'll keep
             // trying uselessly, but the stack isn't lost and they aren't hurt).
-            if (TownsteadConfig.DEBUG_VILLAGER_AI.get()) {
+            if (Switchboard.get(TownsteadConfig.DEBUG_VILLAGER_AI)) {
                 Townstead.LOGGER.info(
                         "[VillagerEat] blocked unsafe food {} for villager {}",
                         BuiltInRegistries.ITEM.getKey(stack.getItem()),

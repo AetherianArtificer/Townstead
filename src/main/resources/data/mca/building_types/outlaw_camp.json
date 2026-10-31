@@ -1,0 +1,15 @@
+{
+  "color": "ff8a4a3a",
+  "visible": true,
+  "priority": 5,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 200,
+  "blocks": {
+    "minecraft:campfire": 1,
+    "minecraft:grindstone": 1,
+    "minecraft:barrel": 2,
+    "#minecraft:banners": 1
+  },
+  "margin": 4
+}

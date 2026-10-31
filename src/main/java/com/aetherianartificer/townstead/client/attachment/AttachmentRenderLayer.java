@@ -2,6 +2,10 @@ package com.aetherianartificer.townstead.client.attachment;
 
 import com.aetherianartificer.townstead.client.animation.AnimationTargetMap;
 import com.aetherianartificer.townstead.client.attachment.geo.AttachmentGeo;
+import com.aetherianartificer.townstead.client.devlink.BenchAnchorCapture;
+import com.aetherianartificer.townstead.client.devlink.BenchGizmos;
+import com.aetherianartificer.townstead.client.devlink.BenchLinkClient;
+import org.joml.Matrix4f;
 import com.aetherianartificer.townstead.client.root.RootCatalogClient;
 import com.aetherianartificer.townstead.client.root.RootClientStore;
 import com.aetherianartificer.townstead.client.species.InvisFade;
@@ -55,10 +59,18 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
         if (fade <= 0f) return;
         int fadeAlpha = Math.round(fade * 255f);
         List<Expressed> attachments = resolve(entity);
-        if (attachments.isEmpty()) return;
+        // Bench Link: a capture request or the held tool also needs bones and points drawn
+        // or recorded on entities that wear no attachments.
+        BenchAnchorCapture.Frame bench = BenchAnchorCapture.wants(entity.getId())
+                ? BenchAnchorCapture.begin(entity, pose.last().pose(), RigModels.rigBaseFor(entity)) : null;
+        boolean gizmos = BenchLinkClient.gizmos();
+        if (attachments.isEmpty() && bench == null && !gizmos) return;
 
         AnimationTargetMap<T> bones = AnimationTargetMap.forMcaModel(getParentModel());
+        if (bench != null || gizmos) benchFrame(entity, pose, buffers, bones, bench, gizmos);
         StageKeys stageKeys = stageKeys(entity);
+        // Placed on the first physics attachment, while the pose is still the model root.
+        List<AttachmentColliders.Capsule> colliders = null;
         for (Expressed expressed : attachments) {
             AttachmentDef def = expressed.def();
             if (hiddenByEquipment(entity, def)) continue;
@@ -112,13 +124,18 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                     ? null : AttachmentClient.texture(def.emissiveSha1());
             Morphs morphs = morphsFor(def, payload);
             float[] stageOffset = stage == null ? NO_OFFSET : stage.offset();
-            float scale = def.scale() * (stage == null ? 1f : stage.scale());
+            float stageScale = stage == null ? 1f : stage.scale();
+            float scale = def.scale() * stageScale;
             AttachmentPoses.Sample poseSample = AttachmentPoses.sample(entity, def, ageInTicks);
             AttachmentAnimations.Sample animSample = AttachmentAnimations.sample(entity, def, ageInTicks);
 
             // One attachment can fill several points (a tag matching both ears), so render an
             // instance at each resolved anchor. A mirror point renders the mirrored re-bake.
             List<Anchor> anchors = anchorsFor(def, RigModels.rigBaseFor(entity));
+            if (colliders == null && !def.physics().isEmpty()) {
+                colliders = AttachmentColliders.gather(entity, pose, bones);
+                if (gizmos) AttachmentColliders.draw(entity, pose, buffers, colliders);
+            }
             for (int anchorIndex = 0; anchorIndex < anchors.size(); anchorIndex++) {
                 Anchor anchor = anchors.get(anchorIndex);
                 ModelPart bone = bones.resolve(anchor.bone()).orElse(null);
@@ -130,9 +147,12 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                 float[] base = anchor.offset();
                 pose.pushPose();
                 bone.translateAndRotate(pose);
-                pose.translate((base[0] + def.offset()[0] + stageOffset[0]) / 16f,
-                        (base[1] + def.offset()[1] + stageOffset[1]) / 16f,
-                        (base[2] + def.offset()[2] + stageOffset[2]) / 16f);
+                Matrix4f benchBone = bench == null ? null : new Matrix4f(pose.last().pose());
+                // A stage shrinks the attachment about its anchor: geometry authored far from its
+                // origin (wings from an avatar's feet) would otherwise sink as it scales.
+                pose.translate((base[0] + def.offset()[0] * stageScale + stageOffset[0]) / 16f,
+                        (base[1] + def.offset()[1] * stageScale + stageOffset[1]) / 16f,
+                        (base[2] + def.offset()[2] * stageScale + stageOffset[2]) / 16f);
                 rotateZyx(pose, anchor.rotation());
                 // Def rotation and eased state poses mirror on mirror anchors so a symmetric
                 // pair sweeps and folds symmetrically.
@@ -149,6 +169,13 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                 }
                 if (scale != 1f) pose.scale(scale, scale, scale);
                 if (morphs.whole() != null) pose.scale(morphs.whole()[0], morphs.whole()[1], morphs.whole()[2]);
+                if (bench != null) {
+                    float[] r = poseSample == null ? NO_OFFSET : poseSample.rotation();
+                    boolean posed = r[0] != 0f || r[1] != 0f || r[2] != 0f;
+                    bench.attachment(def.id(), anchorIndex, anchor.bone(), anchor.mirror(), posed,
+                            benchBone, new Matrix4f(pose.last().pose()));
+                }
+                if (gizmos) BenchGizmos.tripod(pose, buffers, BenchGizmos.ATTACHMENT);
 
                 // Morph channels with named bones scale each about its own pivot (an ear
                 // shrinks toward the head surface it grows from); bakes are shared across
@@ -163,22 +190,22 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                     morphBone.zScale = entry.getValue()[2];
                 }
                 List<AttachmentGeo.Bone> hidden = hideBones(geo, morphs.hiddenBones());
-                // Morph rotations, poses, keyframe clips, and physics share the bone-delta
-                // contract and compose in that order: physics adds on top of a posed or
-                // keyframed bone (a drooped ear still swings, a wagging tail still jiggles).
-                java.util.Map<String, float[]> physicsRotations =
-                        AttachmentPhysics.sample(entity, def, anchorIndex, anchor.mirror(), ageInTicks, geo);
+                // Morph rotations, poses, and keyframe clips share the bone-delta contract and
+                // compose in that order into the animated pose. Physics then springs each chain
+                // toward that pose (a drooped ear still swings, a wagging tail still follows through).
                 java.util.Map<String, float[]> boneRotations = mergeBoneDeltas(
-                        mergeBoneDeltas(
-                                mergeBoneDeltas(morphs.rotations(),
-                                        poseSample == null ? java.util.Map.of() : poseSample.boneRotations()),
-                                animSample == null ? java.util.Map.of() : animSample.rotations()),
-                        physicsRotations);
+                        mergeBoneDeltas(morphs.rotations(),
+                                poseSample == null ? java.util.Map.of() : poseSample.boneRotations()),
+                        animSample == null ? java.util.Map.of() : animSample.rotations());
                 List<SavedRotation> posed = applyBonePose(geo, boneRotations, anchor.mirror());
                 List<SavedOffset> offset = animSample == null ? List.of()
                         : applyBoneOffsets(geo, animSample.positions(), anchor.mirror());
                 List<SavedScale> scaled = animSample == null ? List.of()
                         : applyBoneScales(geo, animSample.scales());
+                List<AttachmentGeo.Bone> simulated = AttachmentPhysics.apply(entity, def, anchorIndex, geo,
+                        pose.last().pose(), partialTick, limbSwing, limbSwingAmount,
+                        colliders == null ? List.of() : colliders);
+                if (gizmos && !simulated.isEmpty()) AttachmentPhysics.drawGizmos(entity, def, anchorIndex, pose, buffers);
                 VertexConsumer buffer = buffers.getBuffer(renderType);
                 geo.render(pose, buffer, light, OverlayTexture.NO_OVERLAY, (fadeAlpha << 24) | vertexTint);
                 // The emissive layer re-draws the same posed geometry full-bright, so
@@ -190,6 +217,7 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                     geo.render(pose, buffers.getBuffer(RenderType.entityTranslucentEmissive(emissive)),
                             light, OverlayTexture.NO_OVERLAY, (fadeAlpha << 24) | 0xFFFFFF);
                 }
+                for (AttachmentGeo.Bone simulatedBone : simulated) simulatedBone.physicsRotation = null;
                 for (SavedScale savedScale : scaled) savedScale.restore();
                 for (SavedOffset savedOffset : offset) savedOffset.restore();
                 for (SavedRotation savedRotation : posed) savedRotation.restore();
@@ -203,6 +231,44 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                 }
                 pose.popPose();
             }
+        }
+        if (bench != null) BenchAnchorCapture.finish(bench);
+    }
+
+    private static final String[] BENCH_CHANNELS =
+            {"head", "headwear", "body", "right_arm", "left_arm", "right_leg", "left_leg"};
+
+    /**
+     * Records (for a Bench Link capture) and draws (while the tool is held) the channel bones and
+     * every attachment point that applies to this rig, using the same bone frames and point math
+     * the attachment loop uses.
+     */
+    private static <T extends LivingEntity> void benchFrame(T entity, PoseStack pose, MultiBufferSource buffers,
+                                                            AnimationTargetMap<T> bones,
+                                                            @Nullable BenchAnchorCapture.Frame bench, boolean gizmos) {
+        if (bench != null) {
+            for (String channel : BENCH_CHANNELS) {
+                ModelPart part = bones.resolve(channel).orElse(null);
+                if (part == null) continue;
+                pose.pushPose();
+                part.translateAndRotate(pose);
+                bench.bone(channel, part, new Matrix4f(pose.last().pose()));
+                pose.popPose();
+            }
+        }
+        String rig = RigModels.rigBaseFor(entity);
+        for (AttachmentPointDef point : AttachmentClient.allPoints()) {
+            if (!point.rig().isEmpty() && !point.rig().equals(rig)) continue;
+            ModelPart part = bones.resolve(point.bone()).orElse(null);
+            if (part == null) continue;
+            pose.pushPose();
+            part.translateAndRotate(pose);
+            float[] offset = point.offset();
+            pose.translate(offset[0] / 16f, offset[1] / 16f, offset[2] / 16f);
+            rotateZyx(pose, point.rotation());
+            if (bench != null) bench.point(point.id(), point.bone(), new Matrix4f(pose.last().pose()));
+            if (gizmos) BenchGizmos.tripod(pose, buffers, BenchGizmos.POINT);
+            pose.popPose();
         }
     }
 
@@ -247,6 +313,10 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                     entity.getId(), RigSkinTone.forEntity(entity) & 0xFFFFFF);
             case AttachmentDef.TINT_HAIR ->
                     com.aetherianartificer.townstead.client.species.RigHairColor.get(entity.getId(), def.tint());
+            case AttachmentDef.TINT_COAT -> hasCoat(entity)
+                    ? com.aetherianartificer.townstead.client.species.RigSkinColor.get(
+                            entity.getId(), RigSkinTone.forEntity(entity) & 0xFFFFFF)
+                    : com.aetherianartificer.townstead.client.species.RigHairColor.get(entity.getId(), def.tint());
             case AttachmentDef.TINT_EYES -> {
                 int eye = com.aetherianartificer.townstead.client.species.RigEyeColor.forEntity(entity);
                 yield eye >= 0 ? eye : def.tint();
@@ -260,6 +330,15 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
             }
             default -> def.tint();
         };
+    }
+
+    /** Whether the bearer shows a coat: an expressed skin-tone gene (fur, scales) over its skin. */
+    private static boolean hasCoat(LivingEntity entity) {
+        for (String geneId : RootClientStore.appearanceGenes(entity)) {
+            GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
+            if (gene != null && gene.isSkinTone()) return true;
+        }
+        return false;
     }
 
     private static int component(float value) {
@@ -424,13 +503,13 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
         return saved;
     }
 
-    /** Pose + physics deltas summed per bone (either map may be empty). */
-    private static java.util.Map<String, float[]> mergeBoneDeltas(java.util.Map<String, float[]> poses,
-                                                                  java.util.Map<String, float[]> physics) {
-        if (physics.isEmpty()) return poses;
-        if (poses.isEmpty()) return physics;
-        java.util.Map<String, float[]> merged = new java.util.LinkedHashMap<>(poses);
-        physics.forEach((name, delta) -> merged.merge(name, delta,
+    /** Two bone-delta maps summed per bone (either may be empty). */
+    private static java.util.Map<String, float[]> mergeBoneDeltas(java.util.Map<String, float[]> base,
+                                                                  java.util.Map<String, float[]> extra) {
+        if (extra.isEmpty()) return base;
+        if (base.isEmpty()) return extra;
+        java.util.Map<String, float[]> merged = new java.util.LinkedHashMap<>(base);
+        extra.forEach((name, delta) -> merged.merge(name, delta,
                 (a, b) -> new float[]{a[0] + b[0], a[1] + b[1], a[2] + b[2]}));
         return merged;
     }
@@ -455,7 +534,6 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
         }
         return saved;
     }
-
 
     /** A resolved anchor: a model bone, base offset (pixels), base orientation, and mirroring. */
     private record Anchor(String bone, float[] offset, float[] rotation, boolean mirror) {}
@@ -507,7 +585,7 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
     private static List<Expressed> resolve(LivingEntity entity) {
         List<Expressed> out = new ArrayList<>();
         Set<String> expressed = RootClientStore.expressedGenes(entity);
-        if (!expressed.isEmpty()) {
+        if (RootClientStore.hasExpressionSync(entity) || !expressed.isEmpty()) {
             for (String geneId : expressed) collect(entity, geneId, out);
             return out;
         }

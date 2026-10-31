@@ -1,0 +1,106 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.tiller.wide_furrow"
+  },
+  "icon": "minecraft:farmland",
+  "description": {
+    "translate": "skill.townstead.farmer.tiller.wide_furrow.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_work",
+    "verbs": ["townstead:tilled"],
+    "action": {
+      "type": "pheno:if_else",
+      "condition": { "type": "pheno:entity_type", "entity_type": "minecraft:player" },
+      "if_action": {
+        "type": "pheno:at",
+        "blocks": [
+          {
+            "around": "left",
+            "radius": 0,
+            "where": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:or",
+                  "conditions": [
+                    { "type": "pheno:block", "block": "minecraft:dirt" },
+                    { "type": "pheno:block", "block": "minecraft:grass_block" },
+                    { "type": "pheno:block", "block": "minecraft:dirt_path" }
+                  ]
+                },
+                { "type": "pheno:offset", "y": 1, "condition": { "type": "pheno:air" } }
+              ]
+            }
+          },
+          {
+            "around": "right",
+            "radius": 0,
+            "where": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:or",
+                  "conditions": [
+                    { "type": "pheno:block", "block": "minecraft:dirt" },
+                    { "type": "pheno:block", "block": "minecraft:grass_block" },
+                    { "type": "pheno:block", "block": "minecraft:dirt_path" }
+                  ]
+                },
+                { "type": "pheno:offset", "y": 1, "condition": { "type": "pheno:air" } }
+              ]
+            }
+          }
+        ],
+        "do": { "type": "pheno:set_block", "block": "minecraft:farmland" }
+      },
+      "else_action": {
+        "type": "pheno:at",
+        "blocks": [
+          {
+            "around": "left",
+            "radius": 0,
+            "where": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:or",
+                  "conditions": [
+                    { "type": "pheno:block", "block": "minecraft:dirt" },
+                    { "type": "pheno:block", "block": "minecraft:grass_block" },
+                    { "type": "pheno:block", "block": "minecraft:dirt_path" }
+                  ]
+                },
+                { "type": "pheno:offset", "y": 1, "condition": { "type": "pheno:air" } },
+                { "type": "pheno:in_work_area", "area": "townstead:field_post_soil" }
+              ]
+            }
+          },
+          {
+            "around": "right",
+            "radius": 0,
+            "where": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:or",
+                  "conditions": [
+                    { "type": "pheno:block", "block": "minecraft:dirt" },
+                    { "type": "pheno:block", "block": "minecraft:grass_block" },
+                    { "type": "pheno:block", "block": "minecraft:dirt_path" }
+                  ]
+                },
+                { "type": "pheno:offset", "y": 1, "condition": { "type": "pheno:air" } },
+                { "type": "pheno:in_work_area", "area": "townstead:field_post_soil" }
+              ]
+            }
+          }
+        ],
+        "do": { "type": "pheno:set_block", "block": "minecraft:farmland" }
+      }
+    }
+  }
+}

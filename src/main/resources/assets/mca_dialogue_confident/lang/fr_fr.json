@@ -1,7 +1,8 @@
 {
-  "confident.dialogue.chat.butcher_request.no_livestock/1": "<excited>Une boutique vide est indigne de mon talent, %1$s. Règle ça.</excited>",
+  "confident.dialogue.chat.butcher_request.no_livestock/1": "<excited>La boutique est prête, et moi aussi. Avec du bétail dans l'enclos, je peux mettre mon talent au travail.</excited>",
   "confident.dialogue.chat.butcher_request.no_hook/1": "<excited>Il me faut un équipement convenable. Un crochet, au minimum. C'est parti.</excited>",
   "confident.dialogue.chat.butcher_request.no_basin/1": "<excited>Un maître a besoin d'un bac. Procure-m'en un.</excited>",
+  "confident.dialogue.chat.butcher_request.no_blood_grate/1": "<excited>Une grille à sang complétera l'installation. Une fois en place, je peux commencer.</excited>",
   "confident.dialogue.chat.village_life.butcher_shop/1": "<excited>Ce village a la chance d'avoir un tel boucher. Vraiment.</excited>",
   "confident.dialogue.chat.village_life.slaughterhouse/1": "<excited>Cet abattoir fait la fierté du village. La mienne aussi, à vrai dire.</excited>",
   "confident.dialogue.chat.village_life.tannery/1": "<excited>Le travail de la tannerie, c'est de l'artisanat. Ne laisse personne te dire le contraire.</excited>",
@@ -137,5 +138,18 @@
   "confident.dialogue.chat.leatherworker_request.no_salt/1": "<excited>Le sel fait sécher. Je n'en ai plus. Règle ça.</excited>",
   "confident.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<excited>Une éponge mouillée ou un chiffon, prêt quand je le suis. C'est la norme.</excited>",
   "confident.dialogue.chat.leatherworker_request.no_storage/1": "<excited>Le cuir fini a sa place dans un coffre, pas sur mon dos. Procure-m'en un.</excited>",
-  "confident.dialogue.chat.leatherworker_flavor.leather_cured/1": "<excited>Séché à la perfection. Comme prévu.</excited>"
+  "confident.dialogue.chat.leatherworker_flavor.leather_cured/1": "<excited>Séché à la perfection. Comme prévu.</excited>",
+  "confident.dialogue.chat.beverage_artisan_request.no_worksite/1": "<angry>Donne-moi un vrai poste à boissons. Je m'occupe du reste.</angry>",
+  "confident.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<angry>Seule une étagère vide bloque le service. Remplis-la.</angry>",
+  "confident.dialogue.chat.beverage_artisan_request.no_storage/1": "<angry>J'en fais plus que cette pièce ne peut contenir. Ajoute du stockage.</angry>",
+  "confident.dialogue.chat.beverage_artisan_request.unreachable/1": "<angry>Dégage le chemin vers mon poste. J'ai du travail.</angry>",
+  "confident.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<angry>Je sais exactement comment faire %2$s. Fournis les ingrédients.</angry>",
+  "confident.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<happy>Une agréable chaleur. Entièrement sous contrôle.</happy>",
+  "confident.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<happy>J'ai choisi ce rythme, et il est excellent.</happy>",
+  "confident.dialogue.chat.townstead_drunk.drunk_arrival/1": "<excited>Je reste la personne la plus posée de cette salle.</excited>",
+  "confident.dialogue.chat.townstead_drunk.drunk_ambient/1": "<excited>Ce n'était pas un faux pas. C'était un changement de direction décisif.</excited>",
+  "confident.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>J'ai atteint ma limite. Apportez de l'eau et une chaise.</sleepy>",
+  "confident.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>Je me repose parce que je l'ai décidé, pas parce que le sol a gagné.</sleepy>",
+  "confident.dialogue.chat.townstead_drunk.service_refused/1": "<happy>Plus rien. Un bon hôte sait quand la soirée a atteint son sommet.</happy>",
+  "confident.dialogue.chat.townstead_drunk.recovered/1": "<happy>De nouveau l'esprit clair. Naturellement.</happy>"
 }

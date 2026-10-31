@@ -1,0 +1,11 @@
+{
+  "schema": "pheno:entity_state/v1",
+  "mods": "werewolves",
+  "id": "townstead_state:werewolf_glow",
+  "min": 0,
+  "max": 2,
+  "initial": 0,
+  "merge": "max",
+  "persistence": "persistent",
+  "death": "keep"
+}

@@ -1,0 +1,5 @@
+{
+  "color": "ff9fd8e5", "visible": true, "priority": 12, "icon": false, "iconU": 251, "iconV": 213,
+  "margin": 5, "mergeRange": 12,
+  "blocks": {"minecraft:bell": 1, "#townstead:square_markers": 4}
+}

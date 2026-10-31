@@ -1,0 +1,97 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.cartographer.path.prospector"
+  },
+  "title": {
+    "translate": "career.townstead.cartographer.title.prospector"
+  },
+  "color": "#B0843A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:bearing",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cartographer/prospector/strike_it_rich"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cartographer/prospector/assay"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cartographer/prospector/flare"
+              }
+            ]
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:block",
+                  "y": 0,
+                  "block_condition": {
+                    "type": "exposed_to_sky"
+                  }
+                }
+              },
+              {
+                "type": "pheno:block",
+                "y": 0,
+                "block_condition": {
+                  "type": "height",
+                  "max": 60
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:bearing",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "ore_sense",
+      "tap_the_rock",
+      "miners_lamp"
+    ],
+    [
+      "miners_eyes",
+      "echo_sound",
+      "shore_up"
+    ],
+    [
+      "strike_it_rich",
+      "assay",
+      "flare"
+    ],
+    [
+      "vein_sense",
+      "deep_survey",
+      "deep_delver"
+    ],
+    [
+      "motherlode",
+      "eureka",
+      "gold_rush"
+    ]
+  ]
+}

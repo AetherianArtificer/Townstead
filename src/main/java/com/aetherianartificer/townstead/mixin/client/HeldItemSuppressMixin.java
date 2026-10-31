@@ -29,7 +29,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class HeldItemSuppressMixin {
 
     //? if neoforge {
-    @Inject(method = "renderArmWithItem", at = @At("HEAD"), cancellable = true, require = 1)
+    @Inject(method = "renderArmWithItem", at = @At("HEAD"), cancellable = true, expect = 1)
     //?} else {
     /*@Inject(method = "m_117184_", remap = false, at = @At("HEAD"), cancellable = true, require = 0)
     *///?}

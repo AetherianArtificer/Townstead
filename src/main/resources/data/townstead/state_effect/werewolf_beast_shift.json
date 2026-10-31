@@ -1,0 +1,20 @@
+{
+  "schema": "pheno:state_effect/v1",
+  "mods": "werewolves",
+  "state": "townstead_state:beast_form",
+  "min_tier": "four_legged",
+  "priority": 30,
+  "on_enter": [
+    { "type": "pheno:play_sound", "sound": "werewolves:entity.werewolf.howl", "category": "hostile", "volume": 1.2, "pitch": 0.85 },
+    { "type": "pheno:spawn_particles", "particle": "minecraft:large_smoke", "shape": "burst_up", "count": 28, "radius": 0.5, "speed": 0.06, "anchor": "feet" },
+    { "type": "pheno:spawn_particles", "particle": "minecraft:ash", "shape": "ring", "count": 24, "radius": 1.2, "speed": 0.05, "anchor": "feet", "delay": 3 }
+  ],
+  "on_tier_change": [
+    { "type": "pheno:play_sound", "sound": "werewolves:entity.werewolf.growl", "category": "hostile", "volume": 1.0, "pitch": 1.0 },
+    { "type": "pheno:spawn_particles", "particle": "minecraft:smoke", "count": 12, "spread": 0.5 }
+  ],
+  "on_exit": [
+    { "type": "pheno:play_sound", "sound": "minecraft:entity.wolf.whine", "category": "neutral", "volume": 0.8, "pitch": 0.7 },
+    { "type": "pheno:spawn_particles", "particle": "minecraft:large_smoke", "shape": "dome", "count": 24, "radius": 0.9, "speed": 0.03, "anchor": "feet" }
+  ]
+}

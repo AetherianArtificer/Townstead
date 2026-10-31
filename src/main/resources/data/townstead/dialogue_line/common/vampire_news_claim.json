@@ -1,0 +1,72 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "vampire_news_claim",
+  "groups": [
+    {
+      "persp": {
+        "who": "they"
+      },
+      "variant": "bitten",
+      "lines": {
+        "who_was_bitten_last_night_v": "{who} was bitten last night.",
+        "who_has_two_marks": "{who} has two little marks on the neck.",
+        "they_say_something_bit_who": "They say something bit {who} in the dark."
+      }
+    },
+    {
+      "persp": {
+        "who": "you"
+      },
+      "variant": "bitten",
+      "lines": {
+        "i_heard_you_were_bitten_v": "I heard something bit you. Are you all right?"
+      }
+    },
+    {
+      "persp": {
+        "who": "they"
+      },
+      "variant": "turned",
+      "lines": {
+        "who_is_one_of_them": "{who} is one of them now.",
+        "who_wont_come_out_by_day": "{who} won't come out by day anymore.",
+        "who_turned_the_mirror": "{who} turned. I saw the pale face myself."
+      }
+    },
+    {
+      "persp": {
+        "who": "they"
+      },
+      "variant": "cured",
+      "lines": {
+        "who_is_cured_v": "{who} is cured! Color's back in the cheeks.",
+        "who_walked_in_the_sun": "{who} walked in the sun today. Just stood there, smiling."
+      }
+    },
+    {
+      "persp": {
+        "who": "they"
+      },
+      "variant": "slain",
+      "lines": {
+        "a_hunter_got_who": "A hunter got {who}.",
+        "who_is_gone_a_hunter": "{who} is gone. A hunter came in the night."
+      }
+    },
+    {
+      "variant": "fell",
+      "lines": {
+        "the_vampires_hold_the_village": "The vampires hold the village now.",
+        "the_totem_went_dark": "The totem changed hands. It's theirs now."
+      }
+    },
+    {
+      "variant": "retaken",
+      "lines": {
+        "we_took_the_village_back": "We took the village back from the vampires!",
+        "the_totem_is_ours_again": "The totem is ours again."
+      }
+    }
+  ]
+}

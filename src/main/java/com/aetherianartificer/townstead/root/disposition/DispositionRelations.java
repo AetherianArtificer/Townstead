@@ -18,12 +18,23 @@ public final class DispositionRelations {
 
     private static volatile Map<String, GroupDef> groups = Map.of();
     private static volatile Map<EntityType<?>, String> members = Map.of();
+    /** Groups a faction may declare welcome, by the name its Charter shows. */
+    private static volatile Map<String, net.minecraft.network.chat.Component> welcomable = Map.of();
 
     private DispositionRelations() {}
 
     public static void replaceAll(Map<String, GroupDef> newGroups, Map<EntityType<?>, String> newMembers) {
         groups = Map.copyOf(newGroups);
         members = Map.copyOf(newMembers);
+    }
+
+    public static void replaceWelcomable(Map<String, net.minecraft.network.chat.Component> value) {
+        welcomable = Map.copyOf(value);
+    }
+
+    /** Groups that name themselves for a Charter's welcome, in load order. */
+    public static Map<String, net.minecraft.network.chat.Component> welcomable() {
+        return welcomable;
     }
 
     /** The group an entity type belongs to via a group's {@code members} list, or null. */

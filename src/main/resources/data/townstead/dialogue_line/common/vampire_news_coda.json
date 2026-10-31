@@ -1,0 +1,32 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "vampire_news_coda",
+  "groups": [
+    {
+      "variant": "bitten",
+      "lines": {
+        "stay_inside_after_dark": "Stay inside after dark.",
+        "keep_an_eye_on_them_v": "Keep an eye on them."
+      }
+    },
+    {
+      "variant": "turned",
+      "lines": {
+        "the_nights_are_longer_now": "The nights feel longer now."
+      }
+    },
+    {
+      "variant": "cured",
+      "lines": {
+        "golden_apples_and_weakness": "A golden apple and a little weakness. Who knew?"
+      }
+    },
+    {
+      "variant": "slain",
+      "lines": {
+        "hunters_dont_ask_questions": "Hunters don't ask questions first."
+      }
+    }
+  ]
+}

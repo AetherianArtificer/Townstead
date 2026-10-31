@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": { "translate": "skill.townstead.cook.chef.appetizer_menu" },
+  "icon": "minecraft:rabbit_stew",
+  "description": { "translate": "skill.townstead.cook.chef.appetizer_menu.description" },
+  "cost": 1,
+  "skill_group": "townstead:chef_menu",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": { "resource": "townstead:stamina", "amount": 25 },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 6,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:strength",
+            "duration": 200,
+            "amplifier": 0
+          }
+        },
+        { "type": "pheno:play_sound", "sound": "minecraft:entity.player.burp", "volume": 0.8, "pitch": 1.2 }
+      ]
+    }
+  }
+}

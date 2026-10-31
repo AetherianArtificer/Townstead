@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.nightward.planted"
+  },
+  "icon": "minecraft:anvil",
+  "description": {
+    "translate": "skill.townstead.hunter.nightward.planted.description"
+  },
+  "cost": 1,
+  "requires": [
+    "home_ground"
+  ],
+  "power": {
+    "type": "pheno:attribute",
+    "attribute": "minecraft:generic.knockback_resistance",
+    "amount": 0.5
+  }
+}

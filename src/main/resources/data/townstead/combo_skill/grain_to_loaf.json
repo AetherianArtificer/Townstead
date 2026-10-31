@@ -1,0 +1,22 @@
+{
+  "display_name": {
+    "translate": "combo_skill.townstead.grain_to_loaf"
+  },
+  "description": {
+    "translate": "combo_skill.townstead.grain_to_loaf.description"
+  },
+  "icon": "minecraft:bread",
+  "professions": {
+    "minecraft:farmer": 3,
+    "townstead:baker": 3
+  },
+  "power": {
+    "type": "pheno:modifier",
+    "target": "food",
+    "operation": "multiply",
+    "value": 1.25,
+    "applies_to": {
+      "radius": 8
+    }
+  }
+}

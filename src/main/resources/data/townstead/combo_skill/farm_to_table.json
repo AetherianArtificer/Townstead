@@ -1,0 +1,53 @@
+{
+  "display_name": {
+    "translate": "combo_skill.townstead.farm_to_table"
+  },
+  "description": {
+    "translate": "combo_skill.townstead.farm_to_table.description"
+  },
+  "icon": "minecraft:wheat",
+  "professions": {
+    "minecraft:farmer": 3,
+    "townstead:cook": 3
+  },
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 40,
+    "condition": {
+      "type": "pheno:entity_type",
+      "entity_type": "minecraft:player"
+    },
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": [
+          12,
+          2,
+          12
+        ],
+        "where": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:mature"
+            },
+            {
+              "type": "pheno:offset",
+              "y": -1,
+              "condition": {
+                "type": "pheno:farmland"
+              }
+            }
+          ]
+        }
+      },
+      "do": {
+        "type": "pheno:spawn_particles",
+        "particle": "minecraft:happy_villager",
+        "count": 1,
+        "spread": 0.3,
+        "offset_y": 0.5
+      }
+    }
+  }
+}

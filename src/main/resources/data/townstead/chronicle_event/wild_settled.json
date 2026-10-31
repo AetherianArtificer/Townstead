@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "survival.rescue",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "survival",
+    "key": "townstead:wild_settled"
+  },
+  "reach": "village",
+  "news_value": 5.0,
+  "roles": [
+    {
+      "id": "settled",
+      "kind": "villager"
+    }
+  ],
+  "witnesses": {
+    "radius": 16.0,
+    "max": 8
+  },
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.wild_settled"
+    },
+    "params": [
+      "settled"
+    ]
+  },
+  "impact": {
+    "settled": {
+      "mood": 10.0,
+      "memory": {
+        "valence": 1.0,
+        "strength": 3.0
+      }
+    },
+    "witness": {
+      "mood": 1.0,
+      "memory": {
+        "valence": 0.5,
+        "strength": 1.0
+      }
+    }
+  }
+}

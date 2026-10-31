@@ -1,0 +1,95 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.wide_swing"
+  },
+  "icon": "minecraft:golden_hoe",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.wide_swing.description"
+  },
+  "cost": 1,
+  "requires": [
+    "toil"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_work",
+    "verbs": ["townstead:harvested"],
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:not",
+          "condition": { "type": "pheno:entity_type", "entity_type": "minecraft:player" }
+        },
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": { "type": "ingredient", "tag": "minecraft:hoes" }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:if_else",
+      "condition": { "type": "pheno:entity_type", "entity_type": "minecraft:player" },
+      "if_action": {
+        "type": "pheno:at",
+        "blocks": [
+          {
+            "around": "left",
+            "radius": 0,
+            "where": {
+              "type": "pheno:and",
+              "conditions": [
+                { "type": "pheno:mature" },
+                { "type": "pheno:offset", "y": -1, "condition": { "type": "pheno:farmland" } }
+              ]
+            }
+          },
+          {
+            "around": "right",
+            "radius": 0,
+            "where": {
+              "type": "pheno:and",
+              "conditions": [
+                { "type": "pheno:mature" },
+                { "type": "pheno:offset", "y": -1, "condition": { "type": "pheno:farmland" } }
+              ]
+            }
+          }
+        ],
+        "do": { "type": "pheno:destroy", "collect": true }
+      },
+      "else_action": {
+        "type": "pheno:at",
+        "blocks": [
+          {
+            "around": "left",
+            "radius": 0,
+            "where": {
+              "type": "pheno:and",
+              "conditions": [
+                { "type": "pheno:mature" },
+                { "type": "pheno:offset", "y": -1, "condition": { "type": "pheno:farmland" } },
+                { "type": "pheno:in_work_area", "area": "townstead:field_post" }
+              ]
+            }
+          },
+          {
+            "around": "right",
+            "radius": 0,
+            "where": {
+              "type": "pheno:and",
+              "conditions": [
+                { "type": "pheno:mature" },
+                { "type": "pheno:offset", "y": -1, "condition": { "type": "pheno:farmland" } },
+                { "type": "pheno:in_work_area", "area": "townstead:field_post" }
+              ]
+            }
+          }
+        ],
+        "do": { "type": "pheno:destroy", "collect": true }
+      }
+    }
+  }
+}

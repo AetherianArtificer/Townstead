@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "#c:hacksaw", "required": false },
+    { "id": "#forge:hacksaw", "required": false }
+  ]
+}

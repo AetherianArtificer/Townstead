@@ -1,0 +1,44 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.roadwright.milestone"
+  },
+  "icon": "minecraft:stone",
+  "description": {
+    "translate": "skill.townstead.mason.roadwright.milestone.description"
+  },
+  "cost": 1,
+  "requires": [
+    "graded"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:mortar",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:block",
+          "y": -1,
+          "block_condition": {
+            "type": "in_tag",
+            "tag": "townstead:roads"
+          }
+        },
+        {
+          "type": "pheno:movement",
+          "movement": "moving"
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:mortar",
+      "amount": 3
+    }
+  }
+}

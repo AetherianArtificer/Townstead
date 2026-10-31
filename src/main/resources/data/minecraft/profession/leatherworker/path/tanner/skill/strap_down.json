@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.tanner.strap_down"
+  },
+  "icon": "minecraft:chain",
+  "description": {
+    "translate": "skill.townstead.leatherworker.tanner.strap_down.description"
+  },
+  "cost": 1,
+  "requires": [
+    "lash"
+  ],
+  "skill_group": "townstead:tanner_whip",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:hide",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:slowness",
+          "duration": 120,
+          "amplifier": 4
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:weakness",
+          "duration": 120,
+          "amplifier": 0
+        }
+      ],
+      "on": {
+        "type": "pheno:ray",
+        "distance": 8
+      }
+    }
+  }
+}

@@ -11,6 +11,7 @@ import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.EquipmentSlot;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,9 +26,8 @@ import java.util.Map;
  * armor matches the rig's shape, pose, and scale exactly.
  *
  * <p>MCA's host armor is suppressed for these entities by {@code HostArmorSuppressMixin}, which lets
- * our own draw through via the {@link #isRendering()} guard. The player path is untouched: only the
- * villager host enables this (see {@code SpeciesRigLayer}'s {@code renderArmor} flag), and the
- * suppressor skips players.</p>
+ * our own draw through via the {@link #isRendering()} guard. Players with custom geometry armour use this path too. The draw keeps this
+ * layer's authored meshes even when MCA's player selector supplies a human replacement.</p>
  */
 public final class RigArmorRenderer {
 
@@ -44,6 +44,15 @@ public final class RigArmorRenderer {
 
     private RigArmorRenderer() {}
 
+    public static void clear() { LAYERS.clear(); }
+
+    /** Keep pack geometry on our layer when a player-model selector substitutes human armour. */
+    public static HumanoidModel<?> preserveFittedModel(EquipmentSlot slot, HumanoidModel<?> selected,
+                                                       HumanoidModel<?> inner, HumanoidModel<?> outer) {
+        HumanoidModel<?> authored = slot == EquipmentSlot.LEGS ? inner : outer;
+        return authored instanceof RigGeometryArmor.FittedModel ? authored : selected;
+    }
+
     /** True while this renderer is drawing, so the host-armor suppressor passes our own draw through. */
     public static boolean isRendering() {
         return RENDERING.get();
@@ -59,11 +68,25 @@ public final class RigArmorRenderer {
                               float netHeadYaw, float headPitch) {
         HumanoidArmorLayer<LivingEntity, HumanoidModel<LivingEntity>, HumanoidModel<LivingEntity>> layer =
                 LAYERS.computeIfAbsent(rigBase, b -> buildLayer(b, rig, texture));
+        // Slots the body wears but doesn't show (a ghost's legs and feet): the gear stays on, it is only
+        // held out of this draw, and put straight back.
+        com.aetherianartificer.townstead.root.rig.RigDefinition def = RigModels.definition(rigBase);
+        java.util.Map<EquipmentSlot, net.minecraft.world.item.ItemStack> held = null;
+        if (def != null && !def.hiddenSlots().isEmpty()) {
+            for (EquipmentSlot slot : def.hiddenSlots()) {
+                net.minecraft.world.item.ItemStack worn = entity.getItemBySlot(slot);
+                if (worn.isEmpty()) continue;
+                if (held == null) held = new java.util.EnumMap<>(EquipmentSlot.class);
+                held.put(slot, worn);
+                entity.setItemSlot(slot, net.minecraft.world.item.ItemStack.EMPTY);
+            }
+        }
         RENDERING.set(true);
         try {
             layer.render(pose, buffers, light, entity, limbSwing, limbSwingAmount, partialTick, ageInTicks, netHeadYaw, headPitch);
         } finally {
             RENDERING.set(false);
+            if (held != null) held.forEach(entity::setItemSlot);
         }
     }
 
@@ -82,7 +105,8 @@ public final class RigArmorRenderer {
      */
     private static HumanoidModel<LivingEntity> armorModel(String rigBase, boolean inner) {
         ModelPart part = RigModels.bakeArmorPart(rigBase, inner);
-        if (part != null) return new HumanoidModel<>(part);
+        if (part != null) return RigGeometryArmor.enabled(rigBase)
+                ? new RigGeometryArmor.FittedModel(part, rigBase) : new HumanoidModel<>(part);
         return new HumanoidModel<>(LayerDefinition.create(
                 HumanoidModel.createMesh(new CubeDeformation(inner ? INNER_DEFORM : OUTER_DEFORM), 0.0f), 64, 32).bakeRoot());
     }

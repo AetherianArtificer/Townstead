@@ -1,0 +1,48 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.curse_breaker.arcane_study"
+  },
+  "icon": "minecraft:bookshelf",
+  "description": {
+    "translate": "skill.townstead.librarian.curse_breaker.arcane_study.description"
+  },
+  "cost": 1,
+  "requires": [
+    "unfading"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:insight",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:block_in_radius",
+      "radius": 6,
+      "block_condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:block",
+            "block": "minecraft:enchanting_table"
+          },
+          {
+            "type": "pheno:block",
+            "block": "minecraft:bookshelf"
+          },
+          {
+            "type": "pheno:block",
+            "block": "minecraft:lectern"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:insight",
+      "amount": 3
+    }
+  }
+}

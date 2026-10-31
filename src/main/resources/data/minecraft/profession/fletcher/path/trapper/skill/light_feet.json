@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.trapper.light_feet"
+  },
+  "icon": "minecraft:leather_boots",
+  "description": {
+    "translate": "skill.townstead.fletcher.trapper.light_feet.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:stuck_immunity",
+    "blocks": [
+      "minecraft:cobweb",
+      "minecraft:sweet_berry_bush",
+      "minecraft:powder_snow"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.sea_breeze"
+  },
+  "icon": "minecraft:kelp",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.sea_breeze.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sun_lover"
+  ],
+  "power": {
+    "type": "pheno:thermal_tolerance",
+    "cold": 1.0,
+    "heat": 0.0
+  }
+}

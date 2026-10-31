@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "vinery:apple_mashing", "required": false },
+    { "id": "vinery:apple_fermenting", "required": false }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": { "translate": "skill.townstead.cook.chef.flambe" },
+  "icon": "minecraft:blaze_powder",
+  "description": { "translate": "skill.townstead.cook.chef.flambe.description" },
+  "cost": 1,
+  "requires": ["saute_toss"],
+  "skill_group": "townstead:chef_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 280,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": { "resource": "townstead:flow", "amount": 35 },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 4.5,
+          "target": "hostile",
+          "bientity_condition": { "type": "pheno:relative_rotation", "max_angle": 70 },
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              { "type": "pheno:damage", "source": "other", "amount": 4.0 },
+              { "type": "pheno:ignite", "seconds": 5 }
+            ]
+          }
+        },
+        { "type": "pheno:play_sound", "sound": "minecraft:item.firecharge.use", "volume": 1.2, "pitch": 0.9 },
+        { "type": "pheno:spawn_particles", "particle": "minecraft:flame", "count": 40, "spread": 1.5, "speed": 0.12 }
+      ]
+    }
+  }
+}

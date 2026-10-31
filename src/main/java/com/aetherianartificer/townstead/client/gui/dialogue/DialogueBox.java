@@ -16,22 +16,7 @@ import java.util.List;
  * with effects, screen-space particles, and smooth fade-in/out.
  */
 public class DialogueBox {
-    // Frame colors — Minecraft stone/button style bevel
-    private static final int BG_FILL = 0xCC0E0E0E;            // near-black
-    private static final int BORDER_OUTER_LIGHT = 0xFFA0A0A0; // top/left highlight (like MC button)
-    private static final int BORDER_OUTER_DARK = 0xFF373737;   // bottom/right shadow
-    private static final int BORDER_INNER_LIGHT = 0xFF606060;
-    private static final int BORDER_INNER_DARK = 0xFF252525;
-    private static final int BORDER_ACCENT = 0xFF707070;       // inner accent line
-    private static final int CORNER_ACCENT = 0xFFB0B0B0;       // corner decoration
-
-    // Name tab
-    private static final int NAME_TAB_BG = 0xDD0E0E0E;
-    private static final int NAME_COLOR = 0xFFFFD700;
-
-    // Text
-    private static final int TEXT_COLOR = 0xFFFFFFFF;
-    private static final int INDICATOR_COLOR = 0xFFFFFFFF;
+    // Colors come from the DialogueTheme.
 
     // Layout
     private static final int MARGIN = 20;
@@ -51,6 +36,7 @@ public class DialogueBox {
     private Component villagerName = Component.empty();
     private boolean nameVisible = true;
     private DialogueEffect activeEffect = DialogueEffects.NORMAL;
+    private DialogueTheme theme = DialogueThemes.resolve(null);
 
     private int x, y, width, height;
     private float fadeAlpha = 0f;
@@ -74,14 +60,23 @@ public class DialogueBox {
         this.nameVisible = visible;
     }
 
+    public void setTheme(DialogueTheme theme) {
+        this.theme = theme;
+        typewriter.setSound(theme.typeSound());
+    }
+
     public void setText(Component text, Font font) {
         int textWidth = width - (FRAME_THICKNESS + PADDING) * 2;
+        com.aetherianartificer.townstead.client.gui.dialogue.DialogueTextSpeed speed =
+                com.aetherianartificer.townstead.TownsteadConfig.dialogueTextSpeed();
+        typewriter.setSpeed(speed.speed());
         typewriter.setText(text, font, textWidth);
         // Calculate how many lines fit: from text start to indicator area
         int textStartY = FRAME_THICKNESS + PADDING + TEXT_TOP_GAP;
         int textEndY = height - FRAME_THICKNESS - 14; // 14 for indicator row
         int textAreaHeight = textEndY - textStartY;
         typewriter.setMaxVisibleLines(Math.max(2, textAreaHeight / LINE_HEIGHT));
+        if (speed == com.aetherianartificer.townstead.client.gui.dialogue.DialogueTextSpeed.INSTANT) typewriter.skipToEnd();
         particles.clear();
 
         // Start fade-in
@@ -140,52 +135,56 @@ public class DialogueBox {
     }
 
     private void renderFrame(GuiGraphics g, float a) {
+        if (theme.box() != null) {
+            theme.box().draw(g, x, y, width, height, a);
+            return;
+        }
         // Background fill — scale by MC's Text Background Opacity (default 0.5)
         float bgOpacity = DialogueAccessibility.backgroundAlpha();
         // Map MC's 0.0-1.0 range: at 0 = transparent, at 0.5 (default) = normal, at 1.0 = fully opaque
-        int bgAlphaInt = (int)(bgOpacity * 2f * 0xCC); // 0xCC is the base alpha in BG_FILL
+        int bgAlphaInt = (int)(bgOpacity * 2f * (theme.boxBackground() >>> 24));
         bgAlphaInt = Math.min(bgAlphaInt, 0xFF);
-        int bgColor = (bgAlphaInt << 24) | (BG_FILL & 0x00FFFFFF);
+        int bgColor = (bgAlphaInt << 24) | (theme.boxBackground() & 0x00FFFFFF);
         g.fill(x, y, x + width, y + height, aa(bgColor, a));
 
         // Outer border — bevel effect (light top/left, dark bottom/right)
         // Top
-        g.fill(x, y, x + width, y + 1, aa(BORDER_OUTER_LIGHT, a));
-        g.fill(x, y + 1, x + width, y + 2, aa(BORDER_INNER_LIGHT, a));
+        g.fill(x, y, x + width, y + 1, aa(theme.boxBorderLight(), a));
+        g.fill(x, y + 1, x + width, y + 2, aa(theme.boxInnerLight(), a));
         // Left
-        g.fill(x, y, x + 1, y + height, aa(BORDER_OUTER_LIGHT, a));
-        g.fill(x + 1, y, x + 2, y + height, aa(BORDER_INNER_LIGHT, a));
+        g.fill(x, y, x + 1, y + height, aa(theme.boxBorderLight(), a));
+        g.fill(x + 1, y, x + 2, y + height, aa(theme.boxInnerLight(), a));
         // Bottom
-        g.fill(x, y + height - 1, x + width, y + height, aa(BORDER_OUTER_DARK, a));
-        g.fill(x, y + height - 2, x + width, y + height - 1, aa(BORDER_INNER_DARK, a));
+        g.fill(x, y + height - 1, x + width, y + height, aa(theme.boxBorderDark(), a));
+        g.fill(x, y + height - 2, x + width, y + height - 1, aa(theme.boxInnerDark(), a));
         // Right
-        g.fill(x + width - 1, y, x + width, y + height, aa(BORDER_OUTER_DARK, a));
-        g.fill(x + width - 2, y, x + width - 1, y + height, aa(BORDER_INNER_DARK, a));
+        g.fill(x + width - 1, y, x + width, y + height, aa(theme.boxBorderDark(), a));
+        g.fill(x + width - 2, y, x + width - 1, y + height, aa(theme.boxInnerDark(), a));
 
         // Inner accent line (inset by FRAME_THICKNESS)
         int ix = x + FRAME_THICKNESS;
         int iy = y + FRAME_THICKNESS;
         int iw = width - FRAME_THICKNESS * 2;
         int ih = height - FRAME_THICKNESS * 2;
-        g.fill(ix, iy, ix + iw, iy + 1, aa(BORDER_ACCENT, a));
-        g.fill(ix, iy, ix + 1, iy + ih, aa(BORDER_ACCENT, a));
-        g.fill(ix, iy + ih - 1, ix + iw, iy + ih, aa(BORDER_INNER_DARK, a));
-        g.fill(ix + iw - 1, iy, ix + iw, iy + ih, aa(BORDER_INNER_DARK, a));
+        g.fill(ix, iy, ix + iw, iy + 1, aa(theme.boxAccent(), a));
+        g.fill(ix, iy, ix + 1, iy + ih, aa(theme.boxAccent(), a));
+        g.fill(ix, iy + ih - 1, ix + iw, iy + ih, aa(theme.boxInnerDark(), a));
+        g.fill(ix + iw - 1, iy, ix + iw, iy + ih, aa(theme.boxInnerDark(), a));
 
         // Corner accents — small L-shaped decorations
         int cs = 6; // corner size
         // Top-left
-        g.fill(x + 1, y + 1, x + 1 + cs, y + 2, aa(CORNER_ACCENT, a));
-        g.fill(x + 1, y + 1, x + 2, y + 1 + cs, aa(CORNER_ACCENT, a));
+        g.fill(x + 1, y + 1, x + 1 + cs, y + 2, aa(theme.boxCorner(), a));
+        g.fill(x + 1, y + 1, x + 2, y + 1 + cs, aa(theme.boxCorner(), a));
         // Top-right
-        g.fill(x + width - 1 - cs, y + 1, x + width - 1, y + 2, aa(CORNER_ACCENT, a));
-        g.fill(x + width - 2, y + 1, x + width - 1, y + 1 + cs, aa(CORNER_ACCENT, a));
+        g.fill(x + width - 1 - cs, y + 1, x + width - 1, y + 2, aa(theme.boxCorner(), a));
+        g.fill(x + width - 2, y + 1, x + width - 1, y + 1 + cs, aa(theme.boxCorner(), a));
         // Bottom-left
-        g.fill(x + 1, y + height - 2, x + 1 + cs, y + height - 1, aa(CORNER_ACCENT, a));
-        g.fill(x + 1, y + height - 1 - cs, x + 2, y + height - 1, aa(CORNER_ACCENT, a));
+        g.fill(x + 1, y + height - 2, x + 1 + cs, y + height - 1, aa(theme.boxCorner(), a));
+        g.fill(x + 1, y + height - 1 - cs, x + 2, y + height - 1, aa(theme.boxCorner(), a));
         // Bottom-right
-        g.fill(x + width - 1 - cs, y + height - 2, x + width - 1, y + height - 1, aa(CORNER_ACCENT, a));
-        g.fill(x + width - 2, y + height - 1 - cs, x + width - 1, y + height - 1, aa(CORNER_ACCENT, a));
+        g.fill(x + width - 1 - cs, y + height - 2, x + width - 1, y + height - 1, aa(theme.boxCorner(), a));
+        g.fill(x + width - 2, y + height - 1 - cs, x + width - 1, y + height - 1, aa(theme.boxCorner(), a));
     }
 
     private void renderNameTab(GuiGraphics g, Font font, float a) {
@@ -193,18 +192,22 @@ public class DialogueBox {
         int tabX = x + FRAME_THICKNESS + PADDING;
         int tabY = y - NAME_TAB_HEIGHT + 2; // overlaps the top border slightly
 
-        // Tab background
-        g.fill(tabX, tabY, tabX + nameW, y + 1, aa(NAME_TAB_BG, a));
+        if (theme.nameTab() != null) {
+            theme.nameTab().draw(g, tabX, tabY, nameW, y + 1 - tabY, a);
+        } else {
+            // Tab background
+            g.fill(tabX, tabY, tabX + nameW, y + 1, aa(theme.nameTabBackground(), a));
 
-        // Tab border (top and sides only, bottom merges with box)
-        g.fill(tabX, tabY, tabX + nameW, tabY + 1, aa(BORDER_OUTER_LIGHT, a));
-        g.fill(tabX, tabY, tabX + 1, y, aa(BORDER_OUTER_LIGHT, a));
-        g.fill(tabX + nameW - 1, tabY, tabX + nameW, y, aa(BORDER_OUTER_DARK, a));
-        // Accent on tab
-        g.fill(tabX + 1, tabY + 1, tabX + nameW - 1, tabY + 2, aa(BORDER_ACCENT, a));
+            // Tab border (top and sides only, bottom merges with box)
+            g.fill(tabX, tabY, tabX + nameW, tabY + 1, aa(theme.boxBorderLight(), a));
+            g.fill(tabX, tabY, tabX + 1, y, aa(theme.boxBorderLight(), a));
+            g.fill(tabX + nameW - 1, tabY, tabX + nameW, y, aa(theme.boxBorderDark(), a));
+            // Accent on tab
+            g.fill(tabX + 1, tabY + 1, tabX + nameW - 1, tabY + 2, aa(theme.boxAccent(), a));
+        }
 
         // Name text
-        g.drawString(font, villagerName, tabX + NAME_TAB_HPAD, tabY + NAME_TAB_VPAD, aa(NAME_COLOR, a));
+        g.drawString(font, villagerName, tabX + NAME_TAB_HPAD, tabY + NAME_TAB_VPAD, aa(theme.nameColor(), a));
     }
 
     private void renderText(GuiGraphics g, Font font, float a) {
@@ -218,7 +221,7 @@ public class DialogueBox {
         g.enableScissor(textX, 0, clipRight, y + height + 100);
         List<FormattedCharSequence> lines = typewriter.getRevealedLines();
         EffectRenderer.renderLines(g, font, lines,
-                textX, textY, LINE_HEIGHT, aa(TEXT_COLOR, a),
+                textX, textY, LINE_HEIGHT, aa(theme.textColor(), a),
                 activeEffect, typewriter);
         g.disableScissor();
     }
@@ -245,14 +248,14 @@ public class DialogueBox {
                 String indicator = "\u25BC"; // down arrow
                 int ix = x + width / 2 - font.width(indicator) / 2;
                 int iy = y + height - FRAME_THICKNESS - PADDING - 2;
-                g.drawString(font, indicator, ix, iy, aa(INDICATOR_COLOR, a));
+                g.drawString(font, indicator, ix, iy, aa(theme.indicatorColor(), a));
             }
         } else if (typewriter.shouldShowIndicator()) {
             // Final done indicator — right arrow
             String indicator = "\u25B6";
             int ix = x + width - FRAME_THICKNESS - PADDING - font.width(indicator);
             int iy = y + height - FRAME_THICKNESS - PADDING - 2;
-            g.drawString(font, indicator, ix, iy, aa(INDICATOR_COLOR, a));
+            g.drawString(font, indicator, ix, iy, aa(theme.indicatorColor(), a));
         }
     }
 

@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.stormcaller.grounded"
+  },
+  "icon": "minecraft:copper_block",
+  "description": {
+    "translate": "skill.townstead.climatologist.stormcaller.grounded.description"
+  },
+  "cost": 1,
+  "requires": [
+    "storm_sense"
+  ],
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.25,
+    "damage_type": "minecraft:lightning_bolt"
+  }
+}

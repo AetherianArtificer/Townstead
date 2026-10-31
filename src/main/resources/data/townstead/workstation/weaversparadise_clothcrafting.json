@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:workstation/v1",
+  "mods": "weaversparadise",
+  "type": "craft_surface",
+  "adapter": "townstead:weaversparadise_station",
+  "work_task": "townstead_work:craft",
+  "blocks": ["weaversparadise:clothcrafting_station"],
+  "recipe_type": "weaversparadise:clothcrafting",
+  "cook_time": 900,
+  "orderable": "all"
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.hexer.evil_eye"
+  },
+  "icon": "minecraft:ender_eye",
+  "description": {
+    "translate": "skill.townstead.witch.hexer.evil_eye.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_hurt",
+    "target": "other",
+    "action": {
+      "type": "pheno:invert",
+      "action": {
+        "type": "pheno:change_collection",
+        "collection": "townstead:hexed",
+        "operation": "add"
+      }
+    }
+  }
+}

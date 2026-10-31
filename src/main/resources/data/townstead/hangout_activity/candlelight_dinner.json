@@ -1,0 +1,40 @@
+{
+  "schema": "townstead:hangout_activity/v2",
+  "mods": [
+    "candlelight",
+    "farm_and_charm"
+  ],
+  "kind": "mixed",
+  "minimum_participants": 2,
+  "maximum_participants": 6,
+  "duration_ticks": 720,
+  "roles": {
+    "host": 1,
+    "guest": 5
+  },
+  "postures": [
+    "townstead:sit"
+  ],
+  "service": {
+    "courses": [
+      {
+        "id": "dinner_service",
+        "kind": "mixed",
+        "role": "server",
+        "at_ticks": 180,
+        "lease_ticks": 120
+      }
+    ]
+  },
+  "performance": {
+    "id": "townstead:formal_dinner",
+    "channel": "hospitality",
+    "duration_ticks": 720,
+    "priority": 20,
+    "fallback": "vanilla_gesture"
+  },
+  "social_cues": {
+    "conversations": true,
+    "dialogue_interval_ticks": 240
+  }
+}

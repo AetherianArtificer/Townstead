@@ -114,7 +114,7 @@ public final class InvisFade {
     /** Per-entity synced expressed set first (includes companions), origin-typical grants as fallback. */
     private static Iterable<String> opacityCandidates(LivingEntity entity) {
         Set<String> expressed = RootClientStore.expressedGenes(entity);
-        if (!expressed.isEmpty()) return expressed;
+        if (RootClientStore.hasExpressionSync(entity) || !expressed.isEmpty()) return expressed;
         String rootId = RootClientStore.resolve(entity);
         if (rootId.isEmpty()) return List.of();
         RootCatalogEntry origin = RootCatalogClient.origin(rootId);

@@ -25,6 +25,10 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>JSON: {@code { "type":"pheno:cloud", "radius":3, "duration":600, "particle":"minecraft:poison",
  * "do":{ "type":"pheno:apply_effect", "effect":"minecraft:poison", "duration":100 } }}</p>
+ *
+ * <p>{@code climate_offset_c} makes the field a local climate: air inside reads that much warmer
+ * or colder for every temperature backend, villagers, players and crops alike. A climate field
+ * needs no {@code do}.</p>
  */
 public final class SpawnCloudActionType implements ActionType {
 
@@ -37,8 +41,10 @@ public final class SpawnCloudActionType implements ActionType {
 
     @Override
     public Action parse(JsonObject json) {
+        float climateOffset = GsonHelper.getAsFloat(json, "climate_offset_c", 0.0f);
         Action doAction = json.has("do") ? Actions.parse(json.get("do")) : null;
-        if (doAction == null) return null;
+        if (doAction == null && climateOffset == 0.0f) return null;
+        Action action = doAction != null ? doAction : ignored -> {};
         BiEntityCondition where = json.has("where") ? BiEntityConditions.parse(json.get("where")) : null;
         float radius = GsonHelper.getAsFloat(json, "radius", 3.0f);
         float growPerTick = GsonHelper.getAsFloat(json, "grow_per_tick", 0.0f);
@@ -50,8 +56,9 @@ public final class SpawnCloudActionType implements ActionType {
         ParticleOptions particle = resolveParticle(GsonHelper.getAsString(json, "particle", ""));
         return ctx -> {
             if (!(ctx.level() instanceof ServerLevel level)) return;
-            CloudManager.spawn(new Cloud(level, ctx.entity().position(), ctx.origin(), doAction, where,
-                    particle, radius, growPerTick, shrinkOnUse, waitTime, duration, reapplyDelay, height));
+            CloudManager.spawn(new Cloud(level, ctx.entity().position(), ctx.origin(), action, where,
+                    particle, radius, growPerTick, shrinkOnUse, waitTime, duration, reapplyDelay, height)
+                    .withClimateOffset(climateOffset));
         };
     }
 
@@ -60,6 +67,6 @@ public final class SpawnCloudActionType implements ActionType {
         if (id.isEmpty()) return null;
         ResourceLocation key = ResourceLocation.tryParse(id);
         if (key == null) return null;
-        return BuiltInRegistries.PARTICLE_TYPE.get(key) instanceof ParticleOptions options ? options : null;
+        return com.aetherianartificer.townstead.pheno.particle.DataParticles.options(key);
     }
 }

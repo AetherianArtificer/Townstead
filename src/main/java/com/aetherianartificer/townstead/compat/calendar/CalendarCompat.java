@@ -15,7 +15,7 @@ import net.minecraft.resources.ResourceLocation;
  */
 public final class CalendarCompat {
     public static final String SERENE_MOD_ID = "sereneseasons";
-    public static final String TFC_MOD_ID = "terrafirmacraft";
+    public static final String TFC_MOD_ID = "tfc";
     public static final String ECLIPTIC_MOD_ID = "eclipticseasons";
 
     /**
@@ -50,9 +50,30 @@ public final class CalendarCompat {
      */
     public static ResourceLocation resolveAutoId() {
         if (ModCompat.isLoaded(TFC_MOD_ID)) return TFC_ID;
-        if (ModCompat.isLoaded(SERENE_MOD_ID)) return SERENE_ID;
+        if (ModCompat.isLoaded(SERENE_MOD_ID) && !isSereneApiStub()) return SERENE_ID;
         if (ModCompat.isLoaded(ECLIPTIC_MOD_ID)) return ECLIPTIC_ID;
         return VANILLA_ID;
+    }
+
+    private static volatile Boolean sereneApiStub;
+
+    /**
+     * The Serene Seasons API stub registers as {@code sereneseasons} and forwards to Ecliptic. When
+     * it is present, Ecliptic is read directly so its solar terms survive.
+     */
+    public static boolean isSereneApiStub() {
+        Boolean stub = sereneApiStub;
+        if (stub == null) {
+            try {
+                Class.forName("com.teamtea.eclipticseasons_serene_compatibility.SereneCompatibility", false,
+                        CalendarCompat.class.getClassLoader());
+                stub = true;
+            } catch (ClassNotFoundException | LinkageError e) {
+                stub = false;
+            }
+            sereneApiStub = stub;
+        }
+        return stub;
     }
 
     /**

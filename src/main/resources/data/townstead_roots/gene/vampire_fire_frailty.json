@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:gene/v2",
+  "mods": "vampirism",
+  "type": "pheno:damage_modifier",
+  "display_name": {
+    "translate": "gene.townstead_roots.vampire_fire_frailty"
+  },
+  "description": {
+    "translate": "gene.townstead_roots.vampire_fire_frailty.desc"
+  },
+  "category": "Health",
+  "damage_tag": "minecraft:is_fire",
+  "modifier": 1.5
+}

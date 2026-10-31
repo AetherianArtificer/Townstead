@@ -1,0 +1,36 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "barista",
+  "mods": ["farmersdelight", "rusticdelight"],
+  "priority": 20,
+  "contributes": {
+    "path": {
+      "worksites": ["farmersdelight:cooking_pot", "farmersdelight:skillet"]
+    },
+    "profession": {
+      "poi": [
+        {
+          "type": "townstead:building",
+          "type_prefix": "compat/rusticdelight/cafe_l",
+          "slots_per_tier": [1, 1, 2, 2, 3],
+          "path_affinity": ["barista"]
+        }
+      ],
+      "tasks": [
+        {
+          "type": "townstead_work:brew",
+          "workstations": ["farmersdelight:cooking_pot"],
+          "recipes": ["#townstead:brew_output"],
+          "weight": 10
+        },
+        {
+          "type": "townstead_work:brew",
+          "workstations": ["farmersdelight:skillet", "farmersdelight:stove", "#minecraft:campfires"],
+          "recipes": ["townstead:purification", "rusticdelight:roasted_coffee_beans"],
+          "weight": 10
+        }
+      ]
+    }
+  }
+}

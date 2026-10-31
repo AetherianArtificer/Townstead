@@ -17,6 +17,7 @@ public record TownsteadVillagerSnapshot(
         boolean senior,
         String personalityId,
         String professionId,
+        String professionPathId,
         int professionLevel,
         int professionXp,
         float fertility,

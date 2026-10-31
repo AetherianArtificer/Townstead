@@ -24,6 +24,11 @@ public final class ComponentSync {
      */
     public static String[] extract(Component c) {
         if (c == null) return new String[] { "", "" };
+        if (c.getContents() instanceof TranslatableContents tc && tc.getArgs().length > 0) {
+            // A bare key cannot carry arguments: re-translated on the client, a qualified name
+            // ("%s %s" with "Runic", "High Elf") would read "%s %s". Ship the formatted text.
+            return new String[] { "", c.getString() };
+        }
         if (c.getContents() instanceof TranslatableContents tc) {
             String key = tc.getKey();
             String fb = tc.getFallback();
@@ -34,10 +39,34 @@ public final class ComponentSync {
 
     /** Extract a pair whose fallback is resolved from data-pack locale sidecars. */
     public static String[] extract(Component c, String locale) {
+        if (c != null && c.getContents() instanceof TranslatableContents tc && tc.getArgs().length > 0) {
+            return new String[] { "", localize(c, locale) };
+        }
         String[] pair = extract(c);
         pair[1] = com.aetherianartificer.townstead.data.DataPackLang.resolveFallback(
                 pair[0], locale, pair[1]);
         return pair;
+    }
+
+    /**
+     * The text of {@code c} in {@code locale}, arguments included, from data-pack locale
+     * sidecars where they have the key and the component's own fallback otherwise.
+     */
+    public static String localize(Component c, String locale) {
+        if (c == null) return "";
+        if (!(c.getContents() instanceof TranslatableContents tc)) return c.getString();
+        Object[] args = tc.getArgs();
+        Object[] localized = new Object[args.length];
+        for (int i = 0; i < args.length; i++) {
+            localized[i] = args[i] instanceof Component arg ? localize(arg, locale) : String.valueOf(args[i]);
+        }
+        String template = com.aetherianartificer.townstead.data.DataPackLang.find(tc.getKey(), locale);
+        if (template == null) return c.getString();
+        try {
+            return String.format(java.util.Locale.ROOT, template, localized);
+        } catch (java.util.IllegalFormatException ex) {
+            return c.getString();
+        }
     }
 
     /**

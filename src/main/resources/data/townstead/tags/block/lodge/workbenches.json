@@ -1,0 +1,19 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "vampirism:hunter_table",
+      "required": false
+    },
+    {
+      "id": "vampirism:weapon_table",
+      "required": false
+    },
+    {
+      "id": "vampirism:alchemical_cauldron",
+      "required": false
+    },
+    "minecraft:smithing_table",
+    "minecraft:fletching_table"
+  ]
+}

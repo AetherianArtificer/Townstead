@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "thrall_life_reply",
+  "groups": [
+    {
+      "lines": {
+        "that_sounds_tiring": "That sounds tiring.",
+        "as_long_as_youre_happy": "As long as you're happy."
+      }
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.tailor.path.weaver"
+  },
+  "title": {
+    "translate": "career.townstead.tailor.title.weaver"
+  },
+  "color": "#D8C8E8",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:stitch",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:tailor/weaver/weave"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:tailor/weaver/web_of_silk"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:tailor/weaver/cocoon"
+              }
+            ]
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 8,
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:hostile"
+                },
+                {
+                  "type": "pheno:status_effect",
+                  "effect": "minecraft:slowness"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:stitch",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "spiders_step",
+      "thread",
+      "reel_of_thread"
+    ],
+    [
+      "silken_fall",
+      "loom_line",
+      "bind"
+    ],
+    [
+      "weave",
+      "web_of_silk",
+      "cocoon"
+    ],
+    [
+      "tangleweave",
+      "tapestry",
+      "silk_shroud"
+    ],
+    [
+      "master_weaver",
+      "great_web",
+      "loom_of_fate"
+    ]
+  ]
+}

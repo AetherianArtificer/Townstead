@@ -44,12 +44,38 @@ public final class Prevents {
     }
 
     /**
-     * If the entity's gene prevents death, keep it alive at 1 health and report it
+     * If one of the entity's genes prevents death, keep it alive at that gene's {@code set_health},
+     * run the gene's action and the bearer's {@code when_death_prevented} triggers, and report it
      * prevented. Used by the death-event listener to cancel the killing blow.
      */
-    public static boolean tryPreventDeath(LivingEntity entity) {
-        if (entity.level().isClientSide || !prevents(entity, What.DEATH)) return false;
-        if (entity.getHealth() <= 0f) entity.setHealth(1f);
+    public static boolean tryPreventDeath(LivingEntity entity, @Nullable net.minecraft.world.damagesource.DamageSource source) {
+        if (entity == null || entity.level().isClientSide) return false;
+        List<PreventGeneType.Instance> genes =
+                ExpressedGenes.instancesOf(entity, PreventGeneType.Instance.class);
+        if (genes.isEmpty()) return false;
+        ConditionContext ctx = null;
+        PreventGeneType.Instance saved = null;
+        for (PreventGeneType.Instance gene : genes) {
+            if (gene.what() != What.DEATH) continue;
+            if (gene.condition() != null) {
+                if (ctx == null) ctx = new ConditionContext(entity);
+                if (!gene.condition().test(ctx)) continue;
+            }
+            saved = gene;
+            break;
+        }
+        if (saved == null) return false;
+        float amount = com.aetherianartificer.townstead.root.trigger.GeneTriggers.lastDamage(entity);
+        entity.setHealth(Math.min(entity.getMaxHealth(), Math.max(entity.getHealth(), saved.setHealth())));
+        LivingEntity killer = source != null && source.getEntity() instanceof LivingEntity le ? le : null;
+        if (saved.action() != null) {
+            PreventGeneType.Instance gene = saved;
+            com.aetherianartificer.townstead.pheno.event.PhenoEvent.during(
+                    new com.aetherianartificer.townstead.pheno.event.PhenoEvent.Frame(amount, source,
+                            net.minecraft.world.item.ItemStack.EMPTY),
+                    () -> gene.action().run(new com.aetherianartificer.townstead.pheno.action.ActionContext(entity, killer)));
+        }
+        com.aetherianartificer.townstead.root.trigger.GeneTriggers.onDeathPrevented(entity, source, amount);
         return true;
     }
 }

@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.heatwarden.searing_touch"
+  },
+  "icon": "minecraft:fire_charge",
+  "description": {
+    "translate": "skill.townstead.climatologist.heatwarden.searing_touch.description"
+  },
+  "cost": 1,
+  "requires": [
+    "kindle"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "target": "other",
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:front",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:ignite",
+      "seconds": 3
+    }
+  }
+}

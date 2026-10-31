@@ -1,0 +1,30 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "crime.warrant",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": true,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "crime",
+    "key": "mcacrime:warrant_opened"
+  },
+  "reach": "village",
+  "news_value": 4.0,
+  "roles": [
+    {
+      "id": "wanted",
+      "kind": "player"
+    }
+  ],
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.compat.warrant_opened"
+    },
+    "params": [
+      "wanted"
+    ]
+  }
+}

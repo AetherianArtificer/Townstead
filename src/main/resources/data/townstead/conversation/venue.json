@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:conversation/v1",
+  "subjects": [
+    "townstead:venue"
+  ],
+  "register": "social",
+  "start": "t0_open_subject",
+  "turns": {
+    "t0_open_subject": {
+      "speaker": "initiator",
+      "move": "townstead:open_subject",
+      "replies": [
+        "t1_agree"
+      ]
+    },
+    "t1_agree": {
+      "speaker": "responder",
+      "move": "townstead:agree"
+    }
+  }
+}

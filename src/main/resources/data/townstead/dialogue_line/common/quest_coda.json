@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "pool": "quest_coda",
+  "lines": {
+    "pays_well_i_hear": "Pays well, I hear.",
+    "sounds_dangerous": "Sounds dangerous.",
+    "someone_brave_should_take_it": "Someone brave should take it.",
+    "think_anyone_will_take_it": { "text": "Think anyone will take it?", "asks": "townstead:taker" },
+    "who_do_you_think_will": { "text": "Who do you think will take it?", "asks": "townstead:taker" },
+    "not_for_me": "Not for me.",
+    "its_been_up_a_while": "It's been up a while.",
+    "id_do_it_myself_if": "I'd do it myself if I had the time.",
+    "id_do_it_if_my": { "text": "I'd do it if my back were younger.", "stages": "senior" },
+    "i_wish_theyd_let_me": { "text": "I wish they'd let me do it.", "stages": "child" },
+    "good_money_if_you_survive": { "text": "Good money, if you survive.", "personalities": "gloomy" },
+    "i_love_a_good_reward": { "text": "I love a good reward.", "personalities": "greedy" }
+  }
+}

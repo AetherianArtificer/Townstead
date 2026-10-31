@@ -1,0 +1,9 @@
+{
+  "schema": "townstead:storage_role/v1",
+  "mods": "farm_and_charm",
+  "role": "not_storage",
+  "blocks": [
+    "farm_and_charm:feeding_trough",
+    "farm_and_charm:pet_bowl"
+  ]
+}

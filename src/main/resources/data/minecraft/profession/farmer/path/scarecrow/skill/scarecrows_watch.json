@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.scarecrow.scarecrows_watch"
+  },
+  "icon": "minecraft:carved_pumpkin",
+  "description": {
+    "translate": "skill.townstead.farmer.scarecrow.scarecrows_watch.description"
+  },
+  "cost": 1,
+  "requires": [
+    "hide_in_the_rows"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "farmland_trample",
+    "operation": "set",
+    "value": 0,
+    "applies_to": { "radius": 8 }
+  }
+}

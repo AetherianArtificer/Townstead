@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.pheno.condition.types;
 
+
 import com.aetherianartificer.townstead.pheno.condition.Comparison;
 import com.aetherianartificer.townstead.pheno.condition.Condition;
 import com.aetherianartificer.townstead.pheno.condition.ConditionType;

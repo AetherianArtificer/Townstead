@@ -2,6 +2,7 @@
   "lazy.dialogue.chat.butcher_request.no_livestock/1": "<sleepy>Pas de bêtes. J'imagine que je vais juste... ne pas travailler alors.</sleepy>",
   "lazy.dialogue.chat.butcher_request.no_hook/1": "<sleepy>Un crochet, ce serait sympa. Ou, tu sais, peu importe.</sleepy>",
   "lazy.dialogue.chat.butcher_request.no_basin/1": "<sleepy>Un bac, un bac... Je vais juste attendre qu'il en apparaisse un.</sleepy>",
+  "lazy.dialogue.chat.butcher_request.no_blood_grate/1": "<sleepy>Grille à sang, grille à sang… J'attendrai qu'une arrive, tout simplement.</sleepy>",
   "lazy.dialogue.chat.village_life.butcher_shop/1": "<sleepy>Le boucher travaille plus dur que moi. Comme la plupart des gens.</sleepy>",
   "lazy.dialogue.chat.village_life.smokehouse/1": "<sleepy>Le fumoir fait toute la cuisine à ma place. J'adore ça chez lui.</sleepy>",
   "lazy.dialogue.chat.village_life.slaughterhouse/1": "<sleepy>Le boulot à l'abattoir demande trop d'efforts. Content de ne pas le faire.</sleepy>",
@@ -87,5 +88,18 @@
   "lazy.dialogue.chat.leatherworker_request.no_salt/1": "<sleepy>Pas de sel. La peau attend. Moi aussi.</sleepy>",
   "lazy.dialogue.chat.leatherworker_request.no_wet_sponge/1": "<sleepy>Pas d'éponge mouillée. La peau peut attendre. Moi je peux, c'est sûr.</sleepy>",
   "lazy.dialogue.chat.leatherworker_request.no_storage/1": "<sleepy>Le sac est plein. Je vais peut-être juste m'appuyer contre ce séchoir un moment.</sleepy>",
-  "lazy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<sleepy>Séché. Maintenant je peux enfin me reposer. Je l'ai mérité.</sleepy>"
+  "lazy.dialogue.chat.leatherworker_flavor.leather_cured/1": "<sleepy>Séché. Maintenant je peux enfin me reposer. Je l'ai mérité.</sleepy>",
+  "lazy.dialogue.chat.beverage_artisan_request.no_worksite/1": "<sleepy>Pas de poste. Réveillez-moi quand il y aura un endroit pour faire des boissons.</sleepy>",
+  "lazy.dialogue.chat.beverage_artisan_request.no_ingredients/1": "<sleepy>Plus rien pour brasser. Je suppose que c'est une pause.</sleepy>",
+  "lazy.dialogue.chat.beverage_artisan_request.no_storage/1": "<sleepy>Le stockage est plein. Moi aussi, j'ai fini.</sleepy>",
+  "lazy.dialogue.chat.beverage_artisan_request.unreachable/1": "<sleepy>Le chemin est bloqué. Faire le tour, ça sonne épuisant.</sleepy>",
+  "lazy.dialogue.chat.beverage_artisan_request.no_ingredients_item": "<sleepy>%2$s, ça fait envie. Chercher les ingrédients, beaucoup moins.</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.tipsy_arrival/1": "<sleepy>Chaud, confortable, et déjà près d'une chaise. Parfait.</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.tipsy_ambient/1": "<sleepy>Excellent entraînement pour ne rien faire demain.</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.drunk_arrival/1": "<sleepy>Marcher, c'était ambitieux. Où est le siège le plus proche ?</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.drunk_ambient/1": "<sleepy>Je finirais bien cette histoire, mais le milieu m'a épuisé.</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.wasted_arrival/1": "<sleepy>De l'eau. Un lit. Le premier qui arrive.</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.wasted_ambient/1": "<sleepy>Je ne comptais pas bouger de toute façon.</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.service_refused/1": "<sleepy>Plus rien. Lever la tasse, c'est trop de travail.</sleepy>",
+  "lazy.dialogue.chat.townstead_drunk.recovered/1": "<sleepy>Mieux. Je retourne quand même au lit.</sleepy>"
 }

@@ -30,6 +30,10 @@ public final class WorldCalendarTicker {
      */
     private static final long REBASE_THRESHOLD_TICKS = TICKS_PER_DAY * 7L;
 
+    private static final int DATE_CHECK_TICKS = 40;
+    /** The date clients were last sent. A seasons mod can move its date without the clock crossing a day. */
+    private static CalendarDate lastSentDate;
+
     private WorldCalendarTicker() {}
 
     /**
@@ -125,6 +129,16 @@ public final class WorldCalendarTicker {
             return;
         }
 
+        // A seasons mod's command (or a /time jump) can change the date between day rollovers.
+        if (server.getTickCount() % DATE_CHECK_TICKS == 0) {
+            CalendarDate today = TownsteadCalendar.today(server);
+            if (lastSentDate != null && !today.equals(lastSentDate)) {
+                ShiftScheduleApplier.reapplyWeeklySchedules(server);
+                Townstead.townstead$broadcastCalendarSync(server);
+            }
+            lastSentDate = today;
+        }
+
         long lastSample = data.lastDayTimeSample();
         long delta = current - lastSample;
         if (delta == 0L) return;
@@ -157,6 +171,9 @@ public final class WorldCalendarTicker {
             Townstead.townstead$broadcastCalendarSync(server);
             // Push fresh senior-progress to every tracking client so hair desat lerps daily.
             com.aetherianartificer.townstead.root.LifeStageProgression.broadcastDailyUpdates(server);
+            // Chronicle daily housekeeping: memory/sentiment decay + archive WAL checkpoint.
+            com.aetherianartificer.townstead.chronicle.Chronicles.onDayRollover(server);
+            com.aetherianartificer.townstead.api.impl.v1.CalendarRollovers.onDayRollover(server, daysAdvanced);
         }
     }
 }

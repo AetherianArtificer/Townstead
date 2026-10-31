@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:dialogue_line/v1",
+  "mods": "vampirism",
+  "pool": "vampire_news_respond",
+  "groups": [
+    {
+      "variant": "bitten",
+      "lines": {
+        "its_nothing_really_v": "It's nothing. Really.",
+        "i_feel_a_little_cold": "I feel a little cold, that's all."
+      }
+    },
+    {
+      "variant": "cured",
+      "lines": {
+        "i_feel_like_myself_again": "I feel like myself again.",
+        "the_sun_feels_so_warm": "The sun feels so warm."
+      }
+    }
+  ]
+}

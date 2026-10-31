@@ -25,7 +25,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class HairLayerSeniorMixin<T extends LivingEntity, M extends HumanoidModel<T>> {
 
     //? if neoforge {
-    @Inject(method = "getColor", remap = false, at = @At("RETURN"), cancellable = true, require = 1)
+    @Inject(method = "getColor", remap = false, at = @At("RETURN"), cancellable = true, expect = 1)
     private void townstead$desaturateHair(T entity, float partialTick, CallbackInfoReturnable<Integer> cir) {
         int argb = cir.getReturnValue();
         if (entity instanceof VillagerEntityMCA villager) {
@@ -38,7 +38,7 @@ public abstract class HairLayerSeniorMixin<T extends LivingEntity, M extends Hum
         com.aetherianartificer.townstead.client.species.RigHairColor.put(entity.getId(), argb & 0xFFFFFF);
     }
     //?} else {
-    /*@Inject(method = "getColor", remap = false, at = @At("RETURN"), cancellable = true, require = 1)
+    /*@Inject(method = "getColor", remap = false, at = @At("RETURN"), cancellable = true, expect = 1)
     private void townstead$desaturateHair(T entity, float partialTick, CallbackInfoReturnable<float[]> cir) {
         float[] color = cir.getReturnValue();
         if (entity instanceof VillagerEntityMCA villager) {

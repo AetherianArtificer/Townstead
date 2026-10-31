@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:serving_menu/v1",
+  "mods": "beachparty",
+  "buildings": [
+    "compat/beachparty/beach_cocktail_bar_l1",
+    "compat/beachparty/beach_cocktail_bar_l2",
+    "compat/beachparty/beach_cocktail_bar_l3"
+  ],
+  "products": [
+    "beachparty:coconut_cocktail",
+    "beachparty:sweetberries_cocktail",
+    "beachparty:cocoa_cocktail",
+    "beachparty:pumpkin_cocktail",
+    "beachparty:honey_cocktail",
+    "beachparty:melon_cocktail",
+    "beachparty:refreshing_drink",
+    "beachparty:chocolate_milkshake",
+    "beachparty:coconut_milkshake",
+    "beachparty:sweetberry_milkshake",
+    "beachparty:chocolate_icecream",
+    "beachparty:coconut_icecream",
+    "beachparty:sweetberry_icecream",
+    "beachparty:icecream_chocolate",
+    "beachparty:icecream_coconut",
+    "beachparty:icecream_sweetberries",
+    "beachparty:icecream_melon",
+    "beachparty:icecream_cactus"
+  ]
+}

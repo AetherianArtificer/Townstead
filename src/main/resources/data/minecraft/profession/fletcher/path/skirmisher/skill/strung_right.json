@@ -1,0 +1,33 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.skirmisher.strung_right"
+  },
+  "icon": "minecraft:bow",
+  "description": {
+    "translate": "skill.townstead.fletcher.skirmisher.strung_right.description"
+  },
+  "cost": 1,
+  "requires": [
+    "light_step"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "durability_loss",
+    "operation": "multiply",
+    "value": 0.5,
+    "item_condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:ingredient",
+          "item": "minecraft:bow"
+        },
+        {
+          "type": "pheno:ingredient",
+          "item": "minecraft:crossbow"
+        }
+      ]
+    }
+  }
+}

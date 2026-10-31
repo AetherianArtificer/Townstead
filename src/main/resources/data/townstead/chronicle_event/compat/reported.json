@@ -1,0 +1,36 @@
+{
+  "schema": "townstead:chronicle_event/v1",
+  "category": "crime.report",
+  "weight": 10,
+  "rarity": "uncommon",
+  "keep": false,
+  "contexts": [
+    "live"
+  ],
+  "trigger": {
+    "type": "crime",
+    "key": "mcacrime:reported"
+  },
+  "reach": "village",
+  "news_value": 3.0,
+  "roles": [
+    {
+      "id": "reporter",
+      "kind": "villager"
+    },
+    {
+      "id": "suspect",
+      "kind": "player"
+    }
+  ],
+  "display": {
+    "headline": {
+      "translate": "chronicle.townstead.compat.reported"
+    },
+    "params": [
+      "reporter",
+      "suspect",
+      "crime"
+    ]
+  }
+}

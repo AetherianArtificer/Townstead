@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "kaleidoscope_cookery:pot",
+      "required": false
+    },
+    {
+      "id": "kaleidoscope_cookery:flex_pot",
+      "required": false
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_tfc_acacia"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "tfc:wood/lumber/acacia"
+    },
+    "L": {
+      "item": "tfc:wood/log/acacia"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_tfc_acacia",
+    "count": 1
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:extended_building/v1",
+  "mods": "herbalbrews",
+  "workers": ["townstead:witch"],
+  "catalog": {
+    "node_item": "herbalbrews:cauldron"
+  },
+  "spirit": {
+    "magical": 5,
+    "haunted": 5
+  }
+}

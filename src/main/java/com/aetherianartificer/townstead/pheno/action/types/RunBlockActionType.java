@@ -10,7 +10,8 @@ import net.minecraft.server.level.ServerLevel;
 
 /**
  * Bridges an entity context to a block action: runs the wrapped {@code block_action} at
- * the actor's block position, with the actor as the cause. This is how an entity-driven
+ * the context's focus block (the worked block in a {@code when_work} trigger) or else the
+ * actor's block position, with the actor as the cause. This is how an entity-driven
  * power (a trigger, aura or active ability) reaches blocks. Use the block {@code offset}
  * / {@code area_of_effect} metas to shift or spread the effect from the actor.
  *
@@ -32,7 +33,8 @@ public final class RunBlockActionType implements ActionType {
         if (block == null) return null;
         return ctx -> {
             if (ctx.entity().level() instanceof ServerLevel level) {
-                block.run(new BlockActionContext(level, ctx.entity().blockPosition(), ctx.entity()));
+                var at = ctx.focusBlock() != null ? ctx.focusBlock() : ctx.entity().blockPosition();
+                block.run(new BlockActionContext(level, at, ctx.entity()));
             }
         };
     }

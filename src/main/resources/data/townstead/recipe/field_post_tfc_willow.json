@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_tfc_willow"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "tfc:wood/lumber/willow"
+    },
+    "L": {
+      "item": "tfc:wood/log/willow"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_tfc_willow",
+    "count": 1
+  }
+}

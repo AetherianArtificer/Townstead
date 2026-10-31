@@ -1,0 +1,49 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.pizzaiolo.oven_mouth"
+  },
+  "icon": "minecraft:blaze_powder",
+  "description": {
+    "translate": "skill.townstead.cook.pizzaiolo.oven_mouth.description"
+  },
+  "cost": 1,
+  "requires": [
+    "wood_fired_welcome"
+  ],
+  "skill_group": "townstead:pizzaiolo_service",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 200,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:char",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 5,
+      "include_self": false,
+      "target": "hostile",
+      "bientity_condition": {
+        "type": "pheno:relative_rotation",
+        "max_angle": 45
+      },
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:ignite",
+            "seconds": 4
+          },
+          {
+            "type": "pheno:add_velocity",
+            "away_from_other": 0.8,
+            "y": 0.2
+          }
+        ]
+      }
+    }
+  }
+}

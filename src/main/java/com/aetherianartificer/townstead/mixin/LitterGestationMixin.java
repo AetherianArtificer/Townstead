@@ -10,10 +10,9 @@ import net.conczin.mca.util.WorldUtils;
 import net.minecraft.world.entity.MobSpawnType;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
@@ -62,7 +61,8 @@ public abstract class LitterGestationMixin {
         }
     }
 
-    @ModifyConstant(method = "tick", constant = @Constant(intValue = 60))
+    // A chaining modifier: a second @ModifyConstant on the same constant from another mod fails to apply.
+    @ModifyExpressionValue(method = "tick", at = @At(value = "CONSTANT", args = "intValue=60"))
     private int townstead$gestationRate(int original) {
         return Math.max(1, Math.round(original / GestationLength.forMother(mother)));
     }

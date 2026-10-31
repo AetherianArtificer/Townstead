@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": {
+    "mca:female_villager": {
+      "blood": 15
+    },
+    "mca:male_villager": {
+      "blood": 15
+    }
+  }
+}

@@ -10,6 +10,9 @@ import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,30 +27,52 @@ public final class HeritageView {
 
     private HeritageView() {}
 
+    /** The answer to a Heritage request: the villager when found, else the asking player's own. */
+    public static HeritageSyncPayload forRequest(ServerPlayer asker, @Nullable VillagerEntityMCA villager, java.util.UUID uuid) {
+        if (villager != null) return build(villager);
+        if (asker.getUUID().equals(uuid)) return build(asker);
+        return HeritageSyncPayload.unavailable(uuid);
+    }
+
     public static HeritageSyncPayload build(VillagerEntityMCA villager) {
         TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
+        return build(villager.getUUID(), life.rootId(), life.heritage(), life.genotype());
+    }
 
-        ResourceLocation rootId = ResourceLocation.tryParse(life.rootId());
+    public static HeritageSyncPayload build(Player player) {
+        return build(player.getUUID(), PlayerRoot.getRootId(player), PlayerRoot.getHeritage(player),
+                PlayerRoot.getGenotype(player));
+    }
+
+    private static HeritageSyncPayload build(java.util.UUID uuid, String rootIdText, Heritage heritage, Genotype genotype) {
+        ResourceLocation rootId = ResourceLocation.tryParse(rootIdText);
         Root origin = RootRegistry.resolveOrDefault(rootId);
         Component originNameC = origin != null ? origin.displayName() : Component.empty();
-        HeritageRegistry.Resolved race = HeritageRegistry.resolve(life.heritage(), originNameC);
+        HeritageRegistry.Resolved race = HeritageRegistry.resolve(heritage, originNameC);
 
         List<HeritageSyncPayload.AncestryShare> ancestry = new ArrayList<>();
-        for (Map.Entry<ResourceLocation, Float> e : life.heritage().fractions().entrySet()) {
+        for (Map.Entry<ResourceLocation, Float> e : heritage.fractions().entrySet()) {
             Ancestry a = AncestryRegistry.byId(e.getKey());
             String name = a != null ? a.displayName().getString() : e.getKey().getPath();
             ancestry.add(new HeritageSyncPayload.AncestryShare(name, e.getValue()));
         }
 
         List<HeritageSyncPayload.GeneRow> rows = new ArrayList<>();
-        Genotype genotype = life.genotype();
         for (ResourceLocation locus : genotype.loci()) {
             Allele[] pair = genotype.at(locus);
             if (pair == null) continue;
             Allele a = pair[0];
             Allele b = pair[1];
-            Allele expressed = Heredity.express(a, b);
-            if (expressed.isWild()) continue; // gene absent on both copies — nothing to show
+            Allele expressed = Heredity.express(a, b, genotype.seed(), locus);
+            if (expressed.isWild()) {
+                // A lone copy that doesn't show (its penetrance) is still carried, and can pass on.
+                Allele lone = a.isWild() ? b : a;
+                Gene carried = geneOf(lone);
+                if (carried == null) continue; // gene absent on both copies — nothing to show
+                rows.add(new HeritageSyncPayload.GeneRow(carried.id().toString(), carried.displayName().getString(),
+                        carried.category(), carried.hasVariants() ? displayAllele(lone) : "", HIDDEN));
+                continue;
+            }
             Gene gene = geneOf(expressed);
             String label = gene != null ? gene.displayName().getString() : locus.getPath();
             String category = gene != null ? gene.category() : "general";
@@ -69,9 +94,12 @@ public final class HeritageView {
         // Group by category so rows read the same way as the Roots genes menu.
         rows.sort(java.util.Comparator.comparing(r -> r.category().toLowerCase(java.util.Locale.ROOT)));
 
-        return new HeritageSyncPayload(villager.getUUID(), race.displayName().getString(),
+        return new HeritageSyncPayload(uuid, race.displayName().getString(),
                 originNameC.getString(), ancestry, rows);
     }
+
+    /** The {@code carries} mark of a single copy carried without showing. */
+    public static final String HIDDEN = "?";
 
     private static Gene geneOf(Allele allele) {
         return allele.isWild() ? null : GeneRegistry.byId(allele.geneId());

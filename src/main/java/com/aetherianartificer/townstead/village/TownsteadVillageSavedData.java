@@ -22,13 +22,19 @@ import java.util.Map;
 /**
  * Per-overworld persistence for Townstead's village overlay data.
  *
- * <p>MCA remains the source of truth for villages and buildings. This data
- * stores Townstead-owned heavy details keyed by MCA village id, so MCA building
- * NBT can stay small enough for large-village client sync.</p>
+ * <p>MCA is the source of truth for villages and buildings, geometry included. This data holds
+ * only what MCA has nowhere to put.</p>
+ *
+ * <p>It used to carry a second copy of every open-air building's footprint, to keep MCA's own NBT
+ * small when dock recipes promoted planks and stone to trackable blocks. Those recipes name
+ * distinctive blocks now, so there is nothing heavy left to move out, and one geometry is better
+ * than two that can disagree. {@link TownsteadVillageMigration} hands the stored positions back
+ * and drops the overlays; the loader below still reads them so that it can.</p>
  */
 public class TownsteadVillageSavedData extends SavedData {
     public static final String FILE_ID = "townstead_villages";
-    public static final int SCHEMA_VERSION = 1;
+    /** v2 gave the geometry back to MCA, so a village record no longer carries overlays. */
+    public static final int SCHEMA_VERSION = 2;
 
     private static final String KEY_SCHEMA_VERSION = "schemaVersion";
     private static final String KEY_RECORDS = "villages";
@@ -167,13 +173,6 @@ public class TownsteadVillageSavedData extends SavedData {
             villageTag.putInt(KEY_ID, entry.getKey().villageId());
             villageTag.putInt(KEY_REVISION, entry.getValue().revision);
             villageTag.putLong(KEY_LAST_SEEN, entry.getValue().lastSeenGameTime);
-            ListTag buildings = new ListTag();
-            for (Int2ObjectMap.Entry<BuildingOverlay> building : entry.getValue().buildings.int2ObjectEntrySet()) {
-                CompoundTag buildingTag = saveOverlay(building.getValue());
-                buildingTag.putInt(KEY_BUILDING_ID, building.getIntKey());
-                buildings.add(buildingTag);
-            }
-            villageTag.put(KEY_BUILDINGS, buildings);
             villages.add(villageTag);
         }
         tag.put(KEY_RECORDS, villages);
@@ -186,24 +185,15 @@ public class TownsteadVillageSavedData extends SavedData {
         setDirty();
     }
 
-    public void putBuilding(ServerLevel level, int villageId, int buildingId, BuildingOverlay overlay) {
-        VillageRecord record = recordFor(VillageKey.of(level, villageId));
-        record.lastSeenGameTime = level.getGameTime();
-        record.buildings.put(buildingId, overlay);
-        record.revision++;
-        setDirty();
-        Townstead.LOGGER.debug("Stored Townstead village overlay: village={}, building={}, kind={}, positions={}",
-                villageId, buildingId, overlay.kind(), overlay.totalPositions());
-    }
-
-    public void removeBuilding(ServerLevel level, int villageId, int buildingId) {
+    /** Drops a village's legacy overlays once their geometry is back with MCA. */
+    public void clearBuildings(ServerLevel level, int villageId) {
         VillageRecord record = records.get(VillageKey.of(level, villageId));
-        if (record == null) return;
-        if (record.buildings.remove(buildingId) != null) {
-            record.revision++;
-            record.lastSeenGameTime = level.getGameTime();
-            setDirty();
-        }
+        if (record == null || record.buildings.isEmpty()) return;
+        Townstead.LOGGER.debug("Released {} legacy overlays for village {}", record.buildings.size(), villageId);
+        record.buildings.clear();
+        record.revision++;
+        record.lastSeenGameTime = level.getGameTime();
+        setDirty();
     }
 
     public @Nullable VillageRecord getRecord(ServerLevel level, int villageId) {
@@ -212,18 +202,6 @@ public class TownsteadVillageSavedData extends SavedData {
 
     public int recordCount() {
         return records.size();
-    }
-
-    public int overlayCount() {
-        int total = 0;
-        for (VillageRecord record : records.values()) total += record.buildings.size();
-        return total;
-    }
-
-    public int trackedPositionCount() {
-        int total = 0;
-        for (VillageRecord record : records.values()) total += record.totalTrackedPositions();
-        return total;
     }
 
     public int loadedSchemaVersion() {
@@ -264,22 +242,6 @@ public class TownsteadVillageSavedData extends SavedData {
             }
         }
         return new BuildingOverlay(kind, type, bounds, positions);
-    }
-
-    private static CompoundTag saveOverlay(BuildingOverlay overlay) {
-        CompoundTag tag = new CompoundTag();
-        tag.putString(KEY_KIND, overlay.kind());
-        tag.putString(KEY_TYPE, overlay.type());
-        tag.put(KEY_BOUNDS, new IntArrayTag(overlay.bounds()));
-        ListTag keys = new ListTag();
-        ListTag positions = new ListTag();
-        for (Map.Entry<String, long[]> entry : overlay.blockPositions().entrySet()) {
-            keys.add(net.minecraft.nbt.StringTag.valueOf(entry.getKey()));
-            positions.add(new LongArrayTag(entry.getValue()));
-        }
-        tag.put(KEY_BLOCK_KEYS, keys);
-        tag.put(KEY_BLOCK_POSITIONS, positions);
-        return tag;
     }
 
     private static ResourceLocation parseRl(String value) {

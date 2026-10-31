@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.tenderizer.tough_hide"
+  },
+  "icon": "minecraft:leather",
+  "description": {
+    "translate": "skill.townstead.butcher.tenderizer.tough_hide.description"
+  },
+  "cost": 1,
+  "requires": [
+    "hold_down"
+  ],
+  "skill_group": "townstead:tenderizer_block",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:cut",
+      "amount": 40
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:resistance",
+          "duration": 400,
+          "amplifier": 1
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:absorption",
+          "duration": 400,
+          "amplifier": 1
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.stonewarden.solid_ground"
+  },
+  "icon": "minecraft:bricks",
+  "description": {
+    "translate": "skill.townstead.mason.stonewarden.solid_ground.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:building"
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:resistance",
+      "duration": 30,
+      "amplifier": 0
+    }
+  }
+}

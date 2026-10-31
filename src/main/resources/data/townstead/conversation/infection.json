@@ -1,0 +1,12 @@
+{
+  "schema": "townstead:conversation/v1",
+  "subjects": ["townstead:infection"],
+  "register": "grief",
+  "start": "t0_tell",
+  "turns": {
+    "t0_tell": { "speaker": "initiator", "move": "townstead:open_subject", "replies": ["t1_console", "t1_respond"] },
+    "t1_console": { "speaker": "responder", "move": "townstead:console", "weight": 2 },
+    "t1_respond": { "speaker": "responder", "move": "townstead:respond", "weight": 2 }
+  },
+  "associated": ["townstead:mob", "townstead:infection_news"]
+}

@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "townstead:field_post_afc_ginkgo"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "P",
+    "L"
+  ],
+  "key": {
+    "P": {
+      "item": "afc:wood/lumber/ginkgo"
+    },
+    "L": {
+      "item": "afc:wood/log/ginkgo"
+    }
+  },
+  "result": {
+    "id": "townstead:field_post_afc_ginkgo",
+    "count": 1
+  }
+}

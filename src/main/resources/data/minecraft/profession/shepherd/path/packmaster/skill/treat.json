@@ -1,0 +1,40 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.packmaster.treat"
+  },
+  "icon": "minecraft:cookie",
+  "description": {
+    "translate": "skill.townstead.shepherd.packmaster.treat.description"
+  },
+  "cost": 1,
+  "skill_group": "townstead:pack_care",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": false,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:tamed"
+        },
+        "if_action": {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:absorption",
+          "duration": 600,
+          "amplifier": 0
+        }
+      }
+    }
+  }
+}

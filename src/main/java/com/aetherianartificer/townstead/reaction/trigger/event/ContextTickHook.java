@@ -10,12 +10,14 @@ import java.util.Set;
 import java.util.WeakHashMap;
 
 /**
- * Per-tick driver for {@code context_enter} and {@code time} triggers.
+ * Per-tick driver for {@code context_enter}, {@code context_exit},
+ * {@code context_present}, and {@code time} triggers.
  * Called from {@code VillagerServerTickDispatcher} on every villager
  * tick, but only does work on a 20-tick stride. On each stride it
  * resolves the villager's current tag set via {@link ContextResolver},
  * diffs against the previous snapshot, and dispatches
- * {@code onContextEnter} for any newly-present tags. The time half of
+ * {@code onContextEnter} for newly-present tags and {@code onContextExit}
+ * for tags that disappeared. The time half of
  * the same stride dispatches {@code onTimePhase} for the current phase.
  */
 public final class ContextTickHook {
@@ -33,16 +35,23 @@ public final class ContextTickHook {
         Set<String> now = ContextResolver.tagsFor(level, villager);
         Set<String> prior;
         Set<String> entered = new HashSet<>();
+        Set<String> exited = new HashSet<>();
         synchronized (LOCK) {
             prior = LAST_TAGS.get(villager);
             for (String tag : now) {
                 if (prior == null || !prior.contains(tag)) entered.add(tag);
             }
+            if (prior != null) for (String tag : prior) {
+                if (!now.contains(tag)) exited.add(tag);
+            }
             LAST_TAGS.put(villager, Set.copyOf(now));
         }
 
         if (!entered.isEmpty()) {
-            ReactionDispatcher.onContextEnter(level, villager, entered);
+            ReactionDispatcher.onContextEnter(level, villager, entered, now);
+        }
+        if (!exited.isEmpty()) {
+            ReactionDispatcher.onContextExit(level, villager, exited, prior, now);
         }
         if (!now.isEmpty()) {
             ReactionDispatcher.onContextPresent(level, villager, now);

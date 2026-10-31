@@ -43,6 +43,9 @@ import java.util.List;
  * {@code "size": { "min":0.85, "max":1.15, "label":"Ear Size",
  * "heritage": { "ancestry":"townstead_classic:elf", "floor":0.35 } }}</p>
  *
+ * <p>{@code ancestry} may also be a list, whose shares add up: a people that joins another pack's
+ * ancestry when that pack is present names both, so its bearers count as full-blooded either way.</p>
+ *
  * <p>JSON, named channels:
  * {@code "size": { "channels": {
  *   "length": { "min":0.85, "max":1.15, "label":"Ear Length",
@@ -53,6 +56,9 @@ import java.util.List;
  * {@code "tint": { "palette": ["#B1562B", "#E8D8C0", "#3A3A3A"], "label":"Fur Color" }}</p>
  */
 public final class AttachmentGeneType implements GeneType {
+
+    @Override
+    public boolean conditionControlsExpression() { return true; }
 
     public static final String KEY = "townstead_roots:attachment";
 
@@ -72,7 +78,23 @@ public final class AttachmentGeneType implements GeneType {
      */
     public record Channel(String name, float min, float max,
                           @Nullable ResourceLocation heritageAncestry, float heritageFloor,
-                          String labelKey, String labelText) {
+                          String labelKey, String labelText,
+                          /** Every coupled ancestry (the first is {@code heritageAncestry}); their shares add. */
+                          java.util.List<ResourceLocation> heritageAncestries) {
+
+        public Channel(String name, float min, float max, @Nullable ResourceLocation heritageAncestry,
+                       float heritageFloor, String labelKey, String labelText) {
+            this(name, min, max, heritageAncestry, heritageFloor, labelKey, labelText,
+                    heritageAncestry == null ? java.util.List.of() : java.util.List.of(heritageAncestry));
+        }
+
+        /** The bearer's share of the coupled ancestries; 1 without a heritage to read. */
+        public float heritageFraction(@Nullable com.aetherianartificer.townstead.root.Heritage heritage) {
+            if (heritage == null) return 1f;
+            float sum = 0f;
+            for (ResourceLocation ancestry : heritageAncestries) sum += heritage.fractionOf(ancestry);
+            return Math.min(1f, sum);
+        }
 
         /** The heritage multiplier for a bearer holding {@code fraction} of the coupled ancestry. */
         public float heritageFactor(float fraction) {
@@ -193,10 +215,21 @@ public final class AttachmentGeneType implements GeneType {
 
     private static Channel parseChannel(String name, JsonObject json) {
         ResourceLocation ancestry = null;
+        java.util.List<ResourceLocation> ancestries = new java.util.ArrayList<>();
         float floor = 0f;
         if (json.has("heritage") && json.get("heritage").isJsonObject()) {
             JsonObject heritage = json.getAsJsonObject("heritage");
-            ancestry = DataPackLang.parseId(GsonHelper.getAsString(heritage, "ancestry", ""));
+            com.google.gson.JsonElement raw = heritage.get("ancestry");
+            if (raw != null && raw.isJsonArray()) {
+                for (com.google.gson.JsonElement e : raw.getAsJsonArray()) {
+                    ResourceLocation id = e.isJsonPrimitive() ? DataPackLang.parseId(e.getAsString()) : null;
+                    if (id != null) ancestries.add(id);
+                }
+            } else if (raw != null && raw.isJsonPrimitive()) {
+                ResourceLocation id = DataPackLang.parseId(raw.getAsString());
+                if (id != null) ancestries.add(id);
+            }
+            ancestry = ancestries.isEmpty() ? null : ancestries.get(0);
             floor = Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(heritage, "floor", 0f)));
         }
         String labelKey = "";
@@ -211,6 +244,6 @@ public final class AttachmentGeneType implements GeneType {
             }
         }
         return new Channel(name, GsonHelper.getAsFloat(json, "min", 1f),
-                GsonHelper.getAsFloat(json, "max", 1f), ancestry, floor, labelKey, labelText);
+                GsonHelper.getAsFloat(json, "max", 1f), ancestry, floor, labelKey, labelText, List.copyOf(ancestries));
     }
 }

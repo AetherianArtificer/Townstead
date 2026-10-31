@@ -1,0 +1,53 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.pastry_chef.sugar_dust"
+  },
+  "icon": "minecraft:glowstone_dust",
+  "description": {
+    "translate": "skill.townstead.baker.pastry_chef.sugar_dust.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sugar_rush"
+  ],
+  "skill_group": "townstead:pastry_sugar",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 360,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:sugar",
+          "blocks": {
+            "radius": 3,
+            "around": "above",
+            "where": {
+              "type": "air"
+            }
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 4,
+          "include_self": true,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:speed",
+            "duration": 200,
+            "amplifier": 0
+          }
+        }
+      ]
+    }
+  }
+}

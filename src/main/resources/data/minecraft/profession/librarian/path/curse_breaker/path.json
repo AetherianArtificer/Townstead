@@ -1,0 +1,95 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.librarian.path.curse_breaker"
+  },
+  "title": {
+    "translate": "career.townstead.librarian.title.curse_breaker"
+  },
+  "color": "#6A4A8A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:insight",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:librarian/curse_breaker/arcane_study"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:librarian/curse_breaker/mass_uncursing"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:librarian/curse_breaker/counterspell"
+              }
+            ]
+          },
+          {
+            "type": "pheno:block_in_radius",
+            "radius": 6,
+            "block_condition": {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:enchanting_table"
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:bookshelf"
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:lectern"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:insight",
+        "amount": 1
+      }
+    }
+  ],
+  "skills": [
+    [
+      "unbound",
+      "break_binding",
+      "nullify"
+    ],
+    [
+      "unfading",
+      "break_vanishing",
+      "silence"
+    ],
+    [
+      "arcane_study",
+      "mass_uncursing",
+      "counterspell"
+    ],
+    [
+      "warded",
+      "dispel",
+      "ward"
+    ],
+    [
+      "antimagic",
+      "purity",
+      "sanctum_arcana"
+    ]
+  ]
+}

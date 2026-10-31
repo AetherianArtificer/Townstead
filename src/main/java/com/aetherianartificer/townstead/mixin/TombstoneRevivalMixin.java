@@ -31,10 +31,19 @@ import net.conczin.mca.block.TombstoneBlock;
 @Mixin(TombstoneBlock.Data.class)
 public class TombstoneRevivalMixin {
 
+    // Revival is the only caller. 1.20.1 revives through the private overload that takes an NBT transform.
+    //? if neoforge {
     @Inject(method = "createEntity", at = @At("RETURN"), remap = false)
-    private void townstead$resetNeedsOnRevival(Level level, boolean forRendering,
+    private void townstead$resetNeedsOnRevival(Level level, boolean remove,
                                                 CallbackInfoReturnable<Optional<Entity>> cir) {
-        if (forRendering) return;
+    //?} else {
+    /*@Inject(method = "createEntity(Lnet/minecraft/world/level/Level;ZLjava/util/function/Function;)Ljava/util/Optional;",
+            at = @At("RETURN"), remap = false)
+    private void townstead$resetNeedsOnRevival(Level level, boolean remove,
+                                                java.util.function.Function<net.minecraft.nbt.CompoundTag, net.minecraft.nbt.CompoundTag> nbtTransform,
+                                                CallbackInfoReturnable<Optional<Entity>> cir) {
+    *///?}
+        if (level.isClientSide) return;
         Optional<Entity> result = cir.getReturnValue();
         if (result.isEmpty()) return;
         Entity entity = result.get();
@@ -52,5 +61,6 @@ public class TombstoneRevivalMixin {
         if (TownsteadConfig.isVillagerFatigueEnabled()) {
             state.needs().resetFatigue(FatigueData.MAX_FATIGUE / 2);
         }
+        TownsteadVillagers.flush(villager);
     }
 }

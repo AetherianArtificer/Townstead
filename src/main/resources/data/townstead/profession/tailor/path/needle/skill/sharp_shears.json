@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.needle.sharp_shears"
+  },
+  "icon": "minecraft:shears",
+  "description": {
+    "translate": "skill.townstead.tailor.needle.sharp_shears.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 3.0,
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "ingredient",
+        "item": "minecraft:shears"
+      }
+    }
+  }
+}

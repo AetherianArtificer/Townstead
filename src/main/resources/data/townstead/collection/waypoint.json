@@ -1,0 +1,5 @@
+{
+  "of": "block",
+  "max": 1,
+  "on_full": "evict_oldest"
+}

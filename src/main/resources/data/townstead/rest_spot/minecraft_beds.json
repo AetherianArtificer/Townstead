@@ -1,0 +1,11 @@
+{
+  "schema": "townstead:rest_spot/v1",
+  "blocks": [
+    {
+      "id": "#minecraft:beds",
+      "state": {
+        "part": "head"
+      }
+    }
+  ]
+}

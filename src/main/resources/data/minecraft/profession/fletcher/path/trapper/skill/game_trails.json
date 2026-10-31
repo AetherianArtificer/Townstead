@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.trapper.game_trails"
+  },
+  "icon": "minecraft:oak_sapling",
+  "description": {
+    "translate": "skill.townstead.fletcher.trapper.game_trails.description"
+  },
+  "cost": 1,
+  "requires": [
+    "light_feet"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:biome",
+      "biome_tag": "minecraft:is_forest"
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 30,
+      "amplifier": 0
+    }
+  }
+}

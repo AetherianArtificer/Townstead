@@ -115,7 +115,12 @@ public final class PowerToGeneConverter {
             case "grounded": return ability("grounded");
             case "modify_falling": return ability("slow_fall");
             case "aerial_affinity": return ability("aerial_affinity");
-            case "hover": return ability("hover");
+            case "hover": {
+                // Apoli's hover holds altitude; Townstead's default for the ability is a ground-hugging drift.
+                JsonObject gene = ability("hover");
+                gene.addProperty("style", "hover");
+                return gene;
+            }
             case "sprinting": return sprintingGene(power);
             case "mobs_ignore": return mobsIgnoreGene(power);
             case "invulnerability": return invulnerabilityGene(power);

@@ -1,0 +1,6 @@
+{
+  "schema": "townstead:dialogue_pool/v1",
+  "act": "assess",
+  "subjects": "mob",
+  "empty": 6
+}

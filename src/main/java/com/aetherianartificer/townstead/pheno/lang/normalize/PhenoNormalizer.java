@@ -70,11 +70,16 @@ public final class PhenoNormalizer {
         return normalizeChild(action.deepCopy(), NodeDomain.ACTION);
     }
 
+    /** Numeric expression trees share condition normalization through entity_condition. */
+    public static JsonElement normalizeValue(JsonElement value) {
+        return normalizeChild(value.deepCopy(), NodeDomain.VALUE);
+    }
+
     /** {@code "gene": { "dominance": ..., "category": ... }} -> top-level fields. */
     private static void hoistGeneEnvelope(JsonObject root) {
         if (!root.has("gene") || !root.get("gene").isJsonObject()) return;
         JsonObject gene = root.getAsJsonObject("gene");
-        for (String key : new String[]{"dominance", "category", "weight", "locus"}) {
+        for (String key : new String[]{"dominance", "category", "weight", "locus", "penetrance"}) {
             if (gene.has(key) && !root.has(key)) root.add(key, gene.get(key));
         }
         root.remove("gene");

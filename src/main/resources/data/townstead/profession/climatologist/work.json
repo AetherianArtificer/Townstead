@@ -1,0 +1,25 @@
+{
+  "schema": "townstead:profession_work/v1",
+  "register_profession": true,
+  "poi": [
+    { "type": "townstead:building", "type_prefixes": [
+      "compat/toughasnails/climate_fuel_store", "compat.toughasnails.climate_fuel_store",
+      "compat/toughasnails/climate_icehouse", "compat.toughasnails.climate_icehouse"
+    ] },
+    { "type": "townstead:job_block", "block": "cold_sweat:hearth_bottom", "sites_per_worker": 8 },
+    { "type": "townstead:job_block", "block": "cold_sweat:boiler", "sites_per_worker": 8 },
+    { "type": "townstead:job_block", "block": "cold_sweat:icebox", "sites_per_worker": 8 },
+    { "type": "townstead:job_block", "block": "legendarysurvivaloverhaul:heater", "sites_per_worker": 8 },
+    { "type": "townstead:job_block", "block": "legendarysurvivaloverhaul:cooler", "sites_per_worker": 8 }
+  ],
+  "tasks": [
+    {
+      "type": "townstead_work:maintain_climate",
+      "workstations": ["legendarysurvivaloverhaul:heater", "legendarysurvivaloverhaul:cooler",
+        "cold_sweat:hearth_bottom", "cold_sweat:boiler", "cold_sweat:icebox"],
+      "scope": "village", "weight": 10,
+      "order": { "name": "Restock boilers and coolers", "icon": "minecraft:campfire" }
+    }
+  ],
+  "storage": { "preferred_roles": ["townstead:heating_fuel", "townstead:cooling_fuel"] }
+}

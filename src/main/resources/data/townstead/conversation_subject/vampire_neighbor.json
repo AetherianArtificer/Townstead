@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:conversation_subject/v1",
+  "mods": "vampirism",
+  "source": {
+    "type": "townstead:aspect_neighbor",
+    "state": "townstead_state:vampire",
+    "group": "vampire"
+  },
+  "register": "social",
+  "valence": "from_source",
+  "content_tags": [
+    "vampires"
+  ],
+  "slots": {
+    "who": {
+      "type": "person",
+      "from": "neighbor.who"
+    }
+  }
+}
