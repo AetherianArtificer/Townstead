@@ -63,9 +63,14 @@ public final class MobReplacer {
         Predicate<ResourceLocation> eligible = root -> replacement.states().keySet().stream()
                 .noneMatch(state -> Boolean.FALSE.equals(RootStates.declared(root, state))
                         || needsVillagerBody(state) && !com.aetherianartificer.townstead.root.rig.ServerRig.hasVillagerBody(root));
-        RootSelector.Selection probe = RootSelector.select(level, pos, mob.getRandom(), eligible);
-        if (probe.single() == null && probe.mix() == null) return false;
+        if (!RootSelector.anySelectable(level, pos, eligible)) return false;
+        CostumeFamily.outside(() -> wear(mob, level, pos, spawnType, replacement, eligible));
+        return false;
+    }
 
+    /** Rolls the person {@code mob} shows and saves them on it; that villager is never used again. */
+    private static boolean wear(Mob mob, ServerLevel level, BlockPos pos, MobSpawnType spawnType,
+                                MobReplacement replacement, Predicate<ResourceLocation> eligible) {
         VillagerEntityMCA villager = RootSpawnHandler.withRootConstraint(eligible, () -> {
             // Always grown: the person a wild mob wears fights and moves as that mob does.
             VillagerEntityMCA spawned = VillagerFactory.newVillager(level).withAge(0).withPosition(mob.position()).build();
@@ -82,22 +87,26 @@ public final class MobReplacer {
             if (spawned.isBaby()) spawned.setAge(0);
             return spawned;
         });
-        // The region's fallback can still land on a Root that refuses; keep the mob then.
-        for (ResourceLocation state : replacement.states().keySet()) {
-            if (!EntityStates.eligible(villager, state)) return false;
+        try {
+            // The region's fallback can still land on a Root that refuses; keep the mob then.
+            for (ResourceLocation state : replacement.states().keySet()) {
+                if (!EntityStates.eligible(villager, state)) return false;
+            }
+            dress(villager, replacement);
+            for (Map.Entry<ResourceLocation, double[]> state : replacement.states().entrySet()) {
+                double[] range = state.getValue();
+                double amount = range[0] + villager.getRandom().nextDouble() * (range[1] - range[0]);
+                EntityStates.set(villager, state.getKey(), Math.round(amount), 0, null);
+            }
+            // A mob its mod has already named keeps that name; the person it shows goes by it too.
+            String own = WildCostume.ownName(mob);
+            if (own != null) com.aetherianartificer.townstead.naming.Naming.adopt(villager, own);
+            WildCostume.dress(mob, villager);
+            WildCostume.syncIfTracked(mob);
+            return true;
+        } finally {
+            WildCostume.release(villager);
         }
-        dress(villager, replacement);
-        for (Map.Entry<ResourceLocation, double[]> state : replacement.states().entrySet()) {
-            double[] range = state.getValue();
-            double amount = range[0] + villager.getRandom().nextDouble() * (range[1] - range[0]);
-            EntityStates.set(villager, state.getKey(), Math.round(amount), 0, null);
-        }
-        // A mob its mod has already named keeps that name; the person it shows goes by it too.
-        String own = WildCostume.ownName(mob);
-        if (own != null) com.aetherianartificer.townstead.naming.Naming.adopt(villager, own);
-        WildCostume.dress(mob, villager);
-        WildCostume.syncIfTracked(mob);
-        return false;
     }
 
     /** Worn, not carried: MCA drops a villager's inventory on death, and the loot is the mob's. */

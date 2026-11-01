@@ -327,6 +327,7 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
             // crank/stir to repeat while it is processing.
             if (!afterIngredient && "empty".equals(role)) continue;
             if (!"tool".equals(role) && !"empty".equals(role)) continue;
+            if (!applies(level, anchor, action)) continue;
             hadWork = true;
             if (!runAction(level, villager, anchor, recipe, action, role, def)) return false;
         }
@@ -382,7 +383,7 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         if (!hasResidentOutput(level, anchor, outputs) && !def.isReady(level, anchor)) return false;
 
         boolean collectedOutput = false;
-        int attempts = recipe == null ? 64 : Math.max(1, recipe.outputCount());
+        int attempts = recipe == null || def.ready() != null ? 64 : Math.max(1, recipe.outputCount());
         for (int attempt = 0; attempt < attempts; attempt++) {
             boolean returnedOutput = false;
             for (JsonObject action : actions(def.collect())) {
@@ -534,7 +535,8 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
         for (JsonObject action : actions(def.behavior())) {
             String role = role(action);
             if ("supply".equals(role)) {
-                if (!runAction(level, villager, anchor, recipe, action, role, def)) return false;
+                if (applies(level, anchor, action)
+                        && !runAction(level, villager, anchor, recipe, action, role, def)) return false;
                 continue;
             }
             if ("ingredient".equals(role)) {
@@ -545,17 +547,17 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                     for (; ingredientIndex < ingredients.size(); ingredientIndex++) {
                         RecipeIngredient ingredient = ingredients.get(ingredientIndex);
                         if (!interactIngredient(level, villager, anchor, ingredient, def,
-                                false, copies)) return false;
+                                false, copies, action)) return false;
                     }
                 } else {
                     if (ingredientIndex >= ingredients.size()
                             || !interactIngredient(level, villager, anchor,
-                            ingredients.get(ingredientIndex++), def, stackBatch(def), copies)) return false;
+                            ingredients.get(ingredientIndex++), def, stackBatch(def), copies, action)) return false;
                 }
                 insertedIngredient = true;
                 continue;
             }
-            if (!insertedIngredient && "empty".equals(role)
+            if (!insertedIngredient && "empty".equals(role) && applies(level, anchor, action)
                     && !runAction(level, villager, anchor, recipe, action, role, def)) return false;
         }
         return insertedIngredient;
@@ -570,6 +572,7 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
             String role = role(action);
             if ("ingredient".equals(role)) break;
             if (!"supply".equals(role) && !"empty".equals(role)) continue;
+            if (!applies(level, anchor, action)) continue;
             ran = true;
             if (!runAction(level, villager, anchor, recipe, action, role, def)) return false;
         }
@@ -845,15 +848,16 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                                               BlockPos anchor, DiscoveredRecipe recipe,
                                               WorkstationV2Def def, boolean stack, int copies) {
         if (recipe.inputs().isEmpty()) return false;
-        return interactIngredient(level, villager, anchor, recipe.inputs().get(0), def, stack, copies);
+        return interactIngredient(level, villager, anchor, recipe.inputs().get(0), def, stack, copies, null);
     }
 
     private static boolean interactIngredient(ServerLevel level, VillagerEntityMCA villager,
                                               BlockPos anchor, RecipeIngredient ingredient,
-                                              WorkstationV2Def def, boolean stack, int copies) {
+                                              WorkstationV2Def def, boolean stack, int copies,
+                                              @Nullable JsonObject authored) {
         if (!stack && copies > 1) {
             for (int copy = 0; copy < copies; copy++) {
-                if (!interactIngredient(level, villager, anchor, ingredient, def, false, 1)) return false;
+                if (!interactIngredient(level, villager, anchor, ingredient, def, false, 1, authored)) return false;
             }
             return true;
         }
@@ -862,10 +866,22 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
                         Math.max(1, ingredient.count()) * Math.max(1, copies))
                 : takeMatching(villager, ingredient, Math.max(1, ingredient.count()));
         if (held.isEmpty()) return false;
+        // An authored wrapper names the block that takes the ingredient (a cake above its station).
+        if (authored != null && authored.has("block_action")) {
+            return useBlock(level, villager, anchor, authored, held);
+        }
         JsonObject action = new JsonObject();
         action.addProperty("type", "pheno:use_block");
         action.addProperty("item", "ingredient");
         return useBlock(level, villager, anchor, action, held);
+    }
+
+    /** Whether a loading or working step is needed now; one with an unmet condition is skipped. */
+    private static boolean applies(ServerLevel level, BlockPos anchor, JsonObject action) {
+        return WorkstationV2Def.actionApplies(action, anchor, (json, pos) -> {
+            BlockCondition condition = BlockConditions.parse(json);
+            return condition == null || condition.test(level, pos);
+        });
     }
 
     private static boolean runAction(ServerLevel level, VillagerEntityMCA villager,
@@ -922,7 +938,7 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
             }
             if (held.isEmpty()) return new UseOutcome(false, false);
         } else if ("container".equals(role)) {
-            if (recipe == null) return new UseOutcome(false, false);
+            if (recipe == null) return collectWithCarriedVessel(level, villager, anchor, action, def, expected);
             if (recipe.containerItemId() == null) {
                 // Mixed-shape recipe families may package some results in a carrier while other
                 // results are removed with a tool. A container action is inapplicable—not an
@@ -940,6 +956,19 @@ public final class DataDrivenStationAdapter implements StationAdapters.Adapter {
             if (held.isEmpty()) return new UseOutcome(false, false);
         }
         return useBlockOutcome(level, villager, anchor, action, role, held, expected);
+    }
+
+    /** With no recipe to name the vessel, as after an interruption, tries each one the block can take. */
+    private static UseOutcome collectWithCarriedVessel(ServerLevel level, VillagerEntityMCA villager,
+                                                       BlockPos anchor, JsonObject action, WorkstationV2Def def,
+                                                       Set<ResourceLocation> expected) {
+        for (ResourceLocation vessel : def.recipeContainers()) {
+            ItemStack held = takeItem(villager, vessel, 1);
+            if (held.isEmpty()) continue;
+            UseOutcome outcome = useBlockOutcome(level, villager, anchor, action, "container", held, expected);
+            if (outcome.returnedExpected()) return outcome;
+        }
+        return new UseOutcome(false, false);
     }
 
     private static boolean useBlock(ServerLevel level, VillagerEntityMCA villager,

@@ -1,0 +1,17 @@
+{
+  "type": "townstead:blueprint",
+  "group": "townstead:blueprint",
+  "category": "misc",
+  "surface": "townstead:board",
+  "ingredients": [
+    { "tag": "townstead:blueprint_surface/board" },
+    { "tag": "townstead:blueprint_surface/board" },
+    { "tag": "townstead:blueprint_surface/board" },
+    { "tag": "townstead:blueprint_surface/board" },
+    { "tag": "townstead:blueprint_surface/board" },
+    { "tag": "townstead:blueprint_ink" }
+  ],
+  "result": {
+    "id": "mca:blueprint"
+  }
+}

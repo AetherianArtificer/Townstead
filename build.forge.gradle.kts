@@ -193,6 +193,9 @@ tasks.withType<ProcessResources> {
         if (path.contains("/recipe/")) {
             path = path.replace("/recipe/", "/recipes/")
         }
+        if (path.contains("/advancement/")) {
+            path = path.replace("/advancement/", "/advancements/")
+        }
         if (path.contains("/loot_table/")) {
             path = path.replace("/loot_table/", "/loot_tables/")
         }
@@ -203,6 +206,10 @@ tasks.withType<ProcessResources> {
     // 1.20.1 recipe format uses "item" instead of "id" in results
     filesMatching("data/*/recipe/*.json") {
         filter { it.replace("\"id\":", "\"item\":") }
+    }
+    // 1.20.1 item predicates use a "tag" key instead of "items": "#tag"
+    filesMatching("data/*/advancement/**/*.json") {
+        filter { it.replace("\"items\": \"#", "\"tag\": \"") }
     }
     // 1.20.1 recipe conditions use "conditions" key and "forge:mod_loaded" type
     filesMatching("data/*/recipe/*.json") {

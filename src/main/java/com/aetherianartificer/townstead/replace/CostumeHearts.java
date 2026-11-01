@@ -31,6 +31,10 @@ public final class CostumeHearts {
         CompoundTag talked = player.getPersistentData().getCompound(TALKED);
         String key = mob.getUUID().toString();
         if (talked.contains(key) && talked.getLong(key) == day) return;
+        // Only today's talks matter, so the record stays the size of one day.
+        for (String other : java.util.List.copyOf(talked.getAllKeys())) {
+            if (talked.getLong(other) != day) talked.remove(other);
+        }
         talked.putLong(key, day);
         player.getPersistentData().put(TALKED, talked);
         Disposition stance = Dispositions.between(mob, player);

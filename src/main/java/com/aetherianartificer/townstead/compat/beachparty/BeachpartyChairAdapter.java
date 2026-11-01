@@ -18,9 +18,9 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Reflection-safe bridge to Beachparty's chair entity and occupancy ledger. Beachparty 2.x seats
- * through its own util; 1.1.5 (Forge 1.20.1) seats through Let's Do API's ChairUtil, which has the
- * same three calls.
+ * Reflection-safe bridge to Beachparty's chair entity and occupancy ledger. Beachparty on Foundation
+ * seats through Foundation's SeatUtil; earlier 2.x builds through its own util; 1.1.5 (Forge 1.20.1)
+ * through Let's Do API's ChairUtil. All three have the same three calls.
  */
 public final class BeachpartyChairAdapter implements HangoutEmbodiment.PostureAdapter {
     public static final ResourceLocation ID = ResourceLocation.tryParse("beachparty:native_chair");
@@ -35,6 +35,7 @@ public final class BeachpartyChairAdapter implements HangoutEmbodiment.PostureAd
     private record SeatApi(String util, ResourceLocation chair) {}
     private static final SeatApi[] APIS = {
             new SeatApi("net.satisfy.beachparty.core.util.BeachpartyUtil", id("beachparty:chair")),
+            new SeatApi("net.satisfy.foundation.seat.SeatUtil", id("foundation:chair")),
             new SeatApi("de.cristelknight.doapi.common.util.ChairUtil", id("doapi:chair"))};
 
     @Override public ResourceLocation id() { return ID; }
@@ -115,13 +116,18 @@ public final class BeachpartyChairAdapter implements HangoutEmbodiment.PostureAd
         return "upper".equals(String.valueOf(value)) ? pos.below() : pos;
     }
 
-    /** The first seat API whose util class and chair entity are both installed. */
+    /**
+     * The first seat API whose chair entity is registered and whose util still seats. Beachparty's
+     * own util outlives its seat calls once it moves to Foundation, so the class alone says nothing.
+     */
     private static @Nullable SeatApi seatApi() {
         for (SeatApi api : APIS) {
             if (!BuiltInRegistries.ENTITY_TYPE.containsKey(api.chair())) continue;
             try {
-                Class.forName(api.util(), false, BeachpartyChairAdapter.class.getClassLoader());
-                return api;
+                Class<?> util = Class.forName(api.util(), false, BeachpartyChairAdapter.class.getClassLoader());
+                for (Method method : util.getMethods()) {
+                    if (method.getName().equals("addChairEntity")) return api;
+                }
             } catch (ClassNotFoundException | LinkageError ignored) {
             }
         }

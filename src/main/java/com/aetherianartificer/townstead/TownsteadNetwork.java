@@ -86,7 +86,7 @@ import java.util.function.Function;
 public final class TownsteadNetwork {
     private TownsteadNetwork() {}
 
-    private static final String PROTOCOL_VERSION = "20";
+    private static final String PROTOCOL_VERSION = "21";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(Townstead.MOD_ID, "main"),
             () -> PROTOCOL_VERSION,
@@ -202,6 +202,10 @@ public final class TownsteadNetwork {
                 (p, buf) -> com.aetherianartificer.townstead.pheno.screen.ScreenEffectS2CPayload.write(buf, p),
                 com.aetherianartificer.townstead.pheno.screen.ScreenEffectS2CPayload::read,
                 com.aetherianartificer.townstead.pheno.screen.ScreenEffectS2CPayload::accept);
+        registerS2C(com.aetherianartificer.townstead.profession.ProfessionClothingSyncPayload.class,
+                (p, buf) -> com.aetherianartificer.townstead.profession.ProfessionClothingSyncPayload.write(buf, p),
+                com.aetherianartificer.townstead.profession.ProfessionClothingSyncPayload::read,
+                com.aetherianartificer.townstead.profession.ProfessionClothingSyncPayload::accept);
         registerS2C(com.aetherianartificer.townstead.pheno.particle.DataParticlesS2CPayload.class,
                 (p, buf) -> com.aetherianartificer.townstead.pheno.particle.DataParticlesS2CPayload.write(buf, p),
                 com.aetherianartificer.townstead.pheno.particle.DataParticlesS2CPayload::read,
@@ -293,12 +297,12 @@ public final class TownsteadNetwork {
         registerC2S(HungerSetPayload.class, HungerSetPayload::write, HungerSetPayload::read,
                 TownsteadNetwork::handleHungerSet);
 
-        if (ThirstBridgeResolver.anyThirstModLoaded()) {
-            registerS2C(ThirstSyncPayload.class, ThirstSyncPayload::write, ThirstSyncPayload::read,
-                    TownsteadNetwork::handleThirstSync);
-            registerC2S(ThirstSetPayload.class, ThirstSetPayload::write, ThirstSetPayload::read,
-                    TownsteadNetwork::handleThirstSet);
-        }
+        // Always registered: SimpleChannel ids follow this order, so a conditional here would shift
+        // every later packet when client and server mods differ.
+        registerS2C(ThirstSyncPayload.class, ThirstSyncPayload::write, ThirstSyncPayload::read,
+                TownsteadNetwork::handleThirstSync);
+        registerC2S(ThirstSetPayload.class, ThirstSetPayload::write, ThirstSetPayload::read,
+                TownsteadNetwork::handleThirstSet);
 
         // Fatigue management
         registerS2C(FatigueSyncPayload.class, FatigueSyncPayload::write, FatigueSyncPayload::read,

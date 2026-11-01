@@ -1,0 +1,41 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": [
+    "farm_and_charm",
+    {
+      "not": {
+        "block": "farm_and_charm:crafting_bowl",
+        "property": "stirred"
+      }
+    }
+  ],
+  "blocks": [
+    "farm_and_charm:crafting_bowl"
+  ],
+  "inventory": {
+    "slots": {
+      "ingredients": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "outputs": [
+        4
+      ]
+    }
+  },
+  "ready": {
+    "type": "pheno:block_entity",
+    "property": "finished",
+    "value": true
+  },
+  "behavior": {
+    "type": "pheno:use_block",
+    "condition": {
+      "type": "pheno:block_entity",
+      "property": "finished",
+      "value": false
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "parent": "minecraft:recipes/root",
+  "rewards": {
+    "recipes": [
+      "townstead:blueprint_kelp"
+    ]
+  },
+  "criteria": {
+    "has_surface": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "#townstead:blueprint_surface/kelp"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_surface"
+    ]
+  ]
+}

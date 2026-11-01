@@ -67,7 +67,8 @@ class VineryBreweryPackDataTest {
         JsonObject station = data("workstation/brewery_brewing_stations.json");
         assertEquals(Set.of("brewery:wooden_brewingstation", "brewery:copper_brewingstation",
                 "brewery:netherite_brewingstation"), strings(station.getAsJsonArray("blocks")));
-        assertEquals("brewery:beer_mug", station.getAsJsonObject("collect").get("tool").getAsString());
+        assertEquals("brewery:beer_mug", station.get("recipe_container").getAsString());
+        assertEquals("container", station.getAsJsonObject("collect").get("item").getAsString());
         JsonArray incidents = station.getAsJsonObject("attendance").getAsJsonArray("incidents");
         Set<String> ids = new LinkedHashSet<>();
         for (JsonElement element : incidents) {

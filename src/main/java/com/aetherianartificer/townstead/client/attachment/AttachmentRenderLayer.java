@@ -582,6 +582,13 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
     private record Expressed(String geneId, AttachmentDef def) {}
 
     /** The attachment defs the entity expresses (per-entity set first, origin grant list as fallback). */
+    /** The definitions this entity wears right now, as the render pass resolves them. */
+    public static List<AttachmentDef> worn(LivingEntity entity) {
+        List<AttachmentDef> out = new ArrayList<>();
+        for (Expressed expressed : resolve(entity)) out.add(expressed.def());
+        return out;
+    }
+
     private static List<Expressed> resolve(LivingEntity entity) {
         List<Expressed> out = new ArrayList<>();
         Set<String> expressed = RootClientStore.expressedGenes(entity);

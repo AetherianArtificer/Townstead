@@ -6,6 +6,7 @@
   "mixins": [
     "MobFinalizeSpawnCostumeMixin",
     "StateFormSleepMixin",
+    "NullClientMessageMixin",
     "LivingFieldAbilitiesMixin",
     "ItemStackPhenoMixin",
     "FishingHookPhenoMixin",
@@ -50,6 +51,8 @@
     "compat.pizzadelight.PizzaStationResultSlotMixin",
     "compat.farmersdelight.StoveVillagerDamageMixin",
     "compat.mca.FamilyTreeNodeGenderGuardMixin",
+    "compat.mca.FamilyTreeAccess",
+    "compat.mca.FamilyTreeCostumeMixin",
     "compat.mca.VillagerOpenedDoorMixin",
     "compat.mca.GetVillagerRequestEditorGuardMixin",
     "compat.mca.LazyFindPointOfInterestTaskCarrierMixin",

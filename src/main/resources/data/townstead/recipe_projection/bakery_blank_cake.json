@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:recipe_projection/v1",
+  "mods": "bakery",
+  "recipe_types": [
+    "bakery:blank_cake_interaction"
+  ],
+  "domain": "baking.cake",
+  "fields": {
+    "inputs": {
+      "path": "ingredient",
+      "operation": "list",
+      "required": true
+    },
+    "output": {
+      "path": "result.setBlock",
+      "operation": "resource_id",
+      "required": true
+    },
+    "readiness": {
+      "path": "stage",
+      "equals": "CAKE"
+    }
+  }
+}

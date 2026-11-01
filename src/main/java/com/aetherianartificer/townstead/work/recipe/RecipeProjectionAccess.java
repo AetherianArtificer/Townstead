@@ -29,7 +29,8 @@ import java.util.stream.Stream;
  */
 public final class RecipeProjectionAccess {
     public record Accessor(List<String> aliases, Operation operation, boolean required,
-                           @Nullable JsonElement fallback, List<String> merge) {
+                           @Nullable JsonElement fallback, List<String> merge,
+                           @Nullable String equalsValue) {
         public Accessor {
             aliases = aliases == null ? List.of() : List.copyOf(aliases);
             operation = operation == null ? Operation.RAW : operation;
@@ -38,7 +39,7 @@ public final class RecipeProjectionAccess {
         }
 
         public Accessor(List<String> aliases, Operation operation, boolean required, @Nullable JsonElement fallback) {
-            this(aliases, operation, required, fallback, List.of());
+            this(aliases, operation, required, fallback, List.of(), null);
         }
     }
 
@@ -78,7 +79,7 @@ public final class RecipeProjectionAccess {
         if (!value.isJsonObject()) throw new IllegalArgumentException("projection accessor must be an object");
         JsonObject object = value.getAsJsonObject();
         for (String key : object.keySet()) {
-            if (!List.of("path", "aliases", "operation", "required", "default", "merge").contains(key)) {
+            if (!List.of("path", "aliases", "operation", "required", "default", "merge", "equals").contains(key)) {
                 throw new IllegalArgumentException("unknown projection accessor field '" + key + "'");
             }
         }
@@ -103,7 +104,8 @@ public final class RecipeProjectionAccess {
         if (operation == null) throw new IllegalArgumentException("unknown projection operation");
         boolean required = object.has("required") && object.get("required").getAsBoolean();
         return new Accessor(aliases, operation, required,
-                object.has("default") ? object.get("default") : null, merge);
+                object.has("default") ? object.get("default") : null, merge,
+                object.has("equals") ? object.get("equals").getAsString() : null);
     }
 
     private static void addAlias(JsonElement value, List<String> out) {
@@ -143,7 +145,10 @@ public final class RecipeProjectionAccess {
                 current = step.value();
             }
             if (failed) continue;
-            Object converted = convert(current, accessor.operation());
+            // A readiness test on a value with no boolean of its own, such as an enum stage.
+            Object converted = accessor.equalsValue() != null && current != null
+                    ? Boolean.valueOf(accessor.equalsValue().equalsIgnoreCase(text(current)))
+                    : convert(current, accessor.operation());
             if (converted != null) return new Read(true, converted, current, alias, failures);
             failures.add(alias + ": value cannot be converted with "
                     + accessor.operation().name().toLowerCase(Locale.ROOT));
@@ -217,6 +222,10 @@ public final class RecipeProjectionAccess {
             case FLUID_AMOUNT -> fluidAmount(value);
             case LIST -> List.copyOf(elements(value));
         };
+    }
+
+    private static String text(Object value) {
+        return value instanceof Enum<?> constant ? constant.name() : String.valueOf(value);
     }
 
     private static @Nullable ResourceLocation resourceId(Object value) {

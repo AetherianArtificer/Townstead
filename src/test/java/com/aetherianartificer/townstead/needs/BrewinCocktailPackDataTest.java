@@ -73,9 +73,9 @@ class BrewinCocktailPackDataTest {
         assertEquals("townstead:workstation/v2", station.get("schema").getAsString());
         assertEquals(Set.of("brewinandchewin:keg"), strings(station.getAsJsonArray("blocks")));
         JsonObject slots = station.getAsJsonObject("inventory").getAsJsonObject("slots");
-        assertEquals(5, slots.getAsJsonArray("ingredients").size());
-        assertEquals(6, slots.getAsJsonArray("containers").get(0).getAsInt());
-        assertEquals(7, slots.getAsJsonArray("outputs").get(0).getAsInt());
+        assertEquals(4, slots.getAsJsonArray("ingredients").size());
+        assertEquals(4, slots.getAsJsonArray("containers").get(0).getAsInt());
+        assertEquals(5, slots.getAsJsonArray("outputs").get(0).getAsInt());
 
         for (String building : List.of("brewhouse_l1", "brewhouse_l2", "taproom_l1")) {
             JsonObject mca = resource("/townstead_compat/building_types/compat/brewinandchewin/"

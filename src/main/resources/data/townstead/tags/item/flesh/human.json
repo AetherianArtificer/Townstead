@@ -6,6 +6,8 @@
     { "id": "butchery:raw_pillager_meat", "required": false },
     { "id": "butchery:cooked_pillager_meat", "required": false },
     { "id": "butchery:raw_villager_steak", "required": false },
-    { "id": "butchery:cooked_villager_steak", "required": false }
+    { "id": "butchery:cooked_villager_steak", "required": false },
+    { "id": "vampirism:human_heart", "required": false },
+    { "id": "vampirism:weak_human_heart", "required": false }
   ]
 }

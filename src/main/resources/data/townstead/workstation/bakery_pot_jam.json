@@ -1,0 +1,51 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": {
+    "mod": "bakery",
+    "version": ">=2.1.8"
+  },
+  "blocks": [
+    "bakery:small_cooking_pot"
+  ],
+  "recipe_container": "bakery:jar",
+  "shift_end": "finish",
+  "requires": {
+    "type": "pheno:block_state",
+    "property": "lit",
+    "value": "true"
+  },
+  "ready": {
+    "type": "pheno:or",
+    "conditions": [
+      {
+        "type": "pheno:block_entity",
+        "property": "ready",
+        "value": true
+      },
+      {
+        "type": "pheno:block_entity",
+        "property": "bottling",
+        "value": true
+      }
+    ]
+  },
+  "behavior": [
+    {
+      "type": "pheno:use_block",
+      "item": "ingredient",
+      "all": true
+    },
+    {
+      "type": "pheno:use_block",
+      "condition": {
+        "type": "pheno:block_entity",
+        "property": "stirDue",
+        "value": true
+      }
+    }
+  ],
+  "collect": {
+    "type": "pheno:use_block",
+    "item": "container"
+  }
+}

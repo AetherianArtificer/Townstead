@@ -117,6 +117,10 @@ public record ExpressedGenesS2CPayload(int entityId, List<String> genes, boolean
         return new ExpressedGenesS2CPayload(entityId, genes, hair, ranges, colors, gradients);
     }
 
+    public ExpressedGenesS2CPayload withEntityId(int id) {
+        return new ExpressedGenesS2CPayload(id, genes, hair, hairColorRanges, hairColors, hairGradients);
+    }
+
     /** Build the payload for a living entity (villager or player), keyed by {@code entityId}. */
     public static ExpressedGenesS2CPayload forEntity(int entityId, LivingEntity entity) {
         Heritage heritage = null;

@@ -1,6 +1,6 @@
 {
   "schema": "townstead:workstation/v2",
-  "mods": "beachparty",
+  "mods": ["beachparty", {"not": {"block": "beachparty:palm_bar_glass"}}],
   "blocks": ["beachparty:palm_bar"],
   "stands": [[0,0,1],[-1,0,1],[1,0,1]],
   "stands_relative_to_facing": true,

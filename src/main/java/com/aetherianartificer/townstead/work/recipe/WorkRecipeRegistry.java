@@ -423,6 +423,7 @@ public final class WorkRecipeRegistry {
                     continue;
                 }
                 ItemStack result = safeGetResult(level, recipe);
+                if (result.isEmpty()) result = projectedResult(recipeId, typeId, recipe);
                 if (result.isEmpty()) {
                     emptyResults++;
                     continue;
@@ -452,13 +453,14 @@ public final class WorkRecipeRegistry {
                     continue;
                 }
                 ResourceLocation container = containerOf(recipe);
+                if (container == null) container = def.containerFor(outputId);
                 int cookTime = cookingTimeTicks(recipe, 200);
                 boolean tool = def.behaviorUses("tool");
                 boolean beverage = outputId.getPath().contains("coffee") || outputId.getPath().contains("tea");
                 out.add(new DiscoveredRecipe(recipeId, role,
                         autoTier(role, inputs.size(), cookTime), outputId,
                         Math.max(1, result.getCount()), cookTime, tool,
-                        container, container == null ? 0 : Math.max(1, result.getCount()),
+                        container, container == null ? 0 : Math.max(def.recipeContainerCount(), Math.max(1, result.getCount())),
                         inputs, false, beverage,
                         //? if >=1.21 {
                         holder
@@ -815,6 +817,14 @@ public final class WorkRecipeRegistry {
     *///?}
 
     // ── Reflection helpers ──
+
+    /** For a recipe that changes a block instead of reporting a result: the output its projection names. */
+    private static ItemStack projectedResult(ResourceLocation recipeId, ResourceLocation typeId, Recipe<?> recipe) {
+        RecipeProjections.View view = RecipeProjections.project(recipeId, typeId, recipe);
+        ResourceLocation output = view.succeeded() ? view.idValue("output") : null;
+        if (output == null || !BuiltInRegistries.ITEM.containsKey(output)) return ItemStack.EMPTY;
+        return new ItemStack(BuiltInRegistries.ITEM.get(output));
+    }
 
     private static ItemStack safeGetResult(ServerLevel level, Recipe<?> recipe) {
         try {

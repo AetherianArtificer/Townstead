@@ -6,6 +6,15 @@
     "brewery:copper_brewingstation",
     "brewery:netherite_brewingstation"
   ],
+  "recipe_container": "brewery:beer_mug",
+  "recipe_container_count": 5,
+  "output_containers": [
+    {
+      "output": "#townstead:bottled_brews",
+      "container": "minecraft:glass_bottle",
+      "mods": {"mod": "brewery", "version": ">=2.1.12"}
+    }
+  ],
   "shift_end": "finish",
   "ready": {
     "type": "pheno:block_state",
@@ -21,8 +30,7 @@
   },
   "collect": {
     "type": "pheno:use_block",
-    "item": "tool",
-    "tool": "brewery:beer_mug",
+    "item": "container",
     "face": "up",
     "hit": [0.5, 1.0, 0.5]
   },

@@ -569,7 +569,8 @@ public final class TownsteadConfig {
                 .comment("Who may eat sapient flesh (the townstead:cannibal_meats item tag). Each tier includes the ones below it:",
                          "OFF: nobody. PREDATORS: roots declaring eats_sapients may eat other kinds, never their own.",
                          "TRAIT: predators as above, and cannibals (born with the gene, or broken by starvation) may eat anything.",
-                         "EVERYONE: anything goes. Starvation can only create cannibals at TRAIT or above.")
+                         "EVERYONE: anything goes. Starvation can only create cannibals at TRAIT or above.",
+                         "At every tier, diets declaring eats_sapients (a vampire's) may eat other kinds.")
                 .defineEnum("mode", com.aetherianartificer.townstead.hunger.CannibalismPolicy.Mode.OFF);
         CANNIBALISM_PRODUCE = b
                 .translation("townstead.configuration.cannibalism.produce")

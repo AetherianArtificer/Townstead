@@ -1,7 +1,5 @@
 package com.aetherianartificer.townstead.profession;
 
-import com.aetherianartificer.townstead.profession.def.ProfessionDef;
-import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
 import com.aetherianartificer.townstead.profession.def.ClothingChoice;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.resources.data.skin.Clothing;
@@ -40,9 +38,8 @@ public final class ClientProfessionClothing {
 
         ResourceLocation professionId = BuiltInRegistries.VILLAGER_PROFESSION
                 .getKey(villager.getVillagerData().getProfession());
-        ProfessionDef def = professionId == null ? null : ProfessionDefs.all().get(professionId);
 
-        List<ClothingChoice> choices = ProfessionClothing.choicesFor(villager, def);
+        List<ClothingChoice> choices = ProfessionClothingSyncPayload.outfit(professionId);
         if (!choices.isEmpty() && applyFirstAvailable(villager, catalogue, choices)) {
             return;
         }

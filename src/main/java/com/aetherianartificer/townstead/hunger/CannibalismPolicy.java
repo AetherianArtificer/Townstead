@@ -1,6 +1,8 @@
 package com.aetherianartificer.townstead.hunger;
 
 import com.aetherianartificer.townstead.TownsteadConfig;
+import com.aetherianartificer.townstead.hunger.diet.Diet;
+import com.aetherianartificer.townstead.hunger.diet.Diets;
 import com.aetherianartificer.townstead.switchboard.Switchboard;
 import com.aetherianartificer.townstead.root.ExpressedGenes;
 import com.aetherianartificer.townstead.root.Root;
@@ -31,9 +33,9 @@ import java.util.Map;
  */
 public final class CannibalismPolicy {
 
-    /** Each tier includes everything below it. */
+    /** Each tier includes everything below it. Diets that declare {@code eats_sapients} hold at every tier. */
     public enum Mode {
-        /** Nobody eats sapient flesh. */
+        /** Nobody eats sapient flesh, except diets that need it. */
         OFF,
         /** Roots that declare {@code eats_sapients} may eat other kinds, never their own. */
         PREDATORS,
@@ -65,14 +67,27 @@ public final class CannibalismPolicy {
      */
     public static boolean mayEat(@Nullable LivingEntity eater, ItemStack stack) {
         Mode mode = mode();
-        if (mode == Mode.OFF) return false;
         if (mode == Mode.EVERYONE) return true;
         if (!(eater instanceof VillagerEntityMCA villager)) return false;
+        // A diet that hunts people (a vampire's) is how that body feeds, so it holds at every tier.
+        if (dietHunts(villager) && !isKin(villager, stack)) return true;
+        if (mode == Mode.OFF) return false;
         if (mode == Mode.TRAIT && isCannibal(villager)) return true;
         // The predators floor, active under both remaining tiers.
-        Root root = rootOf(villager);
-        if (root == null || !root.eatsSapients()) return false;
+        if (!eatsSapients(villager)) return false;
         return !isKin(villager, stack);
+    }
+
+    /** A predator by its Root, or by a diet that hunts people (a vampire's). */
+    public static boolean eatsSapients(LivingEntity eater) {
+        if (dietHunts(eater)) return true;
+        Root root = rootOf(eater);
+        return root != null && root.eatsSapients();
+    }
+
+    private static boolean dietHunts(LivingEntity eater) {
+        Diet diet = Diets.dietOf(eater);
+        return diet != null && diet.eatsSapients();
     }
 
     /** A cannibal by either door: born with the gene, or broken by starvation. */
@@ -81,10 +96,15 @@ public final class CannibalismPolicy {
         return !ExpressedGenes.instancesOf(villager, CannibalGeneType.Instance.class).isEmpty();
     }
 
-    /** Whether this stack is the eater's own kind's flesh. Players resolve through their root too. */
+    /**
+     * Whether this stack is the eater's own kind's flesh. A diet's {@code kin_flesh} wins over the
+     * Root's, so a turned human hunts humans. Players resolve the same way.
+     */
     public static boolean isKin(LivingEntity eater, ItemStack stack) {
+        Diet diet = Diets.dietOf(eater);
         Root root = rootOf(eater);
-        ResourceLocation kin = root != null && root.kinFlesh() != null ? root.kinFlesh() : HUMAN_FLESH;
+        ResourceLocation kin = diet != null && diet.kinFlesh() != null ? diet.kinFlesh()
+                : root != null && root.kinFlesh() != null ? root.kinFlesh() : HUMAN_FLESH;
         return stack.is(net.minecraft.tags.TagKey.create(Registries.ITEM, kin));
     }
 

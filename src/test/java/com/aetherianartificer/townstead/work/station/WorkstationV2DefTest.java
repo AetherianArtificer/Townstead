@@ -1,10 +1,12 @@
 package com.aetherianartificer.townstead.work.station;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.aetherianartificer.townstead.work.recipe.DiscoveredRecipe;
 import com.aetherianartificer.townstead.work.recipe.RecipeIngredient;
 import com.aetherianartificer.townstead.work.recipe.StationType;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeAll;
@@ -161,6 +163,65 @@ class WorkstationV2DefTest {
                  "collect":{"type":"pheno:use_block",
                     "condition":{"type":"pheno:not_a_real_condition"}}}
                 """));
+    }
+
+    @Test
+    void outputContainersReadTheirGateAndRejectBadShapes() {
+        WorkstationV2Def def = parse("""
+                {"blocks":["example:kettle"],"recipe_container":"example:mug",
+                 "recipe_container_count":5,
+                 "output_containers":[
+                    {"output":"#example:bottled","container":"example:bottle"},
+                    {"output":"example:shot","container":"example:glass","mods":"absentmod"}]}
+                """);
+        assertNotNull(def);
+        assertEquals(5, def.recipeContainerCount());
+        assertEquals(List.of(ResourceLocation.tryParse("example:mug"), ResourceLocation.tryParse("example:bottle")),
+                def.recipeContainers(), "an entry whose gate is unmet offers no vessel");
+        assertNull(parse("""
+                {"blocks":["example:kettle"],"output_containers":[{"output":"example:shot"}]}
+                """));
+        assertNull(parse("""
+                {"blocks":["example:kettle"],"output_containers":[
+                    {"output":"example:shot","container":"example:glass","mods":3}]}
+                """));
+        assertNull(parse("""
+                {"blocks":["example:kettle"],"recipe_container_count":0}
+                """));
+    }
+
+    @Test
+    void stepConditionsAreReadAtTheBlockTheirWrappersReach() {
+        BlockPos anchor = new BlockPos(0, 64, 0);
+        JsonObject stove = JsonParser.parseString("""
+                {"type":"pheno:offset","y":-1,"block_action":{"type":"pheno:use_block",
+                    "condition":{"unmet_at":63}}}
+                """).getAsJsonObject();
+        java.util.function.BiPredicate<JsonElement, BlockPos> test = (condition, pos) ->
+                condition.getAsJsonObject().get("unmet_at").getAsInt() != pos.getY();
+
+        assertFalse(WorkstationV2Def.actionApplies(stove, anchor, test), "the stove below is read, not the pot");
+        assertTrue(WorkstationV2Def.actionApplies(stove, new BlockPos(0, 65, 0), test));
+        assertTrue(WorkstationV2Def.actionApplies(JsonParser.parseString(
+                "{\"type\":\"pheno:use_block\"}").getAsJsonObject(), anchor, test));
+        assertTrue(WorkstationV2Def.actionApplies(JsonParser.parseString(
+                "{\"on\":{},\"condition\":{\"unmet_at\":64}}").getAsJsonObject(), anchor, test),
+                "a selector picks its own blocks");
+    }
+
+    @Test
+    void brewinKegUsesTheInstalledLayout() throws Exception {
+        WorkstationV2Def keg = resource("brewin_keg");
+        assertEquals(List.of(0, 1, 2, 3), keg.ingredientSlots());
+        assertEquals(List.of(4), keg.containerSlots());
+        assertEquals(List.of(5), keg.outputSlots());
+    }
+
+    @Test
+    void breweryGathersItsVessel() throws Exception {
+        WorkstationV2Def kettle = resource("brewery_brewing_stations");
+        assertTrue(kettle.collectUses("container"));
+        assertEquals(ResourceLocation.tryParse("brewery:beer_mug"), kettle.recipeContainer());
     }
 
     @Test
@@ -541,7 +602,7 @@ class WorkstationV2DefTest {
         assertTrue(bowl.hasRepeatableWorkAction());
         assertNotNull(bowl.collect(),
                 "the bowl must collect through its resetting player interaction");
-        assertTrue(bowl.behavior().isJsonArray(),
+        assertNotNull(bowl.ready(),
                 "the bowl declares terminal-state recovery as data, not mod-specific Java");
         WorkstationV2Def mincer = resource("farm_and_charm_mincer");
         assertTrue(mincer.hasRepeatableWorkAction());

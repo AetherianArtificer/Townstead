@@ -465,6 +465,10 @@ public class Townstead {
                                     add.accept(SCARF.get());
                                 }
                                 townstead$addLifePotions(output);
+                                for (net.minecraft.resources.ResourceLocation surface : com.aetherianartificer.townstead.item.BlueprintStyle.knownSurfaces()) {
+                                    output.accept(new com.aetherianartificer.townstead.item.BlueprintStyle(surface, com.aetherianartificer.townstead.item.BlueprintStyle.CHARCOAL)
+                                            .applyTo(new net.minecraft.world.item.ItemStack(com.aetherianartificer.townstead.item.BlueprintStyle.blueprintItem())));
+                                }
                                 // A debug tool: only offered with operator items enabled.
                                 if (params.hasPermissions()) output.accept(BENCH_LINK.get());
                             })
@@ -544,6 +548,7 @@ public class Townstead {
         if (ModCompat.isLoaded("toughasnails")) {
             RECIPE_SERIALIZERS.register("tan_water_purification", () -> com.aetherianartificer.townstead.compat.thirst.TanWaterPurificationRecipe.Serializer.INSTANCE);
         }
+        RECIPE_SERIALIZERS.register("blueprint", () -> com.aetherianartificer.townstead.item.BlueprintRecipe.Serializer.INSTANCE);
         RECIPE_SERIALIZERS.register(modBus);
         modContainer.registerConfig(ModConfig.Type.SERVER, TownsteadConfig.SERVER_SPEC);
         townstead$registerClientConfigScreen(modContainer);
@@ -799,6 +804,8 @@ public class Townstead {
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
+                com.aetherianartificer.townstead.replace.CostumeFamilyPrune.run(e.getServer()));
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
                 com.aetherianartificer.townstead.compat.temperature.ToughAsNailsTemperatureBridge.INSTANCE.isActive());
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent e) ->
@@ -1275,6 +1282,7 @@ public class Townstead {
         if (ModCompat.isLoaded("toughasnails")) {
             RECIPE_SERIALIZERS.register("tan_water_purification", () -> com.aetherianartificer.townstead.compat.thirst.TanWaterPurificationRecipe.Serializer.INSTANCE);
         }
+        RECIPE_SERIALIZERS.register("blueprint", () -> com.aetherianartificer.townstead.item.BlueprintRecipe.Serializer.INSTANCE);
         RECIPE_SERIALIZERS.register(modBus);
         ModContainer modContainer = net.minecraftforge.fml.ModLoadingContext.get().getActiveContainer();
         modContainer.addConfig(new net.minecraftforge.fml.config.ModConfig(ModConfig.Type.SERVER, TownsteadConfig.SERVER_SPEC, modContainer));
@@ -1521,6 +1529,8 @@ public class Townstead {
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
                 townstead$seedBuildingRecognition(e.getServer()));
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
+                com.aetherianartificer.townstead.replace.CostumeFamilyPrune.run(e.getServer()));
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
                 com.aetherianartificer.townstead.politics.charter.CharterBellPoiCompat.extendForge());
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.server.ServerStartedEvent e) ->
@@ -3738,7 +3748,7 @@ public class Townstead {
 
     //? if neoforge {
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar(MOD_ID).versioned("16");
+        var registrar = event.registrar(MOD_ID).versioned("17");
         registrar.playToServer(
                 com.aetherianartificer.townstead.devlink.BenchLinkActionC2SPayload.TYPE,
                 com.aetherianartificer.townstead.devlink.BenchLinkActionC2SPayload.STREAM_CODEC,
@@ -3906,6 +3916,12 @@ public class Townstead {
                 com.aetherianartificer.townstead.pheno.screen.ScreenEffectS2CPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(
                         () -> com.aetherianartificer.townstead.pheno.screen.ScreenEffectS2CPayload.accept(payload))
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.profession.ProfessionClothingSyncPayload.TYPE,
+                com.aetherianartificer.townstead.profession.ProfessionClothingSyncPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> com.aetherianartificer.townstead.profession.ProfessionClothingSyncPayload.accept(payload))
         );
         registrar.playToClient(
                 com.aetherianartificer.townstead.pheno.particle.DataParticlesS2CPayload.TYPE,
@@ -6460,9 +6476,13 @@ public class Townstead {
             //? if neoforge {
             PacketDistributor.sendToPlayer(sp,
                     com.aetherianartificer.townstead.pheno.particle.DataParticlesS2CPayload.snapshot());
+            PacketDistributor.sendToPlayer(sp,
+                    com.aetherianartificer.townstead.profession.ProfessionClothingSyncPayload.snapshot());
             //?} else if forge {
             /*TownsteadNetwork.sendToPlayer(sp,
                     com.aetherianartificer.townstead.pheno.particle.DataParticlesS2CPayload.snapshot());
+            TownsteadNetwork.sendToPlayer(sp,
+                    com.aetherianartificer.townstead.profession.ProfessionClothingSyncPayload.snapshot());
             *///?}
         } catch (Exception ex) {
             LOGGER.error("Failed to send origin data to {}", sp.getName().getString(), ex);

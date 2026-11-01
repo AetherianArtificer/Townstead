@@ -151,8 +151,7 @@ public final class ProfessionClothing {
         if (villager == null) return ClothingChoice.HairPolicy.NORMAL;
         ResourceLocation professionId = BuiltInRegistries.VILLAGER_PROFESSION
                 .getKey(villager.getVillagerData().getProfession());
-        ProfessionDef def = professionId == null ? null : ProfessionDefs.all().get(professionId);
-        List<ClothingChoice> choices = choicesFor(villager, def);
+        List<ClothingChoice> choices = ProfessionClothingSyncPayload.every(professionId);
         if (choices.isEmpty()) return ClothingChoice.HairPolicy.NORMAL;
         return hairPolicy(catalogue(), villager.getGenetics().getGender(),
                 choices, villager.getClothes());

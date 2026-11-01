@@ -239,6 +239,7 @@ public final class Journeys extends SavedData {
                 villager.getPersistentData().remove(LEAVING_TAG);
                 if (leaving.purpose() == null) {
                     McaResidency.leaveVillage(villager);
+                    com.aetherianartificer.townstead.compat.mca.McaFamily.forget(villager);
                     villager.discard();
                 } else {
                     depart(villager, leaving.purpose(), leaving.days(), leaving.data());

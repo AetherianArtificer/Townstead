@@ -70,6 +70,11 @@ public final class TownsteadVillagers {
         }
     }
 
+    /** Forgets a villager who will not tick again; the snapshot on the entity stays the record. */
+    public static void release(VillagerEntityMCA villager) {
+        STATES.remove(villager.getUUID());
+    }
+
     public static void purgeExpired(long gameTime, long maxIdleTicks) {
         STATES.object2ObjectEntrySet().removeIf(entry ->
                 !entry.getValue().isDirty() && gameTime - entry.getValue().lastSeenGameTime() > maxIdleTicks);

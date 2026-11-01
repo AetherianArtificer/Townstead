@@ -57,6 +57,8 @@ public final class TownsteadClient {
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onGatherTooltipComponents);
             NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.ItemTooltipEvent e) ->
                     com.aetherianartificer.townstead.ritual.Blessings.tooltip(e.getItemStack(), e.getToolTip()));
+            NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.ItemTooltipEvent e) ->
+                    com.aetherianartificer.townstead.item.BlueprintStyle.tooltip(e.getItemStack(), e.getToolTip()));
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onRenderNameTag);
             NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGHEST,
@@ -111,6 +113,8 @@ public final class TownsteadClient {
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onRenderNameTag);
             MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.ItemTooltipEvent e) ->
                     com.aetherianartificer.townstead.ritual.Blessings.tooltip(e.getItemStack(), e.getToolTip()));
+            MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.ItemTooltipEvent e) ->
+                    com.aetherianartificer.townstead.item.BlueprintStyle.tooltip(e.getItemStack(), e.getToolTip()));
             MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.HIGHEST,
                     com.aetherianartificer.townstead.client.render.WildCostumeRender::onRenderLivingPre);
             MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.render.WildCostumeRender::onEntityLeave);
