@@ -206,10 +206,16 @@ public final class CauponaFluidRecipes {
         *///?}
             RecipeProjections.View projection = RecipeProjections.project(id, BOWL, recipe);
             ResourceLocation filled = projection.idValue("output");
+            //? if >=1.21 {
             Set<ResourceLocation> empties = CauponaRecipeAccess.ingredientItems(
                     projection.value("container"));
             if (!projection.succeeded() || filled == null || empties.isEmpty()) continue;
             ResourceLocation empty = empties.iterator().next();
+            //?} else {
+            /*if (!projection.succeeded() || filled == null) continue;
+            // This version's pot only fills a vanilla bowl, so its bowl recipes name no container.
+            ResourceLocation empty = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(net.minecraft.world.item.Items.BOWL);
+            *///?}
 
             // One bowl recipe covers every fluid its ingredient matches, so it becomes one pour
             // per fluid — the join only ever looks a fluid up by id.

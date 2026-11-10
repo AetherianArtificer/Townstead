@@ -224,13 +224,17 @@ public final class VampireVillagers {
         if (vampire == data.getBoolean(GAVE_NIGHT_SHIFT)) return;
         var schedule = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).schedule();
         if (vampire) {
+            if (schedule.hasNonDefaultCustomShifts()) {
+                data.putBoolean(GAVE_NIGHT_SHIFT, true);
+                return;
+            }
+            // Unmarked while the template is missing, so a later check can still give it.
+            var shift = com.aetherianartificer.townstead.shift.template.ShiftTemplateRegistry
+                    .resolve(villager.level().getServer(), NIGHT_SHIFT).orElse(null);
+            if (shift == null) return;
             data.putBoolean(GAVE_NIGHT_SHIFT, true);
-            if (schedule.hasNonDefaultCustomShifts()) return;
-            com.aetherianartificer.townstead.shift.template.ShiftTemplateRegistry.resolve(villager.level().getServer(), NIGHT_SHIFT)
-                    .ifPresent(shift -> {
-                        schedule.setShifts(shift.copyShifts());
-                        schedule.setTemplateId(NIGHT_SHIFT.toString());
-                    });
+            schedule.setShifts(shift.copyShifts());
+            schedule.setTemplateId(NIGHT_SHIFT.toString());
         } else {
             data.remove(GAVE_NIGHT_SHIFT);
             if (!NIGHT_SHIFT.toString().equals(schedule.templateId())) return;

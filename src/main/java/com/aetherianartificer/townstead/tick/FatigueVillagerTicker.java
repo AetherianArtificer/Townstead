@@ -232,8 +232,8 @@ public final class FatigueVillagerTicker {
             int collapseThreshold = FatigueData.COLLAPSE_THRESHOLD;
             int recoveryGate = FatigueData.RECOVERY_GATE;
 
-            // --- Safety: clear stale collapse if fatigue is below threshold ---
-            if (needs.collapsed() && currentFatigue < collapseThreshold) {
+            // --- Recovery: collapse holds until fatigue is below the gate ---
+            if (needs.collapsed() && currentFatigue < recoveryGate) {
                 needs.setCollapsed(false);
                 needs.setGated(false);
                 changed = true;
@@ -312,7 +312,9 @@ public final class FatigueVillagerTicker {
                 // the fatigue bed request until the villager stands idle forever.
                 overrideActive = true;
             }
-        } else if (overrideActive && !self.isSleeping()) {
+        } else if (overrideActive && !self.isSleeping()
+                && !com.aetherianartificer.townstead.performance.CollapsePlayback.sleepingRough(self)) {
+            // A rough sleeper stays down until rested, as in a bed; keepsSleepingRough ends it.
             // Restore the pre-override schedule first, then let apply() overwrite
             // if the villager has custom shifts. This prevents the schedule from
             // staying stuck on all-REST for villagers without custom shifts,
@@ -347,6 +349,7 @@ public final class FatigueVillagerTicker {
                 && BorrowBedWhenFatiguedTask.isNavigating(self);
         BorrowBedWhenFatiguedTask.requestEmergencyFallback(
                 self, shouldSeek && assignedBed == null
+                        && !com.aetherianartificer.townstead.performance.CollapsePlayback.sleepingRough(self)
                         && (!needs.hasEmergencyBed() || activelyBorrowingBed));
         // No home bed and none to borrow: after a short wait, lie down where they are.
         boolean noBed = overrideActive && shouldSeek && assignedBed == null && !needs.hasEmergencyBed()
@@ -423,22 +426,11 @@ public final class FatigueVillagerTicker {
         if (currentFatigue != state.lastSyncedFatigue || currentCollapsed != state.lastSyncedCollapsed) {
             state.lastSyncedFatigue = currentFatigue;
             state.lastSyncedCollapsed = currentCollapsed;
-            CompoundTag fatigue = needs.fatigueTag();
-            //? if neoforge {
-            PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$fatigueSync(self, fatigue));
-            //?} else if forge {
-            /*TownsteadNetwork.sendToTrackingEntity(self, Townstead.townstead$fatigueSync(self, fatigue));
-            *///?}
+            syncFatigue(self, needs);
             // Client sync and entity persistence advance together. Fatigue
             // changes are infrequent (500-tick integration), so this avoids a
             // per-tick NBT cost while surviving unload/rejoin reliably.
             TownsteadVillagers.flush(self);
-        }
-
-        // --- Cleanup ---
-        if (!self.isAlive() || self.isRemoved()) {
-            restoreHomeAfterEmergencySleep(self, needs);
-            forget(self);
         }
     }
 
@@ -450,11 +442,21 @@ public final class FatigueVillagerTicker {
                 && com.aetherianartificer.townstead.pheno.state.StateForms.canSleep(self);
     }
 
-    /** Drop memory-only ticker state when the dispatcher observes removal. */
+    /** For a villager who will not tick again: gives back a borrowed bed and drops memory-only ticker state. */
     public static void forget(VillagerEntityMCA self) {
         if (self == null) return;
+        restoreHomeAfterEmergencySleep(self, TownsteadVillagers.get(self).needs());
         BorrowBedWhenFatiguedTask.forget(self);
         STATE.remove(self.getUUID());
+    }
+
+    private static void syncFatigue(VillagerEntityMCA self, TownsteadVillager.Needs needs) {
+        CompoundTag fatigue = needs.fatigueTag();
+        //? if neoforge {
+        PacketDistributor.sendToPlayersTrackingEntity(self, Townstead.townstead$fatigueSync(self, fatigue));
+        //?} else if forge {
+        /*TownsteadNetwork.sendToTrackingEntity(self, Townstead.townstead$fatigueSync(self, fatigue));
+        *///?}
     }
 
     private static void clearRuntimeOverride(VillagerEntityMCA self, ServerLevel level) {
@@ -463,6 +465,13 @@ public final class FatigueVillagerTicker {
         TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
         boolean changed = false;
 
+        // Nothing would ever clear these while fatigue is off, and clients would keep drawing the collapse.
+        if (needs.collapsed() || needs.gated()) {
+            needs.setCollapsed(false);
+            needs.setGated(false);
+            syncFatigue(self, needs);
+            changed = true;
+        }
         if (needs.restOverrideActive()) {
             if (state != null
                     && state.overrideBrain == self.getBrain()

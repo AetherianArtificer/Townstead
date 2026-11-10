@@ -29,9 +29,24 @@ import java.util.List;
 @Mixin(value = net.conczin.mca.item.BabyItem.class, remap = false)
 public abstract class BabyItemInheritanceMixin {
 
+    // Named in full: TownsteadMixinPlugin can put a stand-in first for Capitals, which a bare name would pick.
+    //? if neoforge {
+    @Inject(method = {"birthChild(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/core/BlockPos;)Ljava/util/Optional;", "birthChild(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/server/level/ServerPlayer;)Lnet/conczin/mca/entity/VillagerEntityMCA;"}, at = @At("HEAD"))
+    //?} else {
+    /*@Inject(method = "birthChild", at = @At("HEAD"))
+    *///?}
+    private void townstead$beginBirth(CallbackInfoReturnable<Object> cir) {
+        com.aetherianartificer.townstead.naming.SpawnNaming.beginBirth();
+    }
+
     // Newer MCA returns Optional<VillagerEntityMCA> (empty when there is no room to place the baby).
-    @Inject(method = "birthChild", at = @At("RETURN"))
+    //? if neoforge {
+    @Inject(method = {"birthChild(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/core/BlockPos;)Ljava/util/Optional;", "birthChild(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/server/level/ServerPlayer;)Lnet/conczin/mca/entity/VillagerEntityMCA;"}, at = @At("RETURN"))
+    //?} else {
+    /*@Inject(method = "birthChild", at = @At("RETURN"))
+    *///?}
     private void townstead$inheritOnBirth(CallbackInfoReturnable<Object> cir) {
+        com.aetherianartificer.townstead.naming.SpawnNaming.endBirth();
         Object result = cir.getReturnValue();
         if (result instanceof java.util.Optional<?> optional) result = optional.orElse(null);
         if (!(result instanceof VillagerEntityMCA child) || child.level().isClientSide) return;
@@ -53,7 +68,9 @@ public abstract class BabyItemInheritanceMixin {
         // birthChild spawned the child mid-method, so nearby players already received
         // the founder-seeded placeholder sync; re-push the inherited state.
         RootSpawnHandler.broadcastLateInheritance(child);
+        com.aetherianartificer.townstead.compat.mcacapitals.CapitalsNameBridge.recordBirth(child);
         // Both parents are in hand here, which is exactly what a family name needs.
+        com.aetherianartificer.townstead.naming.Naming.settleBirth(child);
         com.aetherianartificer.townstead.naming.VillagerNames.publish(child);
         com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.birth(child);
     }

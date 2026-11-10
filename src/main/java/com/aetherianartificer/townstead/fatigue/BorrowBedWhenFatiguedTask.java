@@ -73,17 +73,7 @@ public final class BorrowBedWhenFatiguedTask extends Behavior<VillagerEntityMCA>
         if (gameTime < nextSearchTick) return false;
         nextSearchTick = gameTime + SEARCH_INTERVAL_TICKS;
 
-        long dayTime = level.getDayTime() % 24000L;
-        Activity scheduledActivity = villager.getBrain().getSchedule().getActivityAt((int) dayTime);
-        RestDecision decision = RestCoordinator.decide(RestCoordinator.capture(
-                villager,
-                needs,
-                true,
-                false,
-                scheduledActivity,
-                needs.restOverrideActive()
-        ));
-        if (!decision.shouldSeekBed()) return false;
+        if (!seeksBed(level, villager, needs)) return false;
 
         candidate = level.getPoiManager().findClosest(
                 holder -> holder.is(PoiTypes.HOME),
@@ -168,9 +158,16 @@ public final class BorrowBedWhenFatiguedTask extends Behavior<VillagerEntityMCA>
         if (borrowedBed == null || villager.isSleeping() || !REQUESTED.contains(villager)) return false;
         if (villager.getBrain().getMemory(MemoryModuleType.HOME).isPresent()) return false;
         TownsteadVillager.Needs needs = TownsteadVillagers.get(villager).needs();
-        return ownsReservation(level, needs, borrowedBed)
-                && RestCoordinator.decide(RestCoordinator.capture(villager, needs, true, false))
-                .shouldSeekBed();
+        return ownsReservation(level, needs, borrowedBed) && seeksBed(level, villager, needs);
+    }
+
+    /** Forced rest shows as an all-REST schedule, so the override must be passed or it reads as ordinary rest. */
+    private static boolean seeksBed(ServerLevel level, VillagerEntityMCA villager, TownsteadVillager.Needs needs) {
+        long dayTime = level.getDayTime() % 24000L;
+        Activity scheduledActivity = villager.getBrain().getSchedule().getActivityAt((int) dayTime);
+        return RestCoordinator.decide(RestCoordinator.capture(
+                villager, needs, true, false, scheduledActivity, needs.restOverrideActive()
+        )).shouldSeekBed();
     }
 
     @Override

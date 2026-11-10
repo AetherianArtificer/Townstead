@@ -89,6 +89,10 @@ final class RitualSession {
             fail("ritual.townstead.broken.hurt");
             return;
         }
+        if (outranked(officiant) || outranked(candidate)) {
+            fail("ritual.townstead.broken.absent");
+            return;
+        }
         if (candidate instanceof Player player && player.isShiftKeyDown()) {
             fail("ritual.townstead.broken.backed_out");
             return;
@@ -105,6 +109,11 @@ final class RitualSession {
         if (t >= ritual.duration()) complete();
     }
 
+    private static boolean outranked(LivingEntity actor) {
+        return actor instanceof VillagerEntityMCA villager && com.aetherianartificer.townstead.villager.VillagerControl
+                .outranked(villager, com.aetherianartificer.townstead.villager.VillagerControl.Owner.RITUAL);
+    }
+
     private void gather() {
         boolean ready = true;
         for (Map.Entry<LivingEntity, Vec3> entry : spots.entrySet()) {
@@ -117,7 +126,8 @@ final class RitualSession {
                 else if (actor == candidate) ready = false;
                 continue;
             }
-            if (actor instanceof VillagerEntityMCA villager) {
+            if (actor instanceof VillagerEntityMCA villager && com.aetherianartificer.townstead.villager.VillagerControl
+                    .mayMove(villager, com.aetherianartificer.townstead.villager.VillagerControl.Owner.RITUAL)) {
                 villager.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(BlockPos.containing(spot), 0.5f, 0));
             }
             if (actor == officiant || actor == candidate) ready = false;
@@ -139,6 +149,7 @@ final class RitualSession {
                 if (player.position().distanceToSqr(spot) > DRIFT_SQR) place(player, spot);
                 continue;
             }
+            if (outranked(actor)) continue;
             if (actor instanceof VillagerEntityMCA villager) {
                 villager.getNavigation().stop();
                 villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);

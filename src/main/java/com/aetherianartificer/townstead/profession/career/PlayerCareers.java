@@ -23,8 +23,17 @@ public final class PlayerCareers {
 
     /** Read-only use. Mutations must go through {@link #mutate} or they will not persist. */
     public static CareerProfile get(Player player) {
-        return CACHE.computeIfAbsent(player.getUUID(),
-                uuid -> CareerProfile.fromTag(root(player).getCompound(KEY)));
+        CareerProfile cached = CACHE.get(player.getUUID());
+        if (cached != null) return cached;
+        CareerProfile profile = CareerProfile.fromTag(root(player).getCompound(KEY));
+        if (!profile.insightGated() && !player.level().isClientSide()) {
+            profile.grandfatherInsight();
+            CompoundTag root = root(player);
+            root.put(KEY, profile.toTag());
+            store(player, root);
+        }
+        CareerProfile raced = CACHE.putIfAbsent(player.getUUID(), profile);
+        return raced != null ? raced : profile;
     }
 
     public static void mutate(Player player, Consumer<CareerProfile> mutation) {

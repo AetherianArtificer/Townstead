@@ -129,6 +129,7 @@ public final class PersonaCommands {
             VillagerEntityMCA villager = PersonaService.find(source.getServer(), instance.villager());
             instances.remove(instance.villager());
             if (villager != null) {
+                com.aetherianartificer.townstead.tick.FatigueVillagerTicker.forget(villager);
                 villager.discard();
                 removed++;
             } else {

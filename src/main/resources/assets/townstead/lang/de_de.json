@@ -107,7 +107,7 @@
   "townstead.root.discovered.body": "%1$s hat sich mit einem angefreundet. Spieler können jetzt %2$s wählen.",
   "townstead.rebirth.button": "Wiedergeboren werden ...",
   "townstead.rebirth.title": "Ein neues Leben beginnen",
-  "townstead.rebirth.body": "%s stirbt und bleibt in Erinnerung. Du kehrst als jemand Neues zurück, fremd in der Stadt, mit neuem Namen, Körper und neuer Wurzel. Dein Land und deine Gebäude behältst du.",
+  "townstead.rebirth.body": "%s stirbt und bleibt in Erinnerung. Du kehrst als jemand Neues zurück, fremd in der Stadt, mit neuem Namen, Körper und neuer Wurzel. Dein Land und deine Gebäude behältst du. Deine Berufe und Fähigkeiten beginnen von vorn, und ein Tagebuch darüber bleibt zurück.",
   "townstead.rebirth.confirm": "Wiedergeboren werden",
   "townstead.rebirth.descendant": "Als Nachfahre weiterspielen ...",
   "townstead.rebirth.descendant.failed": "MCA Descendants konnte nicht übernehmen. Du bist wie gewohnt wieder erschienen.",

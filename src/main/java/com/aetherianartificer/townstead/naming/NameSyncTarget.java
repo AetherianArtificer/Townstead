@@ -25,12 +25,61 @@ public final class NameSyncTarget {
         NameParts parts = VillagerNames.parts(villager);
         NameSyncPayload payload = new NameSyncPayload(
                 villager.getId(), familyFor(player, villager, parts), com.aetherianartificer.townstead.culture.Cultures.rootOf(Naming.cultureOf(villager)), parts.order(),
-                rule(villager), traditionOf(villager));
+                rule(villager), traditionOf(villager), parts.familyLocked());
         //? if neoforge {
         PacketDistributor.sendToPlayer(player, payload);
         //?} else {
         /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(player, payload);
         *///?}
+    }
+
+    /** Tells this player and everyone who can see them about their family name. */
+    public static void syncPlayer(net.minecraft.server.level.ServerPlayer player) {
+        NameSyncPayload payload = playerPayload(player);
+        //? if neoforge {
+        PacketDistributor.sendToPlayer(player, payload);
+        PacketDistributor.sendToPlayersTrackingEntity(player, payload);
+        //?} else {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(player, payload);
+        com.aetherianartificer.townstead.TownsteadNetwork.sendToTrackingEntity(player, payload);
+        *///?}
+    }
+
+    public static void syncPlayerTo(net.minecraft.server.level.ServerPlayer watcher, net.minecraft.server.level.ServerPlayer player) {
+        NameSyncPayload payload = playerPayload(player);
+        //? if neoforge {
+        PacketDistributor.sendToPlayer(watcher, payload);
+        //?} else {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(watcher, payload);
+        *///?}
+    }
+
+    public static void sendPlayerFamilies(net.minecraft.server.level.ServerPlayer player) {
+        PlayerFamiliesS2CPayload payload = new PlayerFamiliesS2CPayload(
+                NamingRegisterSavedData.get(player.server).playerFamilies());
+        //? if neoforge {
+        PacketDistributor.sendToPlayer(player, payload);
+        //?} else {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(player, payload);
+        *///?}
+    }
+
+    public static void sendCatalog(net.minecraft.server.level.ServerPlayer player) {
+        NamingCatalogS2CPayload payload = NamingCatalogS2CPayload.snapshot();
+        //? if neoforge {
+        PacketDistributor.sendToPlayer(player, payload);
+        //?} else {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToPlayer(player, payload);
+        *///?}
+    }
+
+    private static NameSyncPayload playerPayload(net.minecraft.server.level.ServerPlayer player) {
+        NamingTradition tradition = Naming.traditionOf(player);
+        String culture = com.aetherianartificer.townstead.root.PlayerRoot.getCulture(player);
+        return new NameSyncPayload(player.getId(), Naming.familyName(player),
+                culture.isEmpty() ? "" : com.aetherianartificer.townstead.culture.Cultures.rootOf(culture), PlayerNames.order(player),
+                tradition == null ? NamingTradition.FamilyType.NONE : tradition.family().type(),
+                tradition == null ? "" : tradition.id().toString(), PlayerNames.isLocked(player));
     }
 
     private static void send(VillagerEntityMCA villager, NameParts parts) {
@@ -46,7 +95,7 @@ public final class NameSyncTarget {
         }
         NameSyncPayload payload = new NameSyncPayload(
                 villager.getId(), parts.family(), com.aetherianartificer.townstead.culture.Cultures.rootOf(Naming.cultureOf(villager)), parts.order(),
-                rule(villager), traditionOf(villager));
+                rule(villager), traditionOf(villager), parts.familyLocked());
         //? if neoforge {
         PacketDistributor.sendToPlayersTrackingEntity(villager, payload);
         //?} else {

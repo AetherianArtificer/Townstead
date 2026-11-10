@@ -20,18 +20,42 @@ import net.conczin.mca.entity.ai.relationship.EntityRelationship;
  */
 public final class FamilyTreeNameTarget {
 
+    private static final int CHECK_TICKS = 40;
+
     private FamilyTreeNameTarget() {}
 
     public static void bootstrap() {
         VillagerNames.addTarget(FamilyTreeNameTarget::write);
     }
 
+    /**
+     * Others change this name without telling anyone: MCA's editor saves its given name field over
+     * it, and MCA Capitals changes a surname on a marriage. The editor reads its field from here, so
+     * an old surname left here would be saved as part of the given name.
+     */
+    public static void tick(VillagerEntityMCA villager, long gameTime) {
+        if ((gameTime + villager.getId()) % CHECK_TICKS != 0) return;
+        String name = treeName(villager, VillagerNames.parts(villager));
+        if (name.isEmpty()) return;
+        try {
+            EntityRelationship.of(villager).ifPresent(relationship -> {
+                if (!name.equals(relationship.getFamilyEntry().getName())) VillagerNames.publish(villager);
+            });
+        } catch (Throwable ignored) {
+            // A villager with no family entry yet is one whose node is written when it is created.
+        }
+    }
+
+    private static String treeName(VillagerEntityMCA villager, NameParts parts) {
+        return VillagerNames.familyHidden(villager, null)
+                ? NameParts.withoutFamily(parts.given(), parts.family(), parts.order())
+                : parts.fullName();
+    }
+
     private static void write(VillagerEntityMCA villager, NameParts parts) {
         if (villager.level().isClientSide) return;
 
-        String name = VillagerNames.familyHidden(villager, null)
-                ? NameParts.withoutFamily(parts.given(), parts.family(), parts.order())
-                : parts.fullName();
+        String name = treeName(villager, parts);
         if (name.isEmpty()) return;
         try {
             EntityRelationship.of(villager).ifPresent(relationship -> relationship.getFamilyEntry().setName(name));

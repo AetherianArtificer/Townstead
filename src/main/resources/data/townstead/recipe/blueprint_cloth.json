@@ -3,14 +3,14 @@
   "group": "townstead:blueprint",
   "category": "misc",
   "surface": "townstead:cloth",
-  "ingredients": [
-    { "tag": "townstead:blueprint_surface/cloth" },
-    { "tag": "townstead:blueprint_surface/cloth" },
-    { "tag": "townstead:blueprint_surface/cloth" },
-    { "tag": "townstead:blueprint_surface/cloth" },
-    { "tag": "townstead:blueprint_surface/cloth" },
-    { "tag": "townstead:blueprint_ink" }
+  "pattern": [
+    "SSS",
+    "SIS"
   ],
+  "key": {
+    "S": { "tag": "townstead:blueprint_surface/cloth" },
+    "I": { "tag": "townstead:blueprint_ink" }
+  },
   "result": {
     "id": "mca:blueprint"
   }

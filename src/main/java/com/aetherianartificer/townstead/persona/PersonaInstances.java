@@ -41,6 +41,8 @@ public final class PersonaInstances extends SavedData {
     private final List<Pending> pending = new java.util.ArrayList<>();
     /** Towns each Persona was asked to leave, by {@link #key}: they never come back to them. */
     private final java.util.Set<String> dismissed = new java.util.LinkedHashSet<>();
+    /** The world day each Persona's town was first seen empty, while it stays empty. */
+    private final Map<UUID, Long> emptySince = new LinkedHashMap<>();
 
     public static PersonaInstances get(MinecraftServer server) {
         //? if >=1.21 {
@@ -83,7 +85,21 @@ public final class PersonaInstances extends SavedData {
         Instance instance = byVillager.get(villager);
         if (instance == null) return;
         byVillager.put(villager, new Instance(instance.persona(), villager, dimension, village, instance.created(), instance.name()));
+        emptySince.remove(villager);
         setDirty();
+    }
+
+    /** The day this Persona's town was first seen empty, starting the count at {@code today} if it is not running. */
+    public long emptySince(UUID villager, long today) {
+        Long since = emptySince.get(villager);
+        if (since != null) return since;
+        emptySince.put(villager, today);
+        setDirty();
+        return today;
+    }
+
+    public void clearEmptySince(UUID villager) {
+        if (emptySince.remove(villager) != null) setDirty();
     }
 
     /** The world-unique Persona's instance while they are on the road, or null. */
@@ -157,6 +173,7 @@ public final class PersonaInstances extends SavedData {
 
     public boolean remove(UUID villager) {
         boolean removed = byVillager.remove(villager) != null;
+        emptySince.remove(villager);
         if (removed) setDirty();
         return removed;
     }
@@ -196,6 +213,11 @@ public final class PersonaInstances extends SavedData {
         }
         ListTag dismissedList = tag.getList("dismissed", Tag.TAG_STRING);
         for (int i = 0; i < dismissedList.size(); i++) data.dismissed.add(dismissedList.getString(i));
+        ListTag emptyList = tag.getList("empty_since", Tag.TAG_COMPOUND);
+        for (int i = 0; i < emptyList.size(); i++) {
+            CompoundTag entry = emptyList.getCompound(i);
+            if (entry.hasUUID("villager")) data.emptySince.put(entry.getUUID("villager"), entry.getLong("day"));
+        }
         return data;
     }
 
@@ -239,6 +261,14 @@ public final class PersonaInstances extends SavedData {
         ListTag dismissedList = new ListTag();
         for (String key : dismissed) dismissedList.add(net.minecraft.nbt.StringTag.valueOf(key));
         tag.put("dismissed", dismissedList);
+        ListTag emptyList = new ListTag();
+        for (Map.Entry<UUID, Long> empty : emptySince.entrySet()) {
+            CompoundTag entry = new CompoundTag();
+            entry.putUUID("villager", empty.getKey());
+            entry.putLong("day", empty.getValue());
+            emptyList.add(entry);
+        }
+        tag.put("empty_since", emptyList);
         return tag;
     }
 }

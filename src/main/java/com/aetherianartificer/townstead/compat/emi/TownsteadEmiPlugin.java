@@ -20,6 +20,7 @@ public class TownsteadEmiPlugin implements EmiPlugin {
 
     @Override
     public void register(EmiRegistry registry) {
+        BlueprintEmiRecipe.register(registry);
         Set<Item> gated = Set.copyOf(RecipeViewerGates.hidden());
         applied = gated;
         if (!gated.isEmpty()) registry.removeEmiStacks(stack -> gated.contains(stack.getItemStack().getItem()));

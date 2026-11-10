@@ -253,6 +253,10 @@ final class StorySession {
 
     boolean finished() { return finished; }
 
+    boolean involves(VillagerEntityMCA other) {
+        return villager == other || cast.has(other);
+    }
+
     /**
      * The menu entry the story's own {@code menu()} function gives right now, or null when it has
      * none or gives nothing. Reads the story without moving it on.

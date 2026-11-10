@@ -35,4 +35,31 @@ public abstract class BuildingStackQuantityMixin {
         }
         for (int i = recorded; i < units; i++) positions.add(pos.immutable());
     }
+
+    //? if forge {
+    /*// This MCA has no per-block record step, so the finished list is expanded instead.
+    @Inject(method = "validateBuilding", at = @At("RETURN"), remap = false, require = 0)
+    private void townstead$expandAfterScan(Level level, java.util.Set<BlockPos> done,
+                                           org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Building.validationResult> cir) {
+        townstead$expandStackedUnits(level);
+    }
+
+    @Inject(method = "validateBlocks", at = @At("RETURN"), remap = false, require = 0)
+    private void townstead$expandAfterValidate(Level level, CallbackInfo ci) {
+        townstead$expandStackedUnits(level);
+    }
+
+    @org.spongepowered.asm.mixin.Unique
+    private void townstead$expandStackedUnits(Level level) {
+        for (List<BlockPos> positions : ((Building) (Object) this).getBlocks().values()) {
+            for (BlockPos pos : new java.util.LinkedHashSet<>(positions)) {
+                if (!level.isLoaded(pos)) continue;
+                int units = BuildingBlockQuantity.units(level.getBlockState(pos));
+                if (units <= 1) continue;
+                int recorded = java.util.Collections.frequency(positions, pos);
+                for (int i = recorded; i < units; i++) positions.add(pos.immutable());
+            }
+        }
+    }
+    *///?}
 }

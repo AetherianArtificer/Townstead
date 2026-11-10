@@ -66,10 +66,6 @@ public final class LifeStageTicker {
             boolean immobile = stage != null && !stage.mobile();
             if (villager.isNoAi() != immobile) villager.setNoAi(immobile);
         }
-
-        if (!villager.isAlive() || villager.isRemoved()) {
-            LAST_NO_AGING.remove(villager.getId());
-        }
     }
 
     // MCA 7.6.28+/7.7.18+ editor age-lock: fold NO_AGING trait toggles into the granted-ageless
@@ -77,11 +73,11 @@ public final class LifeStageTicker {
     // so a pre-mirror mismatch (e.g. a potion grant from before the trait existed) is never
     // "corrected" into an unfreeze; the editor only operates on loaded villagers, so every toggle
     // is observed as an edge here. The potions write flag and trait together, producing no edge.
-    private static final java.util.Map<Integer, Boolean> LAST_NO_AGING = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<VillagerEntityMCA, Boolean> LAST_NO_AGING = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
 
     private static void reconcileNoAgingTrait(VillagerEntityMCA villager) {
         boolean locked = com.aetherianartificer.townstead.root.trait.NoAgingTrait.has(villager);
-        Boolean last = LAST_NO_AGING.put(villager.getId(), locked);
+        Boolean last = LAST_NO_AGING.put(villager, locked);
         if (last == null || last == locked) return;
         TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
         if (life.ageless() == locked) return;

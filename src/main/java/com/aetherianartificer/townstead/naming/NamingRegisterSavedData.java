@@ -30,6 +30,10 @@ public class NamingRegisterSavedData extends SavedData {
     private static final String KEY_REGIONS = "regions";
     private static final String KEY_VILLAGES = "villages";
     private static final String KEY_VILLAGE_CULTURES = "villageCultures";
+    private static final String KEY_PLAYER_FAMILIES = "playerFamilies";
+    private static final String K_PLAYER = "player";
+    private static final String K_FAMILY = "family";
+    private static final String K_ORDER = "order";
     private static final String K_REGION_ID = "region";
     private static final String K_VILLAGE_ID = "village";
     private static final String K_DIMENSION = "dimension";
@@ -39,6 +43,7 @@ public class NamingRegisterSavedData extends SavedData {
     private final Map<Integer, String> regions = new LinkedHashMap<>();
     private final Map<Integer, String> villages = new LinkedHashMap<>();
     private final Map<VillageCultureKey, String> villageCultures = new LinkedHashMap<>();
+    private final Map<java.util.UUID, PlayerFamiliesS2CPayload.Entry> playerFamilies = new LinkedHashMap<>();
 
     public NamingRegisterSavedData() {}
 
@@ -54,6 +59,22 @@ public class NamingRegisterSavedData extends SavedData {
                 NamingRegisterSavedData::new,
                 FILE_ID);
         *///?}
+    }
+
+    /** Every player's family name as last seen, which keeps it readable while they are offline. */
+    public Map<java.util.UUID, PlayerFamiliesS2CPayload.Entry> playerFamilies() {
+        return Map.copyOf(playerFamilies);
+    }
+
+    /** Records a player's family name, or forgets it when empty. Whether anything changed. */
+    public boolean putPlayerFamily(java.util.UUID player, String family, NamingTradition.Order order) {
+        PlayerFamiliesS2CPayload.Entry next = family == null || family.isBlank()
+                ? null : new PlayerFamiliesS2CPayload.Entry(family, order);
+        if (java.util.Objects.equals(playerFamilies.get(player), next)) return false;
+        if (next == null) playerFamilies.remove(player);
+        else playerFamilies.put(player, next);
+        setDirty();
+        return true;
     }
 
     /** The register frozen for this MCA nationality region, or empty when none is recorded yet. */
@@ -131,6 +152,15 @@ public class NamingRegisterSavedData extends SavedData {
         readInto(tag, KEY_REGIONS, K_REGION_ID, data.regions);
         readInto(tag, KEY_VILLAGES, K_VILLAGE_ID, data.villages);
         readVillageCultures(tag, data.villageCultures);
+        ListTag families = tag.getList(KEY_PLAYER_FAMILIES, Tag.TAG_COMPOUND);
+        for (int i = 0; i < families.size(); i++) {
+            CompoundTag entry = families.getCompound(i);
+            String family = entry.getString(K_FAMILY);
+            if (entry.hasUUID(K_PLAYER) && !family.isBlank()) {
+                data.playerFamilies.put(entry.getUUID(K_PLAYER), new PlayerFamiliesS2CPayload.Entry(family,
+                        NamingTradition.Order.byName(entry.getString(K_ORDER))));
+            }
+        }
         return data;
     }
 
@@ -169,6 +199,15 @@ public class NamingRegisterSavedData extends SavedData {
         tag.put(KEY_REGIONS, write(regions, K_REGION_ID));
         tag.put(KEY_VILLAGES, write(villages, K_VILLAGE_ID));
         tag.put(KEY_VILLAGE_CULTURES, writeVillageCultures(villageCultures));
+        ListTag families = new ListTag();
+        playerFamilies.forEach((player, entry) -> {
+            CompoundTag saved = new CompoundTag();
+            saved.putUUID(K_PLAYER, player);
+            saved.putString(K_FAMILY, entry.family());
+            saved.putString(K_ORDER, entry.order().name().toLowerCase(java.util.Locale.ROOT));
+            families.add(saved);
+        });
+        tag.put(KEY_PLAYER_FAMILIES, families);
         return tag;
     }
 

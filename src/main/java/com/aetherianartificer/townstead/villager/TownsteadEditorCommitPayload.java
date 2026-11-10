@@ -38,7 +38,10 @@ public record TownsteadEditorCommitPayload(
         int birthMonth,
         int birthDay,
         boolean hasFamilyName,
-        String familyName
+        String familyName,
+        boolean hasTradition,
+        String tradition,
+        String culture
 //? if neoforge {
 ) implements CustomPacketPayload {
 //?} else {
@@ -65,8 +68,18 @@ public record TownsteadEditorCommitPayload(
     /** Bounded so a name typed into the editor can never bloat the packet. */
     public static final int MAX_NAME_LENGTH = 128;
 
+    public static TownsteadEditorCommitPayload familyNameOnly(UUID uuid, String familyName) {
+        return new TownsteadEditorCommitPayload(uuid, false, 0, 0.0f, 0.0f, false, 0, 0, 0.0f, false, 0,
+                false, 0, false, 0, 0, true, familyName, false, "", "");
+    }
+
+    public static TownsteadEditorCommitPayload identityOnly(UUID uuid, String tradition, String culture) {
+        return new TownsteadEditorCommitPayload(uuid, false, 0, 0.0f, 0.0f, false, 0, 0, 0.0f, false, 0,
+                false, 0, false, 0, 0, false, "", true, tradition, culture);
+    }
+
     public boolean isEmpty() {
-        return !hasHunger && !hasThirst && !hasFatigue && !hasBioAge && !hasBirthday && !hasFamilyName;
+        return !hasHunger && !hasThirst && !hasFatigue && !hasBioAge && !hasBirthday && !hasFamilyName && !hasTradition;
     }
 
     public void write(FriendlyByteBuf buf) {
@@ -99,6 +112,11 @@ public record TownsteadEditorCommitPayload(
         buf.writeBoolean(hasFamilyName);
         if (hasFamilyName) {
             buf.writeUtf(familyName == null ? "" : familyName, MAX_NAME_LENGTH);
+        }
+        buf.writeBoolean(hasTradition);
+        if (hasTradition) {
+            buf.writeUtf(tradition == null ? "" : tradition, MAX_NAME_LENGTH);
+            buf.writeUtf(culture == null ? "" : culture, MAX_NAME_LENGTH);
         }
     }
 
@@ -144,8 +162,15 @@ public record TownsteadEditorCommitPayload(
         if (hasFamilyName) {
             familyName = buf.readUtf(MAX_NAME_LENGTH);
         }
+        boolean hasTradition = buf.readBoolean();
+        String tradition = "";
+        String culture = "";
+        if (hasTradition) {
+            tradition = buf.readUtf(MAX_NAME_LENGTH);
+            culture = buf.readUtf(MAX_NAME_LENGTH);
+        }
         return new TownsteadEditorCommitPayload(villagerUuid, hasHunger, hunger, saturation, hungerExhaustion,
                 hasThirst, thirst, quenched, thirstExhaustion, hasFatigue, fatigue, hasBioAge, bioAgeDays,
-                hasBirthday, birthMonth, birthDay, hasFamilyName, familyName);
+                hasBirthday, birthMonth, birthDay, hasFamilyName, familyName, hasTradition, tradition, culture);
     }
 }

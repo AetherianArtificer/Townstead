@@ -48,6 +48,16 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
     private static final String EMF_RENDER_STATE_DESC =
             "Ltraben/entity_model_features/models/animation/state/EMFEntityRenderState;";
 
+    private static final String CAPITALS_BIRTH_MIXIN =
+            "com/majesttyx/mcacapitals/mixin/BabyItemBirthIdentityMixin.class";
+    private static final String CAPITALS_GUARD_MIXIN =
+            "com/majesttyx/mcacapitals/mixin/GuardEnemiesSensorCampaignMixin.class";
+    private static final String OLD_GUARD_RANGE_DESC =
+            "(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/entity/LivingEntity;)Z";
+    private static final String OLD_BIRTH_CHILD_DESC = "(Lnet/minecraft/world/item/ItemStack;"
+            + "Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/server/level/ServerPlayer;)"
+            + "Lnet/conczin/mca/entity/VillagerEntityMCA;";
+
     private Boolean newApi;
     private Boolean widgetUtils;
     private Boolean floorV2;
@@ -191,6 +201,12 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
         if (mixinClassName.endsWith("EmfAnimationEntityContextCompatMixin")) {
             addEmfStateBridge(targetClass);
         }
+        if (mixinClassName.endsWith("BabyItemInheritanceMixin")) {
+            addCapitalsBirthTarget(targetClass);
+        }
+        if (mixinClassName.endsWith("GuardEnemyLeashMixin")) {
+            addCapitalsGuardTarget(targetClass);
+        }
     }
 
     /**
@@ -214,6 +230,50 @@ public class TownsteadMixinPlugin implements IMixinConfigPlugin {
         bridge.maxLocals = 0;
         targetClass.methods.add(bridge);
         return true;
+    }
+
+    /**
+     * MCA Capitals injects into {@code birthChild} by name alone, with a handler for its old
+     * signature. Against MCA's current signature that is a fatal mixin error, and the game cannot
+     * load. A name-only injection takes the first method with that name, so this puts an uncalled
+     * method with the old signature first, and Capitals' hook lands there. Townstead runs what the
+     * hook does itself, through {@code CapitalsNameBridge.recordBirth}.
+     */
+    private static void addCapitalsBirthTarget(org.objectweb.asm.tree.ClassNode target) {
+        if (TownsteadMixinPlugin.class.getClassLoader().getResource(CAPITALS_BIRTH_MIXIN) == null) return;
+        boolean current = false;
+        for (MethodNode method : target.methods) {
+            if (!"birthChild".equals(method.name)) continue;
+            if (OLD_BIRTH_CHILD_DESC.equals(method.desc)) return;
+            if (method.desc.contains("Lnet/minecraft/world/phys/Vec3;")) current = true;
+        }
+        if (!current) return;
+        MethodNode stand = new MethodNode(Opcodes.ACC_PRIVATE | Opcodes.ACC_SYNTHETIC, "birthChild",
+                OLD_BIRTH_CHILD_DESC, null, null);
+        stand.instructions.add(new InsnNode(Opcodes.ACONST_NULL));
+        stand.instructions.add(new InsnNode(Opcodes.ARETURN));
+        stand.maxStack = 1;
+        stand.maxLocals = 4;
+        target.methods.add(0, stand);
+    }
+
+    /** The same stand-in for Capitals' guard range hook. {@code CapitalsCampaignBridge} applies the rule. */
+    private static void addCapitalsGuardTarget(org.objectweb.asm.tree.ClassNode target) {
+        if (TownsteadMixinPlugin.class.getClassLoader().getResource(CAPITALS_GUARD_MIXIN) == null) return;
+        boolean current = false;
+        for (MethodNode method : target.methods) {
+            if (!"isWithinGuardEnemyRange".equals(method.name)) continue;
+            if (OLD_GUARD_RANGE_DESC.equals(method.desc)) return;
+            current = true;
+        }
+        if (!current) return;
+        MethodNode stand = new MethodNode(Opcodes.ACC_PRIVATE | Opcodes.ACC_SYNTHETIC, "isWithinGuardEnemyRange",
+                OLD_GUARD_RANGE_DESC, null, null);
+        stand.instructions.add(new InsnNode(Opcodes.ICONST_0));
+        stand.instructions.add(new InsnNode(Opcodes.IRETURN));
+        stand.maxStack = 1;
+        stand.maxLocals = 3;
+        target.methods.add(0, stand);
     }
 
     @Override

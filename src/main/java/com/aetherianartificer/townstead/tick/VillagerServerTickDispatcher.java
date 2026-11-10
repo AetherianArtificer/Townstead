@@ -23,12 +23,13 @@ public final class VillagerServerTickDispatcher {
         if (!villager.isAlive() || villager.isRemoved()) {
             FatigueVillagerTicker.forget(villager);
             com.aetherianartificer.townstead.performance.CollapsePlayback.stop(villager);
-            TemperatureVillagerTicker.forget(villager.getId());
-            WardrobeVillagerTicker.forget(villager.getId());
+            TemperatureVillagerTicker.forget(villager);
+            WardrobeVillagerTicker.forget(villager);
             EmptyContainerDropoff.forget(villager);
             com.aetherianartificer.townstead.profession.ProfessionSites.forget(villager);
             com.aetherianartificer.townstead.work.WorkActivities.forget(villager);
             com.aetherianartificer.townstead.hangout.HangoutEngine.forget(villager);
+            com.aetherianartificer.townstead.compat.werewolves.WerewolfVillagers.forget(villager);
             com.aetherianartificer.townstead.dialogue.conversation.ConversationEngine.forget(villager);
             com.aetherianartificer.townstead.pheno.state.EntityStates.forget(villager);
             return;
@@ -126,6 +127,8 @@ public final class VillagerServerTickDispatcher {
                     com.aetherianartificer.townstead.chronicle.emit.PendingBirths.tick(v)),
             resident("villager.chronicle_marriage", Systems.CHRONICLES, (v, t) ->
                     com.aetherianartificer.townstead.chronicle.emit.MarriageWatcher.tick(v, t)),
+            new Step("villager.family_tree_name", null,
+                    com.aetherianartificer.townstead.naming.FamilyTreeNameTarget::tick),
             resident("villager.thrall", null, (v, t) ->
                     com.aetherianartificer.townstead.compat.vampirism.Thralls.tick(v)),
             // Wild werewolves turn too, as the mod's own human werewolves do.

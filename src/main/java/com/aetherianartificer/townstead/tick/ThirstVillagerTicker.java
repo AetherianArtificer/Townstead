@@ -31,7 +31,6 @@ import net.neoforged.neoforge.network.PacketDistributor;
 //?}
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public final class ThirstVillagerTicker {
     //? if >=1.21 {
@@ -47,7 +46,7 @@ public final class ThirstVillagerTicker {
             java.util.UUID.nameUUIDFromBytes("townstead:thirst_speed_penalty".getBytes());
     *///?}
 
-    private static final Map<Integer, TickState> STATE = new ConcurrentHashMap<>();
+    private static final Map<VillagerEntityMCA, TickState> STATE = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
 
     private ThirstVillagerTicker() {}
 
@@ -59,7 +58,7 @@ public final class ThirstVillagerTicker {
             return;
         }
 
-        TickState state = STATE.computeIfAbsent(self.getId(), id -> new TickState());
+        TickState state = STATE.computeIfAbsent(self, id -> new TickState());
         TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
 
         // A liquid:"none" race does not drink: pin thirst full so it never decays and the refuel task
@@ -193,10 +192,6 @@ public final class ThirstVillagerTicker {
             state.lastSyncedThirst = thirstLevel;
             state.lastSyncedQuenched = quenchedLevel;
             pushThirst(self, needs.thirstTag());
-        }
-
-        if (!self.isAlive() || self.isRemoved()) {
-            STATE.remove(self.getId());
         }
     }
 

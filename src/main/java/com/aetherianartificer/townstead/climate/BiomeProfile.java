@@ -12,11 +12,12 @@ import java.util.Locale;
  * average daily range. The seasonal swing is half the gap between the months. Altitude cools the
  * air only above {@code typical_y}, the biome's usual surface height, so mountain biomes are not
  * cooled twice. {@code underground_offset_c} shifts the ground temperature wherever this biome lies
- * under cover, for cave biomes with a character of their own. Biomes without a profile use their zone.
+ * under cover, for cave biomes with a character of their own; {@code underground_offset_over_mod_climate}
+ * also applies it on top of a temperature mod's own depth model. Biomes without a profile use their zone.
  */
 public record BiomeProfile(float mean, float coldestMonth, float warmestMonth, float dailyRange, int typicalY,
                            ClimateZone.SeasonKind seasonKind, float noSeasonFraction, float humidity,
-                           float undergroundOffset) {
+                           float undergroundOffset, boolean undergroundOverBackend) {
     public static final String SCHEMA = "townstead:climate_biome/v1";
 
     public float swing() {
@@ -53,6 +54,7 @@ public record BiomeProfile(float mean, float coldestMonth, float warmestMonth, f
                 seasonKind,
                 GsonHelper.getAsFloat(json, "no_season_swing_fraction", Float.NaN),
                 json.has("humidity") ? Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(json, "humidity"))) : Float.NaN,
-                GsonHelper.getAsFloat(json, "underground_offset_c", 0f));
+                GsonHelper.getAsFloat(json, "underground_offset_c", 0f),
+                GsonHelper.getAsBoolean(json, "underground_offset_over_mod_climate", false));
     }
 }

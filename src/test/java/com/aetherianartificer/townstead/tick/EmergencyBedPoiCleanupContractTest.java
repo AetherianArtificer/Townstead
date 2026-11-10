@@ -57,6 +57,42 @@ class EmergencyBedPoiCleanupContractTest {
     }
 
     @Test
+    void activeBorrowKeepsSeeingItsOwnOverride() throws IOException {
+        String source = source("src/main/java/com/aetherianartificer/townstead/fatigue/BorrowBedWhenFatiguedTask.java");
+        int canStillUse = source.indexOf("protected boolean canStillUse");
+        int stop = source.indexOf("protected void stop", canStillUse);
+        int helper = source.indexOf("private static boolean seeksBed");
+
+        assertTrue(source.substring(canStillUse, stop).contains("seeksBed(level, villager, needs)"),
+                "A running borrow must use the same bed check that started it");
+        assertTrue(source.indexOf("needs.restOverrideActive()", helper) > helper,
+                "Under the all-REST override, a check without the flag reads as ordinary rest and cancels the borrow");
+    }
+
+    @Test
+    void roughSleeperHoldsTheOverrideAndAsksForNoBed() throws IOException {
+        String source = source("src/main/java/com/aetherianartificer/townstead/tick/FatigueVillagerTicker.java");
+        String rough = "CollapsePlayback.sleepingRough(self)";
+        int release = source.indexOf("else if (overrideActive && !self.isSleeping()");
+        int request = source.indexOf("self, shouldSeek && assignedBed == null");
+
+        assertTrue(source.startsWith(rough, source.indexOf("CollapsePlayback.", release)),
+                "Releasing the override must skip a rough sleeper, who is awake to isSleeping()");
+        assertTrue(source.startsWith(rough, source.indexOf("CollapsePlayback.", request)),
+                "A rough sleeper must not reserve a bed its collapse playback would cancel next tick");
+    }
+
+    @Test
+    void forgettingAVillagerGivesBackTheBorrowedBed() throws IOException {
+        String source = source("src/main/java/com/aetherianartificer/townstead/tick/FatigueVillagerTicker.java");
+        int forget = source.indexOf("public static void forget(VillagerEntityMCA self)");
+        int end = source.indexOf("STATE.remove", forget);
+
+        assertTrue(source.substring(forget, end).contains("restoreHomeAfterEmergencySleep"),
+                "The dispatcher's death path must release the bed ticket, or it stays taken for good");
+    }
+
+    @Test
     void legacyCleanupDoesNotRestoreTownsteadHomeSnapshot() throws IOException {
         String source = source("src/main/java/com/aetherianartificer/townstead/tick/FatigueVillagerTicker.java");
 

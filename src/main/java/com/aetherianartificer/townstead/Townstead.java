@@ -614,6 +614,7 @@ public class Townstead {
             com.aetherianartificer.townstead.contract.Contracts.tick(e.getServer());
             com.aetherianartificer.townstead.livery.LiverySync.tick(e.getServer());
             com.aetherianartificer.townstead.rebirth.Rebirth.tick(e.getServer());
+            com.aetherianartificer.townstead.naming.PlayerNames.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
             com.aetherianartificer.townstead.recognition.EnclosureWatcher.tick(e.getServer());
@@ -643,6 +644,7 @@ public class Townstead {
             if (e.getLevel() instanceof net.minecraft.server.level.ServerLevel sl) {
                 com.aetherianartificer.townstead.calendar.AgeableCatchup.onEntityJoin(e.getEntity(), sl.getServer());
                 com.aetherianartificer.townstead.downed.DownedService.onJoin(e.getEntity());
+                com.aetherianartificer.townstead.hunger.VillagerConsumptionManager.onJoin(e.getEntity());
                 com.aetherianartificer.townstead.pheno.combat.Minions.onJoin(e.getEntity());
                 com.aetherianartificer.townstead.pet.VillagerPets.onJoin(e.getEntity());
                 com.aetherianartificer.townstead.journey.Companions.onJoin(e.getEntity());
@@ -782,7 +784,11 @@ public class Townstead {
         // A reborn player goes by the name of their current life in chat, death messages and nameplates.
         NeoForge.EVENT_BUS.addListener((PlayerEvent.NameFormat e) -> {
             String name = com.aetherianartificer.townstead.rebirth.Rebirth.characterName(e.getEntity());
-            if (name != null) e.setDisplayname(net.minecraft.network.chat.Component.literal(name));
+            e.setDisplayname(com.aetherianartificer.townstead.naming.PlayerNames.compose(e.getEntity(),
+                    name != null ? net.minecraft.network.chat.Component.literal(name) : e.getDisplayname()));
+        });
+        NeoForge.EVENT_BUS.addListener((PlayerEvent.TabListNameFormat e) -> {
+            if (com.aetherianartificer.townstead.naming.PlayerNames.composedInTabList(e.getEntity())) e.setDisplayName(e.getEntity().getDisplayName());
         });
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerRespawnEvent e) -> {
             if (e.getEntity() instanceof ServerPlayer sp) com.aetherianartificer.townstead.rebirth.Rebirth.onRespawn(sp, e.isEndConquered());
@@ -832,6 +838,8 @@ public class Townstead {
                 com.aetherianartificer.townstead.pheno.combat.Casts.clear();
                 com.aetherianartificer.townstead.pheno.combat.Wards.clearAll();
                 com.aetherianartificer.townstead.ritual.RitualService.clear();
+                com.aetherianartificer.townstead.hangout.HangoutEngine.clear();
+                com.aetherianartificer.townstead.compat.werewolves.WerewolfVillagers.clear();
                 com.aetherianartificer.townstead.pheno.reservation.Reservations.clear(e.getServer());
                 com.aetherianartificer.townstead.pheno.field.CloudManager.clear();
                 com.aetherianartificer.townstead.building.pin.BuildingPinService.clear();
@@ -842,6 +850,8 @@ public class Townstead {
             if (e.getEntity() instanceof ServerPlayer sp) {
                 com.aetherianartificer.townstead.switchboard.SwitchboardServer.onLogin(sp);
                 com.aetherianartificer.townstead.rebirth.Rebirth.onLogin(sp);
+                com.aetherianartificer.townstead.naming.NameSyncTarget.sendCatalog(sp);
+                com.aetherianartificer.townstead.naming.PlayerNames.onLogin(sp);
                 com.aetherianartificer.townstead.root.ability.AbilityToggles.syncTo(sp);
                 com.aetherianartificer.townstead.root.ability.ActiveAbilities.syncView(sp);
                 com.aetherianartificer.townstead.seal.PersonalSeals.sync(sp);
@@ -861,6 +871,7 @@ public class Townstead {
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.OnDatapackSyncEvent e) -> {
             if (e.getPlayer() != null) {
                 townstead$sendRootData(e.getPlayer());
+                com.aetherianartificer.townstead.naming.NameSyncTarget.sendCatalog(e.getPlayer());
                 PacketDistributor.sendToPlayer(e.getPlayer(), townstead$calendarSync(e.getPlayer()));
                 PacketDistributor.sendToPlayer(e.getPlayer(),
                         com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload.snapshot());
@@ -1047,7 +1058,8 @@ public class Townstead {
             }
         });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent e) -> {
-            if (com.aetherianartificer.townstead.downed.DownedService.blocksDamage(e.getEntity(), e.getSource())) {
+            if (com.aetherianartificer.townstead.downed.DownedService.blocksDamage(e.getEntity(), e.getSource())
+                    || com.aetherianartificer.townstead.rebirth.DestinyShield.blocksDamage(e.getEntity(), e.getSource())) {
                 e.setCanceled(true);
                 return;
             }
@@ -1107,6 +1119,7 @@ public class Townstead {
                 return;
             }
             com.aetherianartificer.townstead.persona.PersonaService.onDeath(e.getEntity());
+            com.aetherianartificer.townstead.compat.vampirism.Thralls.onDeath(e.getEntity());
             com.aetherianartificer.townstead.root.trigger.GeneTriggers.onDeath(e.getEntity(), e.getSource());
             if (e.getEntity() instanceof ServerPlayer deadPlayer) com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.rememberDeath(deadPlayer, e.getSource());
             com.aetherianartificer.townstead.root.loot.DeathLoot.onDeath(e.getEntity());
@@ -1345,6 +1358,7 @@ public class Townstead {
             com.aetherianartificer.townstead.contract.Contracts.tick(e.getServer());
             com.aetherianartificer.townstead.livery.LiverySync.tick(e.getServer());
             com.aetherianartificer.townstead.rebirth.Rebirth.tick(e.getServer());
+            com.aetherianartificer.townstead.naming.PlayerNames.tick(e.getServer());
             com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.tick(e.getServer());
                 com.aetherianartificer.townstead.compat.mca.McaBuildingDiscovery.tick(e.getServer());
                 com.aetherianartificer.townstead.recognition.EnclosureWatcher.tick(e.getServer());
@@ -1375,6 +1389,7 @@ public class Townstead {
             if (e.getLevel() instanceof net.minecraft.server.level.ServerLevel sl) {
                 com.aetherianartificer.townstead.calendar.AgeableCatchup.onEntityJoin(e.getEntity(), sl.getServer());
                 com.aetherianartificer.townstead.downed.DownedService.onJoin(e.getEntity());
+                com.aetherianartificer.townstead.hunger.VillagerConsumptionManager.onJoin(e.getEntity());
                 com.aetherianartificer.townstead.pheno.combat.Minions.onJoin(e.getEntity());
                 com.aetherianartificer.townstead.pet.VillagerPets.onJoin(e.getEntity());
                 com.aetherianartificer.townstead.journey.Companions.onJoin(e.getEntity());
@@ -1507,7 +1522,11 @@ public class Townstead {
         // A reborn player goes by the name of their current life in chat, death messages and nameplates.
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.NameFormat e) -> {
             String name = com.aetherianartificer.townstead.rebirth.Rebirth.characterName(e.getEntity());
-            if (name != null) e.setDisplayname(net.minecraft.network.chat.Component.literal(name));
+            e.setDisplayname(com.aetherianartificer.townstead.naming.PlayerNames.compose(e.getEntity(),
+                    name != null ? net.minecraft.network.chat.Component.literal(name) : e.getDisplayname()));
+        });
+        MinecraftForge.EVENT_BUS.addListener((PlayerEvent.TabListNameFormat e) -> {
+            if (com.aetherianartificer.townstead.naming.PlayerNames.composedInTabList(e.getEntity())) e.setDisplayName(e.getEntity().getDisplayName());
         });
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerRespawnEvent e) -> {
             if (e.getEntity() instanceof ServerPlayer sp) com.aetherianartificer.townstead.rebirth.Rebirth.onRespawn(sp, e.isEndConquered());
@@ -1564,6 +1583,8 @@ public class Townstead {
                 com.aetherianartificer.townstead.pheno.combat.Casts.clear();
                 com.aetherianartificer.townstead.pheno.combat.Wards.clearAll();
                 com.aetherianartificer.townstead.ritual.RitualService.clear();
+                com.aetherianartificer.townstead.hangout.HangoutEngine.clear();
+                com.aetherianartificer.townstead.compat.werewolves.WerewolfVillagers.clear();
                 com.aetherianartificer.townstead.pheno.reservation.Reservations.clear(e.getServer());
                 com.aetherianartificer.townstead.pheno.field.CloudManager.clear();
                 com.aetherianartificer.townstead.building.pin.BuildingPinService.clear();
@@ -1574,6 +1595,8 @@ public class Townstead {
             if (e.getEntity() instanceof ServerPlayer sp) {
                 com.aetherianartificer.townstead.switchboard.SwitchboardServer.onLogin(sp);
                 com.aetherianartificer.townstead.rebirth.Rebirth.onLogin(sp);
+                com.aetherianartificer.townstead.naming.NameSyncTarget.sendCatalog(sp);
+                com.aetherianartificer.townstead.naming.PlayerNames.onLogin(sp);
                 com.aetherianartificer.townstead.root.ability.AbilityToggles.syncTo(sp);
                 com.aetherianartificer.townstead.root.ability.ActiveAbilities.syncView(sp);
                 com.aetherianartificer.townstead.seal.PersonalSeals.sync(sp);
@@ -1593,6 +1616,7 @@ public class Townstead {
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.OnDatapackSyncEvent e) -> {
             if (e.getPlayer() != null) {
                 townstead$sendRootData(e.getPlayer());
+                com.aetherianartificer.townstead.naming.NameSyncTarget.sendCatalog(e.getPlayer());
                 TownsteadNetwork.sendToPlayer(e.getPlayer(), townstead$calendarSync(e.getPlayer()));
                 TownsteadNetwork.sendToPlayer(e.getPlayer(),
                         com.aetherianartificer.townstead.needs.ConsumableEffectsSyncPayload.snapshot());
@@ -1798,7 +1822,8 @@ public class Townstead {
             }
         });
         MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.living.LivingHurtEvent e) -> {
-            if (com.aetherianartificer.townstead.downed.DownedService.blocksDamage(e.getEntity(), e.getSource())) {
+            if (com.aetherianartificer.townstead.downed.DownedService.blocksDamage(e.getEntity(), e.getSource())
+                    || com.aetherianartificer.townstead.rebirth.DestinyShield.blocksDamage(e.getEntity(), e.getSource())) {
                 e.setCanceled(true);
                 return;
             }
@@ -1858,6 +1883,7 @@ public class Townstead {
                 return;
             }
             com.aetherianartificer.townstead.persona.PersonaService.onDeath(e.getEntity());
+            com.aetherianartificer.townstead.compat.vampirism.Thralls.onDeath(e.getEntity());
             com.aetherianartificer.townstead.root.trigger.GeneTriggers.onDeath(e.getEntity(), e.getSource());
             if (e.getEntity() instanceof ServerPlayer deadPlayer) com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.rememberDeath(deadPlayer, e.getSource());
             com.aetherianartificer.townstead.root.loot.DeathLoot.onDeath(e.getEntity());
@@ -4161,12 +4187,22 @@ public class Townstead {
                 this::handleTemperatureSync
         );
         registrar.playToClient(
+                com.aetherianartificer.townstead.naming.PlayerFamiliesS2CPayload.TYPE,
+                com.aetherianartificer.townstead.naming.PlayerFamiliesS2CPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.naming.NameClientStore.setPlayerFamilies(payload.families()))
+        );
+        registrar.playToClient(
+                com.aetherianartificer.townstead.naming.NamingCatalogS2CPayload.TYPE,
+                com.aetherianartificer.townstead.naming.NamingCatalogS2CPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.aetherianartificer.townstead.client.naming.NamingCatalogClient.set(payload))
+        );
+        registrar.playToClient(
                 com.aetherianartificer.townstead.naming.NameSyncPayload.TYPE,
                 com.aetherianartificer.townstead.naming.NameSyncPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
-                        com.aetherianartificer.townstead.naming.NameClientStore.set(
-                                payload.entityId(), payload.familyName(), payload.culture(),
-                                payload.order(), payload.familyType(), payload.tradition()))
+                        com.aetherianartificer.townstead.client.naming.NameSyncClient.apply(payload))
         );
         registrar.playToClient(
                 com.aetherianartificer.townstead.temperature.ThermometerReadingPayload.TYPE,
@@ -4583,6 +4619,7 @@ public class Townstead {
             if (!(context.player() instanceof ServerPlayer sp)) return;
             VillagerEntityMCA villager = townstead$findVillager(sp.getServer(), payload.villagerUuid());
             if (villager == null) return;
+            com.aetherianartificer.townstead.naming.NameSyncTarget.syncToPlayer(sp, villager);
             net.minecraft.server.MinecraftServer server = villager.getServer();
             if (server != null) {
                 com.aetherianartificer.townstead.calendar.VillagerLifeStamper.ensureStamped(villager, server);
@@ -5927,6 +5964,7 @@ public class Townstead {
         // skin-tint layer can paint their genetics model. Players don't receive the
         // villager life/needs syncs that follow.
         if (event.getTarget() instanceof ServerPlayer trackedPlayer) {
+            com.aetherianartificer.townstead.naming.NameSyncTarget.syncPlayerTo(sp, trackedPlayer);
             com.aetherianartificer.townstead.root.RootSyncS2CPayload pSync =
                     new com.aetherianartificer.townstead.root.RootSyncS2CPayload(
                             trackedPlayer.getId(),

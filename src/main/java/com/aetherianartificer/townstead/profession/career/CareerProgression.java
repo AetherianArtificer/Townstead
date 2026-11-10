@@ -81,8 +81,8 @@ public final class CareerProgression {
         Map<ResourceLocation, ProfessionProgress.GainResult> gains = new java.util.LinkedHashMap<>();
         gains.put(career, result);
         notifyTierUps(worker, gains);
-        int insight = insightGained(career, xpBefore, ProfessionProgress.getXp(store, career));
-        notifyInsight(worker, insight, result.tierUp());
+        int insight = insightGained(worker, career, xpBefore, ProfessionProgress.getXp(store, career));
+        notifyInsight(worker, career, insight, result.tierUp());
         if (result.tierUp()) {
             notifyComboUnlocks(worker, combosBefore);
         }
@@ -133,8 +133,8 @@ public final class CareerProgression {
         Map<ResourceLocation, ProfessionProgress.GainResult> gains = new java.util.LinkedHashMap<>();
         gains.put(career, result);
         notifyTierUps(worker, gains);
-        int insight = insightGained(career, xpBefore, ProfessionProgress.getXp(store, career));
-        notifyInsight(worker, insight, result.tierUp());
+        int insight = insightGained(worker, career, xpBefore, ProfessionProgress.getXp(store, career));
+        notifyInsight(worker, career, insight, result.tierUp());
         if (result.tierUp()) notifyComboUnlocks(worker, combosBefore);
         if (insight > 0 && worker instanceof VillagerEntityMCA) SkillPoints.autoSpend(worker, Set.of(career));
         if ((insight > 0 || boost.capScale() > 1) && worker instanceof net.minecraft.server.level.ServerPlayer player) {
@@ -184,7 +184,8 @@ public final class CareerProgression {
         boolean any = false;
         for (Map.Entry<ResourceLocation, ProfessionProgress.GainResult> entry : gains.entrySet()) {
             ProfessionProgress.GainResult gain = entry.getValue();
-            if (!gain.tierUp()) continue;
+            // A player hears about ranks in the work they took up; other careers rank up quietly.
+            if (!gain.tierUp() || !SkillPoints.paysInsight(worker, entry.getKey())) continue;
             ProfessionDef def = ProfessionDefs.byId(entry.getKey());
             if (def == null) continue;
             any = true;
@@ -197,16 +198,19 @@ public final class CareerProgression {
         }
     }
 
-    private static int insightGained(ResourceLocation career, int xpBefore, int xpAfter) {
+    /** Work outside a player's primary vocation still banks XP; its Insight pays once they take it up. */
+    private static int insightGained(LivingEntity worker, ResourceLocation career, int xpBefore, int xpAfter) {
+        if (!SkillPoints.paysInsight(worker, career)) return 0;
         ProfessionDef def = ProfessionDefs.byId(career);
         return def == null ? 0 : Math.max(0, def.insightAt(xpAfter) - def.insightAt(xpBefore));
     }
 
     /** Checkpoints pay between ranks, so Insight is announced on its own, not only on rank-up. */
-    private static void notifyInsight(LivingEntity worker, int insight, boolean tieredUp) {
+    private static void notifyInsight(LivingEntity worker, ResourceLocation career, int insight, boolean tieredUp) {
         if (insight <= 0 || !(worker instanceof Player player)) return;
-        player.displayClientMessage(Component.translatable(
-                "townstead.career.levelup.points", insight), false);
+        ProfessionDef def = ProfessionDefs.byId(career);
+        player.displayClientMessage(Component.translatable("townstead.career.levelup.points", insight,
+                def == null ? Component.literal(career.toString()) : def.displayName()), false);
         if (!tieredUp && worker instanceof net.minecraft.server.level.ServerPlayer sp) {
             sp.playNotifySound(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP,
                     net.minecraft.sounds.SoundSource.PLAYERS, 0.5f, 0.8f);
@@ -259,16 +263,13 @@ public final class CareerProgression {
         return null;
     }
 
+    /** A villager's first work becomes its vocation. A player takes one up at the Archives. */
     private static void setPrimaryIfAbsent(LivingEntity worker, ResourceLocation career) {
         if (worker instanceof VillagerEntityMCA villager) {
             CareerProfile profile = TownsteadVillagers.get(villager).professionMemory().careerProfile();
             if (profile.primaryVocation() == null) {
                 TownsteadVillagers.get(villager).professionMemory().setPrimaryVocation(career);
             }
-        } else if (worker instanceof Player player) {
-            PlayerCareers.mutate(player, profile -> {
-                if (profile.primaryVocation() == null) profile.setPrimaryVocation(career);
-            });
         }
     }
 

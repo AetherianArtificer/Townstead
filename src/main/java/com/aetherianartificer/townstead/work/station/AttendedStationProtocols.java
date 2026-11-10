@@ -24,6 +24,7 @@ public final class AttendedStationProtocols {
         final long startedAt;
         long nextPoll;
         int solved;
+        boolean safeStopped;
         final Map<String, Integer> attempts = new LinkedHashMap<>();
         volatile Diagnostic diagnostic;
 
@@ -56,7 +57,7 @@ public final class AttendedStationProtocols {
         if (now - state.startedAt > attendance.timeoutTicks()) {
             state.diagnostic = diagnostic(state, Phase.TIMED_OUT, null, 0, now,
                     "attendance_timeout");
-            runLifecycle(level, worker, pos, def, attendance.safeStop(), "safe_stop");
+            safeStop(level, worker, pos, def, state);
             return false;
         }
         if (now < state.nextPoll) return true;
@@ -113,7 +114,7 @@ public final class AttendedStationProtocols {
             return;
         }
         long now = level.getGameTime();
-        runLifecycle(level, worker, pos, def, def.attendance().safeStop(), "safe_stop");
+        safeStop(level, worker, pos, def, state);
         state.diagnostic = diagnostic(state, Phase.SAFE_STOPPED, null, 0, now, "safe_stop_complete");
         runLifecycle(level, worker, pos, def, def.attendance().cleanup(), "cleanup");
         state.diagnostic = diagnostic(state, Phase.CLEANED, null, 0, now, "cleanup_complete");
@@ -127,6 +128,14 @@ public final class AttendedStationProtocols {
 
     static boolean mayAttempt(int attempts, int maxAttempts) {
         return attempts >= 0 && maxAttempts >= 1 && attempts < maxAttempts;
+    }
+
+    /** Runs once per attendance: a timed-out station is polled until its owner lets go. */
+    private static void safeStop(ServerLevel level, VillagerEntityMCA worker, BlockPos pos,
+                                 WorkstationV2Def def, State state) {
+        if (state.safeStopped) return;
+        state.safeStopped = true;
+        runLifecycle(level, worker, pos, def, def.attendance().safeStop(), "safe_stop");
     }
 
     private static void runLifecycle(ServerLevel level, VillagerEntityMCA worker, BlockPos pos,

@@ -3,14 +3,14 @@
   "group": "townstead:blueprint",
   "category": "misc",
   "surface": "townstead:hide",
-  "ingredients": [
-    { "tag": "townstead:blueprint_surface/hide" },
-    { "tag": "townstead:blueprint_surface/hide" },
-    { "tag": "townstead:blueprint_surface/hide" },
-    { "tag": "townstead:blueprint_surface/hide" },
-    { "tag": "townstead:blueprint_surface/hide" },
-    { "tag": "townstead:blueprint_ink" }
+  "pattern": [
+    "SSS",
+    "SIS"
   ],
+  "key": {
+    "S": { "tag": "townstead:blueprint_surface/hide" },
+    "I": { "tag": "townstead:blueprint_ink" }
+  },
   "result": {
     "id": "mca:blueprint"
   }

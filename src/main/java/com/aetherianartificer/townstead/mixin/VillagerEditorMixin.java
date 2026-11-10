@@ -45,6 +45,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(VillagerEditorScreen.class)
 public abstract class VillagerEditorMixin extends Screen implements com.aetherianartificer.townstead.client.gui.ScreenInputHooks {
@@ -78,11 +79,6 @@ public abstract class VillagerEditorMixin extends Screen implements com.aetheria
     @Unique private boolean townstead$lifeBuilt;
     @Unique private String townstead$lifeSig;
 
-    // The surname the player has typed, and whether they have touched it at all. Untouched means
-    // the field is only ever a display of what the server said, so opening the page never commits.
-    @Unique private net.minecraft.client.gui.components.EditBox townstead$surnameField;
-    @Unique private String townstead$surname = "";
-    @Unique private boolean townstead$surnameDirty;
 
     @Inject(method = "setPage", remap = false, at = @At("TAIL"))
     private void townstead$addHungerDebug(String page, CallbackInfo ci) {
@@ -93,7 +89,7 @@ public abstract class VillagerEditorMixin extends Screen implements com.aetheria
         townstead$hungerDirty = false;
         townstead$thirstDirty = false;
         townstead$fatigueDirty = false;
-        townstead$surnameField = null;
+        com.aetherianartificer.townstead.client.naming.NameSyncClient.unwatch();
         HungerClientStore.clearOnChange();
         ThirstClientStore.clearOnChange();
         FatigueClientStore.clearOnChange();
@@ -234,8 +230,6 @@ public abstract class VillagerEditorMixin extends Screen implements com.aetheria
                     }).pos(width / 2 + dataWidth - bw, fatigueY).size(bw, 20).build()
             );
         }
-
-        townstead$addNamingRows(rowY, dataWidth);
 
         // Register callback: when server sync arrives, update the display
         // (only if user hasn't manually edited yet)
@@ -586,6 +580,7 @@ public abstract class VillagerEditorMixin extends Screen implements com.aetheria
     // it; an override merged here would lose to, or replace, another mod's.
     @Override
     public void townstead$screenRemoved() {
+        com.aetherianartificer.townstead.client.gui.naming.NamingRow.commitActive();
         // Opening the root browser takes the editor off screen, but the browser draws its model.
         if (com.aetherianartificer.townstead.client.gui.root.RootBrowseScreen.isOver((Screen) (Object) this)) return;
         // So does MCA's skin library, which comes back here on close. The next screen is only set
@@ -593,6 +588,7 @@ public abstract class VillagerEditorMixin extends Screen implements com.aetheria
         net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
         mc.tell(() -> {
             if (mc.screen instanceof net.conczin.mca.client.gui.SkinLibraryScreen) return;
+            if (mc.screen instanceof com.aetherianartificer.townstead.client.gui.naming.NamingScreen) return;
             townstead$cleanupOnClose();
         });
     }
@@ -652,6 +648,7 @@ public abstract class VillagerEditorMixin extends Screen implements com.aetheria
 
     @Inject(method = "syncVillagerData", remap = false, at = @At("HEAD"))
     private void townstead$commitTownsteadEditorFields(CallbackInfo ci) {
+        com.aetherianartificer.townstead.client.gui.naming.NamingRow.commitActive();
         TownsteadEditorCommitPayload payload = townstead$editorCommitPayload();
         if (payload.isEmpty()) return;
         //? if neoforge {
@@ -662,67 +659,56 @@ public abstract class VillagerEditorMixin extends Screen implements com.aetheria
     }
 
     /**
-     * The naming rows: what this villager's culture is, which rule decides their family name, and
-     * the family name itself.
-     *
-     * <p>The rule is shown because it is the only thing that says what editing the name will do.
-     * An inherited rule passes the new name to children born afterwards; a patronymic one builds a
-     * child's name from the parent's given name instead, so editing the surname reaches nobody
-     * else. Without that on screen the same field looks broken under one culture and works under
-     * another.</p>
+     * The surname row, directly under the name. MCA's UUID field gives up its place for it, since a
+     * villager's life stage and birthday rows leave no other room, and becomes a quiet line that
+     * copies the UUID, which is what the field is for.
      */
-    @Unique
-    private void townstead$addNamingRows(int rowY, int dataWidth) {
+    @Inject(method = "setPage", remap = false, at = @At("TAIL"))
+    private void townstead$addNamingRow(String page, CallbackInfo ci) {
+        com.aetherianartificer.townstead.client.gui.naming.NamingRow.commitActive();
+        if (!"general".equals(page) || this.minecraft == null || this.minecraft.player == null) return;
+        if (!com.aetherianartificer.townstead.client.gui.naming.NamingRow.available()) return;
+        boolean self = villagerUUID.equals(this.minecraft.player.getUUID());
+        VillagerEntityMCA real = self ? null : townstead$realVillager();
+        if (!self && real == null) return;
+
+        String uuid = villagerUUID.toString();
+        int nameY = height / 2 - 80;
+        for (net.minecraft.client.gui.components.events.GuiEventListener child : new java.util.ArrayList<>(children())) {
+            if (child instanceof net.minecraft.client.gui.components.EditBox box && uuid.equals(box.getValue())) {
+                removeWidget(box);
+            } else if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget
+                    && widget.getX() >= width / 2 && widget.getY() > nameY + 5) {
+                widget.setY(widget.getY() + com.aetherianartificer.townstead.client.gui.naming.NamingRow.SHIFT);
+            }
+        }
+
+        addRenderableWidget(new com.aetherianartificer.townstead.client.gui.naming.UuidLine(
+                this.font, width / 2 - 165, height / 2 - 57, 155, uuid));
+
+        net.conczin.mca.client.gui.VillagerEditorScreen screen = (net.conczin.mca.client.gui.VillagerEditorScreen) (Object) this;
+        com.aetherianartificer.townstead.client.gui.naming.NamingRow.add(this,
+                new com.aetherianartificer.townstead.client.gui.naming.NamingScreen.Target(
+                        self ? this.minecraft.player.getId() : real.getId(), villagerUUID,
+                        () -> screen.getName().getString(), self),
+                this.font, width / 2, nameY, nameY + com.aetherianartificer.townstead.client.gui.naming.NamingRow.SHIFT,
+                new java.util.ArrayList<>(children()), this::addRenderableWidget);
+    }
+
+    /**
+     * MCA fills the name box from the family tree when the preview has no custom name, and the tree
+     * holds the composed name. The box is the given name: editing a surname there would save it as
+     * part of the given name, and the real surname would then follow it.
+     */
+    @Inject(method = "getName", remap = false, at = @At("RETURN"), cancellable = true, require = 0)
+    private void townstead$givenNameOnly(CallbackInfoReturnable<Component> cir) {
         VillagerEntityMCA real = townstead$realVillager();
-        int realId = real == null ? -1 : real.getId();
-
-        // Unknown rather than none: a villager the client has never been told about has no rule to
-        // report, and offering to edit a name we could not read would write over a real one.
-        if (realId < 0) {
-            addRenderableWidget(Button.builder(
-                            Component.translatable("gui.townstead.naming.unavailable"), b -> {})
-                    .pos(width / 2, rowY).size(dataWidth, 20).build()).active = false;
-            return;
-        }
-
-        NamingTradition.FamilyType rule = NameClientStore.rule(realId);
-        String tradition = NameClientStore.tradition(realId);
-        String culture = NameClientStore.culture(realId);
-        if (!townstead$surnameDirty) townstead$surname = NameClientStore.family(realId);
-
-        // The tradition is what builds the surname, so that is what the row reports. A culture is
-        // a separate axis most villagers do not have, and is named only when there is one.
-        Component ruleLabel = Component.translatable(
-                "gui.townstead.naming.rule." + rule.name().toLowerCase(java.util.Locale.ROOT));
-        Component label;
-        if (tradition.isEmpty()) {
-            label = Component.translatable("gui.townstead.naming.no_tradition");
-        } else if (culture.isEmpty()) {
-            label = Component.translatable("gui.townstead.naming.tradition", tradition, ruleLabel);
-        } else {
-            label = Component.translatable("gui.townstead.naming.tradition_culture",
-                    tradition, ruleLabel, culture);
-        }
-        addRenderableWidget(Button.builder(label, b -> {})
-                .pos(width / 2, rowY).size(dataWidth, 20).build()).active = false;
-
-        net.minecraft.client.gui.components.EditBox field = addRenderableWidget(
-                new net.minecraft.client.gui.components.EditBox(this.font, width / 2, rowY + 24,
-                        dataWidth, 18, Component.translatable("gui.townstead.naming.surname")));
-        field.setMaxLength(com.aetherianartificer.townstead.villager.TownsteadEditorCommitPayload.MAX_NAME_LENGTH);
-        field.setValue(townstead$surname);
-        field.setHint(Component.translatable("gui.townstead.naming.surname"));
-        field.setTooltip(net.minecraft.client.gui.components.Tooltip.create(
-                Component.translatable("gui.townstead.naming.tooltip."
-                        + rule.name().toLowerCase(java.util.Locale.ROOT))));
-        // A tradition that gives no family names has nothing to edit, and the label above already
-        // says so. Left visible rather than hidden, so the row does not appear and disappear.
-        field.setEditable(rule != NamingTradition.FamilyType.NONE);
-        field.setResponder(value -> {
-            townstead$surnameDirty = true;
-            townstead$surname = value;
-        });
-        townstead$surnameField = field;
+        Component shown = cir.getReturnValue();
+        if (real == null || shown == null) return;
+        int id = real.getId();
+        String given = com.aetherianartificer.townstead.naming.NameParts.withoutFamily(shown.getString(),
+                NameClientStore.family(id), NameClientStore.order(id));
+        if (!given.equals(shown.getString())) cir.setReturnValue(Component.literal(given));
     }
 
     /**
@@ -774,7 +760,7 @@ public abstract class VillagerEditorMixin extends Screen implements com.aetheria
                 : snap != null ? snap.birthDayOfMonth() : 1;
         return new TownsteadEditorCommitPayload(villagerUUID, hasHunger, hunger, saturation, hungerExhaustion,
                 hasThirst, thirst, quenched, thirstExhaustion, hasFatigue, fatigue, hasBioAge, bioAge,
-                hasBirthday, birthMonth, birthDay, townstead$surnameDirty, townstead$surname);
+                hasBirthday, birthMonth, birthDay, false, "", false, "", "");
     }
 
     @Unique

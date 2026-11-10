@@ -32,8 +32,12 @@ public final class WerewolfVillagers {
     private static final Map<UUID, Float> LAST_HEALTH = new HashMap<>();
     private static final Map<UUID, Long> UNTIL = new HashMap<>();
     private static final Map<UUID, Long> FORM_SINCE = new HashMap<>();
-    /** Forms a command holds: the tick keeps them as they are until released. */
-    private static final Map<UUID, Double> HELD = new HashMap<>();
+    /** A form a command holds, written on the villager: the tick keeps them as they are until released. */
+    private static final String HELD = "townstead:werewolf_held";
+    /** Timed changes a command started: they run their full time, day or night. */
+    private static final java.util.Set<UUID> COMMANDED = new java.util.HashSet<>();
+    /** The day a command turned someone back on a full moon: that moon does not turn them again. */
+    private static final Map<UUID, Long> KEPT_BACK = new HashMap<>();
 
     private WerewolfVillagers() {}
 
@@ -64,33 +68,60 @@ public final class WerewolfVillagers {
         return faction;
     }
 
+    /** Drops what is kept in memory for a villager who will not tick again. */
+    public static void forget(VillagerEntityMCA villager) {
+        UUID id = villager.getUUID();
+        LAST_HEALTH.remove(id);
+        UNTIL.remove(id);
+        FORM_SINCE.remove(id);
+        COMMANDED.remove(id);
+        KEPT_BACK.remove(id);
+    }
+
+    /** Server stop: these are timers on one world's clock. */
+    public static void clear() {
+        LAST_HEALTH.clear();
+        UNTIL.clear();
+        FORM_SINCE.clear();
+        COMMANDED.clear();
+        KEPT_BACK.clear();
+    }
+
     /** Holds a werewolf villager in {@code form} (0 human, 1 four legged, 2 upright) until {@link #release}. */
     public static void hold(VillagerEntityMCA villager, double form) {
-        HELD.put(villager.getUUID(), form);
+        villager.getPersistentData().putDouble(HELD, form);
         setForm(villager, form);
     }
 
     /** Hands the villager's form back to night, moon and rage. */
     public static void release(VillagerEntityMCA villager) {
-        HELD.remove(villager.getUUID());
+        villager.getPersistentData().remove(HELD);
     }
 
     /**
-     * Turns a werewolf villager now, as rage would: the change lasts the transform time, and ends
-     * at sunrise like any other. Form 0 turns them back.
+     * Turns a werewolf villager now: the change lasts the transform time, even by day. Form 0 turns
+     * them back, and on a full moon keeps them back for the rest of that night.
      */
     public static void turn(VillagerEntityMCA villager, double form) {
         UUID id = villager.getUUID();
-        long now = villager.level().getGameTime();
-        if (form > 0) UNTIL.put(id, now + transformSeconds() * 20L);
-        else UNTIL.remove(id);
+        Level level = villager.level();
+        long now = level.getGameTime();
+        if (form > 0) {
+            UNTIL.put(id, now + transformSeconds() * 20L);
+            COMMANDED.add(id);
+            KEPT_BACK.remove(id);
+        } else {
+            UNTIL.remove(id);
+            COMMANDED.remove(id);
+            if (isFullMoon(level)) KEPT_BACK.put(id, level.getDayTime() / 24000L);
+        }
         FORM_SINCE.put(id, now);
         setForm(villager, form);
     }
 
     /** The held form, or null when the villager's form follows the night. */
     public static Double held(VillagerEntityMCA villager) {
-        return HELD.get(villager.getUUID());
+        return villager.getPersistentData().contains(HELD) ? villager.getPersistentData().getDouble(HELD) : null;
     }
 
     /** Ticks until a timed change ends; -1 for none, {@link Long#MAX_VALUE} for a full-moon change. */
@@ -117,12 +148,15 @@ public final class WerewolfVillagers {
             if (form > 0) setForm(villager, 0);
             LAST_HEALTH.remove(id);
             UNTIL.remove(id);
-            HELD.remove(id);
+            FORM_SINCE.remove(id);
+            COMMANDED.remove(id);
+            KEPT_BACK.remove(id);
+            release(villager);
             return;
         }
 
         settleLooks(villager);
-        Double held = HELD.get(id);
+        Double held = held(villager);
         if (held != null) {
             if (form != held) setForm(villager, held);
             return;
@@ -136,7 +170,12 @@ public final class WerewolfVillagers {
         long now = level.getGameTime();
         boolean night = isNight(level), moon = isFullMoon(level);
         if (form <= 0) {
-            if (night && (moon || rage > RAGE_TO_TURN)) {
+            Long keptBack = KEPT_BACK.get(id);
+            if (keptBack != null && keptBack != level.getDayTime() / 24000L) {
+                KEPT_BACK.remove(id);
+                keptBack = null;
+            }
+            if (night && (moon && keptBack == null || rage > RAGE_TO_TURN)) {
                 UNTIL.put(id, moon ? WHOLE_NIGHT : now + transformSeconds() * 20L);
                 rage = 0;
                 if (villager.isSleeping()) villager.stopSleeping();
@@ -145,16 +184,20 @@ public final class WerewolfVillagers {
             }
         } else {
             Long until = UNTIL.get(id);
-            // A full-moon change (or one whose timer a reload lost) ends with the full moon; a rage
-            // change ends when its time is up; every change ends at sunrise.
+            // A commanded change runs its full time and keeps its form. Otherwise a full-moon change
+            // (or one whose timer a reload lost) ends with the full moon; a rage change ends when
+            // its time is up; every change ends at sunrise.
+            boolean commanded = until != null && COMMANDED.contains(id);
             boolean over;
-            if (!night) over = true;
+            if (commanded) over = now > until;
+            else if (!night) over = true;
             else if (until == null || until == WHOLE_NIGHT) over = !moon;
             else over = now > until;
             if (over) {
                 setForm(villager, 0);
                 UNTIL.remove(id);
-            } else if (now - FORM_SINCE.getOrDefault(id, 0L) >= FORM_COOLDOWN) {
+                COMMANDED.remove(id);
+            } else if (!commanded && now - FORM_SINCE.getOrDefault(id, 0L) >= FORM_COOLDOWN) {
                 double wanted = pick(villager);
                 if (wanted != form) {
                     setForm(villager, wanted);

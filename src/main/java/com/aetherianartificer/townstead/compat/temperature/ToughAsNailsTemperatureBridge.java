@@ -50,6 +50,12 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
     private static final int DEFAULT_WET_CHANGE = -1;
     private boolean wetChangeResolved;
     private int wetChange;
+    // toughasnails temperature_rise_altitude default.
+    private static final int DEFAULT_RISE_ALTITUDE = -32;
+    // Below the rise altitude a covered position reads WARM, not NEUTRAL.
+    private static final float RISE_STEP_CELSIUS = 10f;
+    private boolean riseAltitudeResolved;
+    private int riseAltitude;
     private Method getTemperatureAtPos;
     private Method isHeatingBlock;
     private Method isCoolingBlock;
@@ -131,6 +137,24 @@ public final class ToughAsNailsTemperatureBridge implements AmbientTemperatureBr
                 case "WARM" -> 30; case "HOT" -> 40; default -> Float.NaN;
             };
         } catch (Exception e) { return Float.NaN; }
+    }
+
+    @Override
+    public float ownDepthCelsius(ServerLevel level, BlockPos pos) {
+        return level.dimensionType().natural() && pos.getY() < riseAltitude() ? RISE_STEP_CELSIUS : 0f;
+    }
+
+    private int riseAltitude() {
+        if (!riseAltitudeResolved) {
+            riseAltitudeResolved = true;
+            try {
+                Object config = Class.forName("toughasnails.init.ModConfig").getField("temperature").get(null);
+                riseAltitude = config.getClass().getField("temperatureRiseAltitude").getInt(config);
+            } catch (ReflectiveOperationException | LinkageError e) {
+                riseAltitude = DEFAULT_RISE_ALTITUDE;
+            }
+        }
+        return riseAltitude;
     }
 
     private static <T> TagKey<T> tag(ResourceKey<? extends Registry<T>> registry, String path) {

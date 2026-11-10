@@ -112,12 +112,10 @@ class ClientServerDataBoundaryTest {
         if (simple(node.name).contains("Payload")) return false;
         if (isClientPackage(node.name) || simple(node.name).startsWith("Client")) return true;
         for (AbstractInsnNode insn : method.instructions) {
-            String owner = switch (insn) {
-                case MethodInsnNode call -> call.owner;
-                case FieldInsnNode field -> field.owner;
-                case TypeInsnNode type -> type.desc;
-                default -> null;
-            };
+            String owner = null;
+            if (insn instanceof MethodInsnNode call) owner = call.owner;
+            else if (insn instanceof FieldInsnNode field) owner = field.owner;
+            else if (insn instanceof TypeInsnNode type) owner = type.desc;
             if (owner != null && (owner.startsWith("net/minecraft/client/") || isClientPackage(owner))) return true;
         }
         return Type.getMethodDescriptor(Type.getReturnType(method.desc), Type.getArgumentTypes(method.desc))

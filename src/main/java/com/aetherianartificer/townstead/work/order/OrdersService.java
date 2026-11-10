@@ -271,6 +271,7 @@ public final class OrdersService {
      */
     static OrdersSnapshotS2CPayload.Status statusOf(Order order, OrderContext context) {
         if (order.paused()) return OrdersSnapshotS2CPayload.Status.PAUSED;
+        order.expireClaims(context.gameTime());
         if (order.inProgress() > 0) return OrdersSnapshotS2CPayload.Status.WORKING;
         if (!order.wantsWork(context)) return OrdersSnapshotS2CPayload.Status.SATISFIED;
         if (!context.mayWork(order)) return OrdersSnapshotS2CPayload.Status.BLOCKED;

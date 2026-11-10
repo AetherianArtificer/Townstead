@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.mixin.compat.temperature;
 import com.aetherianartificer.townstead.compat.temperature.RoomHeatBackend;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.*;
@@ -22,5 +23,12 @@ public class ColdSweatRoomQueryMixin {
         if (!com.aetherianartificer.townstead.temperature.HearthAirRule.active()) return;
         Object none = com.aetherianartificer.townstead.compat.temperature.ColdSweatTemperatureBridge.INSTANCE.noInsulation(level);
         if (none != null) cir.setReturnValue(none);
+    }
+
+    /** The same rule for Cold Sweat builds that apply hearth insulation directly to the temperature. */
+    @Inject(method = "applyHearthInsulation", at = @At("HEAD"), cancellable = true, remap = false, require = 0)
+    private static void townstead$noHearthInsulationApplied(Level level, BlockPos pos, LivingEntity dummy, double temp,
+                                                            CallbackInfoReturnable<Double> cir) {
+        if (com.aetherianartificer.townstead.temperature.HearthAirRule.active()) cir.setReturnValue(temp);
     }
 }

@@ -27,7 +27,6 @@ import net.neoforged.neoforge.network.PacketDistributor;
 //?}
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public final class HungerVillagerTicker {
     //? if >=1.21 {
@@ -42,7 +41,7 @@ public final class HungerVillagerTicker {
             java.util.UUID.nameUUIDFromBytes("townstead:hunger_speed_penalty".getBytes());
     *///?}
 
-    private static final Map<Integer, TickState> STATE = new ConcurrentHashMap<>();
+    private static final Map<VillagerEntityMCA, TickState> STATE = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
     private HungerVillagerTicker() {}
 
     public static void tick(VillagerEntityMCA self) {
@@ -52,7 +51,7 @@ public final class HungerVillagerTicker {
             return;
         }
 
-        TickState state = STATE.computeIfAbsent(self.getId(), id -> new TickState());
+        TickState state = STATE.computeIfAbsent(self, id -> new TickState());
         TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
 
         // A diet:"none" race does not eat: pin hunger full so it never decays and the refuel task
@@ -167,10 +166,6 @@ public final class HungerVillagerTicker {
         if (currentHunger != state.lastSyncedHunger || hungerChanged) {
             state.lastSyncedHunger = currentHunger;
             pushHunger(self, needs.hungerTag());
-        }
-
-        if (!self.isAlive() || self.isRemoved()) {
-            STATE.remove(self.getId());
         }
     }
 

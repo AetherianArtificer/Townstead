@@ -11,10 +11,6 @@ import net.minecraft.world.entity.schedule.Activity;
 public final class RestCoordinator {
     private RestCoordinator() {}
 
-    public static RestContext capture(VillagerEntityMCA villager, TownsteadVillager.Needs needs, boolean hasValidSleepingBed, boolean guardRole) {
-        return capture(villager, needs, hasValidSleepingBed, guardRole, currentScheduleActivity(villager), false);
-    }
-
     public static RestContext capture(VillagerEntityMCA villager, TownsteadVillager.Needs needs, boolean hasValidSleepingBed, boolean guardRole, Activity scheduleActivity, boolean restOverrideActive) {
         return new RestContext(
                 TownsteadConfig.isVillagerFatigueEnabled(),
@@ -89,9 +85,9 @@ public final class RestCoordinator {
 
     static SleepReason determineReason(RestContext context) {
         if (context.collapsed()) return SleepReason.EMERGENCY_COLLAPSE;
-        // Once emergency rest has begun, keep it authoritative through
-        // interruptions until recovery completes. Merely being drowsy does
-        // not supersede a WORK shift.
+        // While the override lasts it keeps asking for a bed. The fatigue ticker
+        // owns ending it: being hurt or collapsing releases an awake villager.
+        // Merely being drowsy does not supersede a WORK shift.
         if (context.restOverrideActive() && context.fatigue() > 0) return SleepReason.FATIGUE_REST;
         if (context.isScheduledRest()) return SleepReason.SCHEDULED_REST;
         if (context.isExhaustedOrWorse()) return SleepReason.FATIGUE_REST;
@@ -109,10 +105,5 @@ public final class RestCoordinator {
         if (context.hasAttackTarget()) return SleepBlockReason.ATTACK_TARGET;
         if (context.hurtByMob()) return SleepBlockReason.COMBAT_THREAT;
         return SleepBlockReason.NONE;
-    }
-
-    private static Activity currentScheduleActivity(VillagerEntityMCA villager) {
-        long dayTime = villager.level().getDayTime() % 24000L;
-        return villager.getBrain().getSchedule().getActivityAt((int) dayTime);
     }
 }

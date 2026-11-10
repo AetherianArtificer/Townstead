@@ -18,6 +18,8 @@ public final class NameClientStore {
     private static final Map<Integer, NamingTradition.Order> ORDER = new ConcurrentHashMap<>();
     private static final Map<Integer, NamingTradition.FamilyType> RULE = new ConcurrentHashMap<>();
     private static final Map<Integer, String> TRADITION = new ConcurrentHashMap<>();
+    private static final java.util.Set<Integer> LOCKED = ConcurrentHashMap.newKeySet();
+    private static volatile Map<java.util.UUID, PlayerFamiliesS2CPayload.Entry> playerFamilies = Map.of();
 
     private NameClientStore() {}
 
@@ -31,6 +33,33 @@ public final class NameClientStore {
         put(TRADITION, entityId, tradition);
     }
 
+    public static void set(int entityId, String familyName, String culture,
+                           NamingTradition.Order order, NamingTradition.FamilyType rule,
+                           String tradition, boolean familyLocked) {
+        set(entityId, familyName, culture, order, rule, tradition);
+        if (familyLocked) LOCKED.add(entityId);
+        else LOCKED.remove(entityId);
+    }
+
+    public static void setPlayerFamilies(Map<java.util.UUID, PlayerFamiliesS2CPayload.Entry> families) {
+        playerFamilies = Map.copyOf(families);
+    }
+
+    /** A player's name with their family name, by id, for a screen with no entity for them. */
+    public static String playerFullName(java.util.UUID player, String givenName) {
+        PlayerFamiliesS2CPayload.Entry entry = playerFamilies.get(player);
+        return entry == null ? givenName : NameParts.format(givenName, entry.family(), entry.order());
+    }
+
+    /** Whether another mod holds this entity's family name, so typing one here would do nothing. */
+    public static boolean familyLocked(int entityId) {
+        return LOCKED.contains(entityId);
+    }
+
+    public static NamingTradition.Order order(int entityId) {
+        return ORDER.getOrDefault(entityId, NamingTradition.Order.GIVEN_FIRST);
+    }
+
     /** The id of the naming tradition this entity is named by, or empty. */
     public static String tradition(int entityId) {
         String value = TRADITION.get(entityId);
@@ -40,7 +69,7 @@ public final class NameClientStore {
     /**
      * Where this entity's family name comes from, which is what tells a screen whether editing one
      * reaches anybody else. {@code NONE} both for a tradition that gives no family names and for an
-     * entity nobody has synced, so a screen treats an unknown villager as having nothing to edit.
+     * entity nobody has synced.
      */
     public static NamingTradition.FamilyType rule(int entityId) {
         return RULE.getOrDefault(entityId, NamingTradition.FamilyType.NONE);
@@ -75,6 +104,8 @@ public final class NameClientStore {
         ORDER.clear();
         RULE.clear();
         TRADITION.clear();
+        LOCKED.clear();
+        playerFamilies = Map.of();
     }
 
     private static void put(Map<Integer, String> into, int entityId, String value) {

@@ -841,6 +841,9 @@ public final class WorkRecipeRegistry {
 
     /** Reads the duration published by a recipe implementation. */
     public static int cookingTimeTicks(Recipe<?> recipe, int fallback) {
+        if (recipe instanceof net.minecraft.world.item.crafting.AbstractCookingRecipe cooking) {
+            return Math.max(1, cooking.getCookingTime());
+        }
         String[] methods = {"getCookingTime", "getCookTime", "getCookTimeInTicks", "time",
                 "getTime", "cookTick", "getCookTick"};
         for (String name : methods) {

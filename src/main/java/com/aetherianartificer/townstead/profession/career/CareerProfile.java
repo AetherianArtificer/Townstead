@@ -28,8 +28,36 @@ public final class CareerProfile {
     private final Map<String, ProfessionXp> progress = new LinkedHashMap<>();
     private final Map<ResourceLocation, CareerStamp> stamps = new LinkedHashMap<>();
     private long lastVocationChangeDay = -1L;
+    /** Insight a career paid while it was the primary vocation, kept after switching away. */
+    private final Map<ResourceLocation, Integer> keptInsight = new LinkedHashMap<>();
+    /** False for a save from before Insight followed the primary vocation, until it is migrated. */
+    private boolean insightGated = true;
 
     public ResourceLocation primaryVocation() { return primaryVocation; }
+    public Map<ResourceLocation, Integer> keptInsight() { return Map.copyOf(keptInsight); }
+    public boolean insightGated() { return insightGated; }
+
+    /**
+     * One-time migration for a save from before the gate: Insight already earned in every career
+     * is kept, so nothing spent goes over budget.
+     */
+    public void grandfatherInsight() {
+        // Before career data loads there is nothing to price the Insight with; try again later.
+        if (insightGated || com.aetherianartificer.townstead.profession.def.ProfessionDefs.all().isEmpty()) return;
+        for (var def : com.aetherianartificer.townstead.profession.def.ProfessionDefs.all().values()) {
+            if (def != null) keepInsight(def.id());
+        }
+        insightGated = true;
+    }
+
+    private void keepInsight(ResourceLocation career) {
+        var def = com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(career);
+        if (def == null) return;
+        int xp = professionXp(def.id().toString()).xp();
+        if (xp <= 0) return;
+        int paid = Math.max(0, def.insightAt(xp));
+        if (paid > 0) keptInsight.merge(def.id(), paid, Math::max);
+    }
     public Set<ResourceLocation> careerHistory() { return Set.copyOf(careerHistory); }
     public Set<ResourceLocation> learnedChoices() { return Set.copyOf(learnedChoices); }
     public Map<ResourceLocation, ResourceLocation> activeBySkillGroup() { return Map.copyOf(activeBySkillGroup); }
@@ -77,7 +105,10 @@ public final class CareerProfile {
 
     public boolean setPrimaryVocation(ResourceLocation vocation) {
         if (java.util.Objects.equals(primaryVocation, vocation)) return false;
-        if (primaryVocation != null) careerHistory.add(primaryVocation);
+        if (primaryVocation != null) {
+            careerHistory.add(primaryVocation);
+            keepInsight(primaryVocation);
+        }
         primaryVocation = vocation;
         if (vocation != null) careerHistory.add(vocation);
         return true;
@@ -171,6 +202,10 @@ public final class CareerProfile {
             stampTag.put(entry.getKey().toString(), entry.getValue().toTag());
         }
         if (!stampTag.isEmpty()) tag.put("stamps", stampTag);
+        tag.putBoolean("insightGated", insightGated);
+        CompoundTag keptTag = new CompoundTag();
+        keptInsight.forEach((career, paid) -> keptTag.putInt(career.toString(), paid));
+        if (!keptTag.isEmpty()) tag.put("keptInsight", keptTag);
         return tag;
     }
 
@@ -216,6 +251,14 @@ public final class CareerProfile {
                     .canonicalId(ResourceLocation.tryParse(key));
             if (skill != null) profile.stamps.put(skill, CareerStamp.fromTag(stampTag.getCompound(key)));
         }
+        CompoundTag keptTag = tag.getCompound("keptInsight");
+        for (String key : keptTag.getAllKeys()) {
+            ResourceLocation career = ResourceLocation.tryParse(key);
+            if (career != null) profile.keptInsight.put(career, keptTag.getInt(key));
+        }
+        // A save from before the gate that has progress needs its earned Insight kept once.
+        profile.insightGated = tag.contains("insightGated") ? tag.getBoolean("insightGated")
+                : profile.progress.isEmpty();
         return profile;
     }
 

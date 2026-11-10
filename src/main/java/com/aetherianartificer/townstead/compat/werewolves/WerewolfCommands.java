@@ -161,9 +161,6 @@ public final class WerewolfCommands {
                 WerewolfVillagers.release(villager);
                 WerewolfVillagers.turn(villager, form);
                 CompatCommands.say(c.getSource(), CompatCommands.name(villager) + " is " + FORMS[form] + ".");
-                if (form > 0 && !WerewolfVillagers.isNight(villager.level())) {
-                    CompatCommands.warn(c.getSource(), "It is day, so the change ends at once. Add hold to keep it.");
-                }
             }
             done++;
         }

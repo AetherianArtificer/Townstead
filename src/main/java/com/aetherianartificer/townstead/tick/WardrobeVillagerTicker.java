@@ -16,7 +16,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Evaluates wardrobe policies for a villager on the same cadence as ambient temperature sampling,
@@ -31,7 +30,7 @@ public final class WardrobeVillagerTicker {
 
     public static final long INTERVAL_TICKS = 200L;
 
-    private static final Map<Integer, State> STATE = new ConcurrentHashMap<>();
+    private static final Map<VillagerEntityMCA, State> STATE = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
 
     private static final class State {
         long nextTick;
@@ -50,30 +49,30 @@ public final class WardrobeVillagerTicker {
         STATE.clear();
     }
 
-    public static void forget(int entityId) {
-        STATE.remove(entityId);
+    public static void forget(VillagerEntityMCA villager) {
+        STATE.remove(villager);
     }
 
     /** The plan last resolved for this villager, for the dress behaviour. Empty until the first tick. */
     public static WardrobeResolver.Plan planOf(@Nullable VillagerEntityMCA villager) {
         if (villager == null) return WardrobeResolver.Plan.EMPTY;
-        State state = STATE.get(villager.getId());
+        State state = STATE.get(villager);
         return state == null ? WardrobeResolver.Plan.EMPTY : state.plan;
     }
 
     /** Re-dresses the villager now, after a Wardrobe edit, instead of at their next turn. */
     public static void refresh(VillagerEntityMCA self) {
         if (self == null || !(self.level() instanceof ServerLevel)) return;
-        STATE.computeIfAbsent(self.getId(), id -> new State()).nextTick = 0;
+        STATE.computeIfAbsent(self, id -> new State()).nextTick = 0;
         tick(self);
     }
 
     public static void tick(VillagerEntityMCA self) {
         if (self == null || !(self.level() instanceof ServerLevel level)) return;
         long gameTime = level.getGameTime();
-        State state = STATE.computeIfAbsent(self.getId(), id -> {
+        State state = STATE.computeIfAbsent(self, id -> {
             State fresh = new State();
-            fresh.nextTick = gameTime + Math.floorMod(id, (int) INTERVAL_TICKS);
+            fresh.nextTick = gameTime + Math.floorMod(self.getId(), (int) INTERVAL_TICKS);
             return fresh;
         });
         if (gameTime < state.nextTick) return;

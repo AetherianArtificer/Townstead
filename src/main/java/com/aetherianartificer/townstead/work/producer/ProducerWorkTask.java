@@ -489,6 +489,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
             // order claim and subclass protocol state intact; reconciliation reads the machine's
             // real state before doing anything else.
             resumeCommittedCycle = true;
+            if (claimedLine != null) claimedLine.renew(claimedLineLease, gameTime + PARKED_CLAIM_LEASE_TICKS);
             return;
         }
         resumeCommittedCycle = false;
@@ -503,6 +504,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (claimedLine != null) claimedLine.renew(claimedLineLease, gameTime + CLAIM_LEASE_TICKS);
         if (!isEligibleVillager(level, villager) && !hasPendingPhysicalTransfer(level, villager)) {
             clearAll(level, villager, gameTime);
             return;
@@ -712,6 +714,11 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     @Nullable private com.aetherianartificer.townstead.work.order.Order claimedLine;
     /** Output units reserved on that line; batching stations can claim more than one. */
     private int claimedLineAmount;
+    @Nullable private java.util.UUID claimedLineLease;
+    /** Renewed every tick while working, so a worker who vanished frees the line this soon after. */
+    private static final long CLAIM_LEASE_TICKS = 600L;
+    /** A committed cycle parked by a shift boundary is not ticked until the next shift; a day covers it. */
+    private static final long PARKED_CLAIM_LEASE_TICKS = 24000L;
     /** Number of copies of the active recipe physically committed in this cycle. */
     private int activeBatchOperations = 1;
 
@@ -742,8 +749,9 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     /** Hands a claim back when a job ends without producing. Safe to call when nothing is held. */
     protected void releaseOrderClaim() {
         if (claimedLine != null) {
-            claimedLine.abandon(claimedLineAmount);
+            claimedLine.abandon(claimedLineLease);
             claimedLine = null;
+            claimedLineLease = null;
             claimedLineAmount = 0;
             activeBatchOperations = 1;
             markOrdersChanged();
@@ -755,10 +763,11 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         boolean completed = false;
         if (claimedLine != null) {
             Order credited = claimedLine;
-            claimedLine.finish(claimedLineAmount, count);
+            claimedLine.finish(claimedLineLease, count);
             OrderContext context = orderContext(level, villager);
             completed = context != null && credited.satisfied(context);
             claimedLine = null;
+            claimedLineLease = null;
             claimedLineAmount = 0;
             activeBatchOperations = 1;
             markOrdersChanged();
@@ -840,7 +849,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
                             (outstanding + outputPerOperation - 1) / outputPerOperation));
                     claimedLineAmount = Math.min(outstanding,
                             activeBatchOperations * outputPerOperation);
-                    claimedLine.claim(claimedLineAmount);
+                    claimedLineLease = claimedLine.claim(claimedLineAmount, gameTime + CLAIM_LEASE_TICKS);
                     markOrdersChanged();
                     debugChat(level, villager, "SELECT:ordered " + ordered.recipe().output()
                             + " x" + claimedLineAmount);

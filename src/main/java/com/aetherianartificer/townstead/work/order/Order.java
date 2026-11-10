@@ -144,6 +144,14 @@ public final class Order {
      * both read "8 of 10" and both make two.
      */
     private int inProgress;
+    /** Claims a working task keeps alive; one whose worker vanished expires instead of holding the line. */
+    private final java.util.Map<java.util.UUID, Lease> leases = new java.util.HashMap<>();
+
+    private static final class Lease {
+        final int amount;
+        long until;
+        Lease(int amount, long until) { this.amount = amount; this.until = until; }
+    }
 
     private final Kind kind;
 
@@ -299,6 +307,45 @@ public final class Order {
     /** One-output compatibility form used by non-batching work engines. */
     public void abandon() { abandon(1); }
 
+    /** A worker's claim that lapses at {@code until} unless renewed. The returned id settles it. */
+    public java.util.UUID claim(int count, long until) {
+        int amount = Math.max(1, count);
+        java.util.UUID id = java.util.UUID.randomUUID();
+        leases.put(id, new Lease(amount, until));
+        inProgress += amount;
+        return id;
+    }
+
+    /** Keeps a claim alive. One that already lapsed stays lapsed: the line may be spoken for again. */
+    public void renew(java.util.UUID id, long until) {
+        Lease lease = leases.get(id);
+        if (lease != null) lease.until = until;
+    }
+
+    /** The claim produced something. A lapsed one still counts what physically appeared. */
+    public void finish(java.util.UUID id, int producedCount) {
+        abandon(id);
+        produced += Math.max(0, producedCount);
+    }
+
+    /** The claim came to nothing. Nothing happens if it already lapsed. */
+    public void abandon(java.util.UUID id) {
+        Lease lease = leases.remove(id);
+        if (lease != null) inProgress = Math.max(0, inProgress - lease.amount);
+    }
+
+    /** Lets go of claims whose workers stopped renewing them. */
+    public void expireClaims(long now) {
+        if (leases.isEmpty()) return;
+        var entries = leases.values().iterator();
+        while (entries.hasNext()) {
+            Lease lease = entries.next();
+            if (lease.until > now) continue;
+            entries.remove();
+            inProgress = Math.max(0, inProgress - lease.amount);
+        }
+    }
+
     // ── Progress ──
 
     /**
@@ -322,6 +369,7 @@ public final class Order {
      */
     public int outstanding(OrderContext context) {
         if (mode == Mode.STANDING) return 1;
+        expireClaims(context.gameTime());
         int want = mode == Mode.PER_VILLAGER
                 ? target * Math.max(0, context.villagerCount())
                 : target;

@@ -114,35 +114,35 @@ public abstract class VillagerHungerMixin extends Villager {
         // built-in work behaviors, preventing job-site pathing from overriding ours.
         brain.addActivity(Activity.WORK,
                 ImmutableList.<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>>of(
-                        Pair.of(69, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.HOSPITALITY, new com.aetherianartificer.townstead.hospitality.service.HospitalityCleanupTask())),
-                        Pair.of(70, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.FARMING, new HarvestWorkTask())),
-                        Pair.of(71, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.FISHING, new FishermanWorkTask())),
-                        Pair.of(72, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
+                        Pair.of(69, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>work(com.aetherianartificer.townstead.switchboard.Systems.HOSPITALITY, new com.aetherianartificer.townstead.hospitality.service.HospitalityCleanupTask())),
+                        Pair.of(70, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>work(com.aetherianartificer.townstead.switchboard.Systems.FARMING, new HarvestWorkTask())),
+                        Pair.of(71, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>work(com.aetherianartificer.townstead.switchboard.Systems.FISHING, new FishermanWorkTask())),
+                        Pair.of(72, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>work(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
                                 new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask.Spec(
                                         "Cook",
                                         com.aetherianartificer.townstead.profession.def.WorkTaskTypes.COOK,
                                         com.aetherianartificer.townstead.profession.def.WorkTaskTypes.CHOP,
                                         com.aetherianartificer.townstead.work.producer.ProducerRole.COOK,
                                         com.aetherianartificer.townstead.TownsteadConfig::isTownsteadCookEnabled)))),
-                        Pair.of(72, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
+                        Pair.of(72, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>work(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
                                 new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask.Spec(
                                         "Beverage Artisan",
                                         com.aetherianartificer.townstead.profession.def.WorkTaskTypes.BREW,
                                         null,
                                         com.aetherianartificer.townstead.work.producer.ProducerRole.BEVERAGE_ARTISAN,
                                         () -> true)))),
-                        Pair.of(75, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
+                        Pair.of(75, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>work(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask(
                                 new com.aetherianartificer.townstead.work.producer.DiscoveredStationWorkTask.Spec(
                                         "Smoker",
                                         com.aetherianartificer.townstead.profession.def.WorkTaskTypes.SMOKE,
                                         null,
                                         com.aetherianartificer.townstead.work.producer.ProducerRole.GENERAL,
                                         () -> true)))),
-                        Pair.of(80, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.job.EntityDeliveryWorkTask())),
-                        Pair.of(82, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.job.EntityInteractionWorkTask())),
-                        Pair.of(83, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.SHEPHERDING, new com.aetherianartificer.townstead.shepherd.ShepherdDepositTask())),
-                        Pair.of(73, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.job.BlockInteractionWorkTask())),
-                        Pair.of(84, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.StationWorkTask())),
+                        Pair.of(80, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>work(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.job.EntityDeliveryWorkTask())),
+                        Pair.of(82, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>work(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.job.EntityInteractionWorkTask())),
+                        Pair.of(83, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>work(com.aetherianartificer.townstead.switchboard.Systems.SHEPHERDING, new com.aetherianartificer.townstead.shepherd.ShepherdDepositTask())),
+                        Pair.of(73, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>work(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.job.BlockInteractionWorkTask())),
+                        Pair.of(84, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>work(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.StationWorkTask())),
                         Pair.of(85, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.martial.MartialWorkTask()))
                 ));
         // Non-work behaviors stay in CORE so they tick regardless of schedule activity.

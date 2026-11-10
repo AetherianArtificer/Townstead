@@ -95,6 +95,22 @@ class RestCoordinatorTest {
     }
 
     @Test
+    void activeOverrideSeeksBedUnderItsOwnAllRestSchedule() {
+        RestDecision withOverride = RestCoordinator.decide(new RestContext(
+                true, Activity.REST, FatigueData.EXHAUSTED_THRESHOLD,
+                false, false, false, false, false, true, false, true));
+        assertEquals(SleepReason.FATIGUE_REST, withOverride.reason());
+        assertTrue(withOverride.shouldSeekBed());
+
+        // The same schedule without the flag is ordinary rest: this is why callers must pass it.
+        RestDecision withoutOverride = RestCoordinator.decide(new RestContext(
+                true, Activity.REST, FatigueData.EXHAUSTED_THRESHOLD,
+                false, false, false, false, false, true, false, false));
+        assertEquals(SleepReason.SCHEDULED_REST, withoutOverride.reason());
+        assertFalse(withoutOverride.shouldSeekBed());
+    }
+
+    @Test
     void combatThreatBlocksBedSeeking() {
         RestDecision decision = RestCoordinator.decide(new RestContext(
                 true,

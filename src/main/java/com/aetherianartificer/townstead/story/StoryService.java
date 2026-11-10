@@ -111,6 +111,7 @@ public final class StoryService {
     }
 
     public static void onLogout(ServerPlayer player) {
+        com.aetherianartificer.townstead.replace.CostumeHearts.forgetDue(player);
         StoryOverheard.stop(player);
         StorySession session = SESSIONS.remove(player.getUUID());
         if (session != null) session.finish();
@@ -141,6 +142,7 @@ public final class StoryService {
     public static void handle(ServerPlayer player, StoryC2SPayload payload) {
         if (payload.action() == StoryC2SPayload.CLOSE) {
             closeSession(player);
+            com.aetherianartificer.townstead.replace.CostumeHearts.settleDue(player);
             return;
         }
         if (payload.action() == StoryC2SPayload.OFFER) {
@@ -385,6 +387,13 @@ public final class StoryService {
     static @Nullable PlayerStories.Entry existingEntry(ServerPlayer player, VillagerEntityMCA villager, StoryDefinition story) {
         PlayerStories.Entry entry = stories(player).get(PlayerStories.key(story, villager.getUUID()));
         return entry != null && entry.villager.equals(villager.getUUID()) ? entry : null;
+    }
+
+    /** Whether a story is holding this villager, as its speaker or in its cast. */
+    public static boolean inScene(VillagerEntityMCA villager) {
+        if (SESSIONS.isEmpty()) return false;
+        for (StorySession session : SESSIONS.values()) if (session.involves(villager)) return true;
+        return false;
     }
 
     static boolean inConversation(ServerPlayer player) {

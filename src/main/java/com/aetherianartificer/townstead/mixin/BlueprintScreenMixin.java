@@ -187,7 +187,7 @@ public abstract class BlueprintScreenMixin extends Screen implements com.aetheri
      */
     @Inject(method = "targetedEditMessage", remap = false, require = 0, at = @At("RETURN"), cancellable = true)
     private static void townstead$removeOpenAirBuilding(net.conczin.mca.network.c2s.ReportBuildingMessage.Action action,
-            Village village, RoomScanPlan plan, Integer selectedFloor,
+            Village village, RoomScanPlan plan,
             CallbackInfoReturnable<Optional<net.conczin.mca.network.c2s.ReportBuildingMessage>> cir) {
         if (action != net.conczin.mca.network.c2s.ReportBuildingMessage.Action.REMOVE
                 || cir.getReturnValue().isPresent() || village == null) return;

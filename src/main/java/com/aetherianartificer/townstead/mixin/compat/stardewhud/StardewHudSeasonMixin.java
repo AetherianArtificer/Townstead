@@ -21,8 +21,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * continues to drive the icon — preserving its behavior for players who
  * intentionally chose a non-seasonal profile.
  *
- * Stardew HUD is NeoForge 1.21.1 only; on Forge 1.20.1 builds the @Pseudo
- * mixin silently no-ops via {@code require = 0}.
+ * Stardew HUD before 1.2.5 has no calculateSeasonIndex, so this does nothing there.
  */
 @Pseudo
 @Mixin(targets = "wb.stardewhud.hud.components.SeasonComponent")

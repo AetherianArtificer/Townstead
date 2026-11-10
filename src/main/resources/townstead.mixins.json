@@ -57,6 +57,7 @@
     "compat.mca.GetVillagerRequestEditorGuardMixin",
     "compat.mca.LazyFindPointOfInterestTaskCarrierMixin",
     "compat.mca.NamesCitizenNationMixin",
+    "compat.mca.VillagerNameRequestTraditionMixin",
     "compat.mca.VillagerDisplayNameMixin",
     "compat.mca.NamesRegisterInstallMixin",
     "compat.mca.PlayerSaveDataEditorGuardMixin",
@@ -66,6 +67,7 @@
     "compat.mca.VillagerEquipmentFilingMixin",
     "compat.mca.VillagerBrainMemoriesMixin",
     "compat.mca.DestinyMessageRebirthMixin",
+    "compat.mca.DestinyLaunchShieldMixin",
     "compat.mcadescendants.DescendantsMixin",
     "compat.mca.VillagerCommandHandlerHatGiftMixin",
     "compat.mca.VillagerCommandHandlerNewcomerStayMixin",
@@ -175,6 +177,7 @@
     "compat.temperature.TanPlayerClothingMixin"
   ],
   "client": [
+    "client.FamilyTreeNodeNameMixin",
     "client.ScreenRemovedHookMixin",
     "client.RecipeBookChangeMixin",
     "client.QuestGiverGlowMixin",
@@ -256,6 +259,7 @@
     "compat.vampirism.VampirePlayerHeadLayerMixin",
     "InteractScreenMixin",
     "VillagerEditorMixin",
+    "LimitedVillagerEditorSurnameMixin",
     "VillagerEditorRootMixin",
     "VillagerScaleRendererMixin",
     "DestinyScreenMixin",

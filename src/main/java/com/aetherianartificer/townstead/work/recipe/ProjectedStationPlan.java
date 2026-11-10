@@ -92,6 +92,12 @@ public record ProjectedStationPlan(boolean eligible, List<RecipeIngredient> mate
         if (value instanceof ItemStack stack && !stack.isEmpty()) return item(stack.getItem(), stack.getCount());
         LinkedHashSet<ResourceLocation> ids = new LinkedHashSet<>();
         int count = positiveInt(invoke(value, "getCount"), 1);
+        if (value instanceof net.minecraft.world.item.crafting.Ingredient vanilla) {
+            for (ItemStack option : vanilla.getItems()) {
+                if (!option.isEmpty()) ids.add(BuiltInRegistries.ITEM.getKey(option.getItem()));
+            }
+            return ids.isEmpty() ? null : new RecipeIngredient(List.copyOf(ids), count);
+        }
         for (String method : List.of("getItems", "items", "getItem", "item")) {
             Object result = invoke(value, method);
             for (Object element : RecipeProjectionAccess.elements(result)) {

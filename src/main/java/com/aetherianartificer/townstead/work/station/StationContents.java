@@ -193,6 +193,7 @@ public final class StationContents {
         return extracted;
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public static boolean matchesRecipe(ServerLevel level, BlockPos pos, DiscoveredRecipe recipe) {
         if (level == null || pos == null || recipe == null) return false;
         BlockPos anchor = StationCapacities.anchor(level, pos);
@@ -206,14 +207,9 @@ public final class StationContents {
             Method inventoryMethod = be.getClass().getMethod("getInventory");
             Object inventory = inventoryMethod.invoke(be);
             if (inventory == null) return false;
-            Object wrapper = RecipeWrapper.class.getConstructors()[0].newInstance(inventory);
-            for (Method method : source.getClass().getMethods()) {
-                if (!method.getName().equals("matches") || method.getParameterCount() != 2) continue;
-                try {
-                    Object result = method.invoke(source, wrapper, level);
-                    if (result instanceof Boolean value) return value;
-                } catch (IllegalArgumentException ignored) {}
-            }
+            RecipeWrapper wrapper = (RecipeWrapper) RecipeWrapper.class.getConstructors()[0].newInstance(inventory);
+            // A recipe over some other input type throws here, which counts as no match.
+            if (source instanceof net.minecraft.world.item.crafting.Recipe typed) return typed.matches(wrapper, level);
         } catch (Throwable ignored) {}
         return false;
     }

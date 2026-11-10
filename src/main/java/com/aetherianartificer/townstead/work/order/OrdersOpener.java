@@ -110,6 +110,11 @@ public final class OrdersOpener {
     public static OrderContext context(ServerLevel level, Worksite site) {
         return new OrderContext() {
             @Override
+            public long gameTime() {
+                return level.getGameTime();
+            }
+
+            @Override
             public int stockOf(ResourceLocation item, Order.CountScope scope) {
                 return WorksiteStock.count(level, site, item, scope);
             }

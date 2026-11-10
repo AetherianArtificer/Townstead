@@ -43,6 +43,11 @@ public final class WorksiteOrders {
      */
     public static OrderContext contextFor(ServerLevel level, Worksite site, VillagerEntityMCA villager) {
         return new OrderContext() {
+            @Override
+            public long gameTime() {
+                return level.getGameTime();
+            }
+
             // Every worker assigned here counts, even off shift. The fallback preserves the
             // acting worker's transient stock if their assignment changed during this task.
             @Override

@@ -169,6 +169,8 @@ public final class RecipeProjectionAccess {
                     ? new Step(true, list.get(index), "")
                     : new Step(false, null, "list index out of bounds");
         }
+        Step vanilla = vanillaStep(owner, name);
+        if (vanilla != null) return vanilla;
         for (String methodName : methodAliases(name)) {
             try {
                 Method method = owner.getClass().getMethod(methodName);
@@ -194,6 +196,24 @@ public final class RecipeProjectionAccess {
             }
         }
         return new Step(false, null, "no zero-argument method or field named " + name);
+    }
+
+    /** Forge renames these in a real install, so looking them up by name only works in a dev run. */
+    private static @Nullable Step vanillaStep(Object owner, String name) {
+        try {
+            if (owner instanceof net.minecraft.world.item.crafting.Recipe<?> recipe) {
+                if ("getIngredients".equals(name)) return new Step(true, recipe.getIngredients(), "");
+                if ("getResultItem".equals(name)) {
+                    return new Step(true, recipe.getResultItem(net.minecraft.core.RegistryAccess.EMPTY), "");
+                }
+            }
+            if (owner instanceof net.minecraft.world.item.crafting.Ingredient ingredient && "getItems".equals(name)) {
+                return new Step(true, ingredient.getItems(), "");
+            }
+        } catch (Throwable ignored) {
+            // A recipe that needs real registries for this answer falls through to the other aliases.
+        }
+        return null;
     }
 
     private static List<String> methodAliases(String name) {

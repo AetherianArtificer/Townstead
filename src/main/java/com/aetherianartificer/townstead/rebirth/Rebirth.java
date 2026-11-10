@@ -64,6 +64,11 @@ public final class Rebirth {
     /** Where each just-reborn player's last life ended, until Destiny closes or they go there. */
     private static final Map<UUID, GlobalPos> LAST_DEATH = new ConcurrentHashMap<>();
 
+    /** A request written on the dead player, so a disconnect before respawning does not lose it. */
+    private static final String REQUEST = "townstead:rebirth_request";
+    /** Written on a reborn player until their new character is made, so a rejoin picks Destiny back up. */
+    private static final String DESTINY = "townstead:rebirth_destiny";
+
     public static RebirthMode mode() {
         return Switchboard.get(TownsteadConfig.REBIRTH_MODE);
     }
@@ -73,15 +78,15 @@ public final class Rebirth {
                 && !com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.handlesDeaths(player);
     }
 
-    /** The name a player goes by now: their rebirth name, or the account name in a first life. */
+    /** The name a player goes by now: their character name, or the account name when they have none. */
     public static String nameOf(Player player) {
         String name = PlayerLives.nameOf(player.getUUID());
         return name != null ? name : player.getGameProfile().getName();
     }
 
     /**
-     * The name a reborn player shows under in chat, death messages and nameplates, or null in a
-     * first life. Either side: the server reads its record, a client the names it was sent.
+     * The character name a player shows under in chat, death messages and nameplates, or null when
+     * they go by their account name. Either side: the server reads its record, a client the names it was sent.
      */
     public static @Nullable String characterName(Player player) {
         return player.level().isClientSide()
@@ -114,11 +119,16 @@ public final class Rebirth {
         if (!player.isDeadOrDying()) return;
         if (payload.descendant()) {
             if (com.aetherianartificer.townstead.compat.mcadescendants.DescendantsBridge.canHandOff(player)) {
-                PENDING.put(player.getUUID(), true);
+                request(player, true);
             }
             return;
         }
-        if (available(player)) PENDING.put(player.getUUID(), false);
+        if (available(player)) request(player, false);
+    }
+
+    private static void request(ServerPlayer player, boolean descendant) {
+        PENDING.put(player.getUUID(), descendant);
+        player.getPersistentData().putBoolean(REQUEST, descendant);
     }
 
     public static void onRespawn(ServerPlayer player, boolean endConquered) {
@@ -139,11 +149,55 @@ public final class Rebirth {
 
     public static void onLogin(ServerPlayer player) {
         send(player, new CharacterNamesS2CPayload(PlayerLives.names()));
+        // Respawning makes a fresh player without this tag, so it is only ever on someone still dead.
+        if (player.isDeadOrDying() && player.getPersistentData().contains(REQUEST)) {
+            PENDING.put(player.getUUID(), player.getPersistentData().getBoolean(REQUEST));
+        }
+        resumeDestiny(player);
+    }
+
+    /** Someone who left mid-Destiny gets it back, with "Where you died" still on offer. */
+    private static void resumeDestiny(ServerPlayer player) {
+        var data = player.getPersistentData();
+        if (!data.contains(DESTINY)) return;
+        if (PlayerSaveData.get(player).isEntityDataSet()) {
+            data.remove(DESTINY);
+            return;
+        }
+        net.minecraft.nbt.CompoundTag saved = data.getCompound(DESTINY);
+        net.minecraft.resources.ResourceLocation dimension = net.minecraft.resources.ResourceLocation.tryParse(saved.getString("dimension"));
+        if (saved.contains("dimension") && dimension != null) {
+            LAST_DEATH.put(player.getUUID(), GlobalPos.of(net.minecraft.resources.ResourceKey.create(
+                    net.minecraft.core.registries.Registries.DIMENSION, dimension), BlockPos.of(saved.getLong("pos"))));
+        }
+        // After MCA's own join handling, which may open a Destiny of its own without our location.
+        player.server.tell(new net.minecraft.server.TickTask(player.server.getTickCount() + 5, () -> {
+            if (!player.hasDisconnected()) openDestiny(player);
+        }));
+    }
+
+    private static void rememberDestiny(ServerPlayer player, @Nullable GlobalPos died) {
+        net.minecraft.nbt.CompoundTag saved = new net.minecraft.nbt.CompoundTag();
+        if (died != null) {
+            saved.putString("dimension", died.dimension().location().toString());
+            saved.putLong("pos", died.pos().asLong());
+        }
+        player.getPersistentData().put(DESTINY, saved);
+    }
+
+    /** Runs one step of changing lives. No step can be undone, so one failing must not stop the rest. */
+    private static void step(ServerPlayer player, String name, Runnable action) {
+        try {
+            action.run();
+        } catch (RuntimeException e) {
+            Townstead.LOGGER.error("[Rebirth] Step {} failed for {}", name, player.getGameProfile().getName(), e);
+        }
     }
 
     public static void onLogout(ServerPlayer player) {
         PENDING.remove(player.getUUID());
         LAST_DEATH.remove(player.getUUID());
+        DestinyShield.closed(player.getUUID());
     }
 
     private static void begin(ServerPlayer player) {
@@ -151,18 +205,22 @@ public final class Rebirth {
         UUID id = player.getUUID();
         Gender gender = FamilyTree.get(level).getOrEmpty(id).map(FamilyTreeNode::gender).orElse(Gender.NEUTRAL);
         String newName = Names.pickCitizenName(gender);
-        endLife(player, UUID.randomUUID(), nameOf(player), newName, true, player.getLastDeathLocation().orElse(null));
+        GlobalPos died = player.getLastDeathLocation().orElse(null);
+        endLife(player, UUID.randomUUID(), nameOf(player), newName, true, died);
         // Destiny's name field starts from the player's custom name: offer the new name, not the old one.
-        player.setCustomName(Component.literal(newName));
+        step(player, "custom_name", () -> player.setCustomName(Component.literal(newName)));
 
         PlayerSaveData data = PlayerSaveData.get(player);
         Optional<Village> home = data.getLastSeenVillage(VillageManager.get(level));
-        data.setEntityDataSet(false);
-        data.setDirty();
-        RootAssignment.assign(player, RootRegistry.DEFAULT_ID);
+        step(player, "reset_character", () -> {
+            data.setEntityDataSet(false);
+            data.setDirty();
+        });
+        step(player, "root", () -> RootAssignment.assign(player, RootRegistry.DEFAULT_ID));
 
-        home.ifPresent(village -> arrive(player, level, village));
-        player.getLastDeathLocation().ifPresent(pos -> LAST_DEATH.put(id, pos));
+        step(player, "arrive", () -> home.ifPresent(village -> arrive(player, level, village)));
+        if (died != null) LAST_DEATH.put(id, died);
+        rememberDestiny(player, died);
         openDestiny(player);
     }
 
@@ -179,19 +237,22 @@ public final class Rebirth {
         UUID id = player.getUUID();
 
         // The passing is the last event of the old life, so it is recorded before the boundary.
-        ChronicleEmitter.emit(level, new TriggerKey("lifecycle", "townstead:passed_on"), player, 1.0f,
-                Map.of("deceased", oldName, "next", newName));
+        step(player, "chronicle", () -> ChronicleEmitter.emit(level, new TriggerKey("lifecycle", "townstead:passed_on"), player, 1.0f,
+                Map.of("deceased", oldName, "next", newName)));
         long lastEvent = ChronicleSavedData.get(server).lastEventId();
 
-        if (splitFamily) FamilySplit.split(level, id, memorial, oldName, newName);
-        if (Relearning.capture(player, memorial, oldName)) leaveJournal(player, memorial, oldName, journalAt);
-        StandingService.forget(server, id);
-        CharterMemberships.endAll(server, id);
+        if (splitFamily) step(player, "family", () -> FamilySplit.split(level, id, memorial, oldName, newName));
+        step(player, "careers", () -> {
+            if (Relearning.capture(player, memorial, oldName)) leaveJournal(player, memorial, oldName, journalAt);
+        });
+        step(player, "standing", () -> StandingService.forget(server, id));
+        step(player, "memberships", () -> CharterMemberships.endAll(server, id));
         // Vampirism keeps a faction through death; the new life starts without the old one's aspect.
-        AspectPicks.become(player, null, 0, false);
-        PlayerLives.get(server).endLife(id,
-                new PlayerLives.Life(memorial, oldName, level.getGameTime(), lastEvent), newName);
-        syncNames(player);
+        step(player, "aspect", () -> AspectPicks.become(player, null, 0, false));
+        step(player, "lives", () -> PlayerLives.get(server).endLife(id,
+                new PlayerLives.Life(memorial, oldName, level.getGameTime(), lastEvent), newName));
+        step(player, "names", () -> com.aetherianartificer.townstead.naming.PlayerNames.startNewLife(player));
+        step(player, "sync", () -> syncNames(player));
     }
 
     /** Changes the name a reborn player goes by, without ending a life. */
@@ -200,11 +261,16 @@ public final class Rebirth {
         syncNames(player);
     }
 
-    /** Destiny and MCA's editor name a reborn player through the family tree; the shown name follows it. */
+    /**
+     * Destiny and MCA's editor name a player through the family tree; the shown name follows it.
+     * In a first life only while naming is on, since then the account name stood in.
+     */
     public static void tick(MinecraftServer server) {
         if (server.getTickCount() % 40 != 0) return;
+        boolean naming = com.aetherianartificer.townstead.switchboard.Systems.on(
+                com.aetherianartificer.townstead.switchboard.Systems.NAMING);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (!PlayerLives.livesOf(player.getUUID()).isEmpty()) adoptFamilyTreeName(player);
+            if (naming || !PlayerLives.livesOf(player.getUUID()).isEmpty()) adoptFamilyTreeName(player);
         }
     }
 
@@ -219,11 +285,13 @@ public final class Rebirth {
         CharacterNamesS2CPayload names = new CharacterNamesS2CPayload(PlayerLives.names());
         for (ServerPlayer online : player.server.getPlayerList().getPlayers()) send(online, names);
         player.refreshDisplayName();
+        player.refreshTabListName();
     }
 
     /** Destiny, with "Where you died" offered first when the last life's death spot is known. */
     private static void openDestiny(ServerPlayer player) {
         boolean whereYouDied = LAST_DEATH.containsKey(player.getUUID());
+        DestinyShield.opened(player);
         //? if neoforge {
         net.conczin.mca.network.s2c.OpenDestinyGuiRequest base = new net.conczin.mca.network.s2c.OpenDestinyGuiRequest(player);
         if (!whereYouDied) {
@@ -253,6 +321,8 @@ public final class Rebirth {
     /** Takes a reborn player to the surface above where their last life ended. False when unknown. */
     public static boolean goToLastDeath(ServerPlayer player) {
         GlobalPos death = LAST_DEATH.remove(player.getUUID());
+        // Used up, so a rejoin before finishing does not offer it again.
+        if (player.getPersistentData().contains(DESTINY)) rememberDestiny(player, null);
         ServerLevel level = death == null ? null : player.server.getLevel(death.dimension());
         if (level == null) return false;
         BlockPos pos = death.pos();

@@ -1,5 +1,7 @@
 package com.aetherianartificer.townstead.naming;
 
+import com.aetherianartificer.townstead.culture.Culture;
+import com.aetherianartificer.townstead.culture.Cultures;
 import net.conczin.mca.resources.Names;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
@@ -42,6 +44,66 @@ public final class NamingTraditions {
     /** Ids of authored traditions, not counting the implicit ones. */
     public static Set<ResourceLocation> authoredIds() {
         return authored.keySet();
+    }
+
+    /**
+     * The traditions a player can pick on their own, in id order. One a culture holds is picked
+     * through that culture instead, which keeps subculture and switched-off traditions off the list.
+     * An MCA bucket's tradition is always here, since it belongs to no culture even when one uses it.
+     */
+    public static List<NamingTradition> pickable() {
+        java.util.Set<ResourceLocation> ids = new java.util.TreeSet<>(authored.keySet());
+        for (String bucket : Names.NAMES_MAP.keySet()) {
+            ResourceLocation id = bucket.indexOf(':') < 0 ? ResourceLocation.tryParse(IMPLICIT_NAMESPACE + ":" + bucket) : null;
+            if (id != null) ids.add(id);
+        }
+        ids.removeAll(heldByCultures(cultures()));
+        List<NamingTradition> out = new java.util.ArrayList<>();
+        for (ResourceLocation id : ids) {
+            NamingTradition tradition = get(id);
+            if (hasGivenNames(tradition)) out.add(tradition);
+        }
+        return out;
+    }
+
+    /** The cultures a player can pick, in id order: not subcultures, and on in this world. */
+    public static List<Culture> pickableCultures() {
+        java.util.Set<ResourceLocation> ids = new java.util.TreeSet<>(Cultures.rootIds());
+        List<Culture> out = new java.util.ArrayList<>();
+        for (ResourceLocation id : ids) {
+            Culture culture = Cultures.get(id);
+            if (culture != null && culturePickable(culture)) out.add(culture);
+        }
+        return out;
+    }
+
+    /** Whether cultures are on, this one is on, and any tradition it names can supply names. */
+    public static boolean culturePickable(Culture culture) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CULTURES)) return false;
+        if (!com.aetherianartificer.townstead.culture.CultureRules.enabled(culture.id().toString())) return false;
+        return !culture.hasNamingTradition() || hasGivenNames(get(culture.namingTradition()));
+    }
+
+    private static boolean hasGivenNames(@Nullable NamingTradition tradition) {
+        return tradition != null && !rollGivenList(tradition, RandomSource.create()).isEmpty();
+    }
+
+    private static List<Culture> cultures() {
+        List<Culture> out = new java.util.ArrayList<>();
+        for (ResourceLocation id : Cultures.authoredIds()) {
+            Culture culture = Cultures.get(id);
+            if (culture != null) out.add(culture);
+        }
+        return out;
+    }
+
+    static Set<ResourceLocation> heldByCultures(java.util.Collection<Culture> cultures) {
+        Set<ResourceLocation> held = new java.util.HashSet<>();
+        for (Culture culture : cultures) {
+            ResourceLocation tradition = culture.namingTradition();
+            if (tradition != null && !IMPLICIT_NAMESPACE.equals(tradition.getNamespace())) held.add(tradition);
+        }
+        return held;
     }
 
     /**

@@ -109,12 +109,18 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.story.net.StoryQuestSyncS2CPayload::write,
                 com.aetherianartificer.townstead.story.net.StoryQuestSyncS2CPayload::read,
                 payload -> com.aetherianartificer.townstead.client.story.StoryClient.setQuests(payload));
+        registerS2C(com.aetherianartificer.townstead.naming.PlayerFamiliesS2CPayload.class,
+                com.aetherianartificer.townstead.naming.PlayerFamiliesS2CPayload::write,
+                com.aetherianartificer.townstead.naming.PlayerFamiliesS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.naming.NameClientStore.setPlayerFamilies(payload.families()));
+        registerS2C(com.aetherianartificer.townstead.naming.NamingCatalogS2CPayload.class,
+                com.aetherianartificer.townstead.naming.NamingCatalogS2CPayload::write,
+                com.aetherianartificer.townstead.naming.NamingCatalogS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.naming.NamingCatalogClient.set(payload));
         registerS2C(com.aetherianartificer.townstead.naming.NameSyncPayload.class,
                 com.aetherianartificer.townstead.naming.NameSyncPayload::encode,
                 com.aetherianartificer.townstead.naming.NameSyncPayload::decode,
-                payload -> com.aetherianartificer.townstead.naming.NameClientStore.set(
-                        payload.entityId(), payload.familyName(), payload.culture(),
-                        payload.order(), payload.familyType(), payload.tradition()));
+                payload -> com.aetherianartificer.townstead.client.naming.NameSyncClient.apply(payload));
         // Server -> Client
         registerS2C(com.aetherianartificer.townstead.switchboard.SwitchboardOpenS2CPayload.class,
                 com.aetherianartificer.townstead.switchboard.SwitchboardOpenS2CPayload::write,
@@ -826,6 +832,7 @@ public final class TownsteadNetwork {
             com.aetherianartificer.townstead.calendar.VillagerLifeRequestC2SPayload payload, ServerPlayer sp) {
         VillagerEntityMCA villager = findVillager(sp.getServer(), payload.villagerUuid());
         if (villager == null) return;
+            com.aetherianartificer.townstead.naming.NameSyncTarget.syncToPlayer(sp, villager);
         net.minecraft.server.MinecraftServer server = sp.getServer();
         if (server != null) {
             com.aetherianartificer.townstead.calendar.VillagerLifeStamper.ensureStamped(villager, server);

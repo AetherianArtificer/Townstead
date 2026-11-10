@@ -1,8 +1,10 @@
 package com.aetherianartificer.townstead.needs;
 
 import com.aetherianartificer.townstead.compat.thirst.DataDrivenThirstCompat;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.LinkedHashMap;
@@ -22,7 +24,11 @@ public final class ConsumableEffectsClientStore {
             resolved.put(row.item(), row.resolvedEffect());
         }
         EFFECTS = Map.copyOf(effects);
-        DataDrivenThirstCompat.installResolved(resolved);
+        // In singleplayer the thirst mod's drink map is shared with the integrated server, which
+        // walks it while a player logs in. Changing it from this thread can fail that login.
+        MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null) DataDrivenThirstCompat.installResolved(resolved);
+        else if (server.isRunning()) server.execute(() -> DataDrivenThirstCompat.installResolved(resolved));
     }
 
     public static NeedEffectProjection projection(ItemStack stack) {

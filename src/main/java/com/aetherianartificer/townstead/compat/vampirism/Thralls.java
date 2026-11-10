@@ -41,6 +41,9 @@ public final class Thralls {
             Entity entity = master == null || master.person() == null ? null : level.getEntity(master.person());
             if (entity instanceof LivingEntity living && !VampireVillagers.isVampire(living)) {
                 FactionBonds.end(data, bond, level.getGameTime(), "released");
+            } else if (entity == null && master != null && master.person() != null && deceased(level, master.person())) {
+                // A master who died before bonds ended on death: only the family tree still knows.
+                FactionBonds.end(data, bond, level.getGameTime(), "master_died");
             }
             return;
         }
@@ -48,6 +51,23 @@ public final class Thralls {
         if (master == null) return;
         FactionBonds.form(data, BOND, List.of(new BondInstance.Side("master", Party.person(master.getUUID())),
                 new BondInstance.Side("thrall", Party.person(villager.getUUID()))), PROVENANCE, level.getGameTime());
+    }
+
+    /** Death hook: a master who really died lets their thralls go, to find another. */
+    public static void onDeath(LivingEntity entity) {
+        if (!(entity instanceof VillagerEntityMCA) || !(entity.level() instanceof ServerLevel level)) return;
+        PoliticalSavedData data = PoliticalSavedData.get(level.getServer());
+        Party self = Party.person(entity.getUUID());
+        for (BondInstance bond : List.copyOf(data.activeBonds(self))) {
+            if (bond.kind().equals(BOND) && "master".equals(bond.roleOf(self))) {
+                FactionBonds.end(data, bond, level.getGameTime(), "master_died");
+            }
+        }
+    }
+
+    private static boolean deceased(ServerLevel level, UUID person) {
+        return net.conczin.mca.server.world.data.FamilyTree.get(level).getOrEmpty(person)
+                .map(net.conczin.mca.server.world.data.FamilyTreeNode::isDeceased).orElse(false);
     }
 
     /** Binds {@code thrall} to {@code master} now, whatever village either lives in. */
@@ -59,13 +79,17 @@ public final class Thralls {
                 new BondInstance.Side("thrall", Party.person(thrall.getUUID()))), PROVENANCE, level.getGameTime());
     }
 
-    /** Breaks {@code thrall}'s bond by force and clears the thrall state. False when they serve no one. */
+    /**
+     * Breaks {@code thrall}'s bond by force, if any, and clears the thrall state: one between masters
+     * is still a thrall. False when they are neither bound nor a thrall.
+     */
     public static boolean release(LivingEntity thrall) {
         if (!(thrall.level() instanceof ServerLevel level)) return false;
         PoliticalSavedData data = PoliticalSavedData.get(level.getServer());
         BondInstance bond = bond(data, thrall.getUUID());
-        if (bond == null) return false;
-        FactionBonds.end(data, bond, level.getGameTime(), "broken");
+        boolean thrallState = EntityStates.definition(STATE) != null && EntityStates.resolve(thrall, STATE).active();
+        if (bond == null && !thrallState) return false;
+        if (bond != null) FactionBonds.end(data, bond, level.getGameTime(), "broken");
         EntityStates.clear(thrall, STATE, null);
         return true;
     }

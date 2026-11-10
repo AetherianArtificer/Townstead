@@ -169,7 +169,13 @@ public final class MobReplacer {
     public static void tick(VillagerEntityMCA villager) {
         if (villager.tickCount % 20 != 0 || !villager.getPersistentData().contains(WILD)) return;
         MobReplacement replacement = replacementOf(villager);
-        if (replacement != null && trySettle(villager, replacement)) {
+        if (replacement == null) {
+            // What made them wild is gone from the data, so nothing could ever settle them.
+            updateWildName(villager, false);
+            leaveTheWilds(villager);
+            return;
+        }
+        if (trySettle(villager, replacement)) {
             updateWildName(villager, false);
             return;
         }
@@ -221,13 +227,18 @@ public final class MobReplacer {
 
     /** A befriended wild villager gives up the wilds and seeks a village like anyone else. */
     public static void settle(VillagerEntityMCA villager) {
-        if (!(villager.level() instanceof ServerLevel level)) return;
+        if (!leaveTheWilds(villager)) return;
+        com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.survival(villager,
+                com.aetherianartificer.townstead.chronicle.emit.ChronicleTapKeys.WILD_SETTLED, Map.of());
+    }
+
+    private static boolean leaveTheWilds(VillagerEntityMCA villager) {
+        if (!(villager.level() instanceof ServerLevel level)) return false;
         villager.getPersistentData().remove(WILD);
         villager.getPersistentData().remove(REPLACED);
         villager.refreshBrain(level);
         McaResidency.joinVillage(villager);
-        com.aetherianartificer.townstead.chronicle.emit.ChronicleTaps.survival(villager,
-                com.aetherianartificer.townstead.chronicle.emit.ChronicleTapKeys.WILD_SETTLED, Map.of());
+        return true;
     }
 
     public static @Nullable MobReplacement replacementOf(LivingEntity entity) {

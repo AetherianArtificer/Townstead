@@ -541,6 +541,7 @@ public final class ConversationEngine {
     }
     public static boolean available(VillagerEntityMCA actor) {
         if (!actor.isAlive() || actor.isRemoved() || actor.isSleeping() || actor.getVillagerBrain().isPanicking()
+                || com.aetherianartificer.townstead.downed.DownedService.isDowned(actor)
                 || actor.getBrain().hasMemoryValue(MemoryModuleType.ATTACK_TARGET)
                 || DialogueStateTracker.activePartner(actor) != null
                 || com.aetherianartificer.townstead.root.LifeStageProgression.isBabyStage(actor)

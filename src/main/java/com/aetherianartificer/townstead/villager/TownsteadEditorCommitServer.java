@@ -29,6 +29,12 @@ public final class TownsteadEditorCommitServer {
 
     public static Result apply(ServerPlayer player, TownsteadEditorCommitPayload payload) {
         if (payload == null || payload.isEmpty()) return null;
+        // A player's editor targets themselves, and naming is all it commits here.
+        if (player.getUUID().equals(payload.villagerUuid())) {
+            if (payload.hasTradition()) com.aetherianartificer.townstead.naming.PlayerNames.setIdentity(player, payload.culture(), payload.tradition());
+            if (payload.hasFamilyName()) com.aetherianartificer.townstead.naming.PlayerNames.setFamily(player, payload.familyName());
+            return null;
+        }
         VillagerEntityMCA villager = findVillager(player.getServer(), payload.villagerUuid());
         if (villager == null) return null;
 
@@ -83,7 +89,8 @@ public final class TownsteadEditorCommitServer {
             lifeChanged = true;
         }
 
-        if (payload.hasFamilyName()) {
+        // A name another mod holds cannot be typed over. The publish below still corrects the screen.
+        if (payload.hasFamilyName() && !com.aetherianartificer.townstead.naming.VillagerNames.parts(villager).familyLocked()) {
             TownsteadVillager.Life life = state.life();
             String typed = payload.familyName() == null ? "" : payload.familyName().trim();
             life.setFamilyName(typed);
@@ -91,6 +98,10 @@ public final class TownsteadEditorCommitServer {
             // nothing derived replaces it afterwards. Emptying the field hands the name back to the
             // villager's tradition, which settles a new one the next time it is asked for.
             life.setFamilyNameFixed(!typed.isEmpty());
+        }
+
+        if (payload.hasTradition()) {
+            com.aetherianartificer.townstead.naming.Naming.reassign(player.serverLevel(), villager, payload.culture(), payload.tradition());
         }
 
         com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload lifeSync =
@@ -103,7 +114,7 @@ public final class TownsteadEditorCommitServer {
         TownsteadVillagers.flush(villager);
         // After the flush, so every surface that draws a name is told at once: the nameplate, the
         // dialogue header, and MCA Capitals' identity where it is installed.
-        if (payload.hasFamilyName()) {
+        if (payload.hasFamilyName() || payload.hasTradition()) {
             com.aetherianartificer.townstead.naming.VillagerNames.publish(villager);
         }
         return new Result(villager, hungerSync, thirstSync, fatigueSync, lifeSync);

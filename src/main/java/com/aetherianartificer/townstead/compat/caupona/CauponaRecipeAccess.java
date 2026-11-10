@@ -4,6 +4,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.material.Fluid;
 import org.jetbrains.annotations.Nullable;
 
@@ -142,21 +143,14 @@ final class CauponaRecipeAccess {
         return ids;
     }
 
-    /** The item ids a vanilla {@code Ingredient} accepts, read without importing it. */
+    /** The item ids a vanilla {@code Ingredient} accepts. Anything else accepts none, so the caller drops the recipe. */
     static Set<ResourceLocation> ingredientItems(@Nullable Object ingredient) {
         Set<ResourceLocation> ids = new LinkedHashSet<>();
-        if (ingredient == null) return ids;
-        try {
-            Method m = ingredient.getClass().getMethod("getItems");
-            m.setAccessible(true);
-            for (Object stack : streamOf(m.invoke(ingredient))) {
-                if (stack instanceof ItemStack is && !is.isEmpty()) {
-                    ResourceLocation id = BuiltInRegistries.ITEM.getKey(is.getItem());
-                    if (id != null) ids.add(id);
-                }
-            }
-        } catch (Throwable ignored) {
-            // Unreadable ingredient: no items, so the caller drops the recipe.
+        if (!(ingredient instanceof Ingredient accepted)) return ids;
+        for (ItemStack stack : accepted.getItems()) {
+            if (stack.isEmpty()) continue;
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            if (id != null) ids.add(id);
         }
         return ids;
     }
