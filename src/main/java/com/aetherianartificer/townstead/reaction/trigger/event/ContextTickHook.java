@@ -22,6 +22,7 @@ import java.util.WeakHashMap;
  */
 public final class ContextTickHook {
     private static final int STRIDE = 20;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site TICK_STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(STRIDE);
     private static final WeakHashMap<LivingEntity, Set<String>> LAST_TAGS = new WeakHashMap<>();
     private static final Object LOCK = new Object();
 
@@ -30,7 +31,7 @@ public final class ContextTickHook {
     public static void tick(VillagerEntityMCA villager, long gameTime) {
         if (villager == null) return;
         if (!(villager.level() instanceof ServerLevel level)) return;
-        if ((gameTime + (villager.getId() & 0x0F)) % STRIDE != 0) return;
+        if (!TICK_STRIDE.due(villager, gameTime + (villager.getId() & 0x0F))) return;
 
         Set<String> now = ContextResolver.tagsFor(level, villager);
         Set<String> prior;

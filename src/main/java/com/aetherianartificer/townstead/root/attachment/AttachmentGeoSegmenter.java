@@ -1,4 +1,4 @@
-package com.aetherianartificer.townstead.client.attachment.geo;
+package com.aetherianartificer.townstead.root.attachment;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.google.gson.JsonArray;

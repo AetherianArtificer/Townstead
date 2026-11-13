@@ -80,6 +80,7 @@ public record AttachmentDef(
         String tintMaskSha1,
         String emissiveSha1,
         boolean translucent,
+        float opacity,
         java.util.List<String> hidesUnder,
         String whenJson,
         java.util.List<MorphChannel> morph,
@@ -87,7 +88,8 @@ public record AttachmentDef(
         java.util.Map<String, StageOverride> stages,
         java.util.List<PoseEntry> poses,
         java.util.List<PhysicsChain> physics,
-        java.util.List<AnimationEntry> animations
+        java.util.List<AnimationEntry> animations,
+        AttachmentBody body
 ) {
     /**
      * {@code tintSource} values: the flat tint, or a colour resolved from the bearer.
@@ -102,7 +104,7 @@ public record AttachmentDef(
     public static final java.util.List<String> POSE_STATES = java.util.List.of(
             "sleeping", "sitting", "sprinting", "sneaking", "swimming", "gliding",
             "parachuting", "moving", "hurt", "attacking", "panicking", "working",
-            "wearing_helmet", "wearing_chestplate", "wearing_leggings", "wearing_boots");
+            "wearing_helmet", "wearing_chestplate", "wearing_leggings", "wearing_boots", "folded");
 
     /** The armor-slot names {@code hidesUnder} (and the {@code wearing_*} poses) accept. */
     public static final java.util.List<String> EQUIPMENT_SLOTS = java.util.List.of(
@@ -184,12 +186,17 @@ public record AttachmentDef(
      * into that many chained virtual segments at bake time (along {@code axis}, or
      * the longest axis when {@code "auto"}) — bendy-lib-style bending for tails that
      * weren't authored as chains.</p>
+     *
+     * <p>{@code wind} is how far moving air pushes each bone, on the same scale as {@code gravity}.
+     * {@code blocks} keeps the chain out of blocks. {@code radius} (model pixels) is its thickness
+     * for all collision; below 0 measures it from the geometry.</p>
      */
     public record PhysicsChain(java.util.List<String> bones, String preset,
                                Knob frequency, Knob dampingRatio, Knob gravity, Knob inertia,
                                Knob drag, Knob limit, String hinge, java.util.List<String> collide,
                                float restPitch, float sway, float swaySpeed, boolean scaleWithSize,
-                               int segments, String axis, java.util.List<String> notes) {
+                               int segments, String axis, Knob wind, boolean blocks, float radius,
+                               java.util.List<String> notes) {
 
         /** The bone names the sim actually runs over: the authored list, or the generated segment names. */
         public java.util.List<String> effectiveBones() {
@@ -202,7 +209,8 @@ public record AttachmentDef(
 
         public PhysicsChain withNotes(java.util.List<String> newNotes) {
             return new PhysicsChain(bones, preset, frequency, dampingRatio, gravity, inertia, drag, limit,
-                    hinge, collide, restPitch, sway, swaySpeed, scaleWithSize, segments, axis, newNotes);
+                    hinge, collide, restPitch, sway, swaySpeed, scaleWithSize, segments, axis, wind, blocks, radius,
+                    newNotes);
         }
     }
 

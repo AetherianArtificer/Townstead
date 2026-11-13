@@ -97,7 +97,13 @@ public final class Locomotion {
         }
         BlockPos live = liveTarget(mob);
         if (live != null) state.destination = live;
-        if (mob.isPassenger() || mob.isSleeping() || mob.isDeadOrDying()) {
+        // A mob with no AI goes nowhere of its own will, in the air or out of it.
+        if (mob.isPassenger() || mob.isSleeping() || mob.isDeadOrDying() || mob.isNoAi()) {
+            exit(mob);
+            return;
+        }
+        // Spread wings that meet a block fold, and flight ends.
+        if (state.mode == MovementMode.AIR && com.aetherianartificer.townstead.root.attachment.BodyVolumes.folded(mob)) {
             exit(mob);
             return;
         }

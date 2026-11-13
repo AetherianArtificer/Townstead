@@ -55,6 +55,17 @@ public final class AttachmentGeo {
         for (Bone root : roots) root.render(pose, buffer, light, overlay, argb);
     }
 
+    /** Receives one visible bone's box, in whatever space the frame given to {@link #measure} leads to. */
+    @FunctionalInterface
+    public interface BoneBox {
+        void accept(String bone, float minX, float minY, float minZ, float maxX, float maxY, float maxZ);
+    }
+
+    /** Each visible bone's box as it would draw now, physics included, in the same order as a draw. */
+    public void measure(org.joml.Matrix4f frame, BoneBox out) {
+        for (Bone root : roots) root.measure(frame, out);
+    }
+
     /**
      * A deep copy re-baked mirrored across X (for a {@code mirror} attachment point):
      * pivots and vertices flip, Y/Z rotations negate, polygon winding reverses and
@@ -110,6 +121,7 @@ public final class AttachmentGeo {
         final List<Bone> children;
         Bone parent;
         private float[] tip;
+        private float[] bounds;
 
         Bone(String name, float x, float y, float z, float xRot, float yRot, float zRot,
              List<Cube> cubes, List<Bone> children) {
@@ -192,6 +204,74 @@ public final class AttachmentGeo {
             }
             tip = new float[]{dir.x * reach / 16f, dir.y * reach / 16f, dir.z * reach / 16f};
             return tip;
+        }
+
+        /** Half this bone's narrowest measure, in model pixels; 0 when it has no geometry to measure. */
+        public float halfThickness() {
+            float[] min = {Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE};
+            float[] max = {-Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE};
+            boolean any = false;
+            for (Cube cube : cubes) {
+                for (Polygon polygon : cube.polygons) {
+                    for (Vertex v : polygon.vertices) {
+                        any = true;
+                        min[0] = Math.min(min[0], v.x);
+                        min[1] = Math.min(min[1], v.y);
+                        min[2] = Math.min(min[2], v.z);
+                        max[0] = Math.max(max[0], v.x);
+                        max[1] = Math.max(max[1], v.y);
+                        max[2] = Math.max(max[2], v.z);
+                    }
+                }
+            }
+            if (!any) return 0f;
+            return Math.min(max[0] - min[0], Math.min(max[1] - min[1], max[2] - min[2])) / 2f;
+        }
+
+        private void measure(Matrix4f parent, BoneBox out) {
+            if (!visible) return;
+            Matrix4f world = applyLocal(new Matrix4f(parent),
+                    physicsRotation != null ? physicsRotation : poseRotation(new Quaternionf()));
+            float[] local = localBounds();
+            if (local != null) {
+                float[] box = {Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE};
+                Vector3f corner = new Vector3f();
+                for (int c = 0; c < 8; c++) {
+                    corner.set((c & 1) == 0 ? local[0] : local[3], (c & 2) == 0 ? local[1] : local[4],
+                            (c & 4) == 0 ? local[2] : local[5]);
+                    world.transformPosition(corner);
+                    box[0] = Math.min(box[0], corner.x);
+                    box[1] = Math.min(box[1], corner.y);
+                    box[2] = Math.min(box[2], corner.z);
+                    box[3] = Math.max(box[3], corner.x);
+                    box[4] = Math.max(box[4], corner.y);
+                    box[5] = Math.max(box[5], corner.z);
+                }
+                out.accept(name, box[0], box[1], box[2], box[3], box[4], box[5]);
+            }
+            for (Bone child : children) child.measure(world, out);
+        }
+
+        /** The box around this bone's own cubes, in its local space (blocks); null when it has none. */
+        private float[] localBounds() {
+            if (bounds != null) return bounds.length == 0 ? null : bounds;
+            float[] box = {Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE};
+            boolean any = false;
+            for (Cube cube : cubes) {
+                for (Polygon polygon : cube.polygons) {
+                    for (Vertex v : polygon.vertices) {
+                        any = true;
+                        box[0] = Math.min(box[0], v.x / 16f);
+                        box[1] = Math.min(box[1], v.y / 16f);
+                        box[2] = Math.min(box[2], v.z / 16f);
+                        box[3] = Math.max(box[3], v.x / 16f);
+                        box[4] = Math.max(box[4], v.y / 16f);
+                        box[5] = Math.max(box[5], v.z / 16f);
+                    }
+                }
+            }
+            bounds = any ? box : new float[0];
+            return any ? box : null;
         }
 
         void render(PoseStack pose, VertexConsumer buffer, int light, int overlay, int argb) {

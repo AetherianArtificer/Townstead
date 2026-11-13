@@ -29,10 +29,24 @@ public final class Abilities {
         return (mask & (1L << ability.ordinal())) != 0L;
     }
 
+    // A condition can ask about abilities itself, and the answer it's after is the one being worked out.
+    private static final ThreadLocal<Boolean> TESTING = ThreadLocal.withInitial(() -> false);
+
+    private static boolean usable(AbilityGeneType.Instance instance, LivingEntity entity) {
+        if (TESTING.get()) return true;
+        TESTING.set(true);
+        try {
+            return instance.usable(entity);
+        } finally {
+            TESTING.set(false);
+        }
+    }
+
     private static long activeMask(LivingEntity entity) {
         long mask = 0L;
         for (Power gene : Powers.active(entity)) {
             if (!(gene.component() instanceof AbilityGeneType.Instance instance)) continue;
+            if (!usable(instance, entity)) continue;
             if (instance.mode() == AbilityGeneType.Mode.TOGGLE) {
                 if (AbilityToggles.isOn(entity, gene.id(), instance.defaultOn())) {
                     mask |= 1L << instance.ability().ordinal();

@@ -35,6 +35,7 @@ import com.aetherianartificer.townstead.social.RelationshipService;
  * pieces; the rest are composed from parts.
  */
 public final class ConversationEngine {
+    private static final com.aetherianartificer.townstead.tick.Stride.Site CONSIDER_STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(200);
     private static final String CHANNEL = "conversation";
     private static final ResourceLocation TALK = ResourceLocation.tryParse("townstead:conversation_talk");
     private static final ResourceLocation LISTEN = ResourceLocation.tryParse("townstead:conversation_listen");
@@ -95,7 +96,7 @@ public final class ConversationEngine {
         if (!Switchboard.get(TownsteadConfig.ENABLE_CONVERSATIONS)
                 || !(actor.level() instanceof ServerLevel level) || ConversationTopics.all().isEmpty()) return;
         long now = level.getGameTime();
-        if (Math.floorMod(now + actor.getUUID().hashCode(), 200) != 0) return;
+        if (!CONSIDER_STRIDE.due(actor, now + actor.getUUID().hashCode())) return;
         MobSightings.observe(level, actor);
         if (!available(actor)) return;
         Runtime runtime = LEVELS.computeIfAbsent(level, ignored -> new Runtime());

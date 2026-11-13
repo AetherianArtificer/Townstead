@@ -11,6 +11,7 @@ import net.minecraft.world.entity.schedule.Activity;
 /** Schedules and delivers data-authored profession feedback. */
 public final class WorkFeedbackTicker {
     private static final int OBSERVATION_INTERVAL_TICKS = 20;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(OBSERVATION_INTERVAL_TICKS);
 
     private WorkFeedbackTicker() {}
 
@@ -22,7 +23,7 @@ public final class WorkFeedbackTicker {
         if (!(villager.level() instanceof ServerLevel level)) return;
         if (!TownsteadConfig.isWorkFeedbackEnabled()) return;
         long gameTime = level.getGameTime();
-        if (Math.floorMod(gameTime + villager.getId(), OBSERVATION_INTERVAL_TICKS) != 0) return;
+        if (!STRIDE.due(villager, gameTime + villager.getId())) return;
         if (!onWorkShift(villager, level)) return;
 
         if (observeRisingRules(level, villager)) return;

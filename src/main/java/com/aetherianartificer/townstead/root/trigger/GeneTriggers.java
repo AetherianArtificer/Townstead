@@ -44,6 +44,13 @@ public final class GeneTriggers {
     public static void onDamage(LivingEntity victim, DamageSource source, float amount) {
         if (victim.level().isClientSide) return;
         LAST_DAMAGE.put(victim, amount);
+        // A shield stops the blow, and repeat hits inside the grace after one don't land.
+        if (!victim.isDamageSourceBlocked(source) && victim.invulnerableTime <= 10) {
+            com.aetherianartificer.townstead.root.attachment.BodyParts.onBodyHit(victim, source, amount);
+        }
+        if (source.getEntity() instanceof LivingEntity hitter && hitter != victim) {
+            com.aetherianartificer.townstead.compat.mess.MessBridge.event(hitter, "when_attack");
+        }
         com.aetherianartificer.townstead.pheno.combat.Casts.onHurt(victim);
         LivingEntity attacker = source.getEntity() instanceof LivingEntity le ? le : null;
         fire(victim, Trigger.WHEN_HURT, attacker, source, amount);
@@ -119,6 +126,7 @@ public final class GeneTriggers {
     public static void onWork(LivingEntity worker, String verb, @Nullable net.minecraft.core.BlockPos pos,
                               net.minecraft.world.item.ItemStack output) {
         if (worker.level().isClientSide || IN_WORK_TRIGGER.get()) return;
+        com.aetherianartificer.townstead.compat.mess.MessBridge.event(worker, "when_work:" + verb);
         List<TriggerGeneType.Instance> triggers = Powers.componentsOf(worker, TriggerGeneType.Instance.class);
         if (triggers.isEmpty()) return;
         // Work done by a work trigger (a wider harvest) is not new work: it must not fire again.

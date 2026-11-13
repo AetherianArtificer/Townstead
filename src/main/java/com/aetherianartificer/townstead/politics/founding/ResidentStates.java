@@ -18,11 +18,12 @@ import java.util.Optional;
 public final class ResidentStates {
     private static final String ROLLED = "townstead:resident_states_rolled";
     private static final int INTERVAL = 100;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(INTERVAL);
 
     private ResidentStates() {}
 
     public static void tick(VillagerEntityMCA villager) {
-        if ((villager.tickCount + villager.getId()) % INTERVAL != 0 || !(villager.level() instanceof ServerLevel level)) return;
+        if (!STRIDE.due(villager, villager.tickCount + villager.getId()) || !(villager.level() instanceof ServerLevel level)) return;
         CompoundTag tag = villager.getPersistentData();
         if (tag.getBoolean(ROLLED)) return;
         if (villager.isBaby()) {

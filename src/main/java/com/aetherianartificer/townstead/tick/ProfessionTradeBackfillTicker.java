@@ -19,6 +19,7 @@ import java.util.List;
 
 /** Repairs offers for existing villagers after data-driven profession trades are installed. */
 public final class ProfessionTradeBackfillTicker {
+    private static final java.util.Map<String, com.aetherianartificer.townstead.tick.Stride.Site> STRIDES = new java.util.concurrent.ConcurrentHashMap<>();
     private static final int CHECK_INTERVAL_TICKS = 200;
     private static final int TRADES_PER_LEVEL = 2;
     private static final List<Policy> POLICIES = List.of(
@@ -38,7 +39,8 @@ public final class ProfessionTradeBackfillTicker {
 
     private static void tick(VillagerEntityMCA villager, Policy policy) {
         if (!policy.enabled().getAsBoolean()) return;
-        if (villager.tickCount % CHECK_INTERVAL_TICKS != policy.offset()) return;
+        if (!STRIDES.computeIfAbsent(policy.memoryKey(), k -> new com.aetherianartificer.townstead.tick.Stride.Site(CHECK_INTERVAL_TICKS))
+                .due(villager, villager.tickCount, policy.offset())) return;
         if (!declaresAny(villager, policy.tasks())) return;
 
         int currentLevel = villager.getVillagerData().getLevel();

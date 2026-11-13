@@ -86,7 +86,7 @@ import java.util.function.Function;
 public final class TownsteadNetwork {
     private TownsteadNetwork() {}
 
-    private static final String PROTOCOL_VERSION = "21";
+    private static final String PROTOCOL_VERSION = "22";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(Townstead.MOD_ID, "main"),
             () -> PROTOCOL_VERSION,
@@ -506,6 +506,18 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.aspect.AspectC2SPayload::write,
                 com.aetherianartificer.townstead.aspect.AspectC2SPayload::read,
                 (payload, sp) -> com.aetherianartificer.townstead.aspect.AspectC2SPayload.handle(sp, payload));
+        registerS2C(com.aetherianartificer.townstead.root.attachment.BodyPartLostS2CPayload.class,
+                com.aetherianartificer.townstead.root.attachment.BodyPartLostS2CPayload::write,
+                com.aetherianartificer.townstead.root.attachment.BodyPartLostS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.attachment.FallingPieces.want(payload.entityId(), payload.attachment(), payload.piece()));
+        registerS2C(com.aetherianartificer.townstead.root.attachment.BodyPartsS2CPayload.class,
+                com.aetherianartificer.townstead.root.attachment.BodyPartsS2CPayload::write,
+                com.aetherianartificer.townstead.root.attachment.BodyPartsS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.attachment.BodyPartsClient.receive(payload));
+        registerS2C(com.aetherianartificer.townstead.root.attachment.BodyValuesS2CPayload.class,
+                com.aetherianartificer.townstead.root.attachment.BodyValuesS2CPayload::write,
+                com.aetherianartificer.townstead.root.attachment.BodyValuesS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.root.attachment.BodyValues.receive(payload.entityId(), payload.values()));
         registerS2C(com.aetherianartificer.townstead.pheno.state.StateFormS2CPayload.class,
                 com.aetherianartificer.townstead.pheno.state.StateFormS2CPayload::write,
                 com.aetherianartificer.townstead.pheno.state.StateFormS2CPayload::read,

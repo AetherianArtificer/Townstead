@@ -3,10 +3,12 @@ package com.aetherianartificer.townstead.profession;
 import com.aetherianartificer.townstead.profession.def.ProfessionDef;
 import com.aetherianartificer.townstead.profession.def.ProfessionDefs;
 import com.aetherianartificer.townstead.profession.def.ClothingChoice;
+import net.conczin.mca.MCA;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.relationship.Gender;
 import net.conczin.mca.resources.ClothingList;
 import net.conczin.mca.resources.SkinSelection;
+import net.conczin.mca.resources.WeightedPool;
 import net.conczin.mca.resources.data.skin.Clothing;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -15,6 +17,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
 
 /** Resolves a Profession's ordered clothing identities against MCA's merged clothing catalogue. */
@@ -138,10 +141,25 @@ public final class ProfessionClothing {
                     .anyMatch(id -> Objects.equals(id, current) && available.test(id))) {
                 return Optional.of(current);
             }
-            Optional<String> selected = SkinSelection.pickWeightedId(options.stream()
+            Optional<String> selected = pickWeightedOnThisThread(options.stream()
                     .filter(option -> available.test(option.getIdentifier()))
                     .toList());
             if (selected.isPresent()) return selected;
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * {@link SkinSelection#pickWeightedId} without MCA's shared random. This runs on the render
+     * thread, and in singleplayer the server thread uses that random too, which crashes the game.
+     */
+    private static Optional<String> pickWeightedOnThisThread(List<Clothing> options) {
+        WeightedPool<String> pool = SkinSelection.toPool(options, "");
+        double roll = ThreadLocalRandom.current().nextDouble()
+                * pool.getEntries().stream().mapToDouble(WeightedPool.Entry::getWeight).sum();
+        for (WeightedPool.Entry<String> entry : pool.getEntries()) {
+            roll -= entry.getWeight();
+            if (roll <= 0) return MCA.isBlankString(entry.getValue()) ? Optional.empty() : Optional.of(entry.getValue());
         }
         return Optional.empty();
     }

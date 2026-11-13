@@ -28,11 +28,12 @@ public final class Thralls {
     public static final ResourceLocation BOND = ResourceLocation.tryParse("townstead:thrall");
     private static final ResourceLocation PROVENANCE = ResourceLocation.tryParse("townstead:thrall_service");
     private static final int INTERVAL = 200;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(INTERVAL);
 
     private Thralls() {}
 
     public static void tick(VillagerEntityMCA villager) {
-        if ((villager.tickCount + villager.getId()) % INTERVAL != 0 || !(villager.level() instanceof ServerLevel level)) return;
+        if (!STRIDE.due(villager, villager.tickCount + villager.getId()) || !(villager.level() instanceof ServerLevel level)) return;
         if (EntityStates.definition(STATE) == null || !EntityStates.resolve(villager, STATE).active()) return;
         PoliticalSavedData data = PoliticalSavedData.get(level.getServer());
         BondInstance bond = bond(data, villager.getUUID());

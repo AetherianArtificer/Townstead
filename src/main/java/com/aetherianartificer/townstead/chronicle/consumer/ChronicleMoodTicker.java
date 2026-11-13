@@ -15,11 +15,12 @@ import java.util.UUID;
 public final class ChronicleMoodTicker {
 
     private static final int STRIDE_TICKS = 100;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(STRIDE_TICKS);
 
     private ChronicleMoodTicker() {}
 
     public static void tick(VillagerEntityMCA villager, long gameTime) {
-        if ((gameTime + villager.getId()) % STRIDE_TICKS != 0) return;
+        if (!STRIDE.due(villager, gameTime + villager.getId())) return;
         if (!(villager.level() instanceof ServerLevel level)) return;
 
         ChronicleSavedData data = ChronicleSavedData.get(level.getServer());

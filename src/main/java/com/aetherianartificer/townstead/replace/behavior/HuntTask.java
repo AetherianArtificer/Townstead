@@ -23,6 +23,8 @@ import java.util.Comparator;
  */
 public class HuntTask extends Behavior<VillagerEntityMCA> {
     private static final int SEARCH_INTERVAL = 20;
+    private final com.aetherianartificer.townstead.tick.Stride recheck =
+            new com.aetherianartificer.townstead.tick.Stride(SEARCH_INTERVAL);
     private static final int ATTACK_INTERVAL = 20;
     private static final float CHASE_SPEED = 0.7f;
     private static final double REACH = 1.5;
@@ -59,7 +61,7 @@ public class HuntTask extends Behavior<VillagerEntityMCA> {
         BehaviorTypes.Hunt hunt = BehaviorProfiles.behavior(villager, BehaviorTypes.HUNT, BehaviorTypes.Hunt.class);
         if (hunt == null || target == null || villager.isSleeping()) return false;
         if (villager.distanceToSqr(target) > hunt.radius() * hunt.radius() * 2.25) return false;
-        return gameTime % SEARCH_INTERVAL != 0 || huntable(level, villager, target, hunt);
+        return !recheck.due(gameTime, villager) || huntable(level, villager, target, hunt);
     }
 
     @Override

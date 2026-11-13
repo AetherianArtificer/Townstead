@@ -56,7 +56,7 @@ public final class SpawnCloudActionType implements ActionType {
         ParticleOptions particle = resolveParticle(GsonHelper.getAsString(json, "particle", ""));
         return ctx -> {
             if (!(ctx.level() instanceof ServerLevel level)) return;
-            CloudManager.spawn(new Cloud(level, ctx.entity().position(), ctx.origin(), action, where,
+            CloudManager.spawn(new Cloud(level, ctx.place(), ctx.origin(), action, where,
                     particle, radius, growPerTick, shrinkOnUse, waitTime, duration, reapplyDelay, height)
                     .withClimateOffset(climateOffset));
         };

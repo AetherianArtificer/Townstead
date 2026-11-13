@@ -77,6 +77,8 @@ import java.util.function.Predicate;
  */
 public class DiscoveredStationWorkTask extends ProducerWorkTask {
     private static final int WORK_ACTION_INTERVAL_TICKS = 4;
+    private final com.aetherianartificer.townstead.tick.Stride workAction =
+            new com.aetherianartificer.townstead.tick.Stride(WORK_ACTION_INTERVAL_TICKS);
 
     /** What this instance serves and says; the rest of the class is trade-neutral. */
     public record Spec(
@@ -878,7 +880,7 @@ public class DiscoveredStationWorkTask extends ProducerWorkTask {
     protected void onProduceTick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
         drivers.maintainWorkerEngagement(villager);
         if (stationAnchor != null && activeRecipe != null
-                && gameTime % WORK_ACTION_INTERVAL_TICKS == 0) {
+                && workAction.due(gameTime, villager)) {
             var v2 = com.aetherianartificer.townstead.work.station.Workstations
                     .v2ByState(level.getBlockState(stationAnchor));
             boolean pendingBatch = activeBatchOperations() > 1

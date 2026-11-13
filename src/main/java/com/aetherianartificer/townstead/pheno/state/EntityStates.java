@@ -9,8 +9,10 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
+import com.aetherianartificer.townstead.tick.EntityLocalCache;
 import org.jetbrains.annotations.Nullable;
 
 //? if neoforge {
@@ -48,6 +50,8 @@ public final class EntityStates {
     private static final Map<UUID, Map<ResourceLocation, Stored>> SESSION = new ConcurrentHashMap<>();
     private static final Map<UUID, Map<ResourceLocation, Resolved>> PREVIOUS = new ConcurrentHashMap<>();
     private static final Map<UUID, Map<ResourceLocation, Long>> NEXT_PERIODIC = new ConcurrentHashMap<>();
+    // Bumped whenever PREVIOUS or NEXT_PERIODIC drops an entry, so per-entity copies of their maps re-read.
+    private static final java.util.concurrent.atomic.AtomicLong RUNTIME_EPOCH = new java.util.concurrent.atomic.AtomicLong();
 
     // Who may hold which state (Roots register their declarations); everyone by default.
     private static volatile java.util.function.BiPredicate<LivingEntity, ResourceLocation> eligibility = (e, s) -> true;
@@ -264,11 +268,27 @@ public final class EntityStates {
     static void resetRuntime() {
         PREVIOUS.clear();
         NEXT_PERIODIC.clear();
+        RUNTIME_EPOCH.incrementAndGet();
     }
 
+    @SuppressWarnings("unchecked")
     public static Resolved resolve(LivingEntity entity, ResourceLocation stateId) {
         if (entity.level().isClientSide) return compute(entity, stateId);
         long now = entity.level().getGameTime();
+        EntityLocalCache local = onServerThread(entity) ? EntityLocalCache.of(entity) : null;
+        if (local != null) {
+            if (local.stateMemoTime == now && local.stateMemo != null) {
+                Resolved cached = ((Map<ResourceLocation, Resolved>) local.stateMemo).get(stateId);
+                if (cached != null) return cached;
+            }
+            Resolved resolved = compute(entity, stateId);
+            if (local.stateMemoTime != now || local.stateMemo == null) {
+                local.stateMemo = new HashMap<ResourceLocation, Resolved>();
+                local.stateMemoTime = now;
+            }
+            ((Map<ResourceLocation, Resolved>) local.stateMemo).put(stateId, resolved);
+            return resolved;
+        }
         synchronized (MEMO) {
             Memo memo = MEMO.get(entity);
             if (memo != null && memo.time == now) {
@@ -287,9 +307,54 @@ public final class EntityStates {
 
     /** Forget states read this tick, after a write or anything they sample changed. */
     public static void invalidate(LivingEntity entity) {
+        EntityLocalCache local = EntityLocalCache.of(entity);
+        if (local != null) {
+            local.stateMemo = null;
+            local.stateMemoTime = Long.MIN_VALUE;
+        }
         synchronized (MEMO) {
             MEMO.remove(entity);
         }
+    }
+
+    private static boolean onServerThread(LivingEntity entity) {
+        return entity.level() instanceof ServerLevel level && level.getServer().isSameThread();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<ResourceLocation, Resolved> previousFor(LivingEntity entity) {
+        UUID uuid = entity.getUUID();
+        long epoch = RUNTIME_EPOCH.get();
+        EntityLocalCache local = EntityLocalCache.of(entity);
+        if (local != null && local.statePrevious != null && local.statePreviousEpoch == epoch
+                && local.statePreviousOwner == uuid) {
+            return (Map<ResourceLocation, Resolved>) local.statePrevious;
+        }
+        Map<ResourceLocation, Resolved> previous = PREVIOUS.computeIfAbsent(uuid, ignored -> new HashMap<>());
+        if (local != null) {
+            local.statePrevious = previous;
+            local.statePreviousEpoch = epoch;
+            local.statePreviousOwner = uuid;
+        }
+        return previous;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<ResourceLocation, Long> nextPeriodicFor(LivingEntity entity) {
+        UUID uuid = entity.getUUID();
+        long epoch = RUNTIME_EPOCH.get();
+        EntityLocalCache local = EntityLocalCache.of(entity);
+        if (local != null && local.stateNextPeriodic != null && local.stateNextPeriodicEpoch == epoch
+                && local.stateNextPeriodicOwner == uuid) {
+            return (Map<ResourceLocation, Long>) local.stateNextPeriodic;
+        }
+        Map<ResourceLocation, Long> due = NEXT_PERIODIC.computeIfAbsent(uuid, ignored -> new HashMap<>());
+        if (local != null) {
+            local.stateNextPeriodic = due;
+            local.stateNextPeriodicEpoch = epoch;
+            local.stateNextPeriodicOwner = uuid;
+        }
+        return due;
     }
 
     private static final class Memo {
@@ -307,6 +372,7 @@ public final class EntityStates {
     private static Resolved compute(LivingEntity entity, ResourceLocation stateId) {
         EntityStateDefinition definition = definitions.get(stateId);
         if (definition == null) return new Resolved(stateId, false, 0, null, -1, 0, null, 0);
+        if (nothingToSample(entity, definition, stateId)) return Resolved.inactive(definition);
         if (!eligible(entity, stateId)) return Resolved.inactive(definition);
         long now = entity.level().getGameTime();
         List<Sample> samples = new ArrayList<>();
@@ -341,6 +407,23 @@ public final class EntityStates {
         long remaining = samples.stream().mapToLong(Sample::remaining).max().orElse(0);
         return new Resolved(stateId, true, amount, tier == null ? null : tier.id(),
                 definition.tierIndex(amount), remaining, provenance.backing().id(), provenance.modified());
+    }
+
+    /**
+     * True when no backing could give a sample: nothing is stored for the owned ones and the
+     * others do not apply to this entity. Most entities hold most states this way, and the answer
+     * is the same inactive state eligibility would give, without evaluating eligibility.
+     */
+    private static boolean nothingToSample(LivingEntity entity, EntityStateDefinition definition,
+                                           ResourceLocation stateId) {
+        for (StateBacking backing : backingsByState.getOrDefault(stateId, List.of())) {
+            if (backing.type() == StateBacking.SourceType.OWNED) {
+                if (readOwned(entity, definition, backing.id()) != null) return false;
+            } else if (applies(backing, entity)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static boolean add(LivingEntity entity, ResourceLocation state, double amount,
@@ -384,11 +467,11 @@ public final class EntityStates {
     public static void tick(LivingEntity entity) {
         if (entity.level().isClientSide) return;
         applyPending(entity);
-        UUID uuid = entity.getUUID();
-        Map<ResourceLocation, Resolved> previous = PREVIOUS.computeIfAbsent(uuid, ignored -> new HashMap<>());
+        Map<ResourceLocation, Resolved> previous = previousFor(entity);
         long now = entity.level().getGameTime();
         for (EntityStateDefinition definition : definitions.values()) {
-            Resolved before = previous.getOrDefault(definition.id(), Resolved.inactive(definition));
+            Resolved before = previous.get(definition.id());
+            if (before == null) before = Resolved.inactive(definition);
             Resolved current = resolve(entity, definition.id());
             for (StateEffect effect : effectsByState.getOrDefault(definition.id(), List.of())) {
                 if (!before.active() && current.active() && matches(entity, effect, current) && effect.onEnter() != null) {
@@ -417,6 +500,7 @@ public final class EntityStates {
         UUID uuid = entity.getUUID();
         PREVIOUS.remove(uuid);
         NEXT_PERIODIC.remove(uuid);
+        RUNTIME_EPOCH.incrementAndGet();
         SESSION.remove(uuid);
     }
 
@@ -451,11 +535,12 @@ public final class EntityStates {
         }
         PREVIOUS.remove(replacement.getUUID());
         NEXT_PERIODIC.remove(replacement.getUUID());
+        RUNTIME_EPOCH.incrementAndGet();
     }
 
     private static void runPeriodic(LivingEntity entity, StateEffect effect, Resolved current, long now) {
         if (effect.whileActive() == null) return;
-        Map<ResourceLocation, Long> dueByEffect = NEXT_PERIODIC.computeIfAbsent(entity.getUUID(), ignored -> new HashMap<>());
+        Map<ResourceLocation, Long> dueByEffect = nextPeriodicFor(entity);
         if (!current.active() || !matches(entity, effect, current)) {
             dueByEffect.remove(effect.id());
             return;

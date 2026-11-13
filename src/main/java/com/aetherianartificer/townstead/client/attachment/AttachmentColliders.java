@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.client.attachment;
 import com.aetherianartificer.townstead.client.animation.AnimationTargetMap;
 import com.aetherianartificer.townstead.client.devlink.BenchGizmos;
 import com.aetherianartificer.townstead.client.species.RigModels;
+import com.aetherianartificer.townstead.root.attachment.ChainSim;
 import com.aetherianartificer.townstead.root.rig.RigDefinition;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -23,30 +24,16 @@ import java.util.List;
  */
 public final class AttachmentColliders {
 
-    /** One placed capsule, in blocks; equal ends make a sphere. */
-    public record Capsule(String name, Vector3f a, Vector3f b, float radius) {
-
-        /** The point on the capsule's core segment nearest {@code p}, into {@code dest}. */
-        public Vector3f closest(Vector3f p, Vector3f dest) {
-            float abx = b.x - a.x, aby = b.y - a.y, abz = b.z - a.z;
-            float lengthSq = abx * abx + aby * aby + abz * abz;
-            float t = lengthSq < 1e-10f ? 0f
-                    : ((p.x - a.x) * abx + (p.y - a.y) * aby + (p.z - a.z) * abz) / lengthSq;
-            t = Math.max(0f, Math.min(1f, t));
-            return dest.set(a.x + abx * t, a.y + aby * t, a.z + abz * t);
-        }
-    }
-
     private AttachmentColliders() {}
 
     /** Bench gizmos: every placed collider as a wire capsule; {@code pose} at the model root. */
-    public static void draw(LivingEntity entity, PoseStack pose, MultiBufferSource buffers, List<Capsule> capsules) {
+    public static void draw(LivingEntity entity, PoseStack pose, MultiBufferSource buffers, List<ChainSim.Capsule> capsules) {
         Matrix4f root = EntityRootFrames.rootFor(entity);
         if (root == null || capsules.isEmpty()) return;
         Matrix4f toLocal = new Matrix4f(root).invert().mul(pose.last().pose()).invert();
         float scale = toLocal.getScale(new Vector3f()).x;
         VertexConsumer lines = buffers.getBuffer(RenderType.lines());
-        for (Capsule capsule : capsules) {
+        for (ChainSim.Capsule capsule : capsules) {
             BenchGizmos.capsule(lines, pose.last(), toLocal.transformPosition(new Vector3f(capsule.a())),
                     toLocal.transformPosition(new Vector3f(capsule.b())), capsule.radius() * scale,
                     BenchGizmos.COLLIDER);
@@ -61,13 +48,13 @@ public final class AttachmentColliders {
         return RigModels.isGeneric(rigBase) ? List.of() : RigDefinition.HUMANOID_COLLIDERS;
     }
 
-    public static List<Capsule> gather(LivingEntity entity, PoseStack pose, AnimationTargetMap<?> bones) {
+    public static List<ChainSim.Capsule> gather(LivingEntity entity, PoseStack pose, AnimationTargetMap<?> bones) {
         Matrix4f root = EntityRootFrames.rootFor(entity);
         if (root == null) return List.of();
         List<RigDefinition.Collider> defs = definitions(RigModels.rigBaseFor(entity));
         if (defs.isEmpty()) return List.of();
         Matrix4f toEntity = new Matrix4f(root).invert();
-        List<Capsule> out = new ArrayList<>(defs.size());
+        List<ChainSim.Capsule> out = new ArrayList<>(defs.size());
         for (RigDefinition.Collider def : defs) {
             ModelPart part = bones.resolve(def.bone()).orElse(null);
             if (part == null) continue;
@@ -80,7 +67,7 @@ public final class AttachmentColliders {
             Vector3f b = frame.transformPosition(def.to()[0] / 16f, def.to()[1] / 16f, def.to()[2] / 16f,
                     new Vector3f());
             float scale = frame.getScale(new Vector3f()).x;
-            out.add(new Capsule(def.name(), a, b, def.radius() / 16f * scale));
+            out.add(new ChainSim.Capsule(def.name(), a, b, def.radius() / 16f * scale));
         }
         return out;
     }

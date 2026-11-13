@@ -27,12 +27,17 @@ public final class ExplodeActionType implements ActionType {
         float power = GsonHelper.getAsFloat(json, "power", 2.0f);
         boolean fire = GsonHelper.getAsBoolean(json, "fire", false);
         boolean destroy = GsonHelper.getAsBoolean(json, "destroy", true);
+        boolean griefing = GsonHelper.getAsBoolean(json, "griefing", false);
         // An explosion never hurts the entity it is credited to. "credit":"origin" credits the bearer,
         // so a blast set on another creature hurts that creature and spares the one who set it.
         boolean creditOrigin = "origin".equals(GsonHelper.getAsString(json, "credit", "self"));
-        return ctx -> ctx.entity().level().explode(
-                creditOrigin && ctx.origin() != null ? ctx.origin() : ctx.entity(),
-                ctx.entity().getX(), ctx.entity().getY(), ctx.entity().getZ(), power, fire,
-                destroy ? Level.ExplosionInteraction.BLOCK : Level.ExplosionInteraction.NONE);
+        return ctx -> {
+            net.minecraft.world.phys.Vec3 place = ctx.place();
+            boolean breaks = destroy && (!griefing || ctx.level().getGameRules()
+                    .getBoolean(net.minecraft.world.level.GameRules.RULE_MOBGRIEFING));
+            ctx.entity().level().explode(creditOrigin && ctx.origin() != null ? ctx.origin() : ctx.entity(),
+                    place.x, place.y, place.z, power, fire,
+                    breaks ? Level.ExplosionInteraction.BLOCK : Level.ExplosionInteraction.NONE);
+        };
     }
 }

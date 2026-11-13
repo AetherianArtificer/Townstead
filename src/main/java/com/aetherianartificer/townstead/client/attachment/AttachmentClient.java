@@ -200,6 +200,11 @@ public final class AttachmentClient {
         return GEO.get(sha1);
     }
 
+    /** A synced geo blob as it came, or null until it has arrived. */
+    public static com.google.gson.JsonObject geometryJson(String sha1) {
+        return GEO_JSON.get(sha1);
+    }
+
     /** The attachment-model bake (per-face UV, mirror, named bones) of a synced geo blob. */
     public static com.aetherianartificer.townstead.client.attachment.geo.AttachmentGeo attachmentGeometry(String sha1) {
         return ATTACHMENT_GEO.get(sha1);
@@ -243,7 +248,7 @@ public final class AttachmentClient {
                 var json = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
                 for (AttachmentDef.PhysicsChain chain : def.physics()) {
                     if (chain.segments() > 1 && chain.bones().size() == 1) {
-                        json = com.aetherianartificer.townstead.client.attachment.geo.AttachmentGeoSegmenter
+                        json = com.aetherianartificer.townstead.root.attachment.AttachmentGeoSegmenter
                                 .segment(json, chain.bones().get(0), chain.segments(), chain.axis());
                     }
                 }

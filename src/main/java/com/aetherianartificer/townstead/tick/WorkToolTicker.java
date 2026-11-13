@@ -24,13 +24,14 @@ import java.util.function.Predicate;
  */
 public final class WorkToolTicker {
     private static final int CHECK_INTERVAL_TICKS = 20;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(CHECK_INTERVAL_TICKS);
     private static final String GRIEVE_ID = "mca:grieve";
     private WorkToolTicker() {}
 
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
         if (com.aetherianartificer.townstead.hunger.VillagerConsumptionManager.isHoldingServing(villager)) return;
-        if ((villager.level().getGameTime() + villager.getId()) % CHECK_INTERVAL_TICKS != 0) return;
+        if (!STRIDE.due(villager, villager.level().getGameTime() + villager.getId())) return;
 
         Brain<?> brain = villager.getBrain();
         // A mourner holds MCA's flower and gets its hand back when mourning ends; leave the hand alone.

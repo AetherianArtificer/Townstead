@@ -70,7 +70,7 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
         if (bench != null || gizmos) benchFrame(entity, pose, buffers, bones, bench, gizmos);
         StageKeys stageKeys = stageKeys(entity);
         // Placed on the first physics attachment, while the pose is still the model root.
-        List<AttachmentColliders.Capsule> colliders = null;
+        List<com.aetherianartificer.townstead.root.attachment.ChainSim.Capsule> colliders = null;
         for (Expressed expressed : attachments) {
             AttachmentDef def = expressed.def();
             if (hiddenByEquipment(entity, def)) continue;
@@ -117,12 +117,15 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                 }
             }
             // The cutout type ignores vertex alpha, so a fading attachment must go translucent.
-            RenderType renderType = (def.translucent() || fade < 1f)
+            RenderType renderType = def.opacity() < 1f ? AttachmentRenderTypes.seeThrough(drawTexture)
+                    : (def.translucent() || fade < 1f)
                     ? RenderType.entityTranslucent(drawTexture)
                     : RenderType.entityCutoutNoCull(drawTexture);
+            int drawAlpha = Math.round(fadeAlpha * def.opacity());
             ResourceLocation emissive = def.emissiveSha1().isEmpty()
                     ? null : AttachmentClient.texture(def.emissiveSha1());
-            Morphs morphs = morphsFor(def, payload);
+            com.aetherianartificer.townstead.root.attachment.BodyPoseRules.Morphs morphs =
+                    com.aetherianartificer.townstead.root.attachment.BodyPoseRules.morphs(entity, def, payload);
             float[] stageOffset = stage == null ? NO_OFFSET : stage.offset();
             float stageScale = stage == null ? 1f : stage.scale();
             float scale = def.scale() * stageScale;
@@ -140,6 +143,29 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                 Anchor anchor = anchors.get(anchorIndex);
                 ModelPart bone = bones.resolve(anchor.bone()).orElse(null);
                 if (bone == null) continue;
+                // Each branch of the model at this anchor is a piece: gone, showing, or about to fall.
+                List<String> pieceRoots = com.aetherianartificer.townstead.root.attachment.BodyPose.pieceRoots(entity, def);
+                int splits = Math.max(1, pieceRoots.size());
+                boolean falling = false, showing = false;
+                List<String> goneRoots = null;
+                for (int s = 0; s < splits; s++) {
+                    int piece = anchorIndex * splits + s;
+                    if (FallingPieces.wants(entity.getId(), def.id(), piece)) {
+                        falling = true;
+                    } else if (FallingPieces.gone(entity.getId(), def.id(), piece)
+                            || com.aetherianartificer.townstead.root.attachment.BodyParts.pieceLost(entity, def.id(), piece)) {
+                        if (splits > 1) {
+                            if (goneRoots == null) goneRoots = new ArrayList<>();
+                            goneRoots.add(pieceRoots.get(s));
+                        }
+                    } else {
+                        showing = true;
+                    }
+                }
+                if (!falling && !showing) {
+                    LiveBoxes.forget(entity, def, anchorIndex);
+                    continue;
+                }
                 AttachmentGeo geo = anchor.mirror()
                         ? AttachmentClient.geometryFor(def, activeSha, true) : geometry;
                 if (geo == null) continue;
@@ -190,6 +216,10 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                     morphBone.zScale = entry.getValue()[2];
                 }
                 List<AttachmentGeo.Bone> hidden = hideBones(geo, morphs.hiddenBones());
+                if (goneRoots != null) {
+                    hidden = new ArrayList<>(hidden);
+                    hidden.addAll(hideBones(geo, goneRoots));
+                }
                 // Morph rotations, poses, and keyframe clips share the bone-delta contract and
                 // compose in that order into the animated pose. Physics then springs each chain
                 // toward that pose (a drooped ear still swings, a wagging tail still follows through).
@@ -206,8 +236,21 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                         pose.last().pose(), partialTick, limbSwing, limbSwingAmount,
                         colliders == null ? List.of() : colliders);
                 if (gizmos && !simulated.isEmpty()) AttachmentPhysics.drawGizmos(entity, def, anchorIndex, pose, buffers);
+                LiveBoxes.capture(entity, def, activeSha, anchorIndex, anchors.size(), geo, pose.last().pose());
                 VertexConsumer buffer = buffers.getBuffer(renderType);
-                geo.render(pose, buffer, light, OverlayTexture.NO_OVERLAY, (fadeAlpha << 24) | vertexTint);
+                geo.render(pose, buffer, light, OverlayTexture.NO_OVERLAY, (drawAlpha << 24) | vertexTint);
+                for (int s = 0; falling && s < splits; s++) {
+                    int piece = anchorIndex * splits + s;
+                    if (FallingPieces.wants(entity.getId(), def.id(), piece)) {
+                        boolean solid = def.opacity() >= 1f && !def.translucent();
+                        FallingPieces.capture(entity, def, anchorIndex, piece, pieceRoots, s, geo,
+                                solid ? RenderType.entityCutoutNoCull(drawTexture) : renderType, solid,
+                                Math.round(255f * def.opacity()), vertexTint, emissive,
+                                com.aetherianartificer.townstead.compat.mess.MessBridge.active()
+                                        ? com.aetherianartificer.townstead.compat.mess.MessClientLink.copyMarks(entity, geo, def.id(), anchorIndex, geo::render, texture)
+                                        : List.of());
+                    }
+                }
                 // The emissive layer re-draws the same posed geometry full-bright, so
                 // glowing markings ride every morph, pose, clip, and physics swing of the
                 // base pass. entityTranslucentEmissive (the warden's glow type) draws the
@@ -217,6 +260,7 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                     geo.render(pose, buffers.getBuffer(RenderType.entityTranslucentEmissive(emissive)),
                             light, OverlayTexture.NO_OVERLAY, (fadeAlpha << 24) | 0xFFFFFF);
                 }
+                if (com.aetherianartificer.townstead.compat.mess.MessBridge.active()) com.aetherianartificer.townstead.compat.mess.MessClientLink.drawOnPart(entity, geo, def.id(), anchorIndex, geo::render, texture, pose, buffers, light, fadeAlpha);
                 for (AttachmentGeo.Bone simulatedBone : simulated) simulatedBone.physicsRotation = null;
                 for (SavedScale savedScale : scaled) savedScale.restore();
                 for (SavedOffset savedOffset : offset) savedOffset.restore();
@@ -278,6 +322,21 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
      * {@code teen}/{@code adult}); players and unknown entities read as adults.
      */
     private record StageKeys(String named, String canonical) {}
+
+    static String[] stageNames(LivingEntity entity) {
+        StageKeys keys = stageKeys(entity);
+        return new String[]{keys.named(), keys.canonical()};
+    }
+
+    /** The size values rolled on the gene that gives this entity this attachment. */
+    static AllelePayload rolled(LivingEntity entity, AttachmentDef def) {
+        for (Expressed expressed : resolve(entity)) {
+            if (expressed.def().id().equals(def.id())) {
+                return AllelePayload.parse(RootClientStore.resolveCarriedVariant(entity, expressed.geneId()));
+            }
+        }
+        return AllelePayload.parse("");
+    }
 
     private static StageKeys stageKeys(LivingEntity entity) {
         if (entity instanceof net.conczin.mca.entity.VillagerEntityMCA villager) {
@@ -352,78 +411,6 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
             if (slot != null && !entity.getItemBySlot(slot).isEmpty()) return true;
         }
         return false;
-    }
-
-    /** The resolved morph state for one expressed attachment on one entity. */
-    private record Morphs(float @Nullable [] whole, java.util.Map<String, float[]> boneScales,
-                          java.util.Map<String, float[]> rotations, List<String> hiddenBones) {
-        static final Morphs NONE = new Morphs(null, java.util.Map.of(), java.util.Map.of(), List.of());
-    }
-
-    /**
-     * Evaluates the attachment's morph channels and visibility rules against the
-     * size values rolled on the allele of the gene that granted it. Scale channels
-     * weight per axis ({@code 1 + (value - 1) * axis}), rotation channels turn by
-     * {@code rotate × value} degrees (geo convention, merged with pose deltas), and
-     * visibility rules hide bones outside their channel bounds.
-     */
-    private static Morphs morphsFor(AttachmentDef def, AllelePayload payload) {
-        if (def.morph().isEmpty() && def.visibility().isEmpty()) return Morphs.NONE;
-        if (payload.channels().isEmpty()) return Morphs.NONE;
-        float[] whole = null;
-        java.util.Map<String, float[]> boneScales = null;
-        java.util.Map<String, float[]> rotations = null;
-        for (AttachmentDef.MorphChannel channel : def.morph()) {
-            Float value = channelValue(payload, channel.channel());
-            if (value == null) continue;
-            if (channel.axes() != null && value != 1f) {
-                float[] factors = new float[3];
-                for (int i = 0; i < 3; i++) {
-                    factors[i] = Math.max(0.05f, 1f + (value - 1f) * channel.axes()[i]);
-                }
-                if (channel.bones().isEmpty()) {
-                    if (whole == null) whole = new float[]{1f, 1f, 1f};
-                    for (int i = 0; i < 3; i++) whole[i] *= factors[i];
-                } else {
-                    if (boneScales == null) boneScales = new java.util.LinkedHashMap<>();
-                    for (String morphBone : channel.bones()) {
-                        float[] slot = boneScales.computeIfAbsent(morphBone, k -> new float[]{1f, 1f, 1f});
-                        for (int i = 0; i < 3; i++) slot[i] *= factors[i];
-                    }
-                }
-            }
-            if (channel.rotate() != null && value != 0f) {
-                if (rotations == null) rotations = new java.util.LinkedHashMap<>();
-                for (String morphBone : channel.bones()) {
-                    float[] slot = rotations.computeIfAbsent(morphBone, k -> new float[3]);
-                    for (int i = 0; i < 3; i++) slot[i] += channel.rotate()[i] * value;
-                }
-            }
-        }
-        List<String> hiddenBones = null;
-        for (AttachmentDef.VisibilityRule rule : def.visibility()) {
-            Float value = channelValue(payload, rule.channel());
-            if (value == null) continue;   // no roll for the channel: stay visible
-            boolean visible = (Float.isNaN(rule.below()) || value < rule.below())
-                    && (Float.isNaN(rule.above()) || value > rule.above());
-            if (visible) continue;
-            if (hiddenBones == null) hiddenBones = new ArrayList<>();
-            hiddenBones.addAll(rule.bones());
-        }
-        if (whole == null && boneScales == null && rotations == null && hiddenBones == null) return Morphs.NONE;
-        return new Morphs(whole,
-                boneScales == null ? java.util.Map.of() : boneScales,
-                rotations == null ? java.util.Map.of() : rotations,
-                hiddenBones == null ? List.of() : hiddenBones);
-    }
-
-    /** A channel's rolled value; a lone anonymous legacy roll answers for any name. Null = unrolled. */
-    private static Float channelValue(AllelePayload payload, String name) {
-        Float value = payload.channels().get(name);
-        if (value == null && payload.channels().size() == 1) {
-            value = payload.channels().get(AllelePayload.LEGACY_CHANNEL);
-        }
-        return value;
     }
 
     /** Hides the named bones on the shared bake, returning the ones actually flipped for restore. */
@@ -614,7 +601,13 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                 RootClientStore.resolveCarriedVariant(entity, geneId)).variant();
         for (String attachmentId : gene.attachmentsFor(carried)) {
             AttachmentDef def = AttachmentClient.def(attachmentId);
-            if (def != null) out.add(new Expressed(geneId, def));
+            if (def == null) continue;
+            // A wounded or lost part shows as whatever its definition puts in its place.
+            AttachmentDef shown = com.aetherianartificer.townstead.root.attachment.BodyParts.shown(
+                    entity, def, AttachmentClient::def);
+            if (shown != null) out.add(new Expressed(geneId, shown));
+            // Drawn once more, to be copied as it falls.
+            else if (FallingPieces.wantsAny(entity.getId(), def.id())) out.add(new Expressed(geneId, def));
         }
     }
 }

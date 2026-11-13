@@ -11,6 +11,7 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 
 /** Entity-only TAN modifiers that its native player handlers cannot apply to MCA villagers. */
 public final class ToughAsNailsEntityCompat {
+    private static final com.aetherianartificer.townstead.tick.Stride.Site CANTEEN_STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(20);
     private ToughAsNailsEntityCompat() {}
     private static MobEffectInstance effect(LivingEntity entity, String path) {
         if (!ModCompat.isLoaded("toughasnails")) return null;
@@ -54,7 +55,7 @@ public final class ToughAsNailsEntityCompat {
         return equipmentProtection(entity).plus(effect(entity, "ice_resistance") != null ? new ThermalProtection(0, 10000, 0, 0) : ThermalProtection.NONE);
     }
     public static void cleanseCanteens(net.conczin.mca.entity.VillagerEntityMCA villager) {
-        if (!ModCompat.isLoaded("toughasnails") || villager.tickCount % 20 != 0) return;
+        if (!ModCompat.isLoaded("toughasnails") || !CANTEEN_STRIDE.due(villager, villager.tickCount)) return;
         var inventory = villager.getInventory();
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);

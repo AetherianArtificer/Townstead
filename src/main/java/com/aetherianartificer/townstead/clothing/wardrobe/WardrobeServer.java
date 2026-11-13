@@ -125,6 +125,18 @@ public final class WardrobeServer {
                     }
                 }
             }
+            case BATHING -> {
+                VillagerEntityMCA entity = villager == null ? null : find(server, villager);
+                int bar = value.lastIndexOf('|');
+                if (entity == null || bar <= 0) return;
+                int color;
+                try {
+                    color = Integer.parseInt(value.substring(bar + 1));
+                } catch (NumberFormatException e) {
+                    return;
+                }
+                com.aetherianartificer.townstead.compat.mess.MessBridge.setBathingWear(entity, value.substring(0, bar), color);
+            }
             default -> {
             }
         }

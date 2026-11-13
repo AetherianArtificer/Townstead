@@ -322,6 +322,7 @@ public final class VillagerConsumptionManager {
         // Authored Pheno effects are the explicit replacement selected by the data pack. Admission
         // below controls side effects Townstead bridges from the native item contract.
         Consumables.apply(recipient, stack);
+        com.aetherianartificer.townstead.compat.mess.MessBridge.ate(recipient, stack);
         if (attributes && !configured.energizes()) FatigueData.applyCoffeeEffect(recipient, stack);
         boolean changed = applyFoodBenefits(recipient, stack, recipientNeeds, attributes,
                 statuses, teleport);

@@ -15,6 +15,7 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 public final class GuardLeash {
     private static final int MARGIN = 16;
     private static final int INTERVAL = 10;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(INTERVAL);
 
     private GuardLeash() {}
 
@@ -35,7 +36,7 @@ public final class GuardLeash {
 
     /** Drops a target the guard has already chased past the leash. */
     public static void tick(VillagerEntityMCA villager) {
-        if ((villager.tickCount + villager.getId()) % INTERVAL != 0) return;
+        if (!STRIDE.due(villager, villager.tickCount + villager.getId())) return;
         LivingEntity target = villager.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
         if (target == null || !beyond(villager, target)) return;
         villager.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);

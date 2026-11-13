@@ -24,6 +24,7 @@ public final class AttachmentSchemas {
             .field(required("texture", PhenoType.STRING).doc("Reference to a .png under attachment/textures/."))
             .field(of("target", PhenoType.OBJECT).doc("{ tag } (every matching point) or { point } (one point)."))
             .field(of("bone", PhenoType.STRING).doc("Direct bone anchor when there is no target."))
+            .field(of("opacity", PhenoType.FLOAT).doc("0 to 1. How solid the whole attachment is. Below 1 it is see-through with or without shaders."))
             .field(of("offset", PhenoType.FLOAT).asList())
             .field(of("rotation", PhenoType.FLOAT).asList())
             .field(of("scale", PhenoType.FLOAT))
@@ -49,7 +50,8 @@ public final class AttachmentSchemas {
                             + "over the same geometry (glowing runes, foxfire tips)."))
             .field(of("render", PhenoType.STRING)
                     .doc("cutout (default) | translucent — translucent respects the texture's alpha "
-                            + "for wisps, membranes, ghost tails."))
+                            + "for wisps, membranes, ghost tails. Faces draw back to front, so a solid core "
+                            + "shows through a clear shell. translucent_layered is the same."))
             .field(of("hides_under", PhenoType.STRING).asList()
                     .doc("Armor slots (helmet/chestplate/leggings/boots) that hide the attachment "
                             + "entirely while worn. For a softer reaction author a wearing_<slot> pose "
@@ -63,6 +65,18 @@ public final class AttachmentSchemas {
                             + "the single anonymous channel; { channels: { <name>: { bones, axes, rotate } } } "
                             + "reads named channels — `axes` scales per axis (no bones = whole attachment), "
                             + "`rotate` turns bones by rotate x value degrees."))
+            .field(of("values", PhenoType.OBJECT)
+                    .doc("Channels read from live state instead of a rolled gene: { <channel>: { resource, from, to } } "
+                            + "maps how full a resource is onto from..to, for morph and visibility to use."))
+            .field(of("volume", PhenoType.OBJECT)
+                    .doc("Space the attachment takes up: { mode, boxes, pivot, grow, axes }. mode is block (stops the "
+                            + "bearer moving), fold (folds away and stops flight where it does not fit), or none (hit "
+                            + "boxes only). boxes are [x0,y0,z0,x1,y1,z1] in model pixels from the feet, +z behind."))
+            .field(of("part", PhenoType.ANY)
+                    .doc("How the attachment is wounded and lost: false for not at all, or { health, wounded_at, severable, sever_tags, damage_scale, "
+                            + "regrow_ticks, heal_per_second, wounded, severed, drop, trace, on_hit, on_wounded, "
+                            + "on_severed, on_healed, stump_trace, split, remains_seconds, bleeds }. bleeds is the material a blow to this part brings out, in place of what the body bleeds. Empty means none. remains_seconds is how long a lost piece lies on the ground. split false keeps a model with several branches as one piece. wounded and severed name attachments worn in its place. "
+                            + "An attachment with no part block can still be wounded and lost; false turns that off."))
             .field(of("visibility", PhenoType.OBJECT).asList()
                     .doc("[ { bones, channel, below, above } ]: the bones render only while the channel's "
                             + "rolled value is under `below` and over `above` (either bound optional) — "
@@ -119,8 +133,11 @@ public final class AttachmentSchemas {
             .field(of("inertia", PhenoType.ANY).doc("How much bearer motion the chain feels, 0..1. Number or { root, tip }."))
             .field(of("drag", PhenoType.ANY).doc("Air resistance that streams the chain back while moving. Number or { root, tip }."))
             .field(of("limit", PhenoType.ANY).doc("Largest swing of each bone from where its parent points, in degrees. Number or { root, tip }."))
+            .field(of("wind", PhenoType.ANY).doc("How far moving air pushes each bone, on the same scale as gravity. Number or { root, tip }."))
             .field(of("hinge", PhenoType.STRING).doc("none, pitch, or side: keeps the swing in one plane."))
             .field(of("collide", PhenoType.STRING).asList().doc("Rig collider names the chain stays out of. Leave out to use every collider; [] for none."))
+            .field(of("blocks", PhenoType.BOOL).doc("Keeps the chain out of blocks. Default true."))
+            .field(of("radius", PhenoType.FLOAT).doc("Chain thickness for collision, in model pixels. Leave out to measure it from the geometry."))
             .field(of("rest_pitch", PhenoType.FLOAT).doc("Tilts the rest pose, in degrees (negative is down)."))
             .field(of("sway", PhenoType.FLOAT).doc("Idle motion, in degrees."))
             .field(of("sway_speed", PhenoType.FLOAT).doc("Multiplies the idle motion speed."))

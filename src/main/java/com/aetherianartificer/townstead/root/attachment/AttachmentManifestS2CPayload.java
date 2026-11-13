@@ -65,6 +65,7 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
             buf.writeUtf(def.tintMaskSha1());
             buf.writeUtf(def.emissiveSha1());
             buf.writeBoolean(def.translucent());
+            buf.writeFloat(def.opacity());
             buf.writeVarInt(def.hidesUnder().size());
             for (String slot : def.hidesUnder()) buf.writeUtf(slot);
             buf.writeUtf(def.whenJson());
@@ -112,7 +113,7 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
                 for (String chainBone : chain.bones()) buf.writeUtf(chainBone);
                 buf.writeUtf(chain.preset());
                 for (AttachmentDef.Knob knob : new AttachmentDef.Knob[]{chain.frequency(), chain.dampingRatio(),
-                        chain.gravity(), chain.inertia(), chain.drag(), chain.limit()}) {
+                        chain.gravity(), chain.inertia(), chain.drag(), chain.limit(), chain.wind()}) {
                     buf.writeFloat(knob.root());
                     buf.writeFloat(knob.tip());
                 }
@@ -125,6 +126,8 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
                 buf.writeBoolean(chain.scaleWithSize());
                 buf.writeVarInt(chain.segments());
                 buf.writeUtf(chain.axis());
+                buf.writeBoolean(chain.blocks());
+                buf.writeFloat(chain.radius());
             }
             buf.writeVarInt(def.animations().size());
             for (AttachmentDef.AnimationEntry anim : def.animations()) {
@@ -137,6 +140,7 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
                 buf.writeVarInt(anim.cooldownTicks());
                 buf.writeBoolean(anim.idle());
             }
+            def.body().write(buf);
         }
         buf.writeVarInt(slots.size());
         for (AttachmentPointDef point : slots) {
@@ -186,6 +190,7 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
             String tintMaskSha = buf.readUtf();
             String emissiveSha = buf.readUtf();
             boolean translucent = buf.readBoolean();
+            float opacity = buf.readFloat();
             int hideCount = buf.readVarInt();
             List<String> hidesUnder = new ArrayList<>(hideCount);
             for (int h = 0; h < hideCount; h++) hidesUnder.add(buf.readUtf());
@@ -244,7 +249,7 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
                 List<String> chainBones = new ArrayList<>(chainBoneCount);
                 for (int b = 0; b < chainBoneCount; b++) chainBones.add(buf.readUtf());
                 String preset = buf.readUtf();
-                AttachmentDef.Knob[] knobs = new AttachmentDef.Knob[6];
+                AttachmentDef.Knob[] knobs = new AttachmentDef.Knob[7];
                 for (int k = 0; k < knobs.length; k++) knobs[k] = new AttachmentDef.Knob(buf.readFloat(), buf.readFloat());
                 String hinge = buf.readUtf();
                 int colliderCount = buf.readVarInt();
@@ -256,9 +261,11 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
                 boolean scaleWithSize = buf.readBoolean();
                 int segments = buf.readVarInt();
                 String axis = buf.readUtf();
+                boolean blocks = buf.readBoolean();
+                float radius = buf.readFloat();
                 physics.add(new AttachmentDef.PhysicsChain(chainBones, preset, knobs[0], knobs[1], knobs[2],
                         knobs[3], knobs[4], knobs[5], hinge, collide, restPitch, sway, swaySpeed, scaleWithSize,
-                        segments, axis, List.of()));
+                        segments, axis, knobs[6], blocks, radius, List.of()));
             }
             int animCount = buf.readVarInt();
             List<AttachmentDef.AnimationEntry> animations = new ArrayList<>(animCount);
@@ -276,8 +283,8 @@ public record AttachmentManifestS2CPayload(List<AttachmentDef> defs, List<Attach
             }
             defs.add(new AttachmentDef(id, geo, tex, targetTag.isEmpty() ? null : targetTag,
                     targetPoint.isEmpty() ? null : targetPoint, bone, offset, rotation, scale, tint,
-                    tintSource, tintBlend, tintStrength, tintMaskSha, emissiveSha, translucent, hidesUnder, whenJson,
-                    morph, visibility, stages, poses, physics, animations));
+                    tintSource, tintBlend, tintStrength, tintMaskSha, emissiveSha, translucent, opacity, hidesUnder, whenJson,
+                    morph, visibility, stages, poses, physics, animations, AttachmentBody.read(buf)));
         }
         int slotCount = buf.readVarInt();
         List<AttachmentPointDef> slots = new ArrayList<>(slotCount);

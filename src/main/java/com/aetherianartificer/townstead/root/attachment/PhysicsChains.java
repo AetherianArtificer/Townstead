@@ -31,6 +31,9 @@ public final class PhysicsChains {
     public static final float INERTIA = 0.5f;
     public static final float DRAG = 1.0f;
     public static final float LIMIT = 35f;
+    public static final float WIND = 0.12f;
+    /** Below 0: measure the chain's thickness from its geometry. */
+    public static final float RADIUS_AUTO = -1f;
     public static final List<String> HINGES = List.of("none", "pitch", "side");
     /** A chain that names no colliders rests against every collider the rig has. */
     public static final List<String> COLLIDE_ALL = List.of("*");
@@ -38,7 +41,7 @@ public final class PhysicsChains {
     private static final List<String> LEGACY_KEYS = List.of("stiffness", "damping", "max_angle", "min_pitch",
             "max_pitch", "follow", "droop_angle", "snap", "response");
     private static final List<String> KNOBS = List.of("frequency", "damping_ratio", "gravity", "inertia",
-            "drag", "limit");
+            "drag", "limit", "wind");
 
     private static volatile Map<String, JsonObject> presets = Map.of();
 
@@ -110,6 +113,9 @@ public final class PhysicsChains {
                 GsonHelper.getAsBoolean(merged, "scale_with_size", true),
                 GsonHelper.getAsInt(chain, "segments", 0),
                 GsonHelper.getAsString(chain, "axis", "auto"),
+                knob(merged, "wind", WIND),
+                GsonHelper.getAsBoolean(merged, "blocks", true),
+                GsonHelper.getAsFloat(merged, "radius", RADIUS_AUTO),
                 List.copyOf(notes));
     }
 
@@ -216,6 +222,9 @@ public final class PhysicsChains {
         putKnob(out, "inertia", chain.inertia(), base.inertia());
         putKnob(out, "drag", chain.drag(), base.drag());
         putKnob(out, "limit", chain.limit(), base.limit());
+        putKnob(out, "wind", chain.wind(), base.wind());
+        if (chain.blocks() != base.blocks()) out.addProperty("blocks", chain.blocks());
+        if (chain.radius() != base.radius()) out.addProperty("radius", chain.radius());
         if (!chain.hinge().equals(base.hinge())) out.addProperty("hinge", chain.hinge());
         if (!chain.collide().equals(base.collide())) {
             JsonArray collide = new JsonArray();

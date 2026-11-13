@@ -61,6 +61,8 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     protected static final int COLLECT_WAIT_MAX_TICKS = 40;
     protected static final long STATION_SESSION_LEASE_TICKS = MAX_DURATION + 40L;
     protected static final int OPPORTUNISTIC_SWEEP_INTERVAL = 10;
+    private final com.aetherianartificer.townstead.tick.Stride opportunisticSweep =
+            new com.aetherianartificer.townstead.tick.Stride(OPPORTUNISTIC_SWEEP_INTERVAL);
     protected static final int MAX_RECIPE_ATTEMPTS = 3;
     protected static final long WORKSITE_TARGET_RETRY_COOLDOWN_TICKS = 60L;
     protected static final int WORKSITE_MAX_RETRIES = 2;
@@ -547,7 +549,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
             recipeAttempts = 0;
         }
 
-        if (gameTime % OPPORTUNISTIC_SWEEP_INTERVAL == 0) {
+        if (opportunisticSweep.due(gameTime, villager)) {
             onOpportunisticSweep(level, villager, gameTime);
         }
 

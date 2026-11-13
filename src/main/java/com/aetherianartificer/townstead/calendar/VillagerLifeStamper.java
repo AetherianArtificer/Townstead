@@ -30,6 +30,7 @@ public final class VillagerLifeStamper {
     // editor entry call ensureStamped directly, so the fallback tick only needs to
     // catch unattended loaded villagers on a coarse, staggered cadence.
     private static final int MAINTENANCE_INTERVAL_TICKS = 200;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(MAINTENANCE_INTERVAL_TICKS);
     private static final Set<ServerVillageKey> KNOWN_STAMPED_VILLAGES =
             ConcurrentHashMap.newKeySet();
 
@@ -37,7 +38,7 @@ public final class VillagerLifeStamper {
 
     public static void tick(VillagerEntityMCA villager) {
         if (!(villager.level() instanceof ServerLevel serverLevel)) return;
-        if ((serverLevel.getGameTime() + villager.getId()) % MAINTENANCE_INTERVAL_TICKS != 0) return;
+        if (!STRIDE.due(villager, serverLevel.getGameTime() + villager.getId())) return;
         MinecraftServer server = serverLevel.getServer();
         if (server == null) return;
 

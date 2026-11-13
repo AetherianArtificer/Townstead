@@ -59,7 +59,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * already present, and never own or end their participants' visits.
  */
 public final class HangoutEngine {
+    private static final com.aetherianartificer.townstead.tick.Stride.Site PRUNE_STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(400);
     private static final int ACQUISITION_STRIDE = 200;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site ACQUISITION = new com.aetherianartificer.townstead.tick.Stride.Site(ACQUISITION_STRIDE);
     private static final int ACTIVE_STRIDE = 20;
     private static final int BEAT_RETRY_TICKS = 100;
     private static final int DANGER_GRACE_TICKS = 200;
@@ -84,6 +86,11 @@ public final class HangoutEngine {
         HangoutVisit visit = VISITS.get(owner);
         return visit != null && visit.phase() != HangoutVisit.Phase.COMPLETE
                 && visit.phase() != HangoutVisit.Phase.INTERRUPTED;
+    }
+
+    /** Whether this villager is on a hangout visit, which advances every tick it runs. */
+    public static boolean visiting(UUID visitor) {
+        return BY_VISITOR.containsKey(visitor);
     }
 
     public static @Nullable HangoutVisit visit(UUID visitor) {
@@ -130,7 +137,7 @@ public final class HangoutEngine {
         if (!(villager.level() instanceof ServerLevel level)) return;
         long now = level.getGameTime();
         HangoutEmbodiment.bootstrap();
-        if ((now + (villager.getUUID().hashCode() & 31)) % 400L == 0L) {
+        if (PRUNE_STRIDE.due(villager, now + (villager.getUUID().hashCode() & 31))) {
             sweepOrphans(level, now);
             HangoutEmbodiment.recoverNearby(level, villager.blockPosition());
             CLAIMS.prune(now);
@@ -149,7 +156,7 @@ public final class HangoutEngine {
 
         if (HangoutData.policies().isEmpty() || HangoutData.venues().isEmpty()
                 || HangoutData.activities().isEmpty() || HangoutData.spots().isEmpty()) return;
-        if ((now + (villager.getUUID().hashCode() & Integer.MAX_VALUE)) % ACQUISITION_STRIDE != 0L) return;
+        if (!ACQUISITION.due(villager, now + (villager.getUUID().hashCode() & Integer.MAX_VALUE))) return;
         long cooldown = COOLDOWNS.getOrDefault(villager.getUUID(), 0L);
         if (cooldown > now) {
             if (isMeet(villager)) traceRejection(villager, now, "cooldown " + (cooldown - now) + " ticks");

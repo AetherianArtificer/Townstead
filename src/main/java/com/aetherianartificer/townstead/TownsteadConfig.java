@@ -127,6 +127,8 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue RESOURCE_HUD_SHOW_VALUES;
     public static final ModConfigSpec.BooleanValue REDUCE_MOTION;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.client.attachment.PhysicsQuality> ATTACHMENT_PHYSICS;
+    public static final ModConfigSpec.BooleanValue ENABLE_SEVERING;
+    public static final ModConfigSpec.BooleanValue ENABLE_GORE;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
     public static final ModConfigSpec.BooleanValue SPIRIT_COLORBLIND_PATTERNS;
@@ -144,6 +146,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ModConfigSpec.BooleanValue DEBUG_LOGGING;
+    public static final ModConfigSpec.BooleanValue FAR_VILLAGER_DETAIL;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> API_DENIED_WRITE_SOURCES;
     public static final ModConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
     public static final ModConfigSpec.BooleanValue ENABLE_ENCLOSURE_RECOGNITION;
@@ -253,6 +256,8 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue RESOURCE_HUD_SHOW_VALUES;
     public static final ForgeConfigSpec.BooleanValue REDUCE_MOTION;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.client.attachment.PhysicsQuality> ATTACHMENT_PHYSICS;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_SEVERING;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_GORE;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
     public static final ForgeConfigSpec.BooleanValue SPIRIT_COLORBLIND_PATTERNS;
@@ -270,6 +275,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ForgeConfigSpec.BooleanValue DEBUG_LOGGING;
+    public static final ForgeConfigSpec.BooleanValue FAR_VILLAGER_DETAIL;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> API_DENIED_WRITE_SOURCES;
     public static final ForgeConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
     public static final ForgeConfigSpec.BooleanValue ENABLE_ENCLOSURE_RECOGNITION;
@@ -820,6 +826,15 @@ public final class TownsteadConfig {
                 .defineInRange("startYearMax", 2200, 0, 100000);
         b.pop();
 
+        // ── Performance ──
+        b.translation("townstead.configuration.performance").push("performance");
+        FAR_VILLAGER_DETAIL = b
+                .translation("townstead.configuration.performance.farVillagerDetail")
+                .comment("Villagers far from every player think and move less often. They return to full detail",
+                        "when a player comes near, or when they are hurt, trading or in danger.")
+                .define("farVillagerDetail", true);
+        b.pop();
+
         // ── Debug ──
         b.translation("townstead.configuration.debug").push("debug");
         DEBUG_VILLAGER_AI = b
@@ -834,6 +849,18 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.debug.debugLogging")
                 .comment("Enable verbose Townstead diagnostic logging across subsystems (animation bridge, etc.).")
                 .define("debugLogging", false);
+        b.pop();
+
+        // ── Attachments ──
+        b.translation("townstead.configuration.attachments").push("attachments");
+        ENABLE_SEVERING = b
+                .translation("townstead.configuration.attachments.severing")
+                .comment("Attachments can come off when they take enough damage. When disabled, they only get wounded.")
+                .define("severing", true);
+        ENABLE_GORE = b
+                .translation("townstead.configuration.attachments.gore")
+                .comment("Show blood and wounds in this world, with Bit of a Mess installed.")
+                .define("gore", true);
         b.pop();
 
         // ── Public API ──

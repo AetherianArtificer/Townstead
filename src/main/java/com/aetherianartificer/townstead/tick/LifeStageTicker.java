@@ -28,10 +28,12 @@ public final class LifeStageTicker {
     // Stage boundaries are day-quantized, so re-resolving once per in-game day is
     // ample; per-tick would be wasted work on the hot villager path.
     private static final int RESOLVE_INTERVAL_TICKS = 1200;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site RESOLVE_STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(RESOLVE_INTERVAL_TICKS);
     // Reconcile MCA's breeding-age-driven body size with the resolved stage at ~1 Hz, so a freshly
     // loaded, spawned, or edited villager reaches its stage size within a second. Cheap: it no-ops for
     // adults and only writes when a pre-adult villager's age is out of step with its stage.
     private static final int BODY_SYNC_INTERVAL_TICKS = 20;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site BODY_SYNC_STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(BODY_SYNC_INTERVAL_TICKS);
 
     private LifeStageTicker() {}
 
@@ -39,13 +41,13 @@ public final class LifeStageTicker {
         if (villager.level().isClientSide) return;
 
         long staggeredTime = villager.level().getGameTime() + villager.getId();
-        boolean reconcile = Math.floorMod(staggeredTime, BODY_SYNC_INTERVAL_TICKS) == 0;
+        boolean reconcile = BODY_SYNC_STRIDE.due(villager, staggeredTime);
         if (reconcile) {
             LifeStageProgression.syncMcaAgeToStage(villager);
             reconcileNoAgingTrait(villager);
         }
 
-        if (Math.floorMod(staggeredTime, RESOLVE_INTERVAL_TICKS) == 0) {
+        if (RESOLVE_STRIDE.due(villager, staggeredTime)) {
             boolean seniorChanged = LifeStageProgression.tickResolveStage(villager);
             if (seniorChanged) {
                 broadcastLifeSync(villager);
@@ -64,9 +66,22 @@ public final class LifeStageTicker {
             // the same 1 Hz cadence as body state rather than rebuilding it every tick.
             com.aetherianartificer.townstead.root.LifeStage stage = LifeStageProgression.currentStage(villager);
             boolean immobile = stage != null && !stage.mobile();
-            if (villager.isNoAi() != immobile) villager.setNoAi(immobile);
+            // No AI is also what a command, a map maker or another mod uses to hold a villager still. The
+            // stage only lifts the stillness it set itself, which it marks, and leaves anyone else's alone.
+            var data = villager.getPersistentData();
+            boolean ours = data.getBoolean(STAGE_STILL);
+            if (immobile) {
+                if (!villager.isNoAi()) villager.setNoAi(true);
+                if (!ours) data.putBoolean(STAGE_STILL, true);
+            } else if (ours) {
+                villager.setNoAi(false);
+                data.remove(STAGE_STILL);
+            }
         }
     }
+
+    // Marks a villager its life stage holds still, so only that stillness is lifted when the stage moves on.
+    private static final String STAGE_STILL = "TownsteadStageStill";
 
     // MCA 7.6.28+/7.7.18+ editor age-lock: fold NO_AGING trait toggles into the granted-ageless
     // flag, the runtime freeze authority. Edge-triggered on trait changes rather than level-synced,

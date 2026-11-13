@@ -176,9 +176,11 @@ public record RigDefinition(
      */
     public record Collider(String name, String bone, float[] from, float[] to, float radius) {}
 
-    /** The vanilla humanoid body, legs, and head, sized to the 64x64 player model. */
+    /** The vanilla humanoid body, arms, legs, and head, sized to the 64x64 player model. */
     public static final List<Collider> HUMANOID_COLLIDERS = List.of(
             new Collider("body", "body", new float[]{0f, 1f, 0f}, new float[]{0f, 11f, 0f}, 3f),
+            new Collider("right_arm", "right_arm", new float[]{-1f, 0f, 0f}, new float[]{-1f, 9f, 0f}, 2f),
+            new Collider("left_arm", "left_arm", new float[]{1f, 0f, 0f}, new float[]{1f, 9f, 0f}, 2f),
             new Collider("right_leg", "right_leg", new float[]{0f, 0f, 0f}, new float[]{0f, 11f, 0f}, 2.2f),
             new Collider("left_leg", "left_leg", new float[]{0f, 0f, 0f}, new float[]{0f, 11f, 0f}, 2.2f),
             new Collider("head", "head", new float[]{0f, -4f, 0f}, new float[]{0f, -4f, 0f}, 4.5f));

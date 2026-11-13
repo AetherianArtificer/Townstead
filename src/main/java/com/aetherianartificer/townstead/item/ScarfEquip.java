@@ -1,7 +1,6 @@
 package com.aetherianartificer.townstead.item;
 
 import com.aetherianartificer.townstead.compat.curios.CuriosCompat;
-import com.aetherianartificer.townstead.root.EntityGroups;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -10,9 +9,9 @@ import net.minecraft.world.item.ItemStack;
 
 /**
  * Puts a held scarf onto a villager: into a free Curios slot when Curios is present, else the head slot
- * (vanilla's head-item render draws it), swapping out whatever it wore there. Only spider-folk (the
- * arthropod {@link EntityGroups entity group}) may wear a scarf; equipping a non-arthropod is refused
- * with an action-bar message. Server-side; the interaction event reports success on both sides.
+ * (vanilla's head-item render draws it), swapping out whatever it wore there. Only a body made for it may
+ * wear a scarf ({@link ScarfItem#fits}); anyone else is refused with an action-bar message. Server-side;
+ * the interaction event reports success on both sides.
  */
 public final class ScarfEquip {
 
@@ -26,7 +25,7 @@ public final class ScarfEquip {
         if (!(stack.getItem() instanceof ScarfItem)) return false;
         if (villager.level().isClientSide) return true;
 
-        if (!EntityGroups.isArthropod(villager)) {
+        if (!ScarfItem.fits(villager)) {
             player.displayClientMessage(Component.translatable(DENY_KEY), true);
             return true; // consume the interaction, but refuse the equip
         }
@@ -45,9 +44,9 @@ public final class ScarfEquip {
         return true;
     }
 
-    /** The scarf rule as a slot predicate: anything but a scarf passes, a scarf needs spider-folk. */
+    /** The scarf rule as a slot predicate: anything but a scarf passes, a scarf needs a body made for it. */
     public static boolean mayWear(LivingEntity entity, ItemStack stack) {
-        return !(stack.getItem() instanceof ScarfItem) || EntityGroups.isArthropod(entity);
+        return !(stack.getItem() instanceof ScarfItem) || ScarfItem.fits(entity);
     }
 
     /**
@@ -59,7 +58,7 @@ public final class ScarfEquip {
     public static boolean enforce(LivingEntity entity, EquipmentSlot slot, ItemStack to) {
         if (slot != EquipmentSlot.HEAD || entity.level().isClientSide) return false;
         if (!(to.getItem() instanceof ScarfItem)) return false;
-        if (EntityGroups.isArthropod(entity)) return false;
+        if (ScarfItem.fits(entity)) return false;
 
         // Setting the slot empty re-fires the change with an empty stack, which this method ignores.
         ItemStack returned = com.aetherianartificer.townstead.villager.WornItems.take(entity, EquipmentSlot.HEAD);
@@ -80,7 +79,7 @@ public final class ScarfEquip {
     public static void enforceCurios(Player player) {
         if (player.level().isClientSide || !CuriosCompat.present()) return;
         CuriosCompat.removeWhere(player,
-                stack -> stack.getItem() instanceof ScarfItem && !EntityGroups.isArthropod(player),
+                stack -> stack.getItem() instanceof ScarfItem && !ScarfItem.fits(player),
                 removed -> {
                     player.displayClientMessage(Component.translatable(DENY_KEY), true);
                     if (!player.addItem(removed)) player.drop(removed, false);

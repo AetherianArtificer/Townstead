@@ -15,6 +15,7 @@ import net.minecraft.resources.ResourceLocation;
  * other children. Done once, on their stored schedule, so an age never slides backwards.
  */
 public final class DhampirAging {
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(100);
     public static final ResourceLocation STATE = ResourceLocation.tryParse("townstead_state:dhampir");
     private static final String PACED = "townstead:dhampir_paced";
     private static final int ADULT_PACE = 2;
@@ -22,7 +23,7 @@ public final class DhampirAging {
     private DhampirAging() {}
 
     public static void tick(VillagerEntityMCA villager) {
-        if ((villager.tickCount + villager.getId()) % 100 != 0 || villager.getPersistentData().getBoolean(PACED)) return;
+        if (!STRIDE.due(villager, villager.tickCount + villager.getId()) || villager.getPersistentData().getBoolean(PACED)) return;
         if (EntityStates.definition(STATE) == null || !EntityStates.resolve(villager, STATE).active()) return;
         TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
         LifeCycle cycle = RootRegistry.effectiveLifeCycle(ResourceLocation.tryParse(life.rootId()));

@@ -47,7 +47,7 @@ public final class DriftPilot implements Pilot {
     public static void maintain(Mob mob) {
         if ((mob.tickCount + mob.getId()) % CHECK_EVERY != 0) return;
         if (Locomotion.mode(mob) != MovementMode.GROUND) return;
-        if (mob.isSleeping() || mob.isPassenger() || mob.isDeadOrDying()) return;
+        if (mob.isSleeping() || mob.isPassenger() || mob.isDeadOrDying() || mob.isNoAi()) return;
         FlightProfile profile = FlightProfile.of(mob);
         if (profile == null || profile.style() != FlightStyle.DRIFT) return;
         Locomotion.start(mob, MovementMode.DRIFT, new DriftPilot(mob, profile), null);

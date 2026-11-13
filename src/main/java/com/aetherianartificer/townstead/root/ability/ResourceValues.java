@@ -44,6 +44,11 @@ public final class ResourceValues {
 
     private ResourceValues() {}
 
+    /** The meter this entity holds under this id, or null. */
+    public static ResourceGeneType.Instance meter(LivingEntity entity, ResourceLocation resourceId) {
+        return instanceOf(entity, resourceId);
+    }
+
     public static int get(LivingEntity entity, ResourceLocation resourceId) {
         ResourceGeneType.Instance instance = instanceOf(entity, resourceId);
         if (instance == null) return 0;

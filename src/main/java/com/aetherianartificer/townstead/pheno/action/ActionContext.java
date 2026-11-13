@@ -19,6 +19,7 @@ public final class ActionContext {
     private final @Nullable net.minecraft.core.BlockPos focusBlock;
     private final net.minecraft.world.item.ItemStack item;
     private boolean successful = true;
+    private @Nullable net.minecraft.world.phys.Vec3 at;
 
     public ActionContext(LivingEntity entity) {
         this(entity, null, entity);
@@ -73,6 +74,25 @@ public final class ActionContext {
      */
     public @Nullable net.minecraft.core.BlockPos focusBlock() {
         return focusBlock;
+    }
+
+    /**
+     * The place an event happened, when that isn't where the entity stands (a projectile's impact).
+     * Effects that happen in the world anchor here when it is set.
+     */
+    public @Nullable net.minecraft.world.phys.Vec3 at() {
+        return at;
+    }
+
+    /** Where this action's effects land: the event's place, else the entity. */
+    public net.minecraft.world.phys.Vec3 place() {
+        return at != null ? at : entity.position();
+    }
+
+    public ActionContext withAt(@Nullable net.minecraft.world.phys.Vec3 place) {
+        ActionContext copy = new ActionContext(entity, other, origin, reservations, focusBlock, item);
+        copy.at = place;
+        return copy;
     }
 
     public ActionContext withFocusBlock(@Nullable net.minecraft.core.BlockPos pos) {

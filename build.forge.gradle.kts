@@ -75,6 +75,8 @@ dependencies {
     // Resolve through flatDir so ForgeGradle can remap the universal production jar for the
     // named development/test runtime. A files(...) dependency cannot be deobfuscated.
     compileOnly(fg.deobf("townstead.libs:$mcaArtifact:$mcaVersion-universal"))
+    // Bit of a Mess (runtime optional): compat.mess only touches it when it's installed.
+    compileOnly(fg.deobf("townstead.libs:bitofamess:0.1.0+1.20.1"))
     // MCA's shared classes carry Fabric's @Environment(EnvType.CLIENT); this only lets javac resolve the enum.
     compileOnly("net.fabricmc:fabric-loader:0.16.14") { isTransitive = false }
     compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:${property("mixin_extras_version")}")!!)

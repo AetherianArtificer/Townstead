@@ -62,6 +62,7 @@ public final class TownsteadMemoryLifecycle {
         DockBerthClaims.clearAll();
         ProducerStationClaims.clearAll();
         TownsteadVillagers.clearAll();
+        com.aetherianartificer.townstead.hunger.YoungVillagerIndex.clear();
         VillageAiBudget.clear();
         VillageSpiritCache.clear();
         com.aetherianartificer.townstead.chronicle.Chronicles.buffer().clear();

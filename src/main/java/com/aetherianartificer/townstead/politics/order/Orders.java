@@ -35,6 +35,7 @@ public final class Orders {
     public static final ResourceLocation HUNTER_ORDER = ResourceLocation.tryParse("townstead:hunter_order");
     private static final ResourceLocation PROVENANCE = ResourceLocation.tryParse("townstead:lodge_founding");
     private static final int SYNC_INTERVAL = 200;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site SYNC_STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(SYNC_INTERVAL);
 
     private Orders() {}
 
@@ -131,7 +132,7 @@ public final class Orders {
      * profession practices it, and so does someone training to join one; anyone else loses it.
      */
     public static void syncProfession(VillagerEntityMCA villager) {
-        if ((villager.tickCount + villager.getId()) % SYNC_INTERVAL != 0 || !(villager.level() instanceof ServerLevel level)) return;
+        if (!SYNC_STRIDE.due(villager, villager.tickCount + villager.getId()) || !(villager.level() instanceof ServerLevel level)) return;
         // A Persona's job comes from who they are, not from membership.
         if (com.aetherianartificer.townstead.persona.PersonaService.pinnedProfession(villager) != null) return;
         PoliticalSavedData data = PoliticalSavedData.get(level.getServer());

@@ -21,6 +21,7 @@ import java.util.UUID;
  * sleeping; a behavior profile has them hunt enemies of the town.
  */
 public final class WerewolfVillagers {
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(20);
     public static final ResourceLocation WEREWOLF = ResourceLocation.tryParse("townstead_state:werewolf");
     public static final ResourceLocation RAGE = ResourceLocation.tryParse("townstead_state:rage");
     public static final ResourceLocation FORM = ResourceLocation.tryParse("townstead_state:beast_form");
@@ -139,7 +140,7 @@ public final class WerewolfVillagers {
     }
 
     public static void tick(VillagerEntityMCA villager) {
-        if ((villager.tickCount + villager.getId()) % 20 != 0 || !(villager.level() instanceof ServerLevel level)) return;
+        if (!STRIDE.due(villager, villager.tickCount + villager.getId()) || !(villager.level() instanceof ServerLevel level)) return;
         if (EntityStates.definition(WEREWOLF) == null || EntityStates.definition(FORM) == null) return;
         UUID id = villager.getUUID();
         EntityStates.Resolved werewolf = EntityStates.resolve(villager, WEREWOLF);

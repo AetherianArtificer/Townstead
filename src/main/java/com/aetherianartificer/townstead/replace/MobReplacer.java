@@ -39,6 +39,7 @@ import java.util.function.Predicate;
  * the way the mob would. When no Root in the region can take the states, the mob spawns as usual.
  */
 public final class MobReplacer {
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(20);
     /** Marks a wild villager with the replacement it came from. */
     public static final String WILD = "townstead:wild";
     static final String REPLACED = "townstead:replaced";
@@ -167,7 +168,7 @@ public final class MobReplacer {
      * Peaceful. Once cured it stays and wanders. Either way, enough hearts from a player settle it.
      */
     public static void tick(VillagerEntityMCA villager) {
-        if (villager.tickCount % 20 != 0 || !villager.getPersistentData().contains(WILD)) return;
+        if (!STRIDE.due(villager, villager.tickCount) || !villager.getPersistentData().contains(WILD)) return;
         MobReplacement replacement = replacementOf(villager);
         if (replacement == null) {
             // What made them wild is gone from the data, so nothing could ever settle them.
