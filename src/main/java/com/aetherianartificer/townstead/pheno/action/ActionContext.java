@@ -96,7 +96,9 @@ public final class ActionContext {
     }
 
     public ActionContext withFocusBlock(@Nullable net.minecraft.core.BlockPos pos) {
-        return new ActionContext(entity, other, origin, reservations, pos, item);
+        ActionContext copy = new ActionContext(entity, other, origin, reservations, pos, item);
+        copy.at = at;
+        return copy;
     }
 
     /** Preserves execution-owned state while an {@code on} selector changes the focus. */
@@ -106,7 +108,9 @@ public final class ActionContext {
 
     public ActionContext withReservations(
             com.aetherianartificer.townstead.pheno.reservation.ReservationScope scope) {
-        return new ActionContext(entity, other, origin, scope, focusBlock, item);
+        ActionContext copy = new ActionContext(entity, other, origin, scope, focusBlock, item);
+        copy.at = at;
+        return copy;
     }
 
     /**
@@ -118,7 +122,9 @@ public final class ActionContext {
     }
 
     public ActionContext withItem(net.minecraft.world.item.ItemStack stack) {
-        return new ActionContext(entity, other, origin, reservations, focusBlock, stack);
+        ActionContext copy = new ActionContext(entity, other, origin, reservations, focusBlock, stack);
+        copy.at = at;
+        return copy;
     }
 
     /** Mark this action chain as unsuccessful (for example, no safe teleport destination). */
